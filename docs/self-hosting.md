@@ -129,6 +129,251 @@ PLATOS_VERSION=0.5.2
 
 **Never** use `latest` in production; pin to a release tag for reproducible deploys.
 
+## First production boot
+
+This section walks through a clean production deploy on a single Linux host with Docker + Docker Compose v2, Caddy on the host, and Cloudflare-managed DNS. Adapt the same sequence for Kubernetes / managed infra — only the reverse proxy and DNS layers change.
+
+The reference deploy these notes were written from is `https://play.platos.dev` running on a 4 vCPU / 16 GB RAM Hostinger VPS.
+
+### 1. Required environment variables
+
+Compose refuses to boot if any of these are missing or empty. Generate locally with `openssl` — the values shown are length / format requirements, not literal defaults.
+
+| Variable | Format | Generate with |
+|---|---|---|
+| `SESSION_SECRET` | non-empty | `openssl rand -hex 32` |
+| `MAGIC_LINK_SECRET` | non-empty | `openssl rand -hex 32` |
+| `ENCRYPTION_KEY` | **32 ASCII chars** (32-char hex string) | `openssl rand -hex 16` |
+| `PLATOS_SESSION_SECRET` | non-empty | `openssl rand -hex 32` |
+| `PLATOS_ENCRYPTION_KEY` | **64 hex chars** (32 bytes) | `openssl rand -hex 32` |
+| `PLATOS_MESSAGE_ENCRYPTION_KEY` | **64 hex chars** (32 bytes) | `openssl rand -hex 32` |
+| `MANAGED_WORKER_SECRET` | non-empty | `openssl rand -hex 32` |
+| `TRIGGER_INTERNAL_SECRET` | non-empty | `openssl rand -hex 32` |
+| `POSTGRES_PASSWORD` | non-empty | `openssl rand -hex 16` |
+| `CLICKHOUSE_PASSWORD` | non-empty | `openssl rand -hex 16` |
+| `MINIO_ROOT_PASSWORD` | non-empty | `openssl rand -hex 16` |
+
+Plus the application config — most have safe defaults but a production deploy must set:
+
+| Variable | Production value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `LOGIN_ORIGIN` | `https://your.host` |
+| `APP_ORIGIN` | `https://your.host` |
+| `PLATOS_CORS_ORIGIN` | `https://your.host` (comma-separated for multiple) |
+| `MINIO_PUBLIC_ENDPOINT` | `https://minio.your.host` (see §3 below — **boot will fail without this**) |
+| `ANTHROPIC_API_KEY` (or other provider) | your key |
+| `RESEND_API_KEY` | your key (see §5) |
+| `FROM_EMAIL` | `noreply@your.verified.domain` (see §5) |
+| `REPLY_TO_EMAIL` | a real human inbox |
+
+### 2. Boot sequence
+
+The full stack has a startup ordering that's easy to get wrong. Follow this sequence:
+
+```bash
+cd /opt/platos
+
+# 1. Infra services first — Postgres, Redis, ClickHouse, MinIO must be
+#    healthy before any app container starts.
+docker compose -f docker-compose.platos.yml up -d --no-deps \
+  postgres redis clickhouse minio minio-init
+
+# Wait for healthchecks (~15-20s).
+docker compose -f docker-compose.platos.yml ps
+
+# 2. Webapp first (it bootstraps the worker token — see §4).
+docker compose -f docker-compose.platos.yml up -d --no-deps webapp
+
+# 3. Run Postgres migrations from inside the webapp container. The
+#    `migrations-init` sidecar uses goose from ghcr.io which is sometimes
+#    rate-limited on first pull — running migrations via Prisma directly
+#    is more reliable and produces identical schema.
+PG_PWD=$(grep ^POSTGRES_PASSWORD .env | cut -d= -f2)
+docker exec -e DIRECT_URL="postgresql://postgres:${PG_PWD}@postgres:5432/postgres?schema=public" \
+  platos-webapp-1 \
+  /triggerdotdev/node_modules/.bin/prisma migrate deploy \
+  --schema /triggerdotdev/internal-packages/database/prisma/schema.prisma
+
+# 4. Restart webapp so its bootstrap routine sees the full schema +
+#    creates the `bootstrap` worker group (see §4).
+docker compose -f docker-compose.platos.yml restart webapp
+
+# 5. Capture the worker token from webapp logs (see §4).
+docker logs platos-webapp-1 2>&1 | grep TRIGGER_WORKER_TOKEN
+
+# Append the token to .env, then bring up agent + worker.
+echo "TRIGGER_WORKER_TOKEN=tr_wgt_..." >> .env
+docker compose -f docker-compose.platos.yml up -d --no-deps agent worker
+
+# 6. Verify all services healthy.
+docker compose -f docker-compose.platos.yml ps
+```
+
+If you used `up -d` once and Compose failed pulling `ghcr.io/pressly/goose:3` (registry denial), this is harmless — that's the optional ClickHouse-migrate sidecar we're skipping above. Run the migration manually via the agent container as shown.
+
+### 3. MinIO needs a public-reachable endpoint
+
+The webapp's boot guard intentionally refuses to start in production if `APP_ORIGIN` points at a public host but `MINIO_PUBLIC_ENDPOINT` resolves to `localhost`:
+
+```
+Error: [Platos boot] Refusing to start in production: APP_ORIGIN=https://play.platos.dev
+but MINIO_PUBLIC_ENDPOINT=http://localhost:9001. Browsers hitting the public webapp
+will be handed presigned URLs pointing at the operator's localhost.
+```
+
+This is correct — presigned URLs for attachments are handed to the visitor's browser, and `localhost:9000` doesn't resolve there. The fix is to expose MinIO on its own subdomain via your reverse proxy.
+
+**Recommended pattern**:
+
+1. Add a DNS A record for `minio.your.host` pointing at your VPS.
+2. In your Caddyfile (or NGINX), proxy `minio.your.host` → MinIO API port `:9000` (NOT the console port `:9001`).
+3. Set `MINIO_PUBLIC_ENDPOINT=https://minio.your.host` in `.env`.
+
+Caddy snippet:
+
+```caddy
+minio.your.host {
+    encode zstd gzip
+    request_body { max_size 1GB }
+    reverse_proxy localhost:9000 {
+        transport http {
+            read_timeout 5m
+            write_timeout 5m
+        }
+    }
+}
+```
+
+If you'd rather use external S3 (R2, GCS, AWS S3), set the `OBJECT_STORE_*` env vars instead and remove the `minio` service from your compose.
+
+### 4. The worker token bootstrap
+
+The `worker` service ships embedded inside the agent image (`WORKER_MODE=true`) but needs a `TRIGGER_WORKER_TOKEN` to authenticate against the run engine. The webapp generates this token automatically the first time it boots with `TRIGGER_BOOTSTRAP_ENABLED=1` (the default) — but it doesn't share the token with the worker via volume.
+
+You extract it once and feed it back through `.env`:
+
+```bash
+# After the webapp has booted with the full Postgres schema, find the token:
+docker logs platos-webapp-1 2>&1 | grep "TRIGGER_WORKER_TOKEN="
+# Outputs a line like:
+#   TRIGGER_WORKER_TOKEN=tr_wgt_rIGlI3WEGu8Hu3KrKFN88I5nSDqRwjgttWnZ3Uue
+
+# Append it to .env (one-time), then bring the worker up.
+echo "TRIGGER_WORKER_TOKEN=tr_wgt_..." >> .env
+docker compose -f docker-compose.platos.yml up -d --no-deps --force-recreate worker
+```
+
+Once written, the token never needs to rotate unless you wipe the database. If you do wipe and re-bootstrap, replace the value in `.env` and restart the worker.
+
+For multi-host worker scale-out: provision additional worker nodes pointed at the same `TRIGGER_API_URL` with the same `TRIGGER_WORKER_TOKEN`. The token is per-worker-group, not per-host.
+
+### 5. Email — sender domain authentication
+
+Outgoing email (magic-link login, security alerts, agent-side notifications) goes through Resend by default. Resend will silently reject sends from any domain that hasn't been verified in your Resend dashboard.
+
+**Symptom**: magic-link emails never arrive; webapp logs show `[email] resend error { ... statusCode: 403 ... }`.
+
+**Fix**:
+
+1. In your Resend dashboard, add **the same domain you're hosting Platos on** (or a sister domain) and complete the SPF + DKIM DNS records.
+2. Set `FROM_EMAIL=noreply@<verified-domain>` in `.env`.
+3. Set `REPLY_TO_EMAIL=<a real human inbox>` so users hitting reply still reach a person — this address does NOT need to match the verified domain.
+4. Restart the webapp.
+
+If you're running multiple Platos instances under the same parent domain (e.g. `play.platos.dev` and `staging.platos.dev`), one domain verification in Resend covers all of them.
+
+For SES or SMTP fallback, set `RESEND_API_KEY=` empty and supply the `EMAIL_TRANSPORT=ses` (or `smtp`) variables in `.env.example` instead.
+
+### 6. Caddy reverse proxy template
+
+Caddy auto-provisions Let's Encrypt certs as long as it can answer the HTTP-01 challenge on port 80. The catch: if your DNS is fronted by Cloudflare's proxy (orange cloud), Caddy never receives the challenge. **Set the A records to "DNS only" (gray cloud) for the first cert issuance**, then flip to orange cloud + Full (strict) once certs land.
+
+Reference Caddyfile (drop in at `/etc/caddy/Caddyfile` and `systemctl reload caddy`):
+
+```caddy
+{
+    email you@example.com
+}
+
+your.host {
+    encode zstd gzip
+    request_body { max_size 50MB }
+
+    # Agent-direct paths — REST + WebSocket upgrades.
+    @agent {
+        path /api/v1/agent/* /tools/sync /tools/sync/* /metrics
+    }
+    handle @agent {
+        reverse_proxy localhost:3100 {
+            transport http {
+                read_timeout 1h
+                write_timeout 1h
+            }
+        }
+    }
+
+    # Socket.IO namespace served by the agent.
+    @socketio {
+        path /agent/* /agent /socket.io/*
+    }
+    handle @socketio {
+        reverse_proxy localhost:3100 {
+            transport http {
+                read_timeout 1h
+                write_timeout 1h
+            }
+        }
+    }
+
+    # Public docs API + everything else → webapp.
+    handle {
+        reverse_proxy localhost:3030 {
+            transport http {
+                read_timeout 5m
+                write_timeout 5m
+            }
+        }
+    }
+}
+
+mcp.your.host {
+    encode zstd gzip
+    # Host-aware middleware in the agent rewrites /mcp → /mcp/docs
+    # internally based on the Host header, so we just preserve it.
+    reverse_proxy localhost:3100 {
+        transport http {
+            read_timeout 1h
+            write_timeout 1h
+        }
+    }
+}
+
+minio.your.host {
+    encode zstd gzip
+    request_body { max_size 1GB }
+    reverse_proxy localhost:9000 {
+        transport http {
+            read_timeout 5m
+            write_timeout 5m
+        }
+    }
+}
+```
+
+Open ports `22 / 80 / 443` on the host firewall; nothing else needs public exposure. Postgres, Redis, ClickHouse, and MinIO stay on the docker bridge network.
+
+### 7. First-login walkthrough
+
+1. Browse to `https://your.host` — you'll be redirected to `/login`.
+2. Enter your email. The webapp dispatches a magic link via Resend.
+3. Click the link in the email; you're now logged in as the first admin user.
+4. Create an organization, then a project, then an environment (`development` is created by default).
+5. Settings → Providers → link your `ANTHROPIC_API_KEY` from `.env` so model picker shows Claude.
+6. Agents → New → ship your first agent.
+
+If the magic-link email never arrives, check §5 (sender domain) and `docker logs platos-webapp-1 | grep email`.
+
 ## Scaling considerations
 
 ### Webapp (Remix, port 3030)
