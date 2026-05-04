@@ -1,12 +1,23 @@
-"📌 area: cli":
-  - any: ["cli/**/*"]
+"📌 area: agent":
+  - any: ["apps/agent/**/*"]
 
-"📌 area: t3-app":
-  - any: ["cli/template/**/*"]
+"📌 area: webapp":
+  - any: ["apps/webapp/**/*"]
 
-"📚 documentation":
-  - any: ["www/**/*"]
-  - any: ["**/*.md"]
+"📌 area: sdk":
+  - any: ["packages/platos-client/**/*", "packages/platools-js/**/*", "packages/platools-py/**/*"]
+
+"📌 area: engine":
+  - any: ["internal-packages/run-engine/**/*", "apps/coordinator/**/*", "apps/supervisor/**/*"]
+
+"📌 area: database":
+  - any: ["internal-packages/database/**/*"]
 
 "📌 area: ci":
   - any: [".github/**/*"]
+
+"📚 documentation":
+  - any: ["content/docs/**/*", "content/guides/**/*", "docs/**/*", "**/*.md"]
+
+"🔬 examples":
+  - any: ["examples/**/*", "references/**/*"]

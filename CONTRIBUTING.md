@@ -131,7 +131,7 @@ App-only changes don't need a changeset; we run continuous deployment on `main`.
 
 ## Community
 
-- **Questions, RFCs, dogfooding stories**: [Discord](https://discord.gg/platos)
+- **Questions, RFCs, dogfooding stories**: [Discord](https://discord.gg/7zxegt73zr)
 - **Long-form discussion**: [GitHub Discussions](https://github.com/winsenlabs/platos/discussions)
 - **Open issues**: [github.com/winsenlabs/platos/issues](https://github.com/winsenlabs/platos/issues)
 

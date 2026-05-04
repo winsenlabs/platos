@@ -11,7 +11,7 @@ Apache 2.0. Self-hostable in one `docker compose up`.
 [Guides](https://platos.dev/guides) ·
 [Quickstart](https://platos.dev/guides/quickstart) ·
 [Roadmap](https://platos.dev/roadmap) ·
-[Discord](https://discord.gg/platos)
+[Discord](https://discord.gg/7zxegt73zr)
 
 </div>
 
@@ -173,7 +173,7 @@ A few things we care about:
 
 ## Community
 
-- **Discord**: [discord.gg/platos](https://discord.gg/platos) — questions, RFCs, dogfooding stories
+- **Discord**: [discord.gg/7zxegt73zr](https://discord.gg/7zxegt73zr) — questions, RFCs, dogfooding stories
 - **GitHub Discussions**: [github.com/winsenlabs/platos/discussions](https://github.com/winsenlabs/platos/discussions)
 - **Issues**: [github.com/winsenlabs/platos/issues](https://github.com/winsenlabs/platos/issues)
 

@@ -23,13 +23,3 @@ jobs:
   units:
     uses: ./.github/workflows/unit-tests.yml
     secrets: inherit
-
-  e2e:
-    uses: ./.github/workflows/e2e.yml
-    with:
-      package: cli-v3
-    secrets: inherit
-
-  sdk-compat:
-    uses: ./.github/workflows/sdk-compat.yml
-    secrets: inherit

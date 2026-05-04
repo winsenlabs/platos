@@ -7,7 +7,6 @@ on:
     paths:
       - "packages/**"
       - ".changeset/**"
-      - ".server-changes/**"
       - "package.json"
       - "pnpm-lock.yaml"
 
@@ -22,7 +21,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    if: github.repository == 'triggerdotdev/trigger.dev'
+    if: github.repository == 'winsenlabs/platos'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,7 +41,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Create release PR
-        id: changesets
         uses: changesets/action@v1
         with:
           version: pnpm run changeset:version
@@ -50,28 +48,6 @@ jobs:
           title: "chore: release"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update PR title and enhance body
-        if: steps.changesets.outputs.published != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUMBER=$(gh pr list --head changeset-release/main --json number --jq '.[0].number')
-          if [ -n "$PR_NUMBER" ]; then
-            git fetch origin changeset-release/main
-            # we arbitrarily reference the version of the cli package here; it is the same for all package releases
-            VERSION=$(git show origin/changeset-release/main:packages/cli-v3/package.json | jq -r '.version')
-            gh pr edit "$PR_NUMBER" --title "chore: release v$VERSION"
-
-            # Enhance the PR body with a clean, deduplicated summary
-            RAW_BODY=$(gh pr view "$PR_NUMBER" --json body --jq '.body')
-            ENHANCED_BODY=$(CHANGESET_PR_BODY="$RAW_BODY" node scripts/enhance-release-pr.mjs "$VERSION")
-            if [ -n "$ENHANCED_BODY" ]; then
-              gh api repos/triggerdotdev/trigger.dev/pulls/"$PR_NUMBER" \
-                -X PATCH \
-                -f body="$ENHANCED_BODY"
-            fi
-          fi
 
   update-lockfile:
     name: Update lockfile on release PR
@@ -98,25 +74,14 @@ jobs:
       - name: Install and update lockfile
         run: pnpm install --no-frozen-lockfile
 
-      - name: Clean up consumed .server-changes/ files
-        run: |
-          set -e
-          shopt -s nullglob
-          files=(.server-changes/*.md)
-          for f in "${files[@]}"; do
-            if [ "$(basename "$f")" != "README.md" ]; then
-              git rm --ignore-unmatch "$f"
-            fi
-          done
-
-      - name: Commit and push lockfile + server-changes cleanup
+      - name: Commit and push lockfile
         run: |
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pnpm-lock.yaml
           if ! git diff --cached --quiet; then
-            git commit -m "chore: update lockfile and clean up .server-changes/ for release"
+            git commit -m "chore: update lockfile for release"
             git push origin changeset-release/main
           else
             echo "No changes to commit"

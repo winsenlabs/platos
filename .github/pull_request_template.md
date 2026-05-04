@@ -1,27 +1,22 @@
 Closes #<issue>
 
-## ✅ Checklist
+## Summary
 
-- [ ] I have followed every step in the [contributing guide](https://github.com/triggerdotdev/trigger.dev/blob/main/CONTRIBUTING.md)
-- [ ] The PR title follows the convention.
-- [ ] I ran and tested the code works
+<!-- One or two sentences. What changed and why. -->
+
+## Test plan
+
+<!-- How was this verified? -->
+
+- [ ] `pnpm run typecheck` passes locally
+- [ ] Added or updated tests where the change crosses a process boundary
+- [ ] (Public package change) Ran `pnpm run changeset:add`
+- [ ] (Schema change) Migration follows [internal-packages/database/README.md](../internal-packages/database/README.md)
+
+## Screenshots / recordings
+
+<!-- Optional: UI changes only -->
 
 ---
 
-## Testing
-
-_[Describe the steps you took to test this change]_
-
----
-
-## Changelog
-
-_[Short description of what has changed]_
-
----
-
-## Screenshots
-
-_[Screenshots]_
-
-💯
+By submitting, I agree this contribution is licensed under the project's [Apache 2.0 license](../LICENSE) and follows the [contributing guide](../CONTRIBUTING.md).

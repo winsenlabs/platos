@@ -1,5 +1,11 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Ask a Question
-    url: https://trigger.dev/discord
-    about: Ask questions and discuss with other community members
+  - name: 💬 Discord
+    url: https://discord.gg/7zxegt73zr
+    about: Ask questions, share what you're building, talk to maintainers
+  - name: 📚 Docs
+    url: https://platos.dev/docs
+    about: Reference docs and guides
+  - name: 💡 Discussions
+    url: https://github.com/winsenlabs/platos/discussions
+    about: RFCs, longer-form questions, and feature ideas
