@@ -205,6 +205,14 @@ export default function LoginPage() {
             >
               Read the quickstart guide ↗
             </TextLink>
+            {" · "}
+            <TextLink
+              href="https://github.com/winsenlabs/platos"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Star on GitHub ↗
+            </TextLink>
           </Paragraph>
         </Fieldset>
       </div>

@@ -54,7 +54,7 @@ const goalOptions = [
   "Ship a production workflow",
   "Prototype or explore",
   "Migrate an existing system",
-  "Learn how Trigger works",
+  "Learn how Platos works",
   "Evaluate against alternatives",
   GOALS_OTHER,
 ] as const;
