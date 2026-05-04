@@ -1,0 +1,25 @@
+{
+  "name": "platos-nextjs-starter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js 15 App Router starter — server action mints Platos session tokens, client streams chat via @platos/react-hooks.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@platos/client": "^0.1.1",
+    "@platos/react-hooks": "^4.4.4",
+    "@platos/token-mint": "^0.1.0",
+    "next": "^15.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}

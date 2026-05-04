@@ -1,0 +1,23 @@
+{
+  "name": "@internal/docs",
+  "private": true,
+  "version": "0.0.1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "dependencies": {
+    "marked": "^4.0.18"
+  },
+  "devDependencies": {
+    "@types/marked": "^4.0.3",
+    "rimraf": "^6.0.1",
+    "vitest": "^1.6.0"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "pnpm run clean && tsc --project tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}

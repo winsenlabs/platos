@@ -1,0 +1,875 @@
+import { Injectable, Inject, Optional } from "@nestjs/common";
+import { PRISMA_TOKEN } from "../shared/database.provider";
+import { REDIS_TOKEN } from "../shared/redis.provider";
+import type Redis from "ioredis";
+import type { RequestScope } from "../auth/scope.guard";
+import {
+  validatePublicUrl,
+  describeUrlValidationError,
+} from "../shared/url-validator";
+import { RateLimitService } from "./rate-limit.service";
+
+type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
+
+export type BudgetScopeType = "scope" | "agent" | "user";
+export type BudgetPeriod = "day" | "week" | "month";
+/**
+ * Theme SM.3 — Which spend bucket a cap governs.
+ *   - "llm"   : model inference tokens/cost (default; preserves pre-SM.3 rows).
+ *   - "skill" : skill-tool dispatches (SkillRuntimeService.checkSkillBudget).
+ */
+export type BudgetTier = "llm" | "skill";
+
+export interface BudgetCap {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  environmentId: string;
+  scopeType: BudgetScopeType;
+  targetId: string;
+  period: BudgetPeriod;
+  limitCents: number;
+  runsLimit: number;
+  alertThresholds: number[];
+  alertWebhookUrl: string | null;
+  alertEmails: string | null;
+  overrideUntil: Date | null;
+  overrideBy: string | null;
+  enabled: boolean;
+  /** Theme SM.3 — "llm" (default) | "skill". */
+  tier: BudgetTier;
+  /** Theme SM.3 — Skill-slug filter (null = all skills). Only meaningful when tier="skill". */
+  skillSlug: string | null;
+  /** Theme SM.3 — Agent-id filter (null = all agents). Composes with tier+skillSlug. */
+  agentId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** Theme SM.3 — Result of a pre-dispatch spend check. */
+export interface BudgetCheckResult {
+  allowed: boolean;
+  capHit?: {
+    id: string;
+    name: string;
+    limitCents: number;
+    currentCents: number;
+    tier: BudgetTier;
+    skillSlug: string | null;
+    agentId: string | null;
+  };
+}
+
+export interface BudgetStatus {
+  cap: BudgetCap;
+  windowKey: string;
+  spentCents: number;
+  runs: number;
+  percent: number;
+  runsPercent: number;
+  blocked: boolean;
+  overrideActive: boolean;
+}
+
+/**
+ * Theme H.5 + H.6 + H.7 — Budget caps.
+ *
+ * CRUD + enforcement + alert-threshold tracking.
+ *
+ * Cost counters are sourced from the existing per-scope / per-agent cost
+ * hashes the CostService maintains in Redis. This service adds:
+ *   1. Per-user daily counter (`cost:user:<scopeKey>:<userId>:<day>`) —
+ *      written from `recordCharge` alongside the existing scope/agent
+ *      counters so user-level budgets have something to read.
+ *   2. Window aggregation for week/month periods.
+ *   3. Threshold-crossed state in Redis (one set per cap × window) so
+ *      alerts only fire once per transition.
+ */
+@Injectable()
+export class BudgetService {
+  private prisma: any;
+
+  constructor(
+    @Inject(PRISMA_TOKEN) prisma: any,
+    @Inject(REDIS_TOKEN) private readonly redis: Redis,
+    @Optional() private readonly rateLimitService?: RateLimitService,
+  ) {
+    this.prisma = prisma;
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // CRUD
+  // ═══════════════════════════════════════════════════════
+
+  async list(scope: ScopeTuple): Promise<BudgetCap[]> {
+    const rows = await this.prisma.platosBudgetCap.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+      },
+      orderBy: [{ scopeType: "asc" }, { targetId: "asc" }, { period: "asc" }],
+    });
+    return rows.map((r: any) => this.row(r));
+  }
+
+  async getById(scope: ScopeTuple, id: string): Promise<BudgetCap | null> {
+    const row = await this.prisma.platosBudgetCap.findFirst({
+      where: {
+        id,
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+      },
+    });
+    return row ? this.row(row) : null;
+  }
+
+  async upsert(
+    scope: ScopeTuple,
+    data: {
+      scopeType: BudgetScopeType;
+      /**
+       * Target entity for this cap.
+       *   - scopeType="scope"  → leave empty/blank — applies to everyone.
+       *   - scopeType="agent"  → agentId string.
+       *   - scopeType="user"   → specific userId string  OR  "*" (wildcard).
+       *
+       * When targetId="*" and scopeType="user" the cap becomes a
+       * **default per-user cap**: it applies independently to every end-user
+       * that sends a turn through this scope. Each user's spend is tracked
+       * against their own Redis window — they cannot exhaust each other's
+       * allowance.  This is the canonical way for an operator to say
+       * "every user gets max $X/day" without knowing user IDs in advance.
+       */
+      targetId?: string;
+      period: BudgetPeriod;
+      limitCents: number;
+      runsLimit?: number;
+      alertThresholds?: number[];
+      alertWebhookUrl?: string | null;
+      alertEmails?: string | null;
+      enabled?: boolean;
+      /** Theme SM.3 — tier (defaults to "llm"). */
+      tier?: BudgetTier;
+      /** Theme SM.3 — only when tier="skill". */
+      skillSlug?: string | null;
+      /** Theme SM.3 — optional per-agent filter. */
+      agentId?: string | null;
+    },
+  ): Promise<BudgetCap> {
+    this.validate(data);
+    // Wildcard "*" is the default per-user sentinel.  Only valid on user caps.
+    if (data.targetId === "*" && data.scopeType !== "user") {
+      throw new Error('targetId="*" wildcard is only valid for scopeType="user"');
+    }
+    // EOBD.9 — SSRF defence. If an admin sets alertWebhookUrl, refuse
+    // to persist anything that resolves to a private / loopback /
+    // link-local / cloud-metadata IP. Re-checked at fetch time in the
+    // budget-alert trigger.dev task (defence-in-depth vs. DNS rebind).
+    if (data.alertWebhookUrl != null && data.alertWebhookUrl.length > 0) {
+      const check = await validatePublicUrl(data.alertWebhookUrl);
+      if (!check.ok) {
+        throw new Error(
+          `alertWebhookUrl rejected: ${describeUrlValidationError(check.error)}`,
+        );
+      }
+    }
+    const targetId = data.targetId ?? "";
+    // Use updateMany + create fallback to respect the composite unique
+    // index without relying on compound upsert quirks.
+    //
+    // SM.3 Phase-2 fix — tier / skillSlug / agentId must be part of the
+    // collision key. Without them, an LLM scope-wide cap and a skill
+    // scope-wide cap at the same (scopeType, targetId, period) would alias
+    // onto the same findFirst row — the second upsert would silently
+    // overwrite the first. Tightening the where-clause lets tier/slug/agent
+    // combinations coexist without touching the DB-level unique index.
+    const tier = data.tier ?? "llm";
+    const skillSlug = data.skillSlug ?? null;
+    const agentId = data.agentId ?? null;
+    const existing = await this.prisma.platosBudgetCap.findFirst({
+      where: {
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+        scopeType: data.scopeType,
+        targetId,
+        period: data.period,
+        tier,
+        skillSlug,
+        agentId,
+      },
+    });
+    const payload: Record<string, unknown> = {
+      limitCents: data.limitCents,
+      runsLimit: data.runsLimit ?? 0,
+      alertThresholds: (data.alertThresholds ?? [50, 80, 100]) as any,
+      alertWebhookUrl: data.alertWebhookUrl ?? null,
+      alertEmails: data.alertEmails ?? null,
+      enabled: data.enabled ?? true,
+      // Theme SM.3 — new fields (tier, skillSlug, agentId) are written
+      // unconditionally so updates can transition an existing row from
+      // llm → skill without leaving stale filters.
+      tier,
+      skillSlug,
+      agentId,
+    };
+    if (existing) {
+      const updated = await this.prisma.platosBudgetCap.update({
+        where: { id: existing.id },
+        data: payload,
+      });
+      return this.row(updated);
+    }
+    const created = await this.prisma.platosBudgetCap.create({
+      data: {
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+        scopeType: data.scopeType,
+        targetId,
+        period: data.period,
+        ...payload,
+      },
+    });
+    return this.row(created);
+  }
+
+  async delete(scope: ScopeTuple, id: string): Promise<boolean> {
+    const res = await this.prisma.platosBudgetCap.deleteMany({
+      where: {
+        id,
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+      },
+    });
+    return res.count > 0;
+  }
+
+  /**
+   * Admin override — temporarily bump past-100% caps for N minutes. Records
+   * who authorised it for audit. Re-calling with minutes=0 clears.
+   */
+  async override(
+    scope: ScopeTuple,
+    id: string,
+    options: { minutes: number; userId: string },
+  ): Promise<BudgetCap | null> {
+    const cap = await this.getById(scope, id);
+    if (!cap) return null;
+    const until = options.minutes > 0 ? new Date(Date.now() + options.minutes * 60_000) : null;
+    const updated = await this.prisma.platosBudgetCap.update({
+      where: { id },
+      data: { overrideUntil: until, overrideBy: until ? options.userId : null },
+    });
+    return this.row(updated);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Enforcement / status
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Record a spend event against the per-user counter. Called right after
+   * CostService.recordUsage so user-level budgets have a live source.
+   *
+   * Idempotency: append-only like CostService — rerun of a turn
+   * double-counts. Postgres (`PlatosAgentMessage.responseJson`) remains the
+   * durable source; this Redis counter is the fast path for budget checks.
+   */
+  async recordUserSpend(
+    scope: ScopeTuple,
+    userId: string,
+    costCents: number,
+  ): Promise<void> {
+    if (!userId || costCents <= 0) return;
+    const s = this.scopeKey(scope);
+    const today = new Date().toISOString().slice(0, 10);
+    const key = `cost:user:${s}:${userId}:${today}`;
+    const pipeline = this.redis.pipeline();
+    pipeline.hincrbyfloat(key, "cost_cents", costCents);
+    pipeline.hincrby(key, "runs", 1);
+    pipeline.expire(key, 86400 * 90);
+    await pipeline.exec();
+  }
+
+  /**
+   * Evaluate every active cap for a scope + agent + user and return the
+   * maximum-utilisation rollup. The hard-stop check uses
+   * `anyBlocked = caps.some(c => c.blocked)`. Fail-open on query errors —
+   * this call is in the hot path and must not stall a turn on a Redis blip.
+   */
+  async evaluate(
+    scope: ScopeTuple,
+    ctx: { agentId?: string; userId?: string },
+  ): Promise<{ caps: BudgetStatus[]; blocked: boolean; reason?: string }> {
+    let caps: BudgetCap[];
+    try {
+      caps = await this.list(scope);
+    } catch {
+      return { caps: [], blocked: false };
+    }
+    const statuses: BudgetStatus[] = [];
+    for (const cap of caps) {
+      if (!cap.enabled) continue;
+      // Skip caps whose target doesn't match the request context.
+      if (cap.scopeType === "agent" && cap.targetId !== (ctx.agentId ?? "")) continue;
+      if (cap.scopeType === "user") {
+        const isWildcard = cap.targetId === "*";
+        // Wildcard: applies to every user — don't skip, but we need userId to
+        // read the correct per-user window below.  Specific: must match caller.
+        if (!isWildcard && cap.targetId !== (ctx.userId ?? "")) continue;
+        // No userId in context means we can't evaluate a wildcard per-user cap.
+        if (isWildcard && !ctx.userId) continue;
+      }
+
+      const { spentCents, runs } = await this.readWindow(scope, cap, ctx);
+      const pct = cap.limitCents > 0 ? (spentCents / cap.limitCents) * 100 : 0;
+      const runsPct = cap.runsLimit > 0 ? (runs / cap.runsLimit) * 100 : 0;
+      const overrideActive =
+        !!cap.overrideUntil && cap.overrideUntil.getTime() > Date.now();
+      const costHard = cap.limitCents > 0 && spentCents >= cap.limitCents;
+      const runsHard = cap.runsLimit > 0 && runs >= cap.runsLimit;
+      const blocked = (costHard || runsHard) && !overrideActive;
+      statuses.push({
+        cap,
+        windowKey: this.windowKey(cap.period),
+        spentCents,
+        runs,
+        percent: Number(pct.toFixed(2)),
+        runsPercent: Number(runsPct.toFixed(2)),
+        blocked,
+        overrideActive,
+      });
+    }
+    const blocker = statuses.find((s) => s.blocked);
+    return {
+      caps: statuses,
+      blocked: !!blocker,
+      reason: blocker
+        ? `Budget cap exceeded: ${blocker.cap.scopeType}/${blocker.cap.period} — ${blocker.spentCents.toFixed(2)}¢ of ${blocker.cap.limitCents}¢`
+        : undefined,
+    };
+  }
+
+  /**
+   * Evaluate pending threshold crossings for a cap × window. Returns the
+   * list of thresholds that just crossed (i.e. were not crossed on a prior
+   * call and are crossed now). Threshold-crossed state is persisted in a
+   * Redis SET per (capId, windowKey) so alerts fire exactly once per
+   * transition.
+   */
+  async detectThresholdCrossings(
+    scope: ScopeTuple,
+    status: BudgetStatus,
+  ): Promise<number[]> {
+    const crossed: number[] = [];
+    const key = `budget:alerts:${status.cap.id}:${status.windowKey}`;
+    const thresholds = [...(status.cap.alertThresholds ?? [50, 80, 100])].sort((a, b) => a - b);
+    for (const threshold of thresholds) {
+      if (status.percent >= threshold || status.runsPercent >= threshold) {
+        const added = await this.redis.sadd(key, String(threshold));
+        if (added === 1) crossed.push(threshold);
+      }
+    }
+    await this.redis.expire(key, 86400 * 35);
+    void scope; // reserved for future scope-prefixed alert state
+    return crossed;
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Helpers
+  // ═══════════════════════════════════════════════════════
+
+  private async readWindow(
+    scope: ScopeTuple,
+    cap: BudgetCap,
+    ctx: { agentId?: string; userId?: string },
+  ): Promise<{ spentCents: number; runs: number }> {
+    const s = this.scopeKey(scope);
+    const dates = this.windowDates(cap.period);
+    const keys = dates.map((d) => {
+      if (cap.scopeType === "agent") {
+        return `cost:agent:${s}:${cap.targetId}:${d}`;
+      }
+      if (cap.scopeType === "user") {
+        // Wildcard caps ("*") track each user independently using their own
+        // Redis key.  Specific caps use the stored targetId directly.
+        const userId = cap.targetId === "*" ? (ctx.userId ?? "") : cap.targetId;
+        return `cost:user:${s}:${userId}:${d}`;
+      }
+      return `cost:scope:${s}:${d}`;
+    });
+    // PRELAUNCH-A3-7 — also read the matching :reserved keys so the budget
+    // evaluator includes in-flight (reserved-but-not-yet-settled) spend
+    // when comparing to the cap. Without this, two concurrent turns from
+    // the same user across different threads both see "under cap" + both
+    // proceed past the gate.
+    const reservedKeys = keys.map((k) => `${k}:reserved`);
+
+    const pipeline = this.redis.pipeline();
+    for (const k of keys) pipeline.hgetall(k);
+    for (const k of reservedKeys) pipeline.hgetall(k);
+    const results = await pipeline.exec();
+    let spentCents = 0;
+    let runs = 0;
+    const spentEntries = results?.slice(0, keys.length) ?? [];
+    const reservedEntries = results?.slice(keys.length) ?? [];
+    for (const entry of spentEntries) {
+      const raw = (entry?.[1] as Record<string, string> | undefined) ?? {};
+      spentCents += parseFloat(raw.cost_cents || "0");
+      runs += parseInt(raw.runs || raw.calls || "0", 10);
+    }
+    let reservedCents = 0;
+    for (const entry of reservedEntries) {
+      const raw = (entry?.[1] as Record<string, string> | undefined) ?? {};
+      const r = parseFloat(raw.cost_cents || "0");
+      // Clamp negatives — over-settlement bug shouldn't drive the counter
+      // negative and hide real spend from the cap evaluation.
+      if (r > 0) reservedCents += r;
+    }
+    return { spentCents: spentCents + reservedCents, runs };
+  }
+
+  private windowDates(period: BudgetPeriod): string[] {
+    const today = new Date();
+    const dates: string[] = [];
+    if (period === "day") {
+      dates.push(today.toISOString().slice(0, 10));
+      return dates;
+    }
+    if (period === "week") {
+      // Rolling 7-day window
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(today.getTime() - i * 86400_000);
+        dates.push(d.toISOString().slice(0, 10));
+      }
+      return dates;
+    }
+    // month: calendar month so overrides align with billing expectation
+    const year = today.getUTCFullYear();
+    const month = today.getUTCMonth();
+    const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(Date.UTC(year, month, day));
+      if (d.getTime() > today.getTime()) break;
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    return dates;
+  }
+
+  private windowKey(period: BudgetPeriod): string {
+    const today = new Date();
+    if (period === "day") return today.toISOString().slice(0, 10);
+    if (period === "week") {
+      const d = new Date(today);
+      d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+      return `W${d.toISOString().slice(0, 10)}`;
+    }
+    return `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+
+  private scopeKey(scope: ScopeTuple): string {
+    return `${scope.organizationId}:${scope.projectId}:${scope.environmentId}`;
+  }
+
+  private validate(data: {
+    scopeType: string;
+    period: string;
+    limitCents: number;
+    alertThresholds?: number[];
+    tier?: string;
+    skillSlug?: string | null;
+  }) {
+    if (!["scope", "agent", "user"].includes(data.scopeType)) {
+      throw new Error(`invalid scopeType: ${data.scopeType}`);
+    }
+    if (!["day", "week", "month"].includes(data.period)) {
+      throw new Error(`invalid period: ${data.period}`);
+    }
+    if (!Number.isFinite(data.limitCents) || data.limitCents < 0) {
+      throw new Error(`invalid limitCents: ${data.limitCents}`);
+    }
+    if (data.alertThresholds) {
+      for (const t of data.alertThresholds) {
+        if (!Number.isFinite(t) || t <= 0 || t > 200) {
+          throw new Error(`invalid alert threshold: ${t}`);
+        }
+      }
+    }
+    // Theme SM.3 — tier validation. Unset defaults to "llm" at the
+    // persistence layer; reject anything else.
+    if (data.tier !== undefined && !["llm", "skill"].includes(data.tier)) {
+      throw new Error(`invalid tier: ${data.tier}`);
+    }
+    // Theme SM.3 — skillSlug only meaningful for tier="skill". If someone
+    // sets it on a tier="llm" cap that's almost certainly a mistake; reject
+    // rather than silently ignore.
+    if (
+      data.skillSlug &&
+      data.tier !== undefined &&
+      data.tier !== "skill"
+    ) {
+      throw new Error(
+        `skillSlug only valid on tier="skill" caps (got tier=${data.tier})`,
+      );
+    }
+  }
+
+  private row(r: any): BudgetCap {
+    return {
+      id: r.id,
+      organizationId: r.organizationId,
+      projectId: r.projectId,
+      environmentId: r.environmentId,
+      scopeType: r.scopeType,
+      targetId: r.targetId,
+      period: r.period,
+      limitCents: r.limitCents,
+      runsLimit: r.runsLimit,
+      alertThresholds: Array.isArray(r.alertThresholds)
+        ? r.alertThresholds
+        : [50, 80, 100],
+      alertWebhookUrl: r.alertWebhookUrl,
+      alertEmails: r.alertEmails,
+      overrideUntil: r.overrideUntil,
+      overrideBy: r.overrideBy,
+      enabled: r.enabled,
+      // Theme SM.3 — new columns default at the schema level but we handle
+      // pre-migration reads defensively so unit tests running against an
+      // older DB don't blow up.
+      tier: (r.tier as BudgetTier | undefined) ?? "llm",
+      skillSlug: r.skillSlug ?? null,
+      agentId: r.agentId ?? null,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // Theme SM.3 — pre-dispatch tier-aware cap check
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Evaluate whether an upcoming spend event is allowed under the most
+   * specific matching cap. Used by:
+   *   - SkillRuntimeService before firing a skill tool (tier="skill").
+   *   - Future tiers (bgo, tool) plug in with no further schema work.
+   *
+   * Resolution order — first match wins (most specific → least specific):
+   *   1. tier + skillSlug + agentId
+   *   2. tier + skillSlug  (any agent)
+   *   3. tier              (any skill, any agent)  — skillSlug=null,
+   *                                                   agentId=null
+   *   4. tier + agentId    (any skill)
+   *   5. (legacy) scope-wide fallback — handled by caller, not here.
+   *
+   * Checks only the specified tier. Callers asking for tier="skill" will
+   * never be blocked by a tier="llm" cap, and vice versa.
+   *
+   * Fail-open — any query error returns `allowed: true`. This call sits in
+   * the hot path; a Redis/Postgres blip must not lock tool dispatch.
+   */
+  async checkCap(
+    scope: ScopeTuple,
+    filters: { tier: BudgetTier; skillSlug?: string | null; agentId?: string | null },
+    amountCents: number,
+  ): Promise<BudgetCheckResult> {
+    try {
+      const rows: any[] = await this.prisma.platosBudgetCap.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          // Defensively default missing tier to "llm" for pre-migration rows.
+          OR: [{ tier: filters.tier }, ...(filters.tier === "llm" ? [{ tier: null }] : [])],
+          enabled: true,
+        },
+      });
+      const caps = rows.map((r: any) => this.row(r));
+      const agentId = filters.agentId ?? null;
+      const skillSlug = filters.skillSlug ?? null;
+
+      // Build the candidate ladder in order of most specific → least
+      // specific. Each predicate filters the `caps` pool; first non-empty
+      // level wins the "most specific" tier and we pick the first cap there
+      // whose current spend + amountCents would exceed the limit.
+      const ladder: Array<(c: BudgetCap) => boolean> = [
+        (c) =>
+          c.skillSlug === skillSlug &&
+          skillSlug !== null &&
+          c.agentId === agentId &&
+          agentId !== null,
+        (c) => c.skillSlug === skillSlug && skillSlug !== null && c.agentId === null,
+        (c) => c.skillSlug === null && c.agentId === agentId && agentId !== null,
+        (c) => c.skillSlug === null && c.agentId === null,
+      ];
+
+      for (const pred of ladder) {
+        const matches = caps.filter(pred);
+        if (matches.length === 0) continue;
+        for (const cap of matches) {
+          const overrideActive =
+            !!cap.overrideUntil && cap.overrideUntil.getTime() > Date.now();
+          if (overrideActive) continue;
+          const currentCents = await this.readTierWindow(scope, cap);
+          const projected = currentCents + Math.max(0, amountCents);
+          if (cap.limitCents > 0 && projected >= cap.limitCents) {
+            return {
+              allowed: false,
+              capHit: {
+                id: cap.id,
+                name: this.capLabel(cap),
+                limitCents: cap.limitCents,
+                currentCents,
+                tier: cap.tier,
+                skillSlug: cap.skillSlug,
+                agentId: cap.agentId,
+              },
+            };
+          }
+        }
+        // Most-specific tier evaluated and nothing blocked — stop.
+        // "First match wins" for resolution: we don't cascade to the next
+        // level when this one has non-blocking caps. This keeps the
+        // mental model predictable ("the most specific cap governs").
+        return { allowed: true };
+      }
+      return { allowed: true };
+    } catch (err: any) {
+      // Fail-open. Log at warn via the NestJS logger once Logger wiring lands
+      // — today BudgetService has no Logger field. Callers should also log
+      // on their side since they know the context (e.g. which skill/tool).
+      void err;
+      return { allowed: true };
+    }
+  }
+
+  /**
+   * Read the per-tier running spend total for a cap's current window.
+   *
+   * Keys match the writer in `CostService.recordSkillUsage`:
+   *   `cost:<tier>:<scope>:<skillSlug|"">:<agentId|"">:<day>` → `cost_cents`
+   *
+   * Empty-segment placeholder (not `_any`) is used for the missing dimension
+   * so the key shape the writer fans out to is identical to the one the
+   * ladder looks up here. An LLM-tier read falls back to 0 (LLM spend still
+   * rolls up via the pre-existing per-scope keys — this tier-aware reader is
+   * only meaningful for skill-tier caps today).
+   */
+  private async readTierWindow(scope: ScopeTuple, cap: BudgetCap): Promise<number> {
+    if (cap.tier !== "skill") return 0;
+    const s = this.scopeKey(scope);
+    const dates = this.windowDates(cap.period);
+    const slug = cap.skillSlug ?? "";
+    const agent = cap.agentId ?? "";
+    const keys = dates.map((d) => `cost:skill:${s}:${slug}:${agent}:${d}`);
+    const pipeline = this.redis.pipeline();
+    for (const k of keys) pipeline.hgetall(k);
+    const results = await pipeline.exec();
+    let spentCents = 0;
+    for (const entry of results ?? []) {
+      const raw = (entry?.[1] as Record<string, string> | undefined) ?? {};
+      spentCents += parseFloat(raw.cost_cents || "0");
+    }
+    return spentCents;
+  }
+
+  private capLabel(cap: BudgetCap): string {
+    const parts: string[] = [`${cap.tier}`];
+    if (cap.skillSlug) parts.push(`skill=${cap.skillSlug}`);
+    if (cap.agentId) parts.push(`agent=${cap.agentId}`);
+    parts.push(`${cap.period}/${cap.limitCents}¢`);
+    return parts.join(" ");
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // PRELAUNCH-A3-1 — per-user consumption summary
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Aggregate every cap that applies to (scope, userId) into a single
+   * payload the Users monitoring tab can render as a drawer of progress
+   * bars + breached badges. Also folds in the live rate-limit counters
+   * (PRELAUNCH-A3-15 — wires up the previously-dead RateLimitService.peek).
+   *
+   * Includes:
+   *   - User-scope wildcard caps (`scopeType="user"`, `targetId="*"`).
+   *   - User-specific caps (`scopeType="user"`, `targetId=<userId>`).
+   *   - Org-wide caps (`scopeType="scope"`) — surfaced for context even
+   *     though they apply to everyone (helpful when an admin is trying
+   *     to figure out why a single user is being throttled).
+   *
+   * Fail-graceful: any storage hiccup returns a structurally valid result
+   * with `caps: []` + `rateLimit: null` rather than throwing.
+   */
+  async getUserConsumptionSummary(
+    scope: ScopeTuple,
+    userId: string,
+  ): Promise<{
+    userId: string;
+    blocked: boolean;
+    reason: string | null;
+    caps: BudgetStatus[];
+    rateLimit: { minute: number; hour: number; day: number } | null;
+    rateLimited: boolean;
+    fetchedAt: string;
+  }> {
+    const fetchedAt = new Date().toISOString();
+    let caps: BudgetCap[] = [];
+    try {
+      caps = await this.list(scope);
+    } catch {
+      caps = [];
+    }
+    const statuses: BudgetStatus[] = [];
+    for (const cap of caps) {
+      if (!cap.enabled) continue;
+      // Skill / non-LLM tiers are computed per-skill; we surface them
+      // only when they're scope-wide (no skillSlug filter) so the user
+      // drawer doesn't drown in per-skill rows.
+      if (cap.tier !== "llm" && cap.skillSlug) continue;
+      // Filter to caps that meaningfully apply to this user:
+      //   - scope-wide caps (every user inherits)
+      //   - user-wildcard caps
+      //   - user-specific caps that match userId
+      const isUserCap = cap.scopeType === "user";
+      const isScopeWide = cap.scopeType === "scope";
+      const isAgentCap = cap.scopeType === "agent";
+      if (!isScopeWide && !isUserCap && !isAgentCap) continue;
+      if (isUserCap) {
+        const isWildcard = cap.targetId === "*";
+        if (!isWildcard && cap.targetId !== userId) continue;
+      }
+
+      const ctx = isUserCap || isScopeWide ? { userId } : { agentId: cap.targetId, userId };
+      let spentCents = 0;
+      let runs = 0;
+      try {
+        ({ spentCents, runs } = await this.readWindow(scope, cap, ctx));
+      } catch {
+        // Skip the cap on read failure; consumer should still see the
+        // other caps without an outright error.
+        continue;
+      }
+      const pct = cap.limitCents > 0 ? (spentCents / cap.limitCents) * 100 : 0;
+      const runsPct = cap.runsLimit > 0 ? (runs / cap.runsLimit) * 100 : 0;
+      const overrideActive =
+        !!cap.overrideUntil && cap.overrideUntil.getTime() > Date.now();
+      const costHard = cap.limitCents > 0 && spentCents >= cap.limitCents;
+      const runsHard = cap.runsLimit > 0 && runs >= cap.runsLimit;
+      const blocked = (costHard || runsHard) && !overrideActive;
+      statuses.push({
+        cap,
+        windowKey: this.windowKey(cap.period),
+        spentCents,
+        runs,
+        percent: Number(pct.toFixed(2)),
+        runsPercent: Number(runsPct.toFixed(2)),
+        blocked,
+        overrideActive,
+      });
+    }
+    const blocker = statuses.find((s) => s.blocked);
+
+    // PRELAUNCH-A3-15 — fold in the live rate-limit peek so the drawer
+    // shows "minute/hour/day" alongside cap progress. RateLimitService is
+    // optional in the constructor for unit-test ergonomics; default to
+    // null when absent.
+    let rateLimit: { minute: number; hour: number; day: number } | null = null;
+    let rateLimited = false;
+    if (this.rateLimitService) {
+      try {
+        rateLimit = await this.rateLimitService.peek(scope, userId);
+        const defaults = (this.rateLimitService as any).defaults as {
+          perUserPerMinute?: number;
+          perUserPerHour?: number;
+          perUserPerDay?: number;
+        };
+        rateLimited =
+          (defaults?.perUserPerMinute && rateLimit.minute >= defaults.perUserPerMinute) ||
+          (defaults?.perUserPerHour && rateLimit.hour >= defaults.perUserPerHour) ||
+          (defaults?.perUserPerDay && rateLimit.day >= defaults.perUserPerDay) ||
+          false;
+      } catch {
+        rateLimit = null;
+        rateLimited = false;
+      }
+    }
+
+    return {
+      userId,
+      blocked: !!blocker,
+      reason: blocker
+        ? `Budget cap exceeded: ${blocker.cap.scopeType}/${blocker.cap.period} — ${blocker.spentCents.toFixed(2)}¢ of ${blocker.cap.limitCents}¢`
+        : null,
+      caps: statuses,
+      rateLimit,
+      rateLimited,
+      fetchedAt,
+    };
+  }
+
+  /**
+   * PRELAUNCH-A3-3 — list every (cap, userId) combination currently >= 100%.
+   * Iterates `list()` for the scope, evaluates each user-scoped cap against
+   * every active userId in the period (via `getCostByUser`), and returns the
+   * breached set. Wildcard user caps fan out per-user; user-specific caps
+   * just check that one user. Agent + org-wide caps get a single
+   * `userId="*"` entry when breached.
+   */
+  async listBreachedUsers(
+    scope: ScopeTuple,
+    activeUserIds: string[],
+  ): Promise<Array<{ userId: string; capId: string; percent: number; period: BudgetPeriod }>> {
+    let caps: BudgetCap[] = [];
+    try {
+      caps = await this.list(scope);
+    } catch {
+      return [];
+    }
+    const result: Array<{ userId: string; capId: string; percent: number; period: BudgetPeriod }> = [];
+
+    for (const cap of caps) {
+      if (!cap.enabled) continue;
+      const overrideActive =
+        !!cap.overrideUntil && cap.overrideUntil.getTime() > Date.now();
+      if (overrideActive) continue;
+
+      const userIds: string[] =
+        cap.scopeType === "user"
+          ? cap.targetId === "*"
+            ? activeUserIds
+            : [cap.targetId]
+          : ["*"]; // org/agent caps — single composite row
+
+      for (const u of userIds) {
+        const ctx =
+          cap.scopeType === "user"
+            ? { userId: u }
+            : cap.scopeType === "agent"
+              ? { agentId: cap.targetId }
+              : {};
+        let spentCents = 0;
+        try {
+          ({ spentCents } = await this.readWindow(scope, cap, ctx));
+        } catch {
+          continue;
+        }
+        if (cap.limitCents <= 0) continue;
+        const pct = (spentCents / cap.limitCents) * 100;
+        if (pct >= 100) {
+          result.push({
+            userId: u,
+            capId: cap.id,
+            percent: Number(pct.toFixed(2)),
+            period: cap.period,
+          });
+        }
+      }
+    }
+    return result;
+  }
+}

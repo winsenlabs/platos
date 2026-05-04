@@ -1,0 +1,25 @@
+{
+  "name": "platos-client-react-widget",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal React + Vite example embedding a Platos agent via @platos/client + @platos/react-hooks.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@platos/client": "^0.1.1",
+    "@platos/react-hooks": "^4.4.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

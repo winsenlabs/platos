@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!-- Disable verbose system log tables that grow unbounded and hog CPU/disk.
+     trace_log + text_log were consuming 7+ GiB and 40% CPU on a 8GB VPS.
+     The Platos application only uses ClickHouse for platos_spans_v1 and
+     task run telemetry — ClickHouse's internal diagnostics are not needed. -->
+<clickhouse>
+    <!-- Disable trace sampling log entirely -->
+    <trace_log remove="1"/>
+    <!-- Disable text (server log) capture to table -->
+    <text_log remove="1"/>
+    <!-- Keep metric_log but rotate aggressively -->
+    <metric_log>
+        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
+        <max_size_rows>10000</max_size_rows>
+        <reserved_size_rows>1024</reserved_size_rows>
+    </metric_log>
+    <!-- Keep asynchronous metric log small -->
+    <asynchronous_metric_log>
+        <flush_interval_milliseconds>60000</flush_interval_milliseconds>
+        <max_size_rows>5000</max_size_rows>
+        <reserved_size_rows>512</reserved_size_rows>
+    </asynchronous_metric_log>
+    <!-- Hard cap at 2.5 GB — Docker mem_limit is 3g, leaving 512m headroom -->
+    <max_server_memory_usage>2684354560</max_server_memory_usage>
+</clickhouse>

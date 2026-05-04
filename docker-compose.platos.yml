@@ -1,0 +1,640 @@
+# Platos — single command deployment
+# Usage: docker compose -f docker-compose.platos.yml up -d --build
+#
+# Services:
+#   postgres    — main database (port 5432)
+#   redis       — cache + queues (port 6379)
+#   clickhouse  — run/queue/batch telemetry (port 8123)
+#   minio       — S3-compatible object store for multimodal attachments (ports 9001/9002)
+#   migrations-init — one-shot Prisma migrate deploy before webapp boots (EOBD.55)
+#   agent       — Platos agent runtime, NestJS (port 3100)
+#   webapp      — Platos dashboard + API, Remix (port 3030)
+#
+# All config comes from the root .env file. At minimum you need an LLM provider
+# key (ANTHROPIC_API_KEY / OPENAI_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY) and
+# the ENCRYPTION_KEY / SESSION_SECRET / MAGIC_LINK_SECRET secrets.
+#
+# ─── Port binding policy (EOBD.51) ────────────────────────────────────────
+# Internal services (postgres, redis, clickhouse, minio) bind to 127.0.0.1
+# by default so a VPS without an external firewall doesn't expose the DB on
+# the public internet. To expose them externally (e.g. for a developer tool
+# running off-host), set the corresponding *_PUBLIC_BIND env to `0.0.0.0`:
+#   POSTGRES_PUBLIC_BIND=0.0.0.0 REDIS_PUBLIC_BIND=0.0.0.0 docker compose up -d
+# The webapp (3030) and agent (3100) remain bound to 0.0.0.0 — they're
+# designed to sit behind Caddy or a similar reverse proxy.
+#
+# ─── Log rotation + mem limits (EOBD.54) ──────────────────────────────────
+# Every service ships with a json-file log driver capped at 50MB × 5 files
+# and a soft mem_limit defaulting to 2G (4G for webapp + agent). Tune with
+# the *_MEM_LIMIT env vars documented in .env.example.
+#
+# ─── Image pinning (EOBD.53) ──────────────────────────────────────────────
+# Tags below are intentionally unpinned in the committed file so local dev
+# works without a registry roundtrip. For prod, generate the digest list
+# via `docker compose -f docker-compose.platos.yml pull && docker images
+# --digests` and commit as `docker-compose.platos.digests.yml` (see
+# docs/self-hosting.md §"Pinning images"). MinIO already uses an
+# immutable RELEASE.<timestamp> tag.
+
+name: platos
+
+# EOBD.54 — reusable log driver anchor. json-file with per-service
+# rotation. Keeps the host /var/lib/docker/containers/... from filling
+# up during a chatty incident.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+services:
+  postgres:
+    # Theme L.1 — pgvector is required for semantic-memory embeddings.
+    # `pgvector/pgvector:pg16` is the official community image — same
+    # Postgres 16 base as upstream `postgres:16`, plus the extension
+    # binaries pre-installed. The Theme L migration issues
+    # `CREATE EXTENSION IF NOT EXISTS vector` so the extension is
+    # available to subsequent migrations that declare vector columns.
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: ${POSTGRES_MEM_LIMIT:-512m}
+    ports:
+      # EOBD.51 — bind to localhost by default. Override via
+      # POSTGRES_PUBLIC_BIND=0.0.0.0 for external access.
+      - "${POSTGRES_PUBLIC_BIND:-127.0.0.1}:5432:5432"
+    volumes:
+      - platos-postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      # Override POSTGRES_PASSWORD in .env before exposing externally.
+      # Leaving it at the default makes the Postgres instance trivially
+      # compromisable.
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?required — see .env.example}"
+      POSTGRES_DB: "${POSTGRES_DB:-postgres}"
+    command: ["-c", "wal_level=logical"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: ${REDIS_MEM_LIMIT:-256m}
+    ports:
+      # EOBD.51 — bind to localhost by default.
+      - "${REDIS_PUBLIC_BIND:-127.0.0.1}:6379:6379"
+    volumes:
+      - platos-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: ${CLICKHOUSE_MEM_LIMIT:-1200m}
+    ports:
+      # EOBD.51 — bind to localhost by default.
+      - "${CLICKHOUSE_PUBLIC_BIND:-127.0.0.1}:8123:8123"
+      - "${CLICKHOUSE_PUBLIC_BIND:-127.0.0.1}:9000:9000"
+    volumes:
+      - platos-clickhouse:/var/lib/clickhouse
+      # Host has IPv6 disabled; override listen_host to 0.0.0.0 (IPv4-only)
+      - ./.platos/clickhouse/listen.xml:/etc/clickhouse-server/config.d/listen.xml:ro
+      # Disable trace_log/text_log (grew to 7+ GiB), cap memory to ~1.2 GB
+      - ./.platos/clickhouse/logging.xml:/etc/clickhouse-server/config.d/logging.xml:ro
+    environment:
+      CLICKHOUSE_USER: "${CLICKHOUSE_USER:-default}"
+      # Override CLICKHOUSE_PASSWORD in .env before exposing externally.
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD:?required — see .env.example}"
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      # Use 127.0.0.1 — container /etc/hosts resolves localhost to ::1 first,
+      # but clickhouse listens on IPv4 only (host IPv6 disabled).
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─────────────────────────────────────────────────────────────
+  # MinIO — S3-compatible object store for Theme D multimodal
+  # attachments (images, audio, video, documents). Bucket
+  # `platos-media` is created by the `minio-init` one-shot
+  # container below. Webapp mints presigned PUT/GET URLs so
+  # the browser talks to MinIO directly — no raw creds ever
+  # leave the server.
+  #
+  # EOBD.56 — default `platos-minio-admin` / `platos-minio-password`
+  # credentials are dev-only. Production MUST override both
+  # MINIO_ROOT_USER and MINIO_ROOT_PASSWORD; the agent +
+  # webapp refuse to start against the sentinel values when
+  # NODE_ENV=production.
+  # ─────────────────────────────────────────────────────────────
+  minio:
+    image: minio/minio:RELEASE.2025-02-03T21-03-04Z
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: ${MINIO_MEM_LIMIT:-256m}
+    ports:
+      # EOBD.51 — S3 API bound to localhost by default. Set
+      # MINIO_PUBLIC_BIND=0.0.0.0 to expose (still front with TLS).
+      - "${MINIO_PUBLIC_BIND:-127.0.0.1}:9001:9000" # S3 API
+      - "${MINIO_PUBLIC_BIND:-127.0.0.1}:9002:9001" # Web console
+    volumes:
+      - platos-minio:/data
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-platos-minio-admin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-platos-minio-password}"
+      # When the S3 API is reached through a reverse proxy that prefixes the
+      # path (e.g. Caddy: `handle_path /minio-proxy/* { reverse_proxy
+      # localhost:9001 }`), the signed URL the browser hits includes the
+      # prefix but the request that lands on MinIO has it stripped. Setting
+      # MINIO_SERVER_URL makes MinIO use this external base when it rebuilds
+      # the canonical URL for signature verification, so presigned uploads
+      # pass. Unset → MinIO signs against the internal Host header (correct
+      # when the browser can reach MinIO directly on a dedicated port /
+      # subdomain).
+      MINIO_SERVER_URL: "${MINIO_SERVER_URL:-}"
+    command: server /data --console-address ":9001"
+    healthcheck:
+      # MinIO ships a built-in `/minio/health/live` endpoint. Use 127.0.0.1 to
+      # mirror the ClickHouse IPv4-only pattern (host may have IPv6 disabled).
+      test:
+        [
+          "CMD-SHELL",
+          "curl -f http://127.0.0.1:9000/minio/health/live || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # One-shot: create the platos-media bucket on first boot.
+  # Idempotent — re-running is a no-op if the bucket already exists.
+  minio-init:
+    image: minio/mc:RELEASE.2025-01-17T23-25-50Z
+    logging: *default-logging
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-platos-minio-admin}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-platos-minio-password}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-platos-media}"
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set platos http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb --ignore-existing platos/$$MINIO_BUCKET &&
+      mc anonymous set none platos/$$MINIO_BUCKET &&
+      echo 'platos-media bucket ready';
+      "
+    restart: on-failure
+
+  # ─────────────────────────────────────────────────────────────
+  # EOBD.63 — ClickHouse migrations one-shot. Runs goose against the
+  # bind-mounted schema directory so a fresh `docker compose up`
+  # produces a ClickHouse instance with all migrations applied — no
+  # manual host-side step.
+  #
+  # Exits 0 when all migrations are up. Webapp depends on this via
+  # service_completed_successfully.
+  # ─────────────────────────────────────────────────────────────
+  clickhouse-migrate:
+    image: ghcr.io/pressly/goose:3
+    logging: *default-logging
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: clickhouse
+      GOOSE_DBSTRING: "tcp://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:9000"
+    volumes:
+      - ./internal-packages/clickhouse/schema:/migrations:ro
+    command: ["-dir", "/migrations", "up"]
+    restart: "no"
+
+  # ─────────────────────────────────────────────────────────────
+  # EOBD.55 — migrations-init. One-shot that runs
+  # `prisma migrate deploy` against the fresh Postgres before the
+  # webapp + agent start. The prod webapp image doesn't carry the
+  # Prisma CLI, so this uses a dedicated node + prisma image with
+  # the schema bind-mounted.
+  #
+  # Exits 0 on success (migrations applied / already in sync); the
+  # webapp `depends_on` uses service_completed_successfully so it
+  # waits for this to finish.
+  # ─────────────────────────────────────────────────────────────
+  migrations-init:
+    image: node:22-alpine
+    logging: *default-logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+    volumes:
+      - ./internal-packages/database:/work
+    working_dir: /work
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        echo '[migrations-init] installing prisma...'
+        npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
+        echo '[migrations-init] running prisma migrate deploy...'
+        npx prisma migrate deploy
+        echo '[migrations-init] done'
+    restart: "no"
+
+  # ─────────────────────────────────────────────────────────────
+  # worker — dedicated trigger.dev task worker (optional).
+  #
+  # Runs the same platos-agent image in WORKER_MODE=true so task
+  # execution (spawn_bgo / agent_batch / custom tasks) is handled
+  # by separate processes rather than the API server. Horizontal
+  # scaling: increase `replicas` or add more worker services.
+  #
+  # Requires TRIGGER_WORKER_TOKEN — either:
+  #   a) Set explicitly in .env (generate from the webapp admin UI
+  #      under Settings → Worker Groups → bootstrap).
+  #   b) Mount the token volume written by the webapp on first boot
+  #      (TRIGGER_BOOTSTRAP_WORKER_TOKEN_PATH=/run/secrets/worker-token).
+  #
+  # The worker service is OPTIONAL for single-node deploys — the
+  # webapp's bootstrap worker already handles task execution when
+  # TRIGGER_BOOTSTRAP_ENABLED=1. Enable this service for dedicated
+  # task execution or horizontal scale-out.
+  # ─────────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: apps/agent/Dockerfile
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: ${WORKER_MEM_LIMIT:-1g}
+    deploy:
+      replicas: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      webapp:
+        condition: service_healthy
+      migrations-init:
+        condition: service_completed_successfully
+    environment:
+      WORKER_MODE: "true"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&connection_limit=30&pool_timeout=20"
+      REDIS_URL: "redis://redis:6379"
+      TRIGGER_API_URL: "http://webapp:3000"
+      TRIGGER_WORKER_TOKEN: "${TRIGGER_WORKER_TOKEN:-}"
+      TRIGGER_SECRET_KEY: "${TRIGGER_SECRET_KEY:-}"
+      TRIGGER_INTERNAL_SECRET: "${TRIGGER_INTERNAL_SECRET:?required — openssl rand -hex 32}"
+      PLATOS_WORKER_CONCURRENCY: "${PLATOS_WORKER_CONCURRENCY:-10}"
+      PLATOS_BATCH_CONCURRENCY: "${PLATOS_BATCH_CONCURRENCY:-5}"
+      PLATOS_PER_ORG_CONCURRENCY: "${PLATOS_PER_ORG_CONCURRENCY:-10}"
+      PLATOS_BATCH_ITEM_CONCURRENCY: "${PLATOS_BATCH_ITEM_CONCURRENCY:-3}"
+      PLATOS_MAX_BGOS_PER_TURN: "${PLATOS_MAX_BGOS_PER_TURN:-5}"
+      PLATOS_AGENT_API_URL: "http://agent:3100"
+      PLATOS_AGENT_HTTP_URL: "http://agent:3100"
+      PLATOS_ENCRYPTION_KEY: "${PLATOS_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 32 ASCII chars from openssl rand -hex 16}"
+      PLATOS_SESSION_SECRET: "${PLATOS_SESSION_SECRET:?required — any non-empty string from openssl rand -base64 24}"
+      MANAGED_WORKER_SECRET: "${MANAGED_WORKER_SECRET:?required — generate with `openssl rand -hex 32`}"
+      NODE_ENV: "${NODE_ENV:-production}"
+
+  agent:
+    build:
+      context: .
+      dockerfile: apps/agent/Dockerfile
+    restart: unless-stopped
+    # LAUNCH-7 — give the agent up to 30s after SIGTERM to drain in-flight
+    # streaming turns, finalize Redis publishes, and flush the cost ledger
+    # before Docker SIGKILLs. NestJS `app.enableShutdownHooks()` (in
+    # main.ts) calls each module's onApplicationShutdown which closes
+    # WebSocket rooms, drains queues, and disposes prisma.
+    stop_grace_period: 30s
+    logging: *default-logging
+    mem_limit: ${AGENT_MEM_LIMIT:-2g}
+    ports:
+      - "3100:3100"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      webapp:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrations-init:
+        condition: service_completed_successfully
+    environment:
+      PLATOS_AGENT_PORT: "3100"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&connection_limit=30&pool_timeout=20"
+      REDIS_URL: "redis://redis:6379"
+      # PLATOS_TEST_MODE exposes /test/* endpoints + a dev-fallback session
+      # secret path. Default is `false` — set to `true` ONLY for local dev.
+      PLATOS_TEST_MODE: "${PLATOS_TEST_MODE:-false}"
+      # PLATOS_ENCRYPTION_KEY: 64 hex chars (32 bytes). `openssl rand -hex 32`.
+      PLATOS_ENCRYPTION_KEY: "${PLATOS_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
+      # ENCRYPTION_KEY must match the webapp value — ScopedEnvService uses it to
+      # decrypt provider API keys stored by the webapp in the env-var table.
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 32 ASCII chars from openssl rand -hex 16}"
+      # PLATOS_SESSION_SECRET: any non-empty string. `openssl rand -base64 24`.
+      PLATOS_SESSION_SECRET: "${PLATOS_SESSION_SECRET:?required — any non-empty string from openssl rand -base64 24}"
+      # PLATOS_CORS_ORIGIN: comma-separated origins. Narrow before exposing externally.
+      PLATOS_CORS_ORIGIN: "${PLATOS_CORS_ORIGIN:-http://localhost:3030}"
+      PLATOS_DEFAULT_MODEL: "${PLATOS_DEFAULT_MODEL:-anthropic:claude-haiku-4-5-20251001}"
+      TRIGGER_API_URL: "http://webapp:3030"
+      TRIGGER_SECRET_KEY: "${TRIGGER_SECRET_KEY:-}"
+      TRIGGER_INTERNAL_SECRET: "${TRIGGER_INTERNAL_SECRET:?required — openssl rand -hex 32}"
+      PLATOS_WORKER_CONCURRENCY: "${PLATOS_WORKER_CONCURRENCY:-10}"
+      PLATOS_BATCH_CONCURRENCY: "${PLATOS_BATCH_CONCURRENCY:-5}"
+      PLATOS_PER_ORG_CONCURRENCY: "${PLATOS_PER_ORG_CONCURRENCY:-10}"
+      PLATOS_PER_ORG_BATCH_CONCURRENCY: "${PLATOS_PER_ORG_BATCH_CONCURRENCY:-10}"
+      PLATOS_BATCH_ITEM_CONCURRENCY: "${PLATOS_BATCH_ITEM_CONCURRENCY:-3}"
+      PLATOS_MAX_BGOS_PER_TURN: "${PLATOS_MAX_BGOS_PER_TURN:-5}"
+      PLATOS_TURN_MAX_MS: "${PLATOS_TURN_MAX_MS:-300000}"
+      PLATOS_RATE_LIMIT_PER_MIN: "${PLATOS_RATE_LIMIT_PER_MIN:-30}"
+      PLATOS_RATE_LIMIT_PER_DAY: "${PLATOS_RATE_LIMIT_PER_DAY:-200}"
+      PLATOS_RATE_LIMIT_USER_PER_MIN: "${PLATOS_RATE_LIMIT_USER_PER_MIN:-20}"
+      # OSS launch — hard cap on org members + pending invites. The
+      # hosted demo enforces 2; self-hosters bump this to whatever fits
+      # their team. Same value MUST be set on both webapp + agent so
+      # REST + MCP `org.add_member` + webapp invites all enforce it.
+      PLATOS_MAX_PROJECT_MEMBERS: "${PLATOS_MAX_PROJECT_MEMBERS:-2}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      GOOGLE_GENERATIVE_AI_API_KEY: "${GOOGLE_GENERATIVE_AI_API_KEY:-}"
+      # Embeddings — pick one provider (default openai). Voyage is an
+      # alternative: set PLATOS_EMBEDDING_PROVIDER=voyage + VOYAGE_API_KEY.
+      # Default model auto-selects to match the pgvector(1536) column.
+      PLATOS_EMBEDDING_PROVIDER: "${PLATOS_EMBEDDING_PROVIDER:-openai}"
+      PLATOS_EMBEDDING_MODEL: "${PLATOS_EMBEDDING_MODEL:-}"
+      VOYAGE_API_KEY: "${VOYAGE_API_KEY:-}"
+      # Theme D: attachments served from MinIO. Agent fetches via the
+      # internal (docker network) endpoint; browsers go via the public
+      # endpoint minted in presigned URLs by the webapp.
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT:-http://minio:9000}"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-platos-minio-admin}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-platos-minio-password}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-platos-media}"
+      MINIO_REGION: "${MINIO_REGION:-us-east-1}"
+      PLATOS_ATTACHMENT_TTL_DAYS: "${PLATOS_ATTACHMENT_TTL_DAYS:-30}"
+      # Admin token — shared with the webapp so the scheduled retention
+      # task can POST /api/v1/agent/attachments/retention.
+      PLATOS_ADMIN_TOKEN: "${PLATOS_ADMIN_TOKEN:-}"
+      PLATOS_WEBAPP_ADMIN_URL: "${PLATOS_WEBAPP_ADMIN_URL:-http://webapp:3000}"
+      # EOBD.42 — Sentry optional.
+      PLATOS_SENTRY_DSN: "${PLATOS_SENTRY_DSN:-}"
+      PLATOS_SENTRY_TRACES_SAMPLE_RATE: "${PLATOS_SENTRY_TRACES_SAMPLE_RATE:-0.1}"
+      # MCP approval-UI — opt-in. When `true`, mutating Platform-MCP
+      # tools (require_approval tier) open a real PlatosAgentApproval
+      # row instead of being auto-approved. Operator approves in the
+      # dashboard, client retries with `X-Platos-Approval-Id` header.
+      # Default `false` so existing OSS deployments upgrade with no
+      # behaviour change.
+      MCP_INTERACTIVE_APPROVALS: "${MCP_INTERACTIVE_APPROVALS:-false}"
+      MCP_APPROVAL_TTL_SECONDS: "${MCP_APPROVAL_TTL_SECONDS:-3600}"
+      NODE_ENV: "${NODE_ENV:-production}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3100/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  webapp:
+    build:
+      context: .
+      dockerfile: apps/webapp/Dockerfile.platos
+    restart: unless-stopped
+    # LAUNCH-7 — drain in-flight Remix loaders, Express requests, and
+    # Socket.IO connections before SIGKILL. server.ts already wires
+    # `closeServer` to SIGTERM/SIGINT (line ~207); 30s gives it time
+    # to finish in-flight long-poll + SSE responses.
+    stop_grace_period: 30s
+    logging: *default-logging
+    mem_limit: ${WEBAPP_MEM_LIMIT:-2g}
+    ports:
+      - "3030:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      migrations-init:
+        condition: service_completed_successfully
+      clickhouse-migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      APP_ORIGIN: "${APP_ORIGIN:-http://localhost:3030}"
+      LOGIN_ORIGIN: "${LOGIN_ORIGIN:-http://localhost:3030}"
+      API_ORIGIN: "${API_ORIGIN:-http://localhost:3030}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      DATABASE_HOST: "postgres:5432"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_TLS_DISABLED: "true"
+      # Magic-link + general rate limiters need their own Redis client config
+      # (the code reads RATE_LIMIT_REDIS_* rather than reusing REDIS_HOST).
+      # Point them at the same container — it's fine for a single-node deploy.
+      # Fallback to the main REDIS_* vars when unset keeps self-hosters who
+      # never set these from silently breaking magic-link login.
+      RATE_LIMIT_REDIS_HOST: "${RATE_LIMIT_REDIS_HOST:-redis}"
+      RATE_LIMIT_REDIS_PORT: "${RATE_LIMIT_REDIS_PORT:-6379}"
+      RATE_LIMIT_REDIS_TLS_DISABLED: "${RATE_LIMIT_REDIS_TLS_DISABLED:-true}"
+      RATE_LIMIT_REDIS_USERNAME: "${RATE_LIMIT_REDIS_USERNAME:-}"
+      RATE_LIMIT_REDIS_PASSWORD: "${RATE_LIMIT_REDIS_PASSWORD:-}"
+      RATE_LIMIT_REDIS_CLUSTER_MODE_ENABLED: "${RATE_LIMIT_REDIS_CLUSTER_MODE_ENABLED:-0}"
+      CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123?secure=false"
+      RUN_REPLICATION_ENABLED: "1"
+      RUN_REPLICATION_CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123"
+      RUN_REPLICATION_LOG_LEVEL: info
+      CLICKHOUSE_LOG_LEVEL: info
+      # Webapp secrets — required; fail at compose parse instead of Zod boot.
+      SESSION_SECRET: "${SESSION_SECRET:?required — see .env.example}"
+      MAGIC_LINK_SECRET: "${MAGIC_LINK_SECRET:?required — see .env.example}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 32 ASCII chars via `openssl rand -hex 16`}"
+      # PLATOS_SESSION_SECRET must match the agent container's value — the
+      # webapp mints platform-issued session tokens (iss: platos-platform)
+      # for browser WS handshakes to the agent (PPR-7). Same signing secret
+      # required on both sides.
+      PLATOS_SESSION_SECRET: "${PLATOS_SESSION_SECRET:?required — shared with agent; any non-empty string}"
+      # EOBD.52 — refuse silent dev-secret fallback. Operators must set an
+      # explicit value (generate with `openssl rand -hex 32`). Matches the
+      # ENCRYPTION_KEY / SESSION_SECRET fail-fast pattern.
+      MANAGED_WORKER_SECRET: "${MANAGED_WORKER_SECRET:?required — generate with `openssl rand -hex 32`}"
+      DEPLOY_REGISTRY_HOST: "${DEPLOY_REGISTRY_HOST:-localhost:5000}"
+      V4_DEPLOY_REGISTRY_HOST: "${V4_DEPLOY_REGISTRY_HOST:-localhost:5000}"
+      DEPLOY_REGISTRY_NAMESPACE: "${DEPLOY_REGISTRY_NAMESPACE:-trigger}"
+      OBJECT_STORE_BASE_URL: "${OBJECT_STORE_BASE_URL:-}"
+      OBJECT_STORE_ACCESS_KEY_ID: "${OBJECT_STORE_ACCESS_KEY_ID:-}"
+      OBJECT_STORE_SECRET_ACCESS_KEY: "${OBJECT_STORE_SECRET_ACCESS_KEY:-}"
+      TRIGGER_BOOTSTRAP_ENABLED: "1"
+      TRIGGER_BOOTSTRAP_WORKER_GROUP_NAME: bootstrap
+      APP_LOG_LEVEL: info
+      NODE_MAX_OLD_SPACE_SIZE: "${NODE_MAX_OLD_SPACE_SIZE:-8192}"
+      # EOBD.55 — migrations-init runs before webapp boot, but the
+      # prod webapp image still doesn't carry Prisma, so keep these
+      # flags. The init container handles the DDL.
+      SKIP_POSTGRES_MIGRATIONS: "1"
+      SKIP_CLICKHOUSE_MIGRATIONS: "1"
+      # EOBD.50 — email only when RESEND_API_KEY is set. If unset,
+      # EMAIL_TRANSPORT stays unset so the webapp's
+      # NullMailTransport fallback kicks in and magic-link codes
+      # are printed to the webapp container logs (adequate for
+      # OSS self-host + local dev).
+      EMAIL_TRANSPORT: "${EMAIL_TRANSPORT:-${RESEND_API_KEY:+resend}}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      FROM_EMAIL: "${FROM_EMAIL:-}"
+      REPLY_TO_EMAIL: "${REPLY_TO_EMAIL:-}"
+      # EOBD.50 follow-up — force console-logged magic-link codes even
+      # when NODE_ENV=production for OSS self-hosters without SMTP.
+      # Default empty; set to "1" to force the fallback explicitly.
+      PLATOS_DEV_MAGIC_LINK_AUTOREDIRECT: "${PLATOS_DEV_MAGIC_LINK_AUTOREDIRECT:-}"
+      # Talk to agent over the compose network
+      PLATOS_AGENT_API_URL: http://agent:3100
+      # OSS launch — hard cap on org members + pending invites. Mirrors
+      # the agent default (2). Self-hosters bump to whatever fits their
+      # team. Same value MUST be set on both webapp + agent so REST +
+      # MCP `org.add_member` + webapp invites all enforce it.
+      PLATOS_MAX_PROJECT_MEMBERS: "${PLATOS_MAX_PROJECT_MEMBERS:-2}"
+      # EOBD.48 — browser WS URL. Default is ws://localhost:3100 (single-host
+      # dev). For a VPS deployment, set PLATOS_AGENT_PUBLIC_WS_URL to the
+      # same host as APP_ORIGIN but wss:// and port 3100 (or a TLS-terminating
+      # reverse proxy's URL). DO NOT leave this at the default when APP_ORIGIN
+      # isn't localhost — the browser session token will be sent to the wrong
+      # host and the WS handshake will fail (or in the worst case leak).
+      PLATOS_AGENT_PUBLIC_WS_URL: "${PLATOS_AGENT_PUBLIC_WS_URL:-ws://localhost:3100}"
+      # Theme D: MinIO attachments. The webapp mints presigned PUT/GET URLs.
+      # MINIO_ENDPOINT is the in-container endpoint used for `new S3Client()`.
+      # MINIO_PUBLIC_ENDPOINT is what appears in the URL sent to the browser.
+      # EOBD.49 — default `http://localhost:9001` is ONLY correct for
+      # single-host dev. The webapp env.server refuses to boot in prod when
+      # APP_ORIGIN is not localhost AND MINIO_PUBLIC_ENDPOINT is localhost —
+      # see apps/webapp/app/env.server.ts for the guard. Override this to
+      # your public MinIO host (e.g. https://minio.example.com) before
+      # exposing the stack externally or presigned URLs will point at the
+      # operator's localhost.
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT:-http://minio:9000}"
+      MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-http://localhost:9001}"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-platos-minio-admin}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-platos-minio-password}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-platos-media}"
+      MINIO_REGION: "${MINIO_REGION:-us-east-1}"
+      # Per-upload size cap (bytes; default 100MB) + per-org quota (bytes; default 10GB).
+      PLATOS_ATTACHMENT_MAX_BYTES: "${PLATOS_ATTACHMENT_MAX_BYTES:-104857600}"
+      PLATOS_ATTACHMENT_ORG_QUOTA_BYTES: "${PLATOS_ATTACHMENT_ORG_QUOTA_BYTES:-10737418240}"
+      # Retention defaults: detached uploads expire after 7 days (grace period);
+      # attached uploads default to 30 days.
+      PLATOS_ATTACHMENT_GRACE_DAYS: "${PLATOS_ATTACHMENT_GRACE_DAYS:-7}"
+      PLATOS_ATTACHMENT_TTL_DAYS: "${PLATOS_ATTACHMENT_TTL_DAYS:-30}"
+      # Admin token shared with the agent's scheduled retention task.
+      PLATOS_ADMIN_TOKEN: "${PLATOS_ADMIN_TOKEN:-}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3000/healthcheck', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      # EOBD.55 — bumped from 60s to 180s. Cold-start with fresh DB +
+      # Trigger bootstrap can legitimately take ~2 min; the old 60s
+      # window raced with the migrations-init completion on slower
+      # VPS hosts. Agent depends on webapp healthy, so tightening
+      # this saves a retry cycle.
+      start_period: 180s
+
+  # ─── Platos docs MCP bridge (optional sidecar) ──────────────────────
+  # Bridges the public Platos docs MCP at `https://mcp.platos.dev/mcp`
+  # into this Platos instance as a connected entity. Until the agent
+  # runtime ships native external-MCP consumption (roadmap item:
+  # "Consume external MCP servers"), this sidecar is the way to bring
+  # `search_docs` into agents in this scope.
+  #
+  # Boots only when PLATOS_DOCS_MCP_BRIDGE_SECRET is set (the entity
+  # service secret minted on /agent-entities/new). Empty secret =
+  # sidecar exits cleanly without connecting (intended no-op for
+  # operators who do not want this sidecar).
+  #
+  # Mirror this service for any other MCP server you want to bridge —
+  # change MCP_UPSTREAM_URL + MCP_UPSTREAM_AUTH_HEADER + the entity
+  # service secret, copy the block, give it a unique service name.
+  docs-mcp-bridge:
+    # Build context is the repo root (not the bridge dir alone) so the
+    # Dockerfile can reach `packages/platools-js` — the bridge depends
+    # on @platools/sdk via `file:../../packages/platools-js`, and the
+    # workspace package needs to be built + bundled into the image.
+    build:
+      context: .
+      dockerfile: ./references/entity-docs-mcp-bridge/Dockerfile
+    depends_on:
+      agent:
+        condition: service_healthy
+    environment:
+      # Internal docker network: connect agent on the compose hostname,
+      # not test.platos.dev. Skips Caddy + TLS for the WS hop and is
+      # immune to DNS / cert weirdness during local dev.
+      PLATOS_URL: "${PLATOS_DOCS_MCP_BRIDGE_PLATOS_URL:-ws://agent:3100/tools/sync}"
+      # Service secret minted when you registered the entity in the
+      # dashboard (default entity name: platos-docs-mcp). REGENERATE
+      # the secret on the entity detail page if you do not have it;
+      # plaintext is shown ONCE per regenerate, never again.
+      PLATOS_SECRET: "${PLATOS_DOCS_MCP_BRIDGE_SECRET:-}"
+      # Pin the WS connection to a specific Platos environment. The
+      # agent's WS resolver falls back to DEVELOPMENT when no env hint
+      # arrives, which leaves this entity showing "disconnected" when
+      # viewed in Production. Default `production` because that's where
+      # the docs MCP is meant to run for end users.
+      PLATOS_ENV: "${PLATOS_DOCS_MCP_BRIDGE_ENV:-production}"
+      # Default upstream is the public docs MCP. Override to point at
+      # any other MCP server. Auth header is for protected upstreams;
+      # leave empty for public ones (the docs MCP is public).
+      MCP_UPSTREAM_URL: "${PLATOS_DOCS_MCP_BRIDGE_UPSTREAM_URL:-https://mcp.platos.dev/mcp}"
+      MCP_UPSTREAM_AUTH_HEADER: "${PLATOS_DOCS_MCP_BRIDGE_UPSTREAM_AUTH:-}"
+      # How often to re-fetch the upstream tool catalog. Default 10
+      # minutes balances freshness with rate-limit pressure on the
+      # upstream MCP.
+      MCP_TOOLS_REFRESH_MS: "${PLATOS_DOCS_MCP_BRIDGE_REFRESH_MS:-600000}"
+    # `on-failure` not `unless-stopped`: when PLATOS_DOCS_MCP_BRIDGE_SECRET is
+    # empty, the bridge exits 0 immediately (intended off-state). With
+    # `unless-stopped` compose would loop forever; `on-failure` lets clean
+    # exits stay exited and only restarts on real crashes.
+    restart: on-failure
+
+volumes:
+  platos-postgres:
+  platos-redis:
+  platos-clickhouse:
+  platos-minio:

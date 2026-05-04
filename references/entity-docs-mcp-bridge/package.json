@@ -1,0 +1,24 @@
+{
+  "name": "@platos-refs/entity-docs-mcp-bridge",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Reference entity backend that bridges an external MCP server (mcp.platos.dev/mcp by default) into Platos as a connected entity. Lists upstream tools at startup, registers each one through the platools SDK, forwards tool-calls via standard MCP transport. Mirror this pattern for any other MCP you want to use inside Platos until native external-MCP consumption ships.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --enable-source-maps dist/server.js",
+    "dev": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@platools/sdk": "file:../../packages/platools-js",
+    "ws": "8.18.0",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "@types/ws": "8.5.13",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3"
+  }
+}

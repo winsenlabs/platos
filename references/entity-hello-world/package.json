@@ -1,0 +1,25 @@
+{
+  "name": "@platos-refs/entity-hello-world",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Reference entity backend for Platos — registers a single `echo` tool over the platools WS protocol. Copy this directory into your own repo as a starting point.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --enable-source-maps dist/server.js",
+    "dev": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@platools/sdk": "*",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

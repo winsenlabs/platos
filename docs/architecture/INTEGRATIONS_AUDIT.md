@@ -1,0 +1,27 @@
+# Integrations audit (Theme R.5)
+
+**Status:** Audit complete. The top-level `integrations/` directory was removed from the monorepo as part of Theme R.4 cleanup — no code inside was actively imported by `apps/webapp`, `apps/agent`, or any `packages/*` consumer.
+
+## What was there
+
+The upstream trigger.dev project shipped a `references/` and an `integrations/` folder containing sample tasks that demonstrated third-party APIs (OpenAI, Resend, Supabase, Stripe, etc.). These were example code, not runtime dependencies.
+
+## What was removed
+
+- `integrations/` — fully deleted
+- `references/` — dropped from `pnpm-workspace.yaml` (Theme R.4) and also removed from disk
+
+## What remains and why
+
+- **`@platos/sdk`** (`packages/trigger-sdk`) — this is the published SDK that Platos users install to write durable tasks. Retained, renamed from `@trigger.dev/sdk`.
+- **`@platos/core`** (`packages/core`) — shared primitives. Retained, renamed from `@trigger.dev/core`.
+- **`packages/cli-v3`** — trigger.dev CLI, kept as-is per Theme R.6 decision (will be renamed to `platos-cli` in a future iteration, not v1.0).
+- **Webhooks / OAuth infrastructure** (not in `integrations/`, lives in `apps/webapp/app/services/`) — retained because it's actively wired into the dashboard (e.g. Slack alerts, Resend email delivery).
+
+## Future integrations path
+
+Platos does not ship bundled third-party integrations. Instead, the [tool gateway](../PLATOS_SPEC.md#3-tool-gateway) lets entities register any API as an MCP tool from their own backend via `@platos/platools`. This is the intended surface for integrations — the user codebase owns the integration, Platos just federates the contract.
+
+## Decision
+
+No further code removal required. The `references/` + `integrations/` cleanup fully satisfies Theme R.5. This document is the paper trail.

@@ -1,0 +1,87 @@
+[project]
+name = "platools"
+version = "0.2.0"
+description = "Platools — Your AI Arsenal. Turn any backend function into a managed, authenticated, monitored MCP tool with one decorator."
+readme = "README.md"
+# The SDK ships to PyPI independently and must support older Pythons that
+# customer apps run on. The API workspace floor is 3.13 (set in apps/api),
+# so `uv.lock` at repo root resolves against 3.13 only — Phase K (PLATOS-42)
+# should do a standalone `uv lock` of this package to produce 3.10-compat
+# wheels before publishing.
+requires-python = ">=3.10"
+authors = [{ name = "Platos" }]
+license = { text = "MIT" }
+keywords = ["mcp", "agents", "llm", "tools", "pydantic", "fastapi"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "pydantic>=2.9.0",
+  "typing-extensions>=4.12.0",
+  "docstring-parser>=0.16",
+  "websockets>=13.1",
+  # PLATOS-19: `platools test` reads YAML batch files. PyYAML is the
+  # de-facto standard, has wheels on every platform we care about,
+  # and adds ~200KB to the install. No safer alternative without
+  # rolling our own parser.
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.3",
+  # `platools serve` (PLATOS-41) has an async dispatcher and the
+  # `platools test` batch runner uses asyncio.run(); the test suites
+  # exercise both via `async def test_*()` functions. pytest-asyncio
+  # in auto mode detects and awaits them without per-test decorators.
+  "pytest-asyncio>=0.24.0",
+  "ruff>=0.7.0",
+  "mypy>=1.13.0",
+  "types-pyyaml>=6.0.12",
+]
+
+[tool.pytest.ini_options]
+# Auto-collect `async def test_*` functions. Without this, pytest
+# emits "async def functions are not natively supported" and skips
+# every async test in the SDK test suite.
+asyncio_mode = "auto"
+
+[project.scripts]
+# Wired up in PLATOS-18 / PLATOS-19 / PLATOS-41. Stubbed here so `uv sync`
+# registers the entrypoint and later tasks only need to fill in the body.
+platools = "platools.cli:main"
+
+[project.urls]
+Homepage = "https://platos.dev"
+Repository = "https://github.com/platos-dev/platos"
+Issues = "https://github.com/platos-dev/platos/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["platools"]
+
+[tool.hatch.build.targets.sdist]
+# Local development venvs and build artefacts are filesystem-only and
+# shouldn't end up in the published source distribution. Hatchling defers
+# to git's working-tree by default, but we explicitly exclude here so
+# `python -m build` works even before the .gitignore is committed and
+# tolerates stray venvs left over from prior testing sessions.
+exclude = [
+  ".venv",
+  ".venv_*",
+  "__pycache__",
+  ".pytest_cache",
+  "*.egg-info",
+  "build",
+  "dist",
+]

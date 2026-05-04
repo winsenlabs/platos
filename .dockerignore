@@ -1,0 +1,60 @@
+**/*.log
+**/*.pem
+**/*.tsbuildinfo
+
+**/.cache
+**/.env
+**/.next
+**/.output
+**/.trigger
+**/.tshy
+**/.tshy-build
+**/.turbo
+**/.vercel
+**/.wrangler
+
+**/dist
+**/node_modules
+
+# Theme BR deploy workaround — temporarily permit
+# packages/core/{dist,.tshy-build} so webapp Dockerfile's transitive
+# build skips the CJS tshy pass that swallows its tsc error on
+# low-RAM Docker builders. Everywhere else these dirs stay ignored.
+!packages/core/dist
+!packages/core/dist/**
+!packages/core/.tshy-build
+!packages/core/.tshy-build/**
+
+**/generated/prisma
+
+apps/webapp/build
+apps/webapp/public/build
+
+cypress/screenshots
+cypress/videos
+
+apps/**/styles/tailwind.css
+packages/**/styles/tailwind.css
+
+.changeset
+.DS_Store
+.git
+.github
+.idea
+.pnp
+.pnp.js
+.vscode
+
+coverage
+build
+# /-anchored so only the top-level docs/ + examples/ are excluded.
+# Without the leading /, the unanchored pattern also caught content/docs/
+# which silently broke the docs+guides pipeline at deploy time (Phase 3b).
+/docs
+/examples
+out
+
+CHANGESETS.md
+CONTRIBUTING.md
+README.md
+LICENSE

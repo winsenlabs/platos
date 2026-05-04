@@ -1,0 +1,25 @@
+Platos
+======
+
+Platos is an open-source agent runtime platform maintained by Winsen Labs.
+
+Platos is built on top of, and incorporates code from, the trigger.dev project.
+See the LICENSE file for the full MIT license terms that apply to upstream
+trigger.dev code and to Platos additions.
+
+Upstream credit:
+  - trigger.dev, Copyright (c) Trigger.dev, Inc.
+    https://github.com/triggerdotdev/trigger.dev
+
+Platos additions (the @platos/* packages, apps/agent, Platos-specific
+schema migrations, and documentation) are Copyright (c) 2026 Winsen Labs,
+distributed under the same MIT license for consistency with the upstream work.
+
+Dependencies:
+  This project depends on numerous third-party open-source libraries. See
+  package.json and pnpm-lock.yaml for the full list. Each dependency retains
+  its own license — browse node_modules/*/LICENSE or run `pnpm licenses list`
+  for details.
+
+If you believe any attribution is missing or incorrect, please open an issue
+at https://github.com/winsenlabs/platos/issues or email security@platos.dev.

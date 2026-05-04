@@ -1,0 +1,16 @@
+{
+  "name": "@internal/cost-rates",
+  "private": true,
+  "version": "0.0.1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "pnpm run clean && tsc --noEmit false --outDir dist --declaration",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "rimraf": "6.0.1"
+  }
+}

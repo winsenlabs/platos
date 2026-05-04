@@ -1,0 +1,51 @@
+{
+  "name": "@platos/token-mint",
+  "version": "0.1.0",
+  "description": "Mint Platos session tokens from your backend — HS256 JWT signed with your entity's serviceSecret.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/platos-dev/platos",
+    "directory": "packages/platos-token-mint"
+  },
+  "homepage": "https://github.com/platos-dev/platos/tree/main/packages/platos-token-mint#readme",
+  "bugs": {
+    "url": "https://github.com/platos-dev/platos/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "typescript": "5.6.3",
+    "vitest": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18.20.0"
+  },
+  "keywords": [
+    "platos",
+    "auth",
+    "jwt",
+    "session-token"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

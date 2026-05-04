@@ -1,0 +1,28 @@
+# Standalone compose for running the external-MCP bridge from inside
+# this directory (rather than as a sidecar in the main docker-compose.
+# platos.yml). Mostly useful for local development of the bridge itself.
+#
+# Build context is two levels up (the trigger repo root) because the
+# bridge depends on @platools/sdk via `file:../../packages/platools-js`,
+# which only resolves when both directories are in the build context.
+# The Dockerfile is structured to handle that.
+#
+# `host.docker.internal` lets the container reach a Platos agent
+# running on the host machine at `ws://host:3100/tools/sync` without a
+# shared bridge network. Works on macOS and Windows Docker Desktop out
+# of the box; on Linux add `--add-host=host.docker.internal:host-gateway`
+# or use a shared bridge.
+
+services:
+  entity-docs-mcp-bridge:
+    build:
+      context: ../..
+      dockerfile: ./references/entity-docs-mcp-bridge/Dockerfile
+    env_file: .env
+    environment:
+      # Override PLATOS_URL if your agent is on a different host. The
+      # .env default is staging at wss://test.platos.dev — point this
+      # at host.docker.internal for local dev against a docker-compose
+      # Platos stack on the host machine.
+      PLATOS_URL: ${PLATOS_URL:-wss://test.platos.dev/tools/sync}
+    restart: on-failure

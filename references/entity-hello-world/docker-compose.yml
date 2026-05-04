@@ -1,0 +1,17 @@
+# Minimal compose for running the reference entity backend against a
+# Platos agent on your host machine. Uses `host.docker.internal` so the
+# container can reach the agent at `http://host:3100` without a shared
+# bridge network — works on macOS and Windows Docker Desktop out of the
+# box; on Linux add `--add-host=host.docker.internal:host-gateway` or
+# use a shared bridge.
+
+services:
+  entity-hello-world:
+    build: .
+    env_file: .env
+    environment:
+      # Override PLATOS_URL if your agent is on a different host. The
+      # .env default is localhost — inside a container, "localhost"
+      # means the container itself, so we default to the host bridge.
+      PLATOS_URL: ${PLATOS_URL:-ws://host.docker.internal:3100/tools/sync}
+    restart: unless-stopped

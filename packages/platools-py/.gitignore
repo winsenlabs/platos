@@ -1,0 +1,11 @@
+# Local virtualenvs (test isolation; not meant to be checked in).
+.venv/
+.venv_*/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build artefacts (mirrors root `dist`/`packages/**/dist`, but the
+# build backend writes here at the package root, not nested in src).
+build/
+*.egg-info/

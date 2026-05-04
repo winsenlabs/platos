@@ -1,0 +1,140 @@
+---
+slug: sdks
+title: SDKs (TypeScript and Python)
+description: First-party client libraries for Platos, including the consumer @platos/client and the entity-side platools SDKs.
+category: dx
+order: 30
+trigger_dev_primitive: false
+trigger_dev_link: ""
+questions:
+  - "Which SDK do I install for which use case?"
+  - "What is the difference between @platos/client and @platools/sdk?"
+  - "How do I use the Python platools SDK?"
+  - "How do I stream a turn with the SDK?"
+  - "Where are SDK packages published?"
+  - "How do I extend the SDK with a custom tool?"
+related:
+  - openapi-and-rest
+  - mcp-gateway
+  - connected-entities
+source_files_referenced:
+  - packages/platos-client
+  - packages/platools-py
+  - packages/platools-ts
+---
+
+# SDKs (TypeScript and Python)
+
+Platos ships three first-party SDK packages. They split along the trust boundary: `@platos/client` is for code that talks to Platos as a consumer (your app, your dashboard); `@platools/ts` and `@platools/py` are for entity backends that talk to Platos over the WebSocket.
+
+## What it is
+
+| Package | Side | Purpose |
+|---|---|---|
+| `@platos/client` | Consumer (your app) | TypeScript / JS client for the Platos REST + WS surface. Includes a React `<PlatosArtifact>` component and a streaming hook. |
+| `@platools/ts` | Entity backend (Node) | TypeScript SDK for connecting an entity, declaring tools, and serving tool calls over WebSocket. |
+| `@platools/py` | Entity backend (Python) | Python SDK with the same surface as `@platools/ts`. |
+
+`@platos/client` covers `agents.*`, `threads.*`, `messages.*`, `attachments.*`, plus the streaming endpoint. It is the same surface external customers code against; the dashboard uses it internally.
+
+`@platools/*` cover entity registration: declare tools, handle the WebSocket lifecycle (auth, reconnect, replay), sign HMAC nonces, and dispatch tool calls. The Python and Node implementations are kept feature-equivalent.
+
+## Why it matters
+
+A first-party SDK takes the gnarly bits (signing, reconnection, scope-header threading) off the integrator's plate. Both sides of the trust boundary need one; otherwise you ship a Postman collection plus an aspirational README and watch every customer reinvent the wheel.
+
+The split is also what lets `@platos/client` be safe to ship to the browser. It does not know about service secrets, only about session tokens minted by the consumer's backend. Bundle it into your React app; never bundle `@platools/*`.
+
+## How to use it
+
+### Install
+
+```bash
+npm install @platos/client
+npm install @platools/sdk          # Node entity backend
+pip install platools                # Python entity backend
+```
+
+### Consumer SDK: list agents
+
+```ts
+import { PlatosClient } from "@platos/client";
+
+const platos = new PlatosClient({
+  baseUrl: "https://platos.example.com",
+  token: process.env.PLATOS_PAT, // PAT for server-side, session token for browser
+});
+
+const agents = await platos.agents.list();
+```
+
+### Consumer SDK: stream a turn
+
+```ts
+const stream = await platos.threads.stream({ threadId, message: "Hi" });
+
+for await (const event of stream) {
+  if (event.type === "text-delta") process.stdout.write(event.delta);
+  if (event.type === "artifact-created") console.log("artifact", event.artifactId);
+}
+```
+
+### Entity SDK (Node)
+
+```ts
+import { connect } from "@platools/sdk";
+
+const conn = connect({
+  url: process.env.PLATOS_URL,
+  serviceSecret: process.env.PLATOS_SERVICE_SECRET,
+});
+
+conn.tool(
+  "send_email",
+  {
+    type: "object",
+    properties: { to: { type: "string" }, body: { type: "string" } },
+    required: ["to", "body"],
+  },
+  async (args, ctx) => {
+    // ctx.userToken is X-Platos-User-Token, opaque to us, verified by our auth.
+    await mailer.send(args);
+    return { ok: true };
+  },
+);
+
+await conn.start();
+```
+
+### Entity SDK (Python)
+
+```python
+from platools import connect
+
+async def main():
+    conn = connect(url=..., service_secret=...)
+
+    @conn.tool("send_email", input_schema={...})
+    async def send_email(args, ctx):
+        await mailer.send(args)
+        return {"ok": True}
+
+    await conn.start()
+```
+
+### Extend with a custom tool
+
+Both entity SDKs let you register N tools. They are pushed at handshake; calls dispatch to your registered handler. No build step; the tool catalogue is dynamic.
+
+## Common pitfalls
+
+- `@platos/client` ships under MIT and uses fetch streams for SSE; in Node 18+, no polyfill needed. In older Node, install `node-fetch`.
+- `@platools/sdk` (Node) and `@platools/py` enforce HMAC nonces with an LRU. Replays of the same nonce within the window fail. If you wrap the SDK behind another layer that retries, ensure the wrapper does not duplicate-sign.
+- The Python SDK pins to Python 3.10+ for the structural pattern matching it uses internally.
+- Browser usage of `@platos/client` requires session tokens minted by your backend; do not ship a PAT to the browser.
+
+## Related
+
+- [OpenAPI and REST](/docs/openapi-and-rest): the underlying surface every SDK wraps.
+- [MCP gateway](/docs/mcp-gateway): the alternate path (MCP) that bypasses the SDK for tool-using clients.
+- [Connected entities](/docs/connected-entities): the entity registration flow the entity SDKs implement.

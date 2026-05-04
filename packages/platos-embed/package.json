@@ -1,0 +1,46 @@
+{
+  "name": "@platos/embed",
+  "version": "0.1.0",
+  "description": "Drop-in <platos-agent> web component — single-script iframe-embeddable chatbot for public Platos agents.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/platos-dev/platos",
+    "directory": "packages/platos-embed"
+  },
+  "homepage": "https://github.com/platos-dev/platos/tree/main/packages/platos-embed#readme",
+  "bugs": {
+    "url": "https://github.com/platos-dev/platos/issues"
+  },
+  "type": "module",
+  "main": "./dist/embed.js",
+  "types": "./dist/embed.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/embed.d.ts",
+      "import": "./dist/embed.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=18.20.0"
+  },
+  "keywords": [
+    "platos",
+    "chatbot",
+    "embed",
+    "web-component",
+    "iframe"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

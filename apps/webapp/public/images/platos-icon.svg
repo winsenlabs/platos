@@ -1,0 +1,33 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  viewBox="0 0 256 256"
+  fill="none"
+  role="img"
+  aria-label="Platos"
+>
+  <title>Platos</title>
+  <rect width="256" height="256" rx="56" fill="#0D0E12" />
+  <path
+    d="M71 64h54.5c23.748 0 39.5 14.752 39.5 36.5S149.248 137 125.5 137H99v55H71V64zm28 49.5h24.5c8.836 0 14.5-5.164 14.5-13s-5.664-13-14.5-13H99v26z"
+    fill="url(#platos-icon-gradient-pl)"
+  />
+  <path
+    d="M177 192V64h28v128h-28z"
+    fill="url(#platos-icon-gradient-pl)"
+  />
+  <defs>
+    <linearGradient
+      id="platos-icon-gradient-pl"
+      x1="40"
+      y1="40"
+      x2="220"
+      y2="220"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stopColor="#41FF54" />
+      <stop offset="1" stopColor="#E7FF52" />
+    </linearGradient>
+  </defs>
+</svg>

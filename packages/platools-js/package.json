@@ -1,0 +1,72 @@
+{
+  "name": "@platools/sdk",
+  "version": "0.2.0",
+  "description": "Platools — Your AI Arsenal. Turn any backend function into a managed, authenticated, monitored MCP tool with one decorator.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/platos-dev/platos",
+    "directory": "packages/platools-js"
+  },
+  "homepage": "https://github.com/platos-dev/platos/tree/main/packages/platools-js#readme",
+  "bugs": {
+    "url": "https://github.com/platos-dev/platos/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
+    }
+  },
+  "bin": {
+    "platools": "./dist/bin/cli.js",
+    "platools-doctor": "./dist/bin/doctor.js",
+    "platools-test": "./dist/bin/test.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "lint": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ws": "8.18.0",
+    "yaml": "2.6.1",
+    "zod": "3.23.8",
+    "zod-to-json-schema": "3.23.5"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "@types/ws": "8.5.13",
+    "typescript": "5.6.3",
+    "vitest": "2.1.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "agents",
+    "llm",
+    "tools",
+    "zod"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

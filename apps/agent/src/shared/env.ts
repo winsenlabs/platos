@@ -1,0 +1,446 @@
+/**
+ * EOBD.57 — Centralized Zod env validator for the Platos agent.
+ * Webapp has env.server.ts; the agent previously read `process.env.X`
+ * ad-hoc so missing vars surfaced at first use. Exports:
+ *   - `parseEnv()`: strict parse, throws.
+ *   - `validateAgentEnv()`: non-throwing, used by main.ts to print every
+ *     error at once before exit(1).
+ *   - `env`: lazy typed accessor.
+ * Scope: validator + main.ts hook only. Service-level sweep is a follow-up.
+ */
+
+import { z } from "zod";
+
+// Sentinel values from `.env.example`. Safe for dev; forbidden in prod.
+const DEV_SENTINEL_ENCRYPTION_KEY =
+  "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+const DEV_SENTINEL_MESSAGE_ENCRYPTION_KEY =
+  "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe";
+const DEV_SENTINEL_SESSION_SECRET = "dev-session-secret-rotate-before-prod";
+const DEV_SENTINEL_WEBAPP_ENCRYPTION_KEY = "REPLACE_WITH_32_CHAR_WEBAPP_KEY";
+
+// Helpers
+const boolLike = z
+  .enum(["true", "false", "1", "0", ""])
+  .optional()
+  .transform((v) => v === "true" || v === "1");
+
+const optTrimmedString = z
+  .string()
+  .trim()
+  .min(1)
+  .optional()
+  .or(z.literal("").transform(() => undefined));
+
+const intString = (name: string, opts?: { min?: number; max?: number }) =>
+  z
+    .string()
+    .optional()
+    .refine(
+      (v) => v === undefined || v === "" || /^\d+$/.test(v),
+      { message: `${name} must be a non-negative integer` },
+    )
+    .transform((v) => (v === undefined || v === "" ? undefined : Number(v)))
+    .refine((v) => v === undefined || opts?.min === undefined || v >= opts.min, {
+      message: `${name} must be >= ${opts?.min}`,
+    })
+    .refine((v) => v === undefined || opts?.max === undefined || v <= opts.max, {
+      message: `${name} must be <= ${opts?.max}`,
+    });
+
+const floatString = (name: string, opts?: { min?: number; max?: number }) =>
+  z
+    .string()
+    .optional()
+    .refine(
+      (v) => v === undefined || v === "" || /^-?\d+(\.\d+)?$/.test(v),
+      { message: `${name} must be a number` },
+    )
+    .transform((v) => (v === undefined || v === "" ? undefined : Number(v)))
+    .refine((v) => v === undefined || opts?.min === undefined || v >= opts.min, {
+      message: `${name} must be >= ${opts?.min}`,
+    })
+    .refine((v) => v === undefined || opts?.max === undefined || v <= opts.max, {
+      message: `${name} must be <= ${opts?.max}`,
+    });
+
+const hex64 = (name: string) =>
+  z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, {
+      message: `${name} must be 64 hex chars (32 bytes)`,
+    });
+
+// ─────────────────────────────────────────────────────────────
+// Schema
+// ─────────────────────────────────────────────────────────────
+
+export const AgentEnvSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+
+    // Core infra — required in every environment
+    DATABASE_URL: z.string().url(),
+    REDIS_URL: z.string().url(),
+
+    // Secrets
+    PLATOS_ENCRYPTION_KEY: hex64("PLATOS_ENCRYPTION_KEY"),
+    PLATOS_SESSION_SECRET: z.string().min(16, {
+      message: "PLATOS_SESSION_SECRET must be at least 16 chars",
+    }),
+    // Webapp-shared AES key. Webapp validates as 32 ASCII chars OR 64
+    // hex chars (EOBD.101 — both formats accepted to close the footgun).
+    // Optional on the agent so existing deployments boot without forcing
+    // an env change; downstream consumers handle absence by disabling
+    // scoped env-var decryption.
+    ENCRYPTION_KEY: z
+      .string()
+      .refine(
+        (v) =>
+          Buffer.from(v, "utf8").length === 32 ||
+          (v.length === 64 && /^[0-9a-f]{64}$/i.test(v)),
+        {
+          message:
+            "ENCRYPTION_KEY must be 32 ASCII chars (openssl rand -hex 16) OR 64 hex chars (openssl rand -hex 32).",
+        },
+      )
+      .optional(),
+
+    // Message encryption — THEME H.4 + EOBD.18–22 wave 8. Optional —
+    // when absent, messages persist unencrypted (matches pre-EOBD
+    // behaviour + what existing deployments expect until they rotate
+    // in a dedicated message-encryption key).
+    PLATOS_MESSAGE_ENCRYPTION_KEY: hex64("PLATOS_MESSAGE_ENCRYPTION_KEY").optional(),
+    PLATOS_MESSAGE_ENCRYPTION_KEY_V: z.string().optional(),
+
+    // CORS — required in production, optional in dev (see EOBD.11)
+    PLATOS_CORS_ORIGIN: z.string().optional(),
+
+    // Trigger / engine integration
+    TRIGGER_API_URL: z.string().url().optional(),
+    TRIGGER_SECRET_KEY: optTrimmedString,
+    TRIGGER_INTERNAL_SECRET: optTrimmedString,
+    TRIGGER_WORKER_TOKEN: optTrimmedString,
+    PLATOS_TRIGGER_API_URL: z.string().url().optional(),
+    PLATOS_TRIGGER_API_KEY: optTrimmedString,
+    PLATOS_TRIGGER_PROJECT_REF: optTrimmedString,
+
+    // Worker scaling — concurrency limits for each task queue.
+    // All optional; task files use parseInt(process.env.X ?? "default") directly.
+    // Declared here so typecheck + validateAgentEnv() can surface bad values.
+    PLATOS_WORKER_CONCURRENCY: intString("PLATOS_WORKER_CONCURRENCY", { min: 1 }),
+    PLATOS_BATCH_CONCURRENCY: intString("PLATOS_BATCH_CONCURRENCY", { min: 1 }),
+    PLATOS_CUSTOM_TASK_CONCURRENCY: intString("PLATOS_CUSTOM_TASK_CONCURRENCY", { min: 1 }),
+    PLATOS_PER_ORG_CONCURRENCY: intString("PLATOS_PER_ORG_CONCURRENCY", { min: 1 }),
+    PLATOS_PER_ORG_BATCH_CONCURRENCY: intString("PLATOS_PER_ORG_BATCH_CONCURRENCY", { min: 1 }),
+    PLATOS_BATCH_ITEM_CONCURRENCY: intString("PLATOS_BATCH_ITEM_CONCURRENCY", { min: 1 }),
+
+    // Model provider keys — all optional at boot. At least one is required
+    // at runtime, but we don't enforce here (operators may link keys via
+    // the scoped provider UI instead of env vars).
+    ANTHROPIC_API_KEY: optTrimmedString,
+    OPENAI_API_KEY: optTrimmedString,
+    GOOGLE_GENERATIVE_AI_API_KEY: optTrimmedString,
+    // Voyage AI embeddings (alternative to OpenAI). Used by
+    // EmbeddingService when PLATOS_EMBEDDING_PROVIDER=voyage. Scope-linked
+    // key wins over env (same pattern as OPENAI_API_KEY).
+    VOYAGE_API_KEY: optTrimmedString,
+
+    // MinIO / attachments (THEME D). All 5 are all-or-nothing.
+    MINIO_ENDPOINT: optTrimmedString,
+    MINIO_ACCESS_KEY: optTrimmedString,
+    MINIO_SECRET_KEY: optTrimmedString,
+    MINIO_BUCKET: optTrimmedString,
+    MINIO_REGION: optTrimmedString,
+
+    // App / HTTP
+    PLATOS_AGENT_PORT: intString("PLATOS_AGENT_PORT", { min: 1, max: 65535 }),
+    PLATOS_AGENT_API_URL: z.string().url().optional(),
+    PLATOS_AGENT_HTTP_URL: z.string().url().optional(),
+    PLATOS_AGENT_WS_URL: z.string().url().optional(),
+    APP_ORIGIN: z.string().url().optional(),
+    PLATOS_WEBAPP_ADMIN_URL: z.string().url().optional(),
+    PLATOS_ADMIN_TOKEN: optTrimmedString,
+
+    // Worker mode — set to "true" to run the trigger.dev task worker
+    // instead of the NestJS HTTP server. See entrypoint.sh.
+    WORKER_MODE: boolLike,
+
+    // Test mode (EOBD.4). Belt-and-braces production guard below.
+    PLATOS_TEST_MODE: boolLike,
+
+    // Models + memory
+    PLATOS_DEFAULT_MODEL: optTrimmedString,
+    PLATOS_EMBEDDING_MODEL: optTrimmedString,
+    // Embedding provider selector. Default "openai" preserves existing
+    // behaviour. "voyage" routes embed calls to Voyage AI's endpoint
+    // (https://api.voyageai.com/v1/embeddings); default Voyage model is
+    // `voyage-large-2` because it returns 1536-dim vectors that fit the
+    // existing `PlatosMemory.embedding vector(1536)` column without a
+    // schema migration.
+    PLATOS_EMBEDDING_PROVIDER: z
+      .enum(["openai", "voyage"])
+      .optional()
+      .default("openai"),
+    PLATOS_MEMORY_EXTRACTION_MODEL: optTrimmedString,
+    PLATOS_MEMORY_INJECT_BUDGET_TOKENS: intString(
+      "PLATOS_MEMORY_INJECT_BUDGET_TOKENS",
+      { min: 0 },
+    ),
+    PLATOS_WORKING_MEMORY_TTL: intString("PLATOS_WORKING_MEMORY_TTL", {
+      min: 0,
+    }),
+
+    // Theme M.4 — PLATOS_PROFILE_UNIFIED retired. Profiles now live
+    // exclusively in PlatosMemory (kind="profile"). Any .env still
+    // setting this var is ignored harmlessly by the passthrough().
+
+    // Attachments / sizes / limits
+    PLATOS_ATTACHMENT_TTL_DAYS: intString("PLATOS_ATTACHMENT_TTL_DAYS", {
+      min: 1,
+    }),
+    PLATOS_MAX_ATTACHMENT_BYTES: intString("PLATOS_MAX_ATTACHMENT_BYTES", {
+      min: 1,
+    }),
+    PLATOS_MAX_TURN_ATTACHMENT_TOTAL_BYTES: intString(
+      "PLATOS_MAX_TURN_ATTACHMENT_TOTAL_BYTES",
+      { min: 1 },
+    ),
+    PLATOS_WS_MAX_PAYLOAD_BYTES: intString("PLATOS_WS_MAX_PAYLOAD_BYTES", {
+      min: 1,
+    }),
+    PLATOS_TOOL_RESULT_MAX_BYTES: intString("PLATOS_TOOL_RESULT_MAX_BYTES", {
+      min: 1,
+    }),
+    PLATOS_TURN_MAX_MS: intString("PLATOS_TURN_MAX_MS", { min: 1000 }),
+    PLATOS_MAX_BGOS_PER_TURN: intString("PLATOS_MAX_BGOS_PER_TURN", { min: 0 }),
+    // OSS launch member cap — hard limit on org members + pending invites.
+    // Default mirrors the webapp default (2). Self-hosters bump as needed.
+    // Enforced inside `OrganizationService.addMemberInvite` so the cap
+    // applies consistently across REST + MCP `org.add_member` + webapp.
+    PLATOS_MAX_PROJECT_MEMBERS: intString("PLATOS_MAX_PROJECT_MEMBERS", {
+      min: 1,
+    }),
+    // EOBD.89 + EOBD.106 — vars added for public-guest mint + SSE heartbeat.
+    PLATOS_PUBLIC_GUEST_IP_LIMIT: intString("PLATOS_PUBLIC_GUEST_IP_LIMIT", {
+      min: 0,
+    }),
+    PLATOS_PUBLIC_GUEST_AGENT_LIMIT: intString(
+      "PLATOS_PUBLIC_GUEST_AGENT_LIMIT",
+      { min: 0 },
+    ),
+    PLATOS_PUBLIC_GUEST_TOKEN_TTL_SECONDS: intString(
+      "PLATOS_PUBLIC_GUEST_TOKEN_TTL_SECONDS",
+      { min: 60 },
+    ),
+    PLATOS_STREAM_HEARTBEAT_MS: intString("PLATOS_STREAM_HEARTBEAT_MS", {
+      min: 1000,
+    }),
+
+    // Rate limits
+    PLATOS_RATE_LIMIT_PER_MIN: intString("PLATOS_RATE_LIMIT_PER_MIN", { min: 0 }),
+    PLATOS_RATE_LIMIT_PER_DAY: intString("PLATOS_RATE_LIMIT_PER_DAY", { min: 0 }),
+    PLATOS_RATE_LIMIT_USER_PER_MIN: intString(
+      "PLATOS_RATE_LIMIT_USER_PER_MIN",
+      { min: 0 },
+    ),
+    PLATOS_USER_RATE_PER_MIN: intString("PLATOS_USER_RATE_PER_MIN", { min: 0 }),
+    PLATOS_USER_RATE_PER_HOUR: intString("PLATOS_USER_RATE_PER_HOUR", { min: 0 }),
+    PLATOS_USER_RATE_PER_DAY: intString("PLATOS_USER_RATE_PER_DAY", { min: 0 }),
+    PLATOS_AGENT_USER_TOOL_RATE_PER_MIN: intString(
+      "PLATOS_AGENT_USER_TOOL_RATE_PER_MIN",
+      { min: 0 },
+    ),
+    /**
+     * PRELAUNCH-A3-10 — when true, rate-limit guard rejects requests with no
+     * scope.userId (401). Default false preserves single-tenant + early-OSS
+     * use cases where every turn is implicitly attributed to one operator.
+     * Multi-tenant deployments should set this true so per-user wildcard caps
+     * are enforceable.
+     */
+    PLATOS_REQUIRE_USER_ID: boolLike,
+    /**
+     * PRELAUNCH-A3-11 — per-(agent,user) cap on approval-events emitted per
+     * hour. Defaults to 20. Prevents a misbehaving agent from firing
+     * unlimited approval modals at a single user.
+     */
+    PLATOS_AGENT_USER_APPROVAL_PER_HOUR: intString(
+      "PLATOS_AGENT_USER_APPROVAL_PER_HOUR",
+      { min: 0 },
+    ),
+
+    // Observability
+    // Optional; compose passes empty-string when unset so treat "" as
+    // "not set" via the preprocess shim. `.url()` then enforces shape
+    // only when the operator actually supplied one.
+    PLATOS_SENTRY_DSN: z.preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      z.string().url().optional(),
+    ),
+    SENTRY_DSN: z.string().url().optional(),
+    PLATOS_SENTRY_TRACES_SAMPLE_RATE: floatString(
+      "PLATOS_SENTRY_TRACES_SAMPLE_RATE",
+      { min: 0, max: 1 },
+    ),
+    PLATOS_OTEL_CLICKHOUSE_URL: z.string().url().optional(),
+    PLATOS_OTEL_SAMPLE_RATE: floatString("PLATOS_OTEL_SAMPLE_RATE", {
+      min: 0,
+      max: 1,
+    }),
+    PLATOS_OTEL_STDOUT: boolLike,
+
+    // Misc
+    PLATOS_ALLOW_HTTP_WEBHOOKS: boolLike,
+    PLATOS_SECRETS_TMP_DIR: optTrimmedString,
+    PLATOS_VERSION: optTrimmedString,
+    PLATOS_RELEASE: optTrimmedString,
+    GIT_COMMIT: optTrimmedString,
+
+    // MCP approval queue — opt-in. When `true`, the Platform MCP router
+    // creates a real `PlatosAgentApproval` row for every
+    // `require_approval` call and returns -32002 AWAITING_APPROVAL with
+    // the approval id; the operator approves in the dashboard, then the
+    // client retries with `X-Platos-Approval-Id`. When unset/false the
+    // legacy auto-approve path stays.
+    MCP_INTERACTIVE_APPROVALS: boolLike,
+    // Optional SLA window for MCP approvals (seconds). Default 1h.
+    MCP_APPROVAL_TTL_SECONDS: intString("MCP_APPROVAL_TTL_SECONDS", { min: 60 }),
+  })
+  .passthrough() // Don't choke on unrelated env vars (PATH, HOME, etc.)
+  .superRefine((data, ctx) => {
+    // EOBD.3 — sentinel check. Never boot with known-public dev values
+    // under NODE_ENV=production.
+    if (data.NODE_ENV === "production") {
+      if (data.PLATOS_ENCRYPTION_KEY === DEV_SENTINEL_ENCRYPTION_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_ENCRYPTION_KEY"],
+          message:
+            "PLATOS_ENCRYPTION_KEY is the .env.example sentinel value — rotate before going to production",
+        });
+      }
+      if (
+        data.PLATOS_MESSAGE_ENCRYPTION_KEY ===
+        DEV_SENTINEL_MESSAGE_ENCRYPTION_KEY
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_MESSAGE_ENCRYPTION_KEY"],
+          message:
+            "PLATOS_MESSAGE_ENCRYPTION_KEY is the .env.example sentinel value — rotate before going to production",
+        });
+      }
+      if (data.PLATOS_SESSION_SECRET === DEV_SENTINEL_SESSION_SECRET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_SESSION_SECRET"],
+          message:
+            "PLATOS_SESSION_SECRET is the .env.example sentinel value — rotate before going to production",
+        });
+      }
+      if (data.ENCRYPTION_KEY === DEV_SENTINEL_WEBAPP_ENCRYPTION_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["ENCRYPTION_KEY"],
+          message:
+            "ENCRYPTION_KEY is the .env.example placeholder — generate a real 32-char key",
+        });
+      }
+
+      // Encryption keys must be distinct — using the same value for at-rest
+      // AES and message-level AES defeats key separation.
+      if (
+        data.PLATOS_ENCRYPTION_KEY &&
+        data.PLATOS_MESSAGE_ENCRYPTION_KEY &&
+        data.PLATOS_ENCRYPTION_KEY === data.PLATOS_MESSAGE_ENCRYPTION_KEY
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_MESSAGE_ENCRYPTION_KEY"],
+          message:
+            "PLATOS_MESSAGE_ENCRYPTION_KEY must differ from PLATOS_ENCRYPTION_KEY — use separate keys for secret-store vs. message encryption",
+        });
+      }
+
+      // EOBD.11 — CORS must be explicit in production
+      const cors = (data.PLATOS_CORS_ORIGIN || "").trim();
+      if (!cors || cors === "*") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_CORS_ORIGIN"],
+          message:
+            "PLATOS_CORS_ORIGIN is required in production and must not be `*` — supply an explicit comma-separated origin list",
+        });
+      }
+    }
+
+    // EOBD.4 — belt-and-braces. main.ts also guards this; duplicate here
+    // so the structured error surface includes it.
+    if (data.NODE_ENV === "production" && data.PLATOS_TEST_MODE === true) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["PLATOS_TEST_MODE"],
+        message:
+          "PLATOS_TEST_MODE=true is forbidden when NODE_ENV=production — it unlocks auth-bypass test endpoints",
+      });
+    }
+
+    // MinIO — all-or-nothing. Either all 5 present, or none.
+    const minioKeys = [
+      "MINIO_ENDPOINT",
+      "MINIO_ACCESS_KEY",
+      "MINIO_SECRET_KEY",
+      "MINIO_BUCKET",
+      "MINIO_REGION",
+    ] as const;
+    const set = minioKeys.filter(
+      (k) => data[k] !== undefined && data[k] !== "",
+    );
+    if (set.length > 0 && set.length < minioKeys.length) {
+      const missing = minioKeys.filter((k) => !set.includes(k));
+      for (const k of missing) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [k],
+          message: `${k} is required when any other MINIO_* var is set (missing: ${missing.join(", ")})`,
+        });
+      }
+    }
+  });
+
+export type AgentEnv = z.infer<typeof AgentEnvSchema>;
+
+/** Strict parse. Throws a ZodError on failure. */
+export function parseEnv(source: NodeJS.ProcessEnv = process.env): AgentEnv {
+  return AgentEnvSchema.parse(source);
+}
+
+/** Non-throwing variant for main.ts. Returns structured errors. */
+export function validateAgentEnv(
+  source: NodeJS.ProcessEnv = process.env,
+): { ok: true; env: AgentEnv } | { ok: false; errors: string[] } {
+  const result = AgentEnvSchema.safeParse(source);
+  if (result.success) {
+    return { ok: true, env: result.data };
+  }
+
+  const errors = result.error.issues.map((issue) => {
+    const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
+    return `${path}: ${issue.message}`;
+  });
+  return { ok: false, errors };
+}
+
+// Lazy typed accessor. Evaluates on first use — safe to import at the
+// top of a file without triggering validation before main.ts runs.
+let _env: AgentEnv | undefined;
+export const env: AgentEnv = new Proxy({} as AgentEnv, {
+  get(_target, prop) {
+    if (!_env) {
+      _env = parseEnv();
+    }
+    return (_env as unknown as Record<string | symbol, unknown>)[prop];
+  },
+}) as AgentEnv;

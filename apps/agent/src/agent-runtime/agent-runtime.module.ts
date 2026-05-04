@@ -1,0 +1,47 @@
+import { Module } from "@nestjs/common";
+import { AgentController } from "./agent.controller";
+import { PlatosTasksController } from "./platos-tasks.controller";
+import { AgentService } from "./agent.service";
+import { AgentTaskService } from "./agent-task.service";
+import { AgentCrudService } from "./agent-crud.service";
+import { AgentClusterService } from "./agent-cluster.service";
+import { PromptBuilderService } from "./prompt-builder.service";
+import { AttachmentsService } from "./attachments.service";
+import { ToolGatewayModule } from "../tool-gateway/tool-gateway.module";
+import { MemoryModule } from "../memory/memory.module";
+import { MonitoringModule } from "../monitoring/monitoring.module";
+import { AuthModule } from "../auth/auth.module";
+import { ProvidersModule } from "../providers/providers.module";
+import { StreamingModule } from "../streaming/streaming.module";
+import { SkillsModule } from "../skills/skills.module";
+import { EvalsModule } from "../evals/evals.module";
+import { GovernanceModule } from "../governance/governance.module";
+import { PromptCacheService } from "./prompt-cache.service";
+
+@Module({
+  imports: [
+    ToolGatewayModule,
+    MemoryModule,
+    MonitoringModule,
+    AuthModule,
+    ProvidersModule,
+    StreamingModule,
+    // Theme S.6 — AgentService merges skill prompt blocks into the system prompt.
+    SkillsModule,
+    // Theme J — ratings, eval criteria, judge-LLM pipeline, golden-set runner.
+    EvalsModule,
+    // PIFSP-18 — PII governance filters (regex + checksum, 4 choke-points).
+    GovernanceModule,
+    // W.1.2 note — RunsBridgeService (in TriggerBridgeModule) is resolved
+    // LAZILY in AgentService via ModuleRef.get() rather than injected,
+    // because the transitive cycle
+    // AgentService→RunsBridge→ConnectionsGateway→AgentTaskService→AgentService
+    // can't be resolved at provider-instantiation time even with
+    // forwardRef on module scan. No need to import TriggerBridgeModule
+    // here.
+  ],
+  controllers: [AgentController, PlatosTasksController],
+  providers: [AgentService, AgentTaskService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
+  exports: [AgentService, AgentTaskService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
+})
+export class AgentRuntimeModule {}

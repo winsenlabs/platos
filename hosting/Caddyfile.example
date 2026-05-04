@@ -1,0 +1,238 @@
+# ─── Platos reverse-proxy config for Caddy 2.x ───────────────────
+# EOBD.64 — paste-ready worked example for a single-host deploy.
+#
+# Replace:
+#   platos.example.com           → your public domain (UI + REST)
+#   ws.platos.example.com        → your WS subdomain (browser → agent)
+#   you@example.com              → your email for Let's Encrypt notices
+#
+# Usage:
+#   1. Boot the compose stack (see docs/self-hosting.md).
+#   2. Save this as /etc/caddy/Caddyfile on the host.
+#   3. `caddy run --config /etc/caddy/Caddyfile` (or systemd).
+#   4. Ensure port 80 + 443 reach the host (firewall, cloud-LB).
+#
+# Notes on the split between the two hostnames:
+#   - Browsers hit platos.example.com for the dashboard + REST.
+#   - Browsers hit ws.platos.example.com for Socket.IO upgrades to the
+#     agent (3100). Keeping the WS on a dedicated hostname keeps the
+#     webapp's CSP simpler and avoids subtle `HTTP/3 → WS` issues.
+#   - You can collapse these into one hostname with matchers if you
+#     prefer (see the commented single-host block at the bottom).
+
+# Global options — email for Let's Encrypt renewal notices
+{
+  email you@example.com
+  # Optional: enable experimental HTTP/3 (Caddy handles the fallback).
+  # servers {
+  #   protocols h1 h2 h3
+  # }
+}
+
+# ─── UI + REST + SSE ────────────────────────────────────────────────
+platos.example.com {
+  # Let's Encrypt auto-issues + renews.
+  tls {
+    # On_demand leaves the cert untouched if you already have one on
+    # disk; remove the line to force ACME on every boot.
+  }
+
+  # Security headers. Adjust the CSP when you enable embed mode (P.2
+  # in EOBD.89). The Socket.IO connect-src must list the WS hostname.
+  header {
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options    "nosniff"
+    X-Frame-Options           "DENY"
+    Referrer-Policy           "strict-origin-when-cross-origin"
+    Content-Security-Policy   "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' wss://ws.platos.example.com; frame-ancestors 'none'"
+  }
+
+  # Rate-limit. Caddy's rate_limit order directive needs the
+  # github.com/mholt/caddy-ratelimit plugin or a vanilla caddy build
+  # without it — leave commented if you don't have the plugin.
+  # @api path /api/*
+  # rate_limit @api {
+  #   zone /api/* {
+  #     key {remote_host}
+  #     events 120
+  #     window 1m
+  #   }
+  # }
+
+  # Phase 3 — Public docs MCP (unauthenticated). Lives on the agent;
+  # the in-process HostRouterMiddleware leaves this hostname as the
+  # full surface, but the docs MCP works here too (handy for the
+  # in-product "Talk to Platos" agent).
+  handle /mcp/docs* {
+    reverse_proxy agent:3100 {
+      header_up Host                {host}
+      header_up X-Real-IP           {remote_host}
+      flush_interval -1
+      transport http {
+        read_timeout  3600s
+        write_timeout 3600s
+      }
+    }
+  }
+
+  # Theme K — Platform MCP (scoped, OAuth or session-token authed).
+  handle /mcp/platform* {
+    reverse_proxy agent:3100 {
+      header_up Host                {host}
+      header_up X-Real-IP           {remote_host}
+      flush_interval -1
+      transport http {
+        read_timeout  3600s
+        write_timeout 3600s
+      }
+    }
+  }
+
+  # PIFSP-21 — per-entity MCP (per-entity OAuth).
+  handle /mcp/entity* {
+    reverse_proxy agent:3100 {
+      header_up Host                {host}
+      header_up X-Real-IP           {remote_host}
+      flush_interval -1
+      transport http {
+        read_timeout  3600s
+        write_timeout 3600s
+      }
+    }
+  }
+
+  # Agent API (REST + SSE) → agent container
+  handle /api/v1/agent* {
+    reverse_proxy agent:3100 {
+      # Preserve the client's host + protocol so the agent's
+      # ScopeGuard sees X-Forwarded-For (required for external traffic).
+      header_up Host                {host}
+      header_up X-Real-IP           {remote_host}
+      header_up X-Forwarded-For     {remote_host}
+      header_up X-Forwarded-Proto   {scheme}
+      # SSE: disable response buffering + long timeouts for `/streams` calls.
+      flush_interval -1
+      transport http {
+        read_timeout  3600s
+        write_timeout 3600s
+      }
+    }
+  }
+
+  # Prometheus /metrics — keep off the public hostname; scrape on the
+  # internal docker network. Uncomment + IP-allowlist if you need it
+  # public for a remote Prometheus.
+  # handle /metrics {
+  #   @allowed remote_ip 10.0.0.0/8 192.168.0.0/16
+  #   handle @allowed {
+  #     reverse_proxy agent:3100
+  #   }
+  #   respond 403
+  # }
+
+  # Everything else → webapp (Remix UI + rest of the API surface)
+  handle {
+    reverse_proxy webapp:3030 {
+      header_up Host                {host}
+      header_up X-Real-IP           {remote_host}
+      header_up X-Forwarded-For     {remote_host}
+      header_up X-Forwarded-Proto   {scheme}
+      flush_interval -1
+      transport http {
+        read_timeout  3600s
+        write_timeout 3600s
+      }
+    }
+  }
+}
+
+# ─── Browser → agent Socket.IO + tool-sync WS ───────────────────────
+ws.platos.example.com {
+  tls {
+  }
+  header {
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options    "nosniff"
+  }
+
+  reverse_proxy agent:3100 {
+    # WebSocket upgrade works transparently in Caddy — no extra
+    # config needed (the `Upgrade` + `Connection` headers are passed
+    # through by default).
+    header_up Host                {host}
+    header_up X-Real-IP           {remote_host}
+    header_up X-Forwarded-For     {remote_host}
+    header_up X-Forwarded-Proto   {scheme}
+    transport http {
+      # WS connections can live indefinitely for long-running chats;
+      # bump both read + write well beyond the 30s default.
+      read_timeout  3600s
+      write_timeout 3600s
+    }
+  }
+}
+
+# ─── Public docs MCP — mcp.platos.dev ──────────────────────────────
+# Phase 3b: dedicated subdomain for the unauthenticated public docs
+# MCP. The same agent process serves both this hostname and the full
+# `platos.example.com` surface; an in-process Nest middleware
+# (`apps/agent/src/mcp-platform/host-router.middleware.ts`) inspects
+# the `Host:` header and 403s every path that is NOT `/mcp/docs*` when
+# the host matches `mcp.platos.dev` (or any leaf subdomain thereof).
+#
+# Caddy's job here is purely TLS termination + proxy. The auth wall
+# lives in the agent.
+#
+# Replace `mcp.platos.example.com` with your public subdomain.
+mcp.platos.example.com {
+    encode gzip zstd
+
+    # Restrict to the docs MCP routes + a friendly root page. Caddy
+    # could let everything through and rely on the agent middleware
+    # alone, but defense-in-depth: drop scoped paths at the proxy too.
+    @mcp path /mcp /mcp/* /sse /sse/*
+    handle @mcp {
+        reverse_proxy agent:3100 {
+            header_up Host                {host}
+            header_up X-Real-IP           {remote_host}
+            header_up X-Forwarded-For     {remote_host}
+            header_up X-Forwarded-Proto   {scheme}
+            flush_interval -1
+            transport http {
+                read_timeout  3600s
+                write_timeout 3600s
+            }
+        }
+    }
+
+    # Health check — uptime monitors hit this.
+    handle /api/health {
+        reverse_proxy agent:3100
+    }
+
+    # Capabilities probe at the root for humans who curl the URL.
+    handle / {
+        respond "Platos public docs MCP. Add to Claude Code: claude mcp add platos-docs https://mcp.platos.example.com/mcp" 200
+    }
+
+    # Everything else: 404. The agent middleware would 403, but we
+    # short-circuit at the edge.
+    handle {
+        respond 404
+    }
+}
+
+# ─── Single-hostname alternative (commented) ────────────────────────
+# If you'd rather serve UI + REST + WS from the same domain, replace
+# both blocks above with this one and point PLATOS_AGENT_PUBLIC_WS_URL
+# at `wss://platos.example.com` in your .env.
+#
+# platos.example.com {
+#   tls { }
+#   @agent_api  path /api/v1/agent*
+#   @agent_ws   path /agent /agent/* /tools/sync /tools/sync/*
+#
+#   handle @agent_ws  { reverse_proxy agent:3100 { ...common headers... } }
+#   handle @agent_api { reverse_proxy agent:3100 { ...common headers... } }
+#   handle            { reverse_proxy webapp:3030 { ...common headers... } }
+# }
