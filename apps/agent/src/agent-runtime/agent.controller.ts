@@ -207,8 +207,21 @@ export class AgentController {
       );
     }
 
+    // Forward visitor identity (lifted from JWT userMeta by ScopeGuard) so
+    // the PlatosEndUser row gets created with the visitor's actual name +
+    // email instead of just the hashed `lead-<hash>`. Without this, the
+    // EndUser row stays anonymous forever even when the entity backend
+    // signed `userMeta: { name, email }` into the session token, AND the
+    // prompt's auto-resolved sessionContext (which reads from the EndUser
+    // row) has nothing to inject for `{{user.name}}` / `{{user.email}}`.
+    const userMeta = (scope.sessionContext as { user?: { name?: string; email?: string } } | null | undefined)?.user;
     const thread = await this.conversationService.createThread(
-      scope, agentId, body.title,
+      scope,
+      agentId,
+      body.title,
+      userMeta && (userMeta.name || userMeta.email)
+        ? { displayName: userMeta.name, email: userMeta.email }
+        : undefined,
     );
     return thread;
   }

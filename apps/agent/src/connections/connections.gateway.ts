@@ -207,6 +207,14 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         userId = payload.userId;
         entityId = payload.entityId;
         userToken = payload.userToken;
+        // Lift the JWT's userMeta into the WS auth bag so the gateway can
+        // forward it as scope.sessionContext.user.* on every turn — same
+        // path ScopeGuard takes for HTTP. Without this, the streaming path
+        // saw only the hashed lead-id and {{user.name}} / {{user.email}}
+        // template substitutions stayed empty.
+        if (payload.userMeta && (payload.userMeta.name || payload.userMeta.email)) {
+          (auth as Record<string, unknown>).userMeta = payload.userMeta;
+        }
       } else if (!viaProxy) {
         // Mode 1 direct headers — only when request did NOT come through a proxy.
         organizationId = (auth.organizationId as string | undefined) || (headers["x-platos-organization-id"] as string | undefined);
@@ -237,6 +245,9 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       // Stash on the socket so downstream handlers can forward userToken to tool calls.
       (client as any).platosScope = { organizationId, projectId, environmentId, userId, entityId, userToken };
 
+      const userMeta = (auth as Record<string, unknown>).userMeta as
+        | { name?: string; email?: string }
+        | undefined;
       const scope: RequestScope = {
         organizationId: String(organizationId),
         projectId: String(projectId),
@@ -248,6 +259,20 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         // claim.
         ...(entityId ? { entityId: String(entityId) } : {}),
         ...(userToken ? { userToken: String(userToken) } : {}),
+        // Lift JWT userMeta into sessionContext.user.* so the dynamic-block
+        // resolver (and span columns) see {{user.name}} / {{user.email}}
+        // on every WS turn. ScopeGuard does this for HTTP; we mirror it
+        // here for the streaming path.
+        ...(userMeta && (userMeta.name || userMeta.email)
+          ? {
+              sessionContext: {
+                user: {
+                  ...(userMeta.name ? { name: userMeta.name } : {}),
+                  ...(userMeta.email ? { email: userMeta.email } : {}),
+                },
+              },
+            }
+          : {}),
       };
       (client as any).scope = scope;
 
@@ -409,8 +434,18 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         userId: effectiveUserId,
         ...(isPostmanOverride ? { operatorUserId: scope.userId } : {}),
         // Pre-populate sessionContext so stream() skips the DB lookup and
-        // uses the Postman override directly.
-        ...(data.sessionContextOverride ? { sessionContext: data.sessionContextOverride } : {}),
+        // uses the Postman override directly. Merge with the JWT-lifted
+        // sessionContext (carrying user.name / user.email from userMeta)
+        // so a Postman override doesn't wipe visitor identity for the
+        // dynamic-block resolver.
+        ...(data.sessionContextOverride
+          ? {
+              sessionContext: {
+                ...(scope.sessionContext as Record<string, unknown> | undefined),
+                ...data.sessionContextOverride,
+              },
+            }
+          : {}),
       };
 
       // PRELAUNCH-A3-9 — org-wide minute/day rate-limit check. The HTTP
