@@ -23,6 +23,14 @@ COPY --from=pruner --chown=node:node /triggerdotdev/out/json/ .
 COPY --from=pruner --chown=node:node /triggerdotdev/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner --chown=node:node /triggerdotdev/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --chown=node:node patches ./patches
+# `turbo prune --docker` strips `pnpm.patchedDependencies` from the
+# pruned root package.json, leaving an empty `{}` — which means pnpm
+# install silently skips every patch even though the patches/ dir was
+# copied in above. Restore the field from the original root
+# package.json so patches actually apply during install.
+COPY --chown=node:node package.json /tmp/orig-root-package.json
+RUN node -e "const fs=require('fs');const orig=JSON.parse(fs.readFileSync('/tmp/orig-root-package.json','utf8'));const cur=JSON.parse(fs.readFileSync('package.json','utf8'));cur.pnpm=cur.pnpm||{};cur.pnpm.patchedDependencies=orig.pnpm.patchedDependencies||{};fs.writeFileSync('package.json',JSON.stringify(cur,null,2));console.log('restored patchedDependencies:',Object.keys(cur.pnpm.patchedDependencies).length,'entries');" \
+    && rm /tmp/orig-root-package.json
 
 ## Dev deps
 FROM base AS dev-deps
