@@ -28,9 +28,15 @@ COPY --chown=node:node patches ./patches
 # install silently skips every patch even though the patches/ dir was
 # copied in above. Restore the field from the original root
 # package.json so patches actually apply during install.
+#
+# Filter to only patches whose target package appears in the pruned
+# lockfile — turbo prune drops deps that aren't reachable from the
+# webapp's dep tree, so blindly keeping every patch trips
+# ERR_PNPM_UNUSED_PATCH on install.
 COPY --chown=node:node package.json /tmp/orig-root-package.json
-RUN node -e "const fs=require('fs');const orig=JSON.parse(fs.readFileSync('/tmp/orig-root-package.json','utf8'));const cur=JSON.parse(fs.readFileSync('package.json','utf8'));cur.pnpm=cur.pnpm||{};cur.pnpm.patchedDependencies=orig.pnpm.patchedDependencies||{};fs.writeFileSync('package.json',JSON.stringify(cur,null,2));console.log('restored patchedDependencies:',Object.keys(cur.pnpm.patchedDependencies).length,'entries');" \
-    && rm /tmp/orig-root-package.json
+COPY --chown=node:node apps/webapp/scripts/restore-patches.cjs /tmp/restore-patches.cjs
+RUN node /tmp/restore-patches.cjs /tmp/orig-root-package.json package.json pnpm-lock.yaml \
+    && rm /tmp/orig-root-package.json /tmp/restore-patches.cjs
 
 ## Dev deps
 FROM base AS dev-deps
