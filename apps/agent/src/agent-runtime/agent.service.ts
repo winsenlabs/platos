@@ -1612,18 +1612,104 @@ export class AgentService {
         })),
       }),
       execute: async ({ calls }) => {
-        if (!this.toolExecutor) {
-          return { results: calls.map((c: any) => ({ tool: c.tool, status: "failed", error: "Tool executor not available" })) };
+        // Skills (e.g. platos.email_send) register their tools directly into
+        // the local `tools` dict under namespaced names (e.g.
+        // `platos_email_send__send_email`). The entity-tool registry that
+        // `toolExecutor.executeBatch` looks up does NOT include skills, so
+        // routing every call through it returned "Tool not found or not
+        // enabled for scope" for skill calls. Route locally first when the
+        // tool exists in the live tools dict; fall back to the entity
+        // executor for everything else (entity-published tools).
+        const startedAt = Date.now();
+        const splitResults: Array<{
+          idx: number;
+          result: { tool: string; status: string; error?: string; result?: unknown; latencyMs: number };
+        }> = [];
+        const remoteCalls: Array<{
+          idx: number;
+          call: { tool: string; params: Record<string, unknown>; purpose?: string };
+        }> = [];
+
+        for (let i = 0; i < calls.length; i++) {
+          const c = calls[i] as { tool: string; params: Record<string, unknown>; purpose?: string };
+          const localTool = tools[c.tool];
+          if (
+            localTool &&
+            typeof (localTool as unknown as { execute?: unknown }).execute === "function"
+          ) {
+            const t0 = Date.now();
+            try {
+              const out = await (
+                localTool as unknown as { execute: (input: unknown) => Promise<unknown> }
+              ).execute(c.params);
+              splitResults.push({
+                idx: i,
+                result: {
+                  tool: c.tool,
+                  status: "success",
+                  result: out,
+                  latencyMs: Date.now() - t0,
+                },
+              });
+            } catch (err: unknown) {
+              const message = err instanceof Error ? err.message : String(err);
+              splitResults.push({
+                idx: i,
+                result: {
+                  tool: c.tool,
+                  status: "failed",
+                  error: message,
+                  latencyMs: Date.now() - t0,
+                },
+              });
+            }
+          } else {
+            remoteCalls.push({ idx: i, call: c });
+          }
         }
-        const results = await this.toolExecutor.executeBatch(
-          calls.map((c: { tool: string; params: Record<string, unknown>; purpose?: string }) => ({
-            tool: c.tool,
-            params: c.params,
-            purpose: c.purpose,
-          })),
-          scope,
-        );
-        return { results };
+
+        if (remoteCalls.length > 0) {
+          if (!this.toolExecutor) {
+            for (const { idx, call } of remoteCalls) {
+              splitResults.push({
+                idx,
+                result: {
+                  tool: call.tool,
+                  status: "failed",
+                  error: "Tool executor not available",
+                  latencyMs: Date.now() - startedAt,
+                },
+              });
+            }
+          } else {
+            const remote = await this.toolExecutor.executeBatch(
+              remoteCalls.map(({ call }) => ({
+                tool: call.tool,
+                params: call.params,
+                purpose: call.purpose,
+              })),
+              scope,
+            );
+            remote.forEach((r, j) => {
+              const remoteEntry = remoteCalls[j];
+              if (!remoteEntry) return;
+              splitResults.push({
+                idx: remoteEntry.idx,
+                result: r as {
+                  tool: string;
+                  status: string;
+                  error?: string;
+                  result?: unknown;
+                  latencyMs: number;
+                },
+              });
+            });
+          }
+        }
+
+        // Re-order to match the caller's input order.
+        splitResults.sort((a, b) => a.idx - b.idx);
+        return { results: splitResults.map((r) => r.result) };
       },
     };
 
