@@ -39,12 +39,12 @@ import { tryCatch } from "@platos/core/v3";
 import { logger } from "~/services/logger.server";
 import { env } from "~/env.server";
 import { extractClientIp } from "~/utils/extractClientIp.server";
-import { timingSafeEqual } from "node:crypto";
 import { findOrCreateUser } from "~/models/user.server";
 import { postAuthentication } from "~/services/postAuth.server";
 import {
   commitLastEmailCookie,
   getLastEmailFromRequest,
+  passcodeMatches,
 } from "~/services/lastEmail.server";
 
 export const meta: MetaFunction = ({ matches }) => {
@@ -268,14 +268,7 @@ export async function action({ request }: ActionFunctionArgs) {
       if (data.email.toLowerCase() !== expectedEmail.toLowerCase()) {
         return reject("email mismatch");
       }
-      // Constant-time compare on equal-length buffers; bail if length
-      // differs to avoid timingSafeEqual throwing.
-      const expectedBuf = Buffer.from(expected, "utf8");
-      const submittedBuf = Buffer.from(data.passcode, "utf8");
-      if (expectedBuf.length !== submittedBuf.length) {
-        return reject("passcode length mismatch");
-      }
-      if (!timingSafeEqual(expectedBuf, submittedBuf)) {
+      if (!passcodeMatches(data.passcode, expected)) {
         return reject("passcode mismatch");
       }
 

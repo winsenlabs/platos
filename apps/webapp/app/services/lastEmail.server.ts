@@ -1,4 +1,5 @@
 import { createCookieSessionStorage } from "@remix-run/node";
+import { timingSafeEqual } from "node:crypto";
 import { env } from "~/env.server";
 
 /**
@@ -36,4 +37,16 @@ export async function commitLastEmailCookie(email: string): Promise<string> {
   const session = await storage.getSession();
   session.set("email", email);
   return storage.commitSession(session);
+}
+
+/**
+ * Constant-time compare for the operator passcode. Lives here (in a
+ * `.server.ts` file) instead of inline in the route so esbuild doesn't
+ * try to bundle `node:crypto` into the browser chunk for `/login/magic`.
+ */
+export function passcodeMatches(submitted: string, expected: string): boolean {
+  const a = Buffer.from(expected, "utf8");
+  const b = Buffer.from(submitted, "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
