@@ -123,7 +123,12 @@ export class SpansService {
    *   load-shedding feature.
    */
   async record(
-    scope: ScopeTuple & { agentId?: string; threadId?: string; userId?: string },
+    scope: ScopeTuple & {
+      agentId?: string;
+      threadId?: string;
+      userId?: string;
+      sessionContext?: { user?: { name?: string; email?: string } } | null;
+    },
     span: Omit<PlatosSpan, "attributes"> & { attributes?: Record<string, string | number | boolean> },
   ): Promise<void> {
     const record: PlatosSpan = {
@@ -191,7 +196,12 @@ export class SpansService {
    * are dropped — telemetry loss is preferable to unbounded memory.
    */
   private async pushSpanToDlq(
-    scope: ScopeTuple & { agentId?: string; threadId?: string; userId?: string },
+    scope: ScopeTuple & {
+      agentId?: string;
+      threadId?: string;
+      userId?: string;
+      sessionContext?: { user?: { name?: string; email?: string } } | null;
+    },
     record: PlatosSpan,
     error?: string,
   ): Promise<void> {
@@ -277,7 +287,18 @@ export class SpansService {
    * via the `Authorization` header.
    */
   private async writeSpanToClickhouse(
-    scope: ScopeTuple & { agentId?: string; threadId?: string; userId?: string },
+    scope: ScopeTuple & {
+      agentId?: string;
+      threadId?: string;
+      userId?: string;
+      // Optional — lifted from JWT userMeta by ScopeGuard. When present the
+      // visitor's name + email get folded into the span's `attrs` JSON so
+      // ClickHouse queries can `JSONExtractString(attrs, 'user.name')`
+      // instead of joining through PlatosEndUser in Postgres. PII stays
+      // out of the indexed `user_id` column (still the SHA256-hashed
+      // `lead-<hash>`); this lives in attrs only.
+      sessionContext?: { user?: { name?: string; email?: string } } | null;
+    },
     record: PlatosSpan,
   ): Promise<void> {
     if (!this.clickhouseBaseUrl) return;
@@ -323,7 +344,24 @@ export class SpansService {
       reasoning_tokens: Math.max(0, Math.floor(numAttr("platos.reasoning_tokens"))),
       provider: strAttr("platos.provider"),
       model: strAttr("platos.model"),
-      attrs: JSON.stringify(record.attributes ?? {}),
+      // Visitor identity (when supplied via JWT userMeta) lives in dedicated
+      // columns added by migration 030_platos_spans_user_identity.sql so
+      // analytics queries don't need JSONExtract. user_id stays as the
+      // SHA256-hashed lead-id (indexed); these PII columns are separate so
+      // a GDPR wipe can null them without touching the canonical id.
+      user_display_name: scope.sessionContext?.user?.name ?? "",
+      user_email: scope.sessionContext?.user?.email ?? "",
+      // Also fold into attrs JSON so traces predating the migration still
+      // surface the same data via JSONExtractString(attrs, 'user.name').
+      attrs: JSON.stringify({
+        ...(record.attributes ?? {}),
+        ...(scope.sessionContext?.user?.name
+          ? { "user.name": scope.sessionContext.user.name }
+          : {}),
+        ...(scope.sessionContext?.user?.email
+          ? { "user.email": scope.sessionContext.user.email }
+          : {}),
+      }),
     };
     const query = "INSERT INTO trigger_dev.platos_spans_v1 FORMAT JSONEachRow";
     const url = `${this.clickhouseBaseUrl}/?query=${encodeURIComponent(query)}`;

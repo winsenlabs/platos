@@ -83,6 +83,7 @@ Decrypted on the fly, scoped to the requesting user's permissions.
 - `block` policy throws a turn error. Users see "blocked by safety policy"; the model never sees the input. Consider `redact` for first-party data the agent does need to acknowledge.
 - Safety events are encrypted with the same key as messages. Losing `PLATOS_MESSAGE_ENCRYPTION_KEY` loses safety event readability.
 - The PII filter runs on the model input, not the model output. Output filtering is a separate pass; configure it via the agent's `outputFilters` config.
+- Visitor name and email signed into a session token's `userMeta` claim land in the trace's `user_display_name` / `user_email` columns in plaintext (not message-encrypted). They sit alongside the always-hashed `user_id`, so a GDPR deletion can null the PII columns without breaking trace lookups. See [Auth modes](/docs/auth-modes) and [Traces](/docs/traces).
 
 ## Related
 

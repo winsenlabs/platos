@@ -75,6 +75,13 @@ const sessionToken = sign(
     project: scope.projectId,
     env: scope.environmentId,
     user_token: opaqueUserAuth,
+    // Optional. When supplied, ScopeGuard lifts these into
+    // scope.sessionContext.user.{name,email} so they're available to
+    // prompt placeholders ({{user.name}}, {{user.email}}) and dynamic
+    // blocks, and they land in the trace's user_display_name /
+    // user_email columns. Plaintext PII — only sign in what the
+    // entity already knows about its visitor.
+    userMeta: { name: visitor.name, email: visitor.email },
   },
   serviceSecret,
   { expiresIn: "5m" },
@@ -92,6 +99,16 @@ Use `@platools/sdk`. The SDK reads `PLATOS_SERVICE_SECRET` from env and wires th
 ### Mint a session token from the webapp
 
 The webapp helper `mintPlatosSessionToken({ scope, userToken? })` signs with `PLATOS_SESSION_SECRET`. Used by Remix loaders to bridge from a dashboard session to an agent service request.
+
+### Visitor identity (`userMeta`)
+
+The optional `userMeta: { name?, email? }` claim is the canonical place to attach a visitor's display name and email. ScopeGuard lifts the claim into `scope.sessionContext.user.{name, email}`, which means:
+
+- `{{user.name}}` and `{{user.email}}` placeholders resolve in system prompts and dynamic blocks (cache-friendly when used in dynamic blocks; cache-busting when substituted into the system prompt directly).
+- ClickHouse spans carry the same values in dedicated `user_display_name` and `user_email` columns alongside the always-present hashed `user_id` (`lead-<sha256-of-email>`). The hashed id stays the canonical identity; `userMeta` is plaintext PII that lives in separate columns so a deletion request can null them without touching the indexed id.
+- The agent's memory system can recall the visitor by name without you having to wire it in by hand.
+
+Sign nothing into `userMeta` your entity didn't already collect lawfully. See [Encryption and secrets](/docs/encryption-and-secrets) and [Legal and policies](/docs/legal-and-policies) for how this lands at rest.
 
 ## Common pitfalls
 

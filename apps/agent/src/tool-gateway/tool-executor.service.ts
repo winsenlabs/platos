@@ -240,6 +240,10 @@ export class ToolExecutorService {
           agentId: scope.agentId,
           threadId: scope.sessionId,
           userId: scope.userId,
+          sessionContext: (scope as any).sessionContext as
+            | { user?: { name?: string; email?: string } }
+            | null
+            | undefined,
         },
         {
           traceId: scope.traceId,

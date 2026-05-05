@@ -58,4 +58,6 @@ Platos itself is [Apache 2.0](https://github.com/winsenlabs/platos/blob/main/LIC
 
 Self-hosted: end-to-end you. Your Postgres holds the conversation rows (encrypted at rest with AES-256 envelopes — see [encryption-and-secrets](/docs/encryption-and-secrets)), your Redis/ClickHouse/MinIO hold caches/telemetry/attachments. Nothing exits your perimeter unless you point Platos at a remote LLM provider.
 
+Visitor identity in spans: when an entity signs a `userMeta: { name, email }` claim into the session token (see [Auth modes](/docs/auth-modes)), those values land in the trace's `user_display_name` / `user_email` ClickHouse columns in plaintext, alongside the always-hashed `user_id`. The split lets a deletion request null the PII columns without breaking the canonical id; sign nothing into `userMeta` you wouldn't be willing to keep at rest.
+
 Playground (`play.platos.dev`): Winsen Labs operates the instance. Your data lives on our infra, gets reset periodically, and is not isolated from other playground users. **Do not paste real customer data.**

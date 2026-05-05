@@ -4245,6 +4245,10 @@ export class AgentService {
             agentId: parentAgentId,
             threadId,
             userId: args.scope.userId,
+            sessionContext: (args.scope as any).sessionContext as
+              | { user?: { name?: string; email?: string } }
+              | null
+              | undefined,
           },
           {
             traceId: args.scope.traceId,

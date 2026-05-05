@@ -45,6 +45,8 @@ Each span carries:
 - `attributes`: free-form key-value (model id, tool name, token counts, retrieval result count).
 - `events`: timeline points within the span (cache hit, retry, abort, finish reason).
 
+The ClickHouse row also has dedicated identity columns: `organization_id`, `project_id`, `environment_id`, `agent_id`, `thread_id`, `user_id` (the SHA256-hashed `lead-<hash>`), plus `user_display_name` and `user_email` (plaintext, only populated when the session token's `userMeta` claim was signed in by the entity — see [Auth modes](/docs/auth-modes)). Splitting plaintext PII off the indexed id column means a deletion request can null the PII columns without touching the canonical id, which keeps cost rollups and trace lookups intact.
+
 The trace view at `/agents/{agentId}/trace/{threadId}` renders the timeline waterfall with hover-detail per span.
 
 ## Why it matters

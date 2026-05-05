@@ -33,7 +33,7 @@ Four tiers, lowest to highest precedence:
 
 1. **Project**: scope-wide constants (e.g. `tenant_id`). Set in the agent context tab.
 2. **Agent**: per-agent constants pinned in the agent's `contextMapping`.
-3. **User**: per-user values resolved from the session token (e.g. `user_id`, `user_email`).
+3. **User**: per-user values resolved from the session token (e.g. `user_id`, `user_email`). When the entity signs a `userMeta: { name, email }` claim (see [Auth modes](/docs/auth-modes)), `{{user.name}}` and `{{user.email}}` are available to prompts and dynamic blocks, and the same values flow to the trace's identity columns.
 4. **Session**: per-turn overrides supplied by the caller in the request payload.
 
 Each tier writes into the resolver's keyed map. When a tool argument or prompt placeholder references `${user_id}`, the resolver walks tiers 4 -> 3 -> 2 -> 1 and returns the first hit.

@@ -1083,6 +1083,10 @@ export class AgentTaskService {
           agentId,
           threadId: thread.id,
           userId: scope.userId,
+          sessionContext: scope.sessionContext as
+            | { user?: { name?: string; email?: string } }
+            | null
+            | undefined,
         },
         {
           traceId,
@@ -1123,6 +1127,10 @@ export class AgentTaskService {
           agentId,
           threadId: thread.id,
           userId: scope.userId,
+          sessionContext: scope.sessionContext as
+            | { user?: { name?: string; email?: string } }
+            | null
+            | undefined,
         },
         {
           traceId,
