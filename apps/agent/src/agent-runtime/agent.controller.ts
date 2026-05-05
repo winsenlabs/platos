@@ -186,8 +186,29 @@ export class AgentController {
     @Body() body: { agentId?: string; title?: string },
   ) {
     const scope = this.getScope(req);
+
+    // Reject missing or sentinel "default" agentId. SDK consumers were
+    // previously able to slip past with no agentId on the body (the
+    // legacy `body.agentId || "default"` fell through to a literal
+    // string "default" agent), creating threads stuck on the bare
+    // "You are a helpful AI assistant" config forever — the runtime
+    // resolver downstream had no way to recover the real agent later
+    // because the thread's `agentId` column was permanently "default".
+    // Failing fast here is the only place that can prevent the stuck
+    // state.
+    const agentId = (body.agentId ?? "").trim();
+    if (!agentId || agentId.toLowerCase() === "default") {
+      throw new HttpException(
+        {
+          error:
+            "agentId is required when creating a thread. Pass the id of an agent from /agents in this scope.",
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const thread = await this.conversationService.createThread(
-      scope, body.agentId || "default", body.title,
+      scope, agentId, body.title,
     );
     return thread;
   }
