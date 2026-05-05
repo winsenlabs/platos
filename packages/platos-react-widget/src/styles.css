@@ -1,0 +1,294 @@
+/*
+ * @platosdev/react-widget — base styles.
+ *
+ * All colours, radius, and font-family flow from CSS variables so callers
+ * can override globally (in their app's stylesheet) or per-instance via
+ * the `themeTokens` prop.
+ *
+ * `[data-platos-theme="dark"]` and `[data-platos-theme="light"]` override
+ * the defaults explicitly. When neither is set (theme="auto"), the widget
+ * follows `prefers-color-scheme`.
+ */
+
+.platos-widget-root {
+  /* Defaults — light theme. */
+  --platos-color-primary: #111827;
+  --platos-color-bg: #ffffff;
+  --platos-color-fg: #111827;
+  --platos-color-muted: #6b7280;
+  --platos-color-border: #e5e7eb;
+  --platos-color-bubble-assistant: #f3f4f6;
+  --platos-color-bubble-user: #111827;
+  --platos-color-bubble-user-fg: #ffffff;
+  --platos-color-error: #b91c1c;
+  --platos-radius: 14px;
+  --platos-font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+
+  position: fixed;
+  z-index: 2147483600;
+  font-family: var(--platos-font-family);
+  color: var(--platos-color-fg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .platos-widget-root:not([data-platos-theme="light"]) {
+    --platos-color-primary: #f3f4f6;
+    --platos-color-bg: #18181b;
+    --platos-color-fg: #f3f4f6;
+    --platos-color-muted: #9ca3af;
+    --platos-color-border: #27272a;
+    --platos-color-bubble-assistant: #27272a;
+    --platos-color-bubble-user: #f3f4f6;
+    --platos-color-bubble-user-fg: #18181b;
+    --platos-color-error: #f87171;
+  }
+}
+
+.platos-widget-root[data-platos-theme="dark"] {
+  --platos-color-primary: #f3f4f6;
+  --platos-color-bg: #18181b;
+  --platos-color-fg: #f3f4f6;
+  --platos-color-muted: #9ca3af;
+  --platos-color-border: #27272a;
+  --platos-color-bubble-assistant: #27272a;
+  --platos-color-bubble-user: #f3f4f6;
+  --platos-color-bubble-user-fg: #18181b;
+  --platos-color-error: #f87171;
+}
+
+/* ── FAB ───────────────────────────────────────────────────────────────── */
+.platos-widget-fab {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  background: var(--platos-color-primary);
+  color: var(--platos-color-bg);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 12px 24px -8px rgba(0, 0, 0, 0.25),
+    0 4px 10px -2px rgba(0, 0, 0, 0.15);
+  transition: transform 120ms ease;
+  overflow: hidden;
+}
+.platos-widget-fab:hover { transform: scale(1.04); }
+.platos-widget-fab img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ── Panel ─────────────────────────────────────────────────────────────── */
+.platos-widget-panel {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
+  background: var(--platos-color-bg);
+  color: var(--platos-color-fg);
+  border: 1px solid var(--platos-color-border);
+  border-radius: var(--platos-radius);
+  box-shadow:
+    0 24px 48px -16px rgba(0, 0, 0, 0.35),
+    0 8px 20px -8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform-origin: bottom right;
+  opacity: 0;
+  transform: scale(0.96);
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.platos-widget-panel[data-open="true"] {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.platos-widget-root[style*="left:"] .platos-widget-panel {
+  right: auto;
+  left: 0;
+  transform-origin: bottom left;
+}
+.platos-widget-root[style*="top:"] .platos-widget-panel {
+  bottom: auto;
+  top: calc(100% + 12px);
+  transform-origin: top right;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+.platos-widget-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--platos-color-border);
+}
+.platos-widget-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  object-fit: cover;
+  background: var(--platos-color-bubble-assistant);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.platos-widget-header-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.platos-widget-header-text strong { font-size: 14px; font-weight: 600; }
+.platos-widget-header-text small { font-size: 12px; color: var(--platos-color-muted); }
+.platos-widget-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--platos-color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+}
+.platos-widget-close:hover {
+  background: var(--platos-color-bubble-assistant);
+  color: var(--platos-color-fg);
+}
+
+/* ── Identity form ─────────────────────────────────────────────────────── */
+.platos-widget-identity-wrapper { padding: 18px 16px; flex: 1; overflow-y: auto; }
+.platos-widget-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.platos-widget-identity label { display: flex; flex-direction: column; gap: 4px; }
+.platos-widget-label { font-size: 12px; color: var(--platos-color-muted); }
+.platos-widget-greeting {
+  font-size: 14px;
+  color: var(--platos-color-fg);
+  margin: 0 0 4px 0;
+  line-height: 1.45;
+}
+.platos-widget-form-actions { display: flex; gap: 8px; }
+.platos-widget-button-primary {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--platos-color-primary);
+  color: var(--platos-color-bg);
+  border: none;
+  border-radius: calc(var(--platos-radius) - 6px);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.platos-widget-button-primary:disabled { opacity: 0.6; cursor: wait; }
+.platos-widget-button-secondary {
+  padding: 10px 14px;
+  background: transparent;
+  color: var(--platos-color-fg);
+  border: 1px solid var(--platos-color-border);
+  border-radius: calc(var(--platos-radius) - 6px);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ── Messages ──────────────────────────────────────────────────────────── */
+.platos-widget-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 14px 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.platos-widget-empty {
+  margin: auto;
+  text-align: center;
+  font-size: 14px;
+  color: var(--platos-color-muted);
+  padding: 24px;
+  line-height: 1.5;
+}
+.platos-widget-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: calc(var(--platos-radius) - 4px);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.platos-widget-bubble--assistant {
+  align-self: flex-start;
+  background: var(--platos-color-bubble-assistant);
+  color: var(--platos-color-fg);
+}
+.platos-widget-bubble--user {
+  align-self: flex-end;
+  background: var(--platos-color-bubble-user);
+  color: var(--platos-color-bubble-user-fg, var(--platos-color-bg));
+}
+.platos-widget-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  vertical-align: middle;
+  background: currentColor;
+  margin-left: 2px;
+  opacity: 0.6;
+  animation: platos-blink 1s steps(2, start) infinite;
+}
+@keyframes platos-blink {
+  to { opacity: 0; }
+}
+.platos-widget-error {
+  font-size: 13px;
+  color: var(--platos-color-error);
+  background: color-mix(in srgb, var(--platos-color-error) 8%, transparent);
+  padding: 8px 12px;
+  border-radius: 8px;
+  align-self: stretch;
+}
+
+/* ── Input area ────────────────────────────────────────────────────────── */
+.platos-widget-input-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--platos-color-border);
+  background: var(--platos-color-bg);
+}
+.platos-widget-textarea, .platos-widget-input {
+  flex: 1;
+  resize: none;
+  border: 1px solid var(--platos-color-border);
+  background: var(--platos-color-bg);
+  color: var(--platos-color-fg);
+  border-radius: calc(var(--platos-radius) - 6px);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  max-height: 120px;
+  min-height: 40px;
+}
+.platos-widget-textarea:focus, .platos-widget-input:focus {
+  border-color: var(--platos-color-primary);
+}
+.platos-widget-input { min-height: auto; }
+.platos-widget-send {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: var(--platos-color-primary);
+  color: var(--platos-color-bg);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.platos-widget-send:disabled { opacity: 0.5; cursor: not-allowed; }

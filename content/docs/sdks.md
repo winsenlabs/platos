@@ -33,6 +33,9 @@ Platos ships first-party SDK packages on **npm** and **PyPI**. They split along 
 |---|---|---|---|
 | `@platosdev/client` | npm | Consumer (your app) | TypeScript / JS client for the Platos REST + WS surface. |
 | `platos-client` | PyPI | Consumer (your app) | Python equivalent — same shape, same wire protocol. |
+| `@platosdev/react-widget` | npm | Consumer (React UI) | Drop-in React FAB chat widget. Built on `@platosdev/client`. See [React widget](/docs/react-widget). |
+| `@platosdev/embed` | npm | Consumer (HTML) | `<platos-agent>` web component for non-React HTML pages. Iframe-isolated. |
+| `@platosdev/token-mint` | npm | Backend (Node) | Helper for minting Platos session tokens with the right HS256 + claim shape. |
 | `@platosdev/platools-sdk` | npm | Entity backend (Node) | TypeScript SDK for connecting an entity, declaring tools, and serving tool calls over WebSocket. |
 | `platools` | PyPI | Entity backend (Python) | Python SDK with the same surface as the Node version. |
 
