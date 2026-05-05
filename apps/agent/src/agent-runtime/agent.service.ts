@@ -1485,6 +1485,21 @@ export class AgentService {
      * billing.
      */
     abortSignal?: AbortSignal,
+    /**
+     * Closure index for skill tools — caller (stream/run) declares the
+     * array AND populates it in the skill-registration block. find_tools
+     * reads from it at call time so the search surface includes skill
+     * tools alongside entity tools. Without this, find_tools answered
+     * "No tools found" for any skill query.
+     */
+    skillToolIndex?: Array<{
+      name: string;
+      description: string;
+      paramSchema:
+        | { type?: string; properties?: Record<string, unknown> }
+        | undefined;
+      skillId: string;
+    }>,
   ): Record<string, CoreTool> {
     const tools: Record<string, CoreTool> = {};
     const toolMode = agentConfig?.toolsBlockConfig?.mode || "direct";
@@ -1508,6 +1523,15 @@ export class AgentService {
     const _entityHint = _findToolsEntityIds.length > 0
       ? ` Available entities: ${_findToolsEntityIds.map((e) => `"${e}"`).join(", ")}. Pass source to restrict to one entity.`
       : "";
+
+    // Skill tools register into the local `tools` dict AFTER find_tools
+    // is defined — but in a different method (stream/run). The caller
+    // passes in a `skillToolIndex` array that BOTH find_tools' execute
+    // callback (here, at call time) AND the skill registration loop
+    // (over there) close over. find_tools merges the skill index with
+    // entity-tool matches; without this, find_tools answered "No tools
+    // found" for skill queries and the LLM never tried execute_tools.
+    const _skillToolIndex = skillToolIndex ?? [];
 
     tools.find_tools = {
       description:
@@ -1537,6 +1561,29 @@ export class AgentService {
           effectiveSource,
           scope.agentId,
         );
+        // Skill tools — registered into the local tools dict and accessible
+        // via execute_tools (which now routes locally first). They live
+        // OUTSIDE the entity-tool registry, so we substring-match the
+        // query against name+description here and append matches.
+        if (!effectiveSource && _skillToolIndex.length > 0) {
+          const q = query.toLowerCase().trim();
+          const tokens: string[] = q.split(/\s+/).filter(Boolean);
+          const skillMatches = _skillToolIndex
+            .filter((t) => {
+              if (q.length === 0) return true;
+              const hay = `${t.name} ${t.description}`.toLowerCase();
+              return tokens.some((tok: string) => hay.includes(tok));
+            })
+            .map((t) => ({
+              toolName: t.name,
+              description: t.description,
+              paramSchema: t.paramSchema ?? {},
+              category: "skill",
+              sourceEntityId: t.skillId,
+              relevance: 1,
+            }));
+          matches = [...matches, ...(skillMatches as unknown as typeof matches)];
+        }
         // Post-filter by entity_ids for multi-entity scopes (ensures tools
         // from non-declared entities are never returned even if source was omitted).
         const ctxMap = _findToolsCtxMap;
@@ -4680,6 +4727,17 @@ export class AgentService {
     // the per-turn systemPrompt AFTER skill blocks + BEFORE the CTX.6
     // hint block so the cache-friendly prefix region carries it.
     const displayModeAddendumHolder: { value: string } = { value: "" };
+    // Captured + populated by the skill-registration block below; read
+    // by find_tools' execute callback at call time so skill tools show
+    // up alongside entity tools in the meta-tool search surface.
+    const skillToolIndex: Array<{
+      name: string;
+      description: string;
+      paramSchema:
+        | { type?: string; properties?: Record<string, unknown> }
+        | undefined;
+      skillId: string;
+    }> = [];
     let tools = this.buildMetaTools(
       scope,
       agentConfig,
@@ -4690,6 +4748,7 @@ export class AgentService {
       displayModeAddendumHolder,
       // PRELAUNCH-A2-6 — closure-captured for delegate_to_sub_agent dispatch.
       turnOverrides?.abortSignal,
+      skillToolIndex,
     );
     // W.1 — per-turn tool allowlist plumbed from the batch executor. When
     // set, narrows the meta-tool matrix down to exactly the supplied
@@ -4973,6 +5032,16 @@ export class AgentService {
               },
             } as CoreTool;
             registeredToolNames.push(pt.name);
+            // Populate the closure index that find_tools reads — keeps
+            // skill tools discoverable through the meta-tool surface.
+            skillToolIndex.push({
+              name: pt.name,
+              description: pt.description,
+              paramSchema: pt.inputSchema as
+                | { type?: string; properties?: Record<string, unknown> }
+                | undefined,
+              skillId: pt.skillId,
+            });
           } catch (toolErr: any) {
             this.logger.warn(
               `[agent.stream] skill tool "${pt.name}" registration failed, skipping: ${toolErr?.message ?? toolErr}`,
