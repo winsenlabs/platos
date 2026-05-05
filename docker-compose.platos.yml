@@ -403,6 +403,15 @@ services:
       # EOBD.42 — Sentry optional.
       PLATOS_SENTRY_DSN: "${PLATOS_SENTRY_DSN:-}"
       PLATOS_SENTRY_TRACES_SAMPLE_RATE: "${PLATOS_SENTRY_TRACES_SAMPLE_RATE:-0.1}"
+      # PPR-15 — span dual-write to ClickHouse `trigger_dev.platos_spans_v1`.
+      # When unset, spans stay Redis-only (short retention). When set, every
+      # sampled span ALSO lands in ClickHouse for long-retention analytics
+      # queries (cost rollups, per-user trace lookup, etc.). Default points
+      # at the in-cluster ClickHouse so an OSS `up -d` gets dual-write for
+      # free; override to "" to disable.
+      PLATOS_OTEL_CLICKHOUSE_URL: "${PLATOS_OTEL_CLICKHOUSE_URL:-http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123}"
+      PLATOS_OTEL_SAMPLE_RATE: "${PLATOS_OTEL_SAMPLE_RATE:-1}"
+      PLATOS_OTEL_STDOUT: "${PLATOS_OTEL_STDOUT:-false}"
       # MCP approval-UI — opt-in. When `true`, mutating Platform-MCP
       # tools (require_approval tier) open a real PlatosAgentApproval
       # row instead of being auto-approved. Operator approves in the
