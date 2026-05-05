@@ -378,13 +378,21 @@ services:
       # their team. Same value MUST be set on both webapp + agent so
       # REST + MCP `org.add_member` + webapp invites all enforce it.
       PLATOS_MAX_PROJECT_MEMBERS: "${PLATOS_MAX_PROJECT_MEMBERS:-2}"
+      # ─── LLM provider keys (at least ONE required to run a turn) ───
+      # Same env names the dashboard Providers tab reads from; the
+      # model-picker on the agent editor filters models by which keys
+      # are linked. Per-scope keys via the Providers UI override these.
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       GOOGLE_GENERATIVE_AI_API_KEY: "${GOOGLE_GENERATIVE_AI_API_KEY:-}"
-      # Embeddings — pick one provider (default openai). Voyage is an
-      # alternative: set PLATOS_EMBEDDING_PROVIDER=voyage + VOYAGE_API_KEY.
-      # Default model auto-selects to match the pgvector(1536) column.
-      PLATOS_EMBEDDING_PROVIDER: "${PLATOS_EMBEDDING_PROVIDER:-openai}"
+      # ─── Embeddings — REQUIRED for memory + RAG features ───
+      # Without one of OPENAI_API_KEY / VOYAGE_API_KEY, EVERY memory
+      # write (including the hourly MemoryExtractionScheduler cron)
+      # throws. Default `voyage` because Anthropic recommends it and
+      # voyage-large-2 is 1536-dim native (matches the pgvector column
+      # without a schema migration). Switch to `openai` if you'd rather
+      # reuse the OpenAI key you already have for the LLM side.
+      PLATOS_EMBEDDING_PROVIDER: "${PLATOS_EMBEDDING_PROVIDER:-voyage}"
       PLATOS_EMBEDDING_MODEL: "${PLATOS_EMBEDDING_MODEL:-}"
       VOYAGE_API_KEY: "${VOYAGE_API_KEY:-}"
       # Theme D: attachments served from MinIO. Agent fetches via the

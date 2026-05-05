@@ -73,10 +73,22 @@ Migrations are idempotent; re-running is safe.
 
 ### Required env vars
 
+**Boot-required (compose refuses to start without these):**
+
 - `ENCRYPTION_KEY`: 32 ASCII chars (use `openssl rand -hex 16`).
-- `PLATOS_MESSAGE_ENCRYPTION_KEY`: 32 ASCII chars.
+- `PLATOS_ENCRYPTION_KEY`: 64 hex chars / 32 bytes (`openssl rand -hex 32`).
+- `PLATOS_MESSAGE_ENCRYPTION_KEY`: 64 hex chars / 32 bytes.
+- `PLATOS_SESSION_SECRET`: any non-empty string.
+- `SESSION_SECRET` + `MAGIC_LINK_SECRET`: any non-empty strings.
+- `MANAGED_WORKER_SECRET`: 64 hex chars (`openssl rand -hex 32`).
+- `TRIGGER_INTERNAL_SECRET`: 64 hex chars.
 - `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`: MinIO admin credentials.
-- `POSTGRES_PASSWORD`: Postgres superuser password.
+- `POSTGRES_PASSWORD`, `CLICKHOUSE_PASSWORD`: db credentials.
+
+**Feature-required (compose boots without these, but the named feature errors at runtime):**
+
+- **At least one LLM provider key** — `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GOOGLE_GENERATIVE_AI_API_KEY`. Without one, no agent can run a turn; the model picker shows zero options. Per-scope keys via the dashboard Providers UI override these.
+- **An embedding provider key** — `VOYAGE_API_KEY` (default, recommended) or `OPENAI_API_KEY` with `PLATOS_EMBEDDING_PROVIDER=openai`. Without one, **every memory write throws** — including the hourly `MemoryExtractionScheduler` cron — so multi-turn conversations never produce long-term memory. The agent log surfaces `VOYAGE_API_KEY not configured` (or the OpenAI equivalent) on every failed extraction; the [Memory](/docs/memory) doc explains the cascade. Voyage's `voyage-large-2` is 1536-dim native, matching the pgvector column with no schema migration. See [Memory § Setup](/docs/memory#setup).
 
 Optional but commonly set:
 
@@ -84,6 +96,7 @@ Optional but commonly set:
 - `PLATOS_TELEMETRY_DISABLED`: set to `true` to opt out of anonymised usage telemetry.
 - `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_JWKS_URL`: enables OIDC mode on MCP gateway.
 - `E2B_API_KEY`: enables `platos-code-runner` skill.
+- `RESEND_API_KEY` + `EMAIL_TRANSPORT=resend` + `FROM_EMAIL`: magic-link email delivery (without this, links print to console).
 
 ### Put Caddy in front
 

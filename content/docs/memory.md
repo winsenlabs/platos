@@ -56,6 +56,26 @@ A chat agent without long-term memory feels stateless: the user reintroduces the
 
 The ratings loop is the differentiator. When a user thumbs-down a reply that hallucinated, the message rating cascades back into the memory rows the recall pulled from, downweighting them on the next query. Bad memories starve themselves out without manual cleanup.
 
+## Setup — embedding provider is mandatory
+
+Memory writes (manual `remember` calls, `update_user_profile`, AND the hourly extraction sweep) compute a 1536-dim embedding before insert. Without an embedding provider configured, the embed call throws and the memory never lands. **Symptom: agent feels stateless across sessions, the dashboard memory tab is empty even after multi-turn conversations, and the agent log shows `VOYAGE_API_KEY not configured` (or the OpenAI equivalent) on every failed extraction.**
+
+Pick one provider on the agent container env:
+
+```bash
+# Recommended — Anthropic-recommended embedding provider
+PLATOS_EMBEDDING_PROVIDER=voyage
+VOYAGE_API_KEY=pa-...                  # https://www.voyageai.com or via the Anthropic console
+
+# OR — reuse your OpenAI key (already needed if you use the OpenAI LLM)
+PLATOS_EMBEDDING_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+```
+
+Default model on each provider is 1536-dim native (voyage-large-2 / text-embedding-3-small) so it slots straight into the existing pgvector column without a schema migration. If you set `PLATOS_EMBEDDING_MODEL` to a non-1536-dim model you'll need to widen the column first; see [Self-hosting § Required env vars](/docs/self-hosting#required-env-vars).
+
+These can also be linked per-scope via the dashboard Providers UI, encrypted in Postgres — `EmbeddingService.resolveApiKey` checks the scope-bound store first and falls back to the container env. Profile-kind memory rows (`update_user_profile`) skip the embed step (key-value lookup) and don't require this; everything else does.
+
 ## How to use it
 
 ### From the agent's perspective

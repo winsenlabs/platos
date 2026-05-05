@@ -74,8 +74,24 @@ export class EmbeddingService {
     @Optional() private readonly scopedEnv?: ScopedEnvService,
     @Optional() private readonly costService?: CostService,
   ) {
-    this.provider = (env.PLATOS_EMBEDDING_PROVIDER ?? "openai") as EmbeddingProvider;
+    this.provider = (env.PLATOS_EMBEDDING_PROVIDER ?? "voyage") as EmbeddingProvider;
     this.model = env.PLATOS_EMBEDDING_MODEL || DEFAULT_MODEL[this.provider];
+
+    // Boot-time loud warning. Without a provider key, the hourly memory
+    // extraction cron, every `remember` call, and every RAG retrieval
+    // throw at write time — and the failure is per-thread inside the
+    // sweep, so it's invisible unless the operator greps for it. Surface
+    // it ONCE at boot so they see it in `docker compose up` output.
+    const envKey =
+      this.provider === "voyage" ? env.VOYAGE_API_KEY : env.OPENAI_API_KEY;
+    if (!envKey) {
+      this.logger.warn(
+        `[memory] No ${this.provider === "voyage" ? "VOYAGE_API_KEY" : "OPENAI_API_KEY"} set on the agent container env. ` +
+          `Memory writes (incl. the hourly extraction cron) will throw until you ` +
+          `either set the key in /opt/platos/.env or link it via the dashboard ` +
+          `Providers UI per-scope. See https://platos.dev/docs/memory#setup`,
+      );
+    }
   }
 
   private cacheKey(text: string): string {

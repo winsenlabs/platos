@@ -56,10 +56,17 @@ Provider keys live in environment variables. The Providers page shows you which 
 For self-hosted Platos, edit your `.env` file and set the variable for the provider you want:
 
 ```bash
+# LLM providers — at least one needed to run a turn
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
 GOOGLE_GENERATIVE_AI_API_KEY=...
+
+# Embedding provider — REQUIRED for memory + RAG
+PLATOS_EMBEDDING_PROVIDER=voyage   # or `openai`
+VOYAGE_API_KEY=pa-...              # required when provider=voyage
 ```
+
+**The embedding key is its own track** — without one of `VOYAGE_API_KEY` or `OPENAI_API_KEY` (with `PLATOS_EMBEDDING_PROVIDER=openai`), the hourly memory-extraction cron and every `remember` call throw at write time. Multi-turn agents will look stateless. The agent emits a loud boot-time warning when neither is set; see [Memory § Setup](/docs/memory#setup).
 
 The exact variable name per provider lives in `.env.example`; the Providers page also shows the expected name for each provider. Restart the stack so the new env propagates:
 
