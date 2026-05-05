@@ -1,5 +1,5 @@
 /**
- * @platos/client — root `PlatosClient`. Theme I.1/I.2/I.3.
+ * @platosdev/client — root `PlatosClient`. Theme I.1/I.2/I.3.
  *
  * Responsibilities (core):
  *   - Hold auth (`sessionToken` OR `apiKey`) + scope helpers.

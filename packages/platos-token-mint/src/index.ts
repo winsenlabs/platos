@@ -1,5 +1,5 @@
 /**
- * @platos/token-mint — HS256 JWT session-token minting for Platos.
+ * @platosdev/token-mint — HS256 JWT session-token minting for Platos.
  *
  * A Platos session token is a 3-part HS256 JWT signed with your
  * entity's `serviceSecret`. It embeds the scope tuple
@@ -14,7 +14,7 @@
  *
  * Usage:
  *
- *   import { mintSessionToken } from "@platos/token-mint";
+ *   import { mintSessionToken } from "@platosdev/token-mint";
  *
  *   const token = mintSessionToken({
  *     serviceSecret: process.env.PLATOS_ENTITY_SERVICE_SECRET!,

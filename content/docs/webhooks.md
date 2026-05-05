@@ -45,7 +45,7 @@ The delivery history page shows last 100 deliveries per webhook with status, res
 
 Polling for state changes is wasteful. Webhooks let your downstream systems react to Platos in real time without holding open SSE streams. Hooking `safety.event` to your Slack channel is a five-minute setup; hooking `budget.exceeded` to your incident system is the difference between learning at 9am tomorrow vs at midnight tonight.
 
-The signing scheme is identical to the entity HMAC nonce scheme (PPR-71). Reuse the verification code from `@platools/sdk` if you have an entity backend already.
+The signing scheme is identical to the entity HMAC nonce scheme (PPR-71). Reuse the verification code from `@platosdev/platools-sdk` if you have an entity backend already.
 
 ## How to use it
 

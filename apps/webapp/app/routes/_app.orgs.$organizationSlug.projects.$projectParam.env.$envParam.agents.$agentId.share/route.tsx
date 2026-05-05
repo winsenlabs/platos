@@ -195,7 +195,7 @@ export default function SharePage() {
             <Header2 className="mt-8">Embed snippet</Header2>
             <Paragraph>
               Drop this into any HTML page. Requires the{" "}
-              <code>@platos/embed</code> bundle to be served at{" "}
+              <code>@platosdev/embed</code> bundle to be served at{" "}
               <code>/embed.js</code>.
             </Paragraph>
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>

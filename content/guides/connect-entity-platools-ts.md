@@ -1,13 +1,13 @@
 ---
 slug: connect-entity-platools-ts
 title: Connect an entity (TypeScript)
-description: Stand up an entity backend with @platools/sdk, declare your tools, and wire it to Platos.
+description: Stand up an entity backend with @platosdev/platools-sdk, declare your tools, and wire it to Platos.
 category: integrations
 order: 10
 trigger_dev_primitive: false
 trigger_dev_link: ""
 questions:
-  - "How do I install @platools/sdk?"
+  - "How do I install @platosdev/platools-sdk?"
   - "How do I declare a tool in TypeScript?"
   - "How does the SDK reconnect on a dropped WebSocket?"
   - "Where do I put my entity service secret?"
@@ -24,7 +24,7 @@ source_files_referenced:
 
 # Connect an entity (TypeScript)
 
-Stand up an entity backend with `@platools/sdk`, declare your tools, and wire it to Platos.
+Stand up an entity backend with `@platosdev/platools-sdk`, declare your tools, and wire it to Platos.
 
 ## The goal
 
@@ -39,13 +39,13 @@ A Node service that holds a long-lived WebSocket to Platos and serves tool calls
 2. **Install the SDK.**
 
    ```bash
-   npm install @platools/sdk
+   npm install @platosdev/platools-sdk
    ```
 
 3. **Connect.**
 
    ```ts
-   import { connect } from "@platools/sdk";
+   import { connect } from "@platosdev/platools-sdk";
 
    const conn = connect({
      url: process.env.PLATOS_URL ?? "wss://platos.example.com/connections",

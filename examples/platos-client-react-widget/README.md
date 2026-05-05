@@ -1,6 +1,6 @@
 # React chat widget example
 
-Embeddable chat widget using `@platos/client` + `@platos/react-hooks`.
+Embeddable chat widget using `@platosdev/client` + `@platos/react-hooks`.
 Demonstrates:
 
 - `PlatosProvider` + `usePlatosClient`

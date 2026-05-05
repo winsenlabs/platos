@@ -10,7 +10,7 @@
  * real tools (CRM, payments, internal APIs) slot in with more
  * `platools.tool({...}, handler)` calls. The WS transport, HMAC
  * signing, reconnect backoff, schema marshaling, and context
- * propagation are all handled by `@platools/sdk`.
+ * propagation are all handled by `@platosdev/platools-sdk`.
  *
  * Required env:
  *   PLATOS_URL    — WS endpoint of the Platos agent, e.g.
@@ -22,7 +22,7 @@
  * See ../README.md for the full setup walkthrough.
  */
 
-import { Platools, currentUserId, currentScope } from "@platools/sdk";
+import { Platools, currentUserId, currentScope } from "@platosdev/platools-sdk";
 import { z } from "zod";
 
 const platools = new Platools({

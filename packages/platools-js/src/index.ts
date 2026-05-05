@@ -5,7 +5,7 @@
  * monitored MCP tool with a single `platools.tool()` call:
  *
  *     import { z } from "zod";
- *     import { Platools } from "@platools/sdk";
+ *     import { Platools } from "@platosdev/platools-sdk";
  *
  *     const platools = new Platools();
  *

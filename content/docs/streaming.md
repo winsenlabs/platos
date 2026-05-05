@@ -25,7 +25,7 @@ source_files_referenced:
 
 # Streaming and WebSocket events
 
-The streaming surface emits 17 event types over a Socket.IO connection: token deltas, tool call lifecycles, artifact creates, BGO run updates, errors, finishes. The chat panel and `@platos/client` consume the same stream; an event you see in the dashboard is the same event the SDK forwards.
+The streaming surface emits 17 event types over a Socket.IO connection: token deltas, tool call lifecycles, artifact creates, BGO run updates, errors, finishes. The chat panel and `@platosdev/client` consume the same stream; an event you see in the dashboard is the same event the SDK forwards.
 
 ## What it is
 
@@ -55,7 +55,7 @@ The same event stream powers BGO progress. A `run_update` event mid-stream tells
 
 ## How to use it
 
-### Consume from `@platos/client`
+### Consume from `@platosdev/client`
 
 ```ts
 const stream = await platos.threads.stream({ threadId, message: "Hi" });
@@ -72,10 +72,10 @@ for await (const event of stream) {
 
 ### Consume from the browser
 
-The `@platos/client` ships a React hook:
+The `@platosdev/client` ships a React hook:
 
 ```tsx
-import { usePlatosStream } from "@platos/client/react";
+import { usePlatosStream } from "@platosdev/client/react";
 
 function Chat({ threadId }: { threadId: string }) {
   const { events, send } = usePlatosStream({ threadId });

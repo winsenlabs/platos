@@ -1,5 +1,5 @@
 /**
- * Minimal Node CLI using @platos/client. Streams an agent reply to
+ * Minimal Node CLI using @platosdev/client. Streams an agent reply to
  * stdout. Theme I.11.
  *
  * Usage:
@@ -9,7 +9,7 @@
  *   tsx cli.ts "your prompt"
  */
 
-import { PlatosClient, PlatosError } from "@platos/client";
+import { PlatosClient, PlatosError } from "@platosdev/client";
 
 async function main(): Promise<void> {
   const baseUrl = process.env.PLATOS_BASE_URL;

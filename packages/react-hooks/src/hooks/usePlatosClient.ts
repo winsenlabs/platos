@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Theme I.4 — React hooks backed by `@platos/client`.
+ * Theme I.4 — React hooks backed by `@platosdev/client`.
  *
  * These hooks are a thin ergonomic layer on top of the SDK — they
  * instantiate a `PlatosClient` once (memoised on the auth / baseUrl
@@ -14,7 +14,7 @@
  *     to the single tool-call result.
  *   - `useArtifacts(threadId)` — list of artifacts for a thread.
  *
- * We avoid importing `@platos/client` at the package boundary
+ * We avoid importing `@platosdev/client` at the package boundary
  * (peerDependency) so the hooks package stays tiny and consumer apps
  * pin the SDK version themselves.
  */

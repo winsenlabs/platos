@@ -75,7 +75,7 @@ Toggle "Public" off. Active sessions finish; new tokens are refused.
 
 ### Customize the embed
 
-Style via CSS variables (`--platos-bg`, `--platos-fg`, `--platos-accent`). Override the welcome message via the `welcome` attribute. Full custom UI: skip the embed, mint guest tokens directly from your code, and render with `@platos/client`.
+Style via CSS variables (`--platos-bg`, `--platos-fg`, `--platos-accent`). Override the welcome message via the `welcome` attribute. Full custom UI: skip the embed, mint guest tokens directly from your code, and render with `@platosdev/client`.
 
 ## Common pitfalls
 
@@ -88,4 +88,4 @@ Style via CSS variables (`--platos-bg`, `--platos-fg`, `--platos-accent`). Overr
 
 - [Auth modes](/docs/auth-modes): the guest token rides Mode 2.
 - [Rate limits](/docs/rate-limits): public traffic gets per-IP caps by default.
-- [SDKs](/docs/sdks): `@platos/client` plus a guest token works for fully custom UIs.
+- [SDKs](/docs/sdks): `@platosdev/client` plus a guest token works for fully custom UIs.

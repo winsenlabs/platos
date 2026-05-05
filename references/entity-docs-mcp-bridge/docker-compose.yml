@@ -3,7 +3,7 @@
 # platos.yml). Mostly useful for local development of the bridge itself.
 #
 # Build context is two levels up (the trigger repo root) because the
-# bridge depends on @platools/sdk via `file:../../packages/platools-js`,
+# bridge depends on @platosdev/platools-sdk via `file:../../packages/platools-js`,
 # which only resolves when both directories are in the build context.
 # The Dockerfile is structured to handle that.
 #

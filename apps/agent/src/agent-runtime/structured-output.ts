@@ -29,7 +29,7 @@ import { jsonSchema, type Schema } from "ai";
  * errors from the final attempt so the caller can surface them intact.
  *
  * Keep the name `StructuredOutputError` — the consumer SDK pattern-matches
- * on it (see THEME_F §4 + `@platos/client` error surface).
+ * on it (see THEME_F §4 + `@platosdev/client` error surface).
  */
 export class StructuredOutputError extends Error {
   public readonly code = "structured_output_invalid" as const;

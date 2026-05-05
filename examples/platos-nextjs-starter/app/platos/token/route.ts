@@ -1,4 +1,4 @@
-import { mintSessionToken } from "@platos/token-mint";
+import { mintSessionToken } from "@platosdev/token-mint";
 import { NextResponse } from "next/server";
 
 /**

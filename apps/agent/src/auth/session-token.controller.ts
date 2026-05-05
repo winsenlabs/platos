@@ -36,7 +36,7 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
  *   → 404 when the entity isn't registered for the org+project
  *
  * Intended callers: customer backends. Equivalent to what
- * `@platos/token-mint` does locally, but the agent here can validate
+ * `@platosdev/token-mint` does locally, but the agent here can validate
  * against the live entity row and audit the mint.
  */
 @Controller("api/v1/entities")

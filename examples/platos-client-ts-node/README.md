@@ -1,4 +1,4 @@
-# Node.js CLI example — @platos/client
+# Node.js CLI example — @platosdev/client
 
 Minimal Node script: connect to a Platos agent and stream a reply to
 stdout. Auth via session token minted by your backend (read from the

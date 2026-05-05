@@ -13,7 +13,7 @@ import {
   useStreamingResponse,
   usePlatosClient,
 } from "@platos/react-hooks";
-import { PlatosClient } from "@platos/client";
+import { PlatosClient } from "@platosdev/client";
 
 type WidgetProps = {
   baseUrl: string;

@@ -152,7 +152,7 @@ export class AgentTaskService {
     //      switches an agent mid-thread, or for one-off turns without a thread.
     //   2. the thread row's agentId — when the SDK sends a message via
     //      `threads.send(threadId, msg)` without including agentId in the body
-    //      (the common case for any client built on top of `@platos/client`).
+    //      (the common case for any client built on top of `@platosdev/client`).
     //   3. literal "default" — last-resort fallback for legacy callers.
     //
     // Pre-fix: only (1) and (3). When the SDK didn't include agentId in the

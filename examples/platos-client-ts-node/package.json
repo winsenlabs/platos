@@ -3,12 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Minimal Node.js CLI using @platos/client to stream an agent reply to stdout.",
+  "description": "Minimal Node.js CLI using @platosdev/client to stream an agent reply to stdout.",
   "scripts": {
     "start": "tsx cli.ts"
   },
   "dependencies": {
-    "@platos/client": "workspace:*"
+    "@platosdev/client": "workspace:*"
   },
   "devDependencies": {
     "tsx": "4.17.0",

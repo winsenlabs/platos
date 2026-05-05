@@ -5,7 +5,7 @@ A minimal reference **entity backend** for Platos. Registers a single tool (`ech
 1. A smoke test that your Platos deployment's tool gateway is wired up end-to-end.
 2. A starting template — copy this directory into your own repo, drop your real tools in `src/server.ts`, ship.
 
-The entity is written in TypeScript against `@platools/sdk`. A Python flavor will land in a follow-up; the protocol is the same.
+The entity is written in TypeScript against `@platosdev/platools-sdk`. A Python flavor will land in a follow-up; the protocol is the same.
 
 ## Prerequisites
 
@@ -103,7 +103,7 @@ Either way, the entity backend's stdout logs one line per call: `[entity-hello-w
 
 ## Next steps
 
-- Replace `echo` with your own tools. The full API is documented in `docs/writing-agents.md` and the `@platools/sdk` README.
+- Replace `echo` with your own tools. The full API is documented in `docs/writing-agents.md` and the `@platosdev/platools-sdk` README.
 - Add more tools by calling `platools.tool({...}, handler)` any number of times before `await platools.connect()`.
 - For production, bake the image, deploy to your infra, and set `PLATOS_URL` to the wss:// endpoint of your Platos cluster.
 - Rotate the `serviceSecret` periodically from the entity detail page's **Regenerate** button — the SDK reconnects automatically with the new value.

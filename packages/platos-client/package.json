@@ -1,16 +1,16 @@
 {
-  "name": "@platos/client",
-  "version": "0.1.1",
+  "name": "@platosdev/client",
+  "version": "0.1.2",
   "description": "Official Platos JavaScript/TypeScript client SDK — agents, threads, realtime streaming, approvals, budgets.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/platos-dev/platos",
+    "url": "https://github.com/winsenlabs/platos",
     "directory": "packages/platos-client"
   },
-  "homepage": "https://github.com/platos-dev/platos/tree/main/packages/platos-client#readme",
+  "homepage": "https://github.com/winsenlabs/platos/tree/main/packages/platos-client#readme",
   "bugs": {
-    "url": "https://github.com/platos-dev/platos/issues"
+    "url": "https://github.com/winsenlabs/platos/issues"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -23,7 +23,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

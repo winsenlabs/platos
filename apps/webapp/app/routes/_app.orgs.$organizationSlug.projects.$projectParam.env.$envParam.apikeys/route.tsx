@@ -212,7 +212,7 @@ function PlatosAccessKeySection({ initialKey }: { initialKey: PlatosKey | null }
         </Header3>
       </div>
       <p className="text-xs text-text-dimmed">
-        Used by external consumers and the <InlineCode variant="extra-small">@platos/client</InlineCode> SDK
+        Used by external consumers and the <InlineCode variant="extra-small">@platosdev/client</InlineCode> SDK
         to authenticate with the Platos agent runtime via Bearer token. Scoped to this environment.
       </p>
 

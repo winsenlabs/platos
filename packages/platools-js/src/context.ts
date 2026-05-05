@@ -11,7 +11,7 @@
  *
  * Example:
  *
- *     import { currentContext, currentUserId } from "@platools/sdk";
+ *     import { currentContext, currentUserId } from "@platosdev/platools-sdk";
  *
  *     export const listOrders = platools.tool(
  *       {

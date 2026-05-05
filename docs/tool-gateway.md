@@ -242,7 +242,7 @@ Implemented in `apps/agent/src/tool-gateway/tool-executor.service.ts` at the `si
 3. Test-and-insert `nonce` into a per-entity seen-nonces LRU (≈ 100k entries, FIFO eviction). If the nonce was already present within the skew window, the request is a replay — return 401.
 4. On mismatch, return 401. Platos logs and retries per tool-level retry policy.
 
-The platools SDK does all this for you. The TS SDK ships `verifyRequest()` in `@platools/sdk/security/replay-guard` and the Python SDK ships `platools.security.verify_request` — both share the same per-entity nonce LRU shape.
+The platools SDK does all this for you. The TS SDK ships `verifyRequest()` in `@platosdev/platools-sdk/security/replay-guard` and the Python SDK ships `platools.security.verify_request` — both share the same per-entity nonce LRU shape.
 
 ### One-release back-compat (legacy `{ts}.{body}` fallback)
 

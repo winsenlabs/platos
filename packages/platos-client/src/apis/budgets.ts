@@ -1,5 +1,5 @@
 /**
- * @platos/client — budgets API (Theme H.6/H.7).
+ * @platosdev/client — budgets API (Theme H.6/H.7).
  *
  * Read-only surface over per-scope / per-agent / per-user budget caps.
  * Write paths (create/update cap) live in the webapp admin UI only —

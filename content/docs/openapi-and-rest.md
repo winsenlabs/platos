@@ -61,7 +61,7 @@ The same spec is in the repo at `apps/agent/src/openapi/openapi.spec.ts`; either
 npx openapi-typescript-codegen --input platos.json --output ./platos-client --client fetch
 ```
 
-Or feed the spec into your language's standard generator. The generated client targets the same endpoints `@platos/client` wraps; for production code, prefer the first-party SDK.
+Or feed the spec into your language's standard generator. The generated client targets the same endpoints `@platosdev/client` wraps; for production code, prefer the first-party SDK.
 
 ### Authenticate
 
@@ -71,7 +71,7 @@ PAT bearer is the simplest path. See [Auth modes](/docs/auth-modes) for the thre
 
 - Some endpoints under `monitoring/*` are admin-scope only. The OpenAPI spec marks them with the `admin: true` extension; auto-generated clients without scope-awareness will hit 403.
 - The spec includes deprecated endpoints with a `deprecated: true` flag. The `/agent-orgs/*` shim is one of them (drift D-001); use `/agent-entities/*` instead.
-- Generated clients sometimes mishandle streaming endpoints (they expect JSON, get SSE). Use `@platos/client` for streaming; only fall back to a generated client for unary calls.
+- Generated clients sometimes mishandle streaming endpoints (they expect JSON, get SSE). Use `@platosdev/client` for streaming; only fall back to a generated client for unary calls.
 - The spec does not include the WebSocket surface (`/connections`, `/streaming`). Those have separate documentation in [Connected entities](/docs/connected-entities) and [Streaming](/docs/streaming).
 
 ## Related

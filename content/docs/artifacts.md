@@ -42,7 +42,7 @@ Seven canonical types:
 
 Artifacts are emitted via `generate_artifact` and `revise_artifact` meta-tools. The meta-tool wraps the LLM response in an `<PlatosArtifact>` envelope; the runtime persists the row, streams an `artifact-created` event over the websocket, and the consumer renders.
 
-`@platos/client` ships a `<PlatosArtifact>` component that picks the renderer based on type and applies the sandbox guarantees (CSP, iframe isolation, etc.).
+`@platosdev/client` ships a `<PlatosArtifact>` component that picks the renderer based on type and applies the sandbox guarantees (CSP, iframe isolation, etc.).
 
 ## Why it matters
 
@@ -65,7 +65,7 @@ Subsequent turns can reference the id and call `revise_artifact({ artifactId, pa
 ### Render in your UI
 
 ```tsx
-import { PlatosArtifact } from "@platos/client/react";
+import { PlatosArtifact } from "@platosdev/client/react";
 
 <PlatosArtifact id={artifact.id} />;
 ```
@@ -91,4 +91,4 @@ Some tool results are too good to leave as ephemeral output (a generated PDF, a 
 
 - [Attachments and files](/docs/attachments-and-files): for binary uploads going into the conversation, not coming out of the agent.
 - [Chat and Postman mode](/docs/chat-and-postman): the chat panel renders artifacts inline.
-- [SDKs](/docs/sdks): `@platos/client` is the React + JS SDK that ships the renderer.
+- [SDKs](/docs/sdks): `@platosdev/client` is the React + JS SDK that ships the renderer.

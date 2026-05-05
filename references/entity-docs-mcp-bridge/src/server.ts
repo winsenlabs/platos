@@ -39,7 +39,7 @@ import {
   PlatoolsClient,
   currentUserId,
   currentScope,
-} from "@platools/sdk";
+} from "@platosdev/platools-sdk";
 import WebSocket from "ws";
 import { z } from "zod";
 

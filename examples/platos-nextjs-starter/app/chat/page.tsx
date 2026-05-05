@@ -1,6 +1,6 @@
 "use client";
 
-import { PlatosClient } from "@platos/client";
+import { PlatosClient } from "@platosdev/client";
 import { PlatosClientProvider, useAgentStream } from "@platos/react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 

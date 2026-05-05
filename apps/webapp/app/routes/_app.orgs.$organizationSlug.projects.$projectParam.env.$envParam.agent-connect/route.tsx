@@ -204,7 +204,7 @@ export default function ConnectPage() {
 
   const agentId = selectedAgentId;
 
-  const tsSnippet = `import { PlatosClient } from "@platos/client";
+  const tsSnippet = `import { PlatosClient } from "@platosdev/client";
 
 const client = new PlatosClient({
   baseUrl: "${httpUrl.replace(/\/api\/v1\/agent$/, "")}",
@@ -294,7 +294,7 @@ asyncio.run(main())`;
 
           {/* TypeScript SDK */}
           <section>
-            <Header3>@platos/client (TypeScript)</Header3>
+            <Header3>@platosdev/client (TypeScript)</Header3>
             <Paragraph variant="small" className="mt-1 mb-4">
               Official Node/browser SDK. Handles retry, 401 refresh, and WS reconnection.
             </Paragraph>

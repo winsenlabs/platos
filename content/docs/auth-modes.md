@@ -94,7 +94,7 @@ await fetch("https://platos.example.com/agent/v1/threads/...", {
 
 ### Mode 3: entity backend WebSocket
 
-Use `@platools/sdk`. The SDK reads `PLATOS_SERVICE_SECRET` from env and wires the upgrade. See [Connected entities](/docs/connected-entities).
+Use `@platosdev/platools-sdk`. The SDK reads `PLATOS_SERVICE_SECRET` from env and wires the upgrade. See [Connected entities](/docs/connected-entities).
 
 ### Mint a session token from the webapp
 

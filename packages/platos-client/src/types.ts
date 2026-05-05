@@ -1,9 +1,9 @@
 /**
- * @platos/client — shared type surface.
+ * @platosdev/client — shared type surface.
  *
  * Types re-exported from the root `index.ts`. Keeping them isolated so
  * consumer code that only needs types (e.g. server-side schema
- * generation) can `import type { ... } from "@platos/client/types"`
+ * generation) can `import type { ... } from "@platosdev/client/types"`
  * without pulling in `socket.io-client`.
  */
 

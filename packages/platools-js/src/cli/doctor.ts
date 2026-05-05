@@ -35,7 +35,7 @@ export interface DoctorCliOptions {
  * SDK consumers structure their app like this:
  *
  *     // myApp/tools.ts
- *     import { Platools } from "@platools/sdk";
+ *     import { Platools } from "@platosdev/platools-sdk";
  *     export const platools = new Platools();
  *     platools.tool({...}, async (...) => ...);
  *

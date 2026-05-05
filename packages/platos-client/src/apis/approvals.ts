@@ -1,5 +1,5 @@
 /**
- * @platos/client — approvals API (human-in-the-loop).
+ * @platosdev/client — approvals API (human-in-the-loop).
  *
  * Scope-gated list + resolve endpoints backing the HITL approval
  * waitpoint that agents open via `request_approval` / `cancel_run`.

@@ -615,7 +615,7 @@ services:
   docs-mcp-bridge:
     # Build context is the repo root (not the bridge dir alone) so the
     # Dockerfile can reach `packages/platools-js` — the bridge depends
-    # on @platools/sdk via `file:../../packages/platools-js`, and the
+    # on @platosdev/platools-sdk via `file:../../packages/platools-js`, and the
     # workspace package needs to be built + bundled into the image.
     build:
       context: .

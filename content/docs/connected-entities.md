@@ -77,7 +77,7 @@ curl -X POST https://platos.example.com/agent/v1/entities \
 Use `@platools/ts` (Node) or `@platools/py` (Python):
 
 ```ts
-import { connect } from "@platools/sdk";
+import { connect } from "@platosdev/platools-sdk";
 
 const conn = connect({
   url: "wss://platos.example.com/connections",

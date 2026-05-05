@@ -1,8 +1,8 @@
-# `@platos/token-mint`
+# `@platosdev/token-mint`
 
 Mint [Platos](https://platos.dev) session tokens from your backend.
 
-A Platos session token is an HS256 JWT signed with your entity's `serviceSecret`. This library takes `(serviceSecret, claims, ttl)` and hands you back the string your frontend can pass to `@platos/client`.
+A Platos session token is an HS256 JWT signed with your entity's `serviceSecret`. This library takes `(serviceSecret, claims, ttl)` and hands you back the string your frontend can pass to `@platosdev/client`.
 
 ## Why this exists
 
@@ -11,14 +11,14 @@ Every customer wiring up Platos previously had to implement HS256 signing agains
 ## Install
 
 ```bash
-npm install @platos/token-mint
+npm install @platosdev/token-mint
 ```
 
 ## Use
 
 ```ts
 // server.ts
-import { mintSessionToken } from "@platos/token-mint";
+import { mintSessionToken } from "@platosdev/token-mint";
 
 app.post("/api/platos-session", async (req, res) => {
   const token = mintSessionToken({
@@ -30,6 +30,12 @@ app.post("/api/platos-session", async (req, res) => {
       userId:         req.session.userId,
       entityId:       "my-entity",
       userToken:      req.session.userToken, // forwarded to your tool backend
+      // Optional — visitor identity. ScopeGuard surfaces these as
+      // {{user.name}} / {{user.email}} in prompts and dynamic blocks,
+      // and they land in the trace's user_display_name / user_email
+      // columns. Plaintext PII; only sign in what your app already
+      // collected lawfully.
+      userMeta:       { name: req.user.name, email: req.user.email },
     },
     ttlSeconds: 3600, // 1 hour
   });
@@ -39,7 +45,7 @@ app.post("/api/platos-session", async (req, res) => {
 
 ```tsx
 // client.tsx
-import { PlatosClient } from "@platos/client";
+import { PlatosClient } from "@platosdev/client";
 
 const res = await fetch("/api/platos-session", { method: "POST" });
 const { token } = await res.json();
@@ -93,7 +99,7 @@ Payload example:
 ## Testing / introspection
 
 ```ts
-import { decodeSessionToken } from "@platos/token-mint";
+import { decodeSessionToken } from "@platosdev/token-mint";
 
 const { header, payload, signatureValid } = decodeSessionToken(token, serviceSecret);
 // signatureValid === true when the signature matches.
@@ -103,8 +109,15 @@ Production traffic is verified by the agent itself — don't call this in a hot 
 
 ## Test vectors
 
-See `__tests__/vectors.test.ts` for deterministic input → output pairs against known secrets. Use these to port this library to other languages (Python + Go stubs coming in v0.2).
+See `tests/vectors.test.ts` in the source repo for deterministic input → output pairs against known secrets. Use these as a reference if you're implementing the same token format in another language.
 
 ## Licence
 
-Apache 2.0.
+Apache 2.0 — see `LICENSE`. Same as Platos itself.
+
+## Source + issues
+
+- Repo: https://github.com/winsenlabs/platos
+- Package directory: `packages/platos-token-mint`
+- Issues: https://github.com/winsenlabs/platos/issues
+- Docs: https://platos.dev/docs/auth-modes

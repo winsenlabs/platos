@@ -9,7 +9,7 @@
  * Usage:
  *
  *     import { z } from "zod";
- *     import { Platools } from "@platools/sdk";
+ *     import { Platools } from "@platosdev/platools-sdk";
  *
  *     const platools = new Platools({
  *       url: process.env.PLATOS_URL,

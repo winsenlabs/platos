@@ -49,4 +49,4 @@ Mirrors the TypeScript SDK:
 - Realtime streaming via `websockets` with buffer-during-disconnect + reconnect
 - Unified trigger.dev ops under `client.trigger.tasks / runs / schedules / batches`
 
-See the mirrored TypeScript package `@platos/client` for the full surface.
+See the mirrored TypeScript package `@platosdev/client` for the full surface.

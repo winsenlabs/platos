@@ -1,5 +1,5 @@
 /**
- * @platos/client — error hierarchy.
+ * @platosdev/client — error hierarchy.
  *
  * Theme I.1 — PlatosError is the root. Subclasses let consumer code do:
  *

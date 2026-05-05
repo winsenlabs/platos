@@ -1,10 +1,28 @@
-# @platools/sdk
+# @platosdev/platools-sdk
 
-**Your AI Arsenal.** Turn any backend function into a managed, authenticated, monitored MCP tool with a single factory call.
+**Your AI Arsenal.** Turn any existing backend function — Express handler, internal service method, database query — into a managed, authenticated, monitored MCP tool with a single factory call.
+
+## Why Platools
+
+You already have a backend. It has functions like `processRefund`, `listOrders`, `searchInvoices`. Wrapping each one as an MCP tool by hand means writing boilerplate per function: JSON schemas, auth checks, role-based access, timeout handling, error envelopes, registration with the platform, websocket reconnect logic.
+
+Platools collapses all that into one decorator. You declare the tool with Zod schemas + auth metadata; the SDK handles transport, validation, scope-context propagation, retries, and the MCP wire protocol. Your function stays a normal function — directly callable from your existing code, *also* callable by an LLM agent.
+
+## Install
+
+```bash
+npm install @platosdev/platools-sdk zod
+# or
+pnpm add @platosdev/platools-sdk zod
+```
+
+Requires Node `>=20.0.0`.
+
+## Quick start
 
 ```ts
 import { z } from "zod";
-import { Platools } from "@platools/sdk";
+import { Platools } from "@platosdev/platools-sdk";
 
 const platools = new Platools();
 
@@ -49,7 +67,7 @@ import {
   currentScope,
   currentUserId,
   currentUserToken,
-} from "@platools/sdk";
+} from "@platosdev/platools-sdk";
 
 const platools = new Platools();
 
@@ -137,7 +155,7 @@ the agent's `_context` envelope (built from the tool's
 
 ```ts
 import { z } from "zod";
-import { Platools } from "@platools/sdk";
+import { Platools } from "@platosdev/platools-sdk";
 
 const platools = new Platools();
 
@@ -196,6 +214,26 @@ protocol (`src/transport/protocol.ts`) is byte-compatible with
 `platools/transport/protocol.py` so the platform's router does not
 care which SDK produced a registration.
 
-## Status
+## Cross-language parity
 
-Phase K (PLATOS-40) complete — full feature parity with `platools-py`.
+A Python equivalent ships as [`platools`](https://pypi.org/project/platools/) (PyPI). Both SDKs share the same wire protocol, the same envelope semantics, and the same `current_context()` / `currentContext()` strict-context rule, so you can mix Python and TypeScript tools under the same Platos entity without the platform caring which one produced a registration.
+
+## Configuration
+
+Two values, by env or constructor:
+
+- `PLATOS_URL` (or `config.url`) — the WebSocket URL the platform exposes for tool sync, e.g. `ws://platos:3100/tools/sync` (internal Docker network) or `wss://platos.your-domain.com/tools/sync` (external).
+- `PLATOS_SECRET` (or `config.secret`) — the connected entity's `serviceSecret`, minted in the dashboard when you registered the entity. It's encrypted at rest in Platos and shown plaintext exactly once at creation.
+
+Both are required for `connect()`. The constructor + `tool()` calls work without them — useful for unit tests that only care about schema generation.
+
+## Licence
+
+Apache 2.0 — see `LICENSE`. Same as Platos itself.
+
+## Source + issues
+
+- Repo: https://github.com/winsenlabs/platos
+- Package directory: `packages/platools-js`
+- Issues: https://github.com/winsenlabs/platos/issues
+- Docs: https://platos.dev/docs/connected-entities

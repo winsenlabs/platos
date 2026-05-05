@@ -11,7 +11,7 @@
     "dev": "tsx src/server.ts"
   },
   "dependencies": {
-    "@platools/sdk": "*",
+    "@platosdev/platools-sdk": "*",
     "zod": "3.23.8"
   },
   "devDependencies": {

@@ -9,7 +9,7 @@ The default upstream is the **public Platos docs MCP** at `https://mcp.platos.de
 On startup the bridge:
 
 1. Calls `tools/list` against the upstream MCP via JSON-RPC POST.
-2. Registers each tool through `@platools/sdk`, with the upstream's input schema attached as the platools tool description.
+2. Registers each tool through `@platosdev/platools-sdk`, with the upstream's input schema attached as the platools tool description.
 3. Connects to the Platos agent over WebSocket using your entity's service secret.
 4. On every tool invocation from a Platos agent, forwards the call to the upstream MCP via `tools/call` and unwraps the standard MCP response (preferring `structuredContent` when available).
 5. Re-fetches the upstream catalog every 10 minutes so new tools added upstream become available without restarting.
@@ -52,7 +52,7 @@ Platos agent ──(tool-call via WS)──▶ this bridge ──(JSON-RPC POST)
             ◀──(result via WS)─────             ◀──(JSON-RPC result)──
 ```
 
-The bridge holds no state — every call is forwarded to the upstream. Authentication on the upstream side is done via the `MCP_UPSTREAM_AUTH_HEADER`. Authentication on the Platos side is done via the entity service secret + HMAC-signed WebSocket frames (handled by `@platools/sdk`).
+The bridge holds no state — every call is forwarded to the upstream. Authentication on the upstream side is done via the `MCP_UPSTREAM_AUTH_HEADER`. Authentication on the Platos side is done via the entity service secret + HMAC-signed WebSocket frames (handled by `@platosdev/platools-sdk`).
 
 The platools SDK runs the WebSocket transport with HMAC signing, exponential reconnect backoff, and tool re-registration on reconnect, so this file stays small and only owns the upstream-MCP plumbing.
 

@@ -1,5 +1,5 @@
 /**
- * @platos/client — threads API + realtime streaming. Theme I.1 + I.3.
+ * @platosdev/client — threads API + realtime streaming. Theme I.1 + I.3.
  *
  * `send()` is the important one — returns an async-iterable of
  * `PlatosStreamEvent`. Hardening (I.3):

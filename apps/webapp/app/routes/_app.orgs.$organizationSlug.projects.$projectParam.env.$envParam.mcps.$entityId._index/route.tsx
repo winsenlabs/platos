@@ -333,7 +333,7 @@ export default function McpEntityDetailPage() {
                   <code className="font-mono text-xs">mcpClientId</code>) to flow to your entity backend.
                   Your backend must use a recent{" "}
                   <code className="font-mono text-xs">platools</code> (Python ≥ 0.2.0) or{" "}
-                  <code className="font-mono text-xs">@platools/sdk</code> (JS ≥ 0.2.0) — these
+                  <code className="font-mono text-xs">@platosdev/platools-sdk</code> (JS ≥ 0.2.0) — these
                   SDKs pop <code className="font-mono text-xs">_context</code> from tool kwargs
                   before your handler runs and expose it via{" "}
                   <code className="font-mono text-xs">current_context()</code> /{" "}

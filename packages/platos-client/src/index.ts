@@ -1,5 +1,5 @@
 /**
- * @platos/client — official JavaScript / TypeScript SDK for Platos
+ * @platosdev/client — official JavaScript / TypeScript SDK for Platos
  * (Apache 2.0 open-source agent runtime).
  *
  * Surface (Theme I.1 – I.3, extending PPR-34 MVP):

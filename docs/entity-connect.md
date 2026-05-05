@@ -44,7 +44,7 @@ After regeneration the old secret becomes invalid immediately. Update your backe
 
 ## platools SDK walkthrough
 
-The **platools** SDK handles the WebSocket handshake, reconnect backoff, tool-schema marshaling, and HMAC verification on inbound tool calls. TypeScript (`@platools/sdk`) and Python (`platools`) packages ship side-by-side.
+The **platools** SDK handles the WebSocket handshake, reconnect backoff, tool-schema marshaling, and HMAC verification on inbound tool calls. TypeScript (`@platosdev/platools-sdk`) and Python (`platools`) packages ship side-by-side.
 
 Both read the platform URL and the entity's `serviceSecret` from two env vars:
 
@@ -55,7 +55,7 @@ Both read the platform URL and the entity's `serviceSecret` from two env vars:
 
 ```ts
 import { z } from "zod";
-import { Platools } from "@platools/sdk";
+import { Platools } from "@platosdev/platools-sdk";
 
 const platools = new Platools({
   url: process.env.PLATOS_URL,

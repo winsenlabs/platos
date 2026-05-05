@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 /**
- * Vitest config for `@platools/sdk`.
+ * Vitest config for `@platosdev/platools-sdk`.
  *
  * - `include` targets the repo's `tests/` directory, which is kept
  *   out of the shipped `dist/` by `tsconfig.json`.

@@ -92,7 +92,7 @@ function emitLegacyWarning(logger?: { warn(...args: unknown[]): void }): void {
   if (warnedLegacy) return;
   warnedLegacy = true;
   const msg =
-    "[@platools/sdk] legacy HMAC request received (no X-Platos-Nonce). " +
+    "[@platosdev/platools-sdk] legacy HMAC request received (no X-Platos-Nonce). " +
     "Replay protection is DEGRADED for this call. Upgrade the Platos agent " +
     "to the version that signs with {ts}.{nonce}.{body} — see docs/tool-gateway.md.";
   if (logger) logger.warn(msg);

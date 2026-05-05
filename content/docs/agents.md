@@ -64,7 +64,7 @@ Navigate to `/orgs/{org}/projects/{project}/env/{env}/agents/new`. The wizard wa
 ### Create from MCP
 
 ```ts
-import { PlatosClient } from "@platos/client";
+import { PlatosClient } from "@platosdev/client";
 
 const platos = new PlatosClient({ token: process.env.PLATOS_PAT });
 

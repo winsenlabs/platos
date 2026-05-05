@@ -1,5 +1,5 @@
 /**
- * @platos/client — agents API. Theme I.1.
+ * @platosdev/client — agents API. Theme I.1.
  */
 
 import type { PlatosClient } from "../client.js";

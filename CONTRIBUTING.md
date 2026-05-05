@@ -63,8 +63,8 @@ pnpm run typecheck --filter webapp           # ~90s
 Working in `packages/*` (public SDK packages):
 
 ```bash
-pnpm run build --filter @platos/client
-pnpm run test --filter @platos/client
+pnpm run build --filter @platosdev/client
+pnpm run test --filter @platosdev/client
 pnpm run changeset:add                       # required for any package change
 ```
 

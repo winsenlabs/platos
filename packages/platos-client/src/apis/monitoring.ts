@@ -1,5 +1,5 @@
 /**
- * @platos/client — monitoring API.
+ * @platosdev/client — monitoring API.
  *
  * Read-only reporting surface: run list, trace view, cost rollups.
  * Thin wrappers over the existing webapp / agent REST endpoints.

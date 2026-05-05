@@ -2,7 +2,7 @@
  * `/embed/:agentId` — iframe-embedded chat widget for public-guest agents.
  *
  * This route is the iframe target of the `<platos-agent>` web
- * component (@platos/embed). It:
+ * component (@platosdev/embed). It:
  *   1. Fetches the agent's public metadata (name, theme hints) —
  *      404s if the agent isn't marked public-guest so attackers can't
  *      enumerate private agent ids.

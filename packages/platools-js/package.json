@@ -1,16 +1,16 @@
 {
-  "name": "@platools/sdk",
+  "name": "@platosdev/platools-sdk",
   "version": "0.2.0",
   "description": "Platools — Your AI Arsenal. Turn any backend function into a managed, authenticated, monitored MCP tool with one decorator.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/platos-dev/platos",
+    "url": "https://github.com/winsenlabs/platos",
     "directory": "packages/platools-js"
   },
-  "homepage": "https://github.com/platos-dev/platos/tree/main/packages/platools-js#readme",
+  "homepage": "https://github.com/winsenlabs/platos/tree/main/packages/platools-js#readme",
   "bugs": {
-    "url": "https://github.com/platos-dev/platos/issues"
+    "url": "https://github.com/winsenlabs/platos/issues"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -36,7 +36,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

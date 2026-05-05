@@ -4,7 +4,7 @@ Minimal Next.js 15 App Router starter that integrates a [Platos](https://platos.
 
 What's in here:
 
-- **Server action** (`app/platos/token/route.ts`) that mints a Platos session token via `@platos/token-mint` using your entity's `PLATOS_ENTITY_SERVICE_SECRET`.
+- **Server action** (`app/platos/token/route.ts`) that mints a Platos session token via `@platosdev/token-mint` using your entity's `PLATOS_ENTITY_SERVICE_SECRET`.
 - **Client page** (`app/chat/page.tsx`) that fetches the token, opens a `PlatosClient`, and streams chat via `useAgentStream` from `@platos/react-hooks`.
 
 ## Setup
@@ -27,7 +27,7 @@ npm run dev
 
 - **Auth**: the example demo-user passes `userId` directly from `cookies()` — replace with your auth system.
 - **Token refresh**: the Platos client calls `onTokenRefresh` on 401; the server action re-mints using the same logic.
-- **Public chat**: if your agent has `visibility: "public-guest"`, skip the token route and use the `@platos/embed` package instead.
+- **Public chat**: if your agent has `visibility: "public-guest"`, skip the token route and use the `@platosdev/embed` package instead.
 
 ## Licence
 

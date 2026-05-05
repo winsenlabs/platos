@@ -1,5 +1,5 @@
 /**
- * @platos/client — background-operations (BGO) surface (Theme I.2; renamed
+ * @platosdev/client — background-operations (BGO) surface (Theme I.2; renamed
  * under Theme BGO).
  *
  * Mirrors the agent's B.5 meta-tools as first-class SDK calls so

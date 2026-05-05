@@ -62,7 +62,7 @@ A stable WebSocket that survives long turns and ordinary network blips.
 
 4. **Check the SDK reconnect backoff.**
 
-   `@platos/client` reconnects with exponential backoff (1s, 2s, 4s, ..., max 30s). After 30 seconds disconnected, it re-fetches message history rather than replay. If you see "lost" messages on a long disconnect, this is why; bridge through `messages.list`.
+   `@platosdev/client` reconnects with exponential backoff (1s, 2s, 4s, ..., max 30s). After 30 seconds disconnected, it re-fetches message history rather than replay. If you see "lost" messages on a long disconnect, this is why; bridge through `messages.list`.
 
 5. **Check the audit log.**
 

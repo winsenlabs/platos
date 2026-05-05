@@ -1,15 +1,17 @@
-# `@platos/client`
+# `@platosdev/client`
 
-Official JavaScript/TypeScript client for [Platos](https://platos.dev) — the open-source agent runtime.
+Official JavaScript / TypeScript client SDK for [Platos](https://platos.dev) — the open-source agent runtime.
 
-Agents · threads · realtime streaming · approvals · budgets · tool calls.
+Agents · threads · realtime streaming · approvals · budgets · background operations · monitoring.
 
 ## Install
 
 ```bash
-npm install @platos/client
+npm install @platosdev/client
 # or
-pnpm add @platos/client
+pnpm add @platosdev/client
+# or
+yarn add @platosdev/client
 ```
 
 Requires Node `>=18.20.0` (for native `fetch` and `ReadableStream`).
@@ -17,34 +19,30 @@ Requires Node `>=18.20.0` (for native `fetch` and `ReadableStream`).
 ## Quick start
 
 ```ts
-import { PlatosClient } from "@platos/client";
+import { PlatosClient } from "@platosdev/client";
 
 const platos = new PlatosClient({
   baseUrl: "https://platos.your-domain.com",
   sessionToken: "<minted by your backend — see Auth below>",
 });
 
-// Create a thread
+// Create a thread for an agent.
 const thread = await platos.threads.create({ agentId: "agt_abc123" });
 
-// Stream a turn
-const stream = platos.agents.stream(thread.id, {
-  message: "Summarise today's inbox.",
-});
-
-for await (const event of stream) {
-  if (event.type === "delta") process.stdout.write(event.text);
+// Send a message and stream the response.
+for await (const event of platos.threads.send(thread.id, "Summarise today's inbox.")) {
+  if (event.type === "token") process.stdout.write(event.text);
   if (event.type === "done")  console.log("\n[turn complete]");
 }
 ```
 
-## Auth — session tokens
+## Auth — session tokens (recommended)
 
-Platos is multi-tenant. Browsers should **never** hold a raw `serviceSecret`. The pattern:
+Platos is multi-tenant. Browsers must **never** hold a raw `serviceSecret`. The pattern:
 
-1. **Backend mints** a session token signed with your entity's `serviceSecret`. Use `@platos/token-mint` (see below) or follow the `docs/session-tokens.md` wire format.
-2. **Browser** calls `new PlatosClient({ sessionToken })`. The token is a short-lived JWT (default 1 hour) carrying your scope tuple.
-3. **Refresh** by re-minting on the server when `401` is returned — `PlatosClient` automatically retries the same request with the refreshed token if you pass `onTokenRefresh`.
+1. **Backend mints** a session token signed with your entity's `serviceSecret` (use `@platosdev/token-mint` or any JWT lib).
+2. **Browser** calls `new PlatosClient({ sessionToken })`. The token is a short-lived JWT carrying your scope tuple `(organizationId, projectId, environmentId)`.
+3. **Refresh** by re-minting on the server; pass `onTokenRefresh` so the client retries automatically on `401`.
 
 ```ts
 const platos = new PlatosClient({
@@ -58,69 +56,93 @@ const platos = new PlatosClient({
 });
 ```
 
-## User identity passthrough
+## User identity passthrough (`userMeta`)
 
-If your agent needs to know *which of your users* is speaking (for per-user memory, rate limits, auth on tools), pass a `userToken` — an opaque identifier minted by your backend. Platos forwards it to your tool backend as `X-Platos-User-Token`:
+If your agent needs to know *which of your users* is speaking, sign a `userMeta: { name, email }` claim into the session token. ScopeGuard surfaces it as `{{user.name}}` / `{{user.email}}` in prompts and dynamic blocks, and the trace's identity columns get populated. See [Auth modes docs](https://platos.dev/docs/auth-modes#visitor-identity-usermeta).
+
+## Direct-header mode (server-to-server)
+
+For trusted server-to-server use only — never the browser:
 
 ```ts
 const platos = new PlatosClient({
-  baseUrl: "...",
-  sessionToken: sessionToken,
-  userToken: "usr_alice_42",
+  baseUrl: "http://platos:3100",
+  apiKey: process.env.PLATOS_INTERNAL_TOKEN!,
+  scope: { organizationId, projectId, environmentId },
 });
 ```
 
-## Streaming in the browser
+## Streaming events
 
-`platos.agents.stream()` returns an async iterator that works in Node, Deno, and browsers. For React, use the dedicated hook:
+`platos.threads.send(...)` returns an `AsyncIterable<PlatosStreamEvent>`. Common event types:
 
-```tsx
-import { useAgentStream } from "@platos/react-hooks";
+| `event.type` | When it fires |
+|---|---|
+| `connected` / `disconnected` / `reconnecting` | WebSocket lifecycle |
+| `token` | Streaming text chunk (`event.text`) |
+| `thinking` | Reasoning / extended-thinking chunk |
+| `tool_call` | Agent invoked a tool (`name`, `params`, `callId`) |
+| `tool_result` | Tool returned (`name`, `result`, optional `display` hint) |
+| `approval_needed` | HITL gate — call `client.approvals.resolve(...)` to continue |
+| `artifact_start` / `artifact_delta` / `artifact_committed` | Streaming artifact build |
+| `safety_flags` | PII / safety filter hits |
+| `done` | Turn finished (carries `usage` cost summary) |
+| `error` | Server-side error (carries `message` + extras) |
 
-function Chat({ threadId }) {
-  const { events, send, isStreaming } = useAgentStream({ client: platos, threadId });
-  // ...
-}
-```
+The full union is exported as `PlatosStreamEvent`; reach for it for exhaustive `switch` checks.
 
 ## Error handling
 
-All errors extend `PlatosError` with a stable `code` property:
+All errors extend `PlatosError`. Subclasses encode the failure category:
 
 ```ts
+import {
+  PlatosAuthError,
+  PlatosNotFoundError,
+  PlatosValidationError,
+  PlatosRateLimitError,
+  PlatosServerError,
+  PlatosNetworkError,
+  isRetryableError,
+} from "@platosdev/client";
+
 try {
-  await platos.agents.stream(thread.id, { message: "..." });
+  await platos.threads.send(thread.id, "...").next();
 } catch (err) {
-  if (err instanceof PlatosError) {
-    switch (err.code) {
-      case "turn_in_progress":       return "Another turn is streaming; retry later.";
-      case "bgo_cap_exceeded":       return "Agent hit the background-operation cap.";
-      case "already_processed":      return "Duplicate request (idempotency key already used).";
-      case "unauthorized":           return "Session token expired.";
-      case "quota_exceeded":         return "Budget cap reached.";
-    }
-  }
+  if (err instanceof PlatosAuthError)        { /* 401 / 403 — refresh token */ }
+  else if (err instanceof PlatosRateLimitError) { /* 429 — wait err.retryAfterMs */ }
+  else if (err instanceof PlatosValidationError) { /* 400 — fix payload */ }
+  else if (err instanceof PlatosServerError) { /* 5xx — likely transient */ }
+  else if (err instanceof PlatosNetworkError) { /* fetch failed */ }
+  else if (isRetryableError(err))            { /* retry path */ }
+  throw err;
 }
 ```
 
-## Namespaces
+## API surface
 
-| Namespace | What it does |
+| Namespace | Methods |
 |---|---|
-| `client.agents` | `stream`, `get`, `list` |
-| `client.threads` | `create`, `get`, `list`, `fork` |
-| `client.messages` | `list`, `rate` |
-| `client.memories` | `list`, `get`, `add`, `update`, `delete`, `export` |
+| `client.agents` | `list`, `get`, `listVersions` |
+| `client.threads` | `create`, `list`, `get`, `messages`, `artifacts`, `send` (streaming) |
 | `client.approvals` | `list`, `resolve` (human-in-the-loop) |
-| `client.budgets` | `list`, `status` (read-only — caps managed via UI) |
+| `client.budgets` | `list`, `status` (read-only — caps managed in the dashboard) |
 | `client.monitoring` | `runs`, `traces`, `costByAgent`, `costByScope` |
-| `client.artifacts` | `get`, `list` (Theme F) |
-| `client.skills` | `list`, `enable`, `disable` |
+| `client.bgo` | `tasks`, `runs`, `schedules`, `batches` (background-operation engine) |
+
+## Versioning
+
+`@platosdev/client` follows semver. Major bumps signal a breaking change to the wire shape or the public type surface; minor bumps add namespaces or methods; patch bumps are non-breaking fixes.
+
+The wire protocol matches the agent service version; pin a recent client when you upgrade Platos so new event types deserialize correctly.
 
 ## Licence
 
-Apache 2.0 — same as Platos itself.
+Apache 2.0 — see `LICENSE`. Same as Platos itself.
 
-## Contributing
+## Source + issues
 
-Source + issue tracker: https://github.com/platos-dev/platos
+- Repo: https://github.com/winsenlabs/platos
+- Package directory: `packages/platos-client`
+- Issues: https://github.com/winsenlabs/platos/issues
+- Docs: https://platos.dev/docs

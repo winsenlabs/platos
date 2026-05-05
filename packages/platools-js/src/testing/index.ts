@@ -1,5 +1,5 @@
 /**
- * Public exports for the `@platools/sdk/testing` subpath.
+ * Public exports for the `@platosdev/platools-sdk/testing` subpath.
  *
  * Mirrors `platools/testing/__init__.py`.
  */

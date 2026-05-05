@@ -117,12 +117,12 @@ content/
 ## SDKs
 
 ```bash
-npm install @platos/client      # JS / TS
+npm install @platosdev/client      # JS / TS
 pip install platos-client       # Python (coming soon)
 ```
 
 ```ts
-import { PlatosClient } from "@platos/client";
+import { PlatosClient } from "@platosdev/client";
 
 const client = new PlatosClient({
   baseUrl: "https://your-platos-host.com",
