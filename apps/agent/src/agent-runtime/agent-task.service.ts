@@ -147,7 +147,34 @@ export class AgentTaskService {
       replyToMessageId?: string | null;
     } = {},
   ): AsyncGenerator<AgentStreamEvent> {
-    const agentId = options.agentId || "default";
+    // Resolve the agentId. Priority:
+    //   1. caller-supplied options.agentId — used when an integrator explicitly
+    //      switches an agent mid-thread, or for one-off turns without a thread.
+    //   2. the thread row's agentId — when the SDK sends a message via
+    //      `threads.send(threadId, msg)` without including agentId in the body
+    //      (the common case for any client built on top of `@platos/client`).
+    //   3. literal "default" — last-resort fallback for legacy callers.
+    //
+    // Pre-fix: only (1) and (3). When the SDK didn't include agentId in the
+    // POST body, the runtime fell straight to "default", which loaded a
+    // generic "You are a helpful AI assistant" config and ignored the
+    // thread's actual agent — root cause of "the marketing widget gets a
+    // different personality than the dashboard chat".
+    let agentId = options.agentId;
+    if (!agentId && options.threadId) {
+      try {
+        const threadRow = await this.prisma.platosAgentThread.findFirst({
+          where: { id: options.threadId },
+          select: { agentId: true },
+        });
+        if (threadRow?.agentId) agentId = threadRow.agentId;
+      } catch (err: any) {
+        this.logger.warn(
+          `[agent-task] thread→agentId lookup failed for ${options.threadId}: ${err?.message ?? err}`,
+        );
+      }
+    }
+    if (!agentId) agentId = "default";
     const turnStartNs = Date.now() * 1_000_000;
 
     // EOBD.27 — compose the caller-supplied AbortSignal with a turn-level
