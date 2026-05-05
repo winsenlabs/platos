@@ -320,7 +320,38 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       return;
     }
 
-    const agentId = data.agentId || "default";
+    // Resolve agentId. Priority:
+    //   1. data.agentId — if the client explicitly sent one.
+    //   2. The thread's stored agentId — when data.threadId is set but
+    //      data.agentId is not (the common case for SDK consumers calling
+    //      `client.threads.send(threadId, msg)` — the SDK doesn't include
+    //      agentId in subsequent sends because the thread already has it).
+    //   3. Literal "default" — last-resort fallback.
+    //
+    // Pre-fix: only (1) and (3). When the SDK sent a follow-up message
+    // through this gateway with no agentId in the body, the runtime
+    // resolved to "default", loaded a generic "You are a helpful AI
+    // assistant" config, and ignored the thread's actual agent. Symptom:
+    // the marketing widget's chat answered in a generic Claude voice
+    // instead of the configured prompt — same agentId, same scope,
+    // different code path than the dashboard chat (which always passes
+    // agentId on each turn).
+    let agentId = data.agentId;
+    if (!agentId && data.threadId) {
+      try {
+        const threadRow = await this.prisma.platosAgentThread.findFirst({
+          where: { id: data.threadId },
+          select: { agentId: true },
+        });
+        if (threadRow?.agentId) agentId = threadRow.agentId;
+      } catch (err: any) {
+        console.warn(
+          `[connections.gateway] thread→agentId lookup failed for ${data.threadId}: ${err?.message ?? err}`,
+        );
+      }
+    }
+    if (!agentId) agentId = "default";
+
     // Do NOT auto-generate threadId here — executeStreamingTurn handles thread
     // creation via getOrCreateThread and emits the resulting thread_id in the
     // meta event. Frontend must capture that and pass it in subsequent messages.
