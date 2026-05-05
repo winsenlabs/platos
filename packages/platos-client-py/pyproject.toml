@@ -4,11 +4,11 @@ version = "0.1.0"
 description = "Official Python SDK for Platos — agents, threads, realtime streaming."
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{ name = "Platos" }]
+authors = [{ name = "Winsen Labs", email = "hello@winsenlabs.com" }]
 license = { text = "Apache-2.0" }
-keywords = ["platos", "agents", "llm", "sdk"]
+keywords = ["platos", "agents", "llm", "sdk", "mcp"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3",
@@ -16,6 +16,8 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Framework :: AsyncIO",
 ]
 dependencies = [
   "httpx>=0.27.0",
@@ -36,8 +38,9 @@ asyncio_mode = "auto"
 
 [project.urls]
 Homepage = "https://platos.dev"
-Repository = "https://github.com/platos-dev/platos"
-Issues = "https://github.com/platos-dev/platos/issues"
+Documentation = "https://platos.dev/docs/sdks"
+Repository = "https://github.com/winsenlabs/platos"
+Issues = "https://github.com/winsenlabs/platos/issues"
 
 [build-system]
 requires = ["hatchling"]

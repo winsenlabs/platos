@@ -1,11 +1,29 @@
 # platools
 
-**Your AI Arsenal.** Turn any backend function into a managed, authenticated, monitored MCP tool with a single decorator.
+**Your AI Arsenal.** Turn any existing Python function — Flask handler, FastAPI route, internal service method, database query — into a managed, authenticated, monitored MCP tool with a single decorator.
+
+## Why Platools
+
+You already have a backend. It has functions like `process_refund`, `list_orders`, `search_invoices`. Wrapping each one as an MCP tool by hand means writing JSON schemas, auth checks, role-based access, timeout handling, error envelopes, registration with the platform, and websocket reconnect logic — per function.
+
+Platools collapses all that into one decorator. You declare the tool with type hints + docstring + auth metadata; the SDK introspects, generates the MCP schema, handles transport, validates payloads, propagates scope context, retries, and speaks the wire protocol. Your function stays a normal callable — directly invokable from your existing code, *also* dispatchable by an LLM agent.
+
+## Install
+
+```bash
+pip install platools
+# or
+uv add platools
+```
+
+Requires Python `>=3.10`. Works with FastAPI, Flask, Django, plain scripts — anything that can host an asyncio event loop.
+
+## Quick start
 
 ```python
 from platools import Platools
 
-platools = Platools()
+platools = Platools()  # picks up PLATOS_URL + PLATOS_SECRET from env
 
 @platools.tool(auth="user", roles=["support", "admin"])
 def process_refund(order_id: str, reason: str) -> RefundResult:
@@ -16,6 +34,11 @@ def process_refund(order_id: str, reason: str) -> RefundResult:
         reason:   Reason for the refund, surfaced in the audit log.
     """
     return refund_service.process(order_id, reason)
+
+
+# In your app bootstrap:
+import asyncio
+asyncio.run(platools.connect())
 ```
 
 On startup the SDK introspects every decorated function, generates an MCP-compliant JSON schema from the type hints + docstring, opens an outbound WebSocket to the Platos platform, and starts executing tool calls locally.
@@ -182,7 +205,26 @@ Example Claude Desktop config (`~/.config/Claude/claude_desktop_config.json`):
 }
 ```
 
-## Status
+## Cross-language parity
 
-Phase A scaffold. Real decorator + schema generation lands in PLATOS-4.
-CLI (`platools doctor`, `platools test`, `platools serve`) lands in PLATOS-18, -19, -41.
+A TypeScript / JavaScript equivalent ships as [`@platosdev/platools-sdk`](https://www.npmjs.com/package/@platosdev/platools-sdk) on npm. Both SDKs share the same wire protocol, the same envelope semantics, and the same `current_context()` / `currentContext()` strict-context rule, so you can mix Python and TypeScript tools under the same Platos entity without the platform caring which language produced a registration.
+
+## Configuration
+
+Two values, by env or constructor:
+
+- `PLATOS_URL` (or `Platools(url=...)`) — the WebSocket URL the platform exposes for tool sync, e.g. `ws://platos:3100/tools/sync` (internal Docker network) or `wss://platos.your-domain.com/tools/sync` (external).
+- `PLATOS_SECRET` (or `Platools(secret=...)`) — the connected entity's `serviceSecret`, minted in the dashboard when you registered the entity. It's encrypted at rest in Platos and shown plaintext exactly once at creation.
+
+Both are required for `connect()`. The constructor + `@tool()` decorator work without them — useful for unit tests that only exercise schema generation.
+
+## Licence
+
+Apache 2.0 — see `LICENSE`. Same as Platos itself.
+
+## Source + issues
+
+- Repo: https://github.com/winsenlabs/platos
+- Package directory: `packages/platools-py`
+- Issues: https://github.com/winsenlabs/platos/issues
+- Docs: https://platos.dev/docs/connected-entities

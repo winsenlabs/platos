@@ -9,18 +9,20 @@ readme = "README.md"
 # should do a standalone `uv lock` of this package to produce 3.10-compat
 # wheels before publishing.
 requires-python = ">=3.10"
-authors = [{ name = "Platos" }]
-license = { text = "MIT" }
+authors = [{ name = "Winsen Labs", email = "hello@winsenlabs.com" }]
+license = { text = "Apache-2.0" }
 keywords = ["mcp", "agents", "llm", "tools", "pydantic", "fastapi"]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
+  "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Framework :: AsyncIO",
 ]
 dependencies = [
   "pydantic>=2.9.0",
@@ -60,8 +62,10 @@ platools = "platools.cli:main"
 
 [project.urls]
 Homepage = "https://platos.dev"
-Repository = "https://github.com/platos-dev/platos"
-Issues = "https://github.com/platos-dev/platos/issues"
+Documentation = "https://platos.dev/docs/connected-entities"
+Repository = "https://github.com/winsenlabs/platos"
+Issues = "https://github.com/winsenlabs/platos/issues"
+Changelog = "https://github.com/winsenlabs/platos/blob/main/packages/platools-py/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]
