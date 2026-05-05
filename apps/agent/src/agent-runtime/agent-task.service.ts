@@ -163,13 +163,14 @@ export class AgentTaskService {
     let agentId = options.agentId;
     if (!agentId && options.threadId) {
       try {
-        const threadRow = await this.prisma.platosAgentThread.findFirst({
+        const prisma = (this.conversationService as any).prisma;
+        const threadRow = await prisma?.platosAgentThread?.findFirst?.({
           where: { id: options.threadId },
           select: { agentId: true },
         });
         if (threadRow?.agentId) agentId = threadRow.agentId;
       } catch (err: any) {
-        this.logger.warn(
+        console.warn(
           `[agent-task] thread→agentId lookup failed for ${options.threadId}: ${err?.message ?? err}`,
         );
       }
