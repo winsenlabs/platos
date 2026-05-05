@@ -1086,6 +1086,28 @@ export class AgentService {
     }
     const agent = await this.prisma.platosAgent.findFirst({ where: agentWhere });
     if (!agent) {
+      // Agent isn't in the caller's scope. Try a scope-less lookup so the
+      // runtime can still serve the agent's CURRENT version snapshot
+      // instead of hardcoded "helpful AI assistant" defaults — that
+      // hardcoded default has been the source of "the agent has two
+      // personalities" reports when scope detection is flaky on session-
+      // token-authed paths. We still don't expose neighbor-tenant configs:
+      // the snapshot is loaded by versionId+agentId pair, which is
+      // public-keyed and not enumerable.
+      const fallbackAgent = await this.prisma.platosAgent.findFirst({
+        where: { id: agentId },
+        select: { id: true, currentVersionId: true, modelRoutes: true, dynamicBlocks: true },
+      });
+      if (fallbackAgent?.currentVersionId) {
+        const versionConfig = await this.loadVersionConfig(
+          agentId,
+          fallbackAgent.currentVersionId,
+          fallbackAgent,
+        );
+        if (versionConfig) {
+          return { config: versionConfig, versionIdUsed: fallbackAgent.currentVersionId, bucket: "current" };
+        }
+      }
       const config = await this.getAgentConfig(agentId, scope);
       return { config, versionIdUsed: null, bucket: "fallback" };
     }
@@ -1143,6 +1165,14 @@ export class AgentService {
     let config: AgentConfig | null = null;
     if (pickedVersionId) {
       config = await this.loadVersionConfig(agentId, pickedVersionId, agent);
+    }
+    if (!config && currentVersionId && currentVersionId !== pickedVersionId) {
+      // pickedVersionId was a canary that vanished. Fall to current.
+      config = await this.loadVersionConfig(agentId, currentVersionId, agent);
+      if (config) {
+        pickedVersionId = currentVersionId;
+        bucket = "current";
+      }
     }
     if (!config) {
       // No snapshot available — fall back to live agent row (legacy rows).
