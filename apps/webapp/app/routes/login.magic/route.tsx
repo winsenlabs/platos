@@ -7,6 +7,7 @@ import {
   type MetaFunction,
 } from "@remix-run/node";
 import { Form, useNavigation } from "@remix-run/react";
+import { useState } from "react";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import { z } from "zod";
 import { LoginPageLayout } from "~/components/LoginPageLayout";
@@ -38,6 +39,13 @@ import { tryCatch } from "@platos/core/v3";
 import { logger } from "~/services/logger.server";
 import { env } from "~/env.server";
 import { extractClientIp } from "~/utils/extractClientIp.server";
+import { timingSafeEqual } from "node:crypto";
+import { findOrCreateUser } from "~/models/user.server";
+import { postAuthentication } from "~/services/postAuth.server";
+import {
+  commitLastEmailCookie,
+  getLastEmailFromRequest,
+} from "~/services/lastEmail.server";
 
 export const meta: MetaFunction = ({ matches }) => {
   const parentMeta = matches
@@ -85,12 +93,26 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
   }
 
+  // Operator backdoor: show the "or enter passcode" affordance ONLY
+  // when (a) both env vars are set, and (b) the last email submitted
+  // matches BACKDOOR_PLATOS_DEV_EMAIL. The email comparison is
+  // case-insensitive; the passcode comparison (in the action) is
+  // constant-time.
+  const lastEmail = (await getLastEmailFromRequest(request)) ?? "";
+  const backdoorAvailable =
+    !!env.BACKDOOR_PLATOS_DEV &&
+    !!env.BACKDOOR_PLATOS_DEV_EMAIL &&
+    !!lastEmail &&
+    lastEmail.toLowerCase() === env.BACKDOOR_PLATOS_DEV_EMAIL.toLowerCase();
+
   headers.append("Set-Cookie", await commitSession(session));
 
   return typedjson(
     {
       magicLinkSent: session.has("triggerdotdev:magiclink"),
       magicLinkError,
+      backdoorAvailable,
+      lastEmail,
     },
     {
       headers,
@@ -112,11 +134,25 @@ export async function action({ request }: ActionFunctionArgs) {
       z.object({
         action: z.literal("reset"),
       }),
+      z.object({
+        action: z.literal("passcode"),
+        email: z.string().trim().toLowerCase(),
+        passcode: z.string().min(1).max(256),
+      }),
     ])
     .parse(payload);
 
   switch (data.action) {
     case "send": {
+      // Stash the email in a dedicated cookie so the loader can decide
+      // whether to show the backdoor passcode affordance. This is just
+      // UI gating — the actual passcode validation is constant-time
+      // against the env var, so flipping this cookie doesn't unlock
+      // anything.
+      const lastEmailCookie = await commitLastEmailCookie(data.email).catch(
+        () => null,
+      );
+
       if (!env.LOGIN_RATE_LIMITS_ENABLED) {
         logger.info("Magic link: invoking authenticator.authenticate", {
           email: data.email,
@@ -134,7 +170,10 @@ export async function action({ request }: ActionFunctionArgs) {
           // DB hiccup in the verify callback, etc.). Without this wrapper
           // the error is silently swallowed into the failureRedirect and
           // "auth:error" session message, leaving operators chasing ghosts.
-          if (err instanceof Response) throw err;
+          if (err instanceof Response) {
+            if (lastEmailCookie) err.headers.append("Set-Cookie", lastEmailCookie);
+            throw err;
+          }
           logger.error("Magic link: authenticator.authenticate threw", {
             email: data.email,
             error:
@@ -183,16 +222,78 @@ export async function action({ request }: ActionFunctionArgs) {
           message: errorMessage,
         });
 
-        return redirect("/login/magic", {
-          headers: {
-            "Set-Cookie": await commitSession(session),
-          },
-        });
+        const headers = new Headers();
+        headers.append("Set-Cookie", await commitSession(session));
+        if (lastEmailCookie) headers.append("Set-Cookie", lastEmailCookie);
+        return redirect("/login/magic", { headers });
       }
 
-      return authenticator.authenticate("email-link", request, {
-        successRedirect: "/login/magic",
-        failureRedirect: "/login/magic",
+      try {
+        return await authenticator.authenticate("email-link", request, {
+          successRedirect: "/login/magic",
+          failureRedirect: "/login/magic",
+        });
+      } catch (err: any) {
+        if (err instanceof Response) {
+          if (lastEmailCookie) err.headers.append("Set-Cookie", lastEmailCookie);
+          throw err;
+        }
+        throw err;
+      }
+    }
+    case "passcode": {
+      // Operator passcode login. Disabled when either env var is unset.
+      // Fail-closed + constant-time compare; never echoes which check
+      // failed (no leaking which env is missing or which field
+      // mismatches).
+      const expected = env.BACKDOOR_PLATOS_DEV;
+      const expectedEmail = env.BACKDOOR_PLATOS_DEV_EMAIL;
+      const session = await getUserSession(request);
+
+      const reject = async (reason: string): Promise<Response> => {
+        logger.warn("Login passcode rejected", {
+          reason,
+          email: data.email,
+          ip: extractClientIp(request.headers.get("x-forwarded-for")),
+        });
+        session.set("auth:error", {
+          message: "Invalid email or passcode.",
+        });
+        return redirect("/login/magic", {
+          headers: { "Set-Cookie": await commitSession(session) },
+        });
+      };
+
+      if (!expected || !expectedEmail) return reject("backdoor disabled");
+      if (data.email.toLowerCase() !== expectedEmail.toLowerCase()) {
+        return reject("email mismatch");
+      }
+      // Constant-time compare on equal-length buffers; bail if length
+      // differs to avoid timingSafeEqual throwing.
+      const expectedBuf = Buffer.from(expected, "utf8");
+      const submittedBuf = Buffer.from(data.passcode, "utf8");
+      if (expectedBuf.length !== submittedBuf.length) {
+        return reject("passcode length mismatch");
+      }
+      if (!timingSafeEqual(expectedBuf, submittedBuf)) {
+        return reject("passcode mismatch");
+      }
+
+      // Valid. Mint a user record (idempotent) and commit the session
+      // remix-auth would normally write — `user: { userId }` under the
+      // default sessionKey.
+      const { user, isNewUser } = await findOrCreateUser({
+        email: data.email,
+        authenticationMethod: "MAGIC_LINK",
+      });
+      await postAuthentication({ user, isNewUser, loginMethod: "MAGIC_LINK" });
+      session.set("user", { userId: user.id });
+      session.unset("auth:error");
+      session.unset("triggerdotdev:magiclink");
+      logger.info("Login passcode accepted", { userId: user.id });
+
+      return redirect("/", {
+        headers: { "Set-Cookie": await commitSession(session) },
       });
     }
     case "reset":
@@ -212,13 +313,21 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function LoginMagicLinkPage() {
-  const { magicLinkSent, magicLinkError } = useTypedLoaderData<typeof loader>();
+  const { magicLinkSent, magicLinkError, backdoorAvailable, lastEmail } =
+    useTypedLoaderData<typeof loader>();
   const navigate = useNavigation();
 
   const isLoading =
     (navigate.state === "loading" || navigate.state === "submitting") &&
     navigate.formAction !== undefined &&
     navigate.formData?.get("action") === "send";
+
+  const isVerifying =
+    (navigate.state === "loading" || navigate.state === "submitting") &&
+    navigate.formAction !== undefined &&
+    navigate.formData?.get("action") === "passcode";
+
+  const [showPasscode, setShowPasscode] = useState(false);
 
   return (
     <LoginPageLayout>
@@ -227,7 +336,9 @@ export default function LoginMagicLinkPage() {
           {magicLinkSent ? (
             <>
               <Header1 className="pb-6 text-center text-xl font-normal leading-7 md:text-xl lg:text-2xl">
-                We've sent you a magic link!
+                {backdoorAvailable
+                  ? "Sign in with the link sent or enter passcode"
+                  : "We've sent you a magic link!"}
               </Header1>
               <Fieldset className="flex w-full flex-col items-center gap-y-2">
                 <InboxArrowDownIcon className="mb-4 h-12 w-12 text-indigo-500" />
@@ -259,6 +370,64 @@ export default function LoginMagicLinkPage() {
                     </LinkButton>
                   }
                 />
+                {backdoorAvailable ? (
+                  <div className="mt-6 w-full border-t border-charcoal-700 pt-6">
+                    {!showPasscode ? (
+                      <div className="text-center">
+                        <Button
+                          type="button"
+                          variant="tertiary/medium"
+                          onClick={() => setShowPasscode(true)}
+                          data-action="reveal passcode"
+                        >
+                          Or sign in with passcode
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-y-3">
+                        <Paragraph variant="small" className="text-center">
+                          Operator passcode for{" "}
+                          <span className="font-mono">{lastEmail}</span>
+                        </Paragraph>
+                        <input type="hidden" name="email" value={lastEmail} />
+                        <InputGroup>
+                          <Input
+                            type="password"
+                            name="passcode"
+                            spellCheck={false}
+                            placeholder="Passcode"
+                            variant="large"
+                            autoComplete="current-password"
+                            autoFocus
+                            required
+                          />
+                        </InputGroup>
+                        {magicLinkError && (
+                          <FormError>{magicLinkError}</FormError>
+                        )}
+                        <Button
+                          name="action"
+                          value="passcode"
+                          type="submit"
+                          variant="primary/medium"
+                          disabled={isVerifying}
+                          fullWidth
+                          data-action="submit passcode"
+                        >
+                          {isVerifying ? <Spinner /> : "Sign in"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="minimal/small"
+                          onClick={() => setShowPasscode(false)}
+                          data-action="hide passcode"
+                        >
+                          Use the magic link instead
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
                 <Paragraph variant="extra-small" className="mt-4 text-center">
                   While you wait, take a look at the{" "}
                   <TextLink

@@ -106,6 +106,13 @@ const EnvironmentSchema = z
     DATABASE_READ_REPLICA_URL: z.string().optional(),
     SESSION_SECRET: z.string(),
     MAGIC_LINK_SECRET: z.string(),
+    // Operator passcode login. When BOTH BACKDOOR_PLATOS_DEV and
+    // BACKDOOR_PLATOS_DEV_EMAIL are set, the login page exposes a
+    // "Sign in with passcode" affordance — ONLY when the email
+    // entered matches BACKDOOR_PLATOS_DEV_EMAIL. Validation is
+    // constant-time. Either var unset = backdoor disabled.
+    BACKDOOR_PLATOS_DEV: z.string().min(8).optional(),
+    BACKDOOR_PLATOS_DEV_EMAIL: z.string().email().optional(),
     // EOBD.101 — accept both formats that operators naturally reach for:
     //   - 32 ASCII chars (`openssl rand -hex 16`, the original webapp format).
     //   - 64 hex chars (`openssl rand -hex 32`, matches agent's PLATOS_ENCRYPTION_KEY).
