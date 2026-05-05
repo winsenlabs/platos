@@ -281,6 +281,23 @@ export class ScopeGuard implements CanActivate {
           });
           return false;
         }
+        // Surface JWT-supplied user identity hints to the agent prompt
+        // via sessionContext.user.{name,email}. The runtime later merges
+        // this with the User row from DB (entity-authed users like
+        // marketing-widget visitors don't have a `User` row, so the JWT
+        // is the only source of name/email for them). Empty when the
+        // entity backend didn't include userMeta in the JWT.
+        const userMeta = payload.userMeta;
+        const sessionContextFromToken =
+          userMeta && (userMeta.name || userMeta.email)
+            ? {
+                user: {
+                  ...(userMeta.name ? { name: userMeta.name } : {}),
+                  ...(userMeta.email ? { email: userMeta.email } : {}),
+                },
+              }
+            : undefined;
+
         request.scope = {
           organizationId: payload.organizationId,
           projectId: payload.projectId,
@@ -289,6 +306,9 @@ export class ScopeGuard implements CanActivate {
           entityId: payload.entityId,
           userToken: payload.userToken,
           ...(tokenAgentId ? { agentId: tokenAgentId } : {}),
+          ...(sessionContextFromToken
+            ? { sessionContext: sessionContextFromToken }
+            : {}),
           ...(traceCtx ? { traceId: traceCtx.traceId, parentSpanId: traceCtx.parentSpanId } : {}),
         } satisfies RequestScope;
         // Access key check (if configured for this scope)

@@ -39,6 +39,10 @@ export interface SessionPayload {
   /** PIFSP-1 — optional agent scope. When set the token can only be used
    * with that specific agent (ScopeGuard enforces path match). */
   agentId?: string;
+  /** Optional caller-supplied identity hints (visitor name, email).
+   * Surfaced to the agent prompt as `{{user.name}}` / `{{user.email}}`
+   * via scope.sessionContext, enriches PlatosEndUser asynchronously. */
+  userMeta?: { name?: string; email?: string };
   exp: number;
 }
 

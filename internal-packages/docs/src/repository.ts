@@ -242,23 +242,34 @@ export class DocRepository {
     if (kind === "docs" || kind === "all") corpus.push(...state.docs.values());
     if (kind === "guides" || kind === "all") corpus.push(...state.guides.values());
 
-    const phrase = trimmed.toLowerCase();
-    const terms = phrase.split(/\s+/).filter(Boolean);
+    // Normalize hyphens/underscores/em-dashes to spaces and collapse
+    // whitespace before matching. Lets `self hosting` and `self-hosting`
+    // hit the same docs, plus tolerates "trigger.dev" vs "trigger dev",
+    // "agent_id" vs "agent id", etc.
+    const normalize = (s: string): string =>
+      s
+        .toLowerCase()
+        .replace(/[-_–—]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const phrase = normalize(trimmed);
+    const terms = phrase.split(" ").filter(Boolean);
     if (terms.length === 0) return [];
 
     const results: SearchResult[] = [];
     for (const entry of corpus) {
       const fm = entry.frontmatter;
-      const title = fm.title.toLowerCase();
-      const description = fm.description.toLowerCase();
-      const body = entry.markdown.toLowerCase();
+      const title = normalize(fm.title);
+      const description = normalize(fm.description);
+      const body = normalize(entry.markdown);
       let score = 0;
       let matchedQuestion: string | null = null;
 
       // 1. Question-exact phrase.
       for (const q of fm.questions) {
-        const qLower = q.toLowerCase();
-        if (qLower.includes(phrase)) {
+        const qNorm = normalize(q);
+        if (qNorm.includes(phrase)) {
           score = Math.max(score, 1.0);
           matchedQuestion = q;
           break;
@@ -267,8 +278,8 @@ export class DocRepository {
       // 2. All terms in a single question.
       if (score < 0.85) {
         for (const q of fm.questions) {
-          const qLower = q.toLowerCase();
-          const allHit = terms.every((t) => qLower.includes(t));
+          const qNorm = normalize(q);
+          const allHit = terms.every((t) => qNorm.includes(t));
           if (allHit) {
             score = Math.max(score, 0.85);
             if (!matchedQuestion) matchedQuestion = q;
