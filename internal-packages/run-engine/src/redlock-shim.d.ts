@@ -52,17 +52,27 @@ declare module "redlock" {
     extend(duration: number): Promise<Lock>;
   }
 
+  // RedlockAbortSignal is what `using()` hands to the routine callback —
+  // an AbortSignal augmented with the underlying lock-error, if any.
+  export type RedlockAbortSignal = AbortSignal & { error?: Error };
+
   export default class Redlock extends EventEmitter {
     constructor(clients: Iterable<Client>, settings?: Partial<Settings>);
     readonly clients: Set<Client>;
     readonly settings: Settings;
     acquire(resources: string[], duration: number, settings?: Partial<Settings>): Promise<Lock>;
     release(lock: Lock): Promise<unknown>;
+    quit(): Promise<void>;
     using<T>(
       resources: string[],
       duration: number,
-      settingsOrRoutine: Partial<Settings> | ((signal: { aborted: boolean; error?: Error }) => Promise<T>),
-      routine?: (signal: { aborted: boolean; error?: Error }) => Promise<T>,
+      settings: Partial<Settings>,
+      routine?: (signal: RedlockAbortSignal) => Promise<T>,
+    ): Promise<T>;
+    using<T>(
+      resources: string[],
+      duration: number,
+      routine: (signal: RedlockAbortSignal) => Promise<T>,
     ): Promise<T>;
   }
 }
