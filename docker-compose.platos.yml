@@ -482,6 +482,10 @@ services:
       SESSION_SECRET: "${SESSION_SECRET:?required — see .env.example}"
       MAGIC_LINK_SECRET: "${MAGIC_LINK_SECRET:?required — see .env.example}"
       ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 32 ASCII chars via `openssl rand -hex 16`}"
+      # Operator passcode login. Both must be set for the backdoor to
+      # render on the login page. Either unset = backdoor disabled.
+      BACKDOOR_PLATOS_DEV: "${BACKDOOR_PLATOS_DEV:-}"
+      BACKDOOR_PLATOS_DEV_EMAIL: "${BACKDOOR_PLATOS_DEV_EMAIL:-}"
       # PLATOS_SESSION_SECRET must match the agent container's value — the
       # webapp mints platform-issued session tokens (iss: platos-platform)
       # for browser WS handshakes to the agent (PPR-7). Same signing secret
