@@ -102,8 +102,91 @@ export class OfficialSkillHandlers {
         if (toolName === "rag_list_sources") return this.ragListSources(scope, input);
         if (toolName === "rag_reindex") return this.ragReindex(scope, input);
         break;
+      case "platos.email_send":
+        if (toolName === "send_email") return this.sendEmail(scope, input);
+        break;
     }
     throw new Error(`Unknown skill handler: ${handler}`);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // platos.email_send — Resend transactional email.
+  // Resolves RESEND_API_KEY (required) + RESEND_FROM_EMAIL (optional default
+  // sender) via ScopedEnvService so per-scope keys override the container
+  // env. Failure modes (unverified sender, malformed payload, Resend
+  // rate-limit) bubble up as structured `{ ok: false, error }` so the LLM
+  // can surface the reason to the user instead of triggering retry loops.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  private async sendEmail(scope: ScopeTuple, input: Record<string, unknown>) {
+    const apiKey = await this.scopedEnv.get(scope, "RESEND_API_KEY");
+    if (!apiKey) {
+      throw new Error(
+        "send_email: RESEND_API_KEY is not set in this scope. Add it via Settings → " +
+          "Environment Variables, then enable the Email Send skill on this agent.",
+      );
+    }
+
+    const subject = String(input.subject ?? "").trim();
+    if (!subject) throw new Error("send_email: subject is required");
+
+    const html = typeof input.html === "string" ? input.html : undefined;
+    const text = typeof input.text === "string" ? input.text : undefined;
+    if (!html && !text) {
+      throw new Error("send_email: at least one of `html` or `text` is required");
+    }
+
+    const fromOverride = typeof input.from === "string" ? input.from : undefined;
+    const fromDefault = (await this.scopedEnv.get(scope, "RESEND_FROM_EMAIL")) ?? undefined;
+    const from = fromOverride ?? fromDefault;
+    if (!from) {
+      throw new Error(
+        "send_email: no sender resolved. Pass `from` explicitly or set RESEND_FROM_EMAIL " +
+          "in the scope env. The address must be on a domain verified at https://resend.com/domains.",
+      );
+    }
+
+    const to = Array.isArray(input.to) ? (input.to as string[]) : input.to;
+    if (!to || (Array.isArray(to) && to.length === 0)) {
+      throw new Error("send_email: `to` is required");
+    }
+
+    const body: Record<string, unknown> = { from, to, subject };
+    if (html) body.html = html;
+    if (text) body.text = text;
+    if (input.replyTo !== undefined) body.reply_to = input.replyTo;
+    if (Array.isArray(input.cc) && input.cc.length > 0) body.cc = input.cc;
+    if (Array.isArray(input.bcc) && input.bcc.length > 0) body.bcc = input.bcc;
+    if (Array.isArray(input.tags) && input.tags.length > 0) body.tags = input.tags;
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      const message =
+        typeof json?.message === "string"
+          ? json.message
+          : `Resend API ${res.status}`;
+      this.logger.warn(
+        `[email_send] resend rejected scope=${scope.organizationId}/${scope.projectId}/${scope.environmentId} ` +
+          `from=${from} status=${res.status} msg=${message}`,
+      );
+      return { ok: false, error: message, status: res.status };
+    }
+    return {
+      ok: true,
+      id: typeof json.id === "string" ? json.id : undefined,
+      from,
+      to,
+      subject,
+    };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
