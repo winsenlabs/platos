@@ -25,25 +25,26 @@ source_files_referenced:
 
 # SDKs (TypeScript and Python)
 
-Platos ships three first-party SDK packages. They split along the trust boundary: `@platosdev/client` is for code that talks to Platos as a consumer (your app, your dashboard); `@platools/ts` and `@platools/py` are for entity backends that talk to Platos over the WebSocket.
+Platos ships first-party SDK packages on **npm** and **PyPI**. They split along the trust boundary: `@platosdev/client` and `platos-client` are for code that talks to Platos as a consumer (your app, your dashboard); `@platosdev/platools-sdk` and `platools` are for entity backends that talk to Platos over the WebSocket.
 
 ## What it is
 
-| Package | Side | Purpose |
-|---|---|---|
-| `@platosdev/client` | Consumer (your app) | TypeScript / JS client for the Platos REST + WS surface. Includes a React `<PlatosArtifact>` component and a streaming hook. |
-| `@platools/ts` | Entity backend (Node) | TypeScript SDK for connecting an entity, declaring tools, and serving tool calls over WebSocket. |
-| `@platools/py` | Entity backend (Python) | Python SDK with the same surface as `@platools/ts`. |
+| Package | Registry | Side | Purpose |
+|---|---|---|---|
+| `@platosdev/client` | npm | Consumer (your app) | TypeScript / JS client for the Platos REST + WS surface. |
+| `platos-client` | PyPI | Consumer (your app) | Python equivalent — same shape, same wire protocol. |
+| `@platosdev/platools-sdk` | npm | Entity backend (Node) | TypeScript SDK for connecting an entity, declaring tools, and serving tool calls over WebSocket. |
+| `platools` | PyPI | Entity backend (Python) | Python SDK with the same surface as the Node version. |
 
-`@platosdev/client` covers `agents.*`, `threads.*`, `messages.*`, `attachments.*`, plus the streaming endpoint. It is the same surface external customers code against; the dashboard uses it internally.
+`@platosdev/client` (and its Python twin `platos-client`) covers `agents.*`, `threads.*`, `messages.*`, `attachments.*`, plus the streaming endpoint. It is the same surface external customers code against; the dashboard uses it internally.
 
-`@platools/*` cover entity registration: declare tools, handle the WebSocket lifecycle (auth, reconnect, replay), sign HMAC nonces, and dispatch tool calls. The Python and Node implementations are kept feature-equivalent.
+The platools packages cover entity registration: declare tools, handle the WebSocket lifecycle (auth, reconnect, replay), sign HMAC nonces, and dispatch tool calls. The Python and Node implementations are kept feature-equivalent.
 
 ## Why it matters
 
 A first-party SDK takes the gnarly bits (signing, reconnection, scope-header threading) off the integrator's plate. Both sides of the trust boundary need one; otherwise you ship a Postman collection plus an aspirational README and watch every customer reinvent the wheel.
 
-The split is also what lets `@platosdev/client` be safe to ship to the browser. It does not know about service secrets, only about session tokens minted by the consumer's backend. Bundle it into your React app; never bundle `@platools/*`.
+The split is also what lets `@platosdev/client` be safe to ship to the browser. It does not know about service secrets, only about session tokens minted by the consumer's backend. Bundle it into your React app; never bundle the platools packages.
 
 ## How to use it
 
@@ -129,7 +130,7 @@ Both entity SDKs let you register N tools. They are pushed at handshake; calls d
 ## Common pitfalls
 
 - `@platosdev/client` ships under MIT and uses fetch streams for SSE; in Node 18+, no polyfill needed. In older Node, install `node-fetch`.
-- `@platosdev/platools-sdk` (Node) and `@platools/py` enforce HMAC nonces with an LRU. Replays of the same nonce within the window fail. If you wrap the SDK behind another layer that retries, ensure the wrapper does not duplicate-sign.
+- `@platosdev/platools-sdk` (Node) and `platools` (Python) enforce HMAC nonces with an LRU. Replays of the same nonce within the window fail. If you wrap the SDK behind another layer that retries, ensure the wrapper does not duplicate-sign.
 - The Python SDK pins to Python 3.10+ for the structural pattern matching it uses internally.
 - Browser usage of `@platosdev/client` requires session tokens minted by your backend; do not ship a PAT to the browser.
 

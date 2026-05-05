@@ -53,7 +53,7 @@ The model where Platos owns the data and the entity is "just a webhook" loses ev
 
 - Business data never crosses Platos's storage boundary. The entity reads from its own database, returns the result, and Platos forwards it to the agent.
 - Auth is the entity's. Platos rides on a session token that may carry an opaque user-token claim; the entity verifies that claim with its own auth stack.
-- Reconnection is the entity's responsibility. The Platos client SDKs (`@platools/ts`, `@platools/py`) handle backoff and replay locally.
+- Reconnection is the entity's responsibility. The Platos client SDKs (`@platosdev/platools-sdk` for Node, `platools` for Python) handle backoff and replay locally.
 
 That ownership split is what makes Platos self-hostable as a runtime without becoming a customer's data plane.
 
@@ -74,7 +74,7 @@ curl -X POST https://platos.example.com/agent/v1/entities \
 
 ### Connect from your backend
 
-Use `@platools/ts` (Node) or `@platools/py` (Python):
+Use `@platosdev/platools-sdk` (Node) or `platools` (Python):
 
 ```ts
 import { connect } from "@platosdev/platools-sdk";
