@@ -41,13 +41,27 @@ function staticCorsOrigins(): string[] {
 
 function resolveCorsConfig(authService: AuthService | null): CorsOptions {
   const staticOrigins = staticCorsOrigins();
+  const universal = (process.env.PLATOS_CORS_UNIVERSAL || "").trim() === "true";
+
+  // Hosted-demo escape hatch. When the operator explicitly opts in via
+  // PLATOS_CORS_UNIVERSAL=true, accept ANY origin so a third-party
+  // integrator can test their entity from arbitrary domains. credentials
+  // is forced OFF — bearer tokens travel in the Authorization header so
+  // we don't need cookies, and turning credentials off keeps cookies
+  // from leaking across origins. The per-entity allowedOrigins gate
+  // still applies inside the request handlers, narrowing which entity
+  // any given origin can actually transact with.
+  if (universal) {
+    return { origin: true, credentials: false };
+  }
 
   if (process.env.NODE_ENV === "production") {
     if (staticOrigins.length === 0) {
       throw new Error(
         "PLATOS_CORS_ORIGIN is required in production and must not be `*`. " +
           "Supply a comma-separated list of operator-trusted origins " +
-          '(e.g. "https://app.acme.com,https://admin.acme.com"). ' +
+          '(e.g. "https://app.acme.com,https://admin.acme.com") ' +
+          "OR set PLATOS_CORS_UNIVERSAL=true to accept any origin. " +
           "Per-customer origins go on each PlatosConnectedEntity.allowedOrigins.",
       );
     }

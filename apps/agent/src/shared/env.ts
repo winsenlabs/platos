@@ -115,8 +115,20 @@ export const AgentEnvSchema = z
     PLATOS_MESSAGE_ENCRYPTION_KEY: hex64("PLATOS_MESSAGE_ENCRYPTION_KEY").optional(),
     PLATOS_MESSAGE_ENCRYPTION_KEY_V: z.string().optional(),
 
-    // CORS — required in production, optional in dev (see EOBD.11)
+    // CORS — required in production unless PLATOS_CORS_UNIVERSAL=true
+    // (see EOBD.11 + the universal-CORS hosted-demo escape hatch in main.ts).
     PLATOS_CORS_ORIGIN: z.string().optional(),
+    // Hosted-demo escape hatch. When `true` in production, the CORS layer
+    // accepts ANY origin (with credentials disabled so cookies never leak
+    // across origins). The per-entity allowedOrigins check still gates
+    // which entity any given origin can talk to. Use this for a public
+    // playground (e.g. play.platos.dev) where third-party integrators
+    // need to test embeds from arbitrary domains. Self-hosters keep it
+    // off and supply an explicit allowlist via PLATOS_CORS_ORIGIN.
+    PLATOS_CORS_UNIVERSAL: z
+      .union([z.literal("true"), z.literal("false")])
+      .optional()
+      .transform((v) => v === "true"),
 
     // Trigger / engine integration
     TRIGGER_API_URL: z.string().url().optional(),
@@ -364,14 +376,18 @@ export const AgentEnvSchema = z
         });
       }
 
-      // EOBD.11 — CORS must be explicit in production
+      // EOBD.11 — CORS must be explicit in production unless the
+      // operator opted into universal CORS via PLATOS_CORS_UNIVERSAL=true
+      // (typically the hosted-demo case where third-party integrators
+      // embed from arbitrary domains).
       const cors = (data.PLATOS_CORS_ORIGIN || "").trim();
-      if (!cors || cors === "*") {
+      const universal = data.PLATOS_CORS_UNIVERSAL === true;
+      if (!universal && (!cors || cors === "*")) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["PLATOS_CORS_ORIGIN"],
           message:
-            "PLATOS_CORS_ORIGIN is required in production and must not be `*` — supply an explicit comma-separated origin list",
+            "PLATOS_CORS_ORIGIN is required in production and must not be `*` — supply an explicit comma-separated origin list, or set PLATOS_CORS_UNIVERSAL=true to accept any origin (per-entity allowedOrigins still gates per-entity access).",
         });
       }
     }
