@@ -15,6 +15,7 @@ import { type Request } from "express";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { ProviderRegistryService } from "./provider-registry.service";
 import { ScopedEnvService } from "./scoped-env.service";
+import { ModelCatalogService } from "./model-catalog.service";
 import type { RequestScope } from "../auth/scope.guard";
 
 /**
@@ -32,6 +33,7 @@ export class ProvidersController {
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
     private readonly registry: ProviderRegistryService,
     private readonly scopedEnv: ScopedEnvService,
+    private readonly modelCatalog: ModelCatalogService,
   ) {}
 
   private getScope(req: Request): RequestScope {
@@ -133,6 +135,10 @@ export class ProvidersController {
         createdAt: true,
       },
     });
+    // New key may unlock a different upstream catalog (e.g. a Together
+    // enterprise account vs. trial). Drop the in-memory cache so the next
+    // picker load fetches /v1/models with the new credential.
+    this.modelCatalog.invalidate(body.provider);
     return { key };
   }
 
@@ -198,6 +204,7 @@ export class ProvidersController {
     }
 
     await this.prisma.platosProviderKey.delete({ where: { id } });
+    this.modelCatalog.invalidate(existing.provider);
     return { deleted: true };
   }
 }

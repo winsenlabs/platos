@@ -221,9 +221,12 @@ function resolveModel(modelString: string, apiKey?: string, retryRules?: RetryRu
   // Perplexity, Together, Fireworks) all speak the same `/v1/chat/completions`
   // shape, so one branch covers them — only the baseURL + apiKey differ.
   if (OPENAI_COMPAT_BASE_URLS[provider]) {
+    // AI SDK v6: `createOpenAI(...)(model)` defaults to the OpenAI Responses
+    // API (/v1/responses), which these third-party providers don't implement.
+    // Use `.chat(model)` to pin chat/completions.
     return apiKey
-      ? createOpenAI({ baseURL: OPENAI_COMPAT_BASE_URLS[provider], apiKey, fetch: retryFetch })(model)
-      : createOpenAI({ baseURL: OPENAI_COMPAT_BASE_URLS[provider], fetch: retryFetch })(model);
+      ? createOpenAI({ baseURL: OPENAI_COMPAT_BASE_URLS[provider], apiKey, fetch: retryFetch }).chat(model)
+      : createOpenAI({ baseURL: OPENAI_COMPAT_BASE_URLS[provider], fetch: retryFetch }).chat(model);
   }
 
   switch (provider) {
