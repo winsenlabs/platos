@@ -2,12 +2,19 @@
  * Provider manifests.
  *
  * Each manifest declares:
- *  - id           — stable identifier used by the UI, DB, and model strings
- *  - displayName  — human-readable label
- *  - requiredEnv  — env var names that must be present for the provider to work
- *  - optionalEnv  — env var names that refine behavior but are not required
- *  - models       — models exposed in the model picker when enabled
- *  - healthCheck  — minimal API call descriptor used by ProviderHealthService
+ *  - id              — stable identifier used by the UI, DB, and model strings
+ *  - displayName     — human-readable label
+ *  - requiredEnv     — env var names that must be present for the provider to work
+ *  - optionalEnv     — env var names that refine behavior but are not required
+ *  - models          — curated/fallback models shown in the picker when dynamic
+ *                      discovery is unavailable. Always present as the "blessed"
+ *                      defaults; dynamic discovery unions on top.
+ *  - healthCheck     — minimal API call descriptor used by ProviderHealthService
+ *  - modelsEndpoint  — (optional) live model-list endpoint. When set, the
+ *                      ModelCatalogService fetches it with the scoped API key
+ *                      and unions the result with `models`. Providers without
+ *                      this field stay on the static list (Perplexity has no
+ *                      endpoint; Azure is per-deployment; Vertex needs OAuth).
  *
  * Per Theme B + PLATOS_SPEC §4.4: provider API keys live **only** in the
  * trigger.dev Environment Variables table. We never store them in a
@@ -15,6 +22,37 @@
  * "link-env" checklist — the webapp reads the env var presence for the
  * current scope and shows each provider as `Set | Not set`.
  */
+
+export type ModelsEndpointShape =
+  /** OpenAI-canonical `{ object: "list", data: [{ id, ... }] }`. */
+  | "openai"
+  /** Together returns a bare JSON array `[ { id, type, ... } ]`. */
+  | "together"
+  /** Anthropic `{ data: [{ id, display_name, ... }], has_more, ... }`. */
+  | "anthropic"
+  /** Google AI `{ models: [{ name: "models/<id>", supportedGenerationMethods }] }`. */
+  | "google"
+  /** Fireworks `{ data: [{ id, supports_chat, kind }] }`. */
+  | "fireworks"
+  /** Mistral `{ data: [{ id, capabilities: { completion_chat } }] }`. */
+  | "mistral"
+  /** Groq `{ data: [{ id, active, ... }] }`. */
+  | "groq";
+
+export type ModelsEndpointAuth =
+  /** `Authorization: Bearer <key>` — used by OpenAI/Together/Groq/xAI/DeepSeek/Cerebras/Fireworks/Mistral. */
+  | "bearer"
+  /** `x-api-key: <key>` + `anthropic-version: 2023-06-01` — used by Anthropic. */
+  | "anthropic"
+  /** `?key=<key>` query string — used by Google AI Studio. */
+  | "google-query";
+
+export interface ModelsEndpoint {
+  /** Full URL of the GET-models endpoint. */
+  url: string;
+  auth: ModelsEndpointAuth;
+  shape: ModelsEndpointShape;
+}
 
 export interface ProviderManifest {
   id: string;
@@ -24,7 +62,11 @@ export interface ProviderManifest {
   requiredEnv: string[];
   /** Env vars that refine behavior (e.g. region, baseURL). */
   optionalEnv: string[];
-  /** Models exposed when the provider is enabled. */
+  /**
+   * Curated / fallback models. When `modelsEndpoint` is set the live response
+   * is unioned on top of this list (curated entries appear first and stay
+   * even if the upstream call fails).
+   */
   models: string[];
   /** Minimal probe for the health endpoint (fetches against the live API). */
   healthCheck: {
@@ -40,6 +82,8 @@ export interface ProviderManifest {
      */
     baseURL?: string;
   };
+  /** Optional live model-list endpoint for the dynamic catalog. */
+  modelsEndpoint?: ModelsEndpoint;
 }
 
 export const PROVIDER_MANIFESTS: ProviderManifest[] = [
@@ -55,20 +99,30 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       "anthropic:claude-haiku-4-5-20251001",
     ],
     healthCheck: { kind: "anthropic", probeModel: "claude-haiku-4-5-20251001" },
+    modelsEndpoint: {
+      url: "https://api.anthropic.com/v1/models?limit=1000",
+      auth: "anthropic",
+      shape: "anthropic",
+    },
   },
   {
     id: "openai",
     displayName: "OpenAI",
-    description: "GPT-4.1, GPT-4o and GPT-OSS models via OpenAI's API.",
+    description: "GPT-4.1, GPT-4o and OpenAI's hosted models via OpenAI's API.",
     requiredEnv: ["OPENAI_API_KEY"],
     optionalEnv: ["OPENAI_BASE_URL"],
     models: [
       "openai:gpt-4.1",
       "openai:gpt-4.1-mini",
       "openai:gpt-4o",
-      "openai:gpt-oss-120b",
+      "openai:gpt-4o-mini",
     ],
     healthCheck: { kind: "openai", probeModel: "gpt-4.1-mini" },
+    modelsEndpoint: {
+      url: "https://api.openai.com/v1/models",
+      auth: "bearer",
+      shape: "openai",
+    },
   },
   {
     id: "google",
@@ -81,6 +135,11 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       "google:gemini-2.5-flash",
     ],
     healthCheck: { kind: "google", probeModel: "gemini-2.0-flash" },
+    modelsEndpoint: {
+      url: "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000",
+      auth: "google-query",
+      shape: "google",
+    },
   },
   {
     id: "google-vertex",
@@ -97,6 +156,10 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       "google-vertex:zai-org/glm-5-maas",
     ],
     healthCheck: { kind: "vertex-file", probeModel: "gemini-2.5-flash" },
+    // Vertex uses GCP OAuth + per-publisher endpoints (publishers/google,
+    // publishers/anthropic, publishers/meta, publishers/mistralai). The
+    // single-key catalog pattern doesn't fit — fall back to the curated list
+    // until we add a Vertex-aware OAuth path. Tracked in follow-up.
   },
   {
     id: "groq",
@@ -115,6 +178,11 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       kind: "openai-compat",
       probeModel: "llama-3.1-8b-instant",
       baseURL: "https://api.groq.com/openai/v1",
+    },
+    modelsEndpoint: {
+      url: "https://api.groq.com/openai/v1/models",
+      auth: "bearer",
+      shape: "groq",
     },
   },
   {
@@ -135,6 +203,11 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       probeModel: "ministral-8b-latest",
       baseURL: "https://api.mistral.ai/v1",
     },
+    modelsEndpoint: {
+      url: "https://api.mistral.ai/v1/models",
+      auth: "bearer",
+      shape: "mistral",
+    },
   },
   {
     id: "xai",
@@ -152,6 +225,11 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       probeModel: "grok-2-latest",
       baseURL: "https://api.x.ai/v1",
     },
+    modelsEndpoint: {
+      url: "https://api.x.ai/v1/models",
+      auth: "bearer",
+      shape: "openai",
+    },
   },
   {
     id: "deepseek",
@@ -167,6 +245,13 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       kind: "openai-compat",
       probeModel: "deepseek-chat",
       baseURL: "https://api.deepseek.com/v1",
+    },
+    modelsEndpoint: {
+      // DeepSeek serves /models off the API root (no /v1 prefix on this
+      // particular endpoint; /v1/chat/completions for inference is unaffected).
+      url: "https://api.deepseek.com/models",
+      auth: "bearer",
+      shape: "openai",
     },
   },
   {
@@ -185,6 +270,11 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       probeModel: "llama-3.1-8b",
       baseURL: "https://api.cerebras.ai/v1",
     },
+    modelsEndpoint: {
+      url: "https://api.cerebras.ai/v1/models",
+      auth: "bearer",
+      shape: "openai",
+    },
   },
   {
     id: "perplexity",
@@ -197,17 +287,20 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       "perplexity:sonar-pro",
       "perplexity:sonar-reasoning",
       "perplexity:sonar-reasoning-pro",
+      "perplexity:sonar-deep-research",
     ],
     healthCheck: {
       kind: "openai-compat",
       probeModel: "sonar",
       baseURL: "https://api.perplexity.ai",
     },
+    // Perplexity does not expose a public /models endpoint. Catalog stays
+    // curated; update this list when their docs add a model.
   },
   {
     id: "together",
     displayName: "Together AI",
-    description: "Llama 3.x, Qwen 2.5, Mixtral, DeepSeek-R1 + 200 OSS models. OpenAI-compatible.",
+    description: "Llama, Qwen, Mixtral, DeepSeek-R1, gpt-oss + 200 OSS models. OpenAI-compatible.",
     requiredEnv: ["TOGETHER_API_KEY"],
     optionalEnv: [],
     models: [
@@ -215,11 +308,18 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       "together:meta-llama/Llama-3.1-8B-Instruct-Turbo",
       "together:Qwen/Qwen2.5-72B-Instruct-Turbo",
       "together:deepseek-ai/DeepSeek-R1",
+      "together:openai/gpt-oss-120b",
+      "together:openai/gpt-oss-20b",
     ],
     healthCheck: {
       kind: "openai-compat",
       probeModel: "meta-llama/Llama-3.1-8B-Instruct-Turbo",
       baseURL: "https://api.together.xyz/v1",
+    },
+    modelsEndpoint: {
+      url: "https://api.together.xyz/v1/models",
+      auth: "bearer",
+      shape: "together",
     },
   },
   {
@@ -238,6 +338,11 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       kind: "openai-compat",
       probeModel: "accounts/fireworks/models/llama-v3p1-8b-instruct",
       baseURL: "https://api.fireworks.ai/inference/v1",
+    },
+    modelsEndpoint: {
+      url: "https://api.fireworks.ai/inference/v1/models",
+      auth: "bearer",
+      shape: "fireworks",
     },
   },
   {
@@ -259,6 +364,8 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
       probeModel: "gpt-4o-mini",
       // baseURL filled in at probe time from AZURE_OPENAI_BASE_URL
     },
+    // Azure's /openai/deployments is per-resource (URL needs the resource
+    // subdomain) and lists deployments, not models. Catalog stays curated.
   },
 ];
 

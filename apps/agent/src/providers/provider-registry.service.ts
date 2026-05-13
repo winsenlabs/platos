@@ -2,6 +2,7 @@ import { Injectable, Inject } from "@nestjs/common";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { PROVIDER_MANIFESTS, getManifest, type ProviderManifest } from "./manifests";
 import { ScopedEnvService } from "./scoped-env.service";
+import { ModelCatalogService } from "./model-catalog.service";
 import type { RequestScope } from "../auth/scope.guard";
 
 export type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
@@ -46,6 +47,7 @@ export class ProviderRegistryService {
   constructor(
     @Inject(PRISMA_TOKEN) prisma: any,
     private readonly scopedEnv: ScopedEnvService,
+    private readonly modelCatalog: ModelCatalogService,
   ) {
     this.prisma = prisma;
   }
@@ -208,6 +210,33 @@ export class ProviderRegistryService {
     // intentionally disable a provider.
     const linked = !!row || envReady;
     const enabled = row ? row.enabled : envReady;
+
+    // Dynamic model discovery — for providers that publish a /v1/models
+    // endpoint, union the live list with the curated manifest defaults.
+    // Curated entries appear first so the picker preserves a stable order
+    // even when the upstream catalog reorders. De-dup by exact id match.
+    let models = manifest.models;
+    if (envReady && manifest.modelsEndpoint) {
+      try {
+        const live = await this.modelCatalog.listFor(scope, manifest);
+        if (live.length > 0) {
+          const seen = new Set(manifest.models);
+          const additions: string[] = [];
+          for (const id of live) {
+            if (!seen.has(id)) {
+              seen.add(id);
+              additions.push(id);
+            }
+          }
+          models = [...manifest.models, ...additions];
+        }
+      } catch {
+        // ModelCatalogService swallows fetch errors internally; this catch
+        // is defense in depth for unexpected runtime errors. Keep the
+        // curated list on failure.
+      }
+    }
+
     return {
       id: manifest.id,
       displayName: manifest.displayName,
@@ -218,7 +247,7 @@ export class ProviderRegistryService {
       enabled,
       linked,
       linkedAt: row ? row.linkedAt.toISOString() : null,
-      models: manifest.models,
+      models,
     };
   }
 }
