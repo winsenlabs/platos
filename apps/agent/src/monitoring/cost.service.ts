@@ -107,19 +107,202 @@ export interface SkillUsageOverride {
  * trigger task (see Theme B.10).
  */
 const FALLBACK_PRICING: Record<string, { input: number; output: number }> = {
+  // Anthropic / OpenAI / Google (legacy keys + provider-prefixed copies).
   "claude-sonnet-4-6": { input: 300, output: 1500 },
   "claude-opus-4-6": { input: 1500, output: 7500 },
   "claude-haiku-4-5-20251001": { input: 80, output: 400 },
   "claude-sonnet-4-20250514": { input: 300, output: 1500 },
   "claude-opus-4-20250514": { input: 1500, output: 7500 },
   "gpt-4o": { input: 250, output: 1000 },
+  "gpt-4o-mini": { input: 15, output: 60 },
   "gpt-4.1": { input: 200, output: 800 },
   "gpt-4.1-mini": { input: 40, output: 160 },
-  "gpt-oss-120b": { input: 4, output: 19 },
   "gemini-2.5-pro": { input: 125, output: 1000 },
   "gemini-2.5-flash": { input: 15, output: 60 },
   "gemini-2.0-flash": { input: 10, output: 40 },
+
+  // Together AI — verified against https://www.together.ai/pricing 2026-05-13.
+  // `openai/gpt-oss-120b`: $0.15/M in, $0.60/M out → 15/60 cents/M.
+  // The old `gpt-oss-120b: { 4, 19 }` row had bogus numbers AND a bare key
+  // that never matched `together:openai/gpt-oss-120b` (the actual model
+  // string in agent configs), so cost fell through to the conservative
+  // 100/300 estimator and overcharged by ~500×.
+  "together:openai/gpt-oss-120b": { input: 15, output: 60 },
+  "together:openai/gpt-oss-20b": { input: 5, output: 20 },
+  "together:meta-llama/Llama-3.3-70B-Instruct-Turbo": { input: 88, output: 88 },
+  "together:meta-llama/Llama-3.1-8B-Instruct-Turbo": { input: 18, output: 18 },
+  "together:Qwen/Qwen2.5-72B-Instruct-Turbo": { input: 120, output: 120 },
+  "together:deepseek-ai/DeepSeek-R1": { input: 300, output: 700 },
+
+  // Groq — verified against https://console.groq.com/docs/models 2026-05-13.
+  "groq:llama-3.3-70b-versatile": { input: 59, output: 79 },
+  "groq:llama-3.1-8b-instant": { input: 5, output: 8 },
+  "groq:qwen-2.5-72b": { input: 90, output: 90 },
+  "groq:deepseek-r1-distill-llama-70b": { input: 75, output: 99 },
+  "groq:openai/gpt-oss-120b": { input: 15, output: 75 },
+  "groq:openai/gpt-oss-20b": { input: 10, output: 50 },
+  "groq:mixtral-8x7b-32768": { input: 24, output: 24 },
+
+  // Cerebras — verified against https://inference-docs.cerebras.ai/api-reference/models.
+  "cerebras:llama-3.3-70b": { input: 60, output: 80 },
+  "cerebras:llama-3.1-8b": { input: 10, output: 10 },
+  "cerebras:llama3.1-70b": { input: 60, output: 80 },
+  "cerebras:gpt-oss-120b": { input: 25, output: 25 },
+
+  // Fireworks AI — approximate serverless rates.
+  "fireworks:accounts/fireworks/models/llama-v3p3-70b-instruct": { input: 90, output: 90 },
+  "fireworks:accounts/fireworks/models/deepseek-v3": { input: 90, output: 90 },
+  "fireworks:accounts/fireworks/models/deepseek-r1": { input: 300, output: 800 },
+  "fireworks:accounts/fireworks/models/qwen2p5-72b-instruct": { input: 90, output: 90 },
+
+  // Mistral — verified against https://mistral.ai/news/.
+  "mistral:mistral-large-latest": { input: 200, output: 600 },
+  "mistral:mistral-small-latest": { input: 20, output: 60 },
+  "mistral:codestral-latest": { input: 30, output: 90 },
+  "mistral:pixtral-large-latest": { input: 200, output: 600 },
+  "mistral:ministral-8b-latest": { input: 10, output: 10 },
+
+  // xAI — verified against https://docs.x.ai/.
+  "xai:grok-2-latest": { input: 200, output: 1000 },
+  "xai:grok-2-vision-latest": { input: 200, output: 1000 },
+  "xai:grok-beta": { input: 500, output: 1500 },
+
+  // DeepSeek direct API (much cheaper than reseller pricing).
+  "deepseek:deepseek-chat": { input: 27, output: 110 },
+  "deepseek:deepseek-reasoner": { input: 55, output: 219 },
+
+  // Perplexity Sonar (search-grounded; output includes retrieval).
+  "perplexity:sonar": { input: 100, output: 100 },
+  "perplexity:sonar-pro": { input: 300, output: 1500 },
+  "perplexity:sonar-reasoning": { input: 100, output: 500 },
+  "perplexity:sonar-reasoning-pro": { input: 200, output: 800 },
+  "perplexity:sonar-deep-research": { input: 200, output: 800 },
 };
+
+/**
+ * Maps Platos provider ids to LiteLLM's `model_prices_and_context_window.json`
+ * key prefixes. LiteLLM uses different prefixes for several OpenAI-compatible
+ * providers, so we have to translate before probing the live catalog.
+ * Mismatched entries here were the second cause of cost mis-billing on
+ * Together (no entry could ever match `together:<id>` against LiteLLM's
+ * `together_ai/<id>` keys).
+ */
+const LITELLM_PROVIDER_PREFIX: Record<string, string> = {
+  together: "together_ai",
+  groq: "groq",
+  mistral: "mistral",
+  xai: "xai",
+  deepseek: "deepseek",
+  cerebras: "cerebras",
+  perplexity: "perplexity",
+  fireworks: "fireworks_ai",
+  openai: "openai",
+  anthropic: "anthropic",
+  google: "gemini",
+  "google-vertex": "vertex_ai",
+  azure: "azure",
+};
+
+/**
+ * Build the priority-ordered list of lookup keys for a Platos model string.
+ * Both FALLBACK_PRICING and the LiteLLM live catalog are probed against
+ * every entry in order; first hit wins. Tries:
+ *   1. Full `<provider>:<model>` — matches our FALLBACK_PRICING new rows
+ *   2. Bare `<model>` — preserves legacy lookups
+ *   3. Trailing slash segment — handles HF-style `org/name` ids
+ *   4. LiteLLM-prefixed `<litellm_prefix>/<model>` — taps the live catalog
+ */
+function modelLookupKeys(model: string): string[] {
+  if (!model) return [];
+  const keys: string[] = [model];
+  const colon = model.indexOf(":");
+  const provider = colon > 0 ? model.slice(0, colon) : null;
+  const bare = colon > 0 ? model.slice(colon + 1) : model;
+  if (bare !== model) keys.push(bare);
+  const lastSlash = bare.lastIndexOf("/");
+  if (lastSlash > 0) {
+    const tail = bare.slice(lastSlash + 1);
+    if (tail && tail !== bare) keys.push(tail);
+  }
+  if (provider) {
+    const liteLLMPrefix = LITELLM_PROVIDER_PREFIX[provider];
+    if (liteLLMPrefix) keys.push(`${liteLLMPrefix}/${bare}`);
+  }
+  return keys;
+}
+
+/**
+ * Last-resort conservative estimator. Returns provider-aware defaults so
+ * unknown models on cheap OSS-host providers don't get billed at the
+ * Anthropic-tier rate. Used only when both the live catalog and
+ * FALLBACK_PRICING miss every lookup key for the model.
+ *
+ * Numbers are intentionally rough — they're a safety net, not a price list.
+ * Adding an entry to FALLBACK_PRICING is the correct fix for any model that
+ * shows up here in practice.
+ */
+/**
+ * Resolve per-1M-token rates (in cents) for a model string. Single source of
+ * truth used by every cost-math entrypoint on CostService — guarantees the
+ * same lookup priority everywhere:
+ *
+ *   1. LiteLLM live catalog — probed with every key from `modelLookupKeys`
+ *      so provider-prefixed Platos ids match LiteLLM's `together_ai/...`
+ *      style keys too.
+ *   2. Hardcoded FALLBACK_PRICING — same multi-key probe.
+ *   3. Provider-aware conservative estimator — caps OSS-host overcharge.
+ *
+ * Returns raw (unrounded) rates so callers can do their own precision math
+ * (calculateCost rounds at 0.01¢, calculateCostWithCache at 0.0001¢).
+ */
+function resolveRates(
+  model: string,
+  catalog: LiteLLMCatalog | null,
+): { input: number; output: number } {
+  const keys = modelLookupKeys(model);
+  if (catalog) {
+    for (const k of keys) {
+      const entry = catalog[k];
+      if (!entry) continue;
+      const inputCents = (entry.input_cost_per_token ?? 0) * 1_000_000 * 100;
+      const outputCents = (entry.output_cost_per_token ?? 0) * 1_000_000 * 100;
+      if (inputCents > 0 || outputCents > 0) {
+        return { input: inputCents, output: outputCents };
+      }
+    }
+  }
+  for (const k of keys) {
+    const pricing = FALLBACK_PRICING[k];
+    if (pricing) return pricing;
+  }
+  return conservativeFallbackRates(model);
+}
+
+function conservativeFallbackRates(model: string): { input: number; output: number } {
+  const colon = model.indexOf(":");
+  const provider = colon > 0 ? model.slice(0, colon) : "";
+  switch (provider) {
+    case "groq":
+    case "cerebras":
+    case "deepseek":
+      return { input: 25, output: 100 }; // ultra-cheap OSS hosts
+    case "together":
+    case "fireworks":
+    case "perplexity":
+    case "mistral":
+      return { input: 50, output: 200 }; // mid-tier OSS hosts
+    case "google":
+      return { input: 40, output: 160 }; // Gemini cheapest tier
+    case "xai":
+      return { input: 200, output: 1000 }; // Grok pricier
+    case "anthropic":
+    case "openai":
+    case "google-vertex":
+    case "azure":
+    default:
+      return { input: 100, output: 300 }; // historical conservative tier
+  }
+}
 
 const CATALOG_KEY = "cost:model_catalog";
 const CATALOG_CACHE_TTL_MS = 60_000; // in-process memo for one minute
@@ -225,35 +408,18 @@ export class CostService {
    * Calculate cost for a model usage event.
    *
    * Lookup order:
-   *   1. LiteLLM live catalog (Redis / in-process memo)
-   *   2. Hardcoded FALLBACK_PRICING (last-known-good)
-   *   3. Conservative estimator (100c in / 300c out per 1M tokens)
+   *   1. LiteLLM live catalog (Redis / in-process memo) — probed against
+   *      every `modelLookupKeys` variant so `together:openai/gpt-oss-120b`
+   *      can match LiteLLM's `together_ai/openai/gpt-oss-120b` key too.
+   *   2. Hardcoded FALLBACK_PRICING (last-known-good) — same multi-key probe.
+   *   3. Provider-aware conservative estimator (cheap OSS hosts no longer
+   *      get billed at the Anthropic-tier 100/300 cents/M rate).
    */
   async calculateCost(model: string, inputTokens: number, outputTokens: number): Promise<number> {
-    const modelName = model.includes(":") ? model.split(":").pop()! : model;
     const catalog = await this.getCatalog();
-
-    if (catalog) {
-      const entry = catalog[modelName] ?? catalog[model];
-      if (entry) {
-        // LiteLLM costs are per-token in USD. Convert to cents per 1M for the
-        // same math shape as the fallback table.
-        const inputCents = (entry.input_cost_per_token ?? 0) * 1_000_000 * 100;
-        const outputCents = (entry.output_cost_per_token ?? 0) * 1_000_000 * 100;
-        if (inputCents > 0 || outputCents > 0) {
-          const inputCost = (inputTokens / 1_000_000) * inputCents;
-          const outputCost = (outputTokens / 1_000_000) * outputCents;
-          return Math.round((inputCost + outputCost) * 100) / 100;
-        }
-      }
-    }
-
-    const pricing = FALLBACK_PRICING[modelName];
-    if (!pricing) {
-      return ((inputTokens * 100 + outputTokens * 300) / 1_000_000) * 100;
-    }
-    const inputCost = (inputTokens / 1_000_000) * pricing.input;
-    const outputCost = (outputTokens / 1_000_000) * pricing.output;
+    const rates = resolveRates(model, catalog);
+    const inputCost = (inputTokens / 1_000_000) * rates.input;
+    const outputCost = (outputTokens / 1_000_000) * rates.output;
     return Math.round((inputCost + outputCost) * 100) / 100;
   }
 
@@ -265,17 +431,8 @@ export class CostService {
    * 0.1× read) — we need the base rate, not the blended cost.
    */
   async resolveInputCentsPerMillion(model: string): Promise<number> {
-    const modelName = model.includes(":") ? model.split(":").pop()! : model;
     const catalog = await this.getCatalog();
-    if (catalog) {
-      const entry = catalog[modelName] ?? catalog[model];
-      if (entry?.input_cost_per_token) {
-        return entry.input_cost_per_token * 1_000_000 * 100;
-      }
-    }
-    const pricing = FALLBACK_PRICING[modelName];
-    if (pricing) return pricing.input;
-    return 100; // conservative estimator fallback
+    return resolveRates(model, catalog).input;
   }
 
   /**
@@ -334,32 +491,9 @@ export class CostService {
     // `calculateCost` (which itself rounds to 0.01¢ precision) and then
     // rounded the sum again, propagating a 0.005-0.0075¢ error on tiny
     // totals (e.g. Google rate test 0.0825¢ was rounding to 0.09¢).
-    const modelName = model.includes(":") ? model.split(":").pop()! : model;
     const catalog = await this.getCatalog();
-
-    // Resolve raw per-1M-token rates (in cents). Mirror the lookup order
-    // used by `calculateCost`: catalog → FALLBACK_PRICING → conservative
-    // estimator. Returning RAW (unrounded) rates here keeps the entire
-    // sum un-rounded until the final return.
-    let inputCentsPerMillion = 0;
-    let outputCentsPerMillion = 0;
-    if (catalog) {
-      const entry = catalog[modelName] ?? catalog[model];
-      if (entry) {
-        inputCentsPerMillion = (entry.input_cost_per_token ?? 0) * 1_000_000 * 100;
-        outputCentsPerMillion = (entry.output_cost_per_token ?? 0) * 1_000_000 * 100;
-      }
-    }
-    if (inputCentsPerMillion === 0 && outputCentsPerMillion === 0) {
-      const pricing = FALLBACK_PRICING[modelName];
-      if (pricing) {
-        inputCentsPerMillion = pricing.input;
-        outputCentsPerMillion = pricing.output;
-      } else {
-        inputCentsPerMillion = 100;
-        outputCentsPerMillion = 300;
-      }
-    }
+    const { input: inputCentsPerMillion, output: outputCentsPerMillion } =
+      resolveRates(model, catalog);
 
     const freshInputTokens = Math.max(
       0,
