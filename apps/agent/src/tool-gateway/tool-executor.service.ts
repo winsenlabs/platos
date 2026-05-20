@@ -7,6 +7,11 @@ import { ToolAuditService } from "../monitoring/tool-audit.service";
 import { SafetyService } from "../monitoring/safety.service";
 import { SafetyEventService } from "../monitoring/safety-event.service";
 import { RateLimitService } from "../monitoring/rate-limit.service";
+// Issue #1 — per-tool approval policy gate. The MCP path already
+// consults the 4-tier resolver before forwarding; the agent-runtime
+// dispatcher historically did not, so prompt-level approval was the
+// only enforcement. Wired here behind a feature flag for safe rollout.
+import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.service";
 import * as crypto from "crypto";
 import {
   validatePublicUrl,
@@ -103,8 +108,94 @@ export class ToolExecutorService {
     @Optional() private readonly safetyService?: SafetyService,
     @Optional() private readonly safetyEventService?: SafetyEventService,
     @Optional() private readonly rateLimitService?: RateLimitService,
+    // Issue #1 — optional so existing test fixtures keep working.
+    // The gate is also feature-flagged: nothing happens unless
+    // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1 is set in the env.
+    @Optional() private readonly permissionGateway?: MCPPermissionGatewayService,
   ) {
     this.prisma = prisma;
+  }
+
+  /**
+   * Issue #1 — per-tool approval gate (feature-flagged).
+   *
+   * When `PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1` is set and the
+   * `MCPPermissionGatewayService` is wired (DI populates it via the
+   * tool-gateway module's `imports`), every tool dispatch consults
+   * the 4-tier resolver before forwarding to the entity.
+   *
+   *   - `auto_allow`       → continue normally.
+   *   - `block`            → return failed result with the reason.
+   *   - `require_approval` → ALSO return failed (with an `approval_required`
+   *                          message) UNTIL the full pause/resume flow lands.
+   *                          Stream-aware approval-pause requires context the
+   *                          executor doesn't have (it sits below the agent's
+   *                          stream layer); follow-up work routes the resolved
+   *                          state up to the caller so the stream layer can
+   *                          emit `approval_needed` and wait for resolution.
+   *                          For now, blocking is the conservative behaviour
+   *                          (vs. silently passing through and pretending the
+   *                          policy was honoured).
+   *
+   * The flag is off by default. To roll out: enable in staging, watch
+   * the safety-event ledger for `dispatcher_permission_gate` entries,
+   * confirm no legitimate calls are over-blocked, then enable in prod.
+   */
+  private async checkDispatchPermission(
+    call: ToolCallRequest,
+    scope: RequestScope,
+    startTime: number,
+  ): Promise<ToolCallResult | null> {
+    if (process.env.PLATOS_TOOL_DISPATCH_PERMISSION_GATE !== "1") return null;
+    if (!this.permissionGateway) return null;
+    let resolved;
+    try {
+      resolved = await this.permissionGateway.resolve({
+        scope: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+        },
+        agentId: scope.agentId ?? null,
+        userId: scope.userId ?? null,
+        toolName: call.tool,
+      });
+    } catch (err) {
+      // Fail-open on resolver errors — the gate is defense-in-depth,
+      // not the primary safety mechanism. Safety + rate-limit gates
+      // above still ran.
+      return null;
+    }
+    if (resolved.state === "auto_allow") return null;
+    // Record the gate decision on the safety-event ledger so the
+    // governance dashboard reflects every block / pending-approval.
+    await this.safetyEventService?.record(
+      {
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+      },
+      {
+        detector: "dispatcher_permission_gate",
+        action: resolved.state === "block" ? "block" : "warn",
+        severity: resolved.state === "block" ? "high" : "medium",
+        detail: `tool=${call.tool} state=${resolved.state} tier=${resolved.tier} reason=${resolved.reason}`,
+        meta: { tier: resolved.tier, state: resolved.state },
+        agentId: scope.agentId ?? null,
+        threadId: scope.sessionId ?? null,
+        userId: scope.userId ?? null,
+        toolName: call.tool,
+      },
+    );
+    return {
+      tool: call.tool,
+      status: "failed",
+      error:
+        resolved.state === "block"
+          ? `Tool ${call.tool} blocked by policy (tier ${resolved.tier}): ${resolved.reason}`
+          : `Tool ${call.tool} requires approval (tier ${resolved.tier}): ${resolved.reason}. Use the MCP dispatch path for the full approval flow.`,
+      latencyMs: Date.now() - startTime,
+    };
   }
 
   /**
@@ -224,6 +315,13 @@ export class ToolExecutorService {
         // Fail-open on rate-limit backend errors.
       }
     }
+
+    // Issue #1 — per-tool approval gate (feature-flagged via
+    // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1). Runs after safety + rate
+    // limit so cheap denials short-circuit before the more expensive
+    // 4-tier resolver kicks in. Returns null on auto-allow.
+    const gated = await this.checkDispatchPermission(call, scope, startTime);
+    if (gated) return gated;
 
     const inner = await this.executeInner(call, scope, startTime, origin);
     const { result, toolId, entityId, entityPk } = inner;
