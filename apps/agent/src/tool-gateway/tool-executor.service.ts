@@ -12,6 +12,15 @@ import { RateLimitService } from "../monitoring/rate-limit.service";
 // dispatcher historically did not, so prompt-level approval was the
 // only enforcement. Wired here behind a feature flag for safe rollout.
 import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.service";
+// Issue #1 (full pause flow) — when the gate returns `require_approval`
+// we persist a `PlatosAgentApproval` row, publish the `approval_needed`
+// event over Redis (the dashboard's Socket.IO room subscribes), and
+// BLPOP-wait for resolution. Mirrors the pattern in
+// `agent.service.ts`'s `request_approval` meta-tool.
+import { MonitoringApprovalsService } from "../monitoring/approvals.service";
+import { REDIS_TOKEN } from "../shared/redis.provider";
+import type { Redis } from "ioredis";
+import { approvalRedisKey } from "../monitoring/approval-keys";
 import * as crypto from "crypto";
 import {
   validatePublicUrl,
@@ -112,42 +121,60 @@ export class ToolExecutorService {
     // The gate is also feature-flagged: nothing happens unless
     // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1 is set in the env.
     @Optional() private readonly permissionGateway?: MCPPermissionGatewayService,
+    // Issue #1 (full pause flow) — optional. When both are wired AND
+    // the gate flag is set, `require_approval` triggers a real
+    // persisted approval + Socket.IO event + BLPOP wait.
+    @Optional() private readonly approvalsService?: MonitoringApprovalsService,
+    @Optional() @Inject(REDIS_TOKEN) private readonly redis?: Redis,
   ) {
     this.prisma = prisma;
   }
 
   /**
-   * Issue #1 — per-tool approval gate (feature-flagged).
+   * Issue #1 — per-tool approval gate with full pause/resume flow.
    *
    * When `PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1` is set and the
    * `MCPPermissionGatewayService` is wired (DI populates it via the
-   * tool-gateway module's `imports`), every tool dispatch consults
-   * the 4-tier resolver before forwarding to the entity.
+   * tool-gateway module's providers), every tool dispatch consults
+   * the 4-tier resolver before forwarding to the entity. Behaviour
+   * depends on the resolved state:
    *
-   *   - `auto_allow`       → continue normally.
-   *   - `block`            → return failed result with the reason.
-   *   - `require_approval` → ALSO return failed (with an `approval_required`
-   *                          message) UNTIL the full pause/resume flow lands.
-   *                          Stream-aware approval-pause requires context the
-   *                          executor doesn't have (it sits below the agent's
-   *                          stream layer); follow-up work routes the resolved
-   *                          state up to the caller so the stream layer can
-   *                          emit `approval_needed` and wait for resolution.
-   *                          For now, blocking is the conservative behaviour
-   *                          (vs. silently passing through and pretending the
-   *                          policy was honoured).
+   *   - `auto_allow`       → return `{ kind: "allow" }`; caller dispatches
+   *                          normally with `call.params`.
+   *   - `block`            → return `{ kind: "deny", result }` with the
+   *                          tier + reason. Caller short-circuits.
+   *   - `require_approval` → persist a `PlatosAgentApproval` row, publish
+   *                          `approval_needed` over Redis (dashboard
+   *                          Socket.IO room picks it up), and BLPOP-wait
+   *                          for resolution. On approval, return
+   *                          `{ kind: "allow", params }` with possibly-
+   *                          edited args. On rejection / timeout, return
+   *                          `{ kind: "deny", result }`.
    *
-   * The flag is off by default. To roll out: enable in staging, watch
-   * the safety-event ledger for `dispatcher_permission_gate` entries,
+   * Mirrors the pattern in `agent.service.ts`'s `request_approval`
+   * meta-tool: scoped Redis key (see EOBD.15), duplicated connection
+   * so BLPOP doesn't queue every other ioredis op behind it, double-
+   * write of the resolve transition for ledger consistency.
+   *
+   * Fails open on any infrastructure error so the gate is strict
+   * defense-in-depth, never the failure point that loses a dispatch.
+   *
+   * The flag is off by default. Rollout: enable in staging, watch the
+   * safety-event ledger for `dispatcher_permission_gate` entries,
    * confirm no legitimate calls are over-blocked, then enable in prod.
    */
   private async checkDispatchPermission(
     call: ToolCallRequest,
     scope: RequestScope,
     startTime: number,
-  ): Promise<ToolCallResult | null> {
-    if (process.env.PLATOS_TOOL_DISPATCH_PERMISSION_GATE !== "1") return null;
-    if (!this.permissionGateway) return null;
+  ): Promise<
+    | { kind: "allow"; params?: Record<string, unknown> }
+    | { kind: "deny"; result: ToolCallResult }
+  > {
+    if (process.env.PLATOS_TOOL_DISPATCH_PERMISSION_GATE !== "1") {
+      return { kind: "allow" };
+    }
+    if (!this.permissionGateway) return { kind: "allow" };
     let resolved;
     try {
       resolved = await this.permissionGateway.resolve({
@@ -164,9 +191,10 @@ export class ToolExecutorService {
       // Fail-open on resolver errors — the gate is defense-in-depth,
       // not the primary safety mechanism. Safety + rate-limit gates
       // above still ran.
-      return null;
+      return { kind: "allow" };
     }
-    if (resolved.state === "auto_allow") return null;
+    if (resolved.state === "auto_allow") return { kind: "allow" };
+
     // Record the gate decision on the safety-event ledger so the
     // governance dashboard reflects every block / pending-approval.
     await this.safetyEventService?.record(
@@ -187,15 +215,253 @@ export class ToolExecutorService {
         toolName: call.tool,
       },
     );
-    return {
-      tool: call.tool,
-      status: "failed",
-      error:
-        resolved.state === "block"
-          ? `Tool ${call.tool} blocked by policy (tier ${resolved.tier}): ${resolved.reason}`
-          : `Tool ${call.tool} requires approval (tier ${resolved.tier}): ${resolved.reason}. Use the MCP dispatch path for the full approval flow.`,
-      latencyMs: Date.now() - startTime,
+
+    if (resolved.state === "block") {
+      return {
+        kind: "deny",
+        result: {
+          tool: call.tool,
+          status: "failed",
+          error: `Tool ${call.tool} blocked by policy (tier ${resolved.tier}): ${resolved.reason}`,
+          latencyMs: Date.now() - startTime,
+        },
+      };
+    }
+
+    // require_approval: the full pause/resume flow. Falls back to
+    // a clean deny if the infra deps aren't wired (the gate stays
+    // strict — never silently passes through a require_approval).
+    if (!this.approvalsService || !this.redis) {
+      return {
+        kind: "deny",
+        result: {
+          tool: call.tool,
+          status: "failed",
+          error: `Tool ${call.tool} requires approval but the approval infrastructure (Redis + MonitoringApprovalsService) is not wired in this process`,
+          latencyMs: Date.now() - startTime,
+        },
+      };
+    }
+
+    return await this.runApprovalPause(call, scope, resolved, startTime);
+  }
+
+  /**
+   * Issue #1 — the pause/resume implementation. Extracted so the gate's
+   * deny path stays readable.
+   *
+   * Lifecycle:
+   *   1. Build a stable `requestHash` so concurrent retries dedupe to one
+   *      approval row (idempotent against the dashboard's "Approve" race).
+   *   2. `createMcpApproval` persists the row and returns it (or the
+   *      existing pending row on hash collision).
+   *   3. Publish `approval_needed` over the `approval:event` Redis pub/sub
+   *      channel. The dashboard's `ConnectionsGateway` subscribes and
+   *      pushes it into the thread's Socket.IO room.
+   *   4. BLPOP on a scoped Redis key (`approval:<org>:<proj>:<env>:<id>`).
+   *      Use a duplicated connection so the blocking call doesn't queue
+   *      every other ioredis op behind it (see EOBD.15 + the
+   *      ioredis-single-connection trap documented in agent.service.ts).
+   *   5. On resolution: parse, double-write the transition for ledger
+   *      consistency, return `{ kind: "allow", params: editedArgs ?? original }`.
+   *   6. On timeout: mark `timed_out` and return a clean deny.
+   */
+  private async runApprovalPause(
+    call: ToolCallRequest,
+    scope: RequestScope,
+    resolved: { state: string; tier: number; reason: string },
+    startTime: number,
+  ): Promise<
+    | { kind: "allow"; params?: Record<string, unknown> }
+    | { kind: "deny"; result: ToolCallResult }
+  > {
+    const scopeTuple = {
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
+      environmentId: scope.environmentId,
     };
+    const timeoutSeconds = Math.max(
+      60,
+      Number(process.env.PLATOS_TOOL_DISPATCH_APPROVAL_TIMEOUT_SECONDS ?? "300"),
+    );
+
+    // Stable hash so concurrent retries of the same call dedupe to one
+    // approval row. Includes scope + tool + args so different args get
+    // different rows (the operator's edit could be material).
+    const requestHash = crypto
+      .createHash("sha256")
+      .update(
+        JSON.stringify({
+          org: scope.organizationId,
+          proj: scope.projectId,
+          env: scope.environmentId,
+          agent: scope.agentId ?? null,
+          tool: call.tool,
+          params: call.params ?? {},
+        }),
+      )
+      .digest("hex");
+
+    let approval;
+    try {
+      approval = await this.approvalsService!.createMcpApproval({
+        scope: scopeTuple,
+        toolName: call.tool,
+        args: call.params ?? {},
+        requestHash,
+        requestedByUserId: scope.userId ?? null,
+        timeoutSeconds,
+        actionLabel: `Tool dispatch: ${call.tool}`,
+      });
+    } catch (err: any) {
+      return {
+        kind: "deny",
+        result: {
+          tool: call.tool,
+          status: "failed",
+          error: `Tool ${call.tool} requires approval; failed to persist approval row: ${err?.message ?? String(err)}`,
+          latencyMs: Date.now() - startTime,
+        },
+      };
+    }
+
+    const redisKey = approvalRedisKey(scopeTuple, approval.approvalId);
+
+    // Publish the approval_needed event. Best-effort: a publish failure
+    // doesn't break the wait — the dashboard can still poll
+    // `/approvals?status=pending` and resolve manually.
+    try {
+      await this.redis!.publish(
+        "approval:event",
+        JSON.stringify({
+          type: "approval_needed",
+          approvalId: approval.approvalId,
+          action: `Tool dispatch: ${call.tool}`,
+          details: `tier=${resolved.tier} reason=${resolved.reason}`,
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          agentId: scope.agentId ?? "default",
+          userId: scope.userId ?? null,
+          toolName: call.tool,
+          source: "dispatcher_permission_gate",
+        }),
+      );
+    } catch {
+      /* best-effort */
+    }
+
+    // Duplicated connection so BLPOP doesn't queue every other ioredis
+    // op behind it. See EOBD.15 + the trap documented in
+    // agent.service.ts. Cheap (one TCP open/close per gated call).
+    const blockClient =
+      (this.redis as any).duplicate?.() ?? this.redis!;
+    const usingDuplicate = blockClient !== this.redis;
+
+    try {
+      const result = await (blockClient as any).blpop(redisKey, timeoutSeconds);
+      if (!result) {
+        // Timeout. Persist the transition + broadcast resolved-state so
+        // UI cards stop spinning.
+        await this.approvalsService!.resolve({
+          scope: scopeTuple,
+          approvalId: approval.approvalId,
+          status: "timed_out",
+        }).catch(() => {});
+        await this.redis!.publish(
+          "approval:event",
+          JSON.stringify({
+            type: "approval_resolved",
+            approvalId: approval.approvalId,
+            status: "timed_out",
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+            agentId: scope.agentId ?? "default",
+          }),
+        ).catch(() => {});
+        return {
+          kind: "deny",
+          result: {
+            tool: call.tool,
+            status: "failed",
+            error: `Tool ${call.tool} approval timed out after ${timeoutSeconds}s`,
+            latencyMs: Date.now() - startTime,
+          },
+        };
+      }
+
+      const [, payload] = result as [string, string];
+      let parsed: {
+        approved?: boolean;
+        editedArgs?: Record<string, unknown>;
+        respondedBy?: string | null;
+        comment?: string | null;
+      } = {};
+      try {
+        parsed = JSON.parse(payload);
+      } catch {
+        /* fall through with empty parsed → treated as rejected below */
+      }
+
+      // Double-write of the transition for ledger consistency (HTTP
+      // resolver already persists; this is idempotent).
+      await this.approvalsService!.resolve({
+        scope: scopeTuple,
+        approvalId: approval.approvalId,
+        status: parsed.approved ? "approved" : "rejected",
+        respondedBy: parsed.respondedBy ?? null,
+        comment: parsed.comment ?? null,
+        editedArgs: parsed.editedArgs ?? null,
+        editedByUserId: parsed.editedArgs ? parsed.respondedBy ?? null : null,
+      }).catch(() => {});
+
+      if (!parsed.approved) {
+        return {
+          kind: "deny",
+          result: {
+            tool: call.tool,
+            status: "failed",
+            error: `Tool ${call.tool} approval rejected${parsed.comment ? `: ${parsed.comment}` : ""}`,
+            latencyMs: Date.now() - startTime,
+          },
+        };
+      }
+
+      // Approved. If the operator edited args, dispatch uses those;
+      // otherwise the original params. Either way, `mark_consumed` is
+      // recorded once the dispatch finishes successfully — done in
+      // execute() after executeInner returns.
+      return {
+        kind: "allow",
+        params: parsed.editedArgs ?? call.params,
+      };
+    } catch (err: any) {
+      return {
+        kind: "deny",
+        result: {
+          tool: call.tool,
+          status: "failed",
+          error: `Tool ${call.tool} approval wait failed: ${err?.message ?? String(err)}`,
+          latencyMs: Date.now() - startTime,
+        },
+      };
+    } finally {
+      // Cleanup: delete the key if still there. Use the main client;
+      // the duplicate is about to be torn down.
+      try {
+        await this.redis!.del(redisKey);
+      } catch {
+        /* best-effort */
+      }
+      if (usingDuplicate) {
+        try {
+          (blockClient as any).disconnect?.();
+        } catch {
+          /* ignore */
+        }
+      }
+    }
   }
 
   /**
@@ -319,11 +585,20 @@ export class ToolExecutorService {
     // Issue #1 — per-tool approval gate (feature-flagged via
     // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1). Runs after safety + rate
     // limit so cheap denials short-circuit before the more expensive
-    // 4-tier resolver kicks in. Returns null on auto-allow.
+    // 4-tier resolver kicks in.
+    //
+    //   - kind: "allow" → continue. `params` is set when the operator
+    //     edited the args during approval; we forward the edited shape
+    //     to the entity. Falls back to `call.params` when unedited.
+    //   - kind: "deny"  → block, reject, or timeout. Caller short-circuits.
     const gated = await this.checkDispatchPermission(call, scope, startTime);
-    if (gated) return gated;
+    if (gated.kind === "deny") return gated.result;
+    const dispatchedCall: ToolCallRequest =
+      gated.params !== undefined
+        ? { ...call, params: gated.params }
+        : call;
 
-    const inner = await this.executeInner(call, scope, startTime, origin);
+    const inner = await this.executeInner(dispatchedCall, scope, startTime, origin);
     const { result, toolId, entityId, entityPk } = inner;
 
     // Emit a tool.call span if a trace is open. The span carries scope tags
