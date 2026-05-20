@@ -67,6 +67,20 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
   private connections = new Map<string, Conn>();
   private pending = new Map<string, PendingCall>(); // callId → pending promise
 
+  /**
+   * Per-(entity, env) sliding window of tool_register timestamps (ms).
+   * Used to throttle clients that re-register at storm rates — the
+   * 2026-05-19 outage was driven by a fandesk bridge with broken
+   * leader election that re-registered 403 tools every ~15 s for 7
+   * days, each registration costing ~200 KB JSON parse + 403 DB
+   * UPSERTs + BM25 rebuild. The bug lives in the client's leader
+   * election, but the server has no business letting one bad client
+   * monopolize CPU. Anything above PLATOS_TOOL_REGISTER_MAX_PER_MIN
+   * gets a `register_throttled` reply (with retry-after hint) instead
+   * of the full re-registration path.
+   */
+  private registerWindow = new Map<string, number[]>();
+
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
     private readonly toolRegistry: ToolRegistryService,
@@ -392,6 +406,35 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
     this.logger.log(`[msg ${entityId}/${environmentId}] type=${msg.type}`);
     switch (msg.type) {
       case "tool_register": {
+        // Defense-in-depth (2026-05-19 post-mortem): cap re-registration
+        // frequency per (entity, env). Bug-free clients hit this once at
+        // startup and rarely after; the only callers that exceed the cap
+        // are buggy reconnect loops. Without this gate, one broken
+        // client can monopolize the agent's CPU.
+        const rateLimitKey = this.connKey(entityId, environmentId);
+        const nowMs = Date.now();
+        const maxPerMin = Number(
+          process.env.PLATOS_TOOL_REGISTER_MAX_PER_MIN ?? "6",
+        );
+        const windowMs = 60_000;
+        const recent = (this.registerWindow.get(rateLimitKey) ?? []).filter(
+          (ts) => nowMs - ts < windowMs,
+        );
+        if (recent.length >= maxPerMin) {
+          const retryAfterMs = windowMs - (nowMs - recent[0]!);
+          this.logger.warn(
+            `entity ${entityId}/${environmentId}: tool_register throttled (${recent.length}/${maxPerMin} per min) — retry-after ${Math.ceil(retryAfterMs / 1000)}s`,
+          );
+          this.send(ws, {
+            type: "register_throttled",
+            error: `tool_register exceeded ${maxPerMin}/min; retry after ${Math.ceil(retryAfterMs / 1000)}s`,
+            retry_after_ms: retryAfterMs,
+          });
+          return;
+        }
+        recent.push(nowMs);
+        this.registerWindow.set(rateLimitKey, recent);
+
         const tools = Array.isArray(msg.tools) ? msg.tools : [];
         const normalized: ToolSchema[] = tools.map((t: any) => ({
           name: t.name,

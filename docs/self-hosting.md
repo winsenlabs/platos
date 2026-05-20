@@ -640,6 +640,32 @@ Before going live:
 - [ ] **OTEL traces include no raw provider keys.** The SDK sanitizers redact `Authorization`, `x-api-key`, etc. Verify your collector isn't logging request bodies.
 - [ ] **Audit logs.** Enable the audit-log feature flag for `Settings → Audit Log` to track sensitive admin actions.
 
+## Quarterly maintenance
+
+A short list of host-level chores that prevent slow accumulation from biting you. Calendar these once a quarter; each one is a single command.
+
+### `docker builder prune` — reclaim build-cache disk
+
+Every `docker compose build` (deploys, image rebuilds, dependency bumps) leaves cached layers in `/var/lib/docker/buildkit`. They accumulate forever — on the reference deploy we found 149.7 GB of stale build cache across 566 entries (out of a 193 GB disk) after ~16 days of normal operation. The cache is **never load-bearing at runtime**; pruning is always safe.
+
+```sh
+sudo docker system df                # see what's reclaimable
+sudo docker builder prune -af        # reclaim everything
+```
+
+This recovers tens to hundreds of GB on a long-lived host. Run before every dependency upgrade — fresh builds are faster anyway when the cache is clean and small.
+
+Also worth checking opportunistically:
+
+```sh
+sudo docker image prune -af          # untagged image layers from old image versions
+df -h /                              # spot inode pressure ("Use%" climbing above 75%)
+```
+
+### ClickHouse system-table sanity (operationally automatic)
+
+Since `docker-compose.platos.yml` ships a `clickhouse-ttl-apply` sidecar that runs on every stack boot, ClickHouse's own observability tables (`system.metric_log`, `system.asynchronous_metric_log`, etc.) cannot grow past 7 days. There's nothing to maintain manually. If you ever bump the ClickHouse major version, re-run the sidecar once after the upgrade in case a new system log table got added that the script doesn't yet know about — the script's `run_alter` helper logs each table it touches.
+
 ## Upgrades
 
 - Pin a version (`PLATOS_VERSION=0.5.2`).
