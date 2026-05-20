@@ -29,9 +29,25 @@ set -e
 
 echo "[apply-system-table-ttls] target=${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT} ttl=${TTL_DAYS}d"
 
-# Each system log table has a slightly different schema. Use
-# `IF EXISTS` so we don't fail on tables this build doesn't have, and
-# wrap each in its own statement so one failure doesn't abort the rest.
+# Each system log table has a slightly different schema. We can't use
+# `ALTER TABLE IF EXISTS` — ClickHouse rejects that form on MODIFY TTL —
+# so each ALTER runs in its own statement and the shell `||` swallows
+# failures (UNKNOWN_TABLE when the table isn't enabled on this build,
+# or column-mismatch when a table uses a non-default time column).
+run_alter() {
+  table="$1"
+  time_col="${2:-event_date}"
+  echo "[apply-system-table-ttls] ALTER system.${table} (TTL on ${time_col})"
+  clickhouse-client \
+    --host "${CLICKHOUSE_HOST}" \
+    --port "${CLICKHOUSE_PORT}" \
+    --user "${CLICKHOUSE_USER}" \
+    --password "${CLICKHOUSE_PASSWORD}" \
+    --query "ALTER TABLE system.${table} MODIFY TTL ${time_col} + INTERVAL ${TTL_DAYS} DAY DELETE" \
+    2>&1 | grep -v "^$" || echo "[apply-system-table-ttls]   (skipped: table may not exist on this build)"
+}
+
+# Tables that use `event_date` as the time column (the common case).
 for table in \
     metric_log \
     asynchronous_metric_log \
@@ -43,16 +59,12 @@ for table in \
     processors_profile_log \
     part_log \
     text_log \
-    trace_log \
-    opentelemetry_span_log; do
-  echo "[apply-system-table-ttls] ALTER system.${table}"
-  clickhouse-client \
-    --host "${CLICKHOUSE_HOST}" \
-    --port "${CLICKHOUSE_PORT}" \
-    --user "${CLICKHOUSE_USER}" \
-    --password "${CLICKHOUSE_PASSWORD}" \
-    --query "ALTER TABLE IF EXISTS system.${table} MODIFY TTL event_date + INTERVAL ${TTL_DAYS} DAY DELETE" \
-    || echo "[apply-system-table-ttls]   (skipped: table may use a different time column or not exist)"
+    trace_log; do
+  run_alter "${table}"
 done
+
+# `opentelemetry_span_log` uses `finish_date` instead of `event_date`
+# (the row is dated when the span finishes, not when the event starts).
+run_alter "opentelemetry_span_log" "finish_date"
 
 echo "[apply-system-table-ttls] done"
