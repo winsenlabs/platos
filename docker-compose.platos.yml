@@ -115,9 +115,12 @@ services:
       - ./.platos/clickhouse/listen.xml:/etc/clickhouse-server/config.d/listen.xml:ro
       # Disable trace_log/text_log (grew to 7+ GiB)
       - ./.platos/clickhouse/logging.xml:/etc/clickhouse-server/config.d/logging.xml:ro
-      # 7-day TTL on every system.*_log table to prevent the OOM-loop
-      # documented in the 2026-05-19 post-mortem.
-      - ./.platos/clickhouse/system-tables-ttl.xml:/etc/clickhouse-server/config.d/system-tables-ttl.xml:ro
+      # TTL on system.*_log tables is applied via the `clickhouse-ttl-apply`
+      # sidecar below, using SQL `ALTER TABLE ... MODIFY TTL`. The
+      # alternative XML override in config.d/ has a version-fragile schema
+      # (caught us once — see post-mortem) AND only sets defaults for
+      # tables yet to be created, so it's useless on upgrades. SQL ALTER
+      # is portable and retroactive.
     environment:
       CLICKHOUSE_USER: "${CLICKHOUSE_USER:-default}"
       # Override CLICKHOUSE_PASSWORD in .env before exposing externally.
@@ -230,6 +233,36 @@ services:
     volumes:
       - ./internal-packages/clickhouse/schema:/migrations:ro
     command: ["-dir", "/migrations", "up"]
+    restart: "no"
+
+  # ─────────────────────────────────────────────────────────────
+  # clickhouse-ttl-apply — one-shot sidecar that applies 7-day TTL
+  # to every system.*_log table after ClickHouse is healthy.
+  #
+  # See the 2026-05-19 post-mortem: ClickHouse's own observability
+  # tables (`metric_log`, `asynchronous_metric_log`, etc.) accumulate
+  # ~100k rows/hr by default with no built-in retention. After enough
+  # uptime a single background merge exceeds the container's
+  # `mem_limit` → OOM-kill → lost merge progress → bigger next merge.
+  # The 4 GiB mem_limit bump above buys years; TTL is the durable fix.
+  #
+  # Idempotent: ALTER ... MODIFY TTL is a no-op when already set.
+  # ─────────────────────────────────────────────────────────────
+  clickhouse-ttl-apply:
+    image: clickhouse/clickhouse-server:25.3-alpine
+    logging: *default-logging
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "9000"
+      CLICKHOUSE_USER: "${CLICKHOUSE_USER:-default}"
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD:?required — see .env.example}"
+      TTL_DAYS: "${CLICKHOUSE_SYSTEM_LOG_TTL_DAYS:-7}"
+    volumes:
+      - ./.platos/clickhouse/apply-system-table-ttls.sh:/apply-system-table-ttls.sh:ro
+    entrypoint: ["/bin/sh", "/apply-system-table-ttls.sh"]
     restart: "no"
 
   # ─────────────────────────────────────────────────────────────

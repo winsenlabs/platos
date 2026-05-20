@@ -15,7 +15,11 @@ export type DetectorKind =
   | "exfiltration"
   | "tool_param"
   | "rate_limit"
-  | "budget";
+  | "budget"
+  // Issue #1 — emitted by ToolExecutorService when the optional
+  // 4-tier permission gate (PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1)
+  // blocks or flags a dispatch.
+  | "dispatcher_permission_gate";
 export type DetectorAction = "flag" | "redact" | "block" | "warn";
 
 export interface SafetyEventRow {
