@@ -202,14 +202,20 @@ export class PlatoolsClient {
 
   /**
    * Compute the normalized WebSocket URL. Mirrors the Python
-   * SDK's `_ws_url` — strips trailing slashes, swaps `http://` →
-   * `ws://` / `https://` → `wss://`, and appends `/ws/sdk`.
+   * SDK's `_ws_url` — swaps `http://` → `ws://` / `https://` →
+   * `wss://`, strips trailing slashes from the *path*, and inserts
+   * `/ws/sdk` before any query string. Concatenating the suffix
+   * after the query corrupts the last query value
+   * (`?env=prod` → `?env=prod/ws/sdk`).
    */
   public websocketUrl(): string {
-    let base = this.url.replace(/\/+$/, "");
+    let base = this.url;
     if (base.startsWith("http://")) base = `ws://${base.slice("http://".length)}`;
     else if (base.startsWith("https://")) base = `wss://${base.slice("https://".length)}`;
-    return `${base}/ws/sdk`;
+    const qIdx = base.indexOf("?");
+    const path = qIdx >= 0 ? base.slice(0, qIdx) : base;
+    const query = qIdx >= 0 ? base.slice(qIdx) : "";
+    return `${path.replace(/\/+$/, "")}/ws/sdk${query}`;
   }
 
   /**

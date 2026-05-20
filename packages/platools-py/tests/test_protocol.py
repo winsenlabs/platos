@@ -81,3 +81,38 @@ def test_welcome_and_heartbeat_ack_discriminated() -> None:
 
     ack = adapter.validate_python({"type": "heartbeat_ack"})
     assert isinstance(ack, HeartbeatAckMessage)
+
+
+def test_welcome_accepts_canonical_organization_id() -> None:
+    # Server emits `organization_id`; older SDK only decoded `org_id`.
+    # The decoder now accepts either shape and exposes both names.
+    adapter: TypeAdapter[PlatformToSdk] = TypeAdapter(PlatformToSdk)
+    welcome = adapter.validate_python(
+        {
+            "type": "welcome",
+            "sdk_connection_id": "conn-1",
+            "organization_id": "org-abc",
+            "entity_id": "winsen-brain-demo-app",
+            "environment_id": "env-prod",
+            "project_id": "prj-1",
+        }
+    )
+    assert isinstance(welcome, WelcomeMessage)
+    assert welcome.organization_id == "org-abc"
+    assert welcome.org_id == "org-abc"
+    assert welcome.entity_id == "winsen-brain-demo-app"
+    assert welcome.environment_id == "env-prod"
+    assert welcome.project_id == "prj-1"
+
+
+def test_welcome_back_compat_org_id_only() -> None:
+    adapter: TypeAdapter[PlatformToSdk] = TypeAdapter(PlatformToSdk)
+    welcome = adapter.validate_python(
+        {"type": "welcome", "sdk_connection_id": "conn-2", "org_id": "org-xyz"}
+    )
+    assert isinstance(welcome, WelcomeMessage)
+    assert welcome.organization_id == "org-xyz"
+    assert welcome.org_id == "org-xyz"
+    assert welcome.entity_id is None
+    assert welcome.environment_id is None
+    assert welcome.project_id is None

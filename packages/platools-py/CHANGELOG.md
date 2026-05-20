@@ -1,5 +1,17 @@
 # platools (Python)
 
+## 0.2.1 — 2026-05-20
+
+### Fixed
+
+- **`PlatoolsClient._ws_url` corrupted query strings** (parity with the JS SDK fix in `@platosdev/platools-sdk` 0.2.1; mirrors winsenlabs/platos#3). The old implementation did `f"{base.rstrip('/')}/ws/sdk"`, concatenating the suffix *after* any query string. A bridge configured with `PLATOS_URL=wss://play.platos.dev/tools/sync?env=prod` ended up shipping the handshake to `…?env=prod/ws/sdk`; the server then parsed `env="prod/ws/sdk"` and rejected with `could not resolve env for entity`. Fix splits the URL at `?`, appends `/ws/sdk` to the path, and re-attaches the query.
+- **`WelcomeMessage` accepts the canonical `organization_id` field** the server actually emits, with `org_id` kept as a backwards-compatible read alias. The model also surfaces optional `entity_id`, `environment_id`, and `project_id` when present. Silences the `platools received malformed message` warn that older SDKs emitted on every connect.
+
+### Tests
+
+- New regression cases in `tests/test_ws_url.py` for the URL-construction bug.
+- Welcome decoder dual-shape cases added to `tests/test_protocol.py`.
+
 ## 0.2.0 — 2026-05-06
 
 ### What changed

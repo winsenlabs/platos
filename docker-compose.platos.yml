@@ -58,7 +58,9 @@ services:
     image: pgvector/pgvector:pg16
     restart: unless-stopped
     logging: *default-logging
-    mem_limit: ${POSTGRES_MEM_LIMIT:-512m}
+    # 2026-05-19 incident: 512m default OOMed under storm-driven UPSERT load + autovacuum.
+    # Production realistic minimum is ~1 GiB; override via POSTGRES_MEM_LIMIT for bigger hosts.
+    mem_limit: ${POSTGRES_MEM_LIMIT:-1g}
     ports:
       # EOBD.51 — bind to localhost by default. Override via
       # POSTGRES_PUBLIC_BIND=0.0.0.0 for external access.
@@ -99,7 +101,10 @@ services:
     image: clickhouse/clickhouse-server:25.3-alpine
     restart: unless-stopped
     logging: *default-logging
-    mem_limit: ${CLICKHOUSE_MEM_LIMIT:-1200m}
+    # 2026-05-19 incident: 1200m default caused 523 OOM-restarts in 12 days
+    # because ClickHouse's *own* `system.metric_log` grew past what a 1.17 GiB
+    # cgroup could merge. New default is 4 GiB; pair with the TTL config below.
+    mem_limit: ${CLICKHOUSE_MEM_LIMIT:-4g}
     ports:
       # EOBD.51 — bind to localhost by default.
       - "${CLICKHOUSE_PUBLIC_BIND:-127.0.0.1}:8123:8123"
@@ -108,8 +113,11 @@ services:
       - platos-clickhouse:/var/lib/clickhouse
       # Host has IPv6 disabled; override listen_host to 0.0.0.0 (IPv4-only)
       - ./.platos/clickhouse/listen.xml:/etc/clickhouse-server/config.d/listen.xml:ro
-      # Disable trace_log/text_log (grew to 7+ GiB), cap memory to ~1.2 GB
+      # Disable trace_log/text_log (grew to 7+ GiB)
       - ./.platos/clickhouse/logging.xml:/etc/clickhouse-server/config.d/logging.xml:ro
+      # 7-day TTL on every system.*_log table to prevent the OOM-loop
+      # documented in the 2026-05-19 post-mortem.
+      - ./.platos/clickhouse/system-tables-ttl.xml:/etc/clickhouse-server/config.d/system-tables-ttl.xml:ro
     environment:
       CLICKHOUSE_USER: "${CLICKHOUSE_USER:-default}"
       # Override CLICKHOUSE_PASSWORD in .env before exposing externally.

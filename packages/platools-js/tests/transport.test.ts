@@ -162,6 +162,78 @@ describe("PlatoolsClient.websocketUrl", () => {
     });
     expect(client.websocketUrl()).toBe("ws://host:9000/ws/sdk");
   });
+
+  // Regression: raw string concat used to produce
+  // `wss://x.example/y?z=1/ws/sdk`, which the server parsed as
+  // `?z=1/ws/sdk` and failed env resolution.
+  it("inserts /ws/sdk before query strings, not after", () => {
+    const client = new PlatoolsClient({
+      url: "wss://x.example/y?z=1",
+      secret: "s",
+      registry: new ToolRegistry(),
+    });
+    expect(client.websocketUrl()).toBe("wss://x.example/y/ws/sdk?z=1");
+  });
+
+  it("handles multiple query params (source + env)", () => {
+    const client = new PlatoolsClient({
+      url: "wss://play.platos.dev/tools/sync?source=winsen-brain-demo-app&env=prod",
+      secret: "s",
+      registry: new ToolRegistry(),
+    });
+    expect(client.websocketUrl()).toBe(
+      "wss://play.platos.dev/tools/sync/ws/sdk?source=winsen-brain-demo-app&env=prod",
+    );
+  });
+});
+
+describe("decodePlatformMessage — welcome", () => {
+  // Server emits `organization_id`; legacy SDKs only read `org_id`.
+  // The decoder accepts either and exposes both.
+  it("decodes the canonical organization_id shape", () => {
+    const decoded = decodePlatformMessage(
+      JSON.stringify({
+        type: "welcome",
+        sdk_connection_id: "conn-1",
+        organization_id: "org-abc",
+        project_id: "prj-def",
+        environment_id: "env-ghi",
+        entity_id: "winsen-brain-demo-app",
+      }),
+    );
+    expect(decoded).toEqual({
+      type: "welcome",
+      sdk_connection_id: "conn-1",
+      organization_id: "org-abc",
+      org_id: "org-abc",
+      project_id: "prj-def",
+      environment_id: "env-ghi",
+      entity_id: "winsen-brain-demo-app",
+    });
+  });
+
+  it("falls back to the legacy org_id shape", () => {
+    const decoded = decodePlatformMessage(
+      JSON.stringify({
+        type: "welcome",
+        sdk_connection_id: "conn-2",
+        org_id: "org-xyz",
+      }),
+    );
+    expect(decoded).toEqual({
+      type: "welcome",
+      sdk_connection_id: "conn-2",
+      organization_id: "org-xyz",
+      org_id: "org-xyz",
+    });
+  });
+
+  it("rejects a welcome frame with neither field", () => {
+    const decoded = decodePlatformMessage(
+      JSON.stringify({ type: "welcome", sdk_connection_id: "c" }),
+    );
+    expect(decoded).toBeNull();
+  });
 });
 
 describe("PlatoolsClient session dispatch", () => {

@@ -26,6 +26,7 @@ import { ApprovalsApi } from "./apis/approvals.js";
 import { BudgetsApi } from "./apis/budgets.js";
 import { MonitoringApi } from "./apis/monitoring.js";
 import { ThreadsApi } from "./apis/threads.js";
+import { ToolsApi } from "./apis/tools.js";
 import { TriggerApi } from "./apis/trigger.js";
 import type {
   PlatosClientOptions,
@@ -76,6 +77,16 @@ export class PlatosClient {
   /** EOBD.85 — runs / traces / cost rollups. */
   readonly monitoring: MonitoringApi;
   /**
+   * Tool catalog (issue #2). Backs the dashboard's Tools tab + Matrix.
+   *   `client.tools.list({ category? })`
+   *   `client.tools.search(q, { limit?, entity? })`
+   *   `client.tools.matrix()`        — per-entity grid with health data
+   *   `client.tools.stats()`         — registry index counts
+   *   `client.tools.setEnabled(entityId, toolName, enabled)`
+   *   `client.tools.test(toolId, params)`
+   */
+  readonly tools: ToolsApi;
+  /**
    * Theme BGO — unified background-operations surface. Backed by the
    * trigger.dev engine; exposes `client.bgo.tasks` (catalog), `.runs`,
    * `.schedules`, `.batches`.
@@ -111,6 +122,7 @@ export class PlatosClient {
     this.approvals = new ApprovalsApi(this);
     this.budgets = new BudgetsApi(this);
     this.monitoring = new MonitoringApi(this);
+    this.tools = new ToolsApi(this);
     // Theme BGO — `bgo` is the canonical namespace; `trigger` is the
     // deprecated alias pointing at the same instance. Kept for one
     // release (see docs/BGO_RENAME.md).
