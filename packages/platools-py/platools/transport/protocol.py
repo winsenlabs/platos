@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class ToolSchemaPayload(BaseModel):
@@ -74,11 +74,28 @@ class HeartbeatAckMessage(BaseModel):
 class WelcomeMessage(BaseModel):
     """Sent by the platform on successful handshake so the SDK knows the
     connection is authenticated and its tools are queued for registration.
+
+    The server emits ``organization_id`` as the canonical field; older
+    SDKs only decoded ``org_id``. We accept either shape (validation
+    alias) and back-fill the legacy ``org_id`` attribute so any v0.2.x
+    consumer still reads through. The extra scope fields (``entity_id``,
+    ``environment_id``, ``project_id``) are populated when the server
+    sends them and remain ``None`` otherwise — they're additive only.
     """
+
+    model_config = ConfigDict(populate_by_name=True)
 
     type: Literal["welcome"] = "welcome"
     sdk_connection_id: str
-    org_id: str
+    organization_id: str = Field(validation_alias=AliasChoices("organization_id", "org_id"))
+    entity_id: str | None = None
+    environment_id: str | None = None
+    project_id: str | None = None
+
+    @property
+    def org_id(self) -> str:
+        """Deprecated alias for :attr:`organization_id` — kept for v0.2.x consumers."""
+        return self.organization_id
 
 
 SdkToPlatform = ToolRegisterMessage | ToolResultMessage | ToolErrorMessage | HeartbeatMessage

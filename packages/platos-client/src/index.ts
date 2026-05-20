@@ -56,5 +56,15 @@ export type {
   TriggerHandle,
 } from "./apis/trigger.js";
 
+export type {
+  PlatosTool,
+  PlatosToolHealth,
+  PlatosToolMatrixRow,
+  PlatosToolStats,
+  PlatosToolListOptions,
+  PlatosToolSearchOptions,
+  PlatosToolTestResult,
+} from "./apis/tools.js";
+
 import { PlatosClient } from "./client.js";
 export default PlatosClient;

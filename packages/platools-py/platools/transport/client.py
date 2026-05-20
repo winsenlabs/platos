@@ -120,12 +120,23 @@ class PlatoolsClient:
                 self._ws = None
 
     def _ws_url(self) -> str:
-        base = self._url.rstrip("/")
+        # Mirror the JS SDK's fix: swap protocol, strip trailing slashes
+        # from the *path*, and insert `/ws/sdk` *before* any query
+        # string. Naive `f"{base}/ws/sdk"` concatenation corrupts the
+        # last query value (`?env=prod` becomes `?env=prod/ws/sdk`),
+        # which the server then fails to parse — see
+        # winsenlabs/platos#3.
+        base = self._url
         if base.startswith("http://"):
             base = "ws://" + base[len("http://") :]
         elif base.startswith("https://"):
             base = "wss://" + base[len("https://") :]
-        return f"{base}/ws/sdk"
+        q_idx = base.find("?")
+        if q_idx >= 0:
+            path, query = base[:q_idx], base[q_idx:]
+        else:
+            path, query = base, ""
+        return f"{path.rstrip('/')}/ws/sdk{query}"
 
     async def _send_registration(self, ws: ClientConnection) -> None:
         payloads: list[ToolSchemaPayload] = []
