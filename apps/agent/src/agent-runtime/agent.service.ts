@@ -4272,6 +4272,11 @@ export class AgentService {
       tools: subTools,
       stopWhen: stepCountIs(maxSteps),
       abortSignal: args.abortSignal,
+      // Sub-agent prompt rides in `messages[]` (not the top-level `system:`)
+      // specifically so we can attach `providerOptions.anthropic.cacheControl`
+      // on the system message (see subCacheOpts above). Suppresses the
+      // AI SDK v6 warning that nudges toward top-level `system:`.
+      allowSystemInMessages: true,
     });
     const subEndNs = Date.now() * 1_000_000;
 
@@ -5677,6 +5682,10 @@ export class AgentService {
         model,
         messages,
         tools,
+        // Main agent turn — system prompt rides in `messages[]` so
+        // per-message `providerOptions` (anthropic cacheControl) can be
+        // attached. Suppresses the AI SDK v6 warning nudge.
+        allowSystemInMessages: true,
         // AI SDK v6 — `maxSteps: N` removed; use `stopWhen` predicate.
         // `stepCountIs(N)` halts the tool-calling loop after N steps.
         stopWhen: stepCountIs(agentConfig.maxSteps),
@@ -6230,6 +6239,10 @@ export class AgentService {
             messages: attemptMessages as any,
             schema: turnSchema as any,
             abortSignal: turnOverrides?.abortSignal,
+            // System prompt rides inside `attemptMessages` rather than as a
+            // top-level `system:` so the retry path (line 6251) can keep
+            // it as a fixed first message while appending corrections.
+            allowSystemInMessages: true,
           });
           parsed = genResult.object;
           usage = genResult.usage;
