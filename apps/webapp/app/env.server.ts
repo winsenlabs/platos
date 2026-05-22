@@ -343,6 +343,12 @@ const EnvironmentSchema = z
     API_RATE_LIMIT_JWT_WINDOW: z.string().default("1m"),
     API_RATE_LIMIT_JWT_TOKENS: z.coerce.number().int().default(60),
 
+    // Public docs API (/api/v1/public/*). Has to absorb a marketing-site
+    // SSG that fans out ~250 requests from one Vercel build IP — the old
+    // 60/min default 429'd the build reliably.
+    PUBLIC_DOCS_RATE_LIMIT_WINDOW: z.string().default("60 s"),
+    PUBLIC_DOCS_RATE_LIMIT_TOKENS: z.coerce.number().int().default(600),
+
     //v3
     PROVIDER_SECRET: z.string().default("provider-secret"),
     COORDINATOR_SECRET: z.string().default("coordinator-secret"),

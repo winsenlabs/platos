@@ -4584,14 +4584,15 @@ export class AgentService {
       const tlbGate: { entityIdsRequired?: boolean } =
         (agentConfig as { toolsBlockConfig?: { entityIdsRequired?: boolean } })
           .toolsBlockConfig ?? {};
-      let mandated = tlbGate.entityIdsRequired;
-      if (mandated === undefined) {
-        const visible = this.toolRouter.visibleEntitiesForAgent(scope, {
-          enabledOnly: true,
-        });
-        mandated = visible.length > 1;
-      }
-      if (mandated === true) {
+      // PIFSP-11.1 — default is now explicit opt-in. Previously we auto-
+      // enforced whenever `visibleEntitiesForAgent` returned >1, which
+      // surprised single-purpose agents the moment any second entity (a
+      // test backend, a sample one) appeared in the project. Multi-tenant
+      // operators who actually need narrowing set `entityIdsRequired: true`
+      // explicitly; the absence of that opt-in means "this agent doesn't
+      // care about per-turn entity narrowing."
+      const mandated = tlbGate.entityIdsRequired === true;
+      if (mandated) {
         const entityIdsKey =
           (scope.contextMapping as ContextMapping | null | undefined)
             ?.entityIdsKey || "entity_ids";
