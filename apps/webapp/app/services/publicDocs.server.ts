@@ -61,7 +61,11 @@ export function getPublicDocsRepository(): DocRepository {
 }
 
 /**
- * Rate-limit guard for public docs endpoints. 60 req / 60s per IP.
+ * Rate-limit guard for public docs endpoints. Tokens + window come from
+ * PUBLIC_DOCS_RATE_LIMIT_TOKENS / PUBLIC_DOCS_RATE_LIMIT_WINDOW so a
+ * deployment that fronts SSG builds (platos.dev → play.platos.dev fans
+ * out ~250 requests from one Vercel build IP) can raise the cap without
+ * a code change. Default 600 / 60s.
  *
  * Reuses the existing Redis rate-limit infra (`createRedisRateLimitClient`)
  * so we share infra with the rest of the webapp's rate limits — keys are
@@ -78,7 +82,10 @@ function getLimiter(): Ratelimit {
       tlsDisabled: env.RATE_LIMIT_REDIS_TLS_DISABLED === "true",
       clusterMode: env.RATE_LIMIT_REDIS_CLUSTER_MODE_ENABLED === "1",
     }),
-    limiter: Ratelimit.slidingWindow(60, "60 s"),
+    limiter: Ratelimit.slidingWindow(
+      env.PUBLIC_DOCS_RATE_LIMIT_TOKENS,
+      env.PUBLIC_DOCS_RATE_LIMIT_WINDOW as `${number} ${"s" | "ms" | "m" | "h" | "d"}`,
+    ),
     prefix: "ratelimit:public-docs",
     analytics: false,
     ephemeralCache: new Map(),
