@@ -25,6 +25,39 @@ export interface DynamicBlockTemplate {
 }
 
 /**
+ * PIFSP-19 — coerce a block-list field (`promptBlocks` / `dynamicBlocks`) to a
+ * JSON array (or null) before it is persisted into a Prisma `Json?` column.
+ *
+ * The contract for these columns is "array of block objects". Postgres `jsonb`
+ * also accepts a bare string scalar, so a client that double-encodes the field
+ * — sends `JSON.stringify(blocks)` instead of `blocks` — lands a *string* in
+ * the column and Prisma stores it verbatim. Every downstream reader assumes an
+ * array:
+ *   - the dashboard does `blocks.map(...)` → `"...".map is not a function`
+ *     (minified: `z.map is not a function`), crashing the agent detail page;
+ *   - the runtime guards with `Array.isArray(...)`, so a string silently drops
+ *     every dynamic block and the agent answers ungrounded (no {{vars}}).
+ *
+ * One bad write therefore corrupts the row permanently. This normalizes at the
+ * write boundary: parse-if-string, require-array, drop-to-null otherwise. It is
+ * idempotent on already-correct arrays.
+ */
+function coerceBlockList(value: unknown): unknown[] | null {
+  if (value === undefined || value === null) return null;
+  let v: unknown = value;
+  if (typeof v === "string") {
+    const trimmed = v.trim();
+    if (trimmed === "") return null;
+    try {
+      v = JSON.parse(trimmed);
+    } catch {
+      return null;
+    }
+  }
+  return Array.isArray(v) ? v : null;
+}
+
+/**
  * TL.2 — display-mode keys. Drives how the main-LLM's tool layer is
  * rendered each turn. Values map 1:1 to `buildMetaTools()` branches:
  *
@@ -358,8 +391,8 @@ export class AgentCrudService {
       model: agent.model,
       modelRoutes: (agent.modelRoutes as ModelRoute[] | null) ?? null,
       systemPrompt: agent.systemPrompt ?? null,
-      promptBlocks: (agent.promptBlocks as PromptBlock[] | null) ?? null,
-      dynamicBlocks: (agent.dynamicBlocks as DynamicBlockTemplate[] | null) ?? null,
+      promptBlocks: coerceBlockList(agent.promptBlocks) as PromptBlock[] | null,
+      dynamicBlocks: coerceBlockList(agent.dynamicBlocks) as DynamicBlockTemplate[] | null,
       maxSteps: agent.maxSteps ?? 20,
       contextLimit: agent.contextLimit ?? 20,
       historyMode: agent.historyMode ?? "rolling",
@@ -449,8 +482,8 @@ export class AgentCrudService {
         slug,
         model: dto.model,
         systemPrompt: dto.systemPrompt || derivedSystemPrompt || null,
-        promptBlocks: (dto.promptBlocks as any) || null,
-        dynamicBlocks: (dto.dynamicBlocks as any) || null,
+        promptBlocks: coerceBlockList(dto.promptBlocks) as any,
+        dynamicBlocks: coerceBlockList(dto.dynamicBlocks) as any,
         maxSteps: dto.maxSteps || 20,
         contextLimit: dto.contextLimit ?? 20,
         historyMode: dto.historyMode || "rolling",
@@ -592,8 +625,8 @@ export class AgentCrudService {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.model !== undefined && { model: dto.model }),
         ...(updateSystemPrompt !== undefined && { systemPrompt: updateSystemPrompt }),
-        ...(dto.promptBlocks !== undefined && { promptBlocks: (dto.promptBlocks as any) }),
-        ...(dto.dynamicBlocks !== undefined && { dynamicBlocks: (dto.dynamicBlocks as any) }),
+        ...(dto.promptBlocks !== undefined && { promptBlocks: coerceBlockList(dto.promptBlocks) as any }),
+        ...(dto.dynamicBlocks !== undefined && { dynamicBlocks: coerceBlockList(dto.dynamicBlocks) as any }),
         ...(dto.maxSteps !== undefined && { maxSteps: dto.maxSteps }),
         ...(dto.contextLimit !== undefined && { contextLimit: dto.contextLimit }),
         ...(dto.historyMode !== undefined && { historyMode: dto.historyMode }),
@@ -823,8 +856,8 @@ export class AgentCrudService {
       data: {
         model: snap.model,
         systemPrompt: snap.systemPrompt,
-        promptBlocks: (snap.promptBlocks as any) ?? null,
-        dynamicBlocks: (snap.dynamicBlocks as any) ?? null,
+        promptBlocks: coerceBlockList(snap.promptBlocks) as any,
+        dynamicBlocks: coerceBlockList(snap.dynamicBlocks) as any,
         maxSteps: snap.maxSteps,
         contextLimit: snap.contextLimit,
         historyMode: snap.historyMode,

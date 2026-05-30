@@ -55,6 +55,26 @@ type DynamicBlock = {
   description?: string;
 };
 
+/**
+ * PIFSP-19 — read-side defense. `dynamicBlocks` is an array column, but a
+ * double-encoded write (a client sending `JSON.stringify(blocks)`) can land a
+ * string scalar in the JSON column. A truthy string slips past `?? []` and the
+ * editor then calls `.map` on it (`z.map is not a function`), crashing the
+ * page. Parse-if-string, require-array, fall back to []. Belt to the write-path
+ * braces in agent-crud.service.ts.
+ */
+function asBlockArray(raw: unknown): DynamicBlock[] {
+  let v: unknown = raw;
+  if (typeof v === "string") {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(v) ? (v as DynamicBlock[]) : [];
+}
+
 // ─── Loader ───────────────────────────────────────────────────────────────────
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -79,7 +99,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   return typedjson({
     agentName: agentRow?.name ?? agentId,
     contextMapping: (agentRow?.contextMapping as ContextMapping | null) ?? null,
-    dynamicBlocks: (agentRow?.dynamicBlocks as DynamicBlock[] | null) ?? [],
+    dynamicBlocks: asBlockArray(agentRow?.dynamicBlocks),
     scope: {
       organizationId: project.organizationId,
       projectId: project.id,

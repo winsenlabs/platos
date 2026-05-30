@@ -70,6 +70,27 @@ function scopeHeaders(scope: {
   };
 }
 
+/**
+ * PIFSP-19 — read-side defense for block-list columns (promptBlocks /
+ * dynamicBlocks). These are array columns, but a double-encoded write (a client
+ * sending `JSON.stringify(blocks)`) can land a string scalar. A truthy string
+ * slips past `|| []` and the editor then calls `.map` on it
+ * (`z.map is not a function`), crashing the agent detail page. Parse-if-string,
+ * require-array, fall back to []. Belt to the write-path braces in
+ * agent-crud.service.ts.
+ */
+function asBlockArray<T>(raw: unknown): T[] {
+  let v: unknown = raw;
+  if (typeof v === "string") {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(v) ? (v as T[]) : [];
+}
+
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const userId = await requireUserId(request);
   const agentId = params.agentId!;
@@ -696,7 +717,7 @@ export default function AgentDetailPage() {
   );
   const [dynamicBlocks, setDynamicBlocks] = useState<
     Array<{ key: string; name: string; defaultContent: string; description?: string }>
-  >(((agent as any).dynamicBlocks as any[]) || []);
+  >(asBlockArray((agent as any).dynamicBlocks));
   // Theme G.7 — local state for the feature flags editor. Seed from the
   // saved value; the PATCH action replaces the whole map on submit.
   const initialFlags = useMemo<Record<string, boolean>>(
