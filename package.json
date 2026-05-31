@@ -19,6 +19,7 @@
     "i:dev": "infisical run -- turbo run dev",
     "generate": "turbo run generate",
     "lint": "turbo run lint",
+    "audit:scope": "node scripts/audit-scope.mjs",
     "docker": "docker compose -p triggerdotdev-docker -f docker/docker-compose.yml up -d --build --remove-orphans",
     "docker:stop": "docker compose -p triggerdotdev-docker -f docker/docker-compose.yml stop",
     "dev:docker": "docker compose -p triggerdotdev-dev-docker -f docker/dev-compose.yml up -d --build --remove-orphans",
