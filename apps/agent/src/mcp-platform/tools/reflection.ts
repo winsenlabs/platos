@@ -703,8 +703,12 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
 
         // Prompt blocks — array-of-objects, compared positionally. We compute
         // per-block equality + flag added / removed tail entries.
-        const pbA = (a.promptBlocks ?? []) as unknown as Array<Record<string, unknown>>;
-        const pbB = (b.promptBlocks ?? []) as unknown as Array<Record<string, unknown>>;
+        // PIFSP-19 — Array.isArray, not `?? []`: promptBlocks is a Json? column
+        // that can hold a string scalar (double-encoded write). `?? []` only
+        // catches null/undefined, so a string would slip through and get
+        // iterated character-by-character, producing a garbage diff.
+        const pbA = Array.isArray(a.promptBlocks) ? (a.promptBlocks as Array<Record<string, unknown>>) : [];
+        const pbB = Array.isArray(b.promptBlocks) ? (b.promptBlocks as Array<Record<string, unknown>>) : [];
         const maxBlocks = Math.max(pbA.length, pbB.length);
         const promptBlocksDiff = Array.from({ length: maxBlocks }, (_, i) => {
           const left = pbA[i] ?? null;
