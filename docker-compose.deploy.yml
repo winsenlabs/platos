@@ -1,0 +1,37 @@
+# Production deploy override — pull pre-built images, never build on the box.
+#
+# Usage on the VPS:
+#   docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
+#     --profile app pull agent webapp worker
+#   docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
+#     --profile app up -d
+#
+# This override REPLACES the `build:` blocks from docker-compose.platos.yml with
+# registry image refs from GHCR (published by .github/workflows/build-images.yml).
+# Compose ignores `build:` when you don't pass `build`, but pinning `image:` to a
+# registry path + a specific tag guarantees `pull` fetches the off-box artifact
+# instead of ever compiling locally.
+#
+# PLATOS_IMAGE_TAG defaults to `latest`; pin it to `sha-<commit>` for an
+# immutable, rollback-friendly deploy (recommended for prod):
+#   PLATOS_IMAGE_TAG=sha-<full-commit-sha> docker compose ... pull ...
+#
+# PLATOS_IMAGE_NAMESPACE is the GHCR owner (default: winsenlabs).
+
+services:
+  agent:
+    image: ghcr.io/${PLATOS_IMAGE_NAMESPACE:-winsenlabs}/platos-agent:${PLATOS_IMAGE_TAG:-latest}
+    # Drop the build context so `docker compose build` is a no-op here and a
+    # stray build can never compile on the prod box again.
+    build: !reset null
+    pull_policy: always
+
+  worker:
+    image: ghcr.io/${PLATOS_IMAGE_NAMESPACE:-winsenlabs}/platos-agent:${PLATOS_IMAGE_TAG:-latest}
+    build: !reset null
+    pull_policy: always
+
+  webapp:
+    image: ghcr.io/${PLATOS_IMAGE_NAMESPACE:-winsenlabs}/platos-webapp:${PLATOS_IMAGE_TAG:-latest}
+    build: !reset null
+    pull_policy: always

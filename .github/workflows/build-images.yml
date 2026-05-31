@@ -1,0 +1,84 @@
+name: Build & publish container images
+
+# Tier-1 robustness: build the agent + webapp images on GitHub's runners and
+# push them to GHCR, so the production VPS NEVER runs `nest build` / `tsc`
+# itself. Compiling on the 4-vCPU reference box spiked load average past 40 and
+# degraded the live service (the same Hostinger-throttle class as the May 2026
+# outage). With this workflow the VPS only ever `docker compose pull`s a
+# pre-built, immutable, SHA-tagged image. See docs/deployment/off-box-build.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/agent/**"
+      - "apps/webapp/**"
+      - "packages/**"
+      - "internal-packages/**"
+      - "apps/agent/Dockerfile"
+      - "apps/webapp/Dockerfile.platos"
+      - ".github/workflows/build-images.yml"
+  workflow_dispatch: {} # allow manual rebuilds without a code change
+
+concurrency:
+  # One build per ref at a time; a newer push cancels an in-flight build so we
+  # never publish a stale :latest after a newer commit landed.
+  group: build-images-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: agent
+            image: platos-agent
+            dockerfile: apps/agent/Dockerfile
+          - name: webapp
+            image: platos-webapp
+            dockerfile: apps/webapp/Dockerfile.platos
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long
+
+      - name: Build and push ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # GitHub Actions layer cache keeps rebuilds fast without a self-hosted
+          # cache. mode=max caches intermediate stages too (the pnpm/tsc layers).
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          provenance: false
