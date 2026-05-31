@@ -644,9 +644,14 @@ export class AgentTaskService {
         }
       } catch { /* swallow — missing memory rows shouldn't block a turn */ }
     }
-    // Merge caller-provided dynamic blocks against declared templates
+    // Merge caller-provided dynamic blocks against declared templates.
+    // PIFSP-19 — guard the log line with Array.isArray too: dynamicBlocks is a
+    // Json? column that can hold a string scalar if a client double-encodes it.
+    // A bare truthiness check lets a string through, and `.map` on a string
+    // throws ("...".map is not a function). The dispatch loop below already
+    // guards; this log line must match or it crashes the turn before we reach it.
     console.log(
-      `[agent.task] dynamicBlocks: ${config.dynamicBlocks ? `${(config.dynamicBlocks as any[]).length} block(s): ${(config.dynamicBlocks as any[]).map((b: any) => b.key).join(", ")}` : "none"}`,
+      `[agent.task] dynamicBlocks: ${Array.isArray(config.dynamicBlocks) ? `${config.dynamicBlocks.length} block(s): ${config.dynamicBlocks.map((b: any) => b.key).join(", ")}` : "none"}`,
     );
     if (config.dynamicBlocks && Array.isArray(config.dynamicBlocks)) {
       for (const template of config.dynamicBlocks) {
