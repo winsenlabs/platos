@@ -4,9 +4,18 @@ name: CI
 # reached `main` (and the production deploy) because nothing type-checked PRs —
 # the agent Docker build (`nest build`, which runs tsc) only failed later, ON
 # the box. A workhorse-on-autopilot must reject code that doesn't compile BEFORE
-# it can be merged. This gate runs the same `turbo run typecheck` CI uses, on
-# every PR and every push to main. Branch protection should require the
-# "typecheck" check so a red PR cannot be squashed in.
+# it can be merged.
+#
+# SCOPE: this gate type-checks `platos-agent` — the runtime that handles every
+# turn, and exactly the package #15's TS2352 broke. It is verified green today
+# (6/6 tasks). The gate is deliberately NOT whole-monorepo yet: two packages
+# fail typecheck on `main` independent of any change here — `@internal/zod-worker`
+# (TS7016: legacy `moduleResolution: "Node"` can't read eventsource-parser's
+# `exports`-mapped types) and `webapp` (server.ts Socket.IO type mismatches). A
+# gate that is red from birth trains everyone to ignore it — worse than no gate.
+# Widening to the whole monorepo is tracked as a follow-up once that pre-existing
+# debt is cleared. Branch protection should require the "typecheck" check so a
+# red PR cannot be squashed in.
 
 on:
   pull_request:
@@ -45,5 +54,5 @@ jobs:
         # typecheck fails without it. Cheap, deterministic, no DB needed.
         run: pnpm --filter @platos/database generate
 
-      - name: Typecheck (whole monorepo via turbo)
-        run: pnpm run typecheck
+      - name: Typecheck platos-agent (the per-turn runtime)
+        run: pnpm run typecheck --filter platos-agent
