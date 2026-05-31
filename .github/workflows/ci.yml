@@ -1,0 +1,49 @@
+name: CI
+
+# Tier-4 robustness: no red code merges. This session a TS2352 build-breaker
+# reached `main` (and the production deploy) because nothing type-checked PRs —
+# the agent Docker build (`nest build`, which runs tsc) only failed later, ON
+# the box. A workhorse-on-autopilot must reject code that doesn't compile BEFORE
+# it can be merged. This gate runs the same `turbo run typecheck` CI uses, on
+# every PR and every push to main. Branch protection should require the
+# "typecheck" check so a red PR cannot be squashed in.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        # @platos/database re-exports the generated client; several packages'
+        # typecheck fails without it. Cheap, deterministic, no DB needed.
+        run: pnpm --filter @platos/database generate
+
+      - name: Typecheck (whole monorepo via turbo)
+        run: pnpm run typecheck
