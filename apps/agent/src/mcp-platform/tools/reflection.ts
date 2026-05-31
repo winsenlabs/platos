@@ -707,8 +707,8 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
         // that can hold a string scalar (double-encoded write). `?? []` only
         // catches null/undefined, so a string would slip through and get
         // iterated character-by-character, producing a garbage diff.
-        const pbA = Array.isArray(a.promptBlocks) ? (a.promptBlocks as Array<Record<string, unknown>>) : [];
-        const pbB = Array.isArray(b.promptBlocks) ? (b.promptBlocks as Array<Record<string, unknown>>) : [];
+        const pbA = (Array.isArray(a.promptBlocks) ? a.promptBlocks : []) as unknown as Array<Record<string, unknown>>;
+        const pbB = (Array.isArray(b.promptBlocks) ? b.promptBlocks : []) as unknown as Array<Record<string, unknown>>;
         const maxBlocks = Math.max(pbA.length, pbB.length);
         const promptBlocksDiff = Array.from({ length: maxBlocks }, (_, i) => {
           const left = pbA[i] ?? null;
