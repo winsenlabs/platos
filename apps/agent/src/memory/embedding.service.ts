@@ -245,12 +245,40 @@ export class EmbeddingService {
     return this.callOpenAi(inputs, apiKey, scope);
   }
 
+  /**
+   * Bound the embedding-provider HTTP call. A bare `await fetch` with no
+   * timeout will hang a whole turn if the provider is slow or rate-limited
+   * — observed as a 64s pre-LLM stall on a cold key. We abort after
+   * PLATOS_EMBEDDING_TIMEOUT_MS (default 8s) and surface a clear error so
+   * the caller (memory inject is best-effort + caught) degrades instead of
+   * blocking. Wraps a DOMException AbortError into a readable message.
+   */
+  private async fetchWithTimeout(
+    url: string,
+    init: RequestInit,
+  ): Promise<Response> {
+    const timeoutMs = env.PLATOS_EMBEDDING_TIMEOUT_MS ?? 8000;
+    try {
+      return await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (err: any) {
+      if (err?.name === "TimeoutError" || err?.name === "AbortError") {
+        throw new Error(
+          `Embedding provider call to ${url} timed out after ${timeoutMs}ms`,
+        );
+      }
+      throw err;
+    }
+  }
+
   private async callOpenAi(
     inputs: string[],
     apiKey: string,
     scope?: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
   ): Promise<number[][]> {
-    const resp = await fetch("https://api.openai.com/v1/embeddings", {
+    const resp = await this.fetchWithTimeout("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -314,7 +342,7 @@ export class EmbeddingService {
     if (this.model.startsWith("voyage-3")) {
       body.output_dimension = EmbeddingService.DIMENSION;
     }
-    const resp = await fetch("https://api.voyageai.com/v1/embeddings", {
+    const resp = await this.fetchWithTimeout("https://api.voyageai.com/v1/embeddings", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -4919,21 +4919,41 @@ export class AgentService {
         }
         if (policyEnabled) {
           const budget = Math.max(100, env.PLATOS_MEMORY_INJECT_BUDGET_TOKENS ?? 800);
-          const hits = await this.memoryService.semanticSearch(
-            {
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-            },
-            {
-              query: message,
-              userId: scope.userId,
-              limit: 8,
-              minScore: 0.35,
-              // Defaults exclude "private"; pass agent-visible + hidden.
-              visibilityIn: ["agent_visible", "hidden"],
-            },
-          );
+          // Memory injection is best-effort and must NEVER block the response.
+          // semanticSearch embeds the query (an external provider HTTP call) +
+          // hits pgvector; a slow embedding key once stalled a turn ~64s
+          // pre-LLM. Race it against a hard timeout (default 5s). On timeout
+          // the catch below logs + proceeds with no memory block — the LLM
+          // still answers, just without the "things I remember" enrichment.
+          const injectTimeoutMs = env.PLATOS_MEMORY_INJECT_TIMEOUT_MS ?? 5000;
+          const hits = await Promise.race([
+            this.memoryService.semanticSearch(
+              {
+                organizationId: scope.organizationId,
+                projectId: scope.projectId,
+                environmentId: scope.environmentId,
+              },
+              {
+                query: message,
+                userId: scope.userId,
+                limit: 8,
+                minScore: 0.35,
+                // Defaults exclude "private"; pass agent-visible + hidden.
+                visibilityIn: ["agent_visible", "hidden"],
+              },
+            ),
+            new Promise<never>((_, reject) =>
+              setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      `memory semanticSearch exceeded ${injectTimeoutMs}ms inject budget`,
+                    ),
+                  ),
+                injectTimeoutMs,
+              ),
+            ),
+          ]);
           // Theme M.5 — drop memories flagged by a thumbs-down rating.
           // The metadata.flaggedByRating marker is written by
           // MemoryFeedbackService.applyRating; we treat it as "quarantined
