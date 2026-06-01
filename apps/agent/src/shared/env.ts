@@ -201,6 +201,21 @@ export const AgentEnvSchema = z
       "PLATOS_MEMORY_INJECT_BUDGET_TOKENS",
       { min: 0 },
     ),
+    // Hard ceiling on the embedding-provider HTTP call (ms). A bare
+    // `await fetch` to Voyage/OpenAI with no timeout will hang a whole
+    // turn if the provider is slow/rate-limited (observed: 64s pre-LLM
+    // stall on a cold key). Default 8s. Consumed in EmbeddingService.
+    PLATOS_EMBEDDING_TIMEOUT_MS: intString("PLATOS_EMBEDDING_TIMEOUT_MS", {
+      min: 500,
+    }),
+    // Ceiling on the inline pre-LLM memory-injection semanticSearch (ms).
+    // Memory enrichment is best-effort; it must never block the response.
+    // If it doesn't return in time we skip the block and call the LLM.
+    // Default 5s. Consumed in AgentService.stream.
+    PLATOS_MEMORY_INJECT_TIMEOUT_MS: intString(
+      "PLATOS_MEMORY_INJECT_TIMEOUT_MS",
+      { min: 250 },
+    ),
     PLATOS_WORKING_MEMORY_TTL: intString("PLATOS_WORKING_MEMORY_TTL", {
       min: 0,
     }),
