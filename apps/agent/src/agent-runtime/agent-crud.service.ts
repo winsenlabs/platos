@@ -476,11 +476,21 @@ export class AgentCrudService {
       dto.promptBlocks.length > 0
         ? serializePromptBlocksToSystemPrompt(dto.promptBlocks)
         : null;
+    // CTX-MODEL-SYNC (create) — same legacy-`model`/`modelRoutes` sync as
+    // update(). The builder submits only modelRoutes; mirror the default
+    // route into `model` when no explicit `model` is given so the list view
+    // + agents_get never show a stale/empty model. Explicit `dto.model` wins.
+    let createModel: string | undefined = dto.model;
+    if (!createModel && Array.isArray(dto.modelRoutes)) {
+      const routes = dto.modelRoutes as Array<{ model?: string; isDefault?: boolean }>;
+      const def = routes.find((r) => r.isDefault) ?? routes[0];
+      if (def?.model && typeof def.model === "string") createModel = def.model;
+    }
     const agent = await this.prisma.platosAgent.create({
       data: {
         name: dto.name,
         slug,
-        model: dto.model,
+        model: createModel,
         systemPrompt: dto.systemPrompt || derivedSystemPrompt || null,
         promptBlocks: coerceBlockList(dto.promptBlocks) as any,
         dynamicBlocks: coerceBlockList(dto.dynamicBlocks) as any,
@@ -619,11 +629,31 @@ export class AgentCrudService {
           ? serializePromptBlocksToSystemPrompt(dto.promptBlocks)
           : undefined;
 
+    // CTX-MODEL-SYNC — keep the legacy `model` column in lock-step with the
+    // default model route. The agent-builder UI (ModelRoutesEditor) only ever
+    // submits `modelRoutes`, never a `model` field, so without this a model
+    // pick updated `modelRoutes` but left `model` stale. That desynced three
+    // readers: the agent LIST + agents_get read `model` (showed the old value),
+    // while the RUNTIME runs the default route (agent-task.service overrides
+    // config.model from it). Result: "I picked Kimi, the list still says
+    // anthropic" — confusing, and `model` is the value shown everywhere the
+    // routes aren't expanded. When the caller updates modelRoutes but does NOT
+    // explicitly set `model`, mirror the default route's model into `model`.
+    // An explicit `dto.model` still wins (caller's intent is authoritative).
+    let syncedModel: string | undefined = dto.model;
+    if (dto.model === undefined && Array.isArray(dto.modelRoutes)) {
+      const routes = dto.modelRoutes as Array<{ model?: string; isDefault?: boolean }>;
+      const def = routes.find((r) => r.isDefault) ?? routes[0];
+      if (def?.model && typeof def.model === "string") {
+        syncedModel = def.model;
+      }
+    }
+
     const agent = await this.prisma.platosAgent.update({
       where: { id: agentId },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.model !== undefined && { model: dto.model }),
+        ...(syncedModel !== undefined && { model: syncedModel }),
         ...(updateSystemPrompt !== undefined && { systemPrompt: updateSystemPrompt }),
         ...(dto.promptBlocks !== undefined && { promptBlocks: coerceBlockList(dto.promptBlocks) as any }),
         ...(dto.dynamicBlocks !== undefined && { dynamicBlocks: coerceBlockList(dto.dynamicBlocks) as any }),
