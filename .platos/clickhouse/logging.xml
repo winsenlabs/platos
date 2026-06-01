@@ -2,24 +2,32 @@
 <!-- Disable verbose system log tables that grow unbounded and hog CPU/disk.
      trace_log + text_log were consuming 7+ GiB and 40% CPU on a 8GB VPS.
      The Platos application only uses ClickHouse for platos_spans_v1 and
-     task run telemetry — ClickHouse's internal diagnostics are not needed. -->
+     task run telemetry — ClickHouse's internal diagnostics are not needed.
+
+     2026-06-01 incident: even with the max_size_rows cap that used to live here,
+     system.metric_log grew to 1,015,777 rows across 193 active parts and drove 5
+     stuck background merges at 130% CPU, which tripped the Hostinger host-CPU
+     fair-use throttle (95% steal for hours) and blocked deploys. Root cause:
+     max_size_rows is NOT retroactive and does not stop the per-flush PART CHURN
+     that feeds the merge thrash. metric_log / asynchronous_metric_log /
+     latency_log / *_profile_log are ClickHouse's own self-telemetry — Platos
+     never queries them — so the durable fix is to remove them entirely, exactly
+     as trace_log/text_log already are. query_log + part_log stay (small, useful
+     for ops) under the 7-day TTL the clickhouse-ttl-apply sidecar sets. -->
 <clickhouse>
     <!-- Disable trace sampling log entirely -->
     <trace_log remove="1"/>
     <!-- Disable text (server log) capture to table -->
     <text_log remove="1"/>
-    <!-- Keep metric_log but rotate aggressively -->
-    <metric_log>
-        <flush_interval_milliseconds>30000</flush_interval_milliseconds>
-        <max_size_rows>10000</max_size_rows>
-        <reserved_size_rows>1024</reserved_size_rows>
-    </metric_log>
-    <!-- Keep asynchronous metric log small -->
-    <asynchronous_metric_log>
-        <flush_interval_milliseconds>60000</flush_interval_milliseconds>
-        <max_size_rows>5000</max_size_rows>
-        <reserved_size_rows>512</reserved_size_rows>
-    </asynchronous_metric_log>
+    <!-- Remove the high-churn self-metric logs entirely. metric_log's part
+         thrash caused the 2026-06-01 throttle; capping rows did not help
+         because the churn (not the size) drives the merges. Platos reads none
+         of these. -->
+    <metric_log remove="1"/>
+    <asynchronous_metric_log remove="1"/>
+    <latency_log remove="1"/>
+    <processors_profile_log remove="1"/>
+    <query_metric_log remove="1"/>
     <!-- Hard cap at 2.5 GB — Docker mem_limit is 3g, leaving 512m headroom -->
     <max_server_memory_usage>2684354560</max_server_memory_usage>
 </clickhouse>
