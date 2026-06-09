@@ -1,6 +1,6 @@
 {
   "name": "@platosdev/react-widget",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "React FAB chat widget for Platos agents — drop-in chat bubble with streaming, identity collection (form / preset / OTP-verified), theming, and full per-turn pass-through (dynamicBlocks, modelLabel, sessionContext, attachments).",
   "license": "Apache-2.0",
   "repository": {

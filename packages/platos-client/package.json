@@ -1,6 +1,6 @@
 {
   "name": "@platosdev/client",
-  "version": "0.1.2",
+  "version": "0.3.0",
   "description": "Official Platos JavaScript/TypeScript client SDK — agents, threads, realtime streaming, approvals, budgets.",
   "license": "Apache-2.0",
   "repository": {
