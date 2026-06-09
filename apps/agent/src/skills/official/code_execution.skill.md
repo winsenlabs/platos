@@ -15,6 +15,9 @@ tags:
   - official
 required_env:
   - E2B_API_KEY
+optional_env:
+  - E2B_SANDBOX_ALLOW_INTERNET
+  - E2B_SANDBOX_TEMPLATE
 provides_tools:
   - name: run_python
     description: Execute Python 3 in the conversation's persistent E2B sandbox. Returns stdout, stderr, and any error. Ideal for data processing, pandas/numpy, ML inference, chart generation, and file transformations. State persists across calls in the same conversation — files you write, packages you install, and the working directory all carry over to later run_python / run_node / run_shell calls.
