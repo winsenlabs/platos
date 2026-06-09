@@ -83,6 +83,37 @@ for await (const event of stream) {
 }
 ```
 
+### Consumer SDK: rate a message (thumbs up/down)
+
+Collect end-user feedback on assistant replies. A thumbs-down also feeds the
+memory-quality loop (the memories extracted from that message are quarantined
+from future retrieval); ratings roll up into the per-version satisfaction views
+on the Evals and Monitoring dashboards.
+
+Rate against the **server** message id, surfaced on the `message_persisted`
+stream event (not the provisional id you may assign client-side):
+
+```ts
+let serverMessageId: string | undefined;
+for await (const event of platos.threads.send(threadId, "Hi", { agentId })) {
+  if (event.type === "token") process.stdout.write(event.text);
+  if (event.type === "message_persisted") serverMessageId = event.messageId;
+}
+
+// thumbs up (optionally with a comment); "down" maps to -1
+await platos.messages.rate(serverMessageId!, "up");
+await platos.messages.rate(serverMessageId!, "down", { comment: "missed the ask" });
+
+// remove the vote, or read current vote + anonymized aggregate counts
+await platos.messages.unrate(serverMessageId!);
+const { userRating, aggregate } = await platos.messages.getForMessage(serverMessageId!);
+// aggregate → { ups: number, downs: number }
+```
+
+The `@platosdev/react-widget` wires this for you: `usePlatosChat` returns a
+`rate(messageId, "up" | "down")` callback and `<PlatosFab>` renders the thumbs
+on each assistant bubble — see the [React widget](/docs/react-widget) doc.
+
 ### Entity SDK (Node)
 
 ```ts

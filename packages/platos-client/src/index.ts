@@ -7,6 +7,9 @@
  *   - `client.agents.list / get / listVersions`
  *   - `client.threads.create / list / get / messages / artifacts / send`
  *     (send = async-iterable Socket.IO stream with hardened reconnect/buffer)
+ *   - `client.messages.rate / unrate / getForMessage` — thumbs up/down votes
+ *     on assistant messages (uses the server messageId from the
+ *     `message_persisted` stream event)
  *   - `client.bgo.tasks / runs / schedules / batches` — unified durable
  *     background-operation ops via the agent's meta-tool shim (Theme BGO,
  *     formerly `client.trigger.*`; the old namespace is kept as a
@@ -65,6 +68,12 @@ export type {
   PlatosToolSearchOptions,
   PlatosToolTestResult,
 } from "./apis/tools.js";
+
+export type {
+  PlatosRatingDirection,
+  PlatosMessageRating,
+  PlatosMessageRatingState,
+} from "./apis/messages.js";
 
 import { PlatosClient } from "./client.js";
 export default PlatosClient;

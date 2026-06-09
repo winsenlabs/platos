@@ -157,7 +157,7 @@ Three levels:
 import { usePlatosChat } from "@platosdev/react-widget";
 
 function CustomChat() {
-  const { messages, send, status, error } = usePlatosChat({
+  const { messages, send, rate, status, error } = usePlatosChat({
     baseUrl: "...",
     agentId: "...",
     tokenUrl: "...",
@@ -167,6 +167,36 @@ function CustomChat() {
   // render however you want
 }
 ```
+
+### Message ratings (thumbs up/down)
+
+`<PlatosFab>` renders thumbs up/down on each assistant bubble once the message
+has persisted — no setup required. A vote calls the rating API; a thumbs-down
+also quarantines the memories extracted from that message, and votes roll up
+into the dashboard satisfaction views.
+
+For the headless hook, `usePlatosChat` returns a `rate` callback and stamps a
+`serverId` + `rating` onto each assistant `ChatMessage`. The widget captures the
+`message_persisted` stream event internally, so `rate` just takes the message's
+local id:
+
+```tsx
+const { messages, rate } = usePlatosChat({ /* ... */ });
+
+messages
+  .filter((m) => m.role === "assistant" && m.serverId) // rateable once persisted
+  .map((m) => (
+    <div key={m.id}>
+      {m.content}
+      <button onClick={() => rate(m.id, "up")} aria-pressed={m.rating === 1}>👍</button>
+      <button onClick={() => rate(m.id, "down")} aria-pressed={m.rating === -1}>👎</button>
+    </div>
+  ));
+```
+
+`rate` is optimistic (updates `m.rating` immediately, rolls back on failure) and
+toggles — calling it again with the same direction clears the vote. It returns
+`false` (no-op) if the message hasn't persisted yet.
 
 ### Hotkey
 
