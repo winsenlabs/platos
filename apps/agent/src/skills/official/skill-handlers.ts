@@ -67,6 +67,7 @@ export class OfficialSkillHandlers {
       case "platos.code_execution":
         if (toolName === "run_python") return this.runCode(scope, "python", input);
         if (toolName === "run_node") return this.runCode(scope, "node", input);
+        if (toolName === "run_shell") return this.runShell(scope, input);
         if (toolName === "install_package") return this.installPackage(scope, input);
         if (toolName === "upload_to_sandbox") return this.uploadToSandbox(scope, input);
         break;
@@ -777,6 +778,94 @@ export class OfficialSkillHandlers {
   // platos.code_execution
   // ──────────────────────────────────────────────────────────────────────────
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // Persistent per-thread sandbox session (CE.2).
+  //
+  // The original code_execution skill created a throwaway sandbox per call and
+  // killed it in `finally` — so files, cwd, installed packages, and `git clone`
+  // results never survived between tool calls. That makes real CLI workflows
+  // (clone → cd → install → test, or write data → transform → export)
+  // impossible.
+  //
+  // This binds ONE sandbox to the PlatosAgentThread, reused across every tool
+  // call in that thread. We need no new table or Redis: E2B sandboxes carry
+  // `metadata` and are discoverable via `Sandbox.list({ query: { metadata } })`.
+  // We tag each session sandbox with the threadId, look it up + `connect` on the
+  // next call, and bump its idle timeout. When the thread has no id (meta-tool
+  // paths), we fall back to an ephemeral per-call sandbox (killed by the caller).
+  //
+  // Lifetime is governed by E2B's own idle timeout (default 5m, bumped on each
+  // use) — when the thread goes quiet the sandbox auto-reaps server-side, so
+  // there is no orphan-reaper to run. Network egress is deny-by-default unless
+  // the agent's E2B_SANDBOX_ALLOW_INTERNET env opts in.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  private static readonly SESSION_TIMEOUT_MS = 600_000; // 10 min idle ceiling per use
+
+  private threadIdFromScope(scope: ScopeTuple): string {
+    const raw = (scope as Record<string, unknown>)["threadId"];
+    return typeof raw === "string" ? raw.trim() : "";
+  }
+
+  /**
+   * Resolve the sandbox for this thread: reconnect to the live session if one
+   * exists, otherwise create + tag a fresh one. Returns the sandbox plus an
+   * `ephemeral` flag — ephemeral sandboxes (no threadId) MUST be killed by the
+   * caller; session sandboxes are left running for the next tool call.
+   */
+  private async resolveSandbox(
+    scope: ScopeTuple,
+    apiKey: string,
+  ): Promise<{ sandbox: Sandbox; ephemeral: boolean }> {
+    const threadId = this.threadIdFromScope(scope);
+    const template = await this.scopedEnv.get(scope, "E2B_SANDBOX_TEMPLATE");
+    const allowInternet =
+      (await this.scopedEnv.get(scope, "E2B_SANDBOX_ALLOW_INTERNET")) === "true";
+
+    // Ephemeral fallback when there's no thread to anchor to.
+    if (!threadId) {
+      const sandbox = await (template
+        ? Sandbox.create(template, { apiKey, allowInternetAccess: allowInternet })
+        : Sandbox.create({ apiKey, allowInternetAccess: allowInternet }));
+      return { sandbox, ephemeral: true };
+    }
+
+    const metaTag = `platos-thread:${threadId}`;
+
+    // Try to reconnect to an existing running session for this thread.
+    try {
+      const paginator = Sandbox.list({
+        query: { metadata: { platosThread: threadId }, state: ["running"] },
+        apiKey,
+      });
+      const running = await paginator.nextItems();
+      if (running.length > 0) {
+        const sandbox = await Sandbox.connect(running[0].sandboxId, { apiKey });
+        await sandbox
+          .setTimeout(OfficialSkillHandlers.SESSION_TIMEOUT_MS)
+          .catch(() => { /* best effort idle bump */ });
+        return { sandbox, ephemeral: false };
+      }
+    } catch (err: any) {
+      // List/connect failure → fall through to create a fresh session.
+      this.logger.debug(
+        `[code_execution] session reconnect miss for ${metaTag}: ${err?.message ?? err}`,
+      );
+    }
+
+    // No live session → create one, tagged so the next call finds it.
+    const opts = {
+      apiKey,
+      metadata: { platosThread: threadId, platos: "session" },
+      timeoutMs: OfficialSkillHandlers.SESSION_TIMEOUT_MS,
+      allowInternetAccess: allowInternet,
+    };
+    const sandbox = await (template
+      ? Sandbox.create(template, opts)
+      : Sandbox.create(opts));
+    return { sandbox, ephemeral: false };
+  }
+
   private async runCode(
     scope: ScopeTuple,
     lang: "python" | "node",
@@ -795,12 +884,7 @@ export class OfficialSkillHandlers {
 
     const timeoutMs = Math.max(1000, Math.min(60_000, Number(input.timeoutMs ?? 15_000)));
 
-    // Pro plan default: 2 vCPU. Set E2B_SANDBOX_TEMPLATE to a custom template
-    // ID when the agent needs more RAM (built via `e2b template build`).
-    const template = await this.scopedEnv.get(scope, "E2B_SANDBOX_TEMPLATE");
-    const sandbox = await (template
-      ? Sandbox.create(template, { apiKey })
-      : Sandbox.create({ apiKey }));
+    const { sandbox, ephemeral } = await this.resolveSandbox(scope, apiKey);
     const startedAt = Date.now();
 
     try {
@@ -814,7 +898,7 @@ export class OfficialSkillHandlers {
       const hasError = execution.error != null;
 
       this.logger.debug(
-        `[code_execution] run_${lang} exitOk=${!hasError} latencyMs=${latencyMs} ` +
+        `[code_execution] run_${lang} session=${!ephemeral} exitOk=${!hasError} latencyMs=${latencyMs} ` +
         `stdout_chars=${stdout.length} stderr_chars=${stderr.length}`,
       );
 
@@ -824,10 +908,67 @@ export class OfficialSkillHandlers {
         stderr: stderr || null,
         error: hasError ? (execution.error?.value ?? "Execution error") : null,
         latencyMs,
+        // Surface whether state persists so the LLM knows it can build on prior calls.
+        sessionPersistent: !ephemeral,
       };
     } finally {
-      // Always kill sandbox — never leave resources dangling
-      await sandbox.kill().catch(() => { /* best effort */ });
+      // Only tear down ephemeral (no-thread) sandboxes. Session sandboxes stay
+      // alive for the next tool call and auto-reap on idle.
+      if (ephemeral) await sandbox.kill().catch(() => { /* best effort */ });
+    }
+  }
+
+  /**
+   * CE.2 — run an arbitrary shell command in the thread's persistent sandbox.
+   * This is what turns "code interpreter" into "CLI on demand": `git`, `psql`,
+   * `ffmpeg`, `duckdb`, `pnpm test`, etc. all run here, with cwd + filesystem
+   * surviving across calls. Output is byte-capped; exit code is surfaced so the
+   * LLM can branch on failure.
+   */
+  private async runShell(scope: ScopeTuple, input: Record<string, unknown>) {
+    const apiKey = await this.scopedEnv.get(scope, "E2B_API_KEY");
+    if (!apiKey) throw new Error("run_shell: E2B_API_KEY is not set in this environment.");
+
+    const cmd = String(input.command ?? "").trim();
+    if (!cmd) throw new Error("run_shell: command is required");
+
+    const timeoutMs = Math.max(1000, Math.min(120_000, Number(input.timeoutMs ?? 30_000)));
+    const cwd = typeof input.cwd === "string" && input.cwd.trim() ? input.cwd.trim() : undefined;
+    const MAX_OUT = 100_000; // cap each stream so a runaway command can't blow the context window
+
+    const { sandbox, ephemeral } = await this.resolveSandbox(scope, apiKey);
+    const startedAt = Date.now();
+    try {
+      const result = await sandbox.commands.run(cmd, {
+        timeoutMs,
+        ...(cwd ? { cwd } : {}),
+      });
+      const clip = (s: string) =>
+        s.length > MAX_OUT ? s.slice(0, MAX_OUT) + `\n…[truncated ${s.length - MAX_OUT} chars]` : s;
+      return {
+        command: cmd,
+        exitCode: result.exitCode,
+        stdout: clip(result.stdout ?? "").trim() || null,
+        stderr: clip(result.stderr ?? "").trim() || null,
+        latencyMs: Date.now() - startedAt,
+        sessionPersistent: !ephemeral,
+      };
+    } catch (err: any) {
+      // E2B throws CommandExitError on non-zero exit — surface it as a result,
+      // not a thrown skill error, so the LLM can read stderr + branch.
+      const exitCode = typeof err?.exitCode === "number" ? err.exitCode : 1;
+      const stderr = typeof err?.stderr === "string" ? err.stderr : (err?.message ?? String(err));
+      const stdout = typeof err?.stdout === "string" ? err.stdout : "";
+      return {
+        command: cmd,
+        exitCode,
+        stdout: stdout.slice(0, MAX_OUT).trim() || null,
+        stderr: stderr.slice(0, MAX_OUT).trim() || null,
+        latencyMs: Date.now() - startedAt,
+        sessionPersistent: !ephemeral,
+      };
+    } finally {
+      if (ephemeral) await sandbox.kill().catch(() => { /* best effort */ });
     }
   }
 
@@ -846,7 +987,9 @@ export class OfficialSkillHandlers {
       ? `const { execSync } = require('child_process'); execSync('npm install ${validPackages.join(" ")}', { stdio: 'inherit' });`
       : `import subprocess; subprocess.run(['pip', 'install', '--quiet', ${validPackages.map((p) => `'${p}'`).join(", ")}], check=True); print("Installed: ${validPackages.join(", ")}")`;
 
-    const sandbox = await Sandbox.create({ apiKey });
+    // Install into the thread's persistent session so the packages are still
+    // there on the next run_python / run_node / run_shell call.
+    const { sandbox, ephemeral } = await this.resolveSandbox(scope, apiKey);
     try {
       const execution = manager === "npm"
         ? await sandbox.runCode(code, { language: "js", timeoutMs: 60_000 })
@@ -857,9 +1000,10 @@ export class OfficialSkillHandlers {
         stdout: execution.logs.stdout.join("\n").trim() || null,
         stderr: execution.logs.stderr.join("\n").trim() || null,
         error: execution.error?.value ?? null,
+        sessionPersistent: !ephemeral,
       };
     } finally {
-      await sandbox.kill().catch(() => { /* best effort */ });
+      if (ephemeral) await sandbox.kill().catch(() => { /* best effort */ });
     }
   }
 
@@ -902,7 +1046,9 @@ urllib.request.urlretrieve('${presignedUrl.replace(/'/g, "\\'")}', '${destPath}'
 print(f"Downloaded {os.path.getsize('${destPath}')} bytes to ${destPath}")
 `.trim();
 
-    const sandbox = await Sandbox.create({ apiKey });
+    // Download into the thread's persistent session so the file is available to
+    // every subsequent run_python / run_node / run_shell call.
+    const { sandbox, ephemeral } = await this.resolveSandbox(scope, apiKey);
     try {
       const execution = await sandbox.runCode(code, { timeoutMs: 60_000 });
       return {
@@ -912,9 +1058,10 @@ print(f"Downloaded {os.path.getsize('${destPath}')} bytes to ${destPath}")
         sandboxPath: destPath,
         stdout: execution.logs.stdout.join("\n").trim() || null,
         error: execution.error?.value ?? null,
+        sessionPersistent: !ephemeral,
       };
     } finally {
-      await sandbox.kill().catch(() => { /* best effort */ });
+      if (ephemeral) await sandbox.kill().catch(() => { /* best effort */ });
     }
   }
 
