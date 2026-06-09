@@ -15,7 +15,11 @@ ARG NODE_IMAGE=node:20-slim
 # ───────────────────────────────────────────────────────────
 FROM ${NODE_IMAGE} AS builder
 
-RUN apt-get update && apt-get install -y openssl ca-certificates \
+# openssl/ca-certificates for Prisma + TLS; python3/make/g++ so node-gyp can
+# compile native modules pulled in transitively at install time (e.g.
+# better-sqlite3 via the `evalite` dev tool). These live ONLY in the builder
+# stage — the runtime image below stays slim and never sees the toolchain.
+RUN apt-get update && apt-get install -y openssl ca-certificates python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 
