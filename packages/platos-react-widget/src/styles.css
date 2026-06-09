@@ -238,6 +238,30 @@
   opacity: 0.6;
   animation: platos-blink 1s steps(2, start) infinite;
 }
+.platos-widget-rating {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.platos-widget-rate-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0.45;
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+.platos-widget-rate-btn:hover {
+  opacity: 0.85;
+  background: rgba(127, 127, 127, 0.12);
+}
+.platos-widget-rate-btn[data-active="true"] {
+  opacity: 1;
+  background: rgba(127, 127, 127, 0.18);
+}
 @keyframes platos-blink {
   to { opacity: 0; }
 }

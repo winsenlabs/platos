@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PlatosClient } from "@platosdev/client";
+import type { PlatosRatingDirection } from "@platosdev/client";
 import type { PerTurnOptions, VisitorIdentity } from "./types.js";
 
 /**
@@ -21,6 +22,14 @@ export interface ChatMessage {
   content: string;
   /** True while the assistant message is still being streamed. */
   streaming?: boolean;
+  /**
+   * Server-side PlatosAgentMessage id, surfaced on the `message_persisted`
+   * stream event. Required to rate a message; absent on the provisional
+   * client bubble until the turn persists. Only set on assistant messages.
+   */
+  serverId?: string;
+  /** Current local rating: 1 (up), -1 (down), or null/undefined (no vote). */
+  rating?: 1 | -1 | null;
 }
 
 export interface UsePlatosChatArgs {
@@ -37,6 +46,15 @@ export interface UsePlatosChatResult {
   status: ChatStatus;
   messages: ChatMessage[];
   send: (text: string) => Promise<void>;
+  /**
+   * Cast a thumbs up/down on an assistant message. Pass the message's local
+   * `id`; the hook resolves its `serverId` and calls the rating API. Toggling
+   * the same direction again clears the vote (un-rate). Optimistic: updates
+   * local `rating` immediately and rolls back on failure. No-op (returns
+   * false) if the message has no serverId yet (still streaming / not
+   * persisted).
+   */
+  rate: (messageId: string, direction: PlatosRatingDirection) => Promise<boolean>;
   abort: () => void;
   reset: () => void;
   threadId: string | null;
@@ -61,6 +79,10 @@ export function usePlatosChat(args: UsePlatosChatArgs): UsePlatosChatResult {
   const clientRef = useRef<PlatosClient | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const tokenFetchInFlightRef = useRef<Promise<string> | null>(null);
+  // Mirror of `messages` so `rate()` reads current serverId/rating without
+  // re-creating its callback on every token (which would thrash consumers).
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
 
   // Stable token-fetcher used by both initial mint + onTokenRefresh hook.
   const fetchToken = useCallback(async (): Promise<string> => {
@@ -185,6 +207,19 @@ export function usePlatosChat(args: UsePlatosChatArgs): UsePlatosChatResult {
                 m.id === assistantId ? { ...m, content: m.content + chunk } : m,
               ),
             );
+          } else if (
+            event.type === "message_persisted" &&
+            typeof (event as { messageId?: unknown }).messageId === "string"
+          ) {
+            // Stamp the real server message id onto the assistant bubble so
+            // rate() can target it. The provisional `assistantId` stays as the
+            // React key; `serverId` is what the rating API needs.
+            const sid = (event as { messageId: string }).messageId;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId ? { ...m, serverId: sid } : m,
+              ),
+            );
           } else if (event.type === "error") {
             const msg =
               typeof event.message === "string" ? event.message : "stream error";
@@ -227,6 +262,49 @@ export function usePlatosChat(args: UsePlatosChatArgs): UsePlatosChatResult {
     ],
   );
 
+  const rate = useCallback(
+    async (
+      messageId: string,
+      direction: PlatosRatingDirection,
+    ): Promise<boolean> => {
+      const msg = messagesRef.current.find((m) => m.id === messageId);
+      if (!msg?.serverId) {
+        // Not persisted yet (still streaming) — nothing to rate against.
+        return false;
+      }
+      const dirInt: 1 | -1 = direction === "up" ? 1 : -1;
+      const prevRating = msg.rating ?? null;
+      // Toggle: re-rating the same direction clears the vote.
+      const nextRating: 1 | -1 | null = prevRating === dirInt ? null : dirInt;
+      // Optimistic local update.
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, rating: nextRating } : m,
+        ),
+      );
+      try {
+        const client = await ensureClient();
+        if (nextRating === null) {
+          await client.messages.unrate(msg.serverId);
+        } else {
+          await client.messages.rate(msg.serverId, direction);
+        }
+        return true;
+      } catch (err) {
+        // Roll back on failure.
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId ? { ...m, rating: prevRating } : m,
+          ),
+        );
+        const e = err instanceof Error ? err : new Error(String(err));
+        args.onError?.(e);
+        return false;
+      }
+    },
+    [ensureClient, args.onError],
+  );
+
   // When the auth inputs change, reset so the next send re-authenticates.
   useEffect(() => {
     return () => {
@@ -235,7 +313,7 @@ export function usePlatosChat(args: UsePlatosChatArgs): UsePlatosChatResult {
   }, []);
 
   return useMemo(
-    () => ({ status, messages, send, abort, reset, threadId, error }),
-    [status, messages, send, abort, reset, threadId, error],
+    () => ({ status, messages, send, rate, abort, reset, threadId, error }),
+    [status, messages, send, rate, abort, reset, threadId, error],
   );
 }

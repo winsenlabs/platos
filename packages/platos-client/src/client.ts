@@ -25,6 +25,7 @@ import { AgentsApi } from "./apis/agents.js";
 import { ApprovalsApi } from "./apis/approvals.js";
 import { BudgetsApi } from "./apis/budgets.js";
 import { MonitoringApi } from "./apis/monitoring.js";
+import { MessagesApi } from "./apis/messages.js";
 import { ThreadsApi } from "./apis/threads.js";
 import { ToolsApi } from "./apis/tools.js";
 import { TriggerApi } from "./apis/trigger.js";
@@ -87,6 +88,12 @@ export class PlatosClient {
    */
   readonly tools: ToolsApi;
   /**
+   * Message rating — thumbs up/down votes on assistant messages, backed by
+   * the agent's `/messages/:id/rating` endpoints. `messageId` is the server
+   * id surfaced on the `message_persisted` stream event.
+   */
+  readonly messages: MessagesApi;
+  /**
    * Theme BGO — unified background-operations surface. Backed by the
    * trigger.dev engine; exposes `client.bgo.tasks` (catalog), `.runs`,
    * `.schedules`, `.batches`.
@@ -123,6 +130,7 @@ export class PlatosClient {
     this.budgets = new BudgetsApi(this);
     this.monitoring = new MonitoringApi(this);
     this.tools = new ToolsApi(this);
+    this.messages = new MessagesApi(this);
     // Theme BGO — `bgo` is the canonical namespace; `trigger` is the
     // deprecated alias pointing at the same instance. Kept for one
     // release (see docs/BGO_RENAME.md).

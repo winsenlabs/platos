@@ -79,6 +79,7 @@ export type PlatosStreamEvent =
   | { type: "meta"; thread_id?: string; agent_id?: string; usage?: Record<string, unknown> }
   | { type: "token"; text: string }
   | { type: "message_boundary" }
+  | { type: "message_persisted"; messageId: string; threadId?: string; costCents?: number; replyToMessageId?: string }
   | { type: "thinking"; text: string }
   | { type: "tool_call"; name: string; params: Record<string, unknown>; callId: string }
   | { type: "tool_result"; name: string; result: unknown; callId: string; display?: unknown }

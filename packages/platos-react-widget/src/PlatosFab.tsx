@@ -304,6 +304,33 @@ export function PlatosFab(props: PlatosFabProps) {
                 >
                   {m.content}
                   {m.streaming && <span className="platos-widget-cursor" />}
+                  {/* Thumbs up/down — only on persisted assistant messages
+                      (serverId present, not mid-stream). Optimistic via
+                      chat.rate(); toggling the active vote clears it. */}
+                  {m.role === "assistant" && !m.streaming && m.serverId && (
+                    <div className="platos-widget-rating">
+                      <button
+                        type="button"
+                        className="platos-widget-rate-btn"
+                        aria-label="Good response"
+                        aria-pressed={m.rating === 1}
+                        data-active={m.rating === 1 ? "true" : undefined}
+                        onClick={() => void chat.rate(m.id, "up")}
+                      >
+                        {"\u{1F44D}"}
+                      </button>
+                      <button
+                        type="button"
+                        className="platos-widget-rate-btn"
+                        aria-label="Bad response"
+                        aria-pressed={m.rating === -1}
+                        data-active={m.rating === -1 ? "true" : undefined}
+                        onClick={() => void chat.rate(m.id, "down")}
+                      >
+                        {"\u{1F44E}"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
               {chat.error && (
