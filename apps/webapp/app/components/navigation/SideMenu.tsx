@@ -580,6 +580,26 @@ export function SideMenu({
                 data-action="agent-connect"
                 isCollapsed={isCollapsed}
               />
+              {/* Platos-repurposed: scoped secrets for skills (E2B/Tavily/…)
+                  + env-based provider config, and API keys. */}
+              <SideMenuItem
+                name="Environment variables"
+                icon={IdentificationIcon}
+                activeIconColor="text-emerald-400"
+                inactiveIconColor="text-emerald-400"
+                to={v3EnvironmentVariablesPath(organization, project, environment)}
+                data-action="environment variables"
+                isCollapsed={isCollapsed}
+              />
+              <SideMenuItem
+                name="API keys"
+                icon={KeyIcon}
+                activeIconColor="text-text-bright"
+                inactiveIconColor="text-text-dimmed"
+                to={v3ApiKeysPath(organization, project, environment)}
+                data-action="api keys"
+                isCollapsed={isCollapsed}
+              />
             </SideMenuSection>
 
             {/* Platos — operator-authored tasks. */}
