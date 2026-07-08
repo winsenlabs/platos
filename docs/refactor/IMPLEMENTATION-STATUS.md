@@ -16,7 +16,8 @@ Tracks the execution of [`platos-trigger-refactor.md`](./platos-trigger-refactor
 | Callback endpoints `POST /api/v1/agent/internal/{durable-turn,employee-run}` | ✅ | In `agent.controller.ts` (admin-token gated, same pattern as `internal/compaction`), reuse `executeNonStreamingTurn`; scope-guard bypass extended (`scope.guard.ts`). durable-turn + employee-run tasks now functional. |
 | `/internal/skill-run` endpoint + per-token streaming refinement | ⏳ | skill-run endpoint lands with the per-skill flag; incremental metadata streaming (variant-A polish) is a follow-up. |
 | Platform-MCP write tools: `tasks_trigger`, `trigger_runs_create/cancel`, `skills_run` | ⏳ | Extend `apps/agent/src/mcp-platform/`; enforce `ScopeGuard`, stamp scope from token not payload. |
-| Dispatch branch on `executionMode` (defaults to today's `direct` path) | ⏳ | `connections.gateway.ts:502` + `agent.controller.ts` SSE; `durable` behind the flag. |
+| Dispatch branch on `executionMode` (WS) | ✅ | `connections.gateway.ts` `tryDispatchDurable()` — triggers `platos.agent.durable-turn` + `RunsBridge.subscribe` when `executionMode="durable"` AND `TRIGGER_SECRET_KEY` set AND threadId present; else falls through to the in-process `direct` path. Dormant/zero-regression until managed trigger exists. Lazy `getRunsBridge()` via `ModuleRef`. |
+| Dispatch branch (SSE/REST path in `agent.controller.ts`) | ⏳ | WS path done; SSE mirror is a small follow-up. |
 | Per-skill task-offload flag | ⏳ | `skill-handlers.ts`; heavy/parallel/long skills → `skill-run` task. |
 | Tenant isolation: `concurrencyKey: org-<id>` + cost metering | ⏳ | On every durable dispatch (Model A). |
 
