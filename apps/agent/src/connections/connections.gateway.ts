@@ -619,7 +619,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const triggerSdk = (() => {
       try {
-        return require("@platos/sdk/v3");
+        return require("@trigger.dev/sdk");
       } catch {
         return null;
       }

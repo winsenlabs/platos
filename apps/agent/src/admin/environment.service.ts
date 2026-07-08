@@ -10,7 +10,7 @@ type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environme
 const FRIENDLY_ID_ALPHABET = "123456789abcdefghijkmnopqrstuvwxyz";
 
 /**
- * Mirror of `generateFriendlyId("envvar")` (`@platos/core/v3/isomorphic`).
+ * Mirror of `generateFriendlyId("envvar")` (`@trigger.dev/core/isomorphic`).
  * Produces `envvar_<21-char nanoid>` so MCP-written EnvironmentVariable
  * rows match the format the webapp UI uses for keying friendly IDs.
  */

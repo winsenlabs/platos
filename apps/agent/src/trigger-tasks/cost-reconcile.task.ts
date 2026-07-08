@@ -1,4 +1,4 @@
-import { schedules, logger, metadata } from "@platos/sdk/v3";
+import { schedules, logger, metadata } from "@trigger.dev/sdk";
 import { env } from "../shared/env";
 
 /**

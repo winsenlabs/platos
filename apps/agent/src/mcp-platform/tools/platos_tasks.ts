@@ -618,7 +618,7 @@ export function buildPlatosTaskToolHandlers(deps: {
 
         try {
           // Lazy import — same pattern as PlatosTasksController.run().
-          const { tasks } = await import("@platos/sdk/v3");
+          const { tasks } = await import("@trigger.dev/sdk");
           const run = await tasks.trigger("platos-custom-task", {
             taskRowId: id,
             payload,

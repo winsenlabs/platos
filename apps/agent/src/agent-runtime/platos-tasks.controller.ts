@@ -243,7 +243,7 @@ export class PlatosTasksController {
 
     try {
       // Lazy import trigger SDK — avoids top-level import that would fail if SDK not available.
-      const { tasks } = await import("@platos/sdk/v3");
+      const { tasks } = await import("@trigger.dev/sdk");
       const run = await tasks.trigger("platos-custom-task", {
         taskRowId: id,
         payload: body.payload ?? {},

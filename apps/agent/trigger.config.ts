@@ -1,4 +1,4 @@
-import { defineConfig } from "@platos/sdk/v3";
+import { defineConfig } from "@trigger.dev/sdk";
 
 /**
  * Trigger.dev config for the Platos agent tasks.

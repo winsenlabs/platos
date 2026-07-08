@@ -1,4 +1,4 @@
-import { task, wait, metadata, logger } from "@platos/sdk/v3";
+import { task, wait, metadata, logger } from "@trigger.dev/sdk";
 
 /**
  * PPR-51 — Durable HITL approval waitpoint.
