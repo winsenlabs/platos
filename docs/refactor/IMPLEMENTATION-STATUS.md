@@ -36,10 +36,10 @@ The zero-regression foundation is landed and typecheck-green on `shrink`: `execu
 | 🟡 **Webapp — coupled/decision routes remaining** | `regions/limits/concurrency/branches` (coupled to shared components, need untangle) + the **`runs`** dashboard (52 files + `components/runs`, awaiting the strip-vs-repurpose call). KEEP: run-engine api.v1.*/engine.*, environment-variables (Platos scoped secrets), apikeys, settings.integrations (Platos `.mcp`). |
 | ✅ **GitHub Actions auto-deploy** (`.github/workflows/trigger-deploy.yml`) | Written. Needs: `TRIGGER_ACCESS_TOKEN` GitHub secret + `TRIGGER_PROJECT_REF` var (your `proj_…`). |
 
-## Deploy — the one thing left to make it live
-- Set `TRIGGER_PROJECT_REF` to your project's `proj_…` (in `trigger.config.ts` or the repo var) — the config still defaults to the old `proj_sourblwsegejrzfjmrug`.
-- Add `TRIGGER_ACCESS_TOKEN` (your `tr_pat_…`) as a GitHub Actions secret.
-- Then push (or run the workflow) → `trigger.dev deploy` registers the tasks on your project. After that, an agent with `executionMode="durable"` runs on managed trigger.
+## Deploy — CI-gated (by design: review → merge → deploy)
+- ✅ **Project ref resolved + wired** — `trigger.config.ts` now points at `proj_mwhvvqlhrykhbdicnmze` (resolved from the secret key's `/api/v1/whoami`; the secret key authenticates — it was the PAT that failed CLI auth, so **regenerate the `tr_pat_…`** before relying on CI deploy).
+- ✅ **`runs` decision** — keep the runs dashboard (Platos-run-type-adjacent); repurposing is a follow-up.
+- Remaining (yours): **(1)** review `shrink` + merge to `main`; **(2)** add `TRIGGER_ACCESS_TOKEN` (a *fresh* PAT) as a GitHub Actions secret. On merge, the workflow runs `trigger.dev deploy` → tasks register on your project → `executionMode="durable"` agents run on managed trigger. A manual prod deploy from the unreviewed branch was intentionally NOT run.
 
 ## Staged for review — destructive, NOT auto-run (needs your go-ahead)
 | Item | Why staged |
