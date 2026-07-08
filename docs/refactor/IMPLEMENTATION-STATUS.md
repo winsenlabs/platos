@@ -28,10 +28,21 @@ The zero-regression foundation is landed and typecheck-green on `shrink`: `execu
 | Per-skill task-offload flag (mid-turn) | 🟡 | The `skill-run` task + `/internal/skill-run` endpoint + `skills_run` MCP surface are all ready. The remaining bit is the mid-turn dispatch flag in `skill-handlers.ts` (heavy skills → `triggerAndWait` the task) — a hot-path change staged for review. |
 | Tenant isolation: `concurrencyKey: org-<id>` | ✅ | Stamped on every durable dispatch in `tryDispatchDurable` (Model A). Per-tenant trigger-compute cost metering into the ledger is a follow-up. |
 
+## Done since the foundation
+| Item | Status |
+|---|---|
+| ✅ **SDK swap** — `apps/agent` onto real `@trigger.dev/sdk`+`@trigger.dev/core` **4.5.0** | Done. ~24 import sites swapped; typecheck 0 errors / 6/6. The real 4.5.0 API is fully compatible — agent is OFF the fork SDK. |
+| ✅ **Webapp navbar** Platos-only + **33 trigger dashboard routes** removed | Done (navbar + 18 routes verified; AI/Observability batch reverted — coupled to shared components, needs per-file untangle). |
+| ✅ **GitHub Actions auto-deploy** (`.github/workflows/trigger-deploy.yml`) | Written. Needs: `TRIGGER_ACCESS_TOKEN` GitHub secret + `TRIGGER_PROJECT_REF` var (your `proj_…`). |
+
+## Deploy — the one thing left to make it live
+- Set `TRIGGER_PROJECT_REF` to your project's `proj_…` (in `trigger.config.ts` or the repo var) — the config still defaults to the old `proj_sourblwsegejrzfjmrug`.
+- Add `TRIGGER_ACCESS_TOKEN` (your `tr_pat_…`) as a GitHub Actions secret.
+- Then push (or run the workflow) → `trigger.dev deploy` registers the tasks on your project. After that, an agent with `executionMode="durable"` runs on managed trigger.
+
 ## Staged for review — destructive, NOT auto-run (needs your go-ahead)
 | Item | Why staged |
 |---|---|
-| 🔒 Swap `@platos/sdk`/`@platos/core` → real `@trigger.dev/sdk` | Breaks the build until a managed trigger project + keys exist; touches every task + `agent.service.ts:158`. |
 | 🔒 Delete `internal-packages/{run-engine,run-queue,schedule-engine}` | `apps/webapp` imports run-engine; deleting breaks webapp typecheck until webapp track (P5) lands. |
 | 🔒 Delete `packages/{trigger-sdk,cli-v3,core,redis-worker,react-hooks}` | Same — cascade through webapp + build graph. |
 | 🔒 Drop 68 trigger runtime Prisma models | Destructive migration; needs review + data plan (play.platos.dev resettable, real deploys not). |
