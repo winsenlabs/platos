@@ -319,4 +319,52 @@ describe("ScopeGuard — admin token path", () => {
       process.env.PLATOS_ADMIN_TOKEN = prevToken;
     }
   });
+
+  // REFACTOR (control-plane + trigger substrate) — the durable-execution
+  // callbacks (durable-turn / employee-run / skill-run) reuse the same
+  // admin-token bypass as compaction. Same accept/reject contract.
+  for (const path of [
+    "/api/v1/agent/internal/durable-turn",
+    "/api/v1/agent/internal/employee-run",
+    "/api/v1/agent/internal/skill-run",
+  ]) {
+    it(`lets ${path} through with correct admin token`, async () => {
+      const prevToken = process.env.PLATOS_ADMIN_TOKEN;
+      process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+      try {
+        const guard = new ScopeGuard();
+        const ctx = mockExecutionContext(
+          { "x-platos-admin-token": "admin-secret-for-test" },
+          path,
+        );
+        await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      } finally {
+        process.env.PLATOS_ADMIN_TOKEN = prevToken;
+      }
+    });
+
+    it(`rejects ${path} with wrong admin token`, async () => {
+      const prevToken = process.env.PLATOS_ADMIN_TOKEN;
+      process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+      try {
+        const guard = new ScopeGuard();
+        const ctx = mockExecutionContext({ "x-platos-admin-token": "WRONG" }, path);
+        await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
+      } finally {
+        process.env.PLATOS_ADMIN_TOKEN = prevToken;
+      }
+    });
+
+    it(`rejects ${path} without admin token entirely`, async () => {
+      const prevToken = process.env.PLATOS_ADMIN_TOKEN;
+      process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+      try {
+        const guard = new ScopeGuard();
+        const ctx = mockExecutionContext({}, path);
+        await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
+      } finally {
+        process.env.PLATOS_ADMIN_TOKEN = prevToken;
+      }
+    });
+  }
 });
