@@ -1,5 +1,4 @@
 import { task, logger, metadata } from "@trigger.dev/sdk";
-import { env } from "../shared/env";
 
 /**
  * REFACTOR (control-plane + trigger substrate) — skill-as-task runner.
@@ -58,8 +57,8 @@ export const skillRun = task({
     metadata.set("status", "running");
 
     const AGENT_API_URL =
-      env.PLATOS_AGENT_HTTP_URL || env.PLATOS_AGENT_API_URL || "http://localhost:3100";
-    const adminToken = env.PLATOS_ADMIN_TOKEN;
+      process.env.PLATOS_AGENT_HTTP_URL || process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
+    const adminToken = process.env.PLATOS_ADMIN_TOKEN;
     if (!adminToken) {
       logger.warn("skill-run: PLATOS_ADMIN_TOKEN not set — skipping");
       return {
