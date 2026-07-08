@@ -32,7 +32,8 @@ The zero-regression foundation is landed and typecheck-green on `shrink`: `execu
 | Item | Status |
 |---|---|
 | ✅ **SDK swap** — `apps/agent` onto real `@trigger.dev/sdk`+`@trigger.dev/core` **4.5.0** | Done. ~24 import sites swapped; typecheck 0 errors / 6/6. The real 4.5.0 API is fully compatible — agent is OFF the fork SDK. |
-| ✅ **Webapp navbar** Platos-only + **33 trigger dashboard routes** removed | Done (navbar + 18 routes verified; AI/Observability batch reverted — coupled to shared components, needs per-file untangle). |
+| ✅ **Webapp navbar** Platos-only + **~42 trigger routes** removed (459→421) | Navbar stripped; removed deployments/schedules/batches/queues/test/waitpoints/bulk-actions/alerts + AI(prompts/models) + Observability(logs/errors/metrics/dashboards) + the whole **Query feature** (components/services/eval untangled). All verified: webapp typecheck holds at baseline 2 (pre-existing server.ts). |
+| 🟡 **Webapp — coupled/decision routes remaining** | `regions/limits/concurrency/branches` (coupled to shared components, need untangle) + the **`runs`** dashboard (52 files + `components/runs`, awaiting the strip-vs-repurpose call). KEEP: run-engine api.v1.*/engine.*, environment-variables (Platos scoped secrets), apikeys, settings.integrations (Platos `.mcp`). |
 | ✅ **GitHub Actions auto-deploy** (`.github/workflows/trigger-deploy.yml`) | Written. Needs: `TRIGGER_ACCESS_TOKEN` GitHub secret + `TRIGGER_PROJECT_REF` var (your `proj_…`). |
 
 ## Deploy — the one thing left to make it live
