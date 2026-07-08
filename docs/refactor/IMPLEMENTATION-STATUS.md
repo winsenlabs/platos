@@ -13,7 +13,8 @@ Tracks the execution of [`platos-trigger-refactor.md`](./platos-trigger-refactor
 | New trigger tasks: `durable-turn`, `employee-run`, `skill-run` | ✅ | Written + registered in `index.ts`, typecheck-green. Thin-shell (variant A): call back to `/internal/*` (added next). Use existing `@platos/sdk` (proven `task()`/`metadata`/`logger`). |
 | `approval-waitpoint` task | ✅ | Already exists as `agentDurableApprovalWait` (`wait.forToken`). Wiring `request_approval`→it is a staged agent-code change. |
 | `agent-session` (chat.agent / Sessions) | 🔒 | Needs the real `@trigger.dev/sdk` — `chat.agent`/Sessions are not in the vendored fork. Lands with the SDK swap. |
-| Callback endpoints: `POST /internal/streaming-turn`, `/internal/execute-meta-tool` | ⏳ | Extend `internal-execute-tool.controller.ts` (HMAC via `TRIGGER_INTERNAL_SECRET`). |
+| Callback endpoints `POST /api/v1/agent/internal/{durable-turn,employee-run}` | ✅ | In `agent.controller.ts` (admin-token gated, same pattern as `internal/compaction`), reuse `executeNonStreamingTurn`; scope-guard bypass extended (`scope.guard.ts`). durable-turn + employee-run tasks now functional. |
+| `/internal/skill-run` endpoint + per-token streaming refinement | ⏳ | skill-run endpoint lands with the per-skill flag; incremental metadata streaming (variant-A polish) is a follow-up. |
 | Platform-MCP write tools: `tasks_trigger`, `trigger_runs_create/cancel`, `skills_run` | ⏳ | Extend `apps/agent/src/mcp-platform/`; enforce `ScopeGuard`, stamp scope from token not payload. |
 | Dispatch branch on `executionMode` (defaults to today's `direct` path) | ⏳ | `connections.gateway.ts:502` + `agent.controller.ts` SSE; `durable` behind the flag. |
 | Per-skill task-offload flag | ⏳ | `skill-handlers.ts`; heavy/parallel/long skills → `skill-run` task. |

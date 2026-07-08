@@ -3731,6 +3731,131 @@ Write the summary now:`;
   }
 
   /**
+   * REFACTOR (control-plane + trigger substrate) — shared admin-token gate
+   * for the durable-execution callbacks below. Timing-safe; mirrors the
+   * inline check in internalCompaction. Tasks already verify at dispatch;
+   * we re-verify so a leaked URL alone can't drive turns.
+   */
+  private verifyAdminToken(req: Request): boolean {
+    const expected = env.PLATOS_ADMIN_TOKEN;
+    if (!expected) return false;
+    const provided = req.headers["x-platos-admin-token"];
+    if (typeof provided !== "string" || provided.length !== expected.length) return false;
+    try {
+      return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * REFACTOR — durable agent turn callback. Invoked by the
+   * `platos.agent.durable-turn` trigger task when an agent's
+   * executionMode==="durable". Runs one turn in-process (reusing the same
+   * executeNonStreamingTurn path as batch-turn) against the supplied thread
+   * so conversation history + persistence are unchanged. Admin-token gated.
+   */
+  @Post("internal/durable-turn")
+  async internalDurableTurn(
+    @Req() req: Request,
+    @Body() body: {
+      threadId: string;
+      agentId: string;
+      message: string;
+      replyToMessageId?: string | null;
+      clientMessageId?: string | null;
+      scope: {
+        organizationId: string;
+        projectId: string;
+        environmentId: string;
+        userId: string;
+        agentId?: string;
+        threadId?: string;
+      };
+    },
+  ) {
+    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!this.verifyAdminToken(req)) return { status: "forbidden" };
+    if (!body?.message || !body?.scope) return { status: "invalid", reason: "message and scope required" };
+    const start = Date.now();
+    try {
+      const result = await this.agentTaskService.executeNonStreamingTurn(body.message, body.scope as any, {
+        agentId: body.agentId,
+        threadId: body.threadId,
+      });
+      return {
+        status: "ok" as const,
+        threadId: result.threadId ?? body.threadId,
+        text: result.text,
+        costCents: result.costCents ?? 0,
+        durationMs: Date.now() - start,
+      };
+    } catch (err: any) {
+      return {
+        status: "failed" as const,
+        reason: err?.message ?? String(err),
+        threadId: body.threadId,
+        durationMs: Date.now() - start,
+      };
+    }
+  }
+
+  /**
+   * REFACTOR — AI-employee run callback. Invoked by the
+   * `platos.agent.employee-run` trigger task. Multi-step autonomous
+   * orchestration (sub-turns, tools, waitpoints) is a follow-up; this initial
+   * implementation runs a single durable turn seeded with the goal — a
+   * correct (if degenerate) employee run that unblocks the task path.
+   * Admin-token gated.
+   */
+  @Post("internal/employee-run")
+  async internalEmployeeRun(
+    @Req() req: Request,
+    @Body() body: {
+      agentId: string;
+      goal: string;
+      input?: Record<string, unknown>;
+      maxSteps?: number;
+      threadId?: string;
+      scope: {
+        organizationId: string;
+        projectId: string;
+        environmentId: string;
+        userId: string;
+        agentId?: string;
+      };
+    },
+  ) {
+    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!this.verifyAdminToken(req)) return { status: "forbidden" };
+    if (!body?.goal || !body?.scope) return { status: "invalid", reason: "goal and scope required" };
+    const start = Date.now();
+    try {
+      // TODO(refactor): multi-step autonomous orchestration. For now a single
+      // goal-seeded durable turn (see IMPLEMENTATION-STATUS.md).
+      const result = await this.agentTaskService.executeNonStreamingTurn(body.goal, body.scope as any, {
+        agentId: body.agentId,
+        threadId: body.threadId,
+      });
+      return {
+        status: "ok" as const,
+        agentId: body.agentId,
+        threadId: result.threadId ?? body.threadId,
+        summary: result.text,
+        steps: 1,
+        durationMs: Date.now() - start,
+      };
+    } catch (err: any) {
+      return {
+        status: "failed" as const,
+        reason: err?.message ?? String(err),
+        agentId: body.agentId,
+        durationMs: Date.now() - start,
+      };
+    }
+  }
+
+  /**
    * Admin: ingest a refreshed LiteLLM model-price catalog. Called by the
    * scheduled `platos.cost.refresh_model_prices` trigger task once per
    * day. Gated by `X-Platos-Admin-Token` so external callers can't spoof
