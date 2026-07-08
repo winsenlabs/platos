@@ -3856,6 +3856,66 @@ Write the summary now:`;
   }
 
   /**
+   * REFACTOR — skill-as-task callback. Invoked by the `platos.skill.run`
+   * trigger task to execute a heavy/parallel/long skill tool off the agent
+   * event loop. Runs the skill handler in-scope via SkillRuntimeService.
+   * Admin-token gated.
+   */
+  @Post("internal/skill-run")
+  async internalSkillRun(
+    @Req() req: Request,
+    @Body() body: {
+      skillId: string;
+      toolName: string;
+      input?: Record<string, unknown>;
+      threadId?: string;
+      scope: {
+        organizationId: string;
+        projectId: string;
+        environmentId: string;
+        userId: string;
+        agentId?: string;
+        threadId?: string;
+      };
+    },
+  ) {
+    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!this.verifyAdminToken(req)) return { status: "forbidden" };
+    if (!body?.skillId || !body?.toolName || !body?.scope) {
+      return { status: "invalid", reason: "skillId, toolName and scope required" };
+    }
+    if (!this.skillRuntime) return { status: "skipped", reason: "SkillRuntimeService unavailable" };
+    const start = Date.now();
+    try {
+      const result = await this.skillRuntime.invokeTool(
+        body.scope as any,
+        {
+          skillSlug: body.skillId,
+          toolName: body.toolName,
+          handler: `skill:${body.skillId}:${body.toolName}`,
+        },
+        body.input ?? {},
+        { agentId: body.scope.agentId ?? null, threadId: body.threadId ?? body.scope.threadId ?? null },
+      );
+      return {
+        status: "ok" as const,
+        skillId: body.skillId,
+        toolName: body.toolName,
+        result,
+        durationMs: Date.now() - start,
+      };
+    } catch (err: any) {
+      return {
+        status: "failed" as const,
+        reason: err?.message ?? String(err),
+        skillId: body.skillId,
+        toolName: body.toolName,
+        durationMs: Date.now() - start,
+      };
+    }
+  }
+
+  /**
    * Admin: ingest a refreshed LiteLLM model-price catalog. Called by the
    * scheduled `platos.cost.refresh_model_prices` trigger task once per
    * day. Gated by `X-Platos-Admin-Token` so external callers can't spoof

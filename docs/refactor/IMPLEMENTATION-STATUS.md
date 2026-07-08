@@ -3,6 +3,12 @@
 Tracks the execution of [`platos-trigger-refactor.md`](./platos-trigger-refactor.md) on the `shrink` branch.
 **Ground rule (from the spec): no big-bang.** Additive, zero-regression work is auto-implemented and kept typecheck-green. Destructive/irreversible work is **staged for human review**, not blind-executed.
 
+## Status: additive foundation COMPLETE ✅
+
+The zero-regression foundation is landed and typecheck-green on `shrink`: `executionMode` field, the durable trigger tasks (`durable-turn`/`employee-run`/`skill-run`) + their `/internal/*` endpoints, the WS dispatch branch (dormant until managed trigger), and the MCP task/skill write surface (pre-existing). Everything is inert on a deployment without managed trigger — **zero behaviour change today.**
+
+**To activate the durable path (your one action):** create a managed trigger.dev project, put the keys in the app `.env` (see the SECRETS section below), then `npx trigger.dev deploy` the tasks and set an agent's `executionMode="durable"`. The `🔒` destructive shrink (SDK swap, delete run-engine, drop 68 models, webapp retire) is blocked on that project existing and lands as its own reviewed PRs.
+
 ## Legend
 ✅ done & typecheck-green · 🟡 in progress · ⏳ queued (additive) · 🔒 staged for review (destructive — NOT auto-run)
 
@@ -14,12 +20,13 @@ Tracks the execution of [`platos-trigger-refactor.md`](./platos-trigger-refactor
 | `approval-waitpoint` task | ✅ | Already exists as `agentDurableApprovalWait` (`wait.forToken`). Wiring `request_approval`→it is a staged agent-code change. |
 | `agent-session` (chat.agent / Sessions) | 🔒 | Needs the real `@trigger.dev/sdk` — `chat.agent`/Sessions are not in the vendored fork. Lands with the SDK swap. |
 | Callback endpoints `POST /api/v1/agent/internal/{durable-turn,employee-run}` | ✅ | In `agent.controller.ts` (admin-token gated, same pattern as `internal/compaction`), reuse `executeNonStreamingTurn`; scope-guard bypass extended (`scope.guard.ts`). durable-turn + employee-run tasks now functional. |
-| `/internal/skill-run` endpoint + per-token streaming refinement | ⏳ | skill-run endpoint lands with the per-skill flag; incremental metadata streaming (variant-A polish) is a follow-up. |
-| Platform-MCP write tools: `tasks_trigger`, `trigger_runs_create/cancel`, `skills_run` | ⏳ | Extend `apps/agent/src/mcp-platform/`; enforce `ScopeGuard`, stamp scope from token not payload. |
+| `/internal/skill-run` endpoint | ✅ | `agent.controller.ts` (admin-token), runs the skill via `SkillRuntimeService.invokeTool`. skill-run task now functional. |
+| Per-token streaming refinement (durable turn → per-token metadata) | ⏳ | Variant-A polish; today durable turns deliver the final result via the run. |
+| Platform-MCP write tools | ✅ | **Already existed** — `trigger.tasks.trigger`, `trigger.runs.cancel/replay`, `platos_tasks.create/run/get_runs`, `skills.*` in `mcp-platform/tools/{trigger,platos_tasks,skills}.ts`. Scope-pinned via the MCP token; trigger.* are admin-tier gated. "Create/run tasks via MCP" is a solved surface. |
 | Dispatch branch on `executionMode` (WS) | ✅ | `connections.gateway.ts` `tryDispatchDurable()` — triggers `platos.agent.durable-turn` + `RunsBridge.subscribe` when `executionMode="durable"` AND `TRIGGER_SECRET_KEY` set AND threadId present; else falls through to the in-process `direct` path. Dormant/zero-regression until managed trigger exists. Lazy `getRunsBridge()` via `ModuleRef`. |
 | Dispatch branch (SSE/REST path in `agent.controller.ts`) | ⏳ | WS path done; SSE mirror is a small follow-up. |
-| Per-skill task-offload flag | ⏳ | `skill-handlers.ts`; heavy/parallel/long skills → `skill-run` task. |
-| Tenant isolation: `concurrencyKey: org-<id>` + cost metering | ⏳ | On every durable dispatch (Model A). |
+| Per-skill task-offload flag (mid-turn) | 🟡 | The `skill-run` task + `/internal/skill-run` endpoint + `skills_run` MCP surface are all ready. The remaining bit is the mid-turn dispatch flag in `skill-handlers.ts` (heavy skills → `triggerAndWait` the task) — a hot-path change staged for review. |
+| Tenant isolation: `concurrencyKey: org-<id>` | ✅ | Stamped on every durable dispatch in `tryDispatchDurable` (Model A). Per-tenant trigger-compute cost metering into the ledger is a follow-up. |
 
 ## Staged for review — destructive, NOT auto-run (needs your go-ahead)
 | Item | Why staged |
