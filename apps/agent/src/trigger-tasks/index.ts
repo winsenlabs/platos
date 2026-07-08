@@ -55,3 +55,17 @@ export { platosCustomTask } from "./platos-custom-task";
 // fire-and-forget Promise that was spawned at the end of every turn.
 export { platosCompaction } from "./compaction.task";
 export type { CompactionTaskPayload, CompactionTaskOutput } from "./compaction.task";
+
+// REFACTOR (control-plane + trigger substrate) — new durable-execution tasks.
+// The `durable` half of per-agent executionMode + AI-employee + skill-as-task.
+// Thin-shell variant (A): call back into the agent's /internal/* endpoints
+// (added in the callbacks step). Sessions/chat.agent variant (B) lands with
+// the @trigger.dev/sdk swap. See docs/refactor/platos-trigger-refactor.md.
+export { durableTurn } from "./durable-turn.task";
+export type { DurableTurnPayload, DurableTurnOutput } from "./durable-turn.task";
+
+export { employeeRun } from "./employee-run.task";
+export type { EmployeeRunPayload, EmployeeRunOutput } from "./employee-run.task";
+
+export { skillRun } from "./skill-run.task";
+export type { SkillRunPayload, SkillRunOutput } from "./skill-run.task";
