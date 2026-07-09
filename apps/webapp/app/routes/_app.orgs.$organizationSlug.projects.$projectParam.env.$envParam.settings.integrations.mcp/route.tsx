@@ -15,7 +15,7 @@ import {
   type LoaderFunctionArgs,
 } from "@remix-run/server-runtime";
 import { Form, useActionData } from "@remix-run/react";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import { Button } from "~/components/primitives/Buttons";
 import { Header2, Header3 } from "~/components/primitives/Headers";
@@ -76,6 +76,25 @@ type TokenRow = {
   createdAt: string;
 };
 
+// MCPF-K.22 — full tool catalog that powers the visual permission
+// picker. Served by the agent at GET /mcp/platform/catalog.
+type CatalogTool = {
+  name: string;
+  description: string;
+  requiresAdminTier: boolean;
+};
+type CatalogCategory = {
+  category: string;
+  count: number;
+  adminTier: boolean;
+  tools: CatalogTool[];
+};
+type Catalog = {
+  totalTools: number;
+  totalCategories: number;
+  categories: CatalogCategory[];
+};
+
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const userId = await requireUserId(request);
   const { organizationSlug, projectParam, envParam } =
@@ -98,6 +117,13 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   );
   const tokens = res?.tokens ?? [];
 
+  // MCPF-K.22 — the full tool catalog feeds the visual permission
+  // picker. If the agent is unreachable we fall back to an empty catalog
+  // and the UI degrades to a plain free-text patterns box.
+  const catalogRes = await agentFetch<Catalog>("/mcp/platform/catalog", scope);
+  const catalog: Catalog =
+    catalogRes ?? { totalTools: 0, totalCategories: 0, categories: [] };
+
   // K.18 — only org ADMINs see the "Admin tier (cross-scope)" mint
   // checkbox. Agent-side mint enforcement is authoritative; the UI flag
   // just prevents a non-admin from seeing a control they can't use.
@@ -118,7 +144,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     "http://localhost:3030";
   const mcpUrl = `${publicOrigin.replace(/\/+$/, "")}/mcp/platform`;
 
-  return typedjson({ tokens, mcpUrl, isOrgAdmin });
+  return typedjson({ tokens, mcpUrl, isOrgAdmin, catalog });
 }
 
 type ActionResult =
@@ -201,7 +227,8 @@ function formatDate(d: string | null): string {
 }
 
 export default function McpTokensTab() {
-  const { tokens, mcpUrl, isOrgAdmin } = useTypedLoaderData<typeof loader>();
+  const { tokens, mcpUrl, isOrgAdmin, catalog } =
+    useTypedLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionResult | undefined;
   const [copied, setCopied] = useState(false);
 
@@ -290,75 +317,7 @@ export default function McpTokensTab() {
       )}
 
       <Header2 className="mt-8">Mint a new token</Header2>
-      <Form method="post" style={{ display: "grid", gap: 12, maxWidth: 680 }}>
-        <input type="hidden" name="intent" value="mint" />
-        <label>
-          Name
-          <input
-            name="name"
-            required
-            maxLength={80}
-            placeholder="Alice's laptop"
-            style={{
-              width: "100%",
-              padding: "6px 10px",
-              borderRadius: 6,
-              border: "1px solid #374151",
-              marginTop: 4,
-            }}
-          />
-        </label>
-        <label>
-          Permissions (comma or newline-separated tool patterns; use{" "}
-          <code>*</code> for full access)
-          <textarea
-            name="permissions"
-            rows={3}
-            defaultValue="agents.*, threads.*, messages.*, monitoring.*, trigger.runs.list, trigger.runs.get, platos.*"
-            style={{
-              width: "100%",
-              padding: "6px 10px",
-              borderRadius: 6,
-              border: "1px solid #374151",
-              marginTop: 4,
-              fontFamily: "monospace",
-              fontSize: 12,
-            }}
-          />
-        </label>
-        <label>
-          TTL (days) — 0 for admin non-expiring token
-          <input
-            name="ttlDays"
-            type="number"
-            min={0}
-            max={365}
-            defaultValue={90}
-            style={{
-              width: 120,
-              padding: "6px 10px",
-              borderRadius: 6,
-              border: "1px solid #374151",
-              marginTop: 4,
-            }}
-          />
-        </label>
-        {isOrgAdmin && (
-          <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <input type="checkbox" name="tier" value="admin" />
-            <span>
-              <strong>Admin tier (cross-scope)</strong> — grants access to
-              cross-scope tools like <code>scopes.list_all</code>,{" "}
-              <code>audit.cross_scope_tool_calls</code>, and{" "}
-              <code>gdpr.export_user_everywhere</code>. Every non-block call
-              from an admin-tier token requires human approval.
-            </span>
-          </label>
-        )}
-        <Button variant="primary/medium" type="submit">
-          Mint token
-        </Button>
-      </Form>
+      <MintTokenForm catalog={catalog} isOrgAdmin={isOrgAdmin} />
 
       <Header2 className="mt-8">Existing tokens</Header2>
       {tokens.length === 0 ? (
@@ -432,3 +391,404 @@ export default function McpTokensTab() {
     </div>
   );
 }
+
+// ── MCPF-K.22 — visual permission picker ────────────────────────────
+// Replaces the free-text "permissions" textarea. The operator toggles
+// tool categories (or picks a preset) and we emit the SAME `category.*`
+// / exact tool-name patterns that PlatosMCPTokenService.allows()
+// matches — the permission engine is unchanged; this is pure UX over
+// the wildcard model.
+
+const READ_VERBS = new Set([
+  "list", "get", "census", "explain", "diff", "simulate", "whoami",
+  "search", "traverse", "nodes", "overview",
+]);
+
+/**
+ * Best-effort: is this a read-only tool? Deliberately conservative —
+ * under-grants rather than risk sweeping a mutation into the read-only
+ * preset. The operator sees the resolved patterns before minting.
+ */
+function isReadTool(name: string): boolean {
+  const seg = name.split(".").pop() || name;
+  if (READ_VERBS.has(seg)) return true;
+  if (/^(list|get)_/.test(seg)) return true;
+  if (/_(daily|range|stats|list|get)$/.test(seg)) return true;
+  return false;
+}
+
+type Preset = "readonly" | "operator" | "full" | "admin";
+
+function MintTokenForm({
+  catalog,
+  isOrgAdmin,
+}: {
+  catalog: Catalog;
+  isOrgAdmin: boolean;
+}) {
+  const categories = catalog.categories;
+  const nonAdmin = categories.filter((c) => !c.adminTier);
+  const totalNonAdmin = nonAdmin.reduce((n, c) => n + c.count, 0);
+
+  const [full, setFull] = useState(false);
+  const [readOnly, setReadOnly] = useState(false);
+  const [adminTier, setAdminTier] = useState(false);
+  const [checked, setChecked] = useState<Set<string>>(
+    () => new Set(nonAdmin.map((c) => c.category)),
+  );
+  const [showPatterns, setShowPatterns] = useState(false);
+
+  const readCount = (c: CatalogCategory) =>
+    c.tools.filter((t) => isReadTool(t.name)).length;
+
+  // The permission strings we'll POST — the wildcard grammar the agent's
+  // allows() understands (`*`, exact name, `category.*`).
+  const permissions: string[] = full
+    ? ["*"]
+    : categories.flatMap((c) => {
+        if (c.adminTier && !adminTier) return [];
+        if (!checked.has(c.category)) return [];
+        return readOnly
+          ? c.tools.filter((t) => isReadTool(t.name)).map((t) => t.name)
+          : [`${c.category}.*`];
+      });
+
+  // Live "sees N tools" preview. `*` grants everything, but admin-tier
+  // tools stay blocked at the tools/call tier gate unless this is an
+  // admin token — reflect that in the count.
+  const seesCount = full
+    ? adminTier
+      ? catalog.totalTools
+      : totalNonAdmin
+    : categories.reduce((n, c) => {
+        if (c.adminTier && !adminTier) return n;
+        if (!checked.has(c.category)) return n;
+        return n + (readOnly ? readCount(c) : c.count);
+      }, 0);
+
+  const selectedCatCount = full
+    ? adminTier
+      ? categories.length
+      : nonAdmin.length
+    : categories.filter(
+        (c) => checked.has(c.category) && (!c.adminTier || adminTier),
+      ).length;
+
+  function applyPreset(p: Preset) {
+    if (p === "readonly") {
+      setFull(false);
+      setReadOnly(true);
+      setAdminTier(false);
+      setChecked(new Set(nonAdmin.map((c) => c.category)));
+    } else if (p === "operator") {
+      setFull(false);
+      setReadOnly(false);
+      setAdminTier(false);
+      setChecked(new Set(nonAdmin.map((c) => c.category)));
+    } else if (p === "full") {
+      setFull(true);
+      setReadOnly(false);
+      setAdminTier(false);
+    } else if (p === "admin") {
+      setFull(true);
+      setReadOnly(false);
+      setAdminTier(true);
+    }
+  }
+
+  function toggleCategory(cat: string) {
+    setFull(false);
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  }
+
+  // Degraded fallback — agent unreachable, empty catalog. Keep the plain
+  // textarea so token minting still works.
+  const noCatalog = categories.length === 0;
+
+  return (
+    <Form method="post" style={{ display: "grid", gap: 14, maxWidth: 760 }}>
+      <input type="hidden" name="intent" value="mint" />
+      <input
+        type="hidden"
+        name="tier"
+        value={adminTier && isOrgAdmin ? "admin" : "scope"}
+      />
+      {!noCatalog && (
+        <input type="hidden" name="permissions" value={permissions.join(",")} />
+      )}
+
+      <label>
+        Name
+        <input
+          name="name"
+          required
+          maxLength={80}
+          placeholder="Alice's laptop"
+          style={inputStyle}
+        />
+      </label>
+
+      {noCatalog ? (
+        <label>
+          Permissions (comma / newline-separated patterns; <code>*</code> = all)
+          <textarea
+            name="permissions"
+            rows={3}
+            defaultValue="agents.*, threads.*, messages.*, monitoring.*, platos.*"
+            style={{ ...inputStyle, fontFamily: "monospace", fontSize: 12 }}
+          />
+        </label>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {/* Presets */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "#9ca3af" }}>Preset:</span>
+            <PresetChip label="Read-only" onClick={() => applyPreset("readonly")} active={!full && readOnly} />
+            <PresetChip label="Operator" onClick={() => applyPreset("operator")} active={!full && !readOnly} />
+            <PresetChip label="Full access (*)" onClick={() => applyPreset("full")} active={full && !adminTier} />
+            {isOrgAdmin && (
+              <PresetChip label="Admin (cross-scope)" onClick={() => applyPreset("admin")} active={full && adminTier} />
+            )}
+          </div>
+
+          {/* Live preview */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "8px 12px",
+              borderRadius: 6,
+              background: "rgba(99,102,241,0.08)",
+              border: "1px solid rgba(99,102,241,0.35)",
+              fontSize: 13,
+            }}
+          >
+            <strong style={{ color: "#a5b4fc" }}>
+              This token will see {seesCount} tool{seesCount === 1 ? "" : "s"}
+            </strong>
+            <span style={{ color: "#9ca3af" }}>
+              across {selectedCatCount} categor{selectedCatCount === 1 ? "y" : "ies"}
+              {readOnly && " · read-only"}
+              {full && " · full access"}
+            </span>
+            <button type="button" onClick={() => setShowPatterns((s) => !s)} style={linkBtnStyle}>
+              {showPatterns ? "hide" : "show"} patterns
+            </button>
+          </div>
+
+          {showPatterns && (
+            <pre style={patternsStyle}>
+              {permissions.length ? permissions.join("\n") : "(none selected)"}
+            </pre>
+          )}
+
+          {/* Category grid — dimmed + inert while a `*` preset is on */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: 8,
+              opacity: full ? 0.5 : 1,
+              pointerEvents: full ? "none" : "auto",
+            }}
+          >
+            {nonAdmin.map((c) => (
+              <CategoryCard
+                key={c.category}
+                category={c}
+                checked={checked.has(c.category)}
+                count={readOnly ? readCount(c) : c.count}
+                readOnly={readOnly}
+                onToggle={() => toggleCategory(c.category)}
+              />
+            ))}
+          </div>
+
+          {/* Admin-tier section — org admins only */}
+          {isOrgAdmin && categories.some((c) => c.adminTier) && (
+            <div
+              style={{
+                marginTop: 4,
+                padding: 12,
+                borderRadius: 6,
+                border: "1px solid #7c2d12",
+                background: "rgba(124,45,18,0.12)",
+              }}
+            >
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <input
+                  type="checkbox"
+                  checked={adminTier}
+                  onChange={(e) => {
+                    setAdminTier(e.target.checked);
+                    if (e.target.checked) setFull(false);
+                  }}
+                />
+                <span style={{ fontSize: 13 }}>
+                  <strong style={{ color: "#fca5a5" }}>Admin tier (cross-scope)</strong>{" "}
+                  — unlocks{" "}
+                  {categories.filter((c) => c.adminTier).map((c) => c.category).join(", ")}.
+                  Every non-read call from an admin-tier token requires human
+                  approval.
+                </span>
+              </label>
+              {adminTier && !full && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                    gap: 8,
+                    marginTop: 10,
+                  }}
+                >
+                  {categories
+                    .filter((c) => c.adminTier)
+                    .map((c) => (
+                      <CategoryCard
+                        key={c.category}
+                        category={c}
+                        checked={checked.has(c.category)}
+                        count={readOnly ? readCount(c) : c.count}
+                        readOnly={readOnly}
+                        onToggle={() => toggleCategory(c.category)}
+                      />
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <label>
+        TTL (days) — 0 for a non-expiring token
+        <input
+          name="ttlDays"
+          type="number"
+          min={0}
+          max={365}
+          defaultValue={90}
+          style={{ ...inputStyle, width: 120 }}
+        />
+      </label>
+
+      <Button variant="primary/medium" type="submit">
+        Mint token
+      </Button>
+    </Form>
+  );
+}
+
+function PresetChip({
+  label,
+  onClick,
+  active,
+}: {
+  label: string;
+  onClick: () => void;
+  active: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "4px 12px",
+        borderRadius: 999,
+        fontSize: 12,
+        cursor: "pointer",
+        border: active ? "1px solid #6366f1" : "1px solid #374151",
+        background: active ? "rgba(99,102,241,0.18)" : "transparent",
+        color: active ? "#c7d2fe" : "#d1d5db",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function CategoryCard({
+  category,
+  checked,
+  count,
+  readOnly,
+  onToggle,
+}: {
+  category: CatalogCategory;
+  checked: boolean;
+  count: number;
+  readOnly: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={category.tools.map((t) => t.name).join("\n")}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+        padding: "8px 10px",
+        borderRadius: 6,
+        cursor: "pointer",
+        textAlign: "left",
+        border: checked ? "1px solid #10b981" : "1px solid #374151",
+        background: checked ? "rgba(16,185,129,0.1)" : "transparent",
+        color: "#e5e7eb",
+      }}
+    >
+      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <input type="checkbox" checked={checked} readOnly tabIndex={-1} />
+        <span style={{ fontFamily: "monospace", fontSize: 13 }}>{category.category}</span>
+      </span>
+      <span
+        style={{
+          fontSize: 11,
+          color: checked ? "#6ee7b7" : "#9ca3af",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {count}
+        {readOnly ? " read" : ""}
+      </span>
+    </button>
+  );
+}
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "6px 10px",
+  borderRadius: 6,
+  border: "1px solid #374151",
+  marginTop: 4,
+};
+
+const linkBtnStyle: CSSProperties = {
+  marginLeft: "auto",
+  background: "transparent",
+  border: "none",
+  color: "#93c5fd",
+  cursor: "pointer",
+  fontSize: 12,
+  textDecoration: "underline",
+};
+
+const patternsStyle: CSSProperties = {
+  margin: 0,
+  padding: 10,
+  borderRadius: 6,
+  background: "rgba(0,0,0,0.3)",
+  fontFamily: "monospace",
+  fontSize: 11,
+  color: "#d1d5db",
+  maxHeight: 160,
+  overflowY: "auto",
+};
