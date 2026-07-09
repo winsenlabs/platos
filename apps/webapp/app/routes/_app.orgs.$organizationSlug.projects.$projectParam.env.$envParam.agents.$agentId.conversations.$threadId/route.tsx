@@ -198,6 +198,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     projectId: scope.projectId,
     environmentId: scope.environmentId,
     wsUrl: process.env.PLATOS_AGENT_PUBLIC_WS_URL || process.env.PLATOS_AGENT_WS_URL || "http://localhost:3100",
+    // Single-domain deploys serve the agent Socket.io on a distinct path
+    // (see the chat route). Null → default path.
+    wsPath: process.env.PLATOS_AGENT_WS_PATH || null,
     sessionToken: sessionToken?.token ?? null,
     spawnedRuns,
   });
@@ -215,6 +218,7 @@ export default function ConversationViewerPage() {
     projectId,
     environmentId,
     wsUrl,
+    wsPath,
     sessionToken,
     spawnedRuns,
   } = useTypedLoaderData<typeof loader>();
@@ -306,6 +310,7 @@ export default function ConversationViewerPage() {
           ? { token: sessionToken }
           : { organizationId, projectId, environmentId, userId },
         transports: ["websocket"],
+        ...(wsPath ? { path: wsPath } : {}),
       });
 
       socket.on("connected", () => {
@@ -493,7 +498,7 @@ export default function ConversationViewerPage() {
     return () => {
       cleanup?.();
     };
-  }, [wsUrl, organizationId, projectId, environmentId, userId]);
+  }, [wsUrl, wsPath, organizationId, projectId, environmentId, userId]);
 
   const sendMessage = useCallback(
     (text: string) => {

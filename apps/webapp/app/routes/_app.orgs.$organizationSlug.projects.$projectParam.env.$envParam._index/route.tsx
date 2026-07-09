@@ -96,6 +96,7 @@ type LoaderData = {
   projectParam: string;
   envParam: string;
   agentWsUrl: string | null;
+  agentWsPath: string | null;
 };
 
 async function agentGet<T>(path: string, scope: Scope): Promise<T | null> {
@@ -144,12 +145,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   // permanently stuck in "reconnecting…". Forward the operator-set env
   // var to the client.
   const agentWsUrl = process.env.PLATOS_AGENT_PUBLIC_WS_URL ?? null;
+  // Single-domain deploys serve the agent Socket.io on a distinct path
+  // so it doesn't collide with the webapp's own /socket.io/. Null →
+  // default path (subdomain / own-host deploy).
+  const agentWsPath = process.env.PLATOS_AGENT_WS_PATH ?? null;
 
   if (!agentReachable) {
     return typedjson<LoaderData>({
       agentReachable: false, agents: [], entities: [], summary: null,
       activity: [], skillHealth: null, pendingApprovals: 0, openSafetyEvents: 0,
-      costByAgent: [], organizationSlug, projectParam, envParam, agentWsUrl,
+      costByAgent: [], organizationSlug, projectParam, envParam, agentWsUrl, agentWsPath,
     });
   }
 
@@ -186,6 +191,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     projectParam,
     envParam,
     agentWsUrl,
+    agentWsPath,
   });
 }
 
@@ -310,7 +316,11 @@ export default function PlatoCentral() {
           // 3. Local dev fallback — ports differ between webapp (3030) and agent (3100).
           return window.location.origin.replace(":3030", ":3100");
         })();
-        socket = io(`${AGENT_WS_URL}/agent`, { transports: ["websocket"], reconnection: true });
+        socket = io(`${AGENT_WS_URL}/agent`, {
+          transports: ["websocket"],
+          reconnection: true,
+          ...(data.agentWsPath ? { path: data.agentWsPath } : {}),
+        });
         socketRef.current = socket;
         socket.on("connect", () => setWsConnected(true));
         socket.on("disconnect", () => setWsConnected(false));
@@ -322,7 +332,7 @@ export default function PlatoCentral() {
       try { socketRef.current?.disconnect(); } catch {}
       socketRef.current = null;
     };
-  }, [data.agentReachable, data.agentWsUrl, handleOverviewEvent]);
+  }, [data.agentReachable, data.agentWsUrl, data.agentWsPath, handleOverviewEvent]);
 
   const organization = { slug: data.organizationSlug };
   const project = { slug: data.projectParam };
