@@ -1,4 +1,4 @@
-import { task, metadata, logger } from "@platos/sdk/v3";
+import { task, metadata, logger } from "@trigger.dev/sdk";
 
 /**
  * One unit of a batch operation.

@@ -248,7 +248,15 @@ export class ScopeGuard implements CanActivate {
     // unauthorized (LAUNCH-9 review finding 1). The controller re-verifies
     // the token with timing-safe compare and the body carries the scope
     // tuple for the actual compaction work.
-    if (url.startsWith("/api/v1/agent/internal/compaction")) {
+    // REFACTOR (control-plane + trigger substrate) — the durable-execution
+    // callbacks (durable-turn / employee-run / skill-run) use the same
+    // admin-token gate + scope-in-body pattern as compaction.
+    if (
+      url.startsWith("/api/v1/agent/internal/compaction") ||
+      url.startsWith("/api/v1/agent/internal/durable-turn") ||
+      url.startsWith("/api/v1/agent/internal/employee-run") ||
+      url.startsWith("/api/v1/agent/internal/skill-run")
+    ) {
       const expected = env.PLATOS_ADMIN_TOKEN;
       const provided = request.headers["x-platos-admin-token"];
       if (expected && typeof provided === "string" && provided.length === expected.length) {

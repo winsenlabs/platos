@@ -8,7 +8,7 @@ import type { RequestScope } from "../auth/scope.guard";
 let triggerSdk: any = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  triggerSdk = require("@platos/sdk/v3");
+  triggerSdk = require("@trigger.dev/sdk");
   // TODO(env.ts) consider migration — this runs at module-import time,
   // before main.ts's validateAgentEnv() surfaces structured errors. Direct
   // process.env keeps boot quiet when SDK isn't configured (local dev).
@@ -39,7 +39,7 @@ const TERMINAL_RUN_STATUSES = new Set([
  * Bridges trigger.dev run realtime events to the thread's Socket.IO room.
  *
  * PPR-26 — full implementation. Opens a `runs.subscribeToRun(runId)`
- * async iterator from `@platos/sdk/v3`, and for each update emits a
+ * async iterator from `@trigger.dev/sdk`, and for each update emits a
  * `run_update` agent event into the scope's + thread's Socket.IO rooms
  * via ConnectionsGateway. Tears the subscription down automatically on
  * terminal statuses.

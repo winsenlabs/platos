@@ -1,4 +1,4 @@
-import { task, logger, metadata } from "@platos/sdk/v3";
+import { task, logger, metadata } from "@trigger.dev/sdk";
 import {
   validatePublicUrl,
   describeUrlValidationError,

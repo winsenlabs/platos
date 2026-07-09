@@ -603,6 +603,12 @@ services:
       # isn't localhost — the browser session token will be sent to the wrong
       # host and the WS handshake will fail (or in the worst case leak).
       PLATOS_AGENT_PUBLIC_WS_URL: "${PLATOS_AGENT_PUBLIC_WS_URL:-ws://localhost:3100}"
+      # Single-domain deploys: when the agent's Socket.io is reverse-proxied
+      # under a distinct path on the SAME host as the webapp (e.g. Caddy
+      # `handle_path /agent-io/*`), set this to that path (e.g.
+      # `/agent-io/socket.io`) so it doesn't collide with the webapp's own
+      # /socket.io/. Leave empty when the agent has its own host/subdomain.
+      PLATOS_AGENT_WS_PATH: "${PLATOS_AGENT_WS_PATH:-}"
       # Theme D: MinIO attachments. The webapp mints presigned PUT/GET URLs.
       # MINIO_ENDPOINT is the in-container endpoint used for `new S3Client()`.
       # MINIO_PUBLIC_ENDPOINT is what appears in the URL sent to the browser.

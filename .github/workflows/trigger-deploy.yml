@@ -1,0 +1,43 @@
+name: Deploy Trigger.dev tasks
+
+# Auto-deploys the Platos agent's durable tasks (apps/agent/src/trigger-tasks)
+# to the managed trigger.dev project on every push to main that touches them.
+#
+# SETUP (one-time):
+#   1. GitHub → repo Settings → Secrets and variables → Actions → New secret:
+#        TRIGGER_ACCESS_TOKEN = <your tr_pat_… personal access token>
+#   2. Set the project ref in apps/agent/trigger.config.ts (or the
+#        TRIGGER_PROJECT_REF repo variable) to your project's proj_… id.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/agent/src/trigger-tasks/**"
+      - "apps/agent/trigger.config.ts"
+      - ".github/workflows/trigger-deploy.yml"
+  workflow_dispatch: {} # allow manual "Run workflow"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Deploy to Trigger.dev
+        working-directory: apps/agent
+        env:
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+          TRIGGER_PROJECT_REF: ${{ vars.TRIGGER_PROJECT_REF }}
+        run: pnpm dlx trigger.dev@4.5.0 deploy

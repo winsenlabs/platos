@@ -658,6 +658,70 @@ export class McpPlatformController {
     const ok = await this.tokenService.revoke(id, scope);
     return { ok };
   }
+
+  /**
+   * MCPF-K.22 — full tool catalog, grouped by category. Powers the
+   * "mint token" visual permission picker (Settings → Integrations →
+   * MCP): instead of hand-typing `agents.*, threads.*` patterns, the
+   * operator toggles categories and the UI emits the same wildcard
+   * strings that `PlatosMCPTokenService.allows()` understands.
+   *
+   * Runs under the normal ScopeGuard (scope headers) like the token
+   * CRUD endpoints — it's a dashboard-facing read, not an MCP-token
+   * call. Returns EVERY registered tool (incl. admin-tier), flagged so
+   * the picker can gate cross-scope categories behind the admin
+   * checkbox. Enumeration only — no scope data is touched.
+   */
+  @Get("catalog")
+  async toolCatalog(@Req() req: Request) {
+    const scope = (req as any).scope as RequestScope | undefined;
+    if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
+
+    const handlers = this.getRouter().getRegisteredTools();
+    const byCategory = new Map<
+      string,
+      { name: string; description: string; requiresAdminTier: boolean }[]
+    >();
+    for (const h of handlers) {
+      // Group by the tool's DOMAIN — the dotted-name prefix
+      // (`agents.create` → `agents`, `trigger.runs.list` → `trigger`).
+      // The handler's stamped `category` is the coarse transport tag
+      // ("platos.platform"), too broad for the picker, so the name
+      // prefix wins; the stamped category is only a fallback for an
+      // (unexpected) dotless name.
+      const category = h.name.includes(".")
+        ? h.name.split(".")[0]!
+        : h.category ?? "other";
+      const list = byCategory.get(category) ?? [];
+      list.push({
+        name: h.name,
+        description: h.description ?? "",
+        requiresAdminTier: h.requiresAdminTier === true,
+      });
+      byCategory.set(category, list);
+    }
+
+    const categories = Array.from(byCategory.entries())
+      .map(([category, tools]) => {
+        tools.sort((a, b) => a.name.localeCompare(b.name));
+        return {
+          category,
+          count: tools.length,
+          // A category is "admin" only when EVERY tool in it needs
+          // admin tier (scopes / audit / gdpr). The picker hides these
+          // unless the admin-tier checkbox is on.
+          adminTier: tools.every((t) => t.requiresAdminTier),
+          tools,
+        };
+      })
+      .sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+
+    return {
+      totalTools: handlers.length,
+      totalCategories: categories.length,
+      categories,
+    };
+  }
 }
 
 interface SseSession {

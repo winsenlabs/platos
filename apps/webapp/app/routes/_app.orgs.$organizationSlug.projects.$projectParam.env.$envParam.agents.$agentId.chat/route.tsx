@@ -275,6 +275,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       process.env.PLATOS_AGENT_WS_URL ||
       "http://localhost:3100"
     ).replace(/\/(tools\/sync|socket\.io|agent).*$/, ""),
+    // Single-domain deploys serve the agent's Socket.io under a distinct
+    // path (e.g. /agent-io/socket.io) so it doesn't collide with the
+    // webapp's own /socket.io/. Null → Socket.io uses its default path
+    // (the agent-on-its-own-host / subdomain deploy).
+    wsPath: process.env.PLATOS_AGENT_WS_PATH || null,
     // apiUrl is sent to the browser — must be the public-facing origin, not
     // the internal container address. Caddy routes /api/v1/agent/* → agent.
     apiUrl: process.env.PLATOS_AGENT_PUBLIC_API_URL || envServer.APP_ORIGIN || "http://localhost:3100",
@@ -699,6 +704,7 @@ export default function AgentChatPage() {
     projectId,
     environmentId,
     wsUrl,
+    wsPath,
     apiUrl,
     attachmentMaxBytes,
     sessionToken,
@@ -1053,6 +1059,7 @@ export default function AgentChatPage() {
               userId,
             },
         transports: ["websocket"],
+        ...(wsPath ? { path: wsPath } : {}),
       });
 
       socket.on("connected", () => setConnected(true));
@@ -1564,7 +1571,7 @@ export default function AgentChatPage() {
         socket.disconnect();
       };
     });
-  }, [wsUrl, organizationId, projectId, environmentId, userId, sessionToken, appendChip, upsertArtifactOnBubble]);
+  }, [wsUrl, wsPath, organizationId, projectId, environmentId, userId, sessionToken, appendChip, upsertArtifactOnBubble]);
 
   const uploadOne = useCallback(
     async (entry: PendingAttachment) => {

@@ -1,4 +1,4 @@
-import { schedules, metadata, logger } from "@platos/sdk/v3";
+import { schedules, metadata, logger } from "@trigger.dev/sdk";
 
 /**
  * Agent execution on a cron schedule.

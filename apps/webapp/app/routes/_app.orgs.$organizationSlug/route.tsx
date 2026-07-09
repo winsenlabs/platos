@@ -12,7 +12,22 @@ import { getCachedUsage, getCurrentPlan } from "~/services/platform.v3.server";
 import { requireUser } from "~/services/session.server";
 import { telemetry } from "~/services/telemetry.server";
 import { organizationPath } from "~/utils/pathBuilder";
-import { isEnvironmentPauseResumeFormSubmission } from "../_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.queues/route";
+
+// Inlined from the removed trigger queues route — used by shouldRevalidate to
+// invalidate the loader when an environment is paused/resumed.
+function isEnvironmentPauseResumeFormSubmission(
+  formMethod: string | undefined,
+  formData: FormData | undefined
+) {
+  if (!formMethod || !formData) {
+    return false;
+  }
+  return (
+    formMethod.toLowerCase() === "post" &&
+    (formData.get("action") === "environment-pause" ||
+      formData.get("action") === "environment-resume")
+  );
+}
 
 const ParamsSchema = z.object({
   organizationSlug: z.string(),

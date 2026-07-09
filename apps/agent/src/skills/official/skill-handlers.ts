@@ -435,7 +435,7 @@ export class OfficialSkillHandlers {
       try {
         // Lazy require — keeps this file free of top-level trigger-bridge imports.
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const triggerSdk = require("@platos/sdk/v3");
+        const triggerSdk = require("@trigger.dev/sdk");
         const triggerReady = !!(
           process.env.TRIGGER_SECRET_KEY && triggerSdk?.tasks?.trigger
         );

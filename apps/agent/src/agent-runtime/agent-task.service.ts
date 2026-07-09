@@ -1038,7 +1038,7 @@ export class AgentTaskService {
         if (crossed.length === 0) continue;
         let triggerSdk: any = null;
         try {
-          triggerSdk = await import("@platos/sdk/v3");
+          triggerSdk = await import("@trigger.dev/sdk");
         } catch {
           triggerSdk = null;
         }
@@ -1234,7 +1234,7 @@ export class AgentTaskService {
     //    isn't configured (dev / docker without TRIGGER_API_URL).
     if (config.historyMode === "compact") {
       const triggerSdk = (() => {
-        try { return require("@platos/sdk/v3"); } catch { return null; }
+        try { return require("@trigger.dev/sdk"); } catch { return null; }
       })();
       const triggerReady =
         !!process.env.TRIGGER_SECRET_KEY &&

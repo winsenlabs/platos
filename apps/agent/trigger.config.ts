@@ -1,4 +1,4 @@
-import { defineConfig } from "@platos/sdk/v3";
+import { defineConfig } from "@trigger.dev/sdk";
 
 /**
  * Trigger.dev config for the Platos agent tasks.
@@ -19,7 +19,7 @@ import { defineConfig } from "@platos/sdk/v3";
  * response to the LLM).
  */
 export default defineConfig({
-  project: process.env.TRIGGER_PROJECT_REF || "proj_sourblwsegejrzfjmrug",
+  project: process.env.TRIGGER_PROJECT_REF || "proj_mwhvvqlhrykhbdicnmze",
   dirs: ["./src/trigger-tasks"],
   maxDuration: 600,
   retries: {

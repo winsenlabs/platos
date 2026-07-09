@@ -3011,6 +3011,10 @@ model PlatosAgent {
   contextLimit        Int     @default(20) // How many prior messages to load (L1 context window)
   historyMode         String  @default("rolling") // "rolling" | "compact"
   compactThreshold    Int     @default(40) // Thread length at which compaction triggers (if historyMode=compact)
+  // Refactor: control-plane + trigger substrate. "direct" = today's in-process
+  // streaming turn (low latency); "durable" = turn runs as a trigger Session/task
+  // (resumable/suspendable, for AI-employees). See docs/refactor/platos-trigger-refactor.md.
+  executionMode       String  @default("direct") // "direct" | "durable"
   enableUserProfiling Boolean @default(false) // If true, maintain per-user profile + inject snippet into every conversation
   toolMode            String  @default("direct") // LEGACY — superseded by toolsBlockConfig.mode. Kept for backwards compat.
   toolsBlockConfig    Json? // { mode: "direct"|"sub-agent"|"execute-tool", enabledTools: string[], perToolPerms: Record<toolName, { requiresApproval, destructive }> }

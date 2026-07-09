@@ -261,9 +261,17 @@ export class AgentController {
   }
 
   @Get("threads/:threadId")
-  async getThread(@Req() req: Request, @Param("threadId") threadId: string) {
+  async getThread(
+    @Req() req: Request,
+    @Param("threadId") threadId: string,
+    // Operator view: open any thread in-scope, not just the caller's own.
+    // Mirrors GET /threads?allUsers so the detail matches the list.
+    @Query("allUsers") allUsers?: string,
+  ) {
     const scope = this.getScope(req);
-    const thread = await this.conversationService.getThread(threadId, scope);
+    const thread = await this.conversationService.getThread(threadId, scope, {
+      allUsers: allUsers === "true" || allUsers === "1",
+    });
     if (!thread) return { error: "Thread not found", status: 404 };
     return thread;
   }
@@ -443,11 +451,14 @@ export class AgentController {
     @Param("threadId") threadId: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    // Operator view: read messages of any in-scope thread (see getThread).
+    @Query("allUsers") allUsers?: string,
   ) {
     const scope = this.getScope(req);
     return this.conversationService.getMessages(threadId, scope, {
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
+      allUsers: allUsers === "true" || allUsers === "1",
     });
   }
 
@@ -3725,6 +3736,191 @@ Write the summary now:`;
         status: "failed",
         reason: err?.message ?? String(err),
         threadId: body.threadId,
+        durationMs: Date.now() - start,
+      };
+    }
+  }
+
+  /**
+   * REFACTOR (control-plane + trigger substrate) — shared admin-token gate
+   * for the durable-execution callbacks below. Timing-safe; mirrors the
+   * inline check in internalCompaction. Tasks already verify at dispatch;
+   * we re-verify so a leaked URL alone can't drive turns.
+   */
+  private verifyAdminToken(req: Request): boolean {
+    const expected = env.PLATOS_ADMIN_TOKEN;
+    if (!expected) return false;
+    const provided = req.headers["x-platos-admin-token"];
+    if (typeof provided !== "string" || provided.length !== expected.length) return false;
+    try {
+      return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * REFACTOR — durable agent turn callback. Invoked by the
+   * `platos.agent.durable-turn` trigger task when an agent's
+   * executionMode==="durable". Runs one turn in-process (reusing the same
+   * executeNonStreamingTurn path as batch-turn) against the supplied thread
+   * so conversation history + persistence are unchanged. Admin-token gated.
+   */
+  @Post("internal/durable-turn")
+  async internalDurableTurn(
+    @Req() req: Request,
+    @Body() body: {
+      threadId: string;
+      agentId: string;
+      message: string;
+      replyToMessageId?: string | null;
+      clientMessageId?: string | null;
+      scope: {
+        organizationId: string;
+        projectId: string;
+        environmentId: string;
+        userId: string;
+        agentId?: string;
+        threadId?: string;
+      };
+    },
+  ) {
+    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!this.verifyAdminToken(req)) return { status: "forbidden" };
+    if (!body?.message || !body?.scope) return { status: "invalid", reason: "message and scope required" };
+    const start = Date.now();
+    try {
+      const result = await this.agentTaskService.executeNonStreamingTurn(body.message, body.scope as any, {
+        agentId: body.agentId,
+        threadId: body.threadId,
+      });
+      return {
+        status: "ok" as const,
+        threadId: result.threadId ?? body.threadId,
+        text: result.text,
+        costCents: result.costCents ?? 0,
+        durationMs: Date.now() - start,
+      };
+    } catch (err: any) {
+      return {
+        status: "failed" as const,
+        reason: err?.message ?? String(err),
+        threadId: body.threadId,
+        durationMs: Date.now() - start,
+      };
+    }
+  }
+
+  /**
+   * REFACTOR — AI-employee run callback. Invoked by the
+   * `platos.agent.employee-run` trigger task. Multi-step autonomous
+   * orchestration (sub-turns, tools, waitpoints) is a follow-up; this initial
+   * implementation runs a single durable turn seeded with the goal — a
+   * correct (if degenerate) employee run that unblocks the task path.
+   * Admin-token gated.
+   */
+  @Post("internal/employee-run")
+  async internalEmployeeRun(
+    @Req() req: Request,
+    @Body() body: {
+      agentId: string;
+      goal: string;
+      input?: Record<string, unknown>;
+      maxSteps?: number;
+      threadId?: string;
+      scope: {
+        organizationId: string;
+        projectId: string;
+        environmentId: string;
+        userId: string;
+        agentId?: string;
+      };
+    },
+  ) {
+    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!this.verifyAdminToken(req)) return { status: "forbidden" };
+    if (!body?.goal || !body?.scope) return { status: "invalid", reason: "goal and scope required" };
+    const start = Date.now();
+    try {
+      // TODO(refactor): multi-step autonomous orchestration. For now a single
+      // goal-seeded durable turn (see IMPLEMENTATION-STATUS.md).
+      const result = await this.agentTaskService.executeNonStreamingTurn(body.goal, body.scope as any, {
+        agentId: body.agentId,
+        threadId: body.threadId,
+      });
+      return {
+        status: "ok" as const,
+        agentId: body.agentId,
+        threadId: result.threadId ?? body.threadId,
+        summary: result.text,
+        steps: 1,
+        durationMs: Date.now() - start,
+      };
+    } catch (err: any) {
+      return {
+        status: "failed" as const,
+        reason: err?.message ?? String(err),
+        agentId: body.agentId,
+        durationMs: Date.now() - start,
+      };
+    }
+  }
+
+  /**
+   * REFACTOR — skill-as-task callback. Invoked by the `platos.skill.run`
+   * trigger task to execute a heavy/parallel/long skill tool off the agent
+   * event loop. Runs the skill handler in-scope via SkillRuntimeService.
+   * Admin-token gated.
+   */
+  @Post("internal/skill-run")
+  async internalSkillRun(
+    @Req() req: Request,
+    @Body() body: {
+      skillId: string;
+      toolName: string;
+      input?: Record<string, unknown>;
+      threadId?: string;
+      scope: {
+        organizationId: string;
+        projectId: string;
+        environmentId: string;
+        userId: string;
+        agentId?: string;
+        threadId?: string;
+      };
+    },
+  ) {
+    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!this.verifyAdminToken(req)) return { status: "forbidden" };
+    if (!body?.skillId || !body?.toolName || !body?.scope) {
+      return { status: "invalid", reason: "skillId, toolName and scope required" };
+    }
+    if (!this.skillRuntime) return { status: "skipped", reason: "SkillRuntimeService unavailable" };
+    const start = Date.now();
+    try {
+      const result = await this.skillRuntime.invokeTool(
+        body.scope as any,
+        {
+          skillSlug: body.skillId,
+          toolName: body.toolName,
+          handler: `skill:${body.skillId}:${body.toolName}`,
+        },
+        body.input ?? {},
+        { agentId: body.scope.agentId ?? null, threadId: body.threadId ?? body.scope.threadId ?? null },
+      );
+      return {
+        status: "ok" as const,
+        skillId: body.skillId,
+        toolName: body.toolName,
+        result,
+        durationMs: Date.now() - start,
+      };
+    } catch (err: any) {
+      return {
+        status: "failed" as const,
+        reason: err?.message ?? String(err),
+        skillId: body.skillId,
+        toolName: body.toolName,
         durationMs: Date.now() - start,
       };
     }

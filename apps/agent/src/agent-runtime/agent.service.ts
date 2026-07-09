@@ -133,7 +133,7 @@ let triggerSdk: any = null;
 // triggerConfigured is now always true — clients are built on demand.
 const triggerConfigured = true;
 try {
-  triggerSdk = require("@platos/sdk/v3");
+  triggerSdk = require("@trigger.dev/sdk");
   moduleLogger.log("[trigger.sdk] loaded — API keys resolved per-scope from DB");
 } catch (err: any) {
   moduleLogger.warn("[trigger.sdk] not available:", err?.message);
@@ -155,7 +155,7 @@ async function getScopedTriggerClient(prisma: any, environmentId: string): Promi
     });
     if (!env?.apiKey) return null;
     const baseURL = process.env.TRIGGER_API_URL || "http://webapp:3030";
-    const { ApiClient } = require("@platos/core/v3");
+    const { ApiClient } = require("@trigger.dev/core");
     const client = new ApiClient(baseURL, env.apiKey);
     _triggerClientCache.set(environmentId, client);
     moduleLogger.log(`[trigger.sdk] resolved API key for env ${environmentId.slice(0, 12)}…`);
