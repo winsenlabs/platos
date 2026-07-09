@@ -250,8 +250,12 @@ export default function McpTokensTab() {
         {
           mcpServers: {
             platos: {
+              // Streamable HTTP — the agent serves JSON-RPC at this path
+              // (via Caddy). `transport: "sse"` was wrong: the SSE
+              // transport lives at `/mcp/platform/sse`, and modern MCP
+              // clients (Claude Code/Desktop, Cursor) want `type: "http"`.
+              type: "http",
               url: mcpUrl,
-              transport: "sse",
               headers: {
                 Authorization: `Bearer ${newlyMinted.token}`,
               },
