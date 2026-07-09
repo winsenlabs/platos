@@ -84,13 +84,23 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       // Theme F.9 — seed the artifact panel with history via the new
       // per-thread artifacts endpoint. Live `artifact_*` stream events
       // overlay on top of this list as they arrive.
+      // Operator console — pass allUsers so the platform owner can open a
+      // conversation created under a simulated / embed / SDK end-user id.
+      // The conversations list already uses allUsers; the detail must match
+      // it or opening a listed thread 404s.
       const [threadRes, msgsRes, artRes] = await Promise.all([
-        fetch(`${AGENT_API_URL}/api/v1/agent/threads/${threadId}`, { headers }),
-        fetch(`${AGENT_API_URL}/api/v1/agent/threads/${threadId}/messages?limit=100`, { headers }),
+        fetch(`${AGENT_API_URL}/api/v1/agent/threads/${threadId}?allUsers=true`, { headers }),
+        fetch(`${AGENT_API_URL}/api/v1/agent/threads/${threadId}/messages?limit=100&allUsers=true`, { headers }),
         fetch(`${AGENT_API_URL}/api/v1/agent/threads/${threadId}/artifacts`, { headers }),
       ]);
 
-      if (threadRes.ok) thread = (await threadRes.json()) as typeof thread;
+      if (threadRes.ok) {
+        const data = (await threadRes.json()) as any;
+        // The endpoint returns `{ error, status: 404 }` as an HTTP 200 when
+        // the thread isn't found — never render that as a thread (that's
+        // what surfaced as "404 turns" + "Created: Invalid Date").
+        if (data && !data.error) thread = data as typeof thread;
+      }
       if (msgsRes.ok) {
         const data = (await msgsRes.json()) as { messages?: any[] };
         messages = data.messages || [];

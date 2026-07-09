@@ -285,7 +285,11 @@ export class ConversationService {
     }
   }
 
-  async getThread(threadId: string, scope: RequestScope): Promise<Thread | null> {
+  async getThread(
+    threadId: string,
+    scope: RequestScope,
+    options: { allUsers?: boolean } = {},
+  ): Promise<Thread | null> {
     // PRA-AC: cluster members can read any thread with the same clusteringId + userId.
     // An agent without a cluster can only read its own threads (agentId or userId match).
     // IDOR: scope tuple (org/project/env) is always enforced.
@@ -297,13 +301,19 @@ export class ConversationService {
       { userId: scope.userId },
       { createdByUserId: scope.userId },
     ];
-    const baseWhere = {
+    const baseWhere: any = {
       id: threadId,
       organizationId: scope.organizationId,
       projectId: scope.projectId,
       environmentId: scope.environmentId,
-      OR: ownershipOr,
     };
+    // Operator/owner dashboard view — drop the per-end-user ownership filter
+    // so the platform owner can open a conversation created under a
+    // simulated / embed / SDK end-user id. The scope tuple above is still
+    // enforced, so this never crosses org/project/env. Mirrors
+    // listThreads({ allUsers }) — the detail endpoint must match the list,
+    // otherwise threads visible in the operator list 404 when opened.
+    if (!options.allUsers) baseWhere.OR = ownershipOr;
 
     if (scope.clusteringId) {
       // Try cluster-scoped first (for cross-agent thread visibility),
@@ -716,10 +726,13 @@ export class ConversationService {
   async getMessages(
     threadId: string,
     scope: RequestScope,
-    options: { limit?: number; offset?: number } = {},
+    options: { limit?: number; offset?: number; allUsers?: boolean } = {},
   ): Promise<{ messages: StoredMessage[]; total: number }> {
-    // Verify thread belongs to this scope + user
-    const thread = await this.getThread(threadId, scope);
+    // Verify thread belongs to this scope. `allUsers` widens the check to
+    // any thread in-scope (operator view) instead of the caller's own.
+    const thread = await this.getThread(threadId, scope, {
+      allUsers: options.allUsers,
+    });
     if (!thread) return { messages: [], total: 0 };
 
     const where = { threadId };

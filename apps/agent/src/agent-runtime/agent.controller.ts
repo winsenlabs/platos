@@ -261,9 +261,17 @@ export class AgentController {
   }
 
   @Get("threads/:threadId")
-  async getThread(@Req() req: Request, @Param("threadId") threadId: string) {
+  async getThread(
+    @Req() req: Request,
+    @Param("threadId") threadId: string,
+    // Operator view: open any thread in-scope, not just the caller's own.
+    // Mirrors GET /threads?allUsers so the detail matches the list.
+    @Query("allUsers") allUsers?: string,
+  ) {
     const scope = this.getScope(req);
-    const thread = await this.conversationService.getThread(threadId, scope);
+    const thread = await this.conversationService.getThread(threadId, scope, {
+      allUsers: allUsers === "true" || allUsers === "1",
+    });
     if (!thread) return { error: "Thread not found", status: 404 };
     return thread;
   }
@@ -443,11 +451,14 @@ export class AgentController {
     @Param("threadId") threadId: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    // Operator view: read messages of any in-scope thread (see getThread).
+    @Query("allUsers") allUsers?: string,
   ) {
     const scope = this.getScope(req);
     return this.conversationService.getMessages(threadId, scope, {
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
+      allUsers: allUsers === "true" || allUsers === "1",
     });
   }
 
