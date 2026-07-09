@@ -50,7 +50,7 @@ Both paths land at the same enforcement point, so the auth surface stays simple.
 
 ### Create a PAT
 
-`/settings/mcp-tokens` -> "New token". Name, scope (org/project/env), permission scopes. Copy the `pmt_...` string. The dashboard shows it once; lost tokens cannot be retrieved.
+`/settings/integrations/mcp` -> "Mint a new token". Name, TTL, and a **visual permission picker**: toggle tool categories (with live tool counts) or pick a preset — read-only, operator, full, or admin (cross-scope) — and a running "this token sees N tools" preview shows the effective grant. The dashboard shows the token string once; lost tokens cannot be retrieved. Paste the generated config into your MCP client — it uses streamable HTTP (`type: "http"`), the transport modern clients speak.
 
 ### Use a PAT
 
