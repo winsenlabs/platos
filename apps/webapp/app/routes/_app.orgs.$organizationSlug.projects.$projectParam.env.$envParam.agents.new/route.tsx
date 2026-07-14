@@ -31,6 +31,7 @@ import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import { ModelPicker, type ProviderForPicker } from "~/components/agents/ModelPicker";
 import { ModelRoutesEditor } from "~/components/agents/ModelRoutesEditor";
 import { PromptBlockEditor } from "~/components/agents/PromptBlockEditor";
+import { DynamicBlocksEditor, type DynamicBlock } from "~/components/agents/DynamicBlocksEditor";
 import { PageBody, PageContainer } from "~/components/layout/AppLayout";
 import { Button } from "~/components/primitives/Buttons";
 import { Fieldset } from "~/components/primitives/Fieldset";
@@ -288,7 +289,7 @@ type WizardStep = 1 | 2 | 3 | 4;
 const STEPS: { step: WizardStep; label: string }[] = [
   { step: 1, label: "Identity" },
   { step: 2, label: "Prompt" },
-  { step: 3, label: "Dynamic" },
+  { step: 3, label: "Behavior" },
   { step: 4, label: "Tool Mode" },
 ];
 
@@ -353,12 +354,16 @@ export default function NewAgentPage() {
 
   // Step 1.
   const [agentName, setAgentName] = useState("");
-  const [model, setModel] = useState("");
+  // Lifted from ModelRoutesEditor so the model survives step 1 unmounting.
+  // Submitted as `modelRoutes` (+ a derived `model`) via hidden fields at step 4;
+  // the action derives the default model from the routes.
+  const [modelRoutes, setModelRoutes] = useState<any[]>([]);
 
   // Step 2.
   const [blocks, setBlocks] = useState(defaultBlocks || []);
-  const [declaredKeys, setDeclaredKeys] = useState<string[]>([]);
-  const [keyInput, setKeyInput] = useState("");
+  // Full dynamic (per-turn) blocks — same editor + shape as the Context tab, so
+  // everything editable post-creation is also configurable at creation.
+  const [dynamicBlocks, setDynamicBlocks] = useState<DynamicBlock[]>([]);
 
   // Step 3.
   const [contextLimit, setContextLimit] = useState(20);
@@ -375,21 +380,7 @@ export default function NewAgentPage() {
   // Step 4.
   const [toolMode, setToolMode] = useState<"direct" | "sub-agent" | "tool-wrapper">("direct");
 
-  // Derived.
-  const dynamicBlocks = declaredKeys.map((k, i) => ({
-    key: k,
-    name: k,
-    defaultContent: "",
-    order: i,
-  }));
-
   const promptPreview = buildPromptPreview(agentName, toolMode, userProfiling, blocks as unknown[]);
-
-  function addKey(raw: string) {
-    const k = raw.trim().replace(/[^a-zA-Z0-9_.]/g, "").toLowerCase();
-    if (k && !declaredKeys.includes(k)) setDeclaredKeys((prev) => [...prev, k]);
-    setKeyInput("");
-  }
 
   function canAdvance(s: WizardStep): boolean {
     // Step 1: only require agent name — model routes are configured via
@@ -499,6 +490,7 @@ export default function NewAgentPage() {
                   providers={providers}
                   providerKeys={providerKeys.map(k => ({ id: k.id, label: k.label, provider: k.provider, envVarName: k.envVarName }))}
                   providersPath={providersPath}
+                  onChange={setModelRoutes}
                 />
                 {providers.length === 0 && (
                   <p className="mt-2 text-xs text-amber-300">
@@ -536,46 +528,16 @@ export default function NewAgentPage() {
 
               <PromptBlockEditor blocks={blocks as any[]} onChange={setBlocks} />
 
-              {/* Declared variables pill list */}
+              {/* Dynamic (per-turn) blocks — full editor, same as the Context tab */}
               <section>
-                <Header3>Declared variables</Header3>
-                <Paragraph variant="small" className="mt-1 mb-2">
-                  Keys you can reference as{" "}
-                  <code className="font-mono text-amber-300">{"{{key}}"}</code> in prompt blocks.
-                  Unresolved keys render as empty string at runtime.
+                <Header3>Dynamic blocks</Header3>
+                <Paragraph variant="small" className="mt-1 mb-3">
+                  Per-turn content injected into a{" "}
+                  <code className="font-mono text-emerald-400">{"<context>"}</code> wrapper in the
+                  user message (never cached). Configure the same blocks you can edit later on the
+                  agent's Context tab.
                 </Paragraph>
-                <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
-                  {declaredKeys.map((k) => (
-                    <span
-                      key={k}
-                      className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-300 font-mono"
-                    >
-                      {`{{${k}}}`}
-                      <button
-                        type="button"
-                        onClick={() => setDeclaredKeys((prev) => prev.filter((x) => x !== k))}
-                        className="hover:text-rose-400 ml-0.5"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={keyInput}
-                    onChange={(e) => setKeyInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); addKey(keyInput); }
-                    }}
-                    placeholder="e.g., current_user.name"
-                    className="flex-1 rounded border border-charcoal-700 bg-charcoal-900 px-2 py-1.5 text-xs text-text-bright font-mono"
-                  />
-                  <Button type="button" variant="tertiary/small" onClick={() => addKey(keyInput)}>
-                    + Add
-                  </Button>
-                </div>
+                <DynamicBlocksEditor blocks={dynamicBlocks} onChange={setDynamicBlocks} hideIntro />
               </section>
 
               <div className="flex justify-between pt-2">
@@ -583,7 +545,7 @@ export default function NewAgentPage() {
                   ← Back
                 </Button>
                 <Button type="button" variant="primary/medium" onClick={advance}>
-                  Next: Dynamic →
+                  Next: Behavior →
                 </Button>
               </div>
             </div>
@@ -841,9 +803,18 @@ export default function NewAgentPage() {
 
                 {/* Hidden inputs carrying all accumulated wizard state */}
                 <input type="hidden" name="name" value={agentName} />
-                <input type="hidden" name="model" value={model} />
+                <input
+                  type="hidden"
+                  name="model"
+                  value={modelRoutes.find((r: any) => r.isDefault)?.model ?? modelRoutes[0]?.model ?? ""}
+                />
+                <input type="hidden" name="modelRoutes" value={JSON.stringify(modelRoutes)} />
                 <input type="hidden" name="systemPromptBlocks" value={JSON.stringify(blocks)} />
-                <input type="hidden" name="dynamicBlocksJson" value={JSON.stringify(dynamicBlocks)} />
+                <input
+                  type="hidden"
+                  name="dynamicBlocksJson"
+                  value={JSON.stringify(dynamicBlocks.filter((b) => b.key.trim() && b.name.trim()))}
+                />
                 <input type="hidden" name="contextLimit" value={contextLimit} />
                 <input type="hidden" name="historyMode" value={historyMode} />
                 <input type="hidden" name="compactThreshold" value={compactThreshold} />
