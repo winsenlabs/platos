@@ -487,6 +487,12 @@ export default function NewAgentPage() {
                 </Paragraph>
                 <ModelRoutesEditor
                   name="modelRoutes"
+                  // Re-seed from the lifted state so returning to step 1 (the editor
+                  // fully unmounts on step change) restores the picked model instead
+                  // of resetting to the provider default. seed() prefers non-empty
+                  // initialRoutes; it only runs in the mount initializer, so passing
+                  // this while mounted is a no-op (no feedback loop).
+                  initialRoutes={modelRoutes.length > 0 ? modelRoutes : undefined}
                   providers={providers}
                   providerKeys={providerKeys.map(k => ({ id: k.id, label: k.label, provider: k.provider, envVarName: k.envVarName }))}
                   providersPath={providersPath}
