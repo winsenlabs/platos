@@ -43,6 +43,10 @@ interface Props {
   providers: ProviderForPicker[];
   providerKeys: ProviderKeyForEditor[];
   providersPath: string;
+  /** Lifts the current routes to the parent. Needed by multi-step forms that
+   *  UNMOUNT this editor before submit (the create wizard renders one step at a
+   *  time), so the value survives via the parent's own hidden field. */
+  onChange?: (routes: ModelRoute[]) => void;
 }
 
 const LABEL_RE = /^[a-z0-9_-]{1,32}$/;
@@ -68,6 +72,7 @@ export function ModelRoutesEditor({
   providers,
   providerKeys,
   providersPath,
+  onChange,
 }: Props) {
   const models = allModels(providers);
 
@@ -84,6 +89,15 @@ export function ModelRoutesEditor({
 
   const [routes, setRoutes] = useState<ModelRoute[]>(seed);
   const [errors, setErrors] = useState<Record<number, string>>({});
+
+  // Lift routes to the parent so a multi-step form that unmounts this editor
+  // (the create wizard) can still submit the value via its own hidden field.
+  // Fires on mount (seeded routes) + every change. setState setters are stable,
+  // so `onChange` is intentionally omitted from deps.
+  useEffect(() => {
+    onChange?.(routes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routes]);
 
   // Keep exactly one default at all times.
   const ensureOneDefault = (rs: ModelRoute[]): ModelRoute[] => {

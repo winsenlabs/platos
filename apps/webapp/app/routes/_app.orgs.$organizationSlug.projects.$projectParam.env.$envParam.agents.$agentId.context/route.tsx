@@ -16,7 +16,7 @@
  * Persistence: contextMapping + dynamicBlocks saved directly via Prisma.
  */
 
-import { CubeTransparentIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { telemetry } from "~/services/telemetry.server";
 import { useFetcher, type MetaFunction } from "@remix-run/react";
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/server-runtime";
@@ -30,6 +30,7 @@ import { Badge } from "~/components/primitives/Badge";
 import { Button } from "~/components/primitives/Buttons";
 import { Header3 } from "~/components/primitives/Headers";
 import { Paragraph } from "~/components/primitives/Paragraph";
+import { DynamicBlocksEditor } from "~/components/agents/DynamicBlocksEditor";
 import { findProjectBySlug } from "~/models/project.server";
 import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
@@ -234,16 +235,6 @@ export default function AgentContextTab() {
     Array.isArray(savedBlocks) ? savedBlocks : [],
   );
 
-  function addBlock() {
-    setDynamicBlocks((prev) => [...prev, { key: "", name: "", defaultContent: "", description: "" }]);
-  }
-  function updateBlock(i: number, field: keyof DynamicBlock, value: string) {
-    setDynamicBlocks((prev) => prev.map((b, idx) => idx === i ? { ...b, [field]: value } : b));
-  }
-  function removeBlock(i: number) {
-    setDynamicBlocks((prev) => prev.filter((_, idx) => idx !== i));
-  }
-
   // Section 2 — Prompt substitution variables
   const [promptVars, setPromptVars] = useState<string[]>(contextMapping?.promptVars ?? []);
   const [newPromptVar, setNewPromptVar] = useState("");
@@ -353,91 +344,7 @@ export default function AgentContextTab() {
             substitution without a live backend.
           </Paragraph>
 
-          <div className="space-y-3">
-            {dynamicBlocks.length === 0 && (
-              <div className="rounded border border-dashed border-charcoal-600 px-4 py-6 text-center text-sm text-text-dimmed">
-                No dynamic blocks yet. Add one below.
-              </div>
-            )}
-            {dynamicBlocks.map((block, i) => (
-              <div key={i} className="rounded-lg border border-charcoal-700 bg-charcoal-900 p-3 space-y-2">
-                <div className="flex items-start gap-2">
-                  <CubeTransparentIcon className="size-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-[10px] text-text-dimmed uppercase tracking-wider block mb-1">Key (machine ID)</label>
-                      <input
-                        value={block.key}
-                        onChange={(e) => updateBlock(i, "key", e.target.value)}
-                        placeholder="e.g. screen_context"
-                        className="w-full rounded border border-charcoal-700 bg-charcoal-800 px-2 py-1.5 text-xs text-text-bright font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-text-dimmed uppercase tracking-wider block mb-1">Name (LLM heading)</label>
-                      <input
-                        value={block.name}
-                        onChange={(e) => updateBlock(i, "name", e.target.value)}
-                        placeholder="e.g. Current Screen"
-                        className="w-full rounded border border-charcoal-700 bg-charcoal-800 px-2 py-1.5 text-xs text-text-bright"
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeBlock(i)}
-                    className="text-text-dimmed hover:text-rose-400 flex-shrink-0"
-                  >
-                    <TrashIcon className="size-4" />
-                  </button>
-                </div>
-                <div>
-                  <label className="text-[10px] text-text-dimmed uppercase tracking-wider block mb-1">
-                    Content template{" "}
-                    <span className="normal-case text-text-dimmed font-normal">— use <code className="font-mono text-amber-300">{"{{key}}"}</code> for sessionContext values</span>
-                  </label>
-                  <textarea
-                    value={block.defaultContent}
-                    onChange={(e) => updateBlock(i, "defaultContent", e.target.value)}
-                    rows={3}
-                    placeholder={`e.g. The user is currently on the {{screen.page}} page.\nLast action: {{screen.last_action}}`}
-                    spellCheck={false}
-                    className="w-full rounded border border-charcoal-700 bg-charcoal-800 px-2 py-1.5 text-xs text-text-bright font-mono resize-y"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-text-dimmed uppercase tracking-wider block mb-1">Description (optional)</label>
-                  <input
-                    value={block.description ?? ""}
-                    onChange={(e) => updateBlock(i, "description", e.target.value)}
-                    placeholder="What this block provides to the agent"
-                    className="w-full rounded border border-charcoal-700 bg-charcoal-800 px-2 py-1.5 text-xs text-text-dimmed"
-                  />
-                </div>
-              </div>
-            ))}
-
-            <Button type="button" variant="tertiary/small" LeadingIcon={PlusIcon} onClick={addBlock}>
-              Add block
-            </Button>
-          </div>
-
-          {/* Preview of what the LLM sees */}
-          {dynamicBlocks.some((b) => b.key && b.name) && (
-            <div className="space-y-1">
-              <p className="text-[10px] text-text-dimmed uppercase tracking-wider">What the LLM sees each turn</p>
-              <PreviewPane>
-                <p className="text-text-dimmed">{"<context>"}</p>
-                {dynamicBlocks.filter((b) => b.key && b.name).map((b) => (
-                  <div key={b.key} className="ml-2 mt-1">
-                    <p className="text-emerald-300">## {b.name}</p>
-                    <p className="text-text-bright whitespace-pre-wrap">{b.defaultContent || "(content from sessionContext)"}</p>
-                  </div>
-                ))}
-                <p className="text-text-dimmed mt-1">{"</context>"}</p>
-              </PreviewPane>
-            </div>
-          )}
+          <DynamicBlocksEditor blocks={dynamicBlocks} onChange={setDynamicBlocks} hideIntro />
         </SectionCard>
 
         {/* ── Section 2: Prompt substitution ──────────────────────── */}
