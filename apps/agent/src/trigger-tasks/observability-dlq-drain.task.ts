@@ -1,5 +1,5 @@
 import { schedules, logger, metadata } from "@trigger.dev/sdk";
-import { env } from "../shared/env";
+const env = process.env;
 
 /**
  * EOBD.100 — ClickHouse DLQ drain.
@@ -19,7 +19,7 @@ export const observabilityDlqDrain = schedules.task({
   id: "platos.observability.dlq_drain",
   description:
     "Drain the ClickHouse dual-write DLQ (Redis list). Retries failed span + cost inserts so transient CH outages don't lose telemetry.",
-  cron: "*/2 * * * *",
+  cron: "0 * * * *",
   maxDuration: 90,
   // EOBD.45 — singleton. Two drainers racing would double-fire retries.
   queue: { concurrencyLimit: 1 },

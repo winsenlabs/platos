@@ -1,5 +1,5 @@
 import { schedules, logger, metadata } from "@trigger.dev/sdk";
-import { env } from "../shared/env";
+const env = process.env;
 
 /**
  * Theme O.1 / M.5 — scheduled memory-extraction sweep.

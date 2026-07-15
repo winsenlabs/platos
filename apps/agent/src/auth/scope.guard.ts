@@ -255,7 +255,18 @@ export class ScopeGuard implements CanActivate {
       url.startsWith("/api/v1/agent/internal/compaction") ||
       url.startsWith("/api/v1/agent/internal/durable-turn") ||
       url.startsWith("/api/v1/agent/internal/employee-run") ||
-      url.startsWith("/api/v1/agent/internal/skill-run")
+      url.startsWith("/api/v1/agent/internal/skill-run") ||
+      // Managed-cloud maintenance-task callbacks — same admin-token gate +
+      // scope-in-body. These run as scheduled trigger.dev tasks on Trigger
+      // Cloud and reach the agent through the public proxy; each controller
+      // re-verifies the token with a timing-safe compare.
+      url.startsWith("/api/v1/agent/monitoring/dlq/drain") ||
+      url.startsWith("/api/v1/agent/monitoring/cost/reconcile") ||
+      url.startsWith("/api/v1/agent/monitoring/budget/email") ||
+      url.startsWith("/api/v1/agent/monitoring/approvals/expiry-sweep") ||
+      url.startsWith("/api/v1/agent/evals/sample") ||
+      url.startsWith("/api/v1/agent/evals/run") ||
+      url.startsWith("/api/v1/agent/attachments/retention")
     ) {
       const expected = env.PLATOS_ADMIN_TOKEN;
       const provided = request.headers["x-platos-admin-token"];

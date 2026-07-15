@@ -1,5 +1,5 @@
 import { schedules, logger, metadata } from "@trigger.dev/sdk";
-import { env } from "../shared/env";
+const env = process.env;
 
 /**
  * Daily refresh of the LiteLLM model-price catalog.

@@ -3,7 +3,7 @@ import {
   validatePublicUrl,
   describeUrlValidationError,
 } from "../shared/url-validator";
-import { env } from "../shared/env";
+const env = process.env;
 
 /**
  * Theme H.7 — Budget alert delivery.
