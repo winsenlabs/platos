@@ -3789,23 +3789,52 @@ Write the summary now:`;
     if (!this.verifyAdminToken(req)) return { status: "forbidden" };
     if (!body?.message || !body?.scope) return { status: "invalid", reason: "message and scope required" };
     const start = Date.now();
+    const threadId = body.threadId;
+    const room = `thread:${threadId}`;
     try {
-      const result = await this.agentTaskService.executeNonStreamingTurn(body.message, body.scope as any, {
+      // Run the turn in-process and RELAY each stream event to the thread room via
+      // the gateway's generic Redis forwarder (`overview:event` → server.to(room).emit).
+      // The durable-dispatch path (connections.gateway) joins the client socket to
+      // `thread:<id>` before triggering this task, so the reply streams to the chat
+      // exactly like the direct path — durability is transparent to the client.
+      let fullText = "";
+      let messageId: string | undefined;
+      let costCents = 0;
+      for await (const event of this.agentTaskService.executeStreamingTurn(body.message, body.scope as any, {
         agentId: body.agentId,
         threadId: body.threadId,
-      });
+        replyToMessageId: body.replyToMessageId ?? undefined,
+        idempotencyKey: body.clientMessageId ?? undefined,
+      })) {
+        this.redis
+          .publish("overview:event", JSON.stringify({ room, event: "agent_event", data: { ...event, threadId } }))
+          .catch(() => undefined);
+        if (event.type === "token") fullText += (event as any).text ?? "";
+        else if ((event as any).type === "message_persisted") {
+          messageId = (event as any).messageId;
+          costCents = (event as any).costCents ?? costCents;
+        }
+      }
       return {
         status: "ok" as const,
-        threadId: result.threadId ?? body.threadId,
-        text: result.text,
-        costCents: result.costCents ?? 0,
+        threadId,
+        text: fullText,
+        messageId,
+        costCents,
         durationMs: Date.now() - start,
       };
     } catch (err: any) {
+      // Surface the failure to the chat client too so a durable turn never hangs silently.
+      this.redis
+        .publish(
+          "overview:event",
+          JSON.stringify({ room, event: "agent_event", data: { type: "error", message: err?.message ?? String(err), threadId } }),
+        )
+        .catch(() => undefined);
       return {
         status: "failed" as const,
         reason: err?.message ?? String(err),
-        threadId: body.threadId,
+        threadId,
         durationMs: Date.now() - start,
       };
     }

@@ -21,6 +21,10 @@ import { defineConfig } from "@trigger.dev/sdk";
 export default defineConfig({
   project: process.env.TRIGGER_PROJECT_REF || "proj_hovobxjmqdvnduupguwa",
   dirs: ["./src/trigger-tasks"],
+  // Every task is a thin shell — it POSTs to the agent and waits; the real work
+  // (turns, DLQ drain, …) runs on the agent, not the task machine. `micro` is the
+  // right size. (A task can override if it ever runs work in-worker.)
+  machine: "micro",
   maxDuration: 600,
   retries: {
     enabledInDev: true,
