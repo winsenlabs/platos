@@ -27,7 +27,7 @@
     "/public/build"
   ],
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.55",
+    "@ai-sdk/openai": "^4.0.14",
     "@ariakit/react": "^0.4.6",
     "@ariakit/react-core": "^0.4.6",
     "@aws-sdk/client-ecr": "^3.931.0",
@@ -138,7 +138,7 @@
     "@upstash/ratelimit": "^1.1.3",
     "@vercel/sdk": "^1.19.1",
     "@whatwg-node/fetch": "^0.9.14",
-    "ai": "^6.0.172",
+    "ai": "^7.0.28",
     "assert-never": "^1.2.1",
     "aws4fetch": "^1.0.18",
     "class-variance-authority": "^0.5.2",
@@ -306,6 +306,6 @@
     "vite-tsconfig-paths": "^4.0.5"
   },
   "engines": {
-    "node": ">=18.19.0 || >=20.6.0"
+    "node": ">=22.0.0"
   }
 }

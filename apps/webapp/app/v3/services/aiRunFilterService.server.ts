@@ -1,6 +1,6 @@
 import { openai } from "@ai-sdk/openai";
 import { type TaskTriggerSource } from "@platos/database";
-import { generateText, stepCountIs, LanguageModel, Output, tool } from "ai";
+import { generateText, isStepCount, LanguageModel, Output, tool } from "ai";
 import { z } from "zod";
 import { TaskRunListSearchFilters } from "~/components/runs/v3/RunFilters";
 import { logger } from "~/services/logger.server";
@@ -149,8 +149,8 @@ export class AIRunFilterService {
             },
           }),
         },
-        stopWhen: stepCountIs(5),
-        system: `You are an AI assistant that converts natural language descriptions into structured filter parameters for a task run filtering system.
+        stopWhen: isStepCount(5),
+        instructions: `You are an AI assistant that converts natural language descriptions into structured filter parameters for a task run filtering system.
   
   Available filter options:
   - statuses: Array of run statuses (PENDING, EXECUTING, COMPLETED_SUCCESSFULLY, COMPLETED_WITH_ERRORS, CANCELED, TIMED_OUT, CRASHED, etc.)
@@ -224,7 +224,7 @@ export class AIRunFilterService {
   Make the error no more than 8 words.
   `,
         prompt: text,
-        experimental_telemetry: {
+        telemetry: {
           isEnabled: true,
           metadata: {
             environmentId,

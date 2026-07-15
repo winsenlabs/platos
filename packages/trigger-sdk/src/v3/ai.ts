@@ -6,12 +6,12 @@ import {
   type TaskSchema,
   type TaskWithSchema,
 } from "@platos/core/v3";
-import { dynamicTool, jsonSchema, JSONSchema7, Schema, Tool, ToolCallOptions, zodSchema } from "ai";
+import { dynamicTool, jsonSchema, JSONSchema7, Schema, Tool, ToolExecutionOptions, zodSchema } from "ai";
 import { metadata } from "./metadata.js";
 
 const METADATA_KEY = "tool.execute.options";
 
-export type ToolCallExecutionOptions = Omit<ToolCallOptions, "abortSignal">;
+export type ToolCallExecutionOptions = Omit<ToolExecutionOptions<any>, "abortSignal">;
 
 type ToolResultContent = Array<
   | {
@@ -85,7 +85,7 @@ function getToolOptionsFromMetadata(): ToolCallExecutionOptions | undefined {
   if (!tool) {
     return undefined;
   }
-  return tool as ToolCallExecutionOptions;
+  return tool as unknown as ToolCallExecutionOptions;
 }
 
 function convertTaskSchemaToToolParameters(
