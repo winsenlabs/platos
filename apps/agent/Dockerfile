@@ -8,7 +8,7 @@
 # Stage 2 (runtime): thin node image that just copies the deployed bundle +
 # build output + Prisma schema.
 
-ARG NODE_IMAGE=node:20-slim
+ARG NODE_IMAGE=node:22-slim
 
 # ───────────────────────────────────────────────────────────
 # Builder

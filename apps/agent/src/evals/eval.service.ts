@@ -316,7 +316,7 @@ export class EvalService {
       // PRELAUNCH-A2-10 — propagate abort signal.
       const result = await generateText({
         model: judgeModel,
-        system: systemPrompt,
+        instructions: systemPrompt,
         messages: [{ role: "user" as const, content: userPrompt }],
         abortSignal,
       });

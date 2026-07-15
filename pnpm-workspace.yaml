@@ -11,6 +11,8 @@ minimumReleaseAgeExclude:
   - "next"
   - "@next/*"
   - "agentcrumbs"
+  - "ai"
+  - "@ai-sdk/*"
 preferOffline: true
 
 linkWorkspacePackages: false

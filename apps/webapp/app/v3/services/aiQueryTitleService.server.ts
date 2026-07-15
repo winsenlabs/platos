@@ -34,7 +34,7 @@ export class AIQueryTitleService {
       const result = await generateText({
         model: this.model,
         abortSignal: options.abortSignal,
-        system: `You are a helpful assistant that generates concise titles for SQL queries.
+        instructions: `You are a helpful assistant that generates concise titles for SQL queries.
 
 Your task is to create a short, descriptive title (5-10 words) that summarizes what the query does.
 
@@ -54,7 +54,7 @@ Examples:
 - "Recent runs with errors"`,
         prompt: `Generate a concise title for this SQL query:\n\n${query}`,
         maxOutputTokens: 50,
-        experimental_telemetry: {
+        telemetry: {
           isEnabled: true,
           metadata: {
             feature: "ai-query-title",

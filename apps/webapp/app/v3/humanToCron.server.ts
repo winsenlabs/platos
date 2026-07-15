@@ -41,7 +41,7 @@ export async function humanToCron(message: string, userId: string): Promise<Huma
     const result = await generateObject({
       model: openai("gpt-4o-mini"),
       schema: HumanToCronResult,
-      system: `You are a helpful assistant who will turn natural language into a valid CRON expression.
+      instructions: `You are a helpful assistant who will turn natural language into a valid CRON expression.
 
 The version of CRON that we use is an extension of the minimal.
 
@@ -60,7 +60,7 @@ Return:
   - { "isValid": true, "cron": "<EXPRESSION>" } when the request is valid.
   - { "isValid": false, "error": "<reason>" } when the request can't yield a valid cron.`,
       prompt: `What is a valid CRON expression for this: ${message}`,
-      experimental_telemetry: {
+      telemetry: {
         isEnabled: true,
         metadata: {
           feature: "human-to-cron",

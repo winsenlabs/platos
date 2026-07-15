@@ -5,7 +5,7 @@ import {
   generateText,
   streamObject,
   generateObject,
-  stepCountIs,
+  isStepCount,
   jsonSchema as aiJsonSchema,
   type ModelMessage,
   type Tool,
@@ -4270,7 +4270,7 @@ export class AgentService {
       model,
       messages: subMessages as any,
       tools: subTools,
-      stopWhen: stepCountIs(maxSteps),
+      stopWhen: isStepCount(maxSteps),
       abortSignal: args.abortSignal,
       // Sub-agent prompt rides in `messages[]` (not the top-level `system:`)
       // specifically so we can attach `providerOptions.anthropic.cacheControl`
@@ -5708,13 +5708,13 @@ export class AgentService {
         // attached. Suppresses the AI SDK v6 warning nudge.
         allowSystemInMessages: true,
         // AI SDK v6 — `maxSteps: N` removed; use `stopWhen` predicate.
-        // `stepCountIs(N)` halts the tool-calling loop after N steps.
-        stopWhen: stepCountIs(agentConfig.maxSteps),
+        // `isStepCount(N)` halts the tool-calling loop after N steps.
+        stopWhen: isStepCount(agentConfig.maxSteps),
         // EOBD.26/27 — caller's abort signal: closes on stop button
         // OR turn timeout. Vercel AI SDK propagates this to the
         // underlying provider HTTP stream.
         abortSignal: turnOverrides?.abortSignal,
-        onStepFinish: (event) => {
+        onStepEnd: (event) => {
           // AI SDK v6 — `tr.result` renamed to `tr.output` on tool-result chunks.
           const results = event.toolResults as Array<{ toolName: string; output: unknown; toolCallId: string }> | undefined;
           if (results) {
@@ -5786,7 +5786,7 @@ export class AgentService {
           }
           this.logger.debug(`[agent.stream] -----------------------`);
         },
-        onFinish: (event: any) => {
+        onEnd: (event: any) => {
           this.logger.debug(`[agent.stream] ===== FINAL USAGE =====`);
           this.logger.debug(`[agent.stream] total usage: ${JSON.stringify(event.usage)}`);
           this.logger.debug(`[agent.stream] steps: ${event.steps?.length ?? 1}`);
@@ -5797,7 +5797,7 @@ export class AgentService {
       // Stream tokens as they arrive
       let currentStepToolCalls: string[] = [];
 
-      for await (const chunk of result.fullStream) {
+      for await (const chunk of result.stream) {
         switch (chunk.type) {
           case "text-delta":
             yield { type: "token", text: chunk.text };
@@ -5903,8 +5903,11 @@ export class AgentService {
             yield {
               type: "meta",
               usage: {
-                inputTokens: (chunk as any).totalUsage?.inputTokens,
-                outputTokens: (chunk as any).totalUsage?.outputTokens,
+                // AI SDK v7 keeps `totalUsage` on the stream `finish` part; the
+                // `?? .usage` fallback guards against a silent field move (v7
+                // flipped the awaited `result.usage` to mean total-across-steps).
+                inputTokens: (chunk as any).totalUsage?.inputTokens ?? (chunk as any).usage?.inputTokens,
+                outputTokens: (chunk as any).totalUsage?.outputTokens ?? (chunk as any).usage?.outputTokens,
                 cacheCreationInputTokens: cacheCreationTotal > 0 ? cacheCreationTotal : undefined,
                 cacheReadInputTokens: cacheReadTotal > 0 ? cacheReadTotal : undefined,
                 reasoningTokens: reasoningTotal > 0 ? reasoningTotal : undefined,
@@ -6322,10 +6325,10 @@ export class AgentService {
     // consistent across run() / stream().
     const result = await generateText({
       model,
-      system: systemPrompt,
+      instructions: systemPrompt,
       messages: baseMessages,
       tools,
-      stopWhen: stepCountIs(agentConfig.maxSteps),
+      stopWhen: isStepCount(agentConfig.maxSteps),
       abortSignal: turnOverrides?.abortSignal,
     });
 

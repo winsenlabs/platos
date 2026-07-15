@@ -1,6 +1,19 @@
 import { z } from "zod";
-import type { Schema as AISchema } from "ai";
 import { Schema } from "./schemas.js";
+
+// Structural shape of ai's `Schema<T>` (from @ai-sdk/provider-utils), inlined so
+// this package never imports ai. ai@7 is ESM-only, and any import of it (even a
+// type-only or dynamic `import("ai")` type) trips TS1479 when tshy emits the
+// CommonJS dialect. Only `_type` and `validate` are used here.
+type AISchemaValidationResult<T> =
+  | { success: true; value: T }
+  | { success: false; error: unknown };
+type AISchema<T> = {
+  _type: T;
+  validate?: (
+    value: unknown,
+  ) => AISchemaValidationResult<T> | Promise<AISchemaValidationResult<T>>;
+};
 
 export type ToolTaskParameters = z.ZodTypeAny | AISchema<any>;
 

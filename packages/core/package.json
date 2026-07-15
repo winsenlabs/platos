@@ -205,14 +205,14 @@
     "zod-validation-error": "^1.5.0"
   },
   "devDependencies": {
-    "@ai-sdk/provider-utils": "^4.0.25",
+    "@ai-sdk/provider-utils": "^5.0.10",
     "@arethetypeswrong/cli": "^0.15.4",
     "@epic-web/test-server": "^0.1.0",
     "@platos/database": "workspace:*",
     "@types/humanize-duration": "^3.27.1",
     "@types/lodash.get": "^4.4.9",
     "@types/readable-stream": "^4.0.14",
-    "ai": "^6.0.172",
+    "ai": "^7.0.28",
     "defu": "^6.1.4",
     "esbuild": "^0.23.0",
     "rimraf": "^3.0.2",

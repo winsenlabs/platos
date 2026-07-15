@@ -12,10 +12,10 @@
     "test:dev": "vitest"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.73",
-    "@ai-sdk/google": "^3.0.66",
-    "@ai-sdk/google-vertex": "^4.0.113",
-    "@ai-sdk/openai": "^3.0.55",
+    "@ai-sdk/anthropic": "^4.0.15",
+    "@ai-sdk/google": "^4.0.16",
+    "@ai-sdk/google-vertex": "^5.0.20",
+    "@ai-sdk/openai": "^4.0.14",
     "@aws-sdk/client-s3": "^3.936.0",
     "@aws-sdk/s3-request-presigner": "^3.936.0",
     "@e2b/code-interpreter": "^2.4.0",
@@ -33,7 +33,7 @@
     "@sentry/node": "^8.45.0",
     "@trigger.dev/core": "4.5.0",
     "@trigger.dev/sdk": "4.5.0",
-    "ai": "^6.0.172",
+    "ai": "^7.0.28",
     "ioredis": "^5.6.1",
     "isomorphic-dompurify": "^2.16.0",
     "pg": "^8.13.0",

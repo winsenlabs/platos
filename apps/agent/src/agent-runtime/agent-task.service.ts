@@ -1490,7 +1490,7 @@ export class AgentTaskService {
     // PRELAUNCH-A2-7 — propagate abort signal.
     const summary = await generateText({
       model,
-      system: "You are a conversation summarizer. Produce a concise, factual summary of the conversation below that preserves key facts, decisions, user preferences, and context — but NOT verbatim messages. Write in past tense from an observer's perspective. Keep under 500 words.",
+      instructions: "You are a conversation summarizer. Produce a concise, factual summary of the conversation below that preserves key facts, decisions, user preferences, and context — but NOT verbatim messages. Write in past tense from an observer's perspective. Keep under 500 words.",
       messages: [{ role: "user" as const, content: conversationText }],
       abortSignal,
     });
@@ -1603,7 +1603,7 @@ export class AgentTaskService {
     // PRELAUNCH-A2-8 — propagate abort signal.
     const { text } = await generateText({
       model,
-      system:
+      instructions:
         "You generate concise conversation titles. Respond with ONLY the title — no punctuation, no quotes, no explanation. 3-5 words maximum.",
       messages: [
         {

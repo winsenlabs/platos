@@ -23,8 +23,7 @@
     "exports": {
       "./package.json": "./package.json",
       ".": "./src/v3/index.ts",
-      "./v3": "./src/v3/index.ts",
-      "./ai": "./src/v3/ai.ts"
+      "./v3": "./src/v3/index.ts"
     },
     "sourceDialects": [
       "@triggerdotdev/source"
@@ -34,9 +33,6 @@
     "*": {
       "v3": [
         "dist/commonjs/v3/index.d.ts"
-      ],
-      "ai": [
-        "dist/commonjs/v3/ai.d.ts"
       ]
     }
   },
@@ -69,7 +65,7 @@
     "@types/slug": "^5.0.3",
     "@types/uuid": "^9.0.0",
     "@types/ws": "^8.5.3",
-    "ai": "^6.0.172",
+    "ai": "^7.0.28",
     "encoding": "^0.1.13",
     "rimraf": "^3.0.2",
     "tshy": "^3.0.2",
@@ -78,7 +74,7 @@
     "zod": "3.25.76"
   },
   "peerDependencies": {
-    "ai": "^4.2.0 || ^5.0.0 || ^6.0.0",
+    "ai": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0",
     "zod": "^3.0.0 || ^4.0.0"
   },
   "peerDependenciesMeta": {
@@ -111,17 +107,6 @@
       "require": {
         "types": "./dist/commonjs/v3/index.d.ts",
         "default": "./dist/commonjs/v3/index.js"
-      }
-    },
-    "./ai": {
-      "import": {
-        "@triggerdotdev/source": "./src/v3/ai.ts",
-        "types": "./dist/esm/v3/ai.d.ts",
-        "default": "./dist/esm/v3/ai.js"
-      },
-      "require": {
-        "types": "./dist/commonjs/v3/ai.d.ts",
-        "default": "./dist/commonjs/v3/ai.js"
       }
     }
   },
