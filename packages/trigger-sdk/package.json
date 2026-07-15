@@ -23,8 +23,7 @@
     "exports": {
       "./package.json": "./package.json",
       ".": "./src/v3/index.ts",
-      "./v3": "./src/v3/index.ts",
-      "./ai": "./src/v3/ai.ts"
+      "./v3": "./src/v3/index.ts"
     },
     "sourceDialects": [
       "@triggerdotdev/source"
@@ -34,9 +33,6 @@
     "*": {
       "v3": [
         "dist/commonjs/v3/index.d.ts"
-      ],
-      "ai": [
-        "dist/commonjs/v3/ai.d.ts"
       ]
     }
   },
@@ -111,17 +107,6 @@
       "require": {
         "types": "./dist/commonjs/v3/index.d.ts",
         "default": "./dist/commonjs/v3/index.js"
-      }
-    },
-    "./ai": {
-      "import": {
-        "@triggerdotdev/source": "./src/v3/ai.ts",
-        "types": "./dist/esm/v3/ai.d.ts",
-        "default": "./dist/esm/v3/ai.js"
-      },
-      "require": {
-        "types": "./dist/commonjs/v3/ai.d.ts",
-        "default": "./dist/commonjs/v3/ai.js"
       }
     }
   },
