@@ -129,6 +129,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     contextLimit: 20,
     historyMode: "rolling",
     compactThreshold: 40,
+    executionMode: "direct",
     enableUserProfiling: false,
     toolsBlockConfig: null as null | { mode: string; enabledTools?: string[]; perToolPerms?: Record<string, unknown> },
     subAgentConfig: null as null | { model: string; maxSteps: number; systemPrompt?: string },
@@ -563,6 +564,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const contextLimitRaw = formData.get("contextLimit") as string | null;
   const historyMode = formData.get("historyMode") as string | null;
   const compactThresholdRaw = formData.get("compactThreshold") as string | null;
+  const executionMode = formData.get("executionMode") as string | null;
   const enableUserProfiling = formData.get("enableUserProfiling") === "on";
   const enableThreading = formData.get("enableThreading") === "on";
   const clusterMode = formData.get("clusterMode") as string | null;
@@ -610,6 +612,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (contextLimitRaw) body.contextLimit = parseInt(contextLimitRaw, 10);
   if (historyMode) body.historyMode = historyMode;
   if (compactThresholdRaw) body.compactThreshold = parseInt(compactThresholdRaw, 10);
+  if (executionMode) body.executionMode = executionMode;
   body.enableUserProfiling = enableUserProfiling;
   body.enableThreading = enableThreading;
   // PRA-AC: null clears cluster membership; non-empty string sets it.
@@ -1065,6 +1068,49 @@ export default function AgentDetailPage() {
                 />
                 <span className="text-xs text-text-dimmed">Thread length at which compaction fires</span>
               </Fieldset>
+            </section>
+
+            {/* Execution mode */}
+            <section>
+              <Header3>Execution mode</Header3>
+              <Paragraph variant="small" className="mt-1 mb-3">
+                How this agent's turns are executed.
+              </Paragraph>
+              <div className="space-y-2">
+                {(
+                  [
+                    {
+                      value: "direct",
+                      label: "Direct",
+                      desc: "Runs in-process, streamed live.",
+                    },
+                    {
+                      value: "durable",
+                      label: "Durable",
+                      desc: "Runs as a Trigger.dev run — survives restarts/redeploys and can suspend for human approval.",
+                    },
+                  ] as const
+                ).map((opt) => (
+                  <label
+                    key={opt.value}
+                    className="flex items-start gap-3 rounded border border-charcoal-700 p-3 cursor-pointer hover:border-charcoal-600"
+                  >
+                    <input
+                      type="radio"
+                      name="executionMode"
+                      value={opt.value}
+                      defaultChecked={
+                        ((agent as any).executionMode || "direct") === opt.value
+                      }
+                      className="mt-0.5 accent-emerald-500"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-text-bright">{opt.label}</p>
+                      <p className="text-xs text-text-dimmed">{opt.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
             </section>
 
             {/* User Profiling */}

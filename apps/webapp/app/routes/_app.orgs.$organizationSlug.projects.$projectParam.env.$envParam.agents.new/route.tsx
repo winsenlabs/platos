@@ -173,6 +173,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const contextLimitRaw = formData.get("contextLimit") as string | null;
   const historyMode = (formData.get("historyMode") as string | null) || "rolling";
   const compactThresholdRaw = formData.get("compactThreshold") as string | null;
+  const executionMode = formData.get("executionMode") as string | null;
   const enableUserProfiling = formData.get("enableUserProfiling") === "on";
   const enableSemanticMemory = formData.get("enableSemanticMemory") === "on";
   const enableKnowledgeGraph = formData.get("enableKnowledgeGraph") === "on";
@@ -257,6 +258,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         enableUserProfiling,
         enableSemanticMemory,
         enableKnowledgeGraph,
+        executionMode: executionMode || "direct",
         dynamicBlocks,
         ...(extractionPolicy ? { extractionPolicy } : {}),
         ...(modelRoutes ? { modelRoutes } : {}),
@@ -376,6 +378,7 @@ export default function NewAgentPage() {
   const [extractKinds, setExtractKinds] = useState(["fact", "preference", "event", "relationship"]);
   const [extractConfidence, setExtractConfidence] = useState(0.6);
   const [extractMax, setExtractMax] = useState(10);
+  const [executionMode, setExecutionMode] = useState<"direct" | "durable">("direct");
 
   // Step 4.
   const [toolMode, setToolMode] = useState<"direct" | "sub-agent" | "tool-wrapper">("direct");
@@ -620,6 +623,52 @@ export default function NewAgentPage() {
                 )}
               </section>
 
+              {/* Execution mode */}
+              <section>
+                <Header3>Execution mode</Header3>
+                <Paragraph variant="small" className="mt-1 mb-3">
+                  How this agent's turns are executed.
+                </Paragraph>
+                <div className="space-y-2">
+                  {(
+                    [
+                      {
+                        value: "direct",
+                        label: "Direct",
+                        desc: "Runs in-process, streamed live.",
+                      },
+                      {
+                        value: "durable",
+                        label: "Durable",
+                        desc: "Runs as a Trigger.dev run — survives restarts/redeploys and can suspend for human approval.",
+                      },
+                    ] as const
+                  ).map((opt) => (
+                    <label
+                      key={opt.value}
+                      className={`flex items-start gap-3 rounded border p-3 cursor-pointer ${
+                        executionMode === opt.value
+                          ? "border-emerald-500/60 bg-emerald-500/5"
+                          : "border-charcoal-700 hover:border-charcoal-600"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="executionModeChoice"
+                        value={opt.value}
+                        checked={executionMode === opt.value}
+                        onChange={() => setExecutionMode(opt.value)}
+                        className="mt-0.5 accent-emerald-500"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-text-bright">{opt.label}</p>
+                        <p className="text-xs text-text-dimmed">{opt.desc}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </section>
+
               {/* User profiling + memory */}
               <section>
                 <Header3>Memory</Header3>
@@ -823,6 +872,7 @@ export default function NewAgentPage() {
                 />
                 <input type="hidden" name="contextLimit" value={contextLimit} />
                 <input type="hidden" name="historyMode" value={historyMode} />
+                <input type="hidden" name="executionMode" value={executionMode} />
                 <input type="hidden" name="compactThreshold" value={compactThreshold} />
                 {userProfiling && <input type="hidden" name="enableUserProfiling" value="on" />}
                 {semanticMemory && <input type="hidden" name="enableSemanticMemory" value="on" />}

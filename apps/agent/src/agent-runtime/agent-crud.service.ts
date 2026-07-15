@@ -180,6 +180,8 @@ export interface CreateAgentDto {
   historyMode?: "rolling" | "compact";
   compactThreshold?: number;
   enableUserProfiling?: boolean;
+  /** REFACTOR — direct (in-process, streamed) vs durable (runs as a Trigger.dev run). */
+  executionMode?: "direct" | "durable";
   toolMode?: string;
   toolsBlockConfig?: ToolsBlockConfig;
   subAgentConfig?: SubAgentConfig;
@@ -213,6 +215,7 @@ export interface UpdateAgentDto {
   threadingConfig?: Record<string, unknown> | null;
   /** PRA-AC: cluster membership. null = remove from cluster. */
   clusteringId?: string | null;
+  executionMode?: "direct" | "durable";
   toolMode?: string;
   toolsBlockConfig?: ToolsBlockConfig;
   subAgentConfig?: SubAgentConfig;
@@ -500,6 +503,7 @@ export class AgentCrudService {
         compactThreshold: dto.compactThreshold ?? 40,
         enableUserProfiling: dto.enableUserProfiling ?? false,
         toolMode: dto.toolMode || "direct",
+        executionMode: dto.executionMode || "direct",
         toolsBlockConfig: (dto.toolsBlockConfig as any) || null,
         subAgentConfig: (dto.subAgentConfig as any) || null,
         memoryConfig: dto.memoryConfig || null,
@@ -667,6 +671,7 @@ export class AgentCrudService {
         // PRA-AC: null explicitly clears cluster membership.
         ...(dto.clusteringId !== undefined && { clusteringId: dto.clusteringId ?? null }),
         ...(dto.toolMode !== undefined && { toolMode: dto.toolMode }),
+        ...(dto.executionMode !== undefined && { executionMode: dto.executionMode }),
         ...(dto.toolsBlockConfig !== undefined && { toolsBlockConfig: (dto.toolsBlockConfig as any) }),
         ...(dto.subAgentConfig !== undefined && { subAgentConfig: (dto.subAgentConfig as any) }),
         ...(dto.memoryConfig !== undefined && { memoryConfig: dto.memoryConfig }),
