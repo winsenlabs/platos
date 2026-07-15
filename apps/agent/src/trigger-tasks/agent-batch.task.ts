@@ -1,6 +1,6 @@
 import { task, metadata, logger } from "@trigger.dev/sdk";
 import { createHmac } from "node:crypto";
-import { env } from "../shared/env";
+const env = process.env;
 
 /**
  * W.1 — `agent_batch` durable executor.

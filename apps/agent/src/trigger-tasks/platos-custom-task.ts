@@ -1,6 +1,6 @@
 import { task, metadata, logger } from "@trigger.dev/sdk";
 import { runInNewContext } from "node:vm";
-import { env } from "../shared/env";
+const env = process.env;
 
 /**
  * PIFSP-12 — Platos custom task executor.

@@ -1,5 +1,5 @@
 import { task, logger, metadata } from "@trigger.dev/sdk";
-import { env } from "../shared/env";
+const env = process.env;
 
 /**
  * LAUNCH-11 — durable conversation compaction.

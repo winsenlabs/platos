@@ -1,5 +1,5 @@
 import { schedules, logger, metadata } from "@trigger.dev/sdk";
-import { env } from "../shared/env";
+const env = process.env;
 
 /**
  * PPR-67 — scheduled approvals expiry sweep.
@@ -28,7 +28,7 @@ export const approvalsExpirySweep = schedules.task({
   id: "platos.approvals.expiry_sweep",
   description:
     "Every 5 minutes, flip stuck-pending PlatosAgentApproval rows whose timeout has elapsed to 'timed_out'.",
-  cron: "*/5 * * * *",
+  cron: "20 * * * *",
   maxDuration: 60,
   // EOBD.45 — singleton. Two sweepers racing to flip the same row
   // is idempotent but wastes the admin endpoint budget.

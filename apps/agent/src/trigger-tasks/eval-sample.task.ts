@@ -1,5 +1,5 @@
 import { schedules, logger, metadata } from "@trigger.dev/sdk";
-import { env } from "../shared/env";
+const env = process.env;
 
 /**
  * Theme J.4 — scheduled judge-LLM eval sampler.
@@ -23,7 +23,7 @@ export const evalSample = schedules.task({
   id: "platos.eval.sample",
   description:
     "Periodic judge-LLM sampler — picks recent threads + runs active criteria. Conservative default sample size.",
-  cron: "*/15 * * * *",
+  cron: "40 * * * *",
   maxDuration: 300,
   // EOBD.45 — singleton. Two workers ticking would double-charge the
   // judge-LLM budget for no new signal.
