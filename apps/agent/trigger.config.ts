@@ -19,7 +19,7 @@ import { defineConfig } from "@trigger.dev/sdk";
  * response to the LLM).
  */
 export default defineConfig({
-  project: process.env.TRIGGER_PROJECT_REF || "proj_mwhvvqlhrykhbdicnmze",
+  project: process.env.TRIGGER_PROJECT_REF || "proj_hovobxjmqdvnduupguwa",
   dirs: ["./src/trigger-tasks"],
   maxDuration: 600,
   retries: {
