@@ -346,6 +346,32 @@ export const PROVIDER_MANIFESTS: ProviderManifest[] = [
     },
   },
   {
+    id: "sakana",
+    displayName: "Sakana AI (Fugu)",
+    description:
+      "Sakana Fugu — one model that orchestrates a swappable pool of frontier LLMs " +
+      "(Trinity/Conductor). `fugu` for everyday work, `fugu-ultra` for hard multi-step " +
+      "problems. OpenAI-compatible. Orchestrates server-side before streaming, so " +
+      "responses can be slow (seconds→minutes on fugu-ultra) — use generous timeouts. " +
+      "Not available in the EU/EEA, UK, or Switzerland.",
+    requiredEnv: ["SAKANA_API_KEY"],
+    optionalEnv: [],
+    models: [
+      "sakana:fugu",
+      "sakana:fugu-ultra",
+    ],
+    healthCheck: {
+      kind: "openai-compat",
+      probeModel: "fugu",
+      baseURL: "https://api.sakana.ai/v1",
+    },
+    modelsEndpoint: {
+      url: "https://api.sakana.ai/v1/models",
+      auth: "bearer",
+      shape: "openai",
+    },
+  },
+  {
     id: "azure",
     displayName: "Azure OpenAI",
     description:

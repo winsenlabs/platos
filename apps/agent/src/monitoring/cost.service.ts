@@ -177,6 +177,19 @@ const FALLBACK_PRICING: Record<string, { input: number; output: number }> = {
   "perplexity:sonar-reasoning": { input: 100, output: 500 },
   "perplexity:sonar-reasoning-pro": { input: 200, output: 800 },
   "perplexity:sonar-deep-research": { input: 200, output: 800 },
+
+  // Sakana Fugu — verified against https://console.sakana.ai/pricing 2026-07-16.
+  // fugu-ultra: $5/M in, $30/M out → 500/3000 cents/M (standard ≤272K tier;
+  // above 272K input it rises to $10/$45 — not modeled, fixed-tier fallback).
+  // Cached input ($0.50/M, 90% off) is applied via CACHE_RATES `sakana`.
+  // `fugu` has no published fixed rate (blended/underlying-model pricing); we
+  // default it to the fugu-ultra ceiling so the ledger never under-prices.
+  // CAVEAT: Fugu bills hidden orchestration tokens (~1.3K/request floor) that
+  // may be additive and are reported under usage._details — if the AI SDK does
+  // not surface them, this fallback under-counts real spend. Follow-up: read
+  // prompt_tokens_details / completion_tokens_details orchestration fields.
+  "sakana:fugu-ultra": { input: 500, output: 3000 },
+  "sakana:fugu": { input: 500, output: 3000 },
 };
 
 /**

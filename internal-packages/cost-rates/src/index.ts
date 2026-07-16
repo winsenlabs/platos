@@ -25,6 +25,10 @@ export const CACHE_RATES: Record<string, { write: number; read: number }> = {
   openai: { write: 1.0, read: 0.5 },
   google: { write: 1.0, read: 0.25 },
   "google-vertex": { write: 1.0, read: 0.25 },
+  // Sakana Fugu: OpenAI-style automatic prompt caching (no explicit cache_control,
+  // no write premium). Cached input billed at $0.50/M vs $5/M fresh → 90% read
+  // discount. Cached tokens surface as prompt_tokens_details.cached_tokens.
+  sakana: { write: 1.0, read: 0.1 },
 };
 
 const ANTHROPIC_FALLBACK_RATES = CACHE_RATES.anthropic!;

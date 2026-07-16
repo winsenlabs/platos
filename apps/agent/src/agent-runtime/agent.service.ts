@@ -205,6 +205,13 @@ const OPENAI_COMPAT_BASE_URLS: Record<string, string> = {
   perplexity: "https://api.perplexity.ai",
   together: "https://api.together.xyz/v1",
   fireworks: "https://api.fireworks.ai/inference/v1",
+  // Sakana Fugu — multi-agent orchestration model (Fugu + Fugu Ultra) served
+  // OpenAI-compatible. NOTE: Fugu orchestrates across a pool of frontier models
+  // server-side BEFORE it streams, so first-token latency can be tens of
+  // seconds (fugu) to minutes (fugu-ultra). The retry-aware fetch below + the
+  // per-turn PLATOS_TURN_MAX_MS budget must be generous for fugu-ultra. Not
+  // available in EU/EEA/UK/CH (geo-blocked upstream).
+  sakana: "https://api.sakana.ai/v1",
 };
 
 function resolveModel(modelString: string, apiKey?: string, retryRules?: RetryRule[]) {
@@ -323,6 +330,7 @@ const PROVIDER_API_KEY_ENV: Record<string, string> = {
   perplexity: "PERPLEXITY_API_KEY",
   together: "TOGETHER_API_KEY",
   fireworks: "FIREWORKS_API_KEY",
+  sakana: "SAKANA_API_KEY",
 };
 
 /** Which env-var holds the API key for each provider. */
