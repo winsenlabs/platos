@@ -267,7 +267,12 @@ export class ScopeGuard implements CanActivate {
       url.startsWith("/api/v1/agent/monitoring/approvals/expiry-sweep") ||
       url.startsWith("/api/v1/agent/evals/sample") ||
       url.startsWith("/api/v1/agent/evals/run") ||
-      url.startsWith("/api/v1/agent/attachments/retention")
+      url.startsWith("/api/v1/agent/attachments/retention") ||
+      // memory-extraction sweep callback (platos.memory.extract task). Note
+      // the non-/agent prefix — served by the memory module's own controller;
+      // needs its own Caddy route (/api/v1/memory/* → agent) or it lands on
+      // the webapp and 401s with the trigger-style problem+json.
+      url.startsWith("/api/v1/memory/admin/extraction-sweep")
     ) {
       const expected = env.PLATOS_ADMIN_TOKEN;
       const provided = request.headers["x-platos-admin-token"];

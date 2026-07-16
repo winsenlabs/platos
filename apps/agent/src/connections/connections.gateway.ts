@@ -681,20 +681,71 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     }
 
     try {
-      const chatClient = new chatSdk.AgentChat({
-        agent: "platos.chat.session",
-        id: threadId,
-        clientData: {
-          agentId,
-          threadId,
-          scope: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-            userId: scope.userId,
+      // FRESH AgentChat per message (deliberate — do NOT cache): with the
+      // one-turn-per-run worker (chat.endRun after each turn), the previous
+      // run has fully exited by the next message. A cached instance believes
+      // its run is still alive and appends into a dead run's inbox — the
+      // message never dispatches (observed live: turn 2 done/0 chars, no
+      // continuation run spawned). A fresh instance takes the trigger path:
+      // sessions.start is idempotent, the server sees no active run, and
+      // spawns a continuation run. Replay of old .out chunks is prevented
+      // server-side since 4.5.2 (cursor advance fix); the Redis lastEventId
+      // is belt-and-braces when available.
+      {
+        const cursorKey = `chatsess:cursor:${threadId}`;
+        let lastEventId: string | undefined;
+        try {
+          lastEventId = (await this.redis.get(cursorKey)) ?? undefined;
+        } catch {
+          lastEventId = undefined;
+        }
+
+        // RACE GUARD — one-turn-per-run means the previous run spends ~10s
+        // finalizing after its last chunk. An append during that window lands
+        // in the exiting run's inbox and is never consumed (server only
+        // re-triggers when no run is alive). If the user replies within the
+        // window, wait for the previous run to fully exit first. No-ops on
+        // first messages (no session yet) and costs one retrieve (~100ms)
+        // on relaxed-cadence turns.
+        if (lastEventId) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const { sessions: sessionsSdk, runs: runsSdk } = require("@trigger.dev/sdk");
+            const sess = await sessionsSdk.retrieve(threadId!).catch(() => null);
+            const prevRunId = (sess as any)?.currentRunId as string | undefined;
+            if (prevRunId) {
+              for (let i = 0; i < 20; i++) {
+                const r: any = await runsSdk.retrieve(prevRunId).catch(() => null);
+                if (!r || r.isCompleted || !["EXECUTING", "QUEUED", "DEQUEUED", "WAITING"].includes(String(r.status))) break;
+                await new Promise((res) => setTimeout(res, 1000));
+              }
+            }
+          } catch {
+            // best-effort; proceed
+          }
+        }
+        const chatClient = new chatSdk.AgentChat({
+          agent: "platos.chat.session",
+          id: threadId,
+          clientData: {
+            agentId,
+            threadId,
+            scope: {
+              organizationId: scope.organizationId,
+              projectId: scope.projectId,
+              environmentId: scope.environmentId,
+              userId: scope.userId,
+            },
           },
-        },
-      });
+          ...(lastEventId ? { session: { lastEventId } } : {}),
+          onTurnComplete: async ({ lastEventId: cursor }: { lastEventId?: string }) => {
+            if (cursor) {
+              await (this.redis as any)
+                .set(cursorKey, cursor, "EX", 60 * 60 * 24 * 30)
+                .catch(() => undefined);
+            }
+          },
+        });
 
       const room = `thread:${threadId}`;
       await client.join(room);
@@ -725,6 +776,19 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
               this.server?.to(room).emit("agent_event", { ...evt, threadId });
             }
           }
+          // Persist the session cursor DIRECTLY off the client (proven
+          // available post-stream; the onTurnComplete callback alone was
+          // unreliable here). The cursor is load-bearing: the NEXT message's
+          // fresh AgentChat must be constructed hydrated (session:{lastEventId})
+          // or its sessions.start short-circuits on idempotency and the append
+          // lands in the dead one-turn run's inbox — message never dispatches
+          // (server only probes/re-triggers on the hydrated append path).
+          const cursor = (chatClient as any)?.session?.lastEventId as string | undefined;
+          if (cursor) {
+            await (this.redis as any)
+              .set(`chatsess:cursor:${threadId}`, cursor, "EX", 60 * 60 * 24 * 30)
+              .catch(() => undefined);
+          }
           this.server?.to(room).emit("agent_event", { type: "done", threadId });
         } catch (err: any) {
           this.server?.to(room).emit("agent_event", {
@@ -737,6 +801,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       })();
 
       return true;
+      }
     } catch {
       // Session dispatch failed — fall through to durable-turn / direct.
       return false;
