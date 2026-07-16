@@ -1,7 +1,25 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Inject, Optional } from "@nestjs/common";
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, ForbiddenException, Inject, Optional } from "@nestjs/common";
 import * as crypto from "node:crypto";
 import { AuthService } from "./auth.service";
 import { env } from "../shared/env";
+
+/**
+ * SECURITY (2026-07-16 audit — OWASP API5 BFLA, deny-by-default function-level
+ * authz). Throw 403 unless the caller is an operator (the webapp control-plane
+ * or a platform-signed token). Fails CLOSED: an undefined/end-user principal is
+ * rejected. Call at the TOP of any handler that exposes cross-user data,
+ * secrets, budgets, files, entity management, or monitoring — surfaces that an
+ * entity-minted widget/SDK/guest token must never reach.
+ */
+export function requireOperator(scope: Pick<RequestScope, "principal">): void {
+  if (scope?.principal !== "operator") {
+    throw new ForbiddenException({
+      error: "OPERATOR_ONLY",
+      message:
+        "This endpoint requires an operator (control-plane) credential. End-user / entity / guest tokens are not permitted.",
+    });
+  }
+}
 
 /**
  * EOBD.40 — parse a W3C traceparent header into its trace-id +
@@ -52,6 +70,20 @@ export interface RequestScope {
   userToken?: string;
   agentId?: string;
   sessionId?: string;
+  /**
+   * SECURITY (2026-07-16 audit C1/H1) — trust tier of the caller.
+   *   "operator"  — the webapp/control-plane: a platform-signed session token
+   *                 (iss:"platos-platform", verified against PLATOS_SESSION_SECRET
+   *                 which only the webapp holds) OR the trusted internal
+   *                 direct-header path (webapp→agent over the Docker network,
+   *                 never through Caddy).
+   *   "end-user"  — an entity-signed session token (a widget/SDK end-user or
+   *                 anonymous public guest). MUST NOT reach operator surfaces
+   *                 (other users' data, secrets, budgets, monitoring).
+   * `requireOperator(scope)` enforces this. Undefined is treated as end-user
+   * (fail closed).
+   */
+  principal?: "operator" | "end-user";
   /** OTel trace context — set by AgentTaskService for the current turn so
    * downstream services (tool executor, provider calls) can attach child
    * spans. Theme E.1. */
@@ -330,6 +362,16 @@ export class ScopeGuard implements CanActivate {
           userId: payload.userId,
           entityId: payload.entityId,
           userToken: payload.userToken,
+          // Operator ONLY when platform-signed (verified against
+          // PLATOS_SESSION_SECRET) AND not a public guest. The guest-token flow
+          // (EOBD.89) mints platform-signed tokens with isGuest:true for
+          // anonymous visitors — those are end-users, NOT operators. (Fable
+          // verify BLOCKER A: iss-alone classification let an anonymous guest
+          // reach regenerate-secret + budget mutators.)
+          principal:
+            payload.iss === "platos-platform" && (payload as any).isGuest !== true
+              ? "operator"
+              : "end-user",
           ...(tokenAgentId ? { agentId: tokenAgentId } : {}),
           ...(sessionContextFromToken
             ? { sessionContext: sessionContextFromToken }
@@ -377,6 +419,10 @@ export class ScopeGuard implements CanActivate {
         projectId: String(projectId),
         environmentId: String(environmentId),
         userId: String(userId),
+        // Trusted internal path (webapp→agent over the Docker network, never
+        // through Caddy — enforced by the !viaProxy guard above). This IS the
+        // control-plane, so it authorizes operator surfaces.
+        principal: "operator",
         ...(entityId ? { entityId: String(entityId) } : {}),
         ...(userToken ? { userToken: String(userToken) } : {}),
         // EOBD.40 — propagate inbound traceparent on the direct-header

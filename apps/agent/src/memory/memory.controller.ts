@@ -52,6 +52,16 @@ export class MemoryController {
     );
   }
 
+  /**
+   * SECURITY (audit H7) — an end-user / entity / guest token must NOT read or
+   * write another user's memories by supplying ?userId= or body.userId.
+   * Operators (the dashboard, via the internal path or a platform token) may
+   * target any user; every other principal is FORCED to its own userId.
+   */
+  private effectiveUserId(scope: RequestScope, requested?: string | null): string {
+    return scope.principal === "operator" ? (requested || scope.userId) : scope.userId;
+  }
+
   private scopeTuple(scope: RequestScope) {
     return {
       organizationId: scope.organizationId,
@@ -82,7 +92,7 @@ export class MemoryController {
     const scope = this.getScope(req);
     try {
       const row = await this.memoryService.add(this.scopeTuple(scope), {
-        userId: body.userId || scope.userId,
+        userId: this.effectiveUserId(scope, body.userId),
         content: body.content,
         kind: body.kind,
         agentId: body.agentId ?? null,
@@ -151,7 +161,7 @@ export class MemoryController {
     @Query("userId") userId?: string,
   ) {
     const scope = this.getScope(req);
-    const uid = userId || scope.userId;
+    const uid = this.effectiveUserId(scope, userId);
     try {
       const scopeTuple = this.scopeTuple(scope);
       // MCPF-W2 — DSAR must include archived rows. Soft-deleted memories
@@ -170,7 +180,7 @@ export class MemoryController {
       const relationships: Array<Record<string, unknown>> = [];
       // Pull relationships per-entity to stay inside the scope-gated API.
       for (const e of entities) {
-        const details = await this.graph.getRelationships(scopeTuple, { entityId: e.id });
+        const details = await this.graph.getRelationships(scopeTuple, { entityId: e.id }, uid);
         if (!details) continue;
         for (const out of details.outbound) {
           if (!entityIds.has(out.to.id)) continue;
@@ -542,7 +552,7 @@ export class MemoryController {
         metadata: body.metadata,
         agentVisible: body.agentVisible,
         visibility: body.visibility,
-      });
+      }, this.effectiveUserId(scope));
       if (!row) return { error: "memory not found", status: 404 };
       return { memory: row };
     } catch (err: any) {
@@ -566,7 +576,7 @@ export class MemoryController {
     const scope = this.getScope(req);
     try {
       const rows = await this.memoryService.list(this.scopeTuple(scope), {
-        userId: userId || scope.userId,
+        userId: this.effectiveUserId(scope, userId),
         kind: kind || undefined,
         agentId: agentId || undefined,
         limit: limit ? Number.parseInt(limit, 10) : undefined,
@@ -593,7 +603,7 @@ export class MemoryController {
     try {
       const hits = await this.memoryService.semanticSearch(this.scopeTuple(scope), {
         query: q,
-        userId: userId || scope.userId,
+        userId: this.effectiveUserId(scope, userId),
         kind: kind || undefined,
         agentId: agentId || undefined,
         limit: limit ? Number.parseInt(limit, 10) : undefined,
@@ -609,7 +619,7 @@ export class MemoryController {
   async deleteMemory(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
     try {
-      const deleted = await this.memoryService.delete(this.scopeTuple(scope), id);
+      const deleted = await this.memoryService.delete(this.scopeTuple(scope), id, this.effectiveUserId(scope));
       return { deleted };
     } catch (err: any) {
       return { error: err?.message || "delete failed", status: 400 };
@@ -629,7 +639,7 @@ export class MemoryController {
     const scope = this.getScope(req);
     try {
       const rows = await this.graph.getEntities(this.scopeTuple(scope), {
-        userId: userId || scope.userId,
+        userId: this.effectiveUserId(scope, userId),
         entityType: entityType || undefined,
         limit: limit ? Number.parseInt(limit, 10) : undefined,
         offset: offset ? Number.parseInt(offset, 10) : undefined,
@@ -644,7 +654,9 @@ export class MemoryController {
   async getRelationships(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
     try {
-      const res = await this.graph.getRelationships(this.scopeTuple(scope), { entityId: id });
+      // SECURITY (audit H9) — force the caller's own userId so a session token
+      // can't walk another user's KG neighborhood by entity id.
+      const res = await this.graph.getRelationships(this.scopeTuple(scope), { entityId: id }, this.effectiveUserId(scope));
       if (!res) return { error: "entity not found", status: 404 };
       return res;
     } catch (err: any) {
@@ -668,7 +680,7 @@ export class MemoryController {
       const path = await this.graph.shortestPath(this.scopeTuple(scope), {
         fromEntityId: from,
         toEntityId: to,
-        userId: userId || scope.userId,
+        userId: this.effectiveUserId(scope, userId),
         maxHops: maxHops ? Number.parseInt(maxHops, 10) : undefined,
       });
       return { path };
@@ -702,7 +714,7 @@ export class MemoryController {
       };
     }
     const scopeTuple = this.scopeTuple(scope);
-    const userId = body.userId || scope.userId;
+    const userId = this.effectiveUserId(scope, body.userId);
     try {
       const [from, to] = await Promise.all([
         this.graph.upsertEntity(scopeTuple, {
