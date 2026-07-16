@@ -292,6 +292,14 @@ export class McpPlatformController {
     if (raw.startsWith("plt_oa_")) {
       const oa = await this.oauth.verifyAccessToken(raw);
       if (!oa) return null;
+      // SECURITY (audit C3) — an entity-minted OAuth token (entityPk set) is
+      // scoped to that ENTITY's per-entity MCP surface, NOT the org-wide
+      // platform surface. verifyAnyBearer never inspected entityPk, so an
+      // embedded-widget visitor could request scope=mcp:write → permissions
+      // ["*"] and drive org/project-wide platform tools (agents.*, providers.*,
+      // entities.regenerate_secret, …). Reject entity OAuth tokens here — the
+      // inverse of the per-entity surface's own entityPk pin.
+      if (oa.entityPk) return null;
       const permissions = oa.scopes.includes("mcp:write")
         ? ["*"]
         : ["*.list", "*.get", "platos_whoami", "platos_list_accessible_scopes"];

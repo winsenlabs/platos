@@ -372,7 +372,15 @@ services:
     logging: *default-logging
     mem_limit: ${AGENT_MEM_LIMIT:-2g}
     ports:
-      - "3100:3100"
+      # SECURITY (audit — Fable verify residual): bind to loopback only. The
+      # direct-header (Path 2) auth path grants OPERATOR scope to any request
+      # without an X-Forwarded-For header (webapp→agent internal traffic). Caddy
+      # (host, localhost) fronts the public surface and always stamps XFF →
+      # session-token auth only. Publishing 3100 on 0.0.0.0 would let an
+      # external caller that reaches the port directly bypass ALL auth as
+      # operator. Inter-container traffic uses the Docker network (agent:3100),
+      # not this published port, so loopback binding doesn't affect it.
+      - "127.0.0.1:3100:3100"
     depends_on:
       postgres:
         condition: service_healthy

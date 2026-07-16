@@ -190,14 +190,19 @@ export class KnowledgeGraphService {
     return toEntityRow(row, (v) => this.decString(v), (v) => this.crypto?.decryptJsonField(v) ?? v);
   }
 
-  async getEntityById(scope: ScopeTuple, id: string): Promise<EntityRow | null> {
+  async getEntityById(scope: ScopeTuple, id: string, userId?: string): Promise<EntityRow | null> {
     this.requireScope(scope);
+    // SECURITY (audit H9) — when a userId is supplied, gate the entity to that
+    // user (KG entities carry userId). The session-token REST path passes
+    // scope.userId so it can't read another user's entity by id; operator MCP
+    // tools omit it (scope-only, operator-trusted).
     const row = await this.prisma.platosMemoryEntity.findFirst({
       where: {
         id,
         organizationId: scope.organizationId,
         projectId: scope.projectId,
         environmentId: scope.environmentId,
+        ...(userId ? { userId } : {}),
       },
     });
     return row ? toEntityRow(row, (v) => this.decString(v), (v) => this.crypto?.decryptJsonField(v) ?? v) : null;
@@ -211,9 +216,13 @@ export class KnowledgeGraphService {
   async getRelationships(
     scope: ScopeTuple,
     input: { entityId: string },
+    userId?: string,
   ): Promise<EntityRelationships | null> {
     this.requireScope(scope);
-    const entity = await this.getEntityById(scope, input.entityId);
+    // SECURITY (audit H9) — gate the root entity by userId (the getEntityById
+    // call returns null for a foreign entity), and filter the relationship
+    // rows by userId too when supplied.
+    const entity = await this.getEntityById(scope, input.entityId, userId);
     if (!entity) return null;
 
     const [outRows, inRows] = await Promise.all([
@@ -223,6 +232,7 @@ export class KnowledgeGraphService {
           organizationId: scope.organizationId,
           projectId: scope.projectId,
           environmentId: scope.environmentId,
+          ...(userId ? { userId } : {}),
         },
         include: { toEntity: true },
         orderBy: { createdAt: "desc" },
@@ -234,6 +244,7 @@ export class KnowledgeGraphService {
           organizationId: scope.organizationId,
           projectId: scope.projectId,
           environmentId: scope.environmentId,
+          ...(userId ? { userId } : {}),
         },
         include: { fromEntity: true },
         orderBy: { createdAt: "desc" },

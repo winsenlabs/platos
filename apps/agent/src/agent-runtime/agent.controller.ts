@@ -47,6 +47,7 @@ import {
 } from "./prompt-builder.service";
 import { SkillRuntimeService } from "../skills/skill-runtime.service";
 import type { RequestScope } from "../auth/scope.guard";
+import { requireOperator } from "../auth/scope.guard";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { BudgetService, type BudgetPeriod, type BudgetScopeType } from "../monitoring/budget.service";
@@ -132,6 +133,43 @@ export class AgentController {
       projectId: scope.projectId,
       environmentId: scope.environmentId,
     };
+  }
+
+  /**
+   * SECURITY (audit C2) — durable-exec internal callbacks are admin-token
+   * gated, but the whole body (incl. `scope`) is attacker-controllable if the
+   * shared static admin token is reached (e.g. via the shared Trigger enqueue
+   * surface). As a non-breaking mitigation, verify the body's agentId +
+   * threadId actually BELONG to the body's scope — a forged foreign scope
+   * won't own the real target ids. Legitimate callbacks (the chat-session /
+   * durable-turn workers) always send a scope that owns its ids, so this is a
+   * no-op for them. Full defense-in-depth = HMAC over the body with a
+   * worker-held secret (tracked as the C2 HMAC follow-up).
+   */
+  private async adminCallbackScopeOwns(body: {
+    agentId?: string;
+    threadId?: string | null;
+    scope?: { organizationId?: string; projectId?: string; environmentId?: string };
+  }): Promise<boolean> {
+    const s = body?.scope;
+    if (!s?.organizationId || !s?.projectId || !s?.environmentId) return false;
+    // FAIL CLOSED — an attacker could otherwise forge a victim scope and OMIT
+    // both ids to skip every check (Fable verify BLOCKER B). Require at least
+    // one verifiable ownership anchor.
+    if (!body.agentId && !body.threadId) return false;
+    if (body.agentId) {
+      const agent = await this.agentCrud
+        .findById(body.agentId, body.scope as any)
+        .catch(() => null);
+      if (!agent) return false;
+    }
+    if (body.threadId) {
+      const thread = await this.conversationService
+        .getThread(body.threadId, body.scope as any, { allUsers: true })
+        .catch(() => null);
+      if (!thread) return false;
+    }
+    return true;
   }
 
   /**
@@ -1913,6 +1951,9 @@ export class AgentController {
     },
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit C1/M7) — entity registration is minting authority
+    // (a new entity + serviceSecret). Operator-only.
+    requireOperator(scope);
     // PIFSP-3 Deliverable 1 — tighten server-side validation to the same
     // regex the form uses. Protects against API callers who skip the
     // browser client.
@@ -1950,6 +1991,10 @@ export class AgentController {
     @Param("entityId") entityId: string,
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit C1) — the serviceSecret IS the HMAC key that signs
+    // session tokens; an end-user/entity token must never rotate it (and
+    // receive the new plaintext → mint tokens for any user).
+    requireOperator(scope);
     const result = await this.authService.regenerateServiceSecret(
       scope.organizationId,
       scope.projectId,
@@ -2115,6 +2160,8 @@ export class AgentController {
     },
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit C1 — entity config is operator-only).
+    requireOperator(scope);
     const entity = await this.authService.getEntity(
       scope.organizationId,
       scope.projectId,
@@ -2355,6 +2402,8 @@ export class AgentController {
     @Res() res: Response,
   ): Promise<void> {
     const scope = this.getScope(req);
+    // SECURITY (audit C1 — test credentials are operator-only).
+    requireOperator(scope);
     const entity = await this.authService.getEntity(
       scope.organizationId,
       scope.projectId,
@@ -2570,11 +2619,20 @@ export class AgentController {
     @Query("date") date?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     return this.costService.getScopeDailyCost(this.scopeTuple(scope), date);
   }
 
   @Get("monitoring/cost/thread/:threadId")
-  async getThreadCost(@Param("threadId") threadId: string) {
+  async getThreadCost(@Req() req: Request, @Param("threadId") threadId: string) {
+    // SECURITY (audit H2) — cross-TENANT IDOR: this took no scope and read a
+    // threadId-only Redis key, so any threadId leaked another org's spend.
+    // Scope-gate the thread first (mirrors getThreadTrace below), 404 on miss.
+    const scope = this.getScope(req);
+    const thread = await this.conversationService.getThread(threadId, scope as any);
+    if (!thread) {
+      return { error: "Thread not found", status: 404 };
+    }
     return this.costService.getThreadCost(threadId);
   }
 
@@ -2605,6 +2663,7 @@ export class AgentController {
     @Query("limit") limit?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const rows = await this.costService.getCostByModel(this.scopeTuple(scope), {
       days: days ? parseInt(days, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
@@ -2622,6 +2681,7 @@ export class AgentController {
     @Query("limit") limit?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const rows = await this.costService.getCostByAgent(this.scopeTuple(scope), {
       days: days ? parseInt(days, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
@@ -2642,6 +2702,7 @@ export class AgentController {
     @Query("limit") limitRaw?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const prisma = (this.costService as any).prisma;
     if (!prisma) return { rows: [], windowHours: 24, fetchedAt: new Date().toISOString() };
     const limit = Math.min(20, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 5 : 5));
@@ -2745,6 +2806,7 @@ export class AgentController {
     @Query("limit") limit?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const rows = await this.costService.getCostByUser(this.scopeTuple(scope), {
       days: days ? parseInt(days, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
@@ -2768,6 +2830,7 @@ export class AgentController {
     @Query("sort") sort?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const prisma = (this.costService as any).prisma;
     if (!prisma) return { users: [], nextCursor: null, fetchedAt: new Date().toISOString() };
 
@@ -2982,6 +3045,7 @@ export class AgentController {
     @Query("sinceDays") sinceDaysRaw?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const prisma = (this.costService as any).prisma;
     if (!prisma) return { agents: [], fetchedAt: new Date().toISOString() };
     const sinceDays = Math.min(90, Math.max(1, sinceDaysRaw ? parseInt(sinceDaysRaw, 10) || 30 : 30));
@@ -3082,6 +3146,7 @@ export class AgentController {
     @Param("userId") targetUserId: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const prisma = (this.costService as any).prisma;
     if (!prisma) return { error: "service unavailable", status: 503 };
 
@@ -3249,6 +3314,7 @@ export class AgentController {
     @Param("userId") targetUserId: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     return this.budgetService.getUserConsumptionSummary(scope, targetUserId);
   }
 
@@ -3260,6 +3326,7 @@ export class AgentController {
   @Get("monitoring/breaches")
   async monitoringBreaches(@Req() req: Request) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     // Active userIds in the period — derive from the per-user cost rollup
     // (anyone who spent ≥1 cent in the last 30 days).
     let activeUserIds: string[] = [];
@@ -3280,6 +3347,7 @@ export class AgentController {
     @Param("userId") targetUserId: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const prisma = (this.costService as any).prisma;
     if (!prisma) return { error: "service unavailable" };
 
@@ -3415,6 +3483,7 @@ Write the summary now:`;
     @Query("days") daysRaw?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const days = Math.max(1, Math.min(30, daysRaw ? parseInt(daysRaw, 10) || 7 : 7));
     const result = await this.costService.getAgentCacheRange(
       this.scopeTuple(scope),
@@ -3437,6 +3506,7 @@ Write the summary now:`;
     @Query("date") date?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const result = await this.costService.getSkillCostDaily(this.scopeTuple(scope), date);
     return { ...result, fetchedAt: new Date().toISOString() };
   }
@@ -3452,6 +3522,7 @@ Write the summary now:`;
     @Query("to") to?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const today = new Date().toISOString().slice(0, 10);
     const end = to || today;
     // Default to a 7-day window ending today when no `from` given.
@@ -3476,6 +3547,7 @@ Write the summary now:`;
     @Query("limit") limit?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     return this.utilizationService.build(this.scopeTuple(scope), {
       days: days ? parseInt(days, 10) : undefined,
       topUserLimit: limit ? parseInt(limit, 10) : undefined,
@@ -3492,6 +3564,7 @@ Write the summary now:`;
     @Query("days") days?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     return this.utilizationService.build(this.scopeTuple(scope), {
       days: days ? parseInt(days, 10) : undefined,
     });
@@ -3519,6 +3592,7 @@ Write the summary now:`;
     @Query("offset") offset?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const page = await this.toolAuditService.list(this.scopeTuple(scope), {
       threadId,
       agentId,
@@ -3539,6 +3613,7 @@ Write the summary now:`;
   @Get("monitoring/tool-audit/:callId")
   async getToolAudit(@Req() req: Request, @Param("callId") callId: string) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const row = await this.toolAuditService.getById(this.scopeTuple(scope), callId);
     if (!row) return { error: "Tool call not found", status: 404 };
     return row;
@@ -3562,6 +3637,7 @@ Write the summary now:`;
     @Param("callId") callId: string,
   ): Promise<any> {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
 
     // PPR-10 — per-(scope, user) token bucket: 10 replays per minute.
     // Replay re-invokes through ToolExecutorService.execute which runs
@@ -3640,6 +3716,7 @@ Write the summary now:`;
     @Query("offset") offset?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const scopeTuple = this.scopeTuple(scope);
     // Note: previously this called `sweepExpired` synchronously on every
     // request. The webapp polls this endpoint every ~2s for the pending-
@@ -3665,6 +3742,7 @@ Write the summary now:`;
   @Get("monitoring/approvals/:approvalId")
   async getApproval(@Req() req: Request, @Param("approvalId") approvalId: string) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const row = await this.approvalsService.getById(this.scopeTuple(scope), approvalId);
     if (!row) return { error: "Approval not found", status: 404 };
     return row;
@@ -3714,6 +3792,12 @@ Write the summary now:`;
     }
     if (!body?.threadId || !body?.scope) {
       return { status: "invalid", reason: "threadId and scope required" };
+    }
+    // SECURITY (audit C2 / Fable BLOCKER B residual) — the body's scope must
+    // own the thread (compaction runs under the supplied scope). threadId is
+    // mandatory here so no omit-ids hole, but the ownership was unverified.
+    if (!(await this.adminCallbackScopeOwns(body))) {
+      return { status: "forbidden", reason: "scope does not own the target thread" };
     }
     const start = Date.now();
     try {
@@ -3788,6 +3872,10 @@ Write the summary now:`;
     if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
     if (!this.verifyAdminToken(req)) return { status: "forbidden" };
     if (!body?.message || !body?.scope) return { status: "invalid", reason: "message and scope required" };
+    // SECURITY (audit C2) — the body's scope must own its agent/thread.
+    if (!(await this.adminCallbackScopeOwns(body))) {
+      return { status: "forbidden", reason: "scope does not own the target agent/thread" };
+    }
     const start = Date.now();
     const threadId = body.threadId;
     const room = `thread:${threadId}`;
@@ -3885,6 +3973,11 @@ Write the summary now:`;
       res.status(400).json({ error: "message and scope required" });
       return;
     }
+    // SECURITY (audit C2) — the body's scope must own its agent/thread.
+    if (!(await this.adminCallbackScopeOwns(body))) {
+      res.status(403).json({ error: "forbidden", reason: "scope does not own the target agent/thread" });
+      return;
+    }
     const ac = new AbortController();
     const onClose = () => {
       if (!ac.signal.aborted) ac.abort();
@@ -3932,6 +4025,10 @@ Write the summary now:`;
     if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
     if (!this.verifyAdminToken(req)) return { status: "forbidden" };
     if (!body?.goal || !body?.scope) return { status: "invalid", reason: "goal and scope required" };
+    // SECURITY (audit C2 / Fable BLOCKER B) — the body's scope must own its agent/thread.
+    if (!(await this.adminCallbackScopeOwns(body))) {
+      return { status: "forbidden", reason: "scope does not own the target agent/thread" };
+    }
     const start = Date.now();
     try {
       // TODO(refactor): multi-step autonomous orchestration. For now a single
@@ -3986,6 +4083,17 @@ Write the summary now:`;
     if (!this.verifyAdminToken(req)) return { status: "forbidden" };
     if (!body?.skillId || !body?.toolName || !body?.scope) {
       return { status: "invalid", reason: "skillId, toolName and scope required" };
+    }
+    // SECURITY (audit C2 / Fable BLOCKER B) — the body's scope must own its
+    // agent/thread. skill-run carries the agent id inside scope.agentId.
+    if (
+      !(await this.adminCallbackScopeOwns({
+        agentId: body.scope?.agentId,
+        threadId: body.threadId ?? body.scope?.threadId,
+        scope: body.scope,
+      }))
+    ) {
+      return { status: "forbidden", reason: "scope does not own the target agent/thread" };
     }
     if (!this.skillRuntime) return { status: "skipped", reason: "SkillRuntimeService unavailable" };
     const start = Date.now();
@@ -4194,6 +4302,7 @@ Write the summary now:`;
   @Get("monitoring/summary")
   async monitoringSummary(@Req() req: Request) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const scopeTuple = this.scopeTuple(scope);
 
     const [threadCountAll, threadCountDay, cost7d] = await Promise.all([
@@ -4281,6 +4390,7 @@ Write the summary now:`;
   @Get("monitoring/governance")
   async governanceDashboard(@Req() req: Request, @Query("sinceDays") sinceDaysRaw?: string) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const sinceDays = sinceDaysRaw ? parseInt(sinceDaysRaw, 10) : undefined;
     return this.governanceService.dashboard(this.scopeTuple(scope), { sinceDays });
   }
@@ -4300,6 +4410,7 @@ Write the summary now:`;
     @Query("offset") offset?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     return this.safetyEventService.list(this.scopeTuple(scope), {
       detector: detector as DetectorKind | undefined,
       action: action as DetectorAction | undefined,
@@ -4334,6 +4445,7 @@ Write the summary now:`;
     @Query("agentId") agentId?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const prisma = (this.agentService as any).prisma;
     const limit = Math.min(50, Math.max(1, limitStr ? parseInt(limitStr, 10) : 15));
     const scopeWhere = {
@@ -4526,6 +4638,8 @@ Write the summary now:`;
     },
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit H16 — budget caps are operator-only (financial DoS otherwise)).
+    requireOperator(scope);
     try {
       const cap = await this.budgetService.upsert(this.scopeTuple(scope), body);
       return { cap };
@@ -4544,6 +4658,8 @@ Write the summary now:`;
   @Delete("budgets/:capId")
   async deleteBudget(@Req() req: Request, @Param("capId") capId: string) {
     const scope = this.getScope(req);
+    // SECURITY (audit H16 — budget caps are operator-only).
+    requireOperator(scope);
     const deleted = await this.budgetService.delete(this.scopeTuple(scope), capId);
     return { deleted };
   }
@@ -4559,6 +4675,8 @@ Write the summary now:`;
     @Body() body: { minutes: number },
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit H16 — budget override is operator-only).
+    requireOperator(scope);
     const minutes = typeof body?.minutes === "number" ? body.minutes : 0;
     const cap = await this.budgetService.override(this.scopeTuple(scope), capId, {
       minutes,

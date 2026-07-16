@@ -26,10 +26,22 @@ import type { RequestScope } from "../auth/scope.guard";
  * BLOCK 2: wire into tool-gateway for actual execution.
  */
 
-// TODO(env.ts) consider migration — module-load-time const; env proxy
-// would trigger full schema parse before main.ts has a chance to surface
-// structured errors. Kept as direct process.env read.
-const INTERNAL_SECRET = process.env.TRIGGER_INTERNAL_SECRET || "dev-internal-secret-change-me";
+// SECURITY (audit M1) — this secret is the HMAC key gating /internal/execute-tool
+// + /internal/batch-turn (which run tools/turns under a supplied scope). A
+// hardcoded default meant a self-host that forgot to set it had a PUBLICLY
+// KNOWN signing key → forgeable internal callbacks. Fail CLOSED in production:
+// no default, and crash at boot if unset/placeholder when NODE_ENV=production.
+const INTERNAL_SECRET_RAW = (process.env.TRIGGER_INTERNAL_SECRET || "").trim();
+const INTERNAL_SECRET_PLACEHOLDERS = new Set(["", "dev-internal-secret-change-me", "change-me", "changeme"]);
+if (process.env.NODE_ENV === "production" && INTERNAL_SECRET_PLACEHOLDERS.has(INTERNAL_SECRET_RAW)) {
+  throw new Error(
+    "TRIGGER_INTERNAL_SECRET must be set to a strong random value in production " +
+      "(it HMAC-gates /internal/execute-tool + /internal/batch-turn). Generate one with `openssl rand -hex 32`.",
+  );
+}
+// Outside production, fall back to a clearly-marked dev value so local dev works;
+// the boot guard above blocks it in prod.
+const INTERNAL_SECRET = INTERNAL_SECRET_RAW || "dev-internal-secret-change-me";
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000; // 5 min
 
 @Controller("internal")

@@ -212,14 +212,33 @@ export function buildTriggerToolHandlers(): McpToolHandler[] {
         },
         additionalProperties: false,
       },
-      async execute(params) {
+      async execute(params, scope) {
         const taskId = String(params["taskId"]);
+        const payload = (params["payload"] ?? {}) as Record<string, unknown>;
+        // SECURITY (audit C4) — platos.* worker tasks forward payload.scope to
+        // admin-token internal callbacks that run a turn UNDER that scope. The
+        // MCP admin tier is "cross-scope WITHIN the minting org", not a
+        // platform superuser, so a foreign payload.scope would be a cross-ORG
+        // escalation. Rebind the scope tuple to the token's own verified scope
+        // for any platos.* task — never trust the caller-supplied scope.
+        // Match BOTH dot- and dash-namespaced Platos tasks: platos.agent.*
+        // AND platos-agent-tool-block / platos-agent-batch / platos-custom-task,
+        // which are the real scope-forwarding workers (Fable verify BLOCKER C).
+        if (/^platos[.-]/.test(taskId) && payload && typeof payload === "object") {
+          const existing = (payload["scope"] ?? {}) as Record<string, unknown>;
+          payload["scope"] = {
+            ...existing,
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+          };
+        }
         return triggerFetch(
           `/api/v1/tasks/${encodeURIComponent(taskId)}/trigger`,
           {
             method: "POST",
             body: JSON.stringify({
-              payload: params["payload"] ?? {},
+              payload,
               options: params["options"] ?? {},
             }),
           },

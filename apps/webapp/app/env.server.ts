@@ -1528,7 +1528,27 @@ const EnvironmentSchema = z
     PRIVATE_CONNECTIONS_AWS_ACCOUNT_IDS: z.string().optional(),
   })
   .and(GithubAppEnvSchema)
-  .and(S2EnvSchema);
+  .and(S2EnvSchema)
+  // SECURITY (audit H14) — the webapp MINTS the login cookie (also the API JWT
+  // secret) + magic-link tokens; a self-host that copies `.env.example` boots
+  // prod with the repo's public placeholder → forgeable session/magic-link for
+  // any user. The agent already guards PLATOS_SESSION_SECRET (.min + prod
+  // sentinel); mirror it here for the actual minter. Prod-gated so local dev
+  // (which copies `.env.example`) still boots.
+  .superRefine((val, ctx) => {
+    if (val.NODE_ENV !== "production") return;
+    const placeholder = /replace-with-real|change-?me|placeholder|^abcdef1234/i;
+    for (const key of ["SESSION_SECRET", "MAGIC_LINK_SECRET"] as const) {
+      const v = (val as Record<string, unknown>)[key];
+      if (typeof v !== "string" || v.length < 16 || placeholder.test(v)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} must be a strong random value (≥16 chars, not a placeholder) in production. Generate one with: openssl rand -hex 32`,
+        });
+      }
+    }
+  });
 
 export type Environment = z.infer<typeof EnvironmentSchema>;
 export const env = EnvironmentSchema.parse(process.env);

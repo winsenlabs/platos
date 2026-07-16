@@ -322,10 +322,14 @@ export class MemoryService {
    * kind+content+metadata tuple if any of them change. Re-embeds when
    * `content` changes. Scope-guarded.
    */
-  async update(scope: ScopeTuple, id: string, patch: UpdateMemoryInput): Promise<MemoryRow | null> {
+  async update(scope: ScopeTuple, id: string, patch: UpdateMemoryInput, userId?: string): Promise<MemoryRow | null> {
     this.requireScope(scope);
     const existing = await this.get(scope, id);
     if (!existing) return null;
+    // SECURITY (audit H7 write-side residual) — when a userId is supplied,
+    // refuse to edit a memory the caller doesn't own (the REST path passes the
+    // caller's userId so it can't edit another user's memory by id).
+    if (userId && existing.userId !== userId) return null;
 
     const nextKind: string = patch.kind ?? existing.kind;
     const nextContent: string = patch.content ?? existing.content;
@@ -426,7 +430,7 @@ export class MemoryService {
    * (silent no-op rather than an exception — the `forget` meta-tool
    * prefers idempotent behaviour).
    */
-  async delete(scope: ScopeTuple, id: string): Promise<boolean> {
+  async delete(scope: ScopeTuple, id: string, userId?: string): Promise<boolean> {
     this.requireScope(scope);
     const res = await this.prisma.platosMemory.deleteMany({
       where: {
@@ -434,6 +438,10 @@ export class MemoryService {
         organizationId: scope.organizationId,
         projectId: scope.projectId,
         environmentId: scope.environmentId,
+        // SECURITY (audit H7 write-side residual) — scope the delete to the
+        // caller's userId when supplied so a session token can't delete
+        // another user's memory by id.
+        ...(userId ? { userId } : {}),
       },
     });
     return (res?.count ?? 0) > 0;

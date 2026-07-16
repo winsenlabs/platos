@@ -4,6 +4,7 @@ import { AttachmentsService } from "../agent-runtime/attachments.service";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { Inject } from "@nestjs/common";
 import type { RequestScope } from "../auth/scope.guard";
+import { requireOperator } from "../auth/scope.guard";
 
 /**
  * PIFSP-16 — File System: 4-level hierarchy for browsing attachments.
@@ -41,6 +42,7 @@ export class FilesController {
     @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H10) — file browser is operator-only (cross-user presigned URLs)
     const limit = Math.min(200, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 50 : 50));
 
     const rows: Array<{
@@ -101,6 +103,7 @@ export class FilesController {
     @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H10) — file browser is operator-only (cross-user presigned URLs)
     const limit = Math.min(200, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 50 : 50));
 
     const rows: Array<{
@@ -154,6 +157,7 @@ export class FilesController {
     @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H10) — file browser is operator-only (cross-user presigned URLs)
     const limit = Math.min(200, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 50 : 50));
 
     const rows: Array<{
@@ -210,6 +214,7 @@ export class FilesController {
     @Query("mime") mimeFilter?: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H10) — file browser is operator-only (cross-user presigned URLs)
     const limit = Math.min(200, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 50 : 50));
 
     const whereBase: Record<string, unknown> = {
