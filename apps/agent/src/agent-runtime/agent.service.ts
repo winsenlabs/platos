@@ -1457,6 +1457,40 @@ export class AgentService {
    * Non-streaming callers (e.g. `run()`) may pass `undefined` — artifact
    * events are silently dropped in that path since there's no consumer.
    */
+  /**
+   * Resolve the agent-scoping filter for memory READS (recall / list /
+   * injection). The product rule: an agent sees only its OWN memories unless
+   * it is clustered, in which case it sees its cluster MEMBERS' memories.
+   *   - no agentId (agent-less session) → {} (no agent identity to scope to)
+   *   - standalone agent               → { agentId }
+   *   - clustered agent                → { agentIds: [members…] }
+   * Returned object is spread straight into the MemoryService read input.
+   */
+  private async memoryAgentFilter(
+    agentId: string | undefined,
+    clusteringId: string | null | undefined,
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+  ): Promise<{ agentId?: string; agentIds?: string[] }> {
+    if (!agentId) return {};
+    if (!clusteringId) return { agentId };
+    try {
+      const members: Array<{ id: string }> = await this.prisma.platosAgent.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          clusteringId,
+        },
+        select: { id: true },
+      });
+      const ids = members.map((m) => m.id);
+      return ids.length > 0 ? { agentIds: ids } : { agentId };
+    } catch {
+      // On lookup failure, fail CLOSED to the single agent (never scope-wide).
+      return { agentId };
+    }
+  }
+
   private buildMetaTools(
     scope: RequestScope,
     agentConfig?: AgentConfig,
@@ -1954,9 +1988,8 @@ export class AgentService {
             kind,
             limit,
             offset,
-            // Same agent-scoping rule as `recall`: cluster members share,
-            // standalone agents see only their own memories.
-            ...(agentConfig?.clusteringId || !scope.agentId ? {} : { agentId: scope.agentId }),
+            // Own agent, or cluster MEMBERS when clustered (never scope-wide).
+            ...(await this.memoryAgentFilter(scope.agentId, agentConfig?.clusteringId, scope)),
           });
           return {
             total: rows.length,
@@ -4961,12 +4994,12 @@ export class AgentService {
                 minScore: 0.35,
                 // Defaults exclude "private"; pass agent-visible + hidden.
                 visibilityIn: ["agent_visible", "hidden"],
-                // Agent-scoped injection: memory crosses agents ONLY inside a
-                // cluster. Without this filter, every agent in the scope saw
-                // every other agent's user memories — observed live: Mark
-                // (fitness coach) opened with Ada's (SDR) Pulsegrid/cold-email
-                // background the hour memory-extraction came back online.
-                ...(scope.agentId && !injectClusteringId ? { agentId: scope.agentId } : {}),
+                // Agent-scoped injection: own agent, or cluster MEMBERS when
+                // clustered — never scope-wide. (Original leak: Mark the
+                // fitness coach opened with Ada the SDR's Pulsegrid/cold-email
+                // background. Clustered agents previously still leaked
+                // scope-wide here; now member-resolved.)
+                ...(await this.memoryAgentFilter(scope.agentId, injectClusteringId, scope)),
               },
             ),
             new Promise<never>((_, reject) =>
