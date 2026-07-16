@@ -4,6 +4,7 @@ import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import { openai, createOpenAI } from "@ai-sdk/openai";
 import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
 import { PRISMA_TOKEN } from "../shared/database.provider";
+import { REDIS_TOKEN } from "../shared/redis.provider";
 import { ScopedEnvService } from "../providers/scoped-env.service";
 import { MemoryService, type ScopeTuple, type MemoryKind } from "./memory.service";
 import { KnowledgeGraphService } from "./knowledge-graph.service";
@@ -89,6 +90,8 @@ export interface ExtractFromThreadInput {
   threadId: string;
   /** Optional per-call policy override — mostly for the manual endpoint. */
   policyOverride?: Partial<ExtractionPolicy>;
+  /** Bypass the no-new-activity watermark (manual extract-now kicks). */
+  force?: boolean;
 }
 
 export interface ExtractFromThreadOutput {
@@ -132,6 +135,7 @@ export class MemoryExtractionService {
     @Optional() private readonly scopedEnv?: ScopedEnvService,
     @Optional() private readonly crypto?: MessageCryptoService,
     @Optional() private readonly costService?: CostService,
+    @Optional() @Inject(REDIS_TOKEN) private readonly redis?: any,
   ) {}
 
   async extractFromThread(
@@ -147,7 +151,7 @@ export class MemoryExtractionService {
         projectId: scope.projectId,
         environmentId: scope.environmentId,
       },
-      select: { id: true, agentId: true, userId: true, platosEndUserId: true },
+      select: { id: true, agentId: true, userId: true, platosEndUserId: true, updatedAt: true },
     });
     if (!thread) {
       return { memoriesCreated: 0, entitiesCreated: 0, relationshipsCreated: 0, skipped: 0, reason: "thread-not-found" };
@@ -179,6 +183,29 @@ export class MemoryExtractionService {
       return { memoriesCreated: 0, entitiesCreated: 0, relationshipsCreated: 0, skipped: 0, reason: "extraction-disabled" };
     }
 
+    // Watermark — skip threads with no activity since the last extraction.
+    // Without this, every hourly sweep re-judged the same window and wrote
+    // near-duplicate memories (observed live: identical facts at 10:00,
+    // 11:00, and 12:00 from one thread). Keyed on thread.updatedAt (bumps
+    // on new messages); manual kicks pass `force` to bypass.
+    const wmKey = `memx:wm:${input.threadId}`;
+    const threadStamp = (thread as any).updatedAt ? new Date((thread as any).updatedAt).toISOString() : null;
+    if (!input.force && this.redis && threadStamp) {
+      try {
+        const wm = await this.redis.get(wmKey);
+        if (wm && wm >= threadStamp) {
+          return { memoriesCreated: 0, entitiesCreated: 0, relationshipsCreated: 0, skipped: 0, reason: "no-new-activity" };
+        }
+      } catch {
+        // Redis hiccup — proceed without the watermark.
+      }
+    }
+    const setWatermark = () => {
+      if (this.redis && threadStamp) {
+        this.redis.set(wmKey, threadStamp, "EX", 60 * 60 * 24 * 14).catch(() => undefined);
+      }
+    };
+
     // Pull the last N messages (N = max(minMessagesBeforeRun * 2, 40) up to 80
     // to give the judge enough context without runaway token cost).
     const windowSize = Math.max(Math.min(policy.minMessagesBeforeRun * 2, 80), 20);
@@ -206,6 +233,8 @@ export class MemoryExtractionService {
       take: windowSize,
     });
     if (messages.length < policy.minMessagesBeforeRun) {
+      // Mark covered — new messages bump thread.updatedAt past the watermark.
+      setWatermark();
       return {
         memoriesCreated: 0,
         entitiesCreated: 0,
@@ -345,6 +374,10 @@ export class MemoryExtractionService {
         );
       }
     }
+
+    // Transcript fully evaluated — stamp the watermark so unchanged threads
+    // are skipped by subsequent sweeps.
+    setWatermark();
 
     return {
       memoriesCreated,

@@ -310,6 +310,7 @@ export function buildPlatosControlToolHandlers(deps: {
         const policyOverride = params["policyOverride"] as Record<string, unknown> | undefined;
         try {
           const out = await memoryExtraction.extractFromThread(tuple(scope), {
+            force: true, // manual extract-now bypasses the no-new-activity watermark
             threadId,
             ...(policyOverride !== undefined
               ? { policyOverride: policyOverride as any }
