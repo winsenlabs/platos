@@ -666,19 +666,23 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     })();
     if (!chatSdk?.AgentChat) return false;
 
-    // Mint the thread up-front for new conversations (same as the durable
-    // path) — the session externalId IS the threadId, so it must exist first.
-    let threadId = data?.threadId as string | undefined;
-    if (!threadId) {
-      try {
-        const convo = (this.agentTaskService as any).conversationService;
-        const created = await convo?.getOrCreateThread?.(scope, agentId);
-        threadId = created?.id as string | undefined;
-      } catch {
-        return false;
-      }
-      if (!threadId) return false;
+    // SECURITY (cross-tenant IDOR) — ALWAYS resolve the threadId through
+    // getOrCreateThread, which scope+owner-gates it (getThread filters by the
+    // full scope tuple AND userId/createdByUserId). Never trust a client-
+    // supplied threadId directly: without this, a caller could pass a victim's
+    // threadId and get joined to `thread:<victimId>` — reading the victim's
+    // streamed turns and injecting into their live UI. A non-owned threadId
+    // resolves to a freshly minted (owned) thread instead. The session
+    // externalId IS this resolved threadId, so it must exist first anyway.
+    let threadId: string | undefined;
+    try {
+      const convo = (this.agentTaskService as any).conversationService;
+      const resolved = await convo?.getOrCreateThread?.(scope, agentId, data?.threadId);
+      threadId = resolved?.id as string | undefined;
+    } catch {
+      return false;
     }
+    if (!threadId) return false;
 
     try {
       // FRESH AgentChat per message (deliberate — do NOT cache): with the
@@ -845,21 +849,20 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     const triggerReady = !!process.env.TRIGGER_SECRET_KEY && !!triggerSdk?.tasks?.trigger;
     if (!triggerReady) return false; // managed trigger not configured → direct
 
-    // New-thread durable turn: no threadId from the client (fresh chat). Mint
-    // the thread now so (a) we hand a concrete threadId to the run, (b) we can
-    // join the client to its room before the run streams, and (c) the client
-    // adopts it for subsequent turns via the meta event below. On failure, fall
-    // back to the direct path (which mints the thread itself).
-    if (!threadId) {
-      try {
-        const convo = (this.agentTaskService as any).conversationService;
-        const created = await convo?.getOrCreateThread?.(scope, agentId);
-        threadId = created?.id as string | undefined;
-      } catch {
-        return false;
-      }
-      if (!threadId) return false;
+    // SECURITY (cross-tenant IDOR — same as tryDispatchSession) — ALWAYS
+    // resolve through getOrCreateThread so a client-supplied threadId is
+    // scope+owner-gated before we join the room / bridge the run. A foreign
+    // threadId resolves to a freshly minted owned thread rather than joining
+    // `thread:<victimId>`. Also gives us a concrete id to hand the run and for
+    // the client to adopt via the meta event below.
+    try {
+      const convo = (this.agentTaskService as any).conversationService;
+      const resolved = await convo?.getOrCreateThread?.(scope, agentId, data?.threadId);
+      threadId = resolved?.id as string | undefined;
+    } catch {
+      return false;
     }
+    if (!threadId) return false;
 
     try {
       const clientMessageId = (data as any).idempotencyKey as string | undefined;

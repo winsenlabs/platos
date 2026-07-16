@@ -127,6 +127,8 @@ export interface ListMemoriesInput {
   userId: string;
   kind?: MemoryKind | string;
   agentId?: string | null;
+  /** Restrict to a set of agents (cluster-member listing). */
+  agentIds?: string[];
   limit?: number;
   offset?: number;
   /**
@@ -546,6 +548,16 @@ export class MemoryService {
          ${includeArchived ? "" : `AND "archivedAt" IS NULL`}
          ${input.kind ? `AND "kind" = $5` : ""}
          ${input.agentId !== undefined ? `AND "agentId" ${input.agentId === null ? "IS NULL" : `= $${input.kind ? 6 : 5}`}` : ""}
+         ${
+           input.agentIds && input.agentIds.length > 0
+             ? `AND "agentId" = ANY($${
+                 4 +
+                 (input.kind ? 1 : 0) +
+                 (input.agentId !== undefined && input.agentId !== null ? 1 : 0) +
+                 1
+               }::text[])`
+             : ""
+         }
        ORDER BY "lastAccessedAt" DESC NULLS LAST, "createdAt" DESC
        LIMIT ${limit} OFFSET ${offset}`,
       ...buildListArgs(scope, input),
