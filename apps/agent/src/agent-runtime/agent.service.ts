@@ -1877,6 +1877,12 @@ export class AgentService {
                   kind,
                   limit,
                   agentVisibleOnly: true,
+                  // Memory is agent-scoped unless the agent is clustered
+                  // (cluster branch above shares across members). Without
+                  // this, one agent recalls another's memories — observed
+                  // live: Mark (fitness) surfaced Ada's (SDR) Pulsegrid
+                  // outreach context for the same user.
+                  ...(scope.agentId ? { agentId: scope.agentId } : {}),
                 });
             return {
               query,
@@ -1947,6 +1953,9 @@ export class AgentService {
             kind,
             limit,
             offset,
+            // Same agent-scoping rule as `recall`: cluster members share,
+            // standalone agents see only their own memories.
+            ...(agentConfig?.clusteringId || !scope.agentId ? {} : { agentId: scope.agentId }),
           });
           return {
             total: rows.length,
@@ -4912,6 +4921,7 @@ export class AgentService {
     ) {
       try {
         let policyEnabled = true;
+        let injectClusteringId: string | null = null;
         if (scope.agentId) {
           const agentRow = await this.prisma.platosAgent.findFirst({
             where: {
@@ -4920,10 +4930,11 @@ export class AgentService {
               projectId: scope.projectId,
               environmentId: scope.environmentId,
             },
-            select: { extractionPolicy: true },
+            select: { extractionPolicy: true, clusteringId: true },
           });
           const policy = resolveExtractionPolicy(agentRow?.extractionPolicy ?? null);
           policyEnabled = policy.enabled;
+          injectClusteringId = (agentRow as any)?.clusteringId ?? null;
         }
         if (policyEnabled) {
           const budget = Math.max(100, env.PLATOS_MEMORY_INJECT_BUDGET_TOKENS ?? 800);
@@ -4948,6 +4959,12 @@ export class AgentService {
                 minScore: 0.35,
                 // Defaults exclude "private"; pass agent-visible + hidden.
                 visibilityIn: ["agent_visible", "hidden"],
+                // Agent-scoped injection: memory crosses agents ONLY inside a
+                // cluster. Without this filter, every agent in the scope saw
+                // every other agent's user memories — observed live: Mark
+                // (fitness coach) opened with Ada's (SDR) Pulsegrid/cold-email
+                // background the hour memory-extraction came back online.
+                ...(scope.agentId && !injectClusteringId ? { agentId: scope.agentId } : {}),
               },
             ),
             new Promise<never>((_, reject) =>
