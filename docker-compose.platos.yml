@@ -412,6 +412,10 @@ services:
       TRIGGER_API_URL: "http://webapp:3030"
       TRIGGER_SECRET_KEY: "${TRIGGER_SECRET_KEY:-}"
       TRIGGER_INTERNAL_SECRET: "${TRIGGER_INTERNAL_SECRET:?required — openssl rand -hex 32}"
+      # Trigger Sessions durable chat (Option 1 — Platos proxies). When true,
+      # durable-mode agents route turns through the platos.chat.session worker
+      # + gateway proxy-bridge instead of the durable-turn task path.
+      PLATOS_CHAT_SESSIONS: "${PLATOS_CHAT_SESSIONS:-false}"
       PLATOS_WORKER_CONCURRENCY: "${PLATOS_WORKER_CONCURRENCY:-10}"
       PLATOS_BATCH_CONCURRENCY: "${PLATOS_BATCH_CONCURRENCY:-5}"
       PLATOS_PER_ORG_CONCURRENCY: "${PLATOS_PER_ORG_CONCURRENCY:-10}"

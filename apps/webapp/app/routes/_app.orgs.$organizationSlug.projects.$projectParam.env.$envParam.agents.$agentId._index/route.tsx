@@ -13,7 +13,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@heroicons/react/20/solid";
-import { Form, useFetcher, useParams, type MetaFunction } from "@remix-run/react";
+import { Form, useActionData, useFetcher, useNavigation, useParams, type MetaFunction } from "@remix-run/react";
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/server-runtime";
 import { useMemo, useState } from "react";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
@@ -714,6 +714,16 @@ export default function AgentDetailPage() {
     agentEnableThreading,
     availableClusters,
   } = useTypedLoaderData<typeof loader>();
+  // Main config Form save feedback. The <Form method="post"> below submits via
+  // navigation (not a fetcher), so its result lands in useActionData and its
+  // in-flight state in useNavigation. Fetcher-based sub-forms (feature flags,
+  // context mapping) do NOT populate these, so this only reflects the main save.
+  const mainActionData = useActionData<{ success?: boolean; error?: string }>();
+  const mainNavigation = useNavigation();
+  // A main-form submit has no `intent` field (the intent-tagged branches are
+  // fetcher sub-forms), so this distinguishes it from those.
+  const isSavingConfig =
+    mainNavigation.state !== "idle" && !mainNavigation.formData?.get("intent");
   const [blocks, setBlocks] = useState(initialBlocks || []);
   const [toolsBlockMode, setToolsBlockMode] = useState<string>(
     (agent as any).toolsBlockConfig?.mode || "direct"
@@ -1388,9 +1398,23 @@ export default function AgentDetailPage() {
 
             <FormButtons
               confirmButton={
-                <Button type="submit" variant="primary/medium">
-                  Save Configuration
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="submit"
+                    variant="primary/medium"
+                    disabled={isSavingConfig}
+                  >
+                    {isSavingConfig ? "Saving…" : "Save Configuration"}
+                  </Button>
+                  {mainNavigation.state === "idle" && mainActionData?.success && (
+                    <span className="text-xs text-emerald-400">Saved.</span>
+                  )}
+                  {mainNavigation.state === "idle" && mainActionData?.error && (
+                    <span className="text-xs text-rose-400">
+                      {mainActionData.error}
+                    </span>
+                  )}
+                </div>
               }
             />
           </div>

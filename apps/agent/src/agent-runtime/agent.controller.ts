@@ -3841,6 +3841,69 @@ Write the summary now:`;
   }
 
   /**
+   * REFACTOR (Trigger Sessions — Option 1, Platos proxies) — SSE turn for the
+   * durable chat-session worker. The `platos.chat.session` `chat.customAgent`
+   * worker POSTs here once per turn; we run the EXISTING
+   * `executeStreamingTurn` (config, BYOK key, tools, memory, cost, scope,
+   * persistence are ALL reused — no reimplementation in the worker) and stream
+   * its AgentStreamEvents back as SSE. The worker converts each event to a
+   * UIMessageChunk and writes it to the durable Trigger session `.out`; Platos
+   * then proxies `.out` to the chat client. Mirrors `agentChatStream` (SSE +
+   * heartbeat) with the admin-token + body-scope gate of `internalDurableTurn`
+   * (this is called by the Trigger worker through the public proxy, not a
+   * browser). See docs/durable-chat-sessions-migration-plan.md.
+   */
+  @Post("internal/chat/stream-turn")
+  async internalChatStreamTurn(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body() body: {
+      threadId: string;
+      agentId: string;
+      message: string;
+      replyToMessageId?: string | null;
+      clientMessageId?: string | null;
+      scope: {
+        organizationId: string;
+        projectId: string;
+        environmentId: string;
+        userId: string;
+        agentId?: string;
+        threadId?: string;
+      };
+    },
+  ) {
+    if (!env.PLATOS_ADMIN_TOKEN) {
+      res.status(503).json({ error: "PLATOS_ADMIN_TOKEN not set" });
+      return;
+    }
+    if (!this.verifyAdminToken(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!body?.message || !body?.scope) {
+      res.status(400).json({ error: "message and scope required" });
+      return;
+    }
+    const ac = new AbortController();
+    const onClose = () => {
+      if (!ac.signal.aborted) ac.abort();
+    };
+    req.on("close", onClose);
+    res.on("close", onClose);
+    const rawEvents = this.agentTaskService.executeStreamingTurn(body.message, body.scope as any, {
+      agentId: body.agentId,
+      threadId: body.threadId,
+      replyToMessageId: body.replyToMessageId ?? undefined,
+      idempotencyKey: body.clientMessageId ?? undefined,
+      abortSignal: ac.signal,
+    });
+    const heartbeatMs = Math.max(1000, env.PLATOS_STREAM_HEARTBEAT_MS ?? 15_000);
+    const events = withHeartbeat(rawEvents, { intervalMs: heartbeatMs, signal: ac.signal });
+    await this.streamingService.streamToSSE(events, res);
+  }
+
+  /**
    * REFACTOR — AI-employee run callback. Invoked by the
    * `platos.agent.employee-run` trigger task. Multi-step autonomous
    * orchestration (sub-turns, tools, waitpoints) is a follow-up; this initial
