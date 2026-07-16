@@ -506,6 +506,15 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       // to the thread panel (not the main timeline), including done/error.
       const threadSuffix = replyToMessageId ? { replyToMessageId } : {};
 
+      // REFACTOR (Trigger Sessions — Option 1) — durable chat via a Trigger
+      // SESSION (platos.chat.session worker + Platos proxy-bridge). Flag-gated
+      // rollout: PLATOS_CHAT_SESSIONS=true routes durable agents through the
+      // session path; otherwise the older durable-turn task path below runs.
+      // Phase 6 (cutover) flips the flag on and deletes the old path.
+      if (await this.tryDispatchSession(data, scopeWithAgent, agentId, replyToMessageId, client)) {
+        return;
+      }
+
       // REFACTOR (control-plane + trigger substrate) — durable executionMode.
       // If the agent is executionMode="durable" AND managed trigger is
       // configured, hand the turn to the platos.agent.durable-turn task and
@@ -583,12 +592,157 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
    * `platos.agent.durable-turn` trigger task (and its run bridged to the
    * thread room); false to fall back to the in-process (direct) path.
    *
-   * Dormant unless ALL hold: agent.executionMode==="durable",
-   * TRIGGER_SECRET_KEY set (managed trigger configured), and an existing
-   * threadId (new-thread durable turns fall back to direct for now). So on a
-   * deployment without managed trigger every turn stays direct — zero
-   * behaviour change until the substrate exists.
+   * Dormant unless ALL hold: agent.executionMode==="durable" and
+   * TRIGGER_SECRET_KEY set (managed trigger configured). So on a deployment
+   * without managed trigger every turn stays direct — zero behaviour change
+   * until the substrate exists.
+   *
+   * New-thread turns are supported: when the client sends no threadId (a fresh
+   * conversation, e.g. the demo chat's first message), we mint the thread
+   * up-front so the client can be joined to its room before the async run
+   * starts streaming, and so message #1 runs durably too. (Previously the first
+   * message of every durable conversation silently fell back to the direct
+   * path — the agent looked like it "wasn't using trigger" until the 2nd turn.)
    */
+  /**
+   * REFACTOR (Trigger Sessions — Option 1, Platos proxies) — durable chat via
+   * a Trigger SESSION. The `platos.chat.session` `chat.customAgent` worker owns
+   * the durable session; each turn calls back into this agent's
+   * `/internal/chat/stream-turn` (so the EXISTING executeStreamingTurn does
+   * config/keys/tools/memory/cost/persistence), and the reply lands in the
+   * session's durable `.out`. This method is the PROXY-BRIDGE: it drives the
+   * session server-side via `AgentChat` and forwards stream parts to the
+   * thread room as the client's existing `agent_event` frames — the browser
+   * never talks to Trigger (3rd parties only ever touch Platos), and there is
+   * exactly ONE emit per event (no scope/thread double-emit).
+   *
+   * Wins over the durable-turn path it replaces: the turn completes even if
+   * the CLIENT disconnects mid-stream (worker keeps consuming; result persists
+   * + is resumable from `.out`), replies are re-readable after gateway
+   * restarts, and the relay is one ordered stream instead of ad-hoc
+   * multi-room emits. (Agent-process restarts still abort the in-flight
+   * generation — inherent to reusing the in-agent loop; accepted trade.)
+   *
+   * Flag-gated: PLATOS_CHAT_SESSIONS=true + executionMode="durable" +
+   * TRIGGER_SECRET_KEY. Returns false to fall through to older paths.
+   */
+  private async tryDispatchSession(
+    data: any,
+    scope: RequestScope,
+    agentId: string,
+    replyToMessageId: string | undefined,
+    client: Socket,
+  ): Promise<boolean> {
+    if (process.env.PLATOS_CHAT_SESSIONS !== "true") return false;
+    if (!process.env.TRIGGER_SECRET_KEY) return false;
+    // Sub-thread replies keep the existing paths (session wire has no
+    // replyToMessageId concept yet).
+    if (replyToMessageId) return false;
+
+    let executionMode = "direct";
+    try {
+      const agent = await this.prisma.platosAgent.findFirst({
+        where: {
+          id: agentId,
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+        },
+        select: { executionMode: true },
+      });
+      executionMode = agent?.executionMode ?? "direct";
+    } catch {
+      return false;
+    }
+    if (executionMode !== "durable") return false;
+
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const chatSdk = (() => {
+      try {
+        return require("@trigger.dev/sdk/chat");
+      } catch {
+        return null;
+      }
+    })();
+    if (!chatSdk?.AgentChat) return false;
+
+    // Mint the thread up-front for new conversations (same as the durable
+    // path) — the session externalId IS the threadId, so it must exist first.
+    let threadId = data?.threadId as string | undefined;
+    if (!threadId) {
+      try {
+        const convo = (this.agentTaskService as any).conversationService;
+        const created = await convo?.getOrCreateThread?.(scope, agentId);
+        threadId = created?.id as string | undefined;
+      } catch {
+        return false;
+      }
+      if (!threadId) return false;
+    }
+
+    try {
+      const chatClient = new chatSdk.AgentChat({
+        agent: "platos.chat.session",
+        id: threadId,
+        clientData: {
+          agentId,
+          threadId,
+          scope: {
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+            userId: scope.userId,
+          },
+        },
+      });
+
+      const room = `thread:${threadId}`;
+      await client.join(room);
+      client.emit("agent_event", {
+        type: "meta",
+        thread_id: threadId,
+        threadId,
+        durable: true,
+        session: true,
+      });
+
+      const stream = await chatClient.sendMessage(data.message);
+
+      // Forward the durable .out stream to the room. Deliberately not awaited:
+      // the WS handler returns while the bridge pumps. One emit per event.
+      void (async () => {
+        try {
+          for await (const part of stream as AsyncIterable<any>) {
+            let evt: Record<string, unknown> | null = null;
+            if (part?.type === "text-delta") {
+              evt = { type: "token", text: part.delta ?? "" };
+            } else if (part?.type === "data-platos-event") {
+              evt = part.data as Record<string, unknown>;
+            } else if (part?.type === "error") {
+              evt = { type: "error", message: part.errorText ?? "turn failed" };
+            }
+            if (evt) {
+              this.server?.to(room).emit("agent_event", { ...evt, threadId });
+            }
+          }
+          this.server?.to(room).emit("agent_event", { type: "done", threadId });
+        } catch (err: any) {
+          this.server?.to(room).emit("agent_event", {
+            type: "error",
+            message: err?.message ?? String(err),
+            threadId,
+          });
+          this.server?.to(room).emit("agent_event", { type: "done", threadId });
+        }
+      })();
+
+      return true;
+    } catch {
+      // Session dispatch failed — fall through to durable-turn / direct.
+      return false;
+    }
+  }
+
   private async tryDispatchDurable(
     data: any,
     scope: RequestScope,
@@ -596,8 +750,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     replyToMessageId: string | undefined,
     client: Socket,
   ): Promise<boolean> {
-    const threadId = data?.threadId as string | undefined;
-    if (!threadId) return false; // new-thread durable turns: direct for now
+    let threadId = data?.threadId as string | undefined;
 
     let executionMode = "direct";
     try {
@@ -626,6 +779,22 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     })();
     const triggerReady = !!process.env.TRIGGER_SECRET_KEY && !!triggerSdk?.tasks?.trigger;
     if (!triggerReady) return false; // managed trigger not configured → direct
+
+    // New-thread durable turn: no threadId from the client (fresh chat). Mint
+    // the thread now so (a) we hand a concrete threadId to the run, (b) we can
+    // join the client to its room before the run streams, and (c) the client
+    // adopts it for subsequent turns via the meta event below. On failure, fall
+    // back to the direct path (which mints the thread itself).
+    if (!threadId) {
+      try {
+        const convo = (this.agentTaskService as any).conversationService;
+        const created = await convo?.getOrCreateThread?.(scope, agentId);
+        threadId = created?.id as string | undefined;
+      } catch {
+        return false;
+      }
+      if (!threadId) return false;
+    }
 
     try {
       const clientMessageId = (data as any).idempotencyKey as string | undefined;

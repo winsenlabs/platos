@@ -254,6 +254,7 @@ export class ScopeGuard implements CanActivate {
     if (
       url.startsWith("/api/v1/agent/internal/compaction") ||
       url.startsWith("/api/v1/agent/internal/durable-turn") ||
+      url.startsWith("/api/v1/agent/internal/chat/stream-turn") ||
       url.startsWith("/api/v1/agent/internal/employee-run") ||
       url.startsWith("/api/v1/agent/internal/skill-run") ||
       // Managed-cloud maintenance-task callbacks — same admin-token gate +
