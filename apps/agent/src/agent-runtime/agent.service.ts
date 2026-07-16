@@ -1869,7 +1869,8 @@ export class AgentService {
             // agents' memories (agentId filter omitted). Single-agent: normal search.
             const hits = agentConfig?.clusteringId
               ? await (this.memoryService as any).semanticSearchForCluster(
-                  scopeTuple, query, memoryUserId, { limit }
+                  scopeTuple, query, memoryUserId,
+                  { limit, clusteringId: agentConfig.clusteringId },
                 )
               : await this.memoryService.semanticSearch(scopeTuple, {
                   query,
@@ -2059,6 +2060,7 @@ export class AgentService {
         }
         try {
           const out = await this.memoryExtraction.extractFromThread(scopeTuple, {
+            force: true, // explicit memory_extract ask bypasses the watermark
             threadId,
             policyOverride,
           });

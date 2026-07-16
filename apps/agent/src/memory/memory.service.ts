@@ -111,6 +111,11 @@ export interface SemanticSearchInput {
    */
   visibilityIn?: MemoryVisibility[];
   /**
+   * Restrict to a set of agents (cluster-member search). Wins alongside
+   * the scope+user filters; mutually exclusive with `agentId` in practice.
+   */
+  agentIds?: string[];
+  /**
    * MCPF-W2 — when `true`, semantic search includes archived rows. Default
    * `false` — archived rows are filtered out so the agent never recalls
    * them. Restore via `MemoryService.restore`.
@@ -596,6 +601,10 @@ export class MemoryService {
         wheres.push(`"agentId" = $${nextIdx++}`);
       }
     }
+    if (input.agentIds && input.agentIds.length > 0) {
+      params.push(input.agentIds);
+      wheres.push(`"agentId" = ANY($${nextIdx++}::text[])`);
+    }
     if (input.agentVisibleOnly) {
       wheres.push(`"agentVisible" = TRUE`);
     }
@@ -657,14 +666,30 @@ export class MemoryService {
     scope: ScopeTuple,
     query: string,
     userId: string,
-    options?: { limit?: number; minScore?: number },
+    options?: { limit?: number; minScore?: number; clusteringId?: string | null },
   ): Promise<MemorySearchHit[]> {
+    // Cluster share means the cluster's MEMBERS — not every agent in the
+    // scope. Resolve the member ids and filter to them; without a
+    // clusteringId (legacy callers) fall back to the old scope-wide search.
+    let agentIds: string[] | undefined;
+    if (options?.clusteringId) {
+      const members: Array<{ id: string }> = await this.prisma.platosAgent.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          clusteringId: options.clusteringId,
+        },
+        select: { id: true },
+      });
+      agentIds = members.map((m) => m.id);
+    }
     return this.semanticSearch(scope, {
       query,
       userId,
       limit: options?.limit ?? 10,
       minScore: options?.minScore,
-      // agentId intentionally omitted → searches across all agents in scope
+      ...(agentIds && agentIds.length > 0 ? { agentIds } : {}),
     });
   }
 
