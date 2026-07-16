@@ -1,4 +1,5 @@
 import { NestFactory } from "@nestjs/core";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import type { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";
 import { AppModule } from "./app.module";
 import { AuthService } from "./auth/auth.service";
@@ -130,7 +131,18 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+  });
+
+  // Body limit: Nest's default express.json cap is 100kb, which 413s the
+  // litellm price-catalog refresh (`POST /monitoring/cost/catalog` carries the
+  // full multi-MB catalog from the platos.cost.refresh_model_prices task).
+  // 15mb bounds it without being effectively unlimited. useBodyParser is the
+  // platform-express API (a direct require("express") is NOT resolvable in
+  // the pruned production image — crashed the boot).
+  app.useBodyParser("json", { limit: "15mb" });
+  app.useBodyParser("urlencoded", { extended: true, limit: "15mb" });
 
   // EOBD.42 — enable graceful shutdown so SentryService.onApplicationShutdown
   // + WS close hooks run on SIGTERM. Without this, Sentry drops in-flight

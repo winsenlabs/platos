@@ -8,6 +8,11 @@ packages:
 minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - "@trigger.dev/platform"
+  # Published trigger SDK line — patch releases carry AI-chat/session
+  # lifecycle fixes we need same-week (sessions GA'd 2026-07-02).
+  - "@trigger.dev/sdk"
+  - "@trigger.dev/core"
+  - "trigger.dev"
   - "next"
   - "@next/*"
   - "agentcrumbs"

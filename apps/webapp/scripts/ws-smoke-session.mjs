@@ -34,41 +34,57 @@ const socket = io("wss://test.platos.dev/agent", {
   auth: { token },
 });
 
+// MULTI-TURN: the original single-message smoke missed the entire
+// idle/replay failure class (turn 1 always works; turns 2+ broke). This
+// smoke sends TWO messages on the same thread and asserts turn 2 streams
+// fresh text (not a replay of turn 1) and reaches done.
 let sawSessionMeta = false;
-let text = "";
+let turn = 1;
+const turnText = { 1: "", 2: "" };
 let threadId = null;
 const bail = (msg, code = 1) => {
   console.log(`\n[ws-smoke] ${msg}`);
   socket.close();
   process.exit(code);
 };
-const timer = setTimeout(() => bail("TIMEOUT after 150s — no done event", 1), 150_000);
+const timer = setTimeout(() => bail(`TIMEOUT after 240s — stuck in turn ${turn}`, 1), 240_000);
+
+const MSG1 = "WS session smoke turn 1: in one short sentence, what is your core job?";
+const MSG2 = "Turn 2 check: reply with exactly the word SECOND and nothing else.";
 
 socket.on("connect", () => {
-  console.log("[ws-smoke] connected — sending message (no threadId, durable agent)");
-  socket.emit("message", {
-    message: "WS session smoke: in one short sentence, what is your core job?",
-    agentId: AGENT_ID,
-  });
+  console.log("[ws-smoke] connected — turn 1 (no threadId, durable agent)");
+  socket.emit("message", { message: MSG1, agentId: AGENT_ID });
 });
 socket.on("connect_error", (e) => bail(`connect_error: ${e.message}`));
 socket.on("error", (e) => console.log(`[ws-smoke] error frame: ${JSON.stringify(e).slice(0, 200)}`));
 socket.on("agent_event", (ev) => {
   if (ev?.type === "meta") {
     threadId = ev.threadId ?? ev.thread_id ?? threadId;
-    if (ev.session) sawSessionMeta = true;
-    console.log(`[ws-smoke] meta: durable=${ev.durable} session=${ev.session} thread=${threadId}`);
+    // Accept either durable transport: session path (ev.session) or the
+    // durable-turn task path (ev.durable without session).
+    if (ev.session || ev.durable) sawSessionMeta = true;
+    console.log(`[ws-smoke] meta(t${turn}): durable=${ev.durable} session=${ev.session} thread=${threadId}`);
   } else if (ev?.type === "token") {
-    text += ev.text ?? "";
+    turnText[turn] += ev.text ?? "";
     process.stdout.write(ev.text ?? "");
   } else if (ev?.type === "error") {
-    console.log(`\n[ws-smoke] agent error: ${ev.message}`);
+    console.log(`\n[ws-smoke] agent error (t${turn}): ${ev.message}`);
   } else if (ev?.type === "done") {
-    clearTimeout(timer);
-    console.log(`\n[ws-smoke] done. sessionMeta=${sawSessionMeta} textChars=${text.length}`);
-    if (sawSessionMeta && text.length > 5) bail("PASS", 0);
-    bail(`FAIL — sessionMeta=${sawSessionMeta} textChars=${text.length}`);
+    console.log(`\n[ws-smoke] done(t${turn}): ${turnText[turn].length} chars`);
+    if (turn === 1) {
+      if (!sawSessionMeta || turnText[1].length < 5) bail(`FAIL — turn 1 bad (session=${sawSessionMeta}, chars=${turnText[1].length})`);
+      turn = 2;
+      console.log(`[ws-smoke] sending turn 2 on thread ${threadId}`);
+      socket.emit("message", { message: MSG2, agentId: AGENT_ID, threadId });
+    } else {
+      clearTimeout(timer);
+      const replayed = turnText[2].includes(turnText[1].slice(0, 40)) && turnText[1].length > 40;
+      if (replayed) bail("FAIL — turn 2 replayed turn 1's text (cursor bug)");
+      if (turnText[2].length < 2) bail("FAIL — turn 2 produced no text");
+      bail(`PASS — turn2="${turnText[2].slice(0, 80)}"`, 0);
+    }
   } else {
-    console.log(`[ws-smoke] event: ${JSON.stringify(ev).slice(0, 160)}`);
+    console.log(`[ws-smoke] event(t${turn}): ${JSON.stringify(ev).slice(0, 140)}`);
   }
 });

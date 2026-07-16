@@ -133,8 +133,11 @@ export class RunsBridgeService {
         const scopeRoom = `scope:${scope.organizationId}:${scope.projectId}:${scope.environmentId}`;
         const threadRoom = `thread:${threadId}`;
         try {
-          this.connections.server?.to(scopeRoom).emit("agent_event", event);
-          this.connections.server?.to(threadRoom).emit("agent_event", event);
+          // ONE chained emit — Socket.IO dedupes per socket only within a
+          // single .to(a).to(b).emit() chain. Two separate emits delivered
+          // every run_update TWICE to any client joined to both rooms (the
+          // chat client always is) — the "bgo run · DEQUEUED ×2" noise.
+          this.connections.server?.to(scopeRoom).to(threadRoom).emit("agent_event", event);
         } catch (err: any) {
           this.logger.warn(`emit failed for runId=${runId}: ${err?.message}`);
         }
