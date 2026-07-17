@@ -307,6 +307,12 @@ Ordered by (blocker status × blast radius × implementation cost). Each notes b
 > **Residuals (deferred to Phase 4):** H11 DNS-rebind TOCTOU is not closed (validate-by-hostname, no IP-pin — needs hardening inside `fetchWithValidatedRedirects`); privileged headers still follow a redirect to any **public** host (SSRF-to-internal closed, exfil-to-arbitrary-public open). Duplicate `toolName` rows (uniqueness is `(entityPk, toolId)`) could let list (Map last-wins) and call (`findFirst` first-wins) pick different rows — low-severity, needs an `orderBy` or a name-level uniqueness constraint.
 
 12. **H15** — tenant-scope `PlatosToolDefinition` (or at least the BM25 index). *Blast: cross-tenant tool-row overwrite + ranking poison. **Product decision:** schema migration timing (`@@unique` change is a migration).*
+
+> **STATUS — H15 IMPLEMENTED, in flagged PR #48, NOT deployed to test.platos (schema migration — your apply decision).**
+> `PlatosToolDefinition` gained nullable `organizationId`/`projectId`; the global `name @unique` became `@@unique([organizationId, projectId, name])`. `registerTools` and the `entities_provision` stub path both scope their lookup/create to `(org, project, name)` (scope comes from the authenticated entity's service-secret-verified `conn`, never the tool payload). Migration `20260717010000_platos_tool_definition_scope` is additive (nullable columns; existing rows → `(NULL,NULL,name)`, no conflict). **test.platos has 0 tool rows** → safe to apply as-is; populated self-host DBs need a backfill **before entities reconnect** (the first scoped re-register orphans the legacy mapping) + orphan cleanup after — SQL + sequence documented in the migration file. Typecheck-verified on the VPS (prisma generate + nest build); Fable-verified (caught + fixed the missed `entities_provision` writer).
+>
+> **Residual (informational, deferred):** the BM25 corpus statistics (`totalDocs`/IDF/`avgDocLength`) remain process-global, so another tenant registering tools can shift *ranking order* (not content — `bm25.search` hard-filters candidate ids by scope before scoring; no cross-scope name/description/schema can surface). `getIndexStats` also exposes a global doc count. Cosmetic; per-scope corpus stats are a possible future hardening.
+
 13. **M2, M3, M5, M8** — claims-whitelist mint, OAuth-token key separation, WS responder binding, ReDoS guard. *No product decisions.*
 
 > **STATUS — Phase 3 cluster 2 (M2, M3, M5, M8) SHIPPED (2026-07-17), deployed to test.platos, Fable-verified.**
