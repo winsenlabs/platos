@@ -156,10 +156,22 @@ export class McpToolAclService {
     rows: ToolAclRow[],
     caller: { identityMode: string; mcpUserId: string; scopes: string[] },
   ): ToolAclRow[] {
+    // Identity strength is an ordered floor: anonymous < bearer < oidc.
+    // `minIdentityMode` is the MINIMUM strength a caller must present, so a
+    // stronger identity always satisfies a weaker floor (audit H12). The
+    // previous exact-match check both (a) denied an oidc caller a default
+    // `bearer` tool — which would have broken every OAuth MCP client the
+    // moment enforcement was wired — and (b) let a `bearer` PAT through an
+    // `oidc`-required tool. Rank-comparison fixes both. filterByIdentity had
+    // zero call sites before this change, so no caller relied on the old
+    // behavior.
+    const identityRank = (mode: string): number =>
+      mode === "oidc" ? 2 : mode === "bearer" ? 1 : 0;
     return rows.filter((acl) => {
-      // Identity gate
-      if (acl.minIdentityMode === "bearer" && caller.identityMode !== "bearer") return false;
-      if (acl.minIdentityMode === "oidc" && caller.identityMode === "anonymous") return false;
+      // Identity gate — caller must meet at least the tool's minimum strength.
+      if (identityRank(caller.identityMode) < identityRank(acl.minIdentityMode)) {
+        return false;
+      }
       // Allowed PAT gate (bearer only, empty = any)
       if (acl.allowedPatIds.length > 0 && caller.identityMode === "bearer") {
         const patId = caller.mcpUserId.replace("mcp:pat:", "");

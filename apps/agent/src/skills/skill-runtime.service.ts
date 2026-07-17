@@ -138,7 +138,7 @@ export class SkillRuntimeService {
    * an explicit provider field on the manifest may pass it directly.
    */
   async invokeTool(
-    scope: ScopeTuple,
+    scope: ScopeTuple & { userId?: string },
     tool: { skillSlug: string; toolName: string; handler: string; provider?: string | null },
     input: Record<string, unknown>,
     context: { agentId?: string | null; threadId?: string | null } = {},
