@@ -215,15 +215,27 @@ export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpTool
         const callbackUrl = effectiveMcpUrls[0] ?? "/mcp";
         for (const toolName of initialTools) {
           try {
-            // Upsert the central tool definition first (unique by name).
-            const existing = await prisma.platosToolDefinition.findUnique({
-              where: { name: toolName },
+            // Upsert the central tool definition first. SECURITY (audit H15) —
+            // scope by (org, project, name): PlatosToolDefinition is now
+            // per-tenant (was globally unique by name). An unscoped lookup here
+            // would attach this provision's mapping to whatever tenant already
+            // owns that name, and post-migration `findUnique({name})` throws
+            // (name is no longer a unique key) — silently swallowed into
+            // toolWarnings, so stubs would stop being created.
+            const existing = await prisma.platosToolDefinition.findFirst({
+              where: {
+                name: toolName,
+                organizationId: scope.organizationId,
+                projectId: scope.projectId,
+              },
             });
             const toolDef = existing
               ? existing
               : await prisma.platosToolDefinition.create({
                   data: {
                     name: toolName,
+                    organizationId: scope.organizationId,
+                    projectId: scope.projectId,
                     description: `[stub] ${toolName} — schema pending tool-sync handshake.`,
                     paramSchema: { type: "object", additionalProperties: true } as any,
                     schemaHash: "stub",

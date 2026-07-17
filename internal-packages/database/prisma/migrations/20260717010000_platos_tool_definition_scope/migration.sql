@@ -11,8 +11,16 @@
 -- (NULL, NULL, name) and does NOT violate the new composite unique. New tool
 -- registrations write real (organizationId, projectId, name) rows.
 --
--- ⚠️ EXISTING DATA (self-host / populated DBs) — backfill BEFORE relying on
--- per-tenant isolation for tools registered prior to this migration:
+-- ⚠️ EXISTING DATA (self-host / populated DBs) — backfill BEFORE ENTITIES
+-- RECONNECT after this deploy (not merely "before relying on isolation"): the
+-- first WS reconnect runs registerTools with real (org, project), which MISSES
+-- the legacy (NULL, NULL, name) row and CREATEs a new scoped row, orphaning the
+-- old PlatosEntityToolMapping. That orphan can then win the rebuildIndex cache
+-- race after a restart and serve the (possibly pre-migration-poisoned) legacy
+-- definition + stale callbackUrl. After backfilling, delete
+-- PlatosEntityToolMapping rows still pointing at (NULL, NULL) tool rows once
+-- every entity has re-registered, then delete those orphan tool rows.
+-- Backfill the tool rows before that window:
 --   * Rows referenced by exactly ONE (org, project) can be backfilled in place
 --     from PlatosEntityToolMapping -> PlatosConnectedEntity scope, e.g.:
 --       UPDATE "PlatosToolDefinition" td
