@@ -4675,6 +4675,14 @@ model PlatosMemoryEntity {
 
   userId String
 
+  /// L6 (audit 2026-07-16) — nullable acting-agent stamp. NULL for rows
+  /// written before this column existed, or by non-agent-pinned tokens
+  /// (operator MCP). Mirrors PlatosMemory.agentId so a future turn-time KG
+  /// recall can filter (scope, userId, agentId) without leaking across agents.
+  /// Entities are shared per (scope, userId, entityKey), so this records the
+  /// FIRST agent that materialised the node (stamped on create, not update).
+  agentId String?
+
   /// Stable external identifier chosen by the agent/operator
   /// (e.g. "user_123", "project_rocket", "company_acme"). Used as the
   /// upsert key for `relate()` so repeated calls are idempotent.
@@ -4694,6 +4702,7 @@ model PlatosMemoryEntity {
 
   @@unique([organizationId, projectId, environmentId, userId, entityKey], map: "platos_mem_entity_scope_key_unq")
   @@index([organizationId, projectId, environmentId, userId], map: "platos_mem_entity_scope_user_idx")
+  @@index([organizationId, projectId, environmentId, userId, agentId], map: "platos_mem_entity_scope_agent_idx")
   @@index([organizationId, projectId, environmentId, entityType], map: "platos_mem_entity_scope_type_idx")
 }
 
@@ -4712,6 +4721,11 @@ model PlatosMemoryRelationship {
   environment    RuntimeEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   userId String
+
+  /// L6 (audit 2026-07-16) — nullable acting-agent stamp, denormalised from
+  /// the write scope (parallels the denormalised userId column above). NULL
+  /// for pre-existing rows / non-agent-pinned tokens.
+  agentId String?
 
   fromEntityId String
   fromEntity   PlatosMemoryEntity @relation("PlatosMemoryRelationshipFrom", fields: [fromEntityId], references: [id], onDelete: Cascade)
@@ -4733,6 +4747,7 @@ model PlatosMemoryRelationship {
   createdAt DateTime @default(now())
 
   @@index([organizationId, projectId, environmentId, userId], map: "platos_mem_rel_scope_user_idx")
+  @@index([organizationId, projectId, environmentId, userId, agentId], map: "platos_mem_rel_scope_agent_idx")
   @@index([fromEntityId], map: "platos_mem_rel_from_idx")
   @@index([toEntityId], map: "platos_mem_rel_to_idx")
   @@index([organizationId, projectId, environmentId, relationshipType], map: "platos_mem_rel_scope_type_idx")

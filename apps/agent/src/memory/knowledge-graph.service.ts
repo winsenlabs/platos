@@ -57,6 +57,10 @@ export interface ShortestPathInput {
 
 export interface UpsertEntityInput {
   userId: string;
+  /// L6 — acting agent (null for operator/non-agent-pinned callers). Stamped
+  /// on CREATE only; entities are shared per (scope,userId,entityKey) so an
+  /// existing node keeps its first-writer agentId.
+  agentId?: string | null;
   entityKey: string;
   entityType?: string;
   label?: string;
@@ -163,6 +167,7 @@ export class KnowledgeGraphService {
         projectId: scope.projectId,
         environmentId: scope.environmentId,
         userId: input.userId,
+        agentId: input.agentId ?? null,
         entityKey: input.entityKey,
         entityType: input.entityType || "other",
         // EOBD.22 — encrypt label + metadata at rest (label is typically
@@ -398,6 +403,8 @@ export class KnowledgeGraphService {
     scope: ScopeTuple,
     input: {
       userId: string;
+      /// L6 — acting agent (null for operator/non-agent-pinned callers).
+      agentId?: string | null;
       fromEntityId: string;
       toEntityId: string;
       relationshipType: string;
@@ -431,6 +438,7 @@ export class KnowledgeGraphService {
         projectId: scope.projectId,
         environmentId: scope.environmentId,
         userId: input.userId,
+        agentId: input.agentId ?? null,
         fromEntityId: input.fromEntityId,
         toEntityId: input.toEntityId,
         relationshipType: input.relationshipType,
