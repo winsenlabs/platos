@@ -734,8 +734,18 @@ export class ToolExecutorService {
     // arg-resolution layer left.
     let serviceSecret: string;
     try {
-      const entity = await this.prisma.platosConnectedEntity.findUnique({
-        where: { id: toolEntry.entityPk },
+      // SECURITY (audit L2) — re-verify scope when re-loading the entity's
+      // serviceSecret. The cache boundary holds today, so this is defense in
+      // depth: a slip that yielded a cross-scope entityPk would otherwise hand
+      // back another tenant's HMAC signing key. PlatosConnectedEntity is scoped
+      // by (organizationId, projectId) only — it has NO environmentId column,
+      // so do not add one here.
+      const entity = await this.prisma.platosConnectedEntity.findFirst({
+        where: {
+          id: toolEntry.entityPk,
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+        },
         select: { serviceSecret: true, entityId: true, organizationId: true, projectId: true },
       });
       if (!entity) {

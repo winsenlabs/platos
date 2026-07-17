@@ -305,6 +305,12 @@ export class MemoryController {
         try {
           await this.memoryService.add(scopeTuple, {
             userId,
+            // FIX (audit L5) — stamp the acting agentId instead of writing
+            // agentId=NULL for every imported row (cross-agent visibility
+            // asymmetry vs extractor-written rows). Sourced from the VERIFIED
+            // request scope, never from the untrusted bundle. Null when the
+            // token isn't agent-pinned — unchanged from before for that case.
+            agentId: scope.agentId ?? null,
             kind: (m as any).kind as MemoryKind,
             content: String((m as any).content || ""),
             metadata: (m as any).metadata,

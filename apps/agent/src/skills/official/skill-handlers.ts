@@ -383,6 +383,19 @@ export class OfficialSkillHandlers {
       try {
         await this.memoryService.add(scope, {
           userId,
+          // audit L5 — DELIBERATELY leaves agentId NULL. The audit proposed
+          // stamping the acting agentId here to match the extractor's rows,
+          // but that backfires: these chunks derive visibility "agent_visible"
+          // (normalizeVisibility default) and carry kind "fact", so once they
+          // ALSO match the agentId equality filter they become eligible for
+          // the AUTOMATIC memory injection (agent.service.ts ~5000, limit 8 /
+          // minScore 0.35) — i.e. raw document text would silently start
+          // consuming every turn's memory budget and prompt. The NULL agentId
+          // is what currently keeps RAG chunks out of auto-injection while
+          // rag_retrieve (which passes no agentId filter) still finds them.
+          // Closing L5 here properly needs a first-class "rag" kind (see the
+          // TODO below) or an explicit __rag exclusion in the injection query
+          // — a deliberate change, not a drive-by on a LOW finding.
           // memory-kind.validator restricts kind to fact|preference|event|relationship.
           // TODO(RG.1.2): add a first-class "rag" kind when the validator grows one.
           kind: "fact",

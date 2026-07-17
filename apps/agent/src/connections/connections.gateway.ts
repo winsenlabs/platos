@@ -424,8 +424,20 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     let agentId = data.agentId;
     if (!agentId && data.threadId) {
       try {
+        // SECURITY (audit L1) — scope the thread→agentId lookup. Keyed on
+        // threadId alone, a caller in org A passing an org-B threadId learned
+        // B's agentId (an oracle) and mislabeled the turn onto A's telemetry.
+        // org/proj/env are denormalized on PlatosAgentThread. userId is
+        // deliberately NOT added: Postman mode overwrites thread.userId with
+        // the SIMULATED user, so a userId filter would miss and silently fall
+        // back to the "default" agent. The tenant tuple closes the oracle.
         const threadRow = await this.prisma.platosAgentThread.findFirst({
-          where: { id: data.threadId },
+          where: {
+            id: data.threadId,
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+          },
           select: { agentId: true },
         });
         if (threadRow?.agentId) agentId = threadRow.agentId;
@@ -766,7 +778,10 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       // server-side since 4.5.2 (cursor advance fix); the Redis lastEventId
       // is belt-and-braces when available.
       {
-        const cursorKey = `chatsess:cursor:${threadId}`;
+        // SECURITY (audit L4) — scope-namespace the cursor key. Defense in
+        // depth against a cuid collision across tenants. NOTE: the same key is
+        // rebuilt as a literal on the write side below — both must match.
+        const cursorKey = `chatsess:cursor:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${threadId}`;
         let lastEventId: string | undefined;
         try {
           lastEventId = (await this.redis.get(cursorKey)) ?? undefined;
@@ -860,7 +875,14 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
           const cursor = (chatClient as any)?.session?.lastEventId as string | undefined;
           if (cursor) {
             await (this.redis as any)
-              .set(`chatsess:cursor:${threadId}`, cursor, "EX", 60 * 60 * 24 * 30)
+              .set(
+                // SECURITY (audit L4) — MUST match the scoped cursorKey built
+                // on the read side; a mismatch breaks cursor hydration.
+                `chatsess:cursor:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${threadId}`,
+                cursor,
+                "EX",
+                60 * 60 * 24 * 30,
+              )
               .catch(() => undefined);
           }
           this.server?.to(room).emit("agent_event", { type: "done", threadId });
@@ -957,7 +979,14 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
           // Model A per-tenant fairness — one shared trigger project, isolated
           // by org-scoped concurrency key.
           concurrencyKey: `org-${scope.organizationId}`,
-          ...(clientMessageId ? { idempotencyKey: `turn-${threadId}-${clientMessageId}` } : {}),
+          // SECURITY (audit L4) — scope-namespace the Trigger idempotency key
+          // so a cuid collision across tenants can't dedup one org's turn
+          // against another's. Write-only (Trigger dedups server-side).
+          ...(clientMessageId
+            ? {
+                idempotencyKey: `turn-${scope.organizationId}:${scope.projectId}:${scope.environmentId}-${threadId}-${clientMessageId}`,
+              }
+            : {}),
           tags: [
             `org:${scope.organizationId}`,
             `project:${scope.projectId}`,
