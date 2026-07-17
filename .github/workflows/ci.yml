@@ -91,5 +91,14 @@ jobs:
         # `prisma db push` and the injected client rely on.
         run: pnpm --filter @platos/database generate
 
+      - name: Build @platos/database
+        # @platos/database's package entry is ./dist/index.js (tsc build), NOT
+        # the TS source. `prisma generate` alone leaves dist/ absent, so vitest's
+        # vite resolver fails: "Failed to resolve entry for package
+        # @platos/database" when @internal/testcontainers imports PrismaClient.
+        # (Typecheck doesn't hit this — tsc resolves via source/paths, vite via
+        # the package `main`.) Build it so dist/ exists before vitest runs.
+        run: pnpm --filter @platos/database build
+
       - name: Cross-scope isolation suite (real Postgres testcontainer)
         run: pnpm --filter platos-agent exec vitest run src/auth/cross-scope-isolation.test.ts
