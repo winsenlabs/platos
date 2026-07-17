@@ -60,6 +60,14 @@ export class SessionTokenController {
       ttlSeconds?: number;
       /** PIFSP-1 — optional: scope the token to a specific agent. */
       agentId?: string;
+      /**
+       * M2 — typed passthrough for display-identity hints ({{user.name}} /
+       * {{user.email}}). This is the CONTROLLED channel for `userMeta`: it is
+       * stripped from the free-form `claims` bag (it's a RESERVED key) so it
+       * can never be smuggled alongside a tenancy/identity override, but it is
+       * cosmetic (not an authz boundary), so a caller may still set it here.
+       */
+      userMeta?: { name?: string; email?: string };
       claims?: Record<string, unknown>;
     },
   ) {
@@ -109,8 +117,43 @@ export class SessionTokenController {
 
     const ttlSeconds = Math.max(60, Math.min(86400 * 7, body.ttlSeconds ?? 3600));
 
+    // M2 — sanitize caller-supplied extra claims. `body.claims` is a
+    // free-form bag from an untrusted request body; strip every key the
+    // verifier trusts (tenancy, identity, entity/secret-lookup, agent pin,
+    // guest/operator flag, permissions, issuer, timing) so a caller holding
+    // one entity's serviceSecret cannot mint a token for another scope,
+    // impersonate another user, or defeat the PIFSP-1 agent pin. Merge the
+    // sanitized bag FIRST so the typed fields below always win — mirroring
+    // the safe ordering in AuthService.createPlatformSessionToken.
+    const RESERVED_CLAIM_KEYS = new Set([
+      "iss",
+      "iat",
+      "exp",
+      "organizationId",
+      "projectId",
+      "environmentId",
+      "entityId",
+      "userId",
+      "userToken",
+      "agentId",
+      "isGuest",
+      "permissions",
+      "userMeta",
+    ]);
+    const safeClaims: Record<string, unknown> = {};
+    if (
+      body.claims &&
+      typeof body.claims === "object" &&
+      !Array.isArray(body.claims)
+    ) {
+      for (const [key, value] of Object.entries(body.claims)) {
+        if (!RESERVED_CLAIM_KEYS.has(key)) safeClaims[key] = value;
+      }
+    }
+
     const token = await this.authService.createSessionToken(
       {
+        ...safeClaims,
         organizationId: body.organizationId,
         projectId: body.projectId,
         environmentId: body.environmentId,
@@ -118,7 +161,10 @@ export class SessionTokenController {
         entityId,
         ...(body.userToken ? { userToken: body.userToken } : {}),
         ...(body.agentId ? { agentId: body.agentId } : {}),
-        ...(body.claims ?? {}),
+        // M2 — restore the display-identity passthrough via the typed field
+        // (Fable regression catch: userMeta was previously only settable
+        // through the now-sanitized claims bag).
+        ...(body.userMeta ? { userMeta: body.userMeta } : {}),
       } as any,
       ttlSeconds,
     );
