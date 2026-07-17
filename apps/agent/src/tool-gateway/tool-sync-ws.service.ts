@@ -42,6 +42,11 @@ type PendingCall = {
   timer: NodeJS.Timeout;
   toolName: string;
   startedAt: number;
+  // M5: the entity/env this call was dispatched to. Used to reject forged
+  // tool_result/tool_error frames that arrive on a different (cross-tenant)
+  // socket which merely knows/guesses the callId.
+  entityId: string;
+  environmentId: string;
 };
 
 
@@ -478,6 +483,17 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
         const callId = String(msg.call_id || "");
         const pending = this.pending.get(callId);
         if (!pending) return;
+        // M5: reject a tool_result frame whose responding socket is not the
+        // entity/env this call was dispatched to. Return early WITHOUT
+        // consuming the pending entry so the legitimate responder can still
+        // resolve it — prevents a cross-tenant entity that knows a live callId
+        // from injecting a forged result.
+        if (pending.entityId !== conn.entityId || pending.environmentId !== conn.environmentId) {
+          this.logger.warn(
+            `[tool_result] responder mismatch for call ${callId}: got ${conn.entityId}/${conn.environmentId}, expected ${pending.entityId}/${pending.environmentId} — dropping frame`,
+          );
+          return;
+        }
         clearTimeout(pending.timer);
         this.pending.delete(callId);
         // EOBD.38 — app-layer truncation. 10MB ws frame cap rejects the
@@ -521,6 +537,17 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
         const callId = String(msg.call_id || "");
         const pending = this.pending.get(callId);
         if (!pending) return;
+        // M5: reject a tool_error frame whose responding socket is not the
+        // entity/env this call was dispatched to. Return early WITHOUT
+        // consuming the pending entry so the legitimate responder can still
+        // settle it — prevents a cross-tenant entity from aborting another
+        // tenant's in-flight call via a known callId.
+        if (pending.entityId !== conn.entityId || pending.environmentId !== conn.environmentId) {
+          this.logger.warn(
+            `[tool_error] responder mismatch for call ${callId}: got ${conn.entityId}/${conn.environmentId}, expected ${pending.entityId}/${pending.environmentId} — dropping frame`,
+          );
+          return;
+        }
         clearTimeout(pending.timer);
         this.pending.delete(callId);
         pending.reject(new Error(String(msg.error || "tool_error")));
@@ -633,6 +660,9 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
         timer,
         toolName,
         startedAt,
+        // M5: bind to the entity/env this call is being sent to.
+        entityId,
+        environmentId,
       });
 
       this.send(ws, {

@@ -69,6 +69,29 @@ function highestMode(modes: PiiMode[]): PiiMode {
   return "warn";
 }
 
+// ─── Custom-regex ReDoS guard (M8) ───────────────────────────────────────────
+//
+// Admin-supplied customRegex is compiled and run against every scanned message
+// on the single event loop. Without an RE2 (linear-time) engine there is no
+// reliable in-thread timeout for a synchronous regex, so we defend at the
+// config boundary: (1) cap pattern length, (2) reject patterns with a nested
+// quantifier — a quantified group whose body already contains a quantifier,
+// the classic catastrophic-backtracking shape ((a+)+, (.*)*, (a?)+ …), and
+// (3) bound the input length any custom pattern is scanned against so a
+// pathological pattern that slips the heuristic still has a bounded worst case.
+// NOTE: heuristic-only — the durable fix is to run custom patterns through RE2.
+
+const MAX_CUSTOM_REGEX_LEN = 512;
+const MAX_CUSTOM_SCAN_INPUT = 50_000;
+// A group containing *,+,? that is itself quantified by *,+,? or {n}.
+const NESTED_QUANTIFIER = /\([^()]*[*+?][^()]*\)[*+?{]/;
+
+function isSafeCustomRegex(pattern: string): boolean {
+  if (pattern.length > MAX_CUSTOM_REGEX_LEN) return false;
+  if (NESTED_QUANTIFIER.test(pattern)) return false;
+  return true;
+}
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -120,6 +143,12 @@ export class PiiFilterService {
       // Custom regex or known detector regex
       let regex: RegExp;
       if (filter.kind === "custom" && filter.customRegex) {
+        if (!isSafeCustomRegex(filter.customRegex)) {
+          this.logger.warn(
+            `[pii] rejected unsafe customRegex (length/nested-quantifier) for agent=${scope.agentId}: ${filter.customRegex.slice(0, 128)}`,
+          );
+          continue;
+        }
         try {
           regex = new RegExp(filter.customRegex, "g");
         } catch {
@@ -134,7 +163,14 @@ export class PiiFilterService {
       }
 
       const label = detector?.label ?? filter.kind;
-      for (const m of text.matchAll(regex)) {
+      // M8 — bound the input a custom pattern is scanned against; a prefix
+      // slice keeps match spans (m.index) valid against the original text.
+      // Built-in detector kinds still scan the full text unchanged.
+      const scanTarget =
+        filter.kind === "custom" && text.length > MAX_CUSTOM_SCAN_INPUT
+          ? text.slice(0, MAX_CUSTOM_SCAN_INPUT)
+          : text;
+      for (const m of scanTarget.matchAll(regex)) {
         const match = m[0];
         // Validate checksum if available
         if (detector?.validate && !detector.validate(match)) continue;
