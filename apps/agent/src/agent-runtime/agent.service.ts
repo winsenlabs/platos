@@ -2929,6 +2929,14 @@ export class AgentService {
               scope: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId, userId: scope.userId },
               invokedBy: "agent",
               agentId,
+            }, {
+              // L7 — tag the run with scope so get_run_details / replay_run can
+              // verify ownership on retrieve. This was the ONE trigger site that
+              // carried scope only inside the payload, leaving its runs
+              // unverifiable (and thus rejected by the fail-closed check above).
+              // scopeTags/scopeMetadata are the same consts every other site uses.
+              tags: scopeTags,
+              metadata: { ...scopeMetadata, taskIdHint: taskRow.taskId },
             });
             return { queued: true, runId: run.id, taskId: taskRow.taskId, displayName: taskRow.displayName };
           } catch (err: any) {
@@ -3175,6 +3183,18 @@ export class AgentService {
         }
         try {
           const snap = await triggerSdk.runs.retrieve(runId);
+          // L7 — verify the retrieved run belongs to the caller's scope. Runs
+          // are tagged with { organizationId, projectId, environmentId } at
+          // trigger time (scopeMetadata); reject cross-scope inspection so a
+          // caller can't read another scope's run by guessing its id.
+          const _md = (snap.metadata ?? {}) as Record<string, any>;
+          if (
+            _md.organizationId !== scope.organizationId ||
+            _md.projectId !== scope.projectId ||
+            _md.environmentId !== scope.environmentId
+          ) {
+            return { status: "denied", reason: "run not in caller scope" };
+          }
           return {
             id: snap.id,
             taskIdentifier: snap.taskIdentifier,
@@ -3529,10 +3549,23 @@ export class AgentService {
         runId: z.string().describe("Run id to replay (e.g. from list_runs)"),
       }),
       execute: async ({ runId }) => {
-        if (!triggerReady() || !triggerSdk?.runs?.replay) {
+        if (!triggerReady() || !triggerSdk?.runs?.replay || !triggerSdk?.runs?.retrieve) {
           return { status: "skipped", reason: "trigger.dev not configured" };
         }
         try {
+          // L7 — verify the run belongs to the caller's scope BEFORE replaying,
+          // so a caller can't re-fire another scope's run by guessing its id.
+          // This is the more dangerous of the two run tools (it re-executes the
+          // job, not just reads it).
+          const _orig = await triggerSdk.runs.retrieve(runId);
+          const _md = (_orig?.metadata ?? {}) as Record<string, any>;
+          if (
+            _md.organizationId !== scope.organizationId ||
+            _md.projectId !== scope.projectId ||
+            _md.environmentId !== scope.environmentId
+          ) {
+            return { status: "denied", reason: "run not in caller scope" };
+          }
           const handle = await triggerSdk.runs.replay(runId);
           return {
             status: "replayed",

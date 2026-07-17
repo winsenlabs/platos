@@ -254,6 +254,23 @@ export class PlatosTasksController {
           userId: scope.userId,
         },
         invokedBy: "manual",
+      }, {
+        // L7 — stamp trigger-time scope so get_run_details / replay_run can
+        // verify ownership. Without this, a run dispatched from the dashboard
+        // "Run" button would be DENIED to its own owner (fail-closed). Mirrors
+        // the scopeTags/scopeMetadata shape used by the agent dispatch path.
+        tags: [
+          `org:${scope.organizationId}`,
+          `project:${scope.projectId}`,
+          `env:${scope.environmentId}`,
+          `user:${scope.userId}`,
+        ],
+        metadata: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          userId: scope.userId,
+        },
       });
       return { queued: true, runId: run.id, taskId: task.taskId };
     } catch (err: any) {

@@ -115,6 +115,7 @@
       "lefthook",
       "prisma",
       "protobufjs",
+      "re2",
       "sharp",
       "ssh2",
       "turbo"

@@ -632,6 +632,22 @@ export function buildPlatosTaskToolHandlers(deps: {
           // Per-org queue isolation matches Wave-3 scaling commits + the
           // PlatosTasksController dispatch path (no queue arg in the
           // controller today; using SDK default to stay consistent).
+          }, {
+            // L7 — stamp trigger-time scope so get_run_details / replay_run can
+            // verify ownership; without it, a run dispatched via this MCP tool
+            // would be DENIED to its own owner (fail-closed).
+            tags: [
+              `org:${reqScope.organizationId}`,
+              `project:${reqScope.projectId}`,
+              `env:${reqScope.environmentId}`,
+              `user:${reqScope.userId}`,
+            ],
+            metadata: {
+              organizationId: reqScope.organizationId,
+              projectId: reqScope.projectId,
+              environmentId: reqScope.environmentId,
+              userId: reqScope.userId,
+            },
           });
           const result = { queued: true, runId: run.id, taskId: task.taskId, displayName: task.displayName };
           auditMutation(
