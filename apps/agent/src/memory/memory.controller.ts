@@ -291,6 +291,7 @@ export class MemoryController {
         }
         const ent = await this.graph.upsertEntity(scopeTuple, {
           userId,
+          agentId: scope.agentId ?? null,
           entityKey: key,
           entityType: String((e as any).entityType || "other"),
           label: String((e as any).label || key),
@@ -346,6 +347,7 @@ export class MemoryController {
         try {
           await this.graph.createRelationship(scopeTuple, {
             userId,
+            agentId: scope.agentId ?? null,
             fromEntityId: fromId,
             toEntityId: toId,
             relationshipType: relType,
@@ -725,12 +727,14 @@ export class MemoryController {
       const [from, to] = await Promise.all([
         this.graph.upsertEntity(scopeTuple, {
           userId,
+          agentId: scope.agentId ?? null,
           entityKey: body.fromEntityKey,
           entityType: body.fromEntityType || "other",
           label: body.fromLabel || body.fromEntityKey,
         }),
         this.graph.upsertEntity(scopeTuple, {
           userId,
+          agentId: scope.agentId ?? null,
           entityKey: body.toEntityKey,
           entityType: body.toEntityType || "other",
           label: body.toLabel || body.toEntityKey,
@@ -738,6 +742,7 @@ export class MemoryController {
       ]);
       const rel = await this.graph.createRelationship(scopeTuple, {
         userId,
+        agentId: scope.agentId ?? null,
         fromEntityId: from.id,
         toEntityId: to.id,
         relationshipType: body.relationshipType,
