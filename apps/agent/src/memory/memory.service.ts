@@ -841,6 +841,13 @@ function buildListArgs(scope: ScopeTuple, input: ListMemoriesInput): any[] {
   const args: any[] = [scope.organizationId, scope.projectId, scope.environmentId, input.userId];
   if (input.kind) args.push(input.kind);
   if (input.agentId !== undefined && input.agentId !== null) args.push(input.agentId);
+  // FIX (audit L3) — bind the agentIds array to the `= ANY($N::text[])`
+  // placeholder the list() query emits for the cluster-listing branch. It was
+  // never pushed, so $N was unbound, Postgres rejected the statement, and
+  // clustered list_memories threw → caught → failed CLOSED (empty result).
+  // The guard mirrors the query text's own condition, so single-agent and
+  // no-filter calls are unchanged.
+  if (input.agentIds && input.agentIds.length > 0) args.push(input.agentIds);
   return args;
 }
 

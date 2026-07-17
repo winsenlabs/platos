@@ -6,6 +6,32 @@ Both critical claims verify. `verifyAnyBearer` builds the `VerifiedToken` purely
 
 ---
 
+## 0. Remediation status (as of 2026-07-17)
+
+**Every finding in this report is now either FIXED + deployed to test.platos, or consciously DEFERRED with a written reason.** Phases 0–4 were executed with a fix → Fable adversarial cross-model verify → fix-the-misses → deploy → durable smoke → PR loop. Fable caught a real defect in **every** cluster (a fail-open guard, three starved event paths, an OAuth-deny bug, an anonymous-tier bypass, a missed writer, and one case where this document's own prescribed fix was wrong — see L5).
+
+| Phase | Scope | State |
+|---|---|---|
+| **0+1** | Cross-org criticals (C1–C4) + the operator tier | ✅ merged (PR #45), deployed |
+| **2** | Realtime per-user room isolation (B6/H3–H6, H13) | ✅ deployed + verified — **PR #46** |
+| **3** | H8, H11, H12, M2, M3, M5, M8 | ✅ deployed + verified — **PR #47** |
+| **3** | H15 (per-tenant tool rows) | ✅ built + verified — **PR #48**, ⚠️ **contains a schema migration, NOT deployed** |
+| **4** | L1–L5 (lows / defense-in-depth) | ✅ deployed + verified — **PR #49** |
+| **4** | CI isolation gate, RLS, L6–L8, residuals | ⛔ open — see below |
+
+**Open, and each needs a human decision or an environment the loop didn't have:**
+1. **Cross-scope isolation CI gate** (item 14) — the #1 item. Needs Docker; fully scoped in §4 so it can be picked up cold.
+2. **H15 migration apply** (PR #48) — safe on test.platos (0 tool rows, verified); populated self-host DBs need the documented backfill **before entities reconnect**.
+3. **Postgres RLS backstop** (item 16) — the big one; log-only → enforcing rollout, and `PLATOS_ADMIN_TOKEN` sweeps need a `BYPASSRLS` role.
+4. **L6** (KG `agentId` column) — schema migration; do it **before** any turn-time KG recall is wired, or it becomes a live cross-agent leak.
+5. **L7 / L8** — flagged need-human in this report (run-ownership tagging model; body-cap code-vs-Caddy ops call).
+6. **Phase-3 residuals** (item 17) — M8→RE2, H11 DNS-rebind IP-pin, H12 dup-`toolName` ordering, M3 re-encrypt sweep.
+7. **L5 RAG half** — deliberately deferred; stamping `agentId` there would push document text into every prompt. See the revised disposition under L5.
+
+**Pilot posture:** the multi-user-per-tenant blockers (B5 operator tier, B6 realtime) are closed, so the widget/AI-employee model is no longer structurally unsafe. The remaining gap is *enforcement* (no CI gate yet) and *depth* (no RLS backstop) — i.e. nothing stops a future handler from forgetting its `where`.
+
+---
+
 ## 1. Executive Summary
 
 **Verdict: `play.platos.dev` is NOT safe for real multi-tenant production today.** It is safe under exactly one assumption — that **every principal inside a single `(organizationId, projectId, environmentId)` tuple is a mutually-trusting operator**. That assumption is precisely what the winsen.ai pilot / embedded-widget / Percy AI-employee direction breaks: many *untrusted end-users* (and anonymous public-guest tokens) share one scope tuple. The moment that happens, the codebase has cross-user AND cross-tenant breaks that expose message content, PII, spend, BYOK-backed execution, and secret-signing keys.
@@ -200,6 +226,10 @@ All three call `validatePublicUrl(url)` then bare `fetch(url, …)` with default
 - **L3** — `MemoryService.list()` `agentIds` branch references an unbound SQL placeholder (`memory.service.ts:551-560` vs `832-837`) → clustered `list_memories` throws, **fails closed** (empty result). **Fix:** push `input.agentIds` in `buildListArgs`.
 - **L4** — Redis keys unscoped: `chatsess:cursor:<threadId>` (gateway:699), Trigger idempotency `turn-<threadId>-<clientMessageId>` (gateway:890). Cuid collision only; defense-in-depth. **Fix:** prefix with scope tuple.
 - **L5** — RAG ingest + bundle import write `agentId=NULL` (`skill-handlers.ts:377-391`, `memory.controller.ts:294-309`) → cross-agent visibility asymmetry. **Fix:** stamp `agentId` once H8 threads it through.
+  > **REVISED DISPOSITION (2026-07-17) — partially fixed; the RAG half is DEFERRED on purpose.**
+  > **Bundle import: FIXED** — stamps `agentId` from the **verified** request scope (never the untrusted bundle); null when the token isn't agent-pinned (prior behaviour).
+  > **RAG ingest: deliberately still NULL.** Stamping it backfires. RAG chunks derive `visibility:"agent_visible"` (`normalizeVisibility` default) and use `kind:"fact"`, so the moment they ALSO satisfy the `agentId` equality filter they become eligible for the **automatic memory injection** (`agent.service.ts` ~5000, limit 8 / minScore 0.35) — raw document text would silently start consuming every turn's prompt + memory budget. The NULL agentId is currently *load-bearing*: it keeps RAG chunks out of auto-injection while `rag_retrieve` (which passes no agentId filter) still finds them. The asymmetry is also **fail-safe** — a NULL row is *less* visible, never more.
+  > **To close properly** (deliberate change, not a drive-by on a LOW finding): add a first-class `"rag"` memory kind (already TODO'd as RG.1.2 in `skill-handlers.ts`) or an explicit `__rag` exclusion in the injection query, THEN stamp `agentId`. Also note the two in-process `invokeTool` call sites (`agent.service.ts` ~5108, ~6225) pass no `agentId`/`context`, so any future stamping must thread it there too or it is a no-op on non-durable turns.
 - **L6 (info)** — KG rows have no `agentId` column (`schema.prisma:4657-4728`) — latent cross-agent leak the moment any turn-time KG recall is wired. **Fix:** add nullable `agentId` before wiring KG-in-prompt.
 - **L7 (needs-human)** — Run-inspection meta-tools (`get_run_details`/`replay_run`, `agent.service.ts:3157+`) take an unscoped `runId` on the shared Trigger project. Default-OFF + long random ids. **Fix:** tag runs with scope metadata, verify on retrieve; or per-scope Trigger projects.
 - **L8 (needs-human)** — Global 15MB body limit applies to unauthenticated bypass routes (`main.ts:144`) → memory-amplification DoS. **Fix:** per-route 256KB cap on `/api/v1/public/*`, `/mcp*`, `/oauth/*`; keep 15MB only on catalog ingest. Code-vs-Caddy is an ops call.
@@ -287,6 +317,14 @@ Ordered by (blocker status × blast radius × implementation cost). Each notes b
 **Phase 4 — defense-in-depth + the CI gate that makes it stick:**
 
 14. **Make `cross-scope-isolation.test.ts` real and blocking** — two-org + two-user fixture via `internal-packages/testcontainers`; assert cross-tenant AND cross-user reads/writes/subscribes return null/`[]`/404/rejected across every scoped model and every transport (HTTP, WS join, memory REST). Wire into CI as a **merge gate** (OWASP API1 rule #4: don't deploy changes that fail the authz tests). *This is the enforcement that keeps Phases 0-3 from regressing.*
+
+> **STATUS — NOT BUILT. This is the #1 remaining item and it needs a Docker-capable environment. Scoped below so it can be picked up cold.**
+> Why it wasn't done in the hardening loop: it cannot be *verified* without Docker, and an unverified **merge gate** that fails on first run blocks the whole PR queue. Shipping it blind is a worse outcome than leaving it open. Prerequisites, all confirmed by inspection:
+> 1. **`@platos/testcontainers` is NOT a dependency of `apps/agent`** — this is the actual reason every block in `cross-scope-isolation.test.ts` is `it.skip` (the file's own `require.resolve` guard flips `containersAvailable` to false). Add it as a devDependency (workspace protocol) + `pnpm install` (lockfile change).
+> 2. **The fixture already exists and does the hard part:** `postgresTest` (`internal-packages/testcontainers/src/index.ts:123`) = `test.extend({network, postgresContainer, prisma})`, and `createPostgresContainer` (`utils.ts:15`) runs `prisma db push --force-reset` against the container, so the injected `prisma` is fully schema'd. Use `postgresTest("...", async ({ prisma }) => {...})` — do NOT hand-roll container setup.
+> 3. **Seeding needs the real FK chain** (PlatosAgent → Organization/Project/RuntimeEnvironment, all `onDelete: Cascade`): `Organization{title,…}` → `Project{name, organizationId,…}` → `RuntimeEnvironment{slug, shortcode, organizationId, projectId, apiKey, type,…}` → then two orgs × two users of `PlatosAgent` / `PlatosAgentThread` / `PlatosMemory`.
+> 4. **CI currently only typechecks** (`.github/workflows/ci.yml` runs `pnpm run typecheck --filter platos-agent`) — it never invokes vitest. Wiring the gate means adding a vitest job (ubuntu-latest has Docker) and accepting ~60s+ of container spin-up per run.
+> **Highest-value assertions** (the boundaries this audit actually moved): cross-**org** `PlatosAgent`/`PlatosAgentThread` findFirst→null + updateMany/deleteMany→count 0; cross-**user** same-scope `PlatosAgentThread` (the H3/Phase-2 boundary) and `PlatosMemory` (the H7 boundary) → null/[]. Those four cover the regressions that would actually hurt.
 15. **L1, L2, L4, L7, L8, L6** — scope-namespace the remaining Redis keys / lookups; add `agentId` to KG rows before any KG recall; decide body-limit code-vs-Caddy. *L7/L8 need-human (run-ownership tagging model; body-cap ops call).*
 16. **Postgres RLS backstop** (optional but highest defense-in-depth): `ENABLE ROW LEVEL SECURITY` + `current_setting('platos.org')` policies on `Platos*` scoped tables, GUCs set per-request via a Prisma `$extends` transaction wrapper. Roll out **log-only → enforcing**, minding the `PLATOS_ADMIN_TOKEN` cross-scope sweeps (run those as a `BYPASSRLS` role). *This is the layer that holds even when a handler forgets its `where` — it directly answers CLAUDE.md's own admission that "the scope model is an implicit convention with no universal query layer."*
 17. **Phase 3 residuals carried forward:** (a) **M8 durable fix** — add an `re2` dep and run `customRegex` through RE2 (linear-time, kills the catastrophic-backtracking class the heuristic can't fully catch) + validate patterns at governance-config write time. (b) **H11 DNS-rebind TOCTOU** — pin the resolved IP inside `fetchWithValidatedRedirects` (currently validates by hostname; a rebind between check and connect is still possible) and stop forwarding privileged headers across a redirect to an arbitrary *public* host. (c) **H12 dup-`toolName` ordering** — the ACL uniqueness is `(entityPk, toolId)`, so duplicate tool names let `tools/list` (Map, last-wins) and `tools/call` (`findFirst`, first-wins) pick different rows; add an `orderBy` or a name-level constraint. (d) **M3 re-encrypt migration** — sweep legacy message-key/plaintext OAuth token rows, re-encrypt under `PLATOS_ENCRYPTION_KEY`, then delete `legacyDecryptEntityTokenWithMessageKey`.
