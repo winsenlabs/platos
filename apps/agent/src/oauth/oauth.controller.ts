@@ -19,6 +19,18 @@ import { OAuthError, OAuthService, OAUTH_ACCESS_TOKEN_TTL_SEC } from "./oauth.se
 import { env } from "../shared/env";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { validatePublicUrl, describeUrlValidationError } from "../shared/url-validator";
+import { SecretsService } from "../auth/secrets.service";
+
+// M3 — one process-wide SecretsService instance shared by the (instance)
+// encrypt path and the (static, cross-module) decrypt path so both use the
+// same key material. SecretsService reads PLATOS_ENCRYPTION_KEY and is
+// fail-closed in production (its constructor throws when the key is missing
+// or malformed), so entity OAuth tokens can never be persisted in plaintext.
+let entityTokenSecrets: SecretsService | null = null;
+function getEntityTokenSecrets(): SecretsService {
+  if (!entityTokenSecrets) entityTokenSecrets = new SecretsService();
+  return entityTokenSecrets;
+}
 
 /**
  * Theme K.10 — OAuth 2.1 authorization-server endpoints.
@@ -1313,7 +1325,9 @@ export class OAuthController {
     // Derive the stable mcpUserId from the externalSub.
     const mcpUserId = `mcp:oidc:${entityIdSlug}:${externalSub}`.slice(0, 255);
 
-    // Encrypt tokens for at-rest storage. Fail-open: store plaintext if no key.
+    // Encrypt tokens for at-rest storage via SecretsService (M3). Fail-CLOSED:
+    // in production a missing PLATOS_ENCRYPTION_KEY throws rather than storing
+    // plaintext.
     const { encryptedAccess, encryptedRefresh } = this.encryptEntityTokens(
       entityTokenData.access_token,
       entityTokenData.refresh_token,
@@ -1443,35 +1457,37 @@ export class OAuthController {
     accessToken: string,
     refreshToken?: string,
   ): { encryptedAccess: string; encryptedRefresh?: string } {
-    // Reuse PLATOS_MESSAGE_ENCRYPTION_KEY if set; else store plaintext.
-    const keyHex = process.env.PLATOS_MESSAGE_ENCRYPTION_KEY;
-    if (!keyHex) {
-      return { encryptedAccess: accessToken, encryptedRefresh: refreshToken };
-    }
-    const key = keyHex.length === 64
-      ? Buffer.from(keyHex, "hex")
-      : Buffer.byteLength(keyHex, "utf8") === 32
-        ? Buffer.from(keyHex, "utf8")
-        : null;
-    if (!key) {
-      return { encryptedAccess: accessToken, encryptedRefresh: refreshToken };
-    }
-    // BUG-19: use the static top-level crypto import instead of dynamic require().
-    const encrypt = (plain: string): string => {
-      const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-      const enc = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
-      const tag = cipher.getAuthTag();
-      return Buffer.concat([iv, tag, enc]).toString("base64");
-    };
+    // M3 — encrypt at rest with PLATOS_ENCRYPTION_KEY via SecretsService.
+    // No plaintext fallback: in production SecretsService throws when the key
+    // is missing/malformed, so tokens are never persisted unencrypted.
+    const secrets = getEntityTokenSecrets();
     return {
-      encryptedAccess: encrypt(accessToken),
-      encryptedRefresh: refreshToken ? encrypt(refreshToken) : undefined,
+      encryptedAccess: secrets.encrypt(accessToken),
+      encryptedRefresh: refreshToken ? secrets.encrypt(refreshToken) : undefined,
     };
   }
 
   /** Decrypt a token that was stored by encryptEntityTokens. */
   static decryptEntityToken(ciphertext: string): string {
+    // M3 — primary path: current key via SecretsService (PLATOS_ENCRYPTION_KEY).
+    try {
+      return getEntityTokenSecrets().decrypt(ciphertext);
+    } catch {
+      // Backward-compat dual-read for legacy rows written before M3 under
+      // PLATOS_MESSAGE_ENCRYPTION_KEY. Read-only: new writes always use the
+      // PLATOS_ENCRYPTION_KEY path above, so these rows re-encrypt on next
+      // login. DELETE this fallback after a re-encrypt migration window.
+      return OAuthController.legacyDecryptEntityTokenWithMessageKey(ciphertext);
+    }
+  }
+
+  /**
+   * M3 legacy read path — decrypt rows encrypted (pre-M3) with
+   * PLATOS_MESSAGE_ENCRYPTION_KEY. Returns the input unchanged when no legacy
+   * key is configured or decryption fails (covers rows that were stored as
+   * plaintext under the old fail-open behaviour). Remove after migration.
+   */
+  private static legacyDecryptEntityTokenWithMessageKey(ciphertext: string): string {
     const keyHex = process.env.PLATOS_MESSAGE_ENCRYPTION_KEY;
     if (!keyHex) return ciphertext;
     const key = keyHex.length === 64
@@ -1481,7 +1497,6 @@ export class OAuthController {
         : null;
     if (!key) return ciphertext;
     try {
-      // BUG-19: use the static top-level crypto import instead of dynamic require().
       const packed = Buffer.from(ciphertext, "base64");
       const iv = packed.subarray(0, 16);
       const tag = packed.subarray(16, 32);

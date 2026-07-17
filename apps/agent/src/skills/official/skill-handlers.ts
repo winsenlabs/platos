@@ -223,9 +223,16 @@ export class OfficialSkillHandlers {
   private ragResolveUserId(scope: ScopeTuple): string {
     const uid = (scope as Record<string, unknown>)["userId"];
     if (typeof uid === "string" && uid.trim()) return uid;
-    // Fall back to a stable sentinel so RAG rows are still scoped + searchable
-    // from the playground where no explicit user session has been seeded.
-    return "default";
+    // Fail closed (audit H8). RAG rows are per-user; a turn that reaches a
+    // RAG op with no acting userId is either a wiring bug or an
+    // unauthenticated caller. Silently pooling every such call into a shared
+    // "default" bucket leaked one user's corpus into another's retrieve/list.
+    // Refuse rather than pool. Genuine system paths must pass an explicit
+    // userId on the scope handed to SkillRuntimeService.invokeTool.
+    throw new Error(
+      "rag: no acting userId on scope — RAG operations require an authenticated " +
+        "user. Ensure the turn scope carries userId at the invokeTool call site.",
+    );
   }
 
   /** Sentence-boundary aware splitter. Zero-dep. */

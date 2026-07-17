@@ -3,7 +3,7 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import type { RequestScope } from "../auth/scope.guard";
-import { validatePublicUrl, describeUrlValidationError } from "../shared/url-validator";
+import { validatePublicUrl, describeUrlValidationError, fetchWithValidatedRedirects } from "../shared/url-validator";
 
 /**
  * Theme K.6 — MCP server registry.
@@ -239,7 +239,7 @@ export class McpServerRegistryService {
         method: "tools/list",
         params: {},
       };
-      const res = await fetch(server.url, {
+      const res = await fetchWithValidatedRedirects(server.url, 3, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

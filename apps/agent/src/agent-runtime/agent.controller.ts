@@ -4825,6 +4825,7 @@ Write the summary now:`;
               organizationId: scope.organizationId,
               projectId: scope.projectId,
               environmentId: scope.environmentId,
+              userId: scope.userId,
             },
             {
               skillSlug: "platos.platos_rag",

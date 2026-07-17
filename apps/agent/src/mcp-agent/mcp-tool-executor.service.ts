@@ -3,7 +3,7 @@ import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.
 import { McpServerRegistryService, type ServerRow } from "./server-registry.service";
 import { ToolAuditService } from "../monitoring/tool-audit.service";
 import type { RequestScope } from "../auth/scope.guard";
-import { validatePublicUrl, describeUrlValidationError } from "../shared/url-validator";
+import { validatePublicUrl, describeUrlValidationError, fetchWithValidatedRedirects } from "../shared/url-validator";
 
 /**
  * Theme K.12 — MCP tool dispatcher used by the customer-agent turn
@@ -199,7 +199,7 @@ export class McpToolExecutorService {
         method: "tools/call",
         params: { name: toolName, arguments: params },
       };
-      const res = await fetch(server.url, {
+      const res = await fetchWithValidatedRedirects(server.url, 3, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
