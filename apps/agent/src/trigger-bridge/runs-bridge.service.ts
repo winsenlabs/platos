@@ -132,12 +132,23 @@ export class RunsBridgeService {
         };
         const scopeRoom = `scope:${scope.organizationId}:${scope.projectId}:${scope.environmentId}`;
         const threadRoom = `thread:${threadId}`;
+        // SECURITY (audit H4 regression) — end-users left the scope room, so a
+        // run whose owner isn't currently joined to the thread room (background
+        // run surfaced on a run-list, or post-reconnect) would be starved. Fan
+        // out to the owner's user room too. Socket.IO dedupes within the single
+        // chained emit, so a client in multiple of these rooms still gets one copy.
+        const ownerUserRoom = scope.userId
+          ? `user:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.userId}`
+          : undefined;
         try {
           // ONE chained emit — Socket.IO dedupes per socket only within a
           // single .to(a).to(b).emit() chain. Two separate emits delivered
           // every run_update TWICE to any client joined to both rooms (the
           // chat client always is) — the "bgo run · DEQUEUED ×2" noise.
-          this.connections.server?.to(scopeRoom).to(threadRoom).emit("agent_event", event);
+          const runTarget = ownerUserRoom
+            ? this.connections.server?.to(scopeRoom).to(threadRoom).to(ownerUserRoom)
+            : this.connections.server?.to(scopeRoom).to(threadRoom);
+          runTarget?.emit("agent_event", event);
         } catch (err: any) {
           this.logger.warn(`emit failed for runId=${runId}: ${err?.message}`);
         }

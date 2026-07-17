@@ -378,6 +378,10 @@ export class ToolExecutorService {
             projectId: scope.projectId,
             environmentId: scope.environmentId,
             agentId: scope.agentId ?? "default",
+            // SECURITY (audit H4 regression) — route to the requester's user
+            // room; they left the scope room, so a timeout must carry userId
+            // to reach their card and stop the spinner.
+            userId: scope.userId ?? null,
           }),
         ).catch(() => {});
         return {

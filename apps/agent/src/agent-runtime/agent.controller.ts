@@ -15,6 +15,7 @@ import {
   HttpException,
   HttpStatus,
   NotFoundException,
+  ForbiddenException,
   BadRequestException,
   ServiceUnavailableException,
 } from "@nestjs/common";
@@ -340,6 +341,10 @@ export class AgentController {
         organizationId: scope.organizationId,
         projectId: scope.projectId,
         environmentId: scope.environmentId,
+        // SECURITY (audit H4 regression) — the owner left the scope room, so
+        // fan lifecycle out to their user room too, else their conversation
+        // list stops updating live for non-open threads.
+        userId: scope.userId,
       });
     }
     return result;
@@ -363,6 +368,8 @@ export class AgentController {
       organizationId: scope.organizationId,
       projectId: scope.projectId,
       environmentId: scope.environmentId,
+      // SECURITY (audit H4 regression) — fan out to the owner's user room.
+      userId: scope.userId,
     });
     return result;
   }
@@ -440,6 +447,8 @@ export class AgentController {
         organizationId: scope.organizationId,
         projectId: scope.projectId,
         environmentId: scope.environmentId,
+        // SECURITY (audit H4 regression) — fan out to the owner's user room.
+        userId: scope.userId,
       });
       return thread;
     } catch (err: any) {
@@ -459,6 +468,8 @@ export class AgentController {
         organizationId: scope.organizationId,
         projectId: scope.projectId,
         environmentId: scope.environmentId,
+        // SECURITY (audit H4 regression) — fan out to the owner's user room.
+        userId: scope.userId,
       });
       return thread;
     } catch (err: any) {
@@ -836,6 +847,23 @@ export class AgentController {
       // rejection without body-peeking.
       throw new NotFoundException({ error: "Approval not found in this scope", approvalId });
     }
+    // SECURITY (audit H5) — only the REQUESTER or an operator may resolve.
+    // Scope-gating alone let any same-scope user (incl. anonymous guest)
+    // approve another user's destructive gated tool call, or reject to DoS it.
+    // Fail CLOSED when requestedBy is null (userless context — MCP token with
+    // no minter, or a system/background turn): only an operator may resolve.
+    // A non-operator must have a concrete requestedBy that matches their own
+    // userId — a null requester must never match a null/undefined scope.userId.
+    if (
+      scope.principal !== "operator" &&
+      ((found as any).requestedBy == null ||
+        (found as any).requestedBy !== scope.userId)
+    ) {
+      throw new ForbiddenException({
+        error: "Only the requesting user or an operator may resolve this approval",
+        approvalId,
+      });
+    }
     // Wave 2 — validate editedArgs early. Reject malformed shapes
     // before any side effects (Redis push or ledger write). Also
     // ignore stray editedArgs on a rejection so a malicious client
@@ -894,6 +922,12 @@ export class AgentController {
           approvalId,
           status: body.approved ? "approved" : "rejected",
           respondedBy: scope.userId,
+          // SECURITY (audit H4 regression) — route the resolution to the
+          // REQUESTER's user room, not just the operator scope room. The
+          // requester left the scope room, so without their userId the
+          // resolved-broadcast never reaches their approval card (spinner
+          // stuck on operator-resolves-on-behalf).
+          userId: (found as any).requestedBy ?? null,
           organizationId: scope.organizationId,
           projectId: scope.projectId,
           environmentId: scope.environmentId,

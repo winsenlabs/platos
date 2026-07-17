@@ -2799,6 +2799,9 @@ export class AgentService {
                 projectId: scope.projectId,
                 environmentId: scope.environmentId,
                 agentId: scope.agentId || "default",
+                // SECURITY (audit H4 regression) — carry requester userId so
+                // the timeout reaches their user room (they left the scope room).
+                userId: scope.userId ?? null,
               }),
             ).catch(() => {});
             return { approved: false, reason: "timeout", message: "User did not respond within 5 minutes" };
@@ -3260,6 +3263,9 @@ export class AgentService {
                   projectId: scope.projectId,
                   environmentId: scope.environmentId,
                   agentId: scope.agentId || "default",
+                  // SECURITY (audit H4 regression) — carry requester userId so
+                  // the timeout reaches their user room (they left the scope room).
+                  userId: scope.userId ?? null,
                 }),
               ).catch(() => {});
               return { status: "denied", reason: "timeout" };

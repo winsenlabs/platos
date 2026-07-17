@@ -120,6 +120,17 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     return `scope:${scope.organizationId}:${scope.projectId}:${scope.environmentId}`;
   }
 
+  /**
+   * SECURITY (audit H4) — per-user room. Sensitive per-user events (approvals,
+   * run output, thread titles) are delivered here so co-tenants don't receive
+   * each other's content. The scope room is now operator-audience only.
+   */
+  private userRoom(
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId" | "userId">,
+  ): string {
+    return `user:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.userId}`;
+  }
+
   async onModuleInit() {
     // Spawn a dedicated subscriber cloning the main redis connection config.
     // Listens for approval:event + thread:lifecycle messages and forwards
@@ -132,11 +143,21 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         try {
           const payload = JSON.parse(message);
           if (channel === "approval:event") {
-            const room = `scope:${payload.organizationId}:${payload.projectId}:${payload.environmentId}`;
-            // Single channel carries both the request and the resolution so
-            // every subscribed tab can drive its modal state from one stream.
+            // SECURITY (audit H4/H5) — approval_needed carries the tool action +
+            // arguments (often PII). Deliver ONLY to the requesting user's room
+            // + the operator scope room (operators may action on behalf of a
+            // user), NOT the whole tenant. The requesting user is no longer in
+            // the scope room (operator-only now), so their user room is
+            // required for them to see their own prompt.
+            const scopeRoom = `scope:${payload.organizationId}:${payload.projectId}:${payload.environmentId}`;
+            const reqUserRoom = payload.userId
+              ? `user:${payload.organizationId}:${payload.projectId}:${payload.environmentId}:${payload.userId}`
+              : undefined;
+            const target = reqUserRoom
+              ? this.server?.to(reqUserRoom).to(scopeRoom)
+              : this.server?.to(scopeRoom);
             if (payload.type === "approval_resolved") {
-              this.server?.to(room).emit("agent_event", {
+              target?.emit("agent_event", {
                 type: "approval_resolved",
                 approvalId: payload.approvalId,
                 status: payload.status,
@@ -144,7 +165,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
                 agentId: payload.agentId,
               });
             } else {
-              this.server?.to(room).emit("agent_event", {
+              target?.emit("agent_event", {
                 type: "approval_needed",
                 approvalId: payload.approvalId,
                 action: payload.action,
@@ -156,9 +177,19 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
           } else if (channel === "thread:lifecycle") {
             // PIFSP-20: broadcast lifecycle events to the scope room AND the
             // thread room so open Conversations tabs update without reloading.
+            // SECURITY (audit H4 regression) — the owner left the scope room
+            // (operator-only now), so also target their user room; otherwise
+            // their conversation LIST (where they aren't joined to the specific
+            // thread room) stops getting live archive/rename updates.
             const scopeRoom = `scope:${payload.organizationId}:${payload.projectId}:${payload.environmentId}`;
             const threadRoom = `thread:${payload.threadId}`;
-            this.server?.to(scopeRoom).to(threadRoom).emit("thread_event", payload);
+            const ownerUserRoom = payload.userId
+              ? `user:${payload.organizationId}:${payload.projectId}:${payload.environmentId}:${payload.userId}`
+              : undefined;
+            const lifecycleTarget = ownerUserRoom
+              ? this.server?.to(scopeRoom).to(threadRoom).to(ownerUserRoom)
+              : this.server?.to(scopeRoom).to(threadRoom);
+            lifecycleTarget?.emit("thread_event", payload);
           } else if (channel === "overview:event") {
             // PIFSP-2 — Plato Central live refresh. Published by agent-task.service
             // et al; forwarded to the scope room so any open overview pages update.
@@ -198,6 +229,8 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       let userId: string | undefined;
       let entityId: string | undefined;
       let userToken: string | undefined;
+      let pinnedAgentId: string | undefined; // SECURITY (H6) — token-pinned agent
+      let principal: "operator" | "end-user" = "end-user";
 
       if (token) {
         // Mode 2 session-token JWT — verified HMAC against entity's serviceSecret.
@@ -213,6 +246,14 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         userId = payload.userId;
         entityId = payload.entityId;
         userToken = payload.userToken;
+        // SECURITY (audit H6) — capture the token's pinned agentId; a turn must
+        // not target a different agent. Operator = platform-signed + non-guest
+        // (mirrors ScopeGuard / the HTTP path).
+        pinnedAgentId = (payload as any).agentId;
+        principal =
+          payload.iss === "platos-platform" && (payload as any).isGuest !== true
+            ? "operator"
+            : "end-user";
         // Lift the JWT's userMeta into the WS auth bag so the gateway can
         // forward it as scope.sessionContext.user.* on every turn — same
         // path ScopeGuard takes for HTTP. Without this, the streaming path
@@ -229,6 +270,8 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         userId = (auth.userId as string | undefined) || (headers["x-platos-user-id"] as string | undefined);
         entityId = (auth.entityId as string | undefined) || (headers["x-platos-entity-id"] as string | undefined);
         userToken = (auth.userToken as string | undefined) || (headers["x-platos-user-token"] as string | undefined);
+        // Trusted internal direct-header path (webapp control-plane).
+        principal = "operator";
       } else {
         // External request (via Caddy) without a session token — reject.
         client.emit("error", {
@@ -265,6 +308,8 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         // claim.
         ...(entityId ? { entityId: String(entityId) } : {}),
         ...(userToken ? { userToken: String(userToken) } : {}),
+        principal,
+        ...(pinnedAgentId ? { agentId: String(pinnedAgentId) } : {}),
         // Lift JWT userMeta into sessionContext.user.* so the dynamic-block
         // resolver (and span columns) see {{user.name}} / {{user.email}}
         // on every WS turn. ScopeGuard does this for HTTP; we mirror it
@@ -281,8 +326,17 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
           : {}),
       };
       (client as any).scope = scope;
+      (client as any).pinnedAgentId = pinnedAgentId;
 
-      await client.join(this.scopeRoom(scope));
+      // SECURITY (audit H4) — join a PER-USER room, and the tenant-wide scope
+      // room ONLY for operators. Sensitive per-user events (approvals, run
+      // output, thread titles) are delivered to the user room; the scope room
+      // is now operator-audience only. Previously every client joined the
+      // scope room and received every other user's events.
+      await client.join(this.userRoom(scope));
+      if (scope.principal === "operator") {
+        await client.join(this.scopeRoom(scope));
+      }
 
       // PIFSP-1 — emit deprecation notice on the shared /agent namespace.
       // Per-agent Socket.IO namespace (/agent/:agentId) is the forward path.
@@ -383,6 +437,19 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     }
     if (!agentId) agentId = "default";
 
+    // SECURITY (audit H6) — enforce the token's pinned agent. Without this, a
+    // guest token pinned to public agent A could set data.agentId=B and run a
+    // turn against a PRIVATE agent B (its prompt, tools, memory, BYOK keys).
+    // Mirrors ScopeGuard's AGENT_SCOPE_MISMATCH on the HTTP path.
+    const pinnedAgentId = (client as any).pinnedAgentId as string | undefined;
+    if (pinnedAgentId && agentId !== pinnedAgentId) {
+      client.emit("error", {
+        code: "AGENT_SCOPE_MISMATCH",
+        message: `This session is scoped to agent ${pinnedAgentId} but the message targets agent ${agentId}.`,
+      });
+      return;
+    }
+
     // Do NOT auto-generate threadId here — executeStreamingTurn handles thread
     // creation via getOrCreateThread and emits the resulting thread_id in the
     // meta event. Frontend must capture that and pass it in subsequent messages.
@@ -397,8 +464,11 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     // MINOR-1: include replyToMessageId in the stream key so main + thread streams
     // on the same threadId don't overwrite each other's AbortController.
     const ac = new AbortController();
+    // SECURITY (audit H13) — include userId so a co-tenant can't abort another
+    // user's turn on a guessed threadId. The prefix
+    // `${org}:${proj}:${env}:${userId}:${tid}:` is what handleStop matches.
     const ackey = (tid: string | undefined) =>
-      `${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${tid ?? "unknown"}:${replyToMessageId ?? "main"}`;
+      `${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.userId}:${tid ?? "unknown"}:${replyToMessageId ?? "main"}`;
     if (resolvedThreadId) {
       this.activeStreams.set(ackey(resolvedThreadId), ac);
     }
@@ -941,14 +1011,15 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       return;
     }
     try {
-      const thread = await this.prisma.platosAgentThread.findFirst({
-        where: {
-          id: data.threadId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        },
-        select: { id: true },
+      // SECURITY (audit H3) — gate by OWNERSHIP, not just scope. A bare
+      // scope-filtered findFirst let any same-scope socket join
+      // thread:<victimId> and receive the victim's live agent_event stream
+      // (tokens, tool_results, batch output PII). getThread ORs
+      // userId/createdByUserId under the scope tuple; operators (dashboard)
+      // may view any thread in scope via allUsers.
+      const convo = (this.agentTaskService as any).conversationService;
+      const thread = await convo?.getThread?.(data.threadId, scope, {
+        allUsers: scope.principal === "operator",
       });
       if (!thread) {
         client.emit("error", { message: "thread not found" });
@@ -1004,6 +1075,21 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       client.emit("approval_response_error", {
         approvalId: data.approvalId,
         error: "Approval not found in this scope",
+      });
+      return;
+    }
+    // SECURITY (audit H5) — only the requester or an operator may resolve.
+    // Fail CLOSED on a null requestedBy (userless context): a non-operator
+    // must have a concrete requestedBy that matches their own userId. A null
+    // requester must never match a null/undefined scope.userId.
+    if (
+      scope.principal !== "operator" &&
+      ((found as any).requestedBy == null ||
+        (found as any).requestedBy !== scope.userId)
+    ) {
+      client.emit("approval_response_error", {
+        approvalId: data.approvalId,
+        error: "Only the requesting user or an operator may resolve this approval",
       });
       return;
     }
@@ -1084,7 +1170,11 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       };
       const scopeRoom = this.scopeRoom(scope);
       const threadRoom = `thread:${data.threadId}`;
-      this.server?.to(scopeRoom).to(threadRoom).emit("thread_event", event);
+      // SECURITY (audit H4 regression) — include the owner's user room; the
+      // renamer left the scope room, so without this their other tabs / list
+      // view never see their own rename.
+      const userRoom = this.userRoom(scope);
+      this.server?.to(scopeRoom).to(threadRoom).to(userRoom).emit("thread_event", event);
     } catch (err: any) {
       client.emit("error", { message: "rename failed" });
     }
@@ -1102,12 +1192,23 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     // stop from scope A can't abort scope B's in-flight turn.
     const scope = (client as any).scope as RequestScope | undefined;
     if (!scope) return;
-    const key = `${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${data.threadId}`;
-    const controller = this.activeStreams.get(key);
-    if (controller) {
-      controller.abort();
-      this.activeStreams.delete(key);
+    // SECURITY (audit H13) — the set-key carries a trailing
+    // :${replyToMessageId ?? "main"} segment (a thread can have a main turn +
+    // sub-thread turns), so an exact-key lookup NEVER matched → stop was a
+    // silent no-op (UI showed "done" while the model kept streaming + billing).
+    // Match every in-flight turn for THIS user + thread by prefix and abort.
+    const prefix = `${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.userId}:${data.threadId}:`;
+    let aborted = false;
+    for (const [k, controller] of this.activeStreams) {
+      if (k.startsWith(prefix)) {
+        controller.abort();
+        this.activeStreams.delete(k);
+        aborted = true;
+      }
     }
-    client.emit("agent_event", { type: "done", threadId: data.threadId, stopped: true });
+    // Only claim "done/stopped" if we actually aborted something.
+    if (aborted) {
+      client.emit("agent_event", { type: "done", threadId: data.threadId, stopped: true });
+    }
   }
 }
