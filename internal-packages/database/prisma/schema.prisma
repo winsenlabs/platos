@@ -3671,7 +3671,16 @@ model PlatosEntityMcpConfig {
 /// entities, projects, and orgs. BM25 tokens are computed once here.
 model PlatosToolDefinition {
   id          String   @id @default(cuid())
-  name        String   @unique
+  // SECURITY (audit H15) — tenant scope. `name` was globally @unique, so one
+  // org registering a common tool name (`search`, `send_email`) overwrote the
+  // shared row's description/paramSchema/bm25Tokens and re-indexed it, poisoning
+  // another org's ranking + inheriting its schema. Scope the row per tenant.
+  // Nullable for an additive migration: legacy rows (one per name, since name
+  // was globally unique) become (NULL, NULL, name) — no constraint conflict —
+  // and are backfilled/split before enforcing NOT NULL.
+  organizationId String?
+  projectId      String?
+  name        String
   description String   @db.Text
   paramSchema Json // full JSON Schema for parameters
   category    String? // functional grouping: "calendar", "email", "tasks", etc.
@@ -3683,6 +3692,8 @@ model PlatosToolDefinition {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([organizationId, projectId, name])
+  @@index([organizationId, projectId])
   @@index([category])
 }
 

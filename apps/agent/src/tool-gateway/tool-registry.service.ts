@@ -227,9 +227,19 @@ export class ToolRegistryService implements OnModuleInit {
       const resolvedCategory =
         tool.category || inferEntityToolCategory(tool.name, params.sourceEntityId);
 
-      // Upsert into central registry
-      let existing = await this.prisma.platosToolDefinition.findUnique({
-        where: { name: tool.name },
+      // Upsert into central registry.
+      // SECURITY (audit H15) — scope the lookup + create to (org, project,
+      // name). Previously the row was keyed by `name` alone (global @unique),
+      // so an org registering a common tool name overwrote another org's shared
+      // row and re-indexed the shared toolId in the process-wide BM25 index —
+      // cross-tenant schema-overwrite + ranking poison. Each tenant now owns
+      // its own row.
+      let existing = await this.prisma.platosToolDefinition.findFirst({
+        where: {
+          name: tool.name,
+          organizationId: params.organizationId,
+          projectId: params.projectId,
+        },
       });
 
       if (existing) {
@@ -252,6 +262,8 @@ export class ToolRegistryService implements OnModuleInit {
         existing = await this.prisma.platosToolDefinition.create({
           data: {
             name: tool.name,
+            organizationId: params.organizationId,
+            projectId: params.projectId,
             description: tool.description,
             paramSchema: tool.paramSchema,
             category: resolvedCategory,
