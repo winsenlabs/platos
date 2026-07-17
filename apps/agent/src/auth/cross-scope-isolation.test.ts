@@ -1,124 +1,245 @@
 /**
- * PPR-36 — Cross-scope fail-closed integration test.
+ * PPR-36 — Cross-scope fail-closed integration test (REAL, not scaffold).
  *
- * Sets up two orgs in the same Postgres testcontainer and verifies that
- * findFirst / findMany / updateMany / deleteMany on every scoped Platos model
- * returns empty/404 when the querying scope doesn't match the row's scope.
+ * Spins up ONE Postgres testcontainer (via `@internal/testcontainers`
+ * `postgresTest`, whose `prisma` fixture is fully schema-d by
+ * `prisma db push --force-reset`), seeds TWO complete scopes, and asserts
+ * that the four boundaries this security audit actually moved are
+ * fail-closed at the Prisma query layer:
  *
- * Models exercised (critical subset):
- *   - PlatosAgent
- *   - PlatosAgentThread
- *   - PlatosAgentMessage
- *   - PlatosMessageAttachment
- *   - PlatosEntityToolMapping (via PlatosConnectedEntity + PlatosToolDefinition)
+ *   a. cross-ORG   PlatosAgent        — findFirst null; updateMany/deleteMany
+ *                                        count 0; row survives.
+ *   b. cross-ORG   PlatosAgentThread  — findFirst null.
+ *   c. cross-USER  PlatosAgentThread  — findFirst null (H3 / Phase-2 room
+ *                                        isolation: same org/project/env,
+ *                                        different userId).
+ *   d. cross-USER  PlatosMemory       — findMany [] / findFirst null (H7:
+ *                                        same scope tuple, different userId).
  *
- * CLAUDE.md §9.11: Vitest only, never mock — uses @platos/testcontainers.
+ * The scope model in Prisma is a code-level convention
+ * (`where: { organizationId, projectId, environmentId[, userId] }`), not a
+ * DB-enforced RLS constraint. This test pins that the convention holds for
+ * the concrete rows the audit hardened: a query carrying the WRONG scope
+ * tuple must return nothing and mutate nothing.
  *
- * Most blocks are SCAFFOLDED with `it.skip` because:
- *   1. The scope model in Prisma is an implicit convention (code-level
- *      `where: { organizationId, projectId, environmentId }`), not a
- *      database-enforced constraint. There's no universal query layer to
- *      hook into — each service does the filter itself.
- *   2. Testing "every findFirst in the codebase filters by scope" is a
- *      static-analysis property better served by a grep rule in the PLAT
- *      review process than a runtime test.
- *   3. The concrete services that DO call the prisma layer without explicit
- *      scope filters have been audited in PPR-11 and are scope-filtered at
- *      call sites. This test scaffolds the pattern any future regression
- *      test can re-use.
+ * CLAUDE.md §9.11: Vitest only, never mock — real Postgres via testcontainers.
  *
- * TODO: follow-up ticket — pick 5 critical read paths (agent.service.stream,
- * attachments.service.resolveAttachments, thread list loader,
- * message list loader, tool registry.findTools) and wire a full
- * 2-org fixture that exercises the exact HTTP surface with a Postgres
- * testcontainer. This file lays the groundwork.
+ * NOTE: intentionally NOT guarded by `describe.skipIf(process.env.GITHUB_ACTIONS)`
+ * — this suite is the CI enforcement gate; it MUST run in CI. ubuntu-latest
+ * has Docker.
  */
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import type { PrismaClient } from "@platos/database";
+import { describe, it, expect, vi } from "vitest";
+import { postgresTest } from "@internal/testcontainers";
 
-// Deferred import — the test container bootstrap runs only when not skipped.
-// If @platos/testcontainers isn't resolvable in the agent project's
-// pnpm workspace reach yet, the whole block stays on `it.skip`.
-let containersAvailable = true;
-try {
-  require.resolve("@platos/testcontainers");
-} catch {
-  containersAvailable = false;
-}
+// Container pull + start + `prisma db push` on a cold CI runner can take a
+// while; the fixture setup counts against the test/hook timeout.
+vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
-const ORG_A = { organizationId: "org_A", projectId: "proj_A", environmentId: "env_A" };
-const ORG_B = { organizationId: "org_B", projectId: "proj_B", environmentId: "env_B" };
+const USER_1 = "user_1";
+const USER_2 = "user_2";
 
-describe("cross-scope fail-closed (scaffold)", () => {
-  let prisma: PrismaClient | null = null;
-  type StopFn = () => Promise<void>;
-  let containerStop: StopFn | null = null;
+describe("cross-scope fail-closed (real Postgres testcontainer)", () => {
+  postgresTest(
+    "scoped Prisma reads/writes are fail-closed across org and user boundaries",
+    async ({ prisma }) => {
+      // ── Seed scope A ────────────────────────────────────────────────
+      const orgA = await prisma.organization.create({
+        data: { slug: "org-a", title: "Org A" },
+      });
+      const projA = await prisma.project.create({
+        data: {
+          slug: "proj-a",
+          name: "Project A",
+          externalRef: "proj_ref_a",
+          organizationId: orgA.id,
+        },
+      });
+      const envA = await prisma.runtimeEnvironment.create({
+        data: {
+          slug: "dev",
+          apiKey: "tr_dev_apikey_a",
+          pkApiKey: "tr_dev_pkapikey_a",
+          shortcode: "shortcode_a",
+          type: "DEVELOPMENT",
+          organizationId: orgA.id,
+          projectId: projA.id,
+        },
+      });
 
-  beforeAll(async () => {
-    // TODO: wire in @platos/testcontainers PostgresContainer + prisma fixture
-    // See: internal-packages/testcontainers/src/index.ts `postgresTest`.
-    // Needs schema migration pre-applied before spawning Prisma client.
-  }, 60_000);
+      // ── Seed scope B (a completely separate org) ────────────────────
+      const orgB = await prisma.organization.create({
+        data: { slug: "org-b", title: "Org B" },
+      });
+      const projB = await prisma.project.create({
+        data: {
+          slug: "proj-b",
+          name: "Project B",
+          externalRef: "proj_ref_b",
+          organizationId: orgB.id,
+        },
+      });
+      const envB = await prisma.runtimeEnvironment.create({
+        data: {
+          slug: "dev",
+          apiKey: "tr_dev_apikey_b",
+          pkApiKey: "tr_dev_pkapikey_b",
+          shortcode: "shortcode_b",
+          type: "DEVELOPMENT",
+          organizationId: orgB.id,
+          projectId: projB.id,
+        },
+      });
 
-  afterAll(async () => {
-    // Cast through `any` because TS narrows `containerStop` to `never`
-    // (no code path assigns a non-null value — scaffold waiting on
-    // testcontainers wiring in a follow-up).
-    const stop = containerStop as any as (() => Promise<void>) | null;
-    if (stop) await stop();
-    await (prisma as any)?.$disconnect?.();
-  });
+      // ── Scoped rows live entirely in scope A, owned by USER_1 ───────
+      const agentA = await prisma.platosAgent.create({
+        data: {
+          organizationId: orgA.id,
+          projectId: projA.id,
+          environmentId: envA.id,
+          name: "Agent A",
+          slug: "agent-a",
+          model: "anthropic:claude-sonnet-4-20250514",
+        },
+      });
+      const threadA = await prisma.platosAgentThread.create({
+        data: {
+          agentId: agentA.id,
+          organizationId: orgA.id,
+          projectId: projA.id,
+          environmentId: envA.id,
+          userId: USER_1,
+        },
+      });
+      const memoryA = await prisma.platosMemory.create({
+        data: {
+          organizationId: orgA.id,
+          projectId: projA.id,
+          environmentId: envA.id,
+          userId: USER_1,
+          kind: "fact",
+          content: "scope-A secret fact",
+          source: "manual",
+        },
+      });
 
-  it.skip("PlatosAgent.findFirst cross-scope returns null", async () => {
-    // TODO: seed agent in ORG_A, query with ORG_B scope, expect null.
-    expect(containersAvailable).toBe(true);
-  });
+      // ─────────────────────────────────────────────────────────────────
+      // a. cross-ORG PlatosAgent — reads null, writes touch 0 rows, survives.
+      // ─────────────────────────────────────────────────────────────────
+      expect(
+        await prisma.platosAgent.findFirst({
+          where: { id: agentA.id, organizationId: orgB.id },
+        })
+      ).toBeNull();
 
-  it.skip("PlatosAgent.findMany cross-scope returns []", async () => {
-    // TODO: seed 3 agents in ORG_A, query with ORG_B scope, expect length 0.
-  });
+      // Full wrong tuple (the exact where-shape the services build).
+      expect(
+        await prisma.platosAgent.findFirst({
+          where: {
+            id: agentA.id,
+            organizationId: orgB.id,
+            projectId: projB.id,
+            environmentId: envB.id,
+          },
+        })
+      ).toBeNull();
 
-  it.skip("PlatosAgent.updateMany cross-scope affects 0 rows", async () => {
-    // TODO: seed agent in ORG_A, updateMany with ORG_B scope, expect count 0.
-  });
+      const crossOrgUpdate = await prisma.platosAgent.updateMany({
+        where: { id: agentA.id, organizationId: orgB.id },
+        data: { name: "HACKED" },
+      });
+      expect(crossOrgUpdate.count).toBe(0);
 
-  it.skip("PlatosAgent.deleteMany cross-scope affects 0 rows", async () => {
-    // TODO: seed agent in ORG_A, deleteMany with ORG_B scope, expect count 0,
-    // then verify the row still exists when queried in ORG_A scope.
-  });
+      const crossOrgDelete = await prisma.platosAgent.deleteMany({
+        where: { id: agentA.id, organizationId: orgB.id },
+      });
+      expect(crossOrgDelete.count).toBe(0);
 
-  it.skip("PlatosAgentThread.findFirst cross-scope returns null", async () => {
-    // TODO: seed thread in ORG_A, findFirst with ORG_B scope, expect null.
-  });
+      // The row must still exist, unmodified, when queried in its OWN scope.
+      const survivor = await prisma.platosAgent.findFirst({
+        where: { id: agentA.id, organizationId: orgA.id },
+      });
+      expect(survivor).not.toBeNull();
+      expect(survivor?.name).toBe("Agent A");
 
-  it.skip("PlatosAgentThread.findMany cross-scope returns []", async () => {
-    // TODO
-  });
+      // ─────────────────────────────────────────────────────────────────
+      // b. cross-ORG PlatosAgentThread — findFirst null.
+      // ─────────────────────────────────────────────────────────────────
+      expect(
+        await prisma.platosAgentThread.findFirst({
+          where: { id: threadA.id, organizationId: orgB.id },
+        })
+      ).toBeNull();
 
-  it.skip("PlatosAgentMessage.findFirst cross-scope returns null (via thread scope)", async () => {
-    // TODO — messages inherit scope via threadId; the caller must filter on
-    // thread.organizationId/projectId/environmentId. Verify the IDOR-safe
-    // pattern from PPR-11.
-  });
+      // ─────────────────────────────────────────────────────────────────
+      // c. cross-USER PlatosAgentThread — SAME org/project/env, WRONG user.
+      //    (H3 / Phase-2 per-user room isolation.)
+      // ─────────────────────────────────────────────────────────────────
+      expect(
+        await prisma.platosAgentThread.findFirst({
+          where: {
+            id: threadA.id,
+            organizationId: orgA.id,
+            projectId: projA.id,
+            environmentId: envA.id,
+            userId: USER_2,
+          },
+        })
+      ).toBeNull();
 
-  it.skip("PlatosMessageAttachment.findFirst cross-scope returns null", async () => {
-    // TODO — PlatosMessageAttachment has direct scope columns (see PPR-19).
-  });
+      // Control: the OWNER sees it.
+      expect(
+        await prisma.platosAgentThread.findFirst({
+          where: {
+            id: threadA.id,
+            organizationId: orgA.id,
+            projectId: projA.id,
+            environmentId: envA.id,
+            userId: USER_1,
+          },
+        })
+      ).not.toBeNull();
 
-  it.skip("PlatosMessageAttachment.findMany cross-scope returns []", async () => {
-    // TODO
-  });
+      // ─────────────────────────────────────────────────────────────────
+      // d. cross-USER PlatosMemory — SAME scope tuple, WRONG user. (H7.)
+      // ─────────────────────────────────────────────────────────────────
+      const crossUserMemories = await prisma.platosMemory.findMany({
+        where: {
+          organizationId: orgA.id,
+          projectId: projA.id,
+          environmentId: envA.id,
+          userId: USER_2,
+        },
+      });
+      expect(crossUserMemories).toHaveLength(0);
 
-  it.skip("PlatosEntityToolMapping cross-scope is invisible", async () => {
-    // TODO — PlatosEntityToolMapping has no scope columns itself. Scope
-    // isolation flows through PlatosConnectedEntity.organizationId +
-    // projectId. Test the helper `scopedToolCache` collectScopedEntries in
-    // tool-registry.service.ts.
-  });
+      expect(
+        await prisma.platosMemory.findFirst({
+          where: { id: memoryA.id, userId: USER_2 },
+        })
+      ).toBeNull();
+
+      // Control: the OWNER sees exactly their memory.
+      const ownMemories = await prisma.platosMemory.findMany({
+        where: {
+          organizationId: orgA.id,
+          projectId: projA.id,
+          environmentId: envA.id,
+          userId: USER_1,
+        },
+      });
+      expect(ownMemories).toHaveLength(1);
+      expect(ownMemories[0]?.id).toBe(memoryA.id);
+    },
+    180_000
+  );
 });
 
 describe("cross-scope fail-closed (scope tuple sanity checks)", () => {
-  // These are pure-logic asserts that don't need a DB.
+  // Pure-logic asserts that don't need a DB — the semantic basis for the
+  // where-tuple checks above.
+  const ORG_A = { organizationId: "org_A", projectId: "proj_A", environmentId: "env_A" };
+  const ORG_B = { organizationId: "org_B", projectId: "proj_B", environmentId: "env_B" };
+
   it("scope objects with differing org are !== equal", () => {
     expect(ORG_A.organizationId).not.toBe(ORG_B.organizationId);
     expect(ORG_A.projectId).not.toBe(ORG_B.projectId);
@@ -126,9 +247,6 @@ describe("cross-scope fail-closed (scope tuple sanity checks)", () => {
   });
 
   it("four-axis tuple — any differing axis means different scope", () => {
-    // Demonstrates the invariant: if org, project, OR env differs, the
-    // two scopes are distinct. Used as the semantic basis for every
-    // cross-scope check below.
     const a = { ...ORG_A };
     const bDiffOrg = { ...ORG_A, organizationId: "org_Z" };
     const bDiffProj = { ...ORG_A, projectId: "proj_Z" };

@@ -1,14 +1,21 @@
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  // CI cross-scope-isolation testcontainer uses `prisma db push`, which (unlike
+  // migrate deploy) does NOT run the migrations/ SQL — so the CREATE EXTENSION
+  // vector in 20260420120000_platos_memory_l3l4 never fires and db push errors
+  // on the Unsupported("vector(1536)") columns. Declaring the extension here
+  // (+ the postgresqlExtensions preview + a pgvector image) lets db push create
+  // it. Prod is unaffected — migrations still own the extension there.
+  extensions = [vector]
 }
 
 generator client {
   provider        = "prisma-client-js"
   output          = "../generated/prisma"
   binaryTargets   = ["native", "debian-openssl-1.1.x"]
-  previewFeatures = ["metrics"]
+  previewFeatures = ["metrics", "postgresqlExtensions"]
 }
 
 model User {

@@ -13,7 +13,10 @@ import { MinIOContainer } from "./minio";
 import { getContainerMetadata, getTaskMetadata, logCleanup, logSetup } from "./logs";
 
 export async function createPostgresContainer(network: StartedNetwork) {
-  const container = await new PostgreSqlContainer("docker.io/postgres:14")
+  // pgvector/pgvector:pg14 is postgres:14 + the pgvector extension binary, so
+  // `prisma db push` can CREATE EXTENSION vector (the schema has vector(1536)
+  // columns). Drop-in superset of docker.io/postgres:14.
+  const container = await new PostgreSqlContainer("pgvector/pgvector:pg14")
     .withNetwork(network)
     .withNetworkAliases("database")
     .withCommand(["-c", "listen_addresses=*", "-c", "wal_level=logical"])

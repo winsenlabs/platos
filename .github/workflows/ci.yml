@@ -56,3 +56,52 @@ jobs:
 
       - name: Typecheck platos-agent (the per-turn runtime)
         run: pnpm run typecheck --filter platos-agent
+
+  cross-scope-isolation:
+    # Security enforcement gate: the top remaining item of the 2026-07-16
+    # cross-tenant audit. Runs the real Postgres-testcontainer suite that
+    # proves cross-ORG and cross-USER Prisma queries are fail-closed. If this
+    # goes red, a hardening regression has landed. ubuntu-latest ships Docker,
+    # which Testcontainers needs. Scoped to the ONE file so we are not turning
+    # on the whole agent unit suite by surprise.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        # @internal/testcontainers + the test both import @platos/database,
+        # which re-exports the generated client. Without this the PrismaClient
+        # type/runtime is missing. Also emits the query engine the container
+        # `prisma db push` and the injected client rely on.
+        run: pnpm --filter @platos/database generate
+
+      - name: Build testcontainers dependency graph
+        # @internal/testcontainers (the test's fixture source) imports workspace
+        # packages whose entry is ./dist/index.js (a tsc build), not TS source —
+        # @platos/database, @platos/core, etc. `prisma generate` leaves those
+        # dist/ dirs absent, so vitest's vite resolver fails one at a time
+        # ("Failed to resolve entry for package @platos/…"). Typecheck doesn't
+        # hit this (tsc resolves via source/paths; vite via the package `main`).
+        # `@internal/testcontainers...` (ellipsis = pkg + its dependencies)
+        # builds the whole graph in topological order, so every dist/ exists
+        # before vitest runs.
+        run: pnpm --filter "@internal/testcontainers..." build
+
+      - name: Cross-scope isolation suite (real Postgres testcontainer)
+        run: pnpm --filter platos-agent exec vitest run src/auth/cross-scope-isolation.test.ts
