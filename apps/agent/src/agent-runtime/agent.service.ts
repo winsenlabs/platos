@@ -4905,6 +4905,7 @@ export class AgentService {
               organizationId: scope.organizationId,
               projectId: scope.projectId,
               environmentId: scope.environmentId,
+              userId: scope.userId,
             },
             {
               skillSlug: "platos.platos_rag",
@@ -5108,6 +5109,7 @@ export class AgentService {
               organizationId: scope.organizationId,
               projectId: scope.projectId,
               environmentId: scope.environmentId,
+              userId: scope.userId,
             };
             const _handler = pt.handler ?? `skill:${pt.skillId}:${pt.name}`;
             const _toolName = _handler.match(/^skill:[^:]+:(.+)$/)?.[1] ?? pt.name;
@@ -6165,6 +6167,7 @@ export class AgentService {
                 organizationId: scope.organizationId,
                 projectId: scope.projectId,
                 environmentId: scope.environmentId,
+                userId: scope.userId,
               },
               {
                 skillSlug: "platos.platos_rag",
@@ -6223,6 +6226,7 @@ export class AgentService {
               organizationId: scope.organizationId,
               projectId: scope.projectId,
               environmentId: scope.environmentId,
+              userId: scope.userId,
             };
             const _handler = pt.handler ?? `skill:${pt.skillId}:${pt.name}`;
             const _toolName = _handler.match(/^skill:[^:]+:(.+)$/)?.[1] ?? pt.name;

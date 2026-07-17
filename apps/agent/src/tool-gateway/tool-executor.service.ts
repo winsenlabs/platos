@@ -25,6 +25,7 @@ import * as crypto from "crypto";
 import {
   validatePublicUrl,
   describeUrlValidationError,
+  fetchWithValidatedRedirects,
 } from "../shared/url-validator";
 import type { RequestScope } from "../auth/scope.guard";
 // Theme CTX.2 — tool-arg auto-injection + outgoing `_context` envelope
@@ -976,7 +977,7 @@ export class ToolExecutorService {
         scope.traceId && /^[0-9a-f]{32}$/i.test(scope.traceId)
           ? `00-${scope.traceId}-${crypto.randomBytes(8).toString("hex")}-01`
           : undefined;
-      const response = await fetch(toolEntry.callbackUrl, {
+      const response = await fetchWithValidatedRedirects(toolEntry.callbackUrl, 3, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

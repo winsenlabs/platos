@@ -158,6 +158,8 @@ export class McpEntityController {
           mcpUserId: string;
           entityPk: string;
           environmentId: string;
+          identityMode: string;
+          scopes: string[];
         };
       }
     | { error: string; status: number }
@@ -189,6 +191,8 @@ export class McpEntityController {
       entityPk: string;
       environmentId: string;
       organizationId: string;
+      identityMode: string;
+      scopes: string[];
     } | null = null;
 
     if (bearer.startsWith("pmt_")) {
@@ -230,6 +234,8 @@ export class McpEntityController {
           entityPk: patRow.entityPk,
           environmentId,
           organizationId: entity.organizationId,
+          identityMode: "bearer",
+          scopes: patRow.scopes ?? [],
         };
       }
     }
@@ -244,6 +250,16 @@ export class McpEntityController {
           entityPk: oauthVerified.entityPk ?? "",
           environmentId: oauthVerified.scope.environmentId,
           organizationId: oauthVerified.scope.organizationId,
+          // FINDING H12a — the anonymous "continue without signing in" flow
+          // (oauth.controller.ts entityAnonAuthorize) mints a normal OAuth
+          // token whose userId is prefixed `mcp:anon:`. Labeling it "oidc"
+          // would let an anonymous visitor clear a tool's `minIdentityMode:
+          // "oidc"` gate (which is meant to require a signed-in user). Map
+          // anonymous tokens to the "anonymous" identity tier.
+          identityMode: oauthVerified.userId?.startsWith("mcp:anon:")
+            ? "anonymous"
+            : "oidc",
+          scopes: oauthVerified.scopes ?? [],
         };
       }
     }
@@ -280,6 +296,8 @@ export class McpEntityController {
         mcpUserId: verified.mcpUserId,
         entityPk: entity.entityPk,
         environmentId: verified.environmentId,
+        identityMode: verified.identityMode,
+        scopes: verified.scopes,
       },
     };
   }
@@ -516,6 +534,8 @@ export class McpEntityController {
       mcpUserId: string;
       entityPk: string;
       environmentId: string;
+      identityMode: string;
+      scopes: string[];
     } | null = null;
 
     if (oauthRow && !oauthRow.revokedAt && oauthRow.expiresAt.getTime() >= Date.now()) {
@@ -529,6 +549,11 @@ export class McpEntityController {
         mcpUserId: oauthRow.userId,
         entityPk: entity.entityPk,
         environmentId: (oauthRow.scopeTuple as { environmentId: string }).environmentId,
+        // FINDING H12a — anonymous (`mcp:anon:`) tokens must not read as "oidc".
+        identityMode: (oauthRow.userId as string | undefined)?.startsWith("mcp:anon:")
+          ? "anonymous"
+          : "oidc",
+        scopes: (oauthRow.scopes as string[] | undefined) ?? [],
       };
     } else {
       // PAT path — look up by tokenHash in PlatosMcpBearerToken.
@@ -575,6 +600,8 @@ export class McpEntityController {
         mcpUserId: patRow.mcpUserId,
         entityPk: entity.entityPk,
         environmentId,
+        identityMode: "bearer",
+        scopes: (patRow.scopes as string[] | undefined) ?? [],
       };
     }
 
@@ -669,6 +696,8 @@ export class McpEntityController {
       mcpUserId: string;
       entityPk: string;
       environmentId: string;
+      identityMode: string;
+      scopes: string[];
     },
   ): Promise<JsonRpcResponse> {
     const id = req.id ?? null;
@@ -691,9 +720,12 @@ export class McpEntityController {
         case "ping":
           return { jsonrpc: "2.0", id, result: {} };
         case "tools/list":
-          return this.handleToolsList(id, entity, token);
+          // await (not bare return) so a rejection from the ACL prisma query
+          // is caught by this try/catch and returned as a JSON-RPC error
+          // envelope rather than escaping to an HTTP 500 on the streamable path.
+          return await this.handleToolsList(id, entity, token);
         case "tools/call":
-          return this.handleToolsCall(id, req.params as any, entity, token);
+          return await this.handleToolsCall(id, req.params as any, entity, token);
         default:
           return {
             jsonrpc: "2.0",
@@ -716,7 +748,7 @@ export class McpEntityController {
     }
   }
 
-  private handleToolsList(
+  private async handleToolsList(
     id: string | number | null,
     entity: NonNullable<Awaited<ReturnType<McpEntityController["loadEntity"]>>>,
     token: {
@@ -724,8 +756,10 @@ export class McpEntityController {
       clientId: string;
       entityPk: string;
       environmentId: string;
+      identityMode: string;
+      scopes: string[];
     },
-  ): JsonRpcResponse {
+  ): Promise<JsonRpcResponse> {
     const scope = this.buildScope(entity, token);
     const allowlist = this.filteredAllowlist(entity.config);
     // PIFSP-25 — empty allowlist = zero tools. We intentionally do NOT
@@ -735,6 +769,25 @@ export class McpEntityController {
     }
     // Narrow the scope matrix to this entity + to tools on the allowlist.
     const visibleEntities = this.toolRouter.visibleEntitiesForAgent(scope);
+    // FINDING H12 — per-tool identity ACL. The allowlist above is the coarse
+    // entity-wide gate; each exposed tool also carries an ACL row with
+    // minIdentityMode / allowedPatIds / scopeLabels. Hide any tool the
+    // caller's identity is not permitted to see. Build a name->row map so a
+    // tool with no ACL row falls back to the system default below (symmetric
+    // with handleToolsCall — a rowless allowlisted tool is gated at the
+    // default "bearer" floor in BOTH list and call, never list-hidden-yet-
+    // callable).
+    const caller = {
+      identityMode: token.identityMode,
+      mcpUserId: token.mcpUserId,
+      scopes: token.scopes,
+    };
+    const aclRows = await this.prisma.platosEntityMcpToolAcl.findMany({
+      where: { entityPk: entity.entityPk, exposed: true },
+    });
+    const aclByName = new Map<string, any>(
+      (aclRows as Array<{ toolName: string }>).map((r) => [r.toolName, r]),
+    );
     const matches: Array<{
       name: string;
       description: string;
@@ -744,6 +797,18 @@ export class McpEntityController {
     // We piggy-back on toolRouter.resolve's matrix by calling it per tool in
     // the allowlist — keeps a single source-of-truth + reuses enabledOnly.
     for (const toolName of allowlist) {
+      // FINDING H12 — skip tools the caller's identity may not access. Rowless
+      // allowlisted tools use the system-default ACL (min "bearer"), matching
+      // handleToolsCall's fallback.
+      const effectiveAcl = aclByName.get(toolName) ?? {
+        toolName,
+        minIdentityMode: "bearer",
+        allowedPatIds: [] as string[],
+        scopeLabels: ["mcp:tools"],
+      };
+      if (this.toolAclService.filterByIdentity([effectiveAcl], caller).length === 0) {
+        continue;
+      }
       const route = this.toolRouter.resolve({
         scope,
         toolName,
@@ -779,6 +844,8 @@ export class McpEntityController {
       mcpUserId: string;
       entityPk: string;
       environmentId: string;
+      identityMode: string;
+      scopes: string[];
     },
   ): Promise<JsonRpcResponse> {
     const name = params?.name;
@@ -797,6 +864,46 @@ export class McpEntityController {
         error: {
           code: RPC_ERRORS.PERMISSION_DENIED,
           message: `tool '${name}' not in entity allowlist`,
+        },
+      };
+    }
+
+    // FINDING H12 — per-tool identity ACL. The allowlist above is the coarse
+    // entity-wide gate; enforce the tool's ACL row (minIdentityMode /
+    // allowedPatIds / scopeLabels) against the caller's identity. Fail CLOSED
+    // to the SYSTEM DEFAULT ACL when no row exists: the coarse allowlist can
+    // be written directly via the entity config PATCH (patchEntityMcpConfig)
+    // without creating an ACL row, and autoInsert() has no callers, so "a row
+    // always exists" is NOT an enforced invariant. Skipping the gate on a
+    // rowless tool (the old `if (aclRow)`) was a fail-open bypass AND was
+    // asymmetric with tools/list (which hid such tools). The default row
+    // (min "bearer") denies anonymous callers and matches the synthetic
+    // default used across mcp-tool-acl.service.ts.
+    // `exposed: true` mirrors handleToolsList's filter so an un-exposed row
+    // (e.g. one re-added to toolAllowlist via the config PATCH) is ignored
+    // here too and falls back to the default below — keeps list and call
+    // applying the SAME effective ACL (no callable-but-list-hidden drift).
+    const aclRow = await this.prisma.platosEntityMcpToolAcl.findFirst({
+      where: { entityPk: entity.entityPk, toolName: name, exposed: true },
+    });
+    const effectiveAcl = aclRow ?? {
+      toolName: name,
+      minIdentityMode: "bearer",
+      allowedPatIds: [] as string[],
+      scopeLabels: ["mcp:tools"],
+    };
+    const permitted = this.toolAclService.filterByIdentity([effectiveAcl], {
+      identityMode: token.identityMode,
+      mcpUserId: token.mcpUserId,
+      scopes: token.scopes,
+    });
+    if (permitted.length === 0) {
+      return {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: RPC_ERRORS.PERMISSION_DENIED,
+          message: `tool '${name}' not permitted for this identity`,
         },
       };
     }
