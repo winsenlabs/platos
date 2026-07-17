@@ -1912,6 +1912,13 @@ export class AgentService {
                   kind,
                   limit,
                   agentVisibleOnly: true,
+                  // audit L5 — `recall` returns MEMORIES (facts/preferences/
+                  // events), not RAG document chunks. Now that RAG rows carry an
+                  // agentId they match the agentId filter below, so without this
+                  // the recall tool would surface raw document text as
+                  // "memories". Document retrieval is `rag_retrieve`, which does
+                  // NOT set excludeRag and still finds these rows.
+                  excludeRag: true,
                   // Memory is agent-scoped unless the agent is clustered
                   // (cluster branch above shares across members). Without
                   // this, one agent recalls another's memories — observed
@@ -2922,6 +2929,14 @@ export class AgentService {
               scope: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId, userId: scope.userId },
               invokedBy: "agent",
               agentId,
+            }, {
+              // L7 — tag the run with scope so get_run_details / replay_run can
+              // verify ownership on retrieve. This was the ONE trigger site that
+              // carried scope only inside the payload, leaving its runs
+              // unverifiable (and thus rejected by the fail-closed check above).
+              // scopeTags/scopeMetadata are the same consts every other site uses.
+              tags: scopeTags,
+              metadata: { ...scopeMetadata, taskIdHint: taskRow.taskId },
             });
             return { queued: true, runId: run.id, taskId: taskRow.taskId, displayName: taskRow.displayName };
           } catch (err: any) {
@@ -3168,6 +3183,18 @@ export class AgentService {
         }
         try {
           const snap = await triggerSdk.runs.retrieve(runId);
+          // L7 — verify the retrieved run belongs to the caller's scope. Runs
+          // are tagged with { organizationId, projectId, environmentId } at
+          // trigger time (scopeMetadata); reject cross-scope inspection so a
+          // caller can't read another scope's run by guessing its id.
+          const _md = (snap.metadata ?? {}) as Record<string, any>;
+          if (
+            _md.organizationId !== scope.organizationId ||
+            _md.projectId !== scope.projectId ||
+            _md.environmentId !== scope.environmentId
+          ) {
+            return { status: "denied", reason: "run not in caller scope" };
+          }
           return {
             id: snap.id,
             taskIdentifier: snap.taskIdentifier,
@@ -3522,10 +3549,23 @@ export class AgentService {
         runId: z.string().describe("Run id to replay (e.g. from list_runs)"),
       }),
       execute: async ({ runId }) => {
-        if (!triggerReady() || !triggerSdk?.runs?.replay) {
+        if (!triggerReady() || !triggerSdk?.runs?.replay || !triggerSdk?.runs?.retrieve) {
           return { status: "skipped", reason: "trigger.dev not configured" };
         }
         try {
+          // L7 — verify the run belongs to the caller's scope BEFORE replaying,
+          // so a caller can't re-fire another scope's run by guessing its id.
+          // This is the more dangerous of the two run tools (it re-executes the
+          // job, not just reads it).
+          const _orig = await triggerSdk.runs.retrieve(runId);
+          const _md = (_orig?.metadata ?? {}) as Record<string, any>;
+          if (
+            _md.organizationId !== scope.organizationId ||
+            _md.projectId !== scope.projectId ||
+            _md.environmentId !== scope.environmentId
+          ) {
+            return { status: "denied", reason: "run not in caller scope" };
+          }
           const handle = await triggerSdk.runs.replay(runId);
           return {
             status: "replayed",
@@ -5001,6 +5041,13 @@ export class AgentService {
                 minScore: 0.35,
                 // Defaults exclude "private"; pass agent-visible + hidden.
                 visibilityIn: ["agent_visible", "hidden"],
+                // audit L5 — RAG document chunks are agent_visible/kind:"fact"
+                // and (as of this change) carry an agentId, so they now match
+                // the filter below. Exclude them here: raw document text must
+                // never silently consume the 8-slot / 800-token injection
+                // budget. rag_retrieve deliberately does NOT pass this — it
+                // must still find these rows.
+                excludeRag: true,
                 // Agent-scoped injection: own agent, or cluster MEMBERS when
                 // clustered — never scope-wide. (Original leak: Mark the
                 // fitness coach opened with Ada the SDR's Pulsegrid/cold-email
@@ -5125,6 +5172,11 @@ export class AgentService {
                   scopeTuple,
                   { skillSlug: pt.skillId, toolName: _toolName, handler: _handler },
                   input,
+                  // audit L5 — this in-process registration passed no context,
+                  // so the acting agent never reached the handler and RAG
+                  // ingest could not stamp `agentId` (the dedicated
+                  // rag_retrieve resolver above already threads it).
+                  { agentId: scope.agentId ?? null, threadId: scope.sessionId ?? null },
                 );
               },
             } as CoreTool;
@@ -6242,6 +6294,10 @@ export class AgentService {
                   scopeTuple,
                   { skillSlug: pt.skillId, toolName: _toolName, handler: _handler },
                   input,
+                  // audit L5 — see the chat-path registration: without context
+                  // the acting agent never reaches the handler, making the RAG
+                  // agentId stamping a no-op on this path.
+                  { agentId: scope.agentId ?? null, threadId: scope.sessionId ?? null },
                 );
               },
             } as CoreTool;

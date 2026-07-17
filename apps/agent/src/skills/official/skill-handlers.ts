@@ -8,7 +8,7 @@ import {
   describeUrlValidationError,
   fetchWithValidatedRedirects,
 } from "../../shared/url-validator";
-import { MemoryService } from "../../memory/memory.service";
+import { MemoryService, RAG_MEMORY_SOURCE } from "../../memory/memory.service";
 
 /**
  * Theme S.7–S.10 — Runtime handlers for the 4 official skills.
@@ -235,6 +235,24 @@ export class OfficialSkillHandlers {
     );
   }
 
+  /**
+   * audit L5 — resolve the acting agentId from the widened scope tuple, the
+   * same channel `userId` travels on. SkillRuntimeService.invokeTool merges
+   * `context.agentId` into the scope before dispatch.
+   *
+   * Soft-fails to null, unlike ragResolveUserId which fails CLOSED. Rationale:
+   * userId is the isolation boundary — pooling users is a leak. agentId is
+   * provenance/scoping within an already-authenticated user's own corpus, and
+   * a null agentId is strictly LESS visible (it drops out of the agentId-
+   * equality injection filter entirely), so a missing agentId degrades to the
+   * pre-existing behaviour rather than widening exposure. Throwing here would
+   * break ingest on any legitimate path that has no agent.
+   */
+  private ragResolveAgentId(scope: ScopeTuple): string | null {
+    const aid = (scope as Record<string, unknown>)["agentId"];
+    return typeof aid === "string" && aid.trim() ? aid : null;
+  }
+
   /** Sentence-boundary aware splitter. Zero-dep. */
   private ragChunkText(
     text: string,
@@ -373,6 +391,8 @@ export class OfficialSkillHandlers {
     const { sourceUrl, text } = await this.ragResolveSource(scope, source);
     const chunks = this.ragChunkText(text, chunkSize, overlap);
     const ingestedAt = new Date().toISOString();
+    // audit L5 — stamp the acting agent on every chunk of this ingest.
+    const agentId = this.ragResolveAgentId(scope);
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
@@ -383,19 +403,23 @@ export class OfficialSkillHandlers {
       try {
         await this.memoryService.add(scope, {
           userId,
-          // audit L5 — DELIBERATELY leaves agentId NULL. The audit proposed
-          // stamping the acting agentId here to match the extractor's rows,
-          // but that backfires: these chunks derive visibility "agent_visible"
-          // (normalizeVisibility default) and carry kind "fact", so once they
-          // ALSO match the agentId equality filter they become eligible for
-          // the AUTOMATIC memory injection (agent.service.ts ~5000, limit 8 /
-          // minScore 0.35) — i.e. raw document text would silently start
-          // consuming every turn's memory budget and prompt. The NULL agentId
-          // is what currently keeps RAG chunks out of auto-injection while
-          // rag_retrieve (which passes no agentId filter) still finds them.
-          // Closing L5 here properly needs a first-class "rag" kind (see the
-          // TODO below) or an explicit __rag exclusion in the injection query
-          // — a deliberate change, not a drive-by on a LOW finding.
+          // audit L5 (CLOSED) — RAG chunks are now agent-scoped. This was
+          // previously left NULL because these chunks derive visibility
+          // "agent_visible" (normalizeVisibility default) and carry kind
+          // "fact", so stamping agentId made them eligible for the AUTOMATIC
+          // memory injection (agent.service.ts ~5000, limit 8 / minScore 0.35)
+          // — raw document text would consume every turn's prompt budget.
+          // The injection query now passes `excludeRag: true`, which filters on
+          // `source = "rag"` below, so the NULL agentId is no longer load-
+          // bearing and the row can be properly scoped.
+          //
+          // ORDER MATTERS: the excludeRag predicate must ship WITH or BEFORE
+          // this stamping. Reverting the injection-side edit alone silently
+          // re-opens the prompt-budget bug.
+          //
+          // rag_retrieve passes neither agentId nor excludeRag, so it still
+          // finds every chunk, old (agentId NULL) and new alike.
+          agentId,
           // memory-kind.validator restricts kind to fact|preference|event|relationship.
           // TODO(RG.1.2): add a first-class "rag" kind when the validator grows one.
           kind: "fact",
@@ -407,7 +431,14 @@ export class OfficialSkillHandlers {
             tags,
             ingestedAt,
           },
-          source: "imported",
+          // audit L5 — was "imported", which is shared with GDPR import and
+          // the memory controller's import path and so cannot discriminate RAG
+          // rows. `source` is the only PLAINTEXT column available for the
+          // exclusion predicate: `metadata` is envelope-encrypted at rest, so
+          // the __rag marker above is unreadable from SQL. The marker stays —
+          // rag_retrieve/rag_delete_source post-filter on it in JS after
+          // decryption. No migration: the column is a bare String.
+          source: RAG_MEMORY_SOURCE,
         });
       } catch (err: any) {
         this.logger.warn(

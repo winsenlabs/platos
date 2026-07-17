@@ -17,6 +17,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import type { RequestScope } from "../auth/scope.guard";
 import { PII_DETECTORS } from "./pii-detectors";
+import RE2 from "re2";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -141,7 +142,7 @@ export class PiiFilterService {
     for (const filter of activeFilters) {
       const detector = PII_DETECTORS[filter.kind];
       // Custom regex or known detector regex
-      let regex: RegExp;
+      let regex: RegExp | RE2;
       if (filter.kind === "custom" && filter.customRegex) {
         if (!isSafeCustomRegex(filter.customRegex)) {
           this.logger.warn(
@@ -150,9 +151,18 @@ export class PiiFilterService {
           continue;
         }
         try {
-          regex = new RegExp(filter.customRegex, "g");
+          // M8 durable fix — compile admin-supplied patterns with RE2 (linear
+          // time, no backtracking) so no custom regex can catastrophically blow
+          // up the single event loop. RE2 throws on invalid patterns AND on
+          // shapes it does not support (backreferences, lookaround); both fall
+          // through to skip-the-filter — the same fail-safe the old RegExp path
+          // had. The length cap in isSafeCustomRegex and the
+          // MAX_CUSTOM_SCAN_INPUT slice below stay as cheap pre-filters, and
+          // RE2 closes the alternation-overlap shapes ((a|ab)*) the heuristic
+          // missed.
+          regex = new RE2(filter.customRegex, "g");
         } catch {
-          this.logger.warn(`[pii] invalid customRegex for filter kind=custom: ${filter.customRegex}`);
+          this.logger.warn(`[pii] invalid or unsupported customRegex for filter kind=custom: ${filter.customRegex}`);
           continue;
         }
       } else if (detector) {
@@ -170,14 +180,22 @@ export class PiiFilterService {
         filter.kind === "custom" && text.length > MAX_CUSTOM_SCAN_INPUT
           ? text.slice(0, MAX_CUSTOM_SCAN_INPUT)
           : text;
-      for (const m of scanTarget.matchAll(regex)) {
+      // RE2 does NOT implement String.prototype.matchAll, so we drive both
+      // engines through the exec()/lastIndex contract that RegExp and RE2 both
+      // honor under the global flag. m.index / m[0] carry the exact same
+      // redaction-span semantics matchAll gave us.
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(scanTarget)) !== null) {
         const match = m[0];
+        // matchAll advanced past zero-width matches internally; the manual
+        // exec loop must bump lastIndex itself or it spins forever.
+        if (match.length === 0) regex.lastIndex++;
         // Validate checksum if available
         if (detector?.validate && !detector.validate(match)) continue;
         allHits.push({
           kind: filter.kind,
           match,
-          span: [m.index!, m.index! + match.length],
+          span: [m.index, m.index + match.length],
           mode: filter.mode,
           label,
         });
