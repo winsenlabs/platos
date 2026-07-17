@@ -15,7 +15,27 @@ export type MemoryKind =
   | "relationship"
   /** Theme M.1 — structured per-user fact keyed by metadata.profileKey. */
   | "profile";
-export type MemorySource = "manual" | "extracted" | "imported";
+export type MemorySource = "manual" | "extracted" | "imported" | "rag";
+
+/**
+ * audit L5 — RAG ingest stamps `source: "rag"` so the AUTOMATIC memory
+ * injection can exclude document chunks in SQL (`excludeRag` below).
+ *
+ * Why not `metadata.__rag`, which is the marker RAG already writes: the
+ * `metadata` Json column is envelope-ENCRYPTED at rest whenever
+ * PLATOS_MESSAGE_ENCRYPTION_KEY is set — `add()` stores
+ * `{__platos_enc:1,v,ct}` and the `__rag` key is not present in the stored
+ * JSON at all. A `metadata->>'__rag' IS NULL` / `jsonb_exists(...)`
+ * predicate would therefore match nothing on encrypted deployments and
+ * silently fail OPEN, injecting raw document text — correct on a dev box
+ * with no key, broken in production. (The existing RAG list/retrieve paths
+ * post-filter `__rag` in JS, after decryption, for exactly this reason.)
+ *
+ * `source` is a plaintext String column, so it survives encryption and can
+ * be filtered server-side. No migration: the column is a bare `String`,
+ * `MemorySource` is a TS-only union.
+ */
+export const RAG_MEMORY_SOURCE = "rag" as const;
 /** Theme O.6 — authoritative visibility state. */
 export type MemoryVisibility = "agent_visible" | "hidden" | "private";
 
@@ -121,6 +141,17 @@ export interface SemanticSearchInput {
    * them. Restore via `MemoryService.restore`.
    */
   includeArchived?: boolean;
+  /**
+   * audit L5 — when `true`, exclude RAG document chunks (`source = "rag"`,
+   * see RAG_MEMORY_SOURCE) from the result set. OPT-IN: default `false` so
+   * `rag_retrieve` — which is supposed to find these rows — is unaffected.
+   *
+   * Wire this ONLY on the automatic memory-injection path. RAG chunks derive
+   * visibility "agent_visible" and kind "fact", so once they also carry an
+   * `agentId` they match the injection filter and raw document text would
+   * consume every turn's prompt/memory budget.
+   */
+  excludeRag?: boolean;
 }
 
 export interface ListMemoriesInput {
@@ -642,6 +673,22 @@ export class MemoryService {
     for (const v of visibilityIn) params.push(v);
     wheres.push(`"visibility" IN (${visPlaceholders})`);
 
+    // audit L5 — opt-in RAG exclusion for the automatic injection path.
+    // MUST stay LAST: every block above maintains the invariant
+    // `params.length === nextIdx - 1`, and the visibility block above only
+    // restores it after its `.map()`/`for` split. Pushing the param BEFORE
+    // reading `$${nextIdx++}` lands the value at 1-based position nextIdx —
+    // i.e. the placeholder we emit is the param we just bound.
+    //
+    // `IS DISTINCT FROM` (not `<>`) so a NULL source can never swallow the
+    // row. Filtering on the plaintext `source` column, NOT `metadata`:
+    // metadata is envelope-encrypted at rest, so a `metadata->>'__rag'`
+    // predicate fails OPEN on encrypted deployments (see RAG_MEMORY_SOURCE).
+    if (input.excludeRag === true) {
+      params.push(RAG_MEMORY_SOURCE);
+      wheres.push(`"source" IS DISTINCT FROM $${nextIdx++}`);
+    }
+
     const sql = `SELECT
           "id","organizationId","projectId","environmentId","agentId","userId",
           "kind","content","metadata","agentVisible","visibility","source",
@@ -709,6 +756,11 @@ export class MemoryService {
       userId,
       limit: options?.limit ?? 10,
       minScore: options?.minScore,
+      // audit L5 — this helper backs ONLY the `recall` meta-tool (grep-
+      // confirmed single caller), which returns memories, not RAG document
+      // chunks. Exclude them here for the same reason as the single-agent
+      // recall branch; `rag_retrieve` never routes through this method.
+      excludeRag: true,
       ...(agentIds && agentIds.length > 0 ? { agentIds } : {}),
     });
   }

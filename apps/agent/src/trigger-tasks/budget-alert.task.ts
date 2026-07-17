@@ -2,6 +2,7 @@ import { task, logger, metadata } from "@trigger.dev/sdk";
 import {
   validatePublicUrl,
   describeUrlValidationError,
+  fetchWithValidatedRedirects,
 } from "../shared/url-validator";
 const env = process.env;
 
@@ -94,7 +95,10 @@ export const budgetAlert = task({
           subjectLabel: payload.subjectLabel,
           firedAt: new Date().toISOString(),
         };
-        const res = await fetch(payload.alertWebhookUrl, {
+        // SECURITY (H11) — pin the validated IP into the socket. The webhook
+        // URL is user-settable; a bare fetch re-resolves DNS and is rebindable
+        // to IMDS/private space in the window after validatePublicUrl (above).
+        const res = await fetchWithValidatedRedirects(payload.alertWebhookUrl, 3, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

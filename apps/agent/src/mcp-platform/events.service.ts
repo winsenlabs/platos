@@ -2,7 +2,11 @@ import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nest
 import type Redis from "ioredis";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
-import { validatePublicUrl, describeUrlValidationError } from "../shared/url-validator";
+import {
+  validatePublicUrl,
+  describeUrlValidationError,
+  fetchWithValidatedRedirects,
+} from "../shared/url-validator";
 
 /**
  * Theme K.15 — Platform event bus + persistent notification router.
@@ -546,7 +550,10 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
         },
       ],
     };
-    const res = await fetch(url, {
+    // SECURITY (H11) — pin the validated IP into the socket. A bare fetch here
+    // re-resolves DNS and is rebindable to IMDS/private space between the
+    // validatePublicUrl check above and the connect.
+    const res = await fetchWithValidatedRedirects(url, 3, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
@@ -572,7 +579,8 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
       subjectId: p.subjectId,
       payload: p.payload,
     };
-    const res = await fetch(url, {
+    // SECURITY (H11) — pin the validated IP; see the slack path above.
+    const res = await fetchWithValidatedRedirects(url, 3, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),

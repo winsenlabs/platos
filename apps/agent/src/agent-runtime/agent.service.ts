@@ -1912,6 +1912,13 @@ export class AgentService {
                   kind,
                   limit,
                   agentVisibleOnly: true,
+                  // audit L5 — `recall` returns MEMORIES (facts/preferences/
+                  // events), not RAG document chunks. Now that RAG rows carry an
+                  // agentId they match the agentId filter below, so without this
+                  // the recall tool would surface raw document text as
+                  // "memories". Document retrieval is `rag_retrieve`, which does
+                  // NOT set excludeRag and still finds these rows.
+                  excludeRag: true,
                   // Memory is agent-scoped unless the agent is clustered
                   // (cluster branch above shares across members). Without
                   // this, one agent recalls another's memories — observed
@@ -5001,6 +5008,13 @@ export class AgentService {
                 minScore: 0.35,
                 // Defaults exclude "private"; pass agent-visible + hidden.
                 visibilityIn: ["agent_visible", "hidden"],
+                // audit L5 — RAG document chunks are agent_visible/kind:"fact"
+                // and (as of this change) carry an agentId, so they now match
+                // the filter below. Exclude them here: raw document text must
+                // never silently consume the 8-slot / 800-token injection
+                // budget. rag_retrieve deliberately does NOT pass this — it
+                // must still find these rows.
+                excludeRag: true,
                 // Agent-scoped injection: own agent, or cluster MEMBERS when
                 // clustered — never scope-wide. (Original leak: Mark the
                 // fitness coach opened with Ada the SDR's Pulsegrid/cold-email
@@ -5125,6 +5139,11 @@ export class AgentService {
                   scopeTuple,
                   { skillSlug: pt.skillId, toolName: _toolName, handler: _handler },
                   input,
+                  // audit L5 — this in-process registration passed no context,
+                  // so the acting agent never reached the handler and RAG
+                  // ingest could not stamp `agentId` (the dedicated
+                  // rag_retrieve resolver above already threads it).
+                  { agentId: scope.agentId ?? null, threadId: scope.sessionId ?? null },
                 );
               },
             } as CoreTool;
@@ -6242,6 +6261,10 @@ export class AgentService {
                   scopeTuple,
                   { skillSlug: pt.skillId, toolName: _toolName, handler: _handler },
                   input,
+                  // audit L5 — see the chat-path registration: without context
+                  // the acting agent never reaches the handler, making the RAG
+                  // agentId stamping a no-op on this path.
+                  { agentId: scope.agentId ?? null, threadId: scope.sessionId ?? null },
                 );
               },
             } as CoreTool;

@@ -785,9 +785,19 @@ export class McpEntityController {
     const aclRows = await this.prisma.platosEntityMcpToolAcl.findMany({
       where: { entityPk: entity.entityPk, exposed: true },
     });
-    const aclByName = new Map<string, any>(
-      (aclRows as Array<{ toolName: string }>).map((r) => [r.toolName, r]),
-    );
+    // FINDING H12 (residual) — the ACL uniqueness key is (entityPk, toolId), so
+    // ONE entity can hold several exposed rows for the SAME toolName. The old
+    // `new Map(rows.map(...))` let the LAST row win while handleToolsCall's
+    // findFirst took the FIRST — the two paths could pick different rows for
+    // one name (list-hidden yet callable). Group ALL rows per name; the gate
+    // below requires EVERY row to admit the caller (most-restrictive wins),
+    // which is order-independent and mirrored exactly in handleToolsCall.
+    const aclByName = new Map<string, any[]>();
+    for (const r of aclRows as Array<{ toolName: string }>) {
+      const existing = aclByName.get(r.toolName);
+      if (existing) existing.push(r);
+      else aclByName.set(r.toolName, [r]);
+    }
     const matches: Array<{
       name: string;
       description: string;
@@ -800,13 +810,19 @@ export class McpEntityController {
       // FINDING H12 — skip tools the caller's identity may not access. Rowless
       // allowlisted tools use the system-default ACL (min "bearer"), matching
       // handleToolsCall's fallback.
-      const effectiveAcl = aclByName.get(toolName) ?? {
-        toolName,
-        minIdentityMode: "bearer",
-        allowedPatIds: [] as string[],
-        scopeLabels: ["mcp:tools"],
-      };
-      if (this.toolAclService.filterByIdentity([effectiveAcl], caller).length === 0) {
+      const effectiveAcls: any[] = aclByName.get(toolName) ?? [
+        {
+          toolName,
+          minIdentityMode: "bearer",
+          allowedPatIds: [] as string[],
+          scopeLabels: ["mcp:tools"],
+        },
+      ];
+      // Most-restrictive wins: the tool is visible only if EVERY exposed row
+      // for this name admits the caller. Identical rule in handleToolsCall.
+      if (
+        this.toolAclService.filterByIdentity(effectiveAcls, caller).length !== effectiveAcls.length
+      ) {
         continue;
       }
       const route = this.toolRouter.resolve({
@@ -883,21 +899,31 @@ export class McpEntityController {
     // (e.g. one re-added to toolAllowlist via the config PATCH) is ignored
     // here too and falls back to the default below — keeps list and call
     // applying the SAME effective ACL (no callable-but-list-hidden drift).
-    const aclRow = await this.prisma.platosEntityMcpToolAcl.findFirst({
+    // FINDING H12 (residual) — findFirst took whichever duplicate-toolName row
+    // the DB happened to return first while tools/list took the last, so the
+    // two paths could apply different gates to one tool name. Load ALL exposed
+    // rows for the name and require every one of them to admit the caller
+    // (most-restrictive wins) — same rule, same result, no ordering assumed.
+    const aclRowsForName = await this.prisma.platosEntityMcpToolAcl.findMany({
       where: { entityPk: entity.entityPk, toolName: name, exposed: true },
     });
-    const effectiveAcl = aclRow ?? {
-      toolName: name,
-      minIdentityMode: "bearer",
-      allowedPatIds: [] as string[],
-      scopeLabels: ["mcp:tools"],
-    };
-    const permitted = this.toolAclService.filterByIdentity([effectiveAcl], {
+    const effectiveAcls: any[] =
+      aclRowsForName.length > 0
+        ? aclRowsForName
+        : [
+            {
+              toolName: name,
+              minIdentityMode: "bearer",
+              allowedPatIds: [] as string[],
+              scopeLabels: ["mcp:tools"],
+            },
+          ];
+    const permitted = this.toolAclService.filterByIdentity(effectiveAcls, {
       identityMode: token.identityMode,
       mcpUserId: token.mcpUserId,
       scopes: token.scopes,
     });
-    if (permitted.length === 0) {
+    if (permitted.length !== effectiveAcls.length) {
       return {
         jsonrpc: "2.0",
         id,
