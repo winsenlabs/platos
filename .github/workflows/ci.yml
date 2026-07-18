@@ -47,7 +47,11 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # --ignore-scripts: skip native addon builds (re2). CI needs only types
+        # (typecheck) and the testcontainer suite; neither loads re2, and its
+        # node-gyp build fails on the hosted runner (node-gyp@13 + undici@8).
+        # The agent Docker build (which DOES need re2) builds it separately.
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Generate Prisma client
         # @platos/database re-exports the generated client; several packages'
@@ -82,7 +86,11 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        # --ignore-scripts: skip native addon builds (re2). CI needs only types
+        # (typecheck) and the testcontainer suite; neither loads re2, and its
+        # node-gyp build fails on the hosted runner (node-gyp@13 + undici@8).
+        # The agent Docker build (which DOES need re2) builds it separately.
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Generate Prisma client
         # @internal/testcontainers + the test both import @platos/database,
