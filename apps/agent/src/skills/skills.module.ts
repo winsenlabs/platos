@@ -4,6 +4,7 @@ import { SkillRuntimeService } from "./skill-runtime.service";
 import { SkillImporterService } from "./skill-importer.service";
 import { OfficialSkillsSeederService } from "./official-skills-seeder.service";
 import { OfficialSkillHandlers } from "./official/skill-handlers";
+import { VercelSandboxService } from "./vercel-sandbox.service";
 import { SkillsController } from "./skills.controller";
 import { ProvidersModule } from "../providers/providers.module";
 import { MonitoringModule } from "../monitoring/monitoring.module";
@@ -24,6 +25,9 @@ import { MemoryModule } from "../memory/memory.module";
     SkillImporterService,
     OfficialSkillsSeederService,
     OfficialSkillHandlers,
+    // CE.3 — Vercel Sandbox backend for run_shell (flag-gated beside E2B via
+    // PLATOS_SANDBOX_PROVIDER). Reads only process.env, so no extra module deps.
+    VercelSandboxService,
   ],
   exports: [
     SkillRegistryService,

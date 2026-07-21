@@ -9,6 +9,7 @@ import {
   fetchWithValidatedRedirects,
 } from "../../shared/url-validator";
 import { MemoryService, RAG_MEMORY_SOURCE } from "../../memory/memory.service";
+import { VercelSandboxService } from "../vercel-sandbox.service";
 
 /**
  * Theme S.7–S.10 — Runtime handlers for the 4 official skills.
@@ -43,6 +44,10 @@ export class OfficialSkillHandlers {
      *  SkillsModule). The `_rag_ingest_document_` path only needs it when
      *  an `attachmentId:*` source is passed. */
     @Optional() private readonly moduleRef?: ModuleRef,
+    /** CE.3 — Vercel Sandbox backend for run_shell, selected via
+     *  PLATOS_SANDBOX_PROVIDER=vercel. Optional so the E2B-only default (and
+     *  isolated unit tests) still boot when the service isn't provided. */
+    @Optional() private readonly vercelSandbox?: VercelSandboxService,
   ) {}
 
   /** Route a skill tool call to its handler. Handler string format:
@@ -859,6 +864,34 @@ export class OfficialSkillHandlers {
   }
 
   /**
+   * CE.3 — true when PLATOS_SANDBOX_PROVIDER=vercel. The flag switches the
+   * WHOLE code_execution filesystem surface (run_shell + install_package +
+   * upload_to_sandbox) to the Vercel backend so those tools keep sharing one
+   * per-thread filesystem. run_python / run_node have no Vercel equivalent
+   * (E2B's code-interpreter API) and error clearly under the flag instead of
+   * silently writing to a different E2B filesystem.
+   */
+  private static vercelProviderSelected(): boolean {
+    return (process.env.PLATOS_SANDBOX_PROVIDER ?? "").trim().toLowerCase() === "vercel";
+  }
+
+  /** Resolve the Vercel backend or throw a clear, actionable error. */
+  private requireVercelSandbox(tool: string): VercelSandboxService {
+    const svc = this.vercelSandbox;
+    if (!svc) {
+      throw new Error(`${tool}: Vercel Sandbox backend is not available in this build.`);
+    }
+    if (!svc.isConfigured()) {
+      throw new Error(
+        `${tool}: Vercel Sandbox is selected (PLATOS_SANDBOX_PROVIDER=vercel) but not configured. ` +
+        "Set VERCEL_TEAM_ID, VERCEL_PROJECT_ID and VERCEL_TOKEN (a no-expiration Vercel access token) " +
+        "in the process environment.",
+      );
+    }
+    return svc;
+  }
+
+  /**
    * Resolve the sandbox for this thread: reconnect to the live session if one
    * exists, otherwise create + tag a fresh one. Returns the sandbox plus an
    * `ephemeral` flag — ephemeral sandboxes (no threadId) MUST be killed by the
@@ -922,6 +955,20 @@ export class OfficialSkillHandlers {
     lang: "python" | "node",
     input: Record<string, unknown>,
   ) {
+    // CE.3 — under the Vercel provider the thread's filesystem lives in a
+    // Vercel sandbox. Running this tool on E2B anyway would silently use a
+    // DIFFERENT filesystem (files uploaded / packages installed there would be
+    // invisible to run_shell), so fail loudly with a workaround instead.
+    if (OfficialSkillHandlers.vercelProviderSelected()) {
+      throw new Error(
+        `run_${lang}: not available while PLATOS_SANDBOX_PROVIDER=vercel. ` +
+        "The Vercel backend powers run_shell / install_package / upload_to_sandbox on one shared " +
+        "per-thread filesystem, but has no code-interpreter equivalent for this tool, and falling " +
+        "back to E2B would use a different filesystem. Use run_shell (e.g. `node -e ...` or a " +
+        "heredoc) in the shared sandbox instead, or unset PLATOS_SANDBOX_PROVIDER to use E2B.",
+      );
+    }
+
     const apiKey = await this.scopedEnv.get(scope, "E2B_API_KEY");
     if (!apiKey) {
       throw new Error(
@@ -977,6 +1024,16 @@ export class OfficialSkillHandlers {
    * LLM can branch on failure.
    */
   private async runShell(scope: ScopeTuple, input: Record<string, unknown>) {
+    // CE.3 — provider switch. PLATOS_SANDBOX_PROVIDER=vercel routes the whole
+    // filesystem surface (run_shell here, plus install_package and
+    // upload_to_sandbox) to the Vercel Sandbox backend so cross-tool workflows
+    // keep sharing one per-thread filesystem; run_python / run_node error
+    // clearly under the flag (no Vercel code-interpreter). Anything else
+    // (default/unset) falls through to the EXACT E2B path below, untouched.
+    if (OfficialSkillHandlers.vercelProviderSelected()) {
+      return this.runShellVercel(scope, input);
+    }
+
     const apiKey = await this.scopedEnv.get(scope, "E2B_API_KEY");
     if (!apiKey) throw new Error("run_shell: E2B_API_KEY is not set in this environment.");
 
@@ -1023,10 +1080,54 @@ export class OfficialSkillHandlers {
     }
   }
 
-  private async installPackage(scope: ScopeTuple, input: Record<string, unknown>) {
-    const apiKey = await this.scopedEnv.get(scope, "E2B_API_KEY");
-    if (!apiKey) throw new Error("install_package: E2B_API_KEY not set.");
+  /**
+   * CE.3 — run_shell on the Vercel Sandbox backend. Shapes its result to the
+   * EXACT contract the E2B path returns ({ command, exitCode, stdout, stderr,
+   * latencyMs, sessionPersistent }) so the provider swap is invisible to the
+   * agent. install_package and upload_to_sandbox route to the SAME per-thread
+   * sandbox, so the skill's shared-filesystem contract holds; run_python /
+   * run_node error under the flag. Persistence is the one intended improvement:
+   * a thread's named sandbox snapshots its filesystem on stop() and survives
+   * long idle gaps.
+   */
+  private async runShellVercel(scope: ScopeTuple, input: Record<string, unknown>) {
+    const svc = this.requireVercelSandbox("run_shell");
 
+    const cmd = String(input.command ?? "").trim();
+    if (!cmd) throw new Error("run_shell: command is required");
+
+    // Mirror the E2B clamp exactly so timeout semantics stay identical for the
+    // agent (the service enforces its own 10-min absolute ceiling on top).
+    const timeoutMs = Math.max(1000, Math.min(120_000, Number(input.timeoutMs ?? 30_000)));
+    const cwd = typeof input.cwd === "string" && input.cwd.trim() ? input.cwd.trim() : undefined;
+    // Vercel runs the whole script under `bash -lc`, so the E2B `cwd` option maps
+    // to a `cd` prefix to preserve identical behaviour.
+    const script = cwd ? `cd ${JSON.stringify(cwd)} && ${cmd}` : cmd;
+
+    const threadId = this.threadIdFromScope(scope);
+    const MAX_OUT = 100_000; // cap each stream so a runaway command can't blow the context window
+    const clip = (s: string) =>
+      s.length > MAX_OUT ? s.slice(0, MAX_OUT) + `\n…[truncated ${s.length - MAX_OUT} chars]` : s;
+
+    const startedAt = Date.now();
+    const result = await svc.runShell({
+      threadId: threadId || undefined,
+      script,
+      timeoutMs,
+    });
+    return {
+      command: cmd,
+      exitCode: result.exitCode,
+      stdout: clip(result.stdout ?? "").trim() || null,
+      stderr: clip(result.stderr ?? "").trim() || null,
+      latencyMs: Date.now() - startedAt,
+      // Thread-anchored Vercel sandboxes persist (snapshot on stop); ephemeral
+      // (no-thread) ones do not — matches the E2B `sessionPersistent` semantics.
+      sessionPersistent: Boolean(threadId),
+    };
+  }
+
+  private async installPackage(scope: ScopeTuple, input: Record<string, unknown>) {
     const packages = Array.isArray(input.packages)
       ? (input.packages as unknown[]).map(String)
       : [String(input.packages ?? input.package ?? "")];
@@ -1034,6 +1135,16 @@ export class OfficialSkillHandlers {
     if (validPackages.length === 0) throw new Error("install_package: no valid package names provided.");
 
     const manager = String(input.manager ?? "pip");
+
+    // CE.3 — under the Vercel provider, install into the SAME per-thread Vercel
+    // sandbox that run_shell uses (installing into E2B here would silently put
+    // the packages on a filesystem run_shell can't see).
+    if (OfficialSkillHandlers.vercelProviderSelected()) {
+      return this.installPackageVercel(scope, validPackages, manager);
+    }
+
+    const apiKey = await this.scopedEnv.get(scope, "E2B_API_KEY");
+    if (!apiKey) throw new Error("install_package: E2B_API_KEY not set.");
     const code = manager === "npm"
       ? `const { execSync } = require('child_process'); execSync('npm install ${validPackages.join(" ")}', { stdio: 'inherit' });`
       : `import subprocess; subprocess.run(['pip', 'install', '--quiet', ${validPackages.map((p) => `'${p}'`).join(", ")}], check=True); print("Installed: ${validPackages.join(", ")}")`;
@@ -1058,9 +1169,47 @@ export class OfficialSkillHandlers {
     }
   }
 
+  /**
+   * CE.3 — install_package on the Vercel backend: a plain shell install in the
+   * thread's named sandbox, so packages land on the same filesystem run_shell
+   * uses. Package names are already regex-validated (no shell metacharacters
+   * beyond version-range chars), and each is quoted so `>=`-style specifiers
+   * can't be parsed as shell redirects.
+   */
+  private async installPackageVercel(
+    scope: ScopeTuple,
+    validPackages: string[],
+    manager: string,
+  ) {
+    const svc = this.requireVercelSandbox("install_package");
+    const quoted = validPackages.map((p) => JSON.stringify(p.trim())).join(" ");
+    const script = manager === "npm"
+      ? `npm install ${quoted}`
+      : `python3 -m pip install --quiet ${quoted} && echo "Installed: ${validPackages.join(", ")}"`;
+
+    const threadId = this.threadIdFromScope(scope);
+    const result = await svc.runShell({
+      threadId: threadId || undefined,
+      script,
+      timeoutMs: 60_000,
+    });
+    return {
+      packages: validPackages,
+      manager,
+      stdout: result.stdout.trim() || null,
+      stderr: result.stderr.trim() || null,
+      error: result.exitCode === 0 ? null : `install exited with code ${result.exitCode}`,
+      sessionPersistent: Boolean(threadId),
+    };
+  }
+
   private async uploadToSandbox(scope: ScopeTuple, input: Record<string, unknown>) {
-    const apiKey = await this.scopedEnv.get(scope, "E2B_API_KEY");
-    if (!apiKey) throw new Error("upload_to_sandbox: E2B_API_KEY not set.");
+    // CE.3 — under the Vercel provider the download happens inside the thread's
+    // Vercel sandbox (same filesystem as run_shell / install_package); E2B and
+    // its API key are not involved at all.
+    const useVercel = OfficialSkillHandlers.vercelProviderSelected();
+    const apiKey = useVercel ? null : await this.scopedEnv.get(scope, "E2B_API_KEY");
+    if (!useVercel && !apiKey) throw new Error("upload_to_sandbox: E2B_API_KEY not set.");
 
     const attachmentId = String(input.attachmentId ?? "").trim();
     if (!attachmentId) throw new Error("upload_to_sandbox: attachmentId is required.");
@@ -1088,6 +1237,46 @@ export class OfficialSkillHandlers {
     if (!row) throw new Error(`upload_to_sandbox: attachment ${attachmentId} not found in scope.`);
 
     const presignedUrl = await attachmentsSvc.getPresignedDownloadUrl(row.storageKey);
+
+    if (useVercel) {
+      // Download inside the thread's Vercel sandbox via a node one-liner (the
+      // runtime is node24; python is not guaranteed). Args are passed via
+      // process.argv — with `node -e`, argv[1] is the first extra arg — and
+      // every shell-facing string is single-quote-escaped.
+      const svc = this.requireVercelSandbox("upload_to_sandbox");
+      const nodeCode =
+        'const fs=require("node:fs");const path=require("node:path");' +
+        "const url=process.argv[1],dest=process.argv[2];" +
+        'fs.mkdirSync(path.dirname(dest)||".",{recursive:true});' +
+        'fetch(url).then(async r=>{if(!r.ok)throw new Error("HTTP "+r.status);' +
+        "const b=Buffer.from(await r.arrayBuffer());fs.writeFileSync(dest,b);" +
+        'console.log("Downloaded "+b.length+" bytes to "+dest);})' +
+        ".catch(e=>{console.error(String((e&&e.message)||e));process.exit(1);});";
+      const shq = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
+      const script = `node -e ${shq(nodeCode)} ${shq(presignedUrl)} ${shq(destPath)}`;
+
+      const threadId = this.threadIdFromScope(scope);
+      const result = await svc.runShell({
+        threadId: threadId || undefined,
+        script,
+        timeoutMs: 60_000,
+      });
+      return {
+        attachmentId,
+        filename: row.filename,
+        bytes: row.bytes,
+        sandboxPath: destPath,
+        stdout: result.stdout.trim() || null,
+        error:
+          result.exitCode === 0
+            ? null
+            : result.stderr.trim() || `download exited with code ${result.exitCode}`,
+        sessionPersistent: Boolean(threadId),
+      };
+    }
+
+    // E2B path — apiKey was validated above; re-assert for type narrowing.
+    if (!apiKey) throw new Error("upload_to_sandbox: E2B_API_KEY not set.");
 
     // Download presigned URL into E2B sandbox via Python urllib (no server-side bytes)
     const code = `
