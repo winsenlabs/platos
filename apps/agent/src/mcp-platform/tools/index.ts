@@ -53,6 +53,9 @@ import type { SpansService } from "../../monitoring/spans.service";
 import { buildEntityToolHandlers } from "./entities";
 // EUI — end-user identity management (end_users.get / link_identity / unlink_identity).
 import { buildEndUserToolHandlers } from "./end-users";
+// Connect reimagining — channels.* messaging-channel doorway management
+// (create / list / get / update / delete / rotate_webhook_secret).
+import { buildChannelToolHandlers } from "./channels";
 import { buildTriggerToolHandlers } from "./trigger";
 import { buildSkillToolHandlers } from "./skills";
 import { buildPlatosControlToolHandlers } from "./platos-control";
@@ -740,6 +743,18 @@ export function buildPlatformToolHandlers(deps: {
   handlers.push(
     ...buildEndUserToolHandlers({
       prisma: deps.prisma,
+      toolAudit: deps.toolAudit,
+    }),
+  );
+
+  // ── Connect channels.* — messaging-channel doorway management (6 tools) ─
+  // CRUD + webhook-secret rotation over PlatosChannelConnection. Scope-pinned;
+  // agentId validated against the token scope; credentials encrypted at rest
+  // via the same MessageCryptoService envelope entities use; mutations audited.
+  handlers.push(
+    ...buildChannelToolHandlers({
+      prisma: deps.prisma,
+      messageCrypto: deps.messageCrypto,
       toolAudit: deps.toolAudit,
     }),
   );

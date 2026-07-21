@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AgentController } from "./agent.controller";
 import { PlatosTasksController } from "./platos-tasks.controller";
+import { ChannelsController } from "./channels.controller";
 import { AgentService } from "./agent.service";
 import { AgentTaskService } from "./agent-task.service";
 import { AgentCrudService } from "./agent-crud.service";
@@ -40,7 +41,7 @@ import { PromptCacheService } from "./prompt-cache.service";
     // forwardRef on module scan. No need to import TriggerBridgeModule
     // here.
   ],
-  controllers: [AgentController, PlatosTasksController],
+  controllers: [AgentController, PlatosTasksController, ChannelsController],
   providers: [AgentService, AgentTaskService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
   exports: [AgentService, AgentTaskService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
 })

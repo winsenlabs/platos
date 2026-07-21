@@ -163,6 +163,21 @@ const PLATFORM_TIER_MINIMUMS: Array<{ pattern: string; min: McpPermissionState }
   { pattern: "alert_channels.create", min: "require_approval" },
   { pattern: "alert_channels.update", min: "require_approval" },
   { pattern: "alert_channels.delete", min: "require_approval" },
+  // Connect/channel doorway mutations (PlatosChannelConnection).
+  //   - create                 binds a messaging-channel doorway to an agent,
+  //                            stores encrypted provider credentials, and
+  //                            returns the full inbound webhook path + secret.
+  //   - update                 can rebind agentId / overwrite credentials /
+  //                            flip enabled on a live inbound integration.
+  //   - delete                 removes the connection, cascading every
+  //                            PlatosChannelThread mapping.
+  //   - rotate_webhook_secret  invalidates the live inbound webhook URL and
+  //                            reveals a fresh plaintext secret + webhook path.
+  // channels.list / channels.get stay auto-allow (read-only, secrets redacted).
+  { pattern: "channels.create", min: "require_approval" },
+  { pattern: "channels.update", min: "require_approval" },
+  { pattern: "channels.delete", min: "require_approval" },
+  { pattern: "channels.rotate_webhook_secret", min: "require_approval" },
   // MCPF-W5 — knowledge graph mutations.
   //   - delete_node     irreversibly cascade-deletes the entity AND every
   //                     relationship pointing to or from it.
