@@ -27,6 +27,10 @@ export { costReconcile } from "./cost-reconcile.task";
 // PPR-67 — every-5-minutes approvals expiry sweep.
 export { approvalsExpirySweep } from "./approvals-expiry-sweep.task";
 
+// Durable chat session reaper — every 30 min, close sessions whose
+// conversation is done so they don't accumulate "Active" forever.
+export { chatSessionReaper } from "./chat-session-reaper.task";
+
 // EOBD.100 — every-2-min ClickHouse DLQ drain. Retries dual-write
 // failures so transient CH outages don't lose telemetry.
 export { observabilityDlqDrain } from "./observability-dlq-drain.task";

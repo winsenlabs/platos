@@ -472,7 +472,371 @@ export class ConversationService {
       },
       data: { status: "archived", archivedAt: now },
     });
+    if (result.count > 0) {
+      // A deleted (archived) thread is done — close its durable Trigger chat
+      // session so the conversation doesn't linger "Active" forever. Fire-and-
+      // forget: never block or fail the delete on session bookkeeping.
+      void this.closeChatSession(
+        threadId,
+        {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+        },
+        "thread-archived",
+      ).catch(() => {});
+    }
     return { archived: result.count > 0, archivedAt: result.count > 0 ? now.toISOString() : null };
+  }
+
+  // ---- Durable chat session lifecycle (Trigger Sessions) ----
+  // A durable chat thread maps 1:1 to a Trigger session (externalId === threadId,
+  // task `platos.chat.session`). Trigger never closes these on its own, so
+  // without a reaper they accumulate "Active" forever. We close a session once
+  // its conversation is done: thread archived/completed, idle past a TTL,
+  // orphaned (thread gone), or past a hard max age.
+
+  private static readonly CHAT_SESSION_TASK_ID = "platos.chat.session";
+
+  /**
+   * EXACT match to the streaming-cursor key the gateway writes
+   * (connections.gateway.ts). Kept in sync by hand — both sides must agree.
+   */
+  private chatCursorKey(
+    scope: { organizationId: string; projectId: string; environmentId: string },
+    threadId: string,
+  ): string {
+    return `chatsess:cursor:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${threadId}`;
+  }
+
+  /** Lazy-load the Trigger SDK (absent in unit tests / when unconfigured). */
+  private loadTriggerSdk(): { sessions: any; runs: any } | null {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const sdk = require("@trigger.dev/sdk");
+      // Validate every method the reaper depends on. If `runs.retrieve` were
+      // missing the live-run guard would silently vanish, so require it too.
+      if (
+        !sdk?.sessions?.close ||
+        !sdk?.sessions?.list ||
+        !sdk?.sessions?.retrieve ||
+        !sdk?.runs?.retrieve
+      ) {
+        return null;
+      }
+      return { sessions: sdk.sessions, runs: sdk.runs };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * A Trigger session object exposes NO `status` field — activeness is derived
+   * from `closedAt` (null ⇒ not closed) and `expiresAt` (null or future ⇒ not
+   * expired). This matches the server's ACTIVE/CLOSED/EXPIRED classification
+   * used by the list-filter, which the object shape itself does not echo back.
+   */
+  private isSessionActive(s: any): boolean {
+    if (!s) return false;
+    if (s.closedAt) return false;
+    if (s.expiresAt && new Date(s.expiresAt).getTime() <= Date.now()) return false;
+    return true;
+  }
+
+  /**
+   * Terminate one Trigger chat session (close + drop its cursor). Resume-safe
+   * without unbinding the thread: the session's externalId is immutable, so a
+   * returning user's `sessions.start(threadId)` hits the closed session and the
+   * gateway falls through to the durable-turn / direct path (history is served
+   * from Platos's own DB, not the Trigger session). Never throws.
+   */
+  private async terminateSession(
+    sessions: any,
+    sessionId: string,
+    threadId: string | null,
+    scope: { organizationId: string; projectId: string; environmentId: string } | null,
+    reason: string,
+  ): Promise<boolean> {
+    try {
+      // Just close it. A session's externalId is IMMUTABLE (the server rejects
+      // any attempt to change it: "externalId cannot be changed after
+      // creation"), so we can't unbind the thread — but we don't need to. Once
+      // the session is closed, the gateway's next sessions.start(threadId)
+      // fails fast ("Session is closed; use a different externalId") and the
+      // durable-chat dispatcher (connections.gateway.tryDispatchSession returns
+      // false → tryDispatchDurable → executeStreamingTurn) falls through to the
+      // durable-turn / direct path. The session path only ever serves
+      // executionMode="durable" agents, so a resumed thread stays durable — it
+      // just runs via the task path instead of the session path. No brick.
+      await sessions.close(sessionId, { reason });
+      // Drop the now-stale streaming cursor. Belt-and-braces: the fallback path
+      // doesn't read it, and a closed session can't be appended to anyway, so a
+      // failed/late delete is harmless. Only runs after a successful close.
+      if (scope && threadId) {
+        try {
+          await this.redis.del(this.chatCursorKey(scope, threadId));
+        } catch {
+          /* stale cursor is harmless */
+        }
+      }
+      return true;
+    } catch {
+      // close failed — nothing changed (session still ACTIVE, cursor intact, so
+      // normal resume still works). The next sweep retries.
+      return false;
+    }
+  }
+
+  /**
+   * Close the durable chat session bound to a thread (looked up by externalId).
+   * Best-effort — used when a thread is explicitly deleted/archived. Returns
+   * false (never throws) when there's no configured SDK or no active session.
+   */
+  async closeChatSession(
+    threadId: string,
+    scope: { organizationId: string; projectId: string; environmentId: string } | null,
+    reason: string,
+  ): Promise<boolean> {
+    const sdk = this.loadTriggerSdk();
+    if (!sdk) return false;
+    try {
+      // Distinguish "confirmed not active" from "couldn't check": a retrieve
+      // that THROWS means we don't know the session's state, so we must not
+      // touch the cursor (deleting it while an ACTIVE session still carries
+      // externalId=threadId would brick the thread). Only a successful
+      // retrieve resolving to a non-ACTIVE / missing session lets us safely
+      // drop the stale cursor.
+      let sess: any;
+      try {
+        sess = await sdk.sessions.retrieve(threadId);
+      } catch {
+        return false;
+      }
+      if (!sess?.id || !this.isSessionActive(sess)) {
+        if (scope) {
+          try {
+            await this.redis.del(this.chatCursorKey(scope, threadId));
+          } catch {
+            /* ignore */
+          }
+        }
+        return false;
+      }
+      return await this.terminateSession(sdk.sessions, sess.id, threadId, scope, reason);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Sweep durable chat sessions and close the ones whose conversation is done:
+   * thread archived/completed, idle past `PLATOS_CHAT_SESSION_IDLE_MINUTES`,
+   * orphaned (thread missing), or past `PLATOS_CHAT_SESSION_MAX_AGE_HOURS`.
+   * Skips any session with a live run so an in-flight turn is never yanked.
+   * Invoked by the `platos.chat.session_reaper` scheduled task via the admin
+   * endpoint (the task has no Prisma/Redis; this service owns both).
+   */
+  async reapChatSessions(): Promise<{
+    scanned: number;
+    closed: number;
+    skipped: number;
+    capped: boolean;
+    reasons: Record<string, number>;
+  }> {
+    const out = {
+      scanned: 0,
+      closed: 0,
+      skipped: 0,
+      capped: false,
+      reasons: {} as Record<string, number>,
+    };
+    if (process.env.PLATOS_CHAT_SESSION_REAP_DISABLED === "true") return out;
+    const sdk = this.loadTriggerSdk();
+    if (!sdk) return out;
+
+    // Default idle window is a full day: a chat idle 24h is genuinely "done",
+    // and closing sooner would downgrade same-day resumes off the session path
+    // (a reaped thread's next message falls back to the durable-turn path —
+    // still durable, but it loses the resumable .out stream). Env-tunable.
+    const idleMinutesRaw = Number(process.env.PLATOS_CHAT_SESSION_IDLE_MINUTES ?? "1440");
+    const maxAgeHoursRaw = Number(process.env.PLATOS_CHAT_SESSION_MAX_AGE_HOURS ?? "168");
+    const idleMinutes = Number.isFinite(idleMinutesRaw) && idleMinutesRaw > 0 ? idleMinutesRaw : 1440;
+    const maxAgeHours = Number.isFinite(maxAgeHoursRaw) && maxAgeHoursRaw > 0 ? maxAgeHoursRaw : 168;
+    const idleCutoff = Date.now() - idleMinutes * 60_000;
+    const maxAgeCutoff = Date.now() - maxAgeHours * 3_600_000;
+    const MAX_SCAN = 2000;
+    const PAGE = 100;
+    // Bound the actual close work per sweep — each close is ~4 serial round
+    // trips, so an unbounded first-drain of a large backlog would blow the
+    // task's 110s HTTP budget. Remaining sessions are picked up next sweep.
+    const MAX_CLOSE_PER_SWEEP = 300;
+
+    // 1) Collect ACTIVE chat sessions (bounded).
+    const items: Array<{
+      id: string;
+      externalId: string | null;
+      currentRunId?: string | null;
+      createdAt: string | Date;
+      metadata?: any;
+    }> = [];
+    try {
+      const page = await sdk.sessions.list({
+        status: "ACTIVE",
+        taskIdentifier: ConversationService.CHAT_SESSION_TASK_ID,
+        limit: PAGE,
+      });
+      for await (const s of page) {
+        items.push({
+          id: s.id,
+          externalId: s.externalId ?? null,
+          currentRunId: s.currentRunId ?? null,
+          createdAt: s.createdAt,
+          metadata: s.metadata,
+        });
+        if (items.length >= MAX_SCAN) {
+          out.capped = true;
+          break;
+        }
+      }
+    } catch {
+      return out;
+    }
+    out.scanned = items.length;
+    if (items.length === 0) return out;
+
+    // 2) Batch-load the backing threads for last-activity + status + scope.
+    const threadIds = Array.from(
+      new Set(items.map((i) => i.externalId).filter((x): x is string => !!x)),
+    );
+    const threadRows: Array<{
+      id: string;
+      updatedAt: Date;
+      status: string;
+      organizationId: string;
+      projectId: string;
+      environmentId: string;
+    }> =
+      threadIds.length === 0
+        ? []
+        : await this.prisma.platosAgentThread.findMany({
+            where: { id: { in: threadIds } },
+            select: {
+              id: true,
+              updatedAt: true,
+              status: true,
+              organizationId: true,
+              projectId: true,
+              environmentId: true,
+            },
+          });
+    const threadById = new Map(threadRows.map((t) => [t.id, t]));
+    const bump = (r: string) => {
+      out.reasons[r] = (out.reasons[r] ?? 0) + 1;
+    };
+
+    // 3) Decide + close.
+    for (const s of items) {
+      let reason: string | null = null;
+      let scope: { organizationId: string; projectId: string; environmentId: string } | null = null;
+
+      if (!s.externalId) {
+        reason = "orphan-no-external-id";
+      } else {
+        const t = threadById.get(s.externalId);
+        if (!t) {
+          reason = "thread-missing";
+        } else {
+          scope = {
+            organizationId: t.organizationId,
+            projectId: t.projectId,
+            environmentId: t.environmentId,
+          };
+          if (t.status === "archived" || t.status === "completed") reason = `thread-${t.status}`;
+          else if (new Date(t.updatedAt).getTime() < idleCutoff) reason = "idle-timeout";
+          else if (new Date(s.createdAt).getTime() < maxAgeCutoff) reason = "max-age";
+        }
+      }
+
+      if (!reason) {
+        out.skipped++;
+        continue;
+      }
+
+      // The list + thread snapshots were taken before this serial loop, which
+      // can run for minutes. Re-verify against LIVE state right before closing,
+      // and fail CLOSED on any uncertainty — closing a resumed conversation
+      // mid-turn is far worse than deferring one sweep.
+      let fresh: any = null;
+      try {
+        fresh = await sdk.sessions.retrieve(s.id);
+      } catch {
+        fresh = null;
+      }
+      if (!fresh || !this.isSessionActive(fresh)) {
+        // Already closed/expired, or couldn't confirm it's still active.
+        out.skipped++;
+        bump("skip-not-active");
+        continue;
+      }
+
+      // Never yank an in-flight turn. Check the FRESH currentRunId (the snapshot
+      // one lingers after completion and may point at a stale run). Any run that
+      // is not completed counts as live (covers EXECUTING/QUEUED/WAITING/DELAYED
+      // /…). A failed run lookup is treated as live → skip (fail closed).
+      const runId: string | null = fresh.currentRunId ?? s.currentRunId ?? null;
+      if (runId) {
+        let run: any;
+        try {
+          run = await sdk.runs.retrieve(runId);
+        } catch {
+          out.skipped++;
+          bump("skip-run-check-failed");
+          continue;
+        }
+        if (run && run.isCompleted !== true) {
+          out.skipped++;
+          bump("skip-live-run");
+          continue;
+        }
+      }
+
+      // For idle-timeout, re-confirm the thread is still idle — a user may have
+      // messaged since the snapshot (bumping thread.updatedAt at turn start,
+      // before any run is visible).
+      if (reason === "idle-timeout" && s.externalId) {
+        try {
+          const t2 = await this.prisma.platosAgentThread.findUnique({
+            where: { id: s.externalId },
+            select: { updatedAt: true, status: true },
+          });
+          if (
+            t2 &&
+            t2.status === "active" &&
+            new Date(t2.updatedAt).getTime() >= Date.now() - idleMinutes * 60_000
+          ) {
+            out.skipped++;
+            bump("became-active");
+            continue;
+          }
+        } catch {
+          /* couldn't re-read; the snapshot already said idle — proceed */
+        }
+      }
+
+      const ok = await this.terminateSession(sdk.sessions, s.id, s.externalId, scope, reason);
+      if (ok) {
+        out.closed++;
+        bump(reason);
+        if (out.closed >= MAX_CLOSE_PER_SWEEP) {
+          out.capped = true;
+          break;
+        }
+      } else {
+        out.skipped++;
+        bump(`close-failed:${reason}`);
+      }
+    }
+    return out;
   }
 
   /** PIFSP-20 — rename a thread (1–200 chars, no newlines). */

@@ -3878,6 +3878,30 @@ Write the summary now:`;
   }
 
   /**
+   * Close durable chat sessions whose conversation is done (archived, idle,
+   * orphaned, or past max age). Invoked by the `platos.chat.session_reaper`
+   * scheduled task — the task has no Prisma/Redis, so it delegates here.
+   * Admin-token gated. Never throws: returns the sweep summary.
+   */
+  @Post("internal/chat/reap-sessions")
+  async internalChatReapSessions(@Req() req: Request, @Res() res: Response) {
+    if (!env.PLATOS_ADMIN_TOKEN) {
+      res.status(503).json({ error: "PLATOS_ADMIN_TOKEN not set" });
+      return;
+    }
+    if (!this.verifyAdminToken(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    try {
+      const result = await this.conversationService.reapChatSessions();
+      res.status(200).json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e?.message ?? "reap failed" });
+    }
+  }
+
+  /**
    * REFACTOR — durable agent turn callback. Invoked by the
    * `platos.agent.durable-turn` trigger task when an agent's
    * executionMode==="durable". Runs one turn in-process (reusing the same
