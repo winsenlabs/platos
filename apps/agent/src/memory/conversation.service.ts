@@ -1,4 +1,5 @@
-import { Injectable, Inject, Optional } from "@nestjs/common";
+import { Injectable, Inject, Optional, Logger } from "@nestjs/common";
+import { createHash } from "node:crypto";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
@@ -90,6 +91,7 @@ export function normalizeTags(input: unknown): string[] {
 @Injectable()
 export class ConversationService {
   private prisma: any; // Runtime-loaded PrismaClient
+  private readonly logger = new Logger(ConversationService.name);
 
   constructor(
     @Inject(PRISMA_TOKEN) prisma: any,
@@ -196,43 +198,22 @@ export class ConversationService {
       });
     }
 
-    // Lazy upsert PlatosEndUser — one row per unique end-user within the scope.
-    // `externalUserId` = the opaque user id forwarded by the entity backend.
-    // Fails open so a PlatosEndUser upsert hiccup never blocks thread creation.
+    // Resolve the canonical end-user for this thread. When the session token
+    // carried verified channel identities (email / phone / slack / …),
+    // resolveEndUser links the thread to the existing person behind that
+    // identity (link-not-merge); otherwise it falls back to the legacy
+    // find-or-create by `externalUserId`. With no `scope.userIdentities` this is
+    // byte-for-byte the old inline PlatosEndUser upsert. Fails open (returns
+    // null) so a resolution hiccup never blocks thread creation. NOTE:
+    // thread.userId below stays `scope.userId` — resolveEndUser only affects the
+    // `platosEndUserId` FK, never thread scoping / ownership.
     let platosEndUserId: string | null = null;
     if (scope.userId) {
-      try {
-        const endUser = await (this.prisma as any).platosEndUser.upsert({
-          where: {
-            // Prisma auto-generates this key from the @@unique field names (not the `map:` SQL name)
-            organizationId_projectId_environmentId_externalUserId: {
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-              externalUserId: scope.userId,
-            },
-          },
-          update: {
-            lastActiveAt: new Date(),
-            threadCount: { increment: 1 },
-            ...(opts?.displayName ? { displayName: opts.displayName } : {}),
-            ...(opts?.email ? { email: opts.email } : {}),
-          },
-          create: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-            externalUserId: scope.userId,
-            displayName: opts?.displayName ?? null,
-            email: opts?.email ?? null,
-            threadCount: 1,
-            lastActiveAt: new Date(),
-          },
-        });
-        platosEndUserId = endUser.id as string;
-      } catch {
-        // Fail open — thread creation must succeed even if PlatosEndUser upsert fails.
-      }
+      platosEndUserId = await this.resolveEndUser(scope, {
+        displayName: opts?.displayName,
+        email: opts?.email,
+        incrementThreadCount: true,
+      });
     }
 
     return this.prisma.platosAgentThread.create({
@@ -256,6 +237,263 @@ export class ConversationService {
         ...(scope.clusteringId ? { clusteringId: scope.clusteringId } : {}),
       },
     });
+  }
+
+  /**
+   * Defensive re-application of the mint-time identity-claim bounds (see
+   * `sanitizeUserIdentities` in session-token.controller.ts — the shared
+   * contract: max 8 entries; channel /^[a-z0-9_-]{1,32}$/ after
+   * trim+lowercase; handle control-chars stripped, trimmed, length 1..256;
+   * invalid entries dropped silently).
+   *
+   * The controller mint path already enforces this, but the PRIMARY documented
+   * mint path is local HMAC signing with `@platosdev/token-mint` — those
+   * tokens reach `validateSessionToken` without ever passing through the
+   * controller, so `scope.userIdentities` can carry malformed (non-string
+   * channel/handle → Prisma validation throw → whole resolution nulled) or
+   * unbounded (thousands of claims → DB fan-out on every thread create)
+   * arrays. Re-capping here keeps resolveEndUser's DB work bounded and its
+   * honest-path behaviour unchanged.
+   */
+  private sanitizeIdentityClaims(
+    raw: unknown,
+  ): Array<{ channel: string; handle: string; verified?: boolean }> {
+    if (!Array.isArray(raw)) return [];
+    const out: Array<{ channel: string; handle: string; verified?: boolean }> = [];
+    for (const entry of raw) {
+      if (out.length >= 8) break;
+      if (!entry || typeof entry !== "object") continue;
+      const channelRaw = (entry as Record<string, unknown>).channel;
+      const handleRaw = (entry as Record<string, unknown>).handle;
+      if (typeof channelRaw !== "string" || typeof handleRaw !== "string") continue;
+      const channel = channelRaw.trim().toLowerCase();
+      if (!/^[a-z0-9_-]{1,32}$/.test(channel)) continue;
+      // Strip C0/C1 control chars + DEL (codepoints <=0x1F and 0x7F..0x9F).
+      const handle = Array.from(handleRaw)
+        .filter((ch) => {
+          const c = ch.codePointAt(0) ?? 0;
+          return !(c <= 0x1f || (c >= 0x7f && c <= 0x9f));
+        })
+        .join("")
+        .trim();
+      if (handle.length < 1 || handle.length > 256) continue;
+      const verified = (entry as Record<string, unknown>).verified === true;
+      out.push({ channel, handle, ...(verified ? { verified: true } : {}) });
+    }
+    return out;
+  }
+
+  /**
+   * PII-safe log token for an identity handle: a short hash instead of the
+   * raw email address / phone number, so plaintext container logs never carry
+   * end-user contact PII (the encrypted-at-rest audit path is the place for
+   * raw values, not Logger output).
+   */
+  private redactHandle(handle: string): string {
+    return `sha256:${createHash("sha256").update(handle).digest("hex").slice(0, 12)}`;
+  }
+
+  /**
+   * Resolve the canonical PlatosEndUser for a session — the identity graph
+   * entry point. Returns the resolved `platosEndUserId`, or `null` on ANY
+   * failure (fail-open — never throws, so it can never block thread creation).
+   *
+   * LINK-NOT-MERGE identity model. A person may be reached through several
+   * channel identities (email, phone, slack, teams, whatsapp, telegram,
+   * discord, web, …). We LINK identities to a person; we never MERGE two
+   * people, and we never RE-POINT an identity that already belongs to someone
+   * else. `scope.userIdentities` is populated only from validated non-guest
+   * tokens (see scope.guard / auth.service). Controller-minted tokens are
+   * sanitised at mint-time, but locally-minted tokens (@platosdev/token-mint)
+   * are not — so the claim bounds are re-applied here defensively
+   * (`sanitizeIdentityClaims`).
+   *
+   * Algorithm:
+   *   (a) VERIFIED claims first — for each `verified === true` claim, look up
+   *       PlatosEndUserIdentity by the (org, project, env, channel, handle)
+   *       unique. Only a row that is itself `verified === true` may anchor
+   *       (an unverified row is a non-authoritative link — letting it anchor
+   *       would allow within-tenant identity squatting). First hit wins →
+   *       that row's person is canonical. Bump its lastActiveAt (+ threadCount
+   *       when asked) and backfill displayName / email only-if-null.
+   *   (b) No verified hit → find-or-create PlatosEndUser by
+   *       (org, project, env, externalUserId = scope.userId) — byte-for-byte
+   *       the legacy inline upsert.
+   *   (c) Attach EVERY claimed identity (verified or not) to the resolved
+   *       person. A pre-existing identity pointing at a DIFFERENT person is
+   *       SKIPPED with a warn — never re-pointed, never merged. Each attach is
+   *       isolated so one conflict never aborts the rest.
+   *
+   * With no `scope.userIdentities` only step (b) runs, reproducing today's
+   * behaviour exactly.
+   */
+  async resolveEndUser(
+    scope: {
+      organizationId: string;
+      projectId: string;
+      environmentId: string;
+      userId: string;
+      entityId?: string;
+      userIdentities?: Array<{ channel: string; handle: string; verified?: boolean }>;
+    },
+    opts?: { displayName?: string; email?: string; incrementThreadCount?: boolean },
+  ): Promise<string | null> {
+    try {
+      const { organizationId, projectId, environmentId } = scope;
+      const claims = this.sanitizeIdentityClaims(scope.userIdentities);
+      let resolvedId: string | null = null;
+
+      // (a) VERIFIED claims first — canonical-person lookup by channel identity.
+      for (const claim of claims) {
+        if (claim.verified !== true) continue;
+        const { channel, handle } = claim;
+        // Per-claim isolation: one bad lookup degrades to the next claim /
+        // the step-(b) fallback instead of nulling the whole resolution.
+        try {
+          const hit = await this.prisma.platosEndUserIdentity.findUnique({
+            where: {
+              // Prisma auto-derives this key from the @@unique field names.
+              organizationId_projectId_environmentId_channel_handle: {
+                organizationId,
+                projectId,
+                environmentId,
+                channel,
+                handle,
+              },
+            },
+            include: { platosEndUser: true },
+          });
+          // SECURITY (identity squatting): only rows that are themselves
+          // VERIFIED may anchor resolution. An unverified row is just a
+          // non-authoritative link — if it could anchor, anyone in the tenant
+          // could pre-claim someone else's handle with a verified:false claim
+          // and permanently capture their sessions once the real owner shows
+          // up with verified:true (scope-tuple-is-not-a-user-boundary class,
+          // docs/security-audit-2026-07-16.md).
+          if (hit?.platosEndUserId && hit.verified === true) {
+            resolvedId = hit.platosEndUserId as string;
+            const person = hit.platosEndUser;
+            // Bump activity + backfill display metadata ONLY where currently null
+            // (a verified identity must never clobber an existing name/email).
+            // Best-effort: once resolvedId is anchored, an update failure must
+            // NOT let a later claim reassign resolution (first-hit-wins) — so
+            // the bump gets its own catch and the break is unconditional.
+            try {
+              await this.prisma.platosEndUser.update({
+                where: { id: resolvedId },
+                data: {
+                  lastActiveAt: new Date(),
+                  ...(opts?.incrementThreadCount ? { threadCount: { increment: 1 } } : {}),
+                  ...(person && !person.displayName && opts?.displayName
+                    ? { displayName: opts.displayName }
+                    : {}),
+                  ...(person && !person.email && opts?.email ? { email: opts.email } : {}),
+                },
+              });
+            } catch {
+              // activity-bump is non-essential; resolution is already anchored
+            }
+            break;
+          }
+        } catch {
+          // Fail-open per claim — fall through to the next claim / step (b).
+        }
+      }
+
+      // (b) No verified hit → find-or-create by externalUserId. This block is
+      // byte-for-byte the legacy inline upsert (threadCount increment gated on
+      // opts.incrementThreadCount, lastActiveAt bump, displayName/email
+      // create-or-set-if-provided).
+      if (!resolvedId && scope.userId) {
+        const endUser = await this.prisma.platosEndUser.upsert({
+          where: {
+            // Prisma auto-generates this key from the @@unique field names (not the `map:` SQL name)
+            organizationId_projectId_environmentId_externalUserId: {
+              organizationId,
+              projectId,
+              environmentId,
+              externalUserId: scope.userId,
+            },
+          },
+          update: {
+            lastActiveAt: new Date(),
+            ...(opts?.incrementThreadCount ? { threadCount: { increment: 1 } } : {}),
+            ...(opts?.displayName ? { displayName: opts.displayName } : {}),
+            ...(opts?.email ? { email: opts.email } : {}),
+          },
+          create: {
+            organizationId,
+            projectId,
+            environmentId,
+            externalUserId: scope.userId,
+            displayName: opts?.displayName ?? null,
+            email: opts?.email ?? null,
+            threadCount: opts?.incrementThreadCount ? 1 : 0,
+            lastActiveAt: new Date(),
+          },
+        });
+        resolvedId = endUser.id as string;
+      }
+
+      if (!resolvedId) return null;
+
+      // (c) Attach EVERY claimed identity (verified or not) to the resolved
+      // person. Each attach is isolated in its own try/catch so a single
+      // conflict never aborts the rest (link-not-merge — an identity already
+      // owned by a DIFFERENT person is left untouched + logged, never
+      // re-pointed).
+      for (const claim of claims) {
+        const { channel, handle } = claim;
+        try {
+          await this.prisma.platosEndUserIdentity.create({
+            data: {
+              organizationId,
+              projectId,
+              environmentId,
+              platosEndUserId: resolvedId,
+              channel,
+              handle,
+              verified: claim.verified === true,
+              sourceEntityId: scope.entityId ?? null,
+            },
+          });
+        } catch {
+          // Unique conflict — an identity row for (channel, handle) already
+          // exists in this scope. If it points at a different person, warn and
+          // leave it (link-not-merge); if it's the same person, this is just an
+          // idempotent no-op.
+          try {
+            const existing = await this.prisma.platosEndUserIdentity.findUnique({
+              where: {
+                organizationId_projectId_environmentId_channel_handle: {
+                  organizationId,
+                  projectId,
+                  environmentId,
+                  channel,
+                  handle,
+                },
+              },
+              select: { platosEndUserId: true },
+            });
+            if (existing && existing.platosEndUserId !== resolvedId) {
+              // PII: log a short hash of the handle, never the raw value —
+              // handles are emails / phone numbers and Logger output is
+              // plaintext (docker logs, shipped sinks).
+              this.logger.warn(
+                `identity ${channel}:${this.redactHandle(handle)} already linked to end-user ${existing.platosEndUserId}; not re-pointing to ${resolvedId} (link-not-merge)`,
+              );
+            }
+          } catch {
+            // Best-effort warn lookup — swallow so attach stays fail-open.
+          }
+        }
+      }
+
+      return resolvedId;
+    } catch {
+      // Fail open — end-user resolution must never block thread creation.
+      return null;
+    }
   }
 
   /** Update a PlatosEndUser's display metadata when richer info becomes available (e.g. from sessionContext). */

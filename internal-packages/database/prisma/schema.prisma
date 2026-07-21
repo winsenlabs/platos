@@ -3226,6 +3226,9 @@ model PlatosEndUser {
   displayName String?
   email       String?
 
+  /// Arbitrary caller-supplied metadata (channel prefs, tags, etc.).
+  metadata Json?
+
   /// Incremented on each thread create; cached to avoid JOIN on list views.
   threadCount  Int      @default(0)
   lastActiveAt DateTime @default(now())
@@ -3233,12 +3236,46 @@ model PlatosEndUser {
   threads    PlatosAgentThread[]
   memories   PlatosMemory[]
   toolAudits PlatosToolCallAudit[]
+  identities PlatosEndUserIdentity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([organizationId, projectId, environmentId, externalUserId], map: "platos_end_user_scope_ext_uniq")
   @@index([organizationId, projectId, environmentId, lastActiveAt(sort: Desc)], map: "platos_end_user_scope_last_active_idx")
+}
+
+/// A channel-native identity claim linked to a PlatosEndUser (link-not-merge).
+/// Each row asserts "this person is reachable/known as `handle` on `channel`",
+/// optionally `verified` and attributed to the connected entity that asserted
+/// it (`sourceEntityId`). Multiple identities fan into one canonical person;
+/// a (channel, handle) is unique per scope and never re-pointed once claimed.
+model PlatosEndUserIdentity {
+  id             String @id @default(cuid())
+  organizationId String
+  projectId      String
+  environmentId  String
+
+  platosEndUserId String
+  platosEndUser   PlatosEndUser @relation(fields: [platosEndUserId], references: [id], onDelete: Cascade)
+
+  /// Channel slug: "email" | "phone" | "slack" | "teams" | "whatsapp" | "telegram" | "discord" | "web" | ...
+  channel String
+  /// Channel-native id: email addr, E.164 phone, Slack user id, ...
+  handle String
+
+  /// Whether the asserting entity vouched for this identity (trust gate).
+  verified Boolean @default(false)
+  /// Which connected entity asserted this identity (trust anchor).
+  sourceEntityId String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, projectId, environmentId, channel, handle])
+  @@index([platosEndUserId])
 }
 
 /// Platos API key + allowed origins per scope. When a key exists for a scope,

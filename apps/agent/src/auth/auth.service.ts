@@ -43,6 +43,17 @@ export interface SessionPayload {
    * Surfaced to the agent prompt as `{{user.name}}` / `{{user.email}}`
    * via scope.sessionContext, enriches PlatosEndUser asynchronously. */
   userMeta?: { name?: string; email?: string };
+  /**
+   * Optional channel-native identity claims asserted by the entity backend
+   * (the trust anchor that already authenticated the end-user on its own
+   * side). Each entry is a (channel, handle) pair — e.g.
+   * `{ channel: "email", handle: "a@b.com", verified: true }`. `verified`
+   * claims let ConversationService.resolveEndUser link this session to a
+   * canonical PlatosEndUser across channels (link-not-merge). Sanitized at
+   * mint time (max 8 entries; channel /^[a-z0-9_-]{1,32}$/; handle 1..256,
+   * no control chars). NEVER copied from guest tokens.
+   */
+  userIdentities?: Array<{ channel: string; handle: string; verified?: boolean }>;
   exp: number;
 }
 

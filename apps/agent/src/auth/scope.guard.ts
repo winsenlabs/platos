@@ -68,6 +68,14 @@ export interface RequestScope {
   userId: string;
   entityId?: string;
   userToken?: string;
+  /**
+   * Channel-native identity claims from a validated NON-GUEST session token
+   * (copied verbatim from `SessionPayload.userIdentities`). Lets
+   * ConversationService.resolveEndUser link this turn to a canonical
+   * PlatosEndUser across channels (link-not-merge). NEVER populated from a
+   * guest token, and NEVER from the direct-header path.
+   */
+  userIdentities?: Array<{ channel: string; handle: string; verified?: boolean }>;
   agentId?: string;
   sessionId?: string;
   /**
@@ -356,6 +364,20 @@ export class ScopeGuard implements CanActivate {
               }
             : undefined;
 
+        // Carry verified-identity claims onto the scope so downstream
+        // ConversationService.resolveEndUser can link this turn to a canonical
+        // PlatosEndUser across channels. NON-GUEST only: the guest-token flow
+        // (EOBD.89) mints tokens for anonymous visitors who must never assert
+        // an identity — the same isGuest gate that decides operator tier.
+        // Entity-signed end-user tokens ARE the primary source. Copied verbatim
+        // from the validated (HMAC-verified) payload.
+        const tokenUserIdentities =
+          (payload as any).isGuest !== true &&
+          Array.isArray(payload.userIdentities) &&
+          payload.userIdentities.length > 0
+            ? payload.userIdentities
+            : undefined;
+
         request.scope = {
           organizationId: payload.organizationId,
           projectId: payload.projectId,
@@ -374,6 +396,7 @@ export class ScopeGuard implements CanActivate {
               ? "operator"
               : "end-user",
           ...(tokenAgentId ? { agentId: tokenAgentId } : {}),
+          ...(tokenUserIdentities ? { userIdentities: tokenUserIdentities } : {}),
           ...(sessionContextFromToken
             ? { sessionContext: sessionContextFromToken }
             : {}),

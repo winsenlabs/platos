@@ -231,6 +231,11 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       let userToken: string | undefined;
       let pinnedAgentId: string | undefined; // SECURITY (H6) — token-pinned agent
       let principal: "operator" | "end-user" = "end-user";
+      // Verified-identity claims — populated ONLY from a validated non-guest
+      // token below; stays undefined on the direct-header path.
+      let userIdentities:
+        | Array<{ channel: string; handle: string; verified?: boolean }>
+        | undefined;
 
       if (token) {
         // Mode 2 session-token JWT — verified HMAC against entity's serviceSecret.
@@ -254,6 +259,18 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
           payload.iss === "platos-platform" && (payload as any).isGuest !== true
             ? "operator"
             : "end-user";
+        // Carry verified-identity claims for NON-GUEST tokens so WS turns
+        // resolve the same canonical PlatosEndUser as the HTTP path. Guest
+        // tokens (anonymous visitors, EOBD.89) must never assert an identity —
+        // same isGuest gate ScopeGuard uses. Copied verbatim from the
+        // validated payload.
+        if (
+          (payload as any).isGuest !== true &&
+          Array.isArray(payload.userIdentities) &&
+          payload.userIdentities.length > 0
+        ) {
+          userIdentities = payload.userIdentities;
+        }
         // Lift the JWT's userMeta into the WS auth bag so the gateway can
         // forward it as scope.sessionContext.user.* on every turn — same
         // path ScopeGuard takes for HTTP. Without this, the streaming path
@@ -310,6 +327,11 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         ...(userToken ? { userToken: String(userToken) } : {}),
         principal,
         ...(pinnedAgentId ? { agentId: String(pinnedAgentId) } : {}),
+        // Carry non-guest verified-identity claims so WS-initiated turns
+        // resolve the same canonical PlatosEndUser as the HTTP path. Only ever
+        // set from a validated non-guest token (see above); never on the
+        // direct-header path.
+        ...(userIdentities ? { userIdentities } : {}),
         // Lift JWT userMeta into sessionContext.user.* so the dynamic-block
         // resolver (and span columns) see {{user.name}} / {{user.email}}
         // on every WS turn. ScopeGuard does this for HTTP; we mirror it
