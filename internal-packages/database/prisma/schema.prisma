@@ -3226,6 +3226,9 @@ model PlatosEndUser {
   displayName String?
   email       String?
 
+  /// Arbitrary caller-supplied metadata (channel prefs, tags, etc.).
+  metadata Json?
+
   /// Incremented on each thread create; cached to avoid JOIN on list views.
   threadCount  Int      @default(0)
   lastActiveAt DateTime @default(now())
@@ -3233,12 +3236,46 @@ model PlatosEndUser {
   threads    PlatosAgentThread[]
   memories   PlatosMemory[]
   toolAudits PlatosToolCallAudit[]
+  identities PlatosEndUserIdentity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([organizationId, projectId, environmentId, externalUserId], map: "platos_end_user_scope_ext_uniq")
   @@index([organizationId, projectId, environmentId, lastActiveAt(sort: Desc)], map: "platos_end_user_scope_last_active_idx")
+}
+
+/// A channel-native identity claim linked to a PlatosEndUser (link-not-merge).
+/// Each row asserts "this person is reachable/known as `handle` on `channel`",
+/// optionally `verified` and attributed to the connected entity that asserted
+/// it (`sourceEntityId`). Multiple identities fan into one canonical person;
+/// a (channel, handle) is unique per scope and never re-pointed once claimed.
+model PlatosEndUserIdentity {
+  id             String @id @default(cuid())
+  organizationId String
+  projectId      String
+  environmentId  String
+
+  platosEndUserId String
+  platosEndUser   PlatosEndUser @relation(fields: [platosEndUserId], references: [id], onDelete: Cascade)
+
+  /// Channel slug: "email" | "phone" | "slack" | "teams" | "whatsapp" | "telegram" | "discord" | "web" | ...
+  channel String
+  /// Channel-native id: email addr, E.164 phone, Slack user id, ...
+  handle String
+
+  /// Whether the asserting entity vouched for this identity (trust gate).
+  verified Boolean @default(false)
+  /// Which connected entity asserted this identity (trust anchor).
+  sourceEntityId String?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, projectId, environmentId, channel, handle])
+  @@index([platosEndUserId])
 }
 
 /// Platos API key + allowed origins per scope. When a key exists for a scope,
@@ -3613,6 +3650,14 @@ model PlatosConnectedEntity {
   // browser CORS preflight even if the session token is valid.
   allowedOrigins String[] @default([])
 
+  // The Connect reimagining: an entity is a *doorway*, and `capabilities`
+  // declares which kinds of doorway it is.
+  //   "tools"    (default) — classic platools/MCP tool sync
+  //   "channel"  — a messaging-channel doorway (see PlatosChannelConnection)
+  //   "identity" — an identity / auth provider
+  // An entity may carry more than one capability.
+  capabilities String[] @default(["tools"]) // "tools" | "channel" | "identity"
+
   // PIFSP-3 (Deliverable 9) — encrypted test credentials used only when a
   // dev clicks "Test" on a tool from the dashboard. Shape (after decrypt):
   //   { headers: [{name, value}, ...], userId?, updatedAt, updatedByUserId }
@@ -3622,6 +3667,10 @@ model PlatosConnectedEntity {
   testCredentials String? @db.Text
 
   toolMappings PlatosEntityToolMapping[]
+  /// Channel doorways (Slack / Telegram / WhatsApp / Discord) bound through
+  /// this entity. The FK on PlatosChannelConnection is optional
+  /// (onDelete: SetNull) so a channel can outlive the entity that spawned it.
+  channelConnections PlatosChannelConnection[]
   /// PIFSP-21 — per-entity MCP gateway configuration (1:1 optional).
   /// When null, `/mcp/entity/:entityId` returns 404 and tokens cannot be
   /// issued for this entity. When present with `enabled = false`, the
@@ -3634,6 +3683,104 @@ model PlatosConnectedEntity {
 
   @@unique([organizationId, projectId, entityId])
   @@index([organizationId, projectId])
+}
+
+/// A messaging-channel doorway bound to ONE agent. Where PlatosConnectedEntity
+/// is the classic tool-sync doorway, a channel connection is the inbound side
+/// of the Connect reimagining: a Slack workspace / Telegram bot / WhatsApp
+/// number / Discord app whose native conversations route to a single Platos
+/// agent (v1: one agent per connection).
+///
+/// `credentials` is an ENCRYPTED envelope (same MessageCryptoService envelope
+/// pattern as PlatosConnectedEntity.testCredentials — an opaque base64 blob,
+/// which is why it is stored as TEXT rather than JSONB).
+///
+/// `webhookSecret` is 32 random bytes (hex) minted at create time; the inbound
+/// webhook URL carries `/channels/:id/:webhookSecret` as a first auth factor
+/// alongside the provider's own signature verification. The inbound RUNTIME
+/// (receiving posts) is a separate slice — this model is management-only.
+model PlatosChannelConnection {
+  id             String @id @default(cuid())
+
+  // Scope (Theme A invariant — scalar axes only, matching PlatosEndUserIdentity).
+  organizationId String
+  projectId      String
+  environmentId  String
+
+  // The entity this channel was spawned through. Optional: onDelete SetNull so
+  // the channel can outlive its entity.
+  entityPk String?
+  entity   PlatosConnectedEntity? @relation(fields: [entityPk], references: [id], onDelete: SetNull)
+
+  provider    String // "slack" | "telegram" | "whatsapp" | "discord"
+  displayName String?
+
+  // The DEFAULT agent this channel routes to when no routing rule matches.
+  agentId String
+
+  // RUNTIME (one connection → many agents, v1) — an ordered rule list that
+  // overrides the default `agentId` on a per-message basis. Null / empty =>
+  // every message uses `agentId`. Shape (each element):
+  //   { "match": { "type": "channel", "id": "C123ABC" }, "agentId": "..." }
+  //     — matches when the inbound platform channel/group/guild-channel id
+  //       equals `id`.
+  //   { "match": { "type": "prefix", "value": "ada" }, "agentId": "..." }
+  //     — matches when the message text starts with "ada:" or "@ada"
+  //       (case-insensitive).
+  // Resolution: first matching rule wins, else `agentId`. Each rule's
+  // `agentId` is validated in-scope at WRITE time (management slice); the
+  // resolved agent is PINNED onto PlatosChannelThread.agentId on first
+  // contact so a conversation never switches agents mid-thread.
+  agentRouting Json?
+
+  enabled Boolean @default(true)
+
+  // ENCRYPTED envelope (MessageCryptoService) — same pattern as entity
+  // testCredentials. Opaque base64 blob → String maps to Postgres TEXT.
+  credentials String?
+
+  // Provider extras: slack team_id, whatsapp phoneNumberId, webhook verify
+  // tokens, etc.
+  config Json?
+
+  // Random 32-byte hex minted at create; first auth factor on the inbound URL.
+  webhookSecret String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  threads PlatosChannelThread[]
+
+  @@index([organizationId, projectId, environmentId, provider])
+  @@index([agentId])
+}
+
+/// Maps a channel-native conversation (a Slack channel/thread, a Telegram chat,
+/// a WhatsApp conversation) to a Platos thread. One row per distinct
+/// channel-native thread key per connection.
+model PlatosChannelThread {
+  id           String @id @default(cuid())
+  connectionId String
+  connection   PlatosChannelConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  // Chat SDK thread id, e.g. "slack:C123ABC:1234567890.123456".
+  channelThreadKey String
+  platosThreadId   String
+  platosEndUserId  String?
+
+  // RUNTIME — the agent PINNED to this channel-native conversation on first
+  // contact (resolved once via PlatosChannelConnection.agentRouting, then
+  // frozen). Every later message in this channel-thread reuses this agent so
+  // conversations never switch agents mid-thread. Null only for legacy rows
+  // created before pinning existed (fall back to the connection default).
+  agentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([connectionId, channelThreadKey])
+  @@index([platosThreadId])
+  @@index([agentId])
 }
 
 /// PIFSP-21 — per-entity MCP gateway configuration. One row per

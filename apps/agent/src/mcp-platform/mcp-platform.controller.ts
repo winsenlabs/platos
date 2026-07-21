@@ -11,6 +11,7 @@ import {
   Req,
   Res,
 } from "@nestjs/common";
+import { ModuleRef } from "@nestjs/core";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
@@ -54,6 +55,10 @@ import { OAuthService } from "../oauth/oauth.service";
 import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
 import { McpBearerTokenService } from "./mcp-bearer-token.service";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
+// Connect channels.* — evict the channels runtime cache after mutations
+// (resolved lazily via ModuleRef; a direct import in the constructor would
+// require importing ChannelsModule → DI cycle with AgentRuntimeModule).
+import { ChannelRuntimeService } from "../channels/channel-runtime.service";
 // MCPF-W6 — monitoring + settings/admin tool dependencies.
 import { TraceService } from "../monitoring/trace.service";
 import { ProviderHealthService } from "../auth/provider-health.service";
@@ -138,6 +143,8 @@ export class McpPlatformController {
     private readonly clusters: AgentClusterService,
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
+    // Lazy resolution of ChannelRuntimeService (see invalidateChannelRuntime).
+    private readonly moduleRef: ModuleRef,
   ) {}
 
   private getRouter(): McpRouter {
@@ -199,6 +206,20 @@ export class McpPlatformController {
         orgs: this.orgs,
         envs: this.envs,
         clusters: this.clusters,
+        // Connect channels.* — evict the runtime's cached Chat instance after
+        // update/delete/rotate so credential + routing changes take effect
+        // immediately (not after the 10-min TTL). Best-effort: the runtime is
+        // resolved lazily (strict:false searches the whole container) and a
+        // resolution failure must never fail the tool call.
+        invalidateChannelRuntime: (connectionId: string) => {
+          try {
+            this.moduleRef
+              .get(ChannelRuntimeService, { strict: false })
+              ?.invalidate(connectionId);
+          } catch {
+            // ChannelsModule absent — the runtime TTL bounds staleness.
+          }
+        },
       }),
     );
     // K.17 — attach recorder so the router captures successful tool

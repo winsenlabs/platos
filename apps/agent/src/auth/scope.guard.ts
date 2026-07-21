@@ -68,6 +68,14 @@ export interface RequestScope {
   userId: string;
   entityId?: string;
   userToken?: string;
+  /**
+   * Channel-native identity claims from a validated NON-GUEST session token
+   * (copied verbatim from `SessionPayload.userIdentities`). Lets
+   * ConversationService.resolveEndUser link this turn to a canonical
+   * PlatosEndUser across channels (link-not-merge). NEVER populated from a
+   * guest token, and NEVER from the direct-header path.
+   */
+  userIdentities?: Array<{ channel: string; handle: string; verified?: boolean }>;
   agentId?: string;
   sessionId?: string;
   /**
@@ -149,6 +157,16 @@ export class ScopeGuard implements CanActivate {
     // the controller gates access by agent.visibility + per-IP +
     // per-agent rate limits.
     if (url.startsWith("/api/v1/public/")) return true;
+
+    // Connect reimagining — inbound channel webhooks (Slack / Telegram /
+    // WhatsApp / Discord). No per-scope session context: the caller is the
+    // provider, not a Platos user. Auth is TWO-FACTOR and happens IN the
+    // controller, not here — (1) a timing-safe compare of the URL
+    // `:webhookSecret` against the connection row, then (2) the Chat SDK
+    // adapter verifies the provider signature (Slack HMAC / WhatsApp
+    // X-Hub-Signature-256 / Discord Ed25519 / Telegram secret_token) using the
+    // decrypted connection credentials. ScopeGuard just lets the request land.
+    if (url.startsWith("/api/v1/channels/inbound/")) return true;
 
     // Theme K — Platform MCP. Authed by `Authorization: Bearer
     // <PLATOS_MCP_TOKEN>` on every request; token verification + scope
@@ -356,6 +374,20 @@ export class ScopeGuard implements CanActivate {
               }
             : undefined;
 
+        // Carry verified-identity claims onto the scope so downstream
+        // ConversationService.resolveEndUser can link this turn to a canonical
+        // PlatosEndUser across channels. NON-GUEST only: the guest-token flow
+        // (EOBD.89) mints tokens for anonymous visitors who must never assert
+        // an identity — the same isGuest gate that decides operator tier.
+        // Entity-signed end-user tokens ARE the primary source. Copied verbatim
+        // from the validated (HMAC-verified) payload.
+        const tokenUserIdentities =
+          (payload as any).isGuest !== true &&
+          Array.isArray(payload.userIdentities) &&
+          payload.userIdentities.length > 0
+            ? payload.userIdentities
+            : undefined;
+
         request.scope = {
           organizationId: payload.organizationId,
           projectId: payload.projectId,
@@ -374,6 +406,7 @@ export class ScopeGuard implements CanActivate {
               ? "operator"
               : "end-user",
           ...(tokenAgentId ? { agentId: tokenAgentId } : {}),
+          ...(tokenUserIdentities ? { userIdentities: tokenUserIdentities } : {}),
           ...(sessionContextFromToken
             ? { sessionContext: sessionContextFromToken }
             : {}),

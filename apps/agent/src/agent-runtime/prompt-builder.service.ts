@@ -519,7 +519,6 @@ export const DEFAULT_CATEGORY_DESCRIPTIONS: Record<string, string> = {
   discovery: "Tool search + batched dispatch.",
   orchestration: "Durable background operations and batch loops.",
   approvals: "Request human approval mid-turn.",
-  artifacts: "Create and revise artifacts attached to this thread.",
   profile: "Per-user profile key/value store.",
   utility: "General-purpose helpers.",
   // common entity-tool categories (best-effort; TL.3 makes these configurable)

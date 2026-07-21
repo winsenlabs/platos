@@ -51,6 +51,11 @@ import type { GoldenSetService } from "../../evals/golden-set.service";
 import type { SpansService } from "../../monitoring/spans.service";
 
 import { buildEntityToolHandlers } from "./entities";
+// EUI — end-user identity management (end_users.get / link_identity / unlink_identity).
+import { buildEndUserToolHandlers } from "./end-users";
+// Connect reimagining — channels.* messaging-channel doorway management
+// (create / list / get / update / delete / rotate_webhook_secret).
+import { buildChannelToolHandlers } from "./channels";
 import { buildTriggerToolHandlers } from "./trigger";
 import { buildSkillToolHandlers } from "./skills";
 import { buildPlatosControlToolHandlers } from "./platos-control";
@@ -131,6 +136,13 @@ export function buildPlatformToolHandlers(deps: {
   orgs: OrganizationService;
   envs: EnvironmentService;
   clusters: AgentClusterService;
+  /**
+   * Connect channels.* — evict the channels runtime's cached Chat instance
+   * after update / delete / rotate_webhook_secret so credential/config/routing
+   * changes take effect immediately instead of after the runtime's 10-min TTL.
+   * Optional (best-effort); wired by McpPlatformController via ModuleRef.
+   */
+  invalidateChannelRuntime?: (connectionId: string) => void;
 }): McpToolHandler[] {
   const { agentCrud, conversation, rating, toolAudit } = deps;
 
@@ -729,6 +741,30 @@ export function buildPlatformToolHandlers(deps: {
       messageCrypto: deps.messageCrypto,
       toolAudit: deps.toolAudit,
       prisma: deps.prisma,
+    }),
+  );
+
+  // ── EUI end_users.* — end-user identity management (3 tools) ──────
+  // Read + manual-edit surface over the PlatosEndUser ↔ PlatosEndUserIdentity
+  // link-not-merge graph. Scope-pinned; link/unlink mutations are audited.
+  handlers.push(
+    ...buildEndUserToolHandlers({
+      prisma: deps.prisma,
+      toolAudit: deps.toolAudit,
+    }),
+  );
+
+  // ── Connect channels.* — messaging-channel doorway management (6 tools) ─
+  // CRUD + webhook-secret rotation over PlatosChannelConnection. Scope-pinned;
+  // agentId validated against the token scope; credentials encrypted at rest
+  // via the same MessageCryptoService envelope entities use; mutations audited.
+  handlers.push(
+    ...buildChannelToolHandlers({
+      prisma: deps.prisma,
+      messageCrypto: deps.messageCrypto,
+      toolAudit: deps.toolAudit,
+      // Evict the cached Chat instance after mutations (stale-credential fix).
+      invalidateRuntime: deps.invalidateChannelRuntime,
     }),
   );
 

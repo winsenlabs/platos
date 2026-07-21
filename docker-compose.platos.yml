@@ -393,6 +393,7 @@ services:
       migrations-init:
         condition: service_completed_successfully
     environment:
+      PLATOS_PUBLIC_BASE_URL: "${PLATOS_PUBLIC_BASE_URL:-}"
       PLATOS_AGENT_PORT: "3100"
       DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&connection_limit=30&pool_timeout=20"
       REDIS_URL: "redis://redis:6379"

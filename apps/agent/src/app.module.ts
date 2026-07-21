@@ -25,6 +25,7 @@ import { McpAgentModule } from "./mcp-agent/mcp-agent.module";
 import { DocsMcpModule } from "./mcp-docs/docs-mcp.module";
 import { OAuthModule } from "./oauth/oauth.module";
 import { FilesModule } from "./files/files.module";
+import { ChannelsModule } from "./channels/channels.module";
 import { env } from "./shared/env";
 
 const imports = [
@@ -68,6 +69,11 @@ const imports = [
   OAuthModule,
   // PIFSP-16 — File System: 4-level attachment hierarchy explorer.
   FilesModule,
+  // Connect reimagining — channels RUNTIME + BRIDGE: inbound webhook doorway,
+  // per-connection Chat SDK runtime, Platos bridge (slack/telegram/whatsapp/
+  // discord). Management REST lives in AgentRuntimeModule; this is the inbound
+  // side that receives provider posts and routes them to a Platos turn.
+  ChannelsModule,
 ];
 
 // Test endpoints only available when PLATOS_TEST_MODE=true
