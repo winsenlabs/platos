@@ -519,9 +519,6 @@ export class AgentCrudService {
           relate: true,
           // Theme O — manual extraction trigger. Default off.
           memory_extract: false,
-          // Theme F.6 — artifact meta-tools enabled by default on new agents.
-          generate_artifact: true,
-          revise_artifact: true,
           // Theme BGO — durable background-operation meta-tools. Dual-key
           // default (new name + deprecated alias) so freshly-created agent
           // rows work under both names during the one-release compat
