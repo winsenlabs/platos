@@ -3173,6 +3173,143 @@ export class AgentController {
     return { agents, fetchedAt: new Date().toISOString() };
   }
 
+  /**
+   * Per-agent scorecard for the "Plato Central" landing page — ONE row per
+   * agent in scope (including idle/inactive agents), composed from the
+   * existing rollups in a fixed number of queries (no per-agent N+1):
+   *
+   *   - agents list        → id / name / lifecycle (isActive)  [agentCrud.list]
+   *   - thread groupBy     → conversation count (windowed) + all-time lastActiveAt
+   *   - message fan-in     → message volume (windowed) via thread→agent map
+   *   - cost-by-agent      → spend + token totals              [costService]
+   *   - satisfaction       → ups / downs / score               [ratingService]
+   *
+   * `status` derives a coarse traffic-light for the table badge:
+   *   disabled = agent is deactivated; active = had activity in the window;
+   *   idle = enabled but silent in the window.
+   *
+   * Operator-gated exactly like its monitoring siblings.
+   */
+  @Get("monitoring/agent-scorecard")
+  async agentScorecard(
+    @Req() req: Request,
+    @Query("days") daysRaw?: string,
+  ) {
+    const scope = this.getScope(req);
+    requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
+    const prisma = (this.costService as any).prisma;
+    const days = Math.min(365, Math.max(1, daysRaw ? parseInt(daysRaw, 10) || 7 : 7));
+    if (!prisma) {
+      return { days, agents: [], fetchedAt: new Date().toISOString() };
+    }
+    const scopeTuple = this.scopeTuple(scope);
+    const since = new Date(Date.now() - days * 86_400_000);
+
+    // Fixed set of parallel queries — none of these fan out per-agent.
+    const [agentList, windowedThreads, lastActiveGroups, msgRows, costRows, satisfactionRows] =
+      await Promise.all([
+        // Full agent roster in scope (active + inactive), so idle agents still
+        // appear as rows with zeroed metrics.
+        this.agentCrud.list(scope),
+        // Windowed threads → conversation count + thread→agent map for messages.
+        prisma.platosAgentThread.findMany({
+          where: {
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+            updatedAt: { gte: since },
+          },
+          select: { id: true, agentId: true },
+        }) as Promise<Array<{ id: string; agentId: string }>>,
+        // All-time last-active per agent (max thread.updatedAt) — one aggregate
+        // row per agent, so "Last active" stays truthful for dormant agents.
+        prisma.platosAgentThread.groupBy({
+          by: ["agentId"],
+          where: {
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+          },
+          _max: { updatedAt: true },
+        }) as Promise<Array<{ agentId: string; _max: { updatedAt: Date | null } }>>,
+        // Windowed message counts (all roles) → message volume via thread map.
+        // groupBy aggregates in Postgres: one row per thread instead of one row
+        // per message, so a busy 30d window doesn't materialize hundreds of
+        // thousands of rows in Node memory.
+        prisma.platosAgentMessage.groupBy({
+          by: ["threadId"],
+          where: {
+            createdAt: { gte: since },
+            thread: {
+              organizationId: scope.organizationId,
+              projectId: scope.projectId,
+              environmentId: scope.environmentId,
+            },
+          },
+          _count: { _all: true },
+        }) as Promise<Array<{ threadId: string; _count: { _all: number } }>>,
+        this.costService.getCostByAgent(scopeTuple, { days, limit: 10_000 }),
+        this.ratingService.satisfactionByAgent(scopeTuple, { days }),
+      ]);
+
+    // threads count + thread→agent map (windowed)
+    const threadsPerAgent = new Map<string, number>();
+    const threadIdToAgent = new Map<string, string>();
+    for (const t of windowedThreads) {
+      threadsPerAgent.set(t.agentId, (threadsPerAgent.get(t.agentId) ?? 0) + 1);
+      threadIdToAgent.set(t.id, t.agentId);
+    }
+
+    // message volume per agent (windowed)
+    const messagesPerAgent = new Map<string, number>();
+    for (const g of msgRows) {
+      const aid = threadIdToAgent.get(g.threadId);
+      if (aid) messagesPerAgent.set(aid, (messagesPerAgent.get(aid) ?? 0) + g._count._all);
+    }
+
+    // all-time last active per agent
+    const lastActiveByAgent = new Map<string, Date | null>();
+    for (const g of lastActiveGroups) lastActiveByAgent.set(g.agentId, g._max?.updatedAt ?? null);
+
+    // cost + tokens per agent
+    const costByAgent = new Map(
+      costRows.map((r) => [r.agentId, { costCents: r.costCents, totalTokens: r.inputTokens + r.outputTokens }]),
+    );
+
+    // satisfaction per agent
+    const satByAgent = new Map(
+      satisfactionRows.map((r) => [r.agentId, { ups: r.ups, downs: r.downs, score: r.score, total: r.total }]),
+    );
+
+    const agents = agentList.map((a) => {
+      const lastActiveAt = lastActiveByAgent.get(a.id) ?? null;
+      const activeInWindow = lastActiveAt !== null && lastActiveAt >= since;
+      const status: "active" | "idle" | "disabled" = !a.isActive
+        ? "disabled"
+        : activeInWindow
+          ? "active"
+          : "idle";
+      const cost = costByAgent.get(a.id);
+      const sat = satByAgent.get(a.id);
+      return {
+        agentId: a.id,
+        name: a.name,
+        status,
+        threads: threadsPerAgent.get(a.id) ?? 0,
+        messages: messagesPerAgent.get(a.id) ?? 0,
+        costCents: cost?.costCents ?? 0,
+        totalTokens: cost?.totalTokens ?? 0,
+        satisfaction: sat && sat.total > 0 ? { ups: sat.ups, downs: sat.downs, score: sat.score } : null,
+        lastActiveAt: lastActiveAt ? lastActiveAt.toISOString() : null,
+      };
+    });
+
+    // Most-active first (conversations desc), then spend as a tiebreak.
+    agents.sort((a, b) => b.threads - a.threads || b.costCents - a.costCents);
+
+    return { days, agents, fetchedAt: new Date().toISOString() };
+  }
+
   /** PIFSP-19 — User detail: conversations grouped by agent + profile memories + risk events. */
   @Get("monitoring/users/:userId")
   async monitoringUserDetail(

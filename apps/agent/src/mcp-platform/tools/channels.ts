@@ -30,6 +30,7 @@ import type { McpToolHandler } from "../mcp-router";
 import type { RequestScope } from "../../auth/scope.guard";
 import type { MessageCryptoService } from "../../monitoring/message-crypto.service";
 import type { ToolAuditService } from "../../monitoring/tool-audit.service";
+import { validateAgentRouting } from "../../agent-runtime/channel-routing";
 
 const CHANNEL_PROVIDERS = new Set(["slack", "telegram", "whatsapp", "discord"]);
 
@@ -48,6 +49,25 @@ function scopeTuple(scope: RequestScope) {
 /** The full one-time webhook path (embeds the secret) — create + rotate only. */
 function webhookPathFull(connectionId: string, webhookSecret: string): string {
   return `${WEBHOOK_BASE}/${connectionId}/${webhookSecret}`;
+}
+
+/**
+ * Public origin, backend-configured: PLATOS_PUBLIC_BASE_URL wins, else derived
+ * from PLATOS_AGENT_PUBLIC_WS_URL (wss→https). Null when unconfigured.
+ */
+function publicOrigin(): string | null {
+  const explicit = (process.env.PLATOS_PUBLIC_BASE_URL || "").trim().replace(/\/+$/, "");
+  if (explicit) return explicit;
+  const ws = (process.env.PLATOS_AGENT_PUBLIC_WS_URL || "").trim().replace(/\/+$/, "");
+  if (ws.startsWith("wss://")) return `https://${ws.slice(6)}`;
+  if (ws.startsWith("ws://")) return `http://${ws.slice(5)}`;
+  return null;
+}
+
+/** Absolute webhook URL when a public origin is configured, else null. */
+function webhookUrlFull(connectionId: string, webhookSecret: string): string | null {
+  const origin = publicOrigin();
+  return origin ? `${origin}${webhookPathFull(connectionId, webhookSecret)}` : null;
 }
 
 /** Placeholder path for reads — connectionId resolved, secret masked. */
@@ -74,8 +94,26 @@ export function buildChannelToolHandlers(deps: {
   prisma: any;
   messageCrypto: MessageCryptoService;
   toolAudit: ToolAuditService;
+  /**
+   * Evict the channels RUNTIME's cached Chat instance for a connection after
+   * update / delete / rotate — otherwise the runtime keeps serving the OLD
+   * decrypted credentials + routing for up to its 10-min TTL (rotated signing
+   * secrets keep verifying, revoked bot tokens keep posting). Wired by
+   * McpPlatformController via lazy ModuleRef resolution (ChannelsModule ↔
+   * AgentRuntimeModule would otherwise be a DI cycle). Optional + best-effort.
+   */
+  invalidateRuntime?: (connectionId: string) => void;
 }): McpToolHandler[] {
   const { prisma, messageCrypto, toolAudit } = deps;
+
+  /** Best-effort runtime-cache eviction — never fails the mutation. */
+  function evictRuntime(connectionId: string): void {
+    try {
+      deps.invalidateRuntime?.(connectionId);
+    } catch {
+      // TTL bounds staleness if eviction wiring is absent/broken.
+    }
+  }
 
   /**
    * Fire-and-forget audit trail for mutating channels.* tools. Mirrors the
@@ -129,16 +167,24 @@ export function buildChannelToolHandlers(deps: {
     {
       name: "channels.create",
       description:
-        "Create a messaging-channel doorway bound to ONE agent. `provider` " +
-        "is one of slack | telegram | whatsapp | discord. `agentId` must " +
-        "belong to the token's scope (forged ids are rejected). Optional " +
+        "Create a messaging-channel doorway. `provider` is one of slack | " +
+        "telegram | whatsapp | discord. `agentId` is the DEFAULT agent and " +
+        "must belong to the token's scope (forged ids are rejected). Optional " +
+        "`agentRouting` fans ONE connection out to MANY agents: an ordered " +
+        "list (≤32) of `{ match, agentId }` rules where `match` is either " +
+        "`{ type: 'channel', id }` (matches the platform channel/group/" +
+        "guild-channel id) or `{ type: 'prefix', value }` (matches when the " +
+        "message text starts with '<value>:' or '@<value>', case-insensitive). " +
+        "First matching rule wins, else the default `agentId`; every rule's " +
+        "agentId is validated in-scope just like the default. Optional " +
         "`credentials` (object) is stored ENCRYPTED at rest and never " +
         "returned — put ALL secret material there (bot tokens, signing " +
         "secrets, webhook verify tokens); optional `config` (object) is " +
         "returned UNREDACTED, so it must hold only non-secret extras (slack " +
         "team_id, whatsapp phoneNumberId…). A 32-byte hex " +
         "webhookSecret is minted server-side. Returns the row (credentials + " +
-        "webhookSecret redacted) plus the full one-time inbound `webhookPath` " +
+        "webhookSecret redacted; `agentRouting` shown as stored) plus the full " +
+        "one-time inbound `webhookPath` " +
         "`/api/v1/channels/inbound/:connectionId/:webhookSecret` and the " +
         "plaintext `webhookSecret` — shown ONCE, store it now.",
       inputSchema: {
@@ -148,6 +194,30 @@ export function buildChannelToolHandlers(deps: {
           provider: { type: "string", enum: ["slack", "telegram", "whatsapp", "discord"] },
           agentId: { type: "string" },
           displayName: { type: "string" },
+          agentRouting: {
+            type: "array",
+            maxItems: 32,
+            description:
+              "Ordered routing rules; first match wins, else the default agentId.",
+            items: {
+              type: "object",
+              required: ["match", "agentId"],
+              properties: {
+                match: {
+                  type: "object",
+                  required: ["type"],
+                  properties: {
+                    type: { type: "string", enum: ["channel", "prefix"] },
+                    id: { type: "string", description: "platform channel id (type=channel)" },
+                    value: { type: "string", description: "handle prefix (type=prefix)" },
+                  },
+                  additionalProperties: false,
+                },
+                agentId: { type: "string" },
+              },
+              additionalProperties: false,
+            },
+          },
           credentials: { type: "object" },
           config: { type: "object" },
         },
@@ -161,14 +231,18 @@ export function buildChannelToolHandlers(deps: {
           typeof params["displayName"] === "string" ? params["displayName"].trim() : undefined;
         const configJson = isPlainObject(params["config"]) ? params["config"] : undefined;
         const encryptedCreds = encryptCredentials(params["credentials"]);
+        const routingProvided =
+          params["agentRouting"] !== undefined && params["agentRouting"] !== null;
 
-        // Redacted audit args — never echo credentials.
+        // Redacted audit args — never echo credentials. agentRouting is not
+        // secret, but we log only its presence to keep audit rows lean.
         const auditArgs = {
           provider,
           agentId,
           displayName,
           hasCredentials: encryptedCreds !== null,
           hasConfig: configJson !== undefined,
+          hasAgentRouting: routingProvided,
         };
 
         if (!CHANNEL_PROVIDERS.has(provider)) {
@@ -194,6 +268,26 @@ export function buildChannelToolHandlers(deps: {
           return { error: "unknown_agent_id", agentId };
         }
 
+        // Validate + normalize the routing table (rule agentIds are checked
+        // in-scope exactly like the default agentId above).
+        let agentRoutingData: unknown | undefined;
+        if (routingProvided) {
+          const routing = await validateAgentRouting(prisma, scope, params["agentRouting"]);
+          if (!routing.ok) {
+            auditMutation(
+              scope,
+              "channels.create",
+              auditArgs,
+              null,
+              "failed",
+              startedAt,
+              routing.error,
+            );
+            return { error: routing.error, message: routing.message };
+          }
+          agentRoutingData = routing.rules;
+        }
+
         const webhookSecret = crypto.randomBytes(32).toString("hex");
         try {
           const row = await prisma.platosChannelConnection.create({
@@ -202,6 +296,7 @@ export function buildChannelToolHandlers(deps: {
               provider,
               agentId,
               ...(displayName !== undefined ? { displayName } : {}),
+              ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
               ...(encryptedCreds !== null ? { credentials: encryptedCreds } : {}),
               ...(configJson !== undefined ? { config: configJson } : {}),
               webhookSecret,
@@ -211,6 +306,7 @@ export function buildChannelToolHandlers(deps: {
             ...projectRow(row),
             webhookSecret,
             webhookPath: webhookPathFull(row.id, webhookSecret),
+            webhookUrl: webhookUrlFull(row.id, webhookSecret),
           };
           // Redacted result — log the id + provider, never the secret/path.
           auditMutation(
@@ -296,11 +392,14 @@ export function buildChannelToolHandlers(deps: {
       name: "channels.update",
       description:
         "Partial-patch a channel connection: `displayName` (string|null), " +
-        "`enabled` (boolean), `agentId` (must belong to scope), `config` " +
-        "(object|null to clear), `credentials` (object to re-encrypt|null to " +
-        "clear). Scope-pinned — cross-scope ids return `{ error: " +
-        "'not_found' }`. Returns the updated row with secrets redacted. To " +
-        "rotate the webhook secret use channels.rotate_webhook_secret.",
+        "`enabled` (boolean), `agentId` (the DEFAULT agent, must belong to " +
+        "scope), `agentRouting` (array of `{ match, agentId }` rules to replace " +
+        "the routing table | null to clear — same shape + in-scope validation " +
+        "as channels.create), `config` (object|null to clear), `credentials` " +
+        "(object to re-encrypt|null to clear). Scope-pinned — cross-scope ids " +
+        "return `{ error: 'not_found' }`. Returns the updated row with secrets " +
+        "redacted (`agentRouting` shown as stored). To rotate the webhook " +
+        "secret use channels.rotate_webhook_secret.",
       inputSchema: {
         type: "object",
         required: ["id"],
@@ -309,6 +408,31 @@ export function buildChannelToolHandlers(deps: {
           displayName: { type: ["string", "null"] },
           enabled: { type: "boolean" },
           agentId: { type: "string" },
+          agentRouting: {
+            type: ["array", "null"],
+            maxItems: 32,
+            description:
+              "Replace the ordered routing rules (first match wins, else the " +
+              "default agentId); null clears the table.",
+            items: {
+              type: "object",
+              required: ["match", "agentId"],
+              properties: {
+                match: {
+                  type: "object",
+                  required: ["type"],
+                  properties: {
+                    type: { type: "string", enum: ["channel", "prefix"] },
+                    id: { type: "string", description: "platform channel id (type=channel)" },
+                    value: { type: "string", description: "handle prefix (type=prefix)" },
+                  },
+                  additionalProperties: false,
+                },
+                agentId: { type: "string" },
+              },
+              additionalProperties: false,
+            },
+          },
           config: { type: ["object", "null"] },
           credentials: { type: ["object", "null"] },
         },
@@ -318,6 +442,7 @@ export function buildChannelToolHandlers(deps: {
         const startedAt = Date.now();
         const id = String(params["id"] ?? "").trim();
         const hasCredentials = Object.prototype.hasOwnProperty.call(params, "credentials");
+        const agentRoutingKeyPresent = Object.prototype.hasOwnProperty.call(params, "agentRouting");
         const auditArgs: Record<string, unknown> = {
           id,
           ...(Object.prototype.hasOwnProperty.call(params, "displayName")
@@ -325,6 +450,7 @@ export function buildChannelToolHandlers(deps: {
             : {}),
           ...(typeof params["enabled"] === "boolean" ? { enabled: params["enabled"] } : {}),
           ...(typeof params["agentId"] === "string" ? { agentId: params["agentId"] } : {}),
+          ...(agentRoutingKeyPresent ? { hasAgentRouting: params["agentRouting"] != null } : {}),
           ...(Object.prototype.hasOwnProperty.call(params, "config")
             ? { hasConfig: isPlainObject(params["config"]) }
             : {}),
@@ -373,6 +499,29 @@ export function buildChannelToolHandlers(deps: {
           }
           data.agentId = agentId;
         }
+        if (agentRoutingKeyPresent) {
+          const ar = params["agentRouting"];
+          if (ar === null) {
+            data.agentRouting = null; // explicit clear → default agent only
+          } else {
+            // array → validate + normalize (rule agentIds checked in-scope,
+            // same guard as the default agentId); anything else → error.
+            const routing = await validateAgentRouting(prisma, scope, ar);
+            if (!routing.ok) {
+              auditMutation(
+                scope,
+                "channels.update",
+                auditArgs,
+                null,
+                "failed",
+                startedAt,
+                routing.error,
+              );
+              return { error: routing.error, message: routing.message };
+            }
+            data.agentRouting = routing.rules;
+          }
+        }
         if (Object.prototype.hasOwnProperty.call(params, "config")) {
           data.config = isPlainObject(params["config"]) ? params["config"] : null;
         }
@@ -401,6 +550,7 @@ export function buildChannelToolHandlers(deps: {
             where: { id },
             data,
           });
+          evictRuntime(id);
           auditMutation(scope, "channels.update", auditArgs, { id }, "success", startedAt);
           return { ...projectRow(updated), webhookPath: webhookPathRedacted(updated.id) };
         } catch (err: any) {
@@ -437,6 +587,7 @@ export function buildChannelToolHandlers(deps: {
         }
         try {
           await prisma.platosChannelConnection.delete({ where: { id } });
+          evictRuntime(id);
           const result = { ok: true, id };
           auditMutation(scope, "channels.delete", { id }, result, "success", startedAt);
           return result;
@@ -489,10 +640,12 @@ export function buildChannelToolHandlers(deps: {
             where: { id },
             data: { webhookSecret },
           });
+          evictRuntime(id);
           const result = {
             ...projectRow(updated),
             webhookSecret,
             webhookPath: webhookPathFull(updated.id, webhookSecret),
+            webhookUrl: webhookUrlFull(updated.id, webhookSecret),
           };
           // Redacted audit — never log the new secret/path.
           auditMutation(

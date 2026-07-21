@@ -12,10 +12,13 @@ import {
   Inject,
 } from "@nestjs/common";
 import { type Request } from "express";
+import { ModuleRef } from "@nestjs/core";
 import * as crypto from "node:crypto";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
+import { ChannelRuntimeService } from "../channels/channel-runtime.service";
 import { requireOperator, type RequestScope } from "../auth/scope.guard";
+import { validateAgentRouting } from "./channel-routing";
 
 /**
  * Connect reimagining — dashboard REST for messaging-channel doorways.
@@ -46,7 +49,27 @@ export class ChannelsController {
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
     private readonly messageCrypto: MessageCryptoService,
+    private readonly moduleRef: ModuleRef,
   ) {}
+
+  /**
+   * Evict the runtime's cached Chat instance after a mutation so the next
+   * inbound webhook rebuilds with fresh credentials/config/routing — without
+   * this, a rotated signing secret keeps VERIFYING against the compromised
+   * old one for up to the runtime's 10-min TTL. Resolved lazily via ModuleRef
+   * (`strict: false` searches the whole container) because ChannelsModule
+   * imports AgentRuntimeModule — direct DI here would be circular. Best-effort:
+   * an eviction failure must never fail the mutation (TTL bounds staleness).
+   */
+  private invalidateRuntime(connectionId: string): void {
+    try {
+      this.moduleRef
+        .get(ChannelRuntimeService, { strict: false })
+        ?.invalidate(connectionId);
+    } catch {
+      // Runtime not registered (e.g. focused test module) — TTL is the backstop.
+    }
+  }
 
   private getScope(req: Request): RequestScope {
     return (
@@ -76,6 +99,27 @@ export class ChannelsController {
 
   private webhookPathFull(id: string, webhookSecret: string): string {
     return `${WEBHOOK_BASE}/${id}/${webhookSecret}`;
+  }
+
+  /**
+   * Public origin for inbound webhooks, backend-configured (never guessed
+   * client-side): PLATOS_PUBLIC_BASE_URL wins; else derived from
+   * PLATOS_AGENT_PUBLIC_WS_URL (wss://host → https://host); else null and
+   * callers fall back to showing the path with a configure-me warning.
+   */
+  private publicOrigin(): string | null {
+    const explicit = (process.env.PLATOS_PUBLIC_BASE_URL || "").trim().replace(/\/+$/, "");
+    if (explicit) return explicit;
+    const ws = (process.env.PLATOS_AGENT_PUBLIC_WS_URL || "").trim().replace(/\/+$/, "");
+    if (ws.startsWith("wss://")) return `https://${ws.slice(6)}`;
+    if (ws.startsWith("ws://")) return `http://${ws.slice(5)}`;
+    return null;
+  }
+
+  /** Absolute webhook URL when a public origin is configured, else null. */
+  private webhookUrlFull(id: string, webhookSecret: string): string | null {
+    const origin = this.publicOrigin();
+    return origin ? `${origin}${this.webhookPathFull(id, webhookSecret)}` : null;
   }
 
   private isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -116,6 +160,7 @@ export class ChannelsController {
       provider: string;
       agentId: string;
       displayName?: string;
+      agentRouting?: unknown;
       credentials?: Record<string, unknown> | null;
       config?: Record<string, unknown> | null;
     },
@@ -151,6 +196,21 @@ export class ChannelsController {
       typeof body?.displayName === "string" ? body.displayName.trim() : undefined;
     const configJson = this.isPlainObject(body?.config) ? body.config : undefined;
     const encryptedCreds = this.encryptCredentials(body?.credentials);
+
+    // Validate + normalize the optional routing table (each rule's agentId is
+    // checked in-scope, same forged-id guard as the default agentId above).
+    let agentRoutingData: unknown | undefined;
+    if (body?.agentRouting !== undefined && body?.agentRouting !== null) {
+      const routing = await validateAgentRouting(this.prisma, scope, body.agentRouting);
+      if (!routing.ok) {
+        throw new HttpException(
+          { error: routing.error, message: routing.message },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      agentRoutingData = routing.rules;
+    }
+
     const webhookSecret = crypto.randomBytes(32).toString("hex");
 
     const row = await this.prisma.platosChannelConnection.create({
@@ -159,6 +219,7 @@ export class ChannelsController {
         provider,
         agentId,
         ...(displayName !== undefined ? { displayName } : {}),
+        ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
         ...(encryptedCreds !== null ? { credentials: encryptedCreds } : {}),
         ...(configJson !== undefined ? { config: configJson } : {}),
         webhookSecret,
@@ -170,6 +231,7 @@ export class ChannelsController {
       channel: this.projectRow(row),
       webhookSecret,
       webhookPath: this.webhookPathFull(row.id, webhookSecret),
+      webhookUrl: this.webhookUrlFull(row.id, webhookSecret),
     };
   }
 
@@ -193,6 +255,7 @@ export class ChannelsController {
       displayName?: string | null;
       enabled?: boolean;
       agentId?: string;
+      agentRouting?: unknown;
       config?: Record<string, unknown> | null;
       credentials?: Record<string, unknown> | null;
     },
@@ -227,6 +290,23 @@ export class ChannelsController {
       }
       data.agentId = agentId;
     }
+    if (Object.prototype.hasOwnProperty.call(body, "agentRouting")) {
+      const ar = body.agentRouting;
+      if (ar === null) {
+        data.agentRouting = null; // explicit clear → default agent only
+      } else {
+        // array → validate + normalize (rule agentIds checked in-scope, same
+        // guard as the default agentId); anything else → 400.
+        const routing = await validateAgentRouting(this.prisma, scope, ar);
+        if (!routing.ok) {
+          throw new HttpException(
+            { error: routing.error, message: routing.message },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        data.agentRouting = routing.rules;
+      }
+    }
     if (Object.prototype.hasOwnProperty.call(body, "config")) {
       data.config = this.isPlainObject(body.config) ? body.config : null;
     }
@@ -249,6 +329,7 @@ export class ChannelsController {
       where: { id },
       data,
     });
+    this.invalidateRuntime(id);
     return { channel: this.projectRow(updated) };
   }
 
@@ -262,6 +343,7 @@ export class ChannelsController {
     });
     if (!existing) throw new HttpException("Channel not found", HttpStatus.NOT_FOUND);
     await this.prisma.platosChannelConnection.delete({ where: { id } });
+    this.invalidateRuntime(id);
     return { deleted: true, id };
   }
 
@@ -280,11 +362,13 @@ export class ChannelsController {
       where: { id },
       data: { webhookSecret },
     });
+    this.invalidateRuntime(id);
     // One-time reveal: full inbound path + plaintext secret (rotate only).
     return {
       channel: this.projectRow(updated),
       webhookSecret,
       webhookPath: this.webhookPathFull(updated.id, webhookSecret),
+      webhookUrl: this.webhookUrlFull(updated.id, webhookSecret),
     };
   }
 }

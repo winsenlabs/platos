@@ -3715,8 +3715,24 @@ model PlatosChannelConnection {
   provider    String // "slack" | "telegram" | "whatsapp" | "discord"
   displayName String?
 
-  // The agent this channel routes to (v1: one agent per connection).
+  // The DEFAULT agent this channel routes to when no routing rule matches.
   agentId String
+
+  // RUNTIME (one connection → many agents, v1) — an ordered rule list that
+  // overrides the default `agentId` on a per-message basis. Null / empty =>
+  // every message uses `agentId`. Shape (each element):
+  //   { "match": { "type": "channel", "id": "C123ABC" }, "agentId": "..." }
+  //     — matches when the inbound platform channel/group/guild-channel id
+  //       equals `id`.
+  //   { "match": { "type": "prefix", "value": "ada" }, "agentId": "..." }
+  //     — matches when the message text starts with "ada:" or "@ada"
+  //       (case-insensitive).
+  // Resolution: first matching rule wins, else `agentId`. Each rule's
+  // `agentId` is validated in-scope at WRITE time (management slice); the
+  // resolved agent is PINNED onto PlatosChannelThread.agentId on first
+  // contact so a conversation never switches agents mid-thread.
+  agentRouting Json?
+
   enabled Boolean @default(true)
 
   // ENCRYPTED envelope (MessageCryptoService) — same pattern as entity
@@ -3752,11 +3768,19 @@ model PlatosChannelThread {
   platosThreadId   String
   platosEndUserId  String?
 
+  // RUNTIME — the agent PINNED to this channel-native conversation on first
+  // contact (resolved once via PlatosChannelConnection.agentRouting, then
+  // frozen). Every later message in this channel-thread reuses this agent so
+  // conversations never switch agents mid-thread. Null only for legacy rows
+  // created before pinning existed (fall back to the connection default).
+  agentId String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([connectionId, channelThreadKey])
   @@index([platosThreadId])
+  @@index([agentId])
 }
 
 /// PIFSP-21 — per-entity MCP gateway configuration. One row per

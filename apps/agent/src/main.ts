@@ -133,6 +133,13 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
+    // Channels RUNTIME — the inbound webhook adapters (Slack HMAC / WhatsApp
+    // X-Hub-Signature-256 / Discord Ed25519 / Telegram secret_token) sign the
+    // EXACT received bytes, so the channels controller needs the unparsed body
+    // as `req.rawBody`. `rawBody: true` makes the explicit `useBodyParser`
+    // calls below ALSO stash the raw Buffer on every parsed request; existing
+    // JSON/urlencoded body handling is otherwise unchanged.
+    rawBody: true,
   });
 
   // L8 — clamp body size on the UNAUTHENTICATED bypass surface BEFORE the
@@ -158,10 +165,19 @@ async function bootstrap() {
   const PUBLIC_BODY_CAP_BYTES = 256 * 1024;
   const MCP_BODY_CAP_BYTES =
     Number(process.env.PLATOS_MCP_BODY_CAP_BYTES) || 2 * 1024 * 1024;
+  // Channels inbound webhooks are also an UNAUTHENTICATED bypass surface (auth
+  // runs in-controller: webhookSecret + provider signature). A provider event
+  // payload is small; 1MB is generous and closes the same memory-amplification
+  // vector the other public prefixes guard against. GET (WhatsApp hub.challenge)
+  // is skipped by the method check below, so its query-string handshake is
+  // unaffected.
+  const CHANNELS_BODY_CAP_BYTES =
+    Number(process.env.PLATOS_CHANNELS_BODY_CAP_BYTES) || 1 * 1024 * 1024;
   const UNAUTH_BODY_CAPS: Array<{ prefix: string; cap: number }> = [
     { prefix: "/mcp", cap: MCP_BODY_CAP_BYTES },
     { prefix: "/oauth", cap: PUBLIC_BODY_CAP_BYTES },
     { prefix: "/api/v1/public", cap: PUBLIC_BODY_CAP_BYTES },
+    { prefix: "/api/v1/channels/inbound", cap: CHANNELS_BODY_CAP_BYTES },
   ];
   app.use((req: any, res: any, next: () => void) => {
     const method = req.method;

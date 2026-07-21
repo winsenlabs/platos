@@ -136,6 +136,13 @@ export function buildPlatformToolHandlers(deps: {
   orgs: OrganizationService;
   envs: EnvironmentService;
   clusters: AgentClusterService;
+  /**
+   * Connect channels.* — evict the channels runtime's cached Chat instance
+   * after update / delete / rotate_webhook_secret so credential/config/routing
+   * changes take effect immediately instead of after the runtime's 10-min TTL.
+   * Optional (best-effort); wired by McpPlatformController via ModuleRef.
+   */
+  invalidateChannelRuntime?: (connectionId: string) => void;
 }): McpToolHandler[] {
   const { agentCrud, conversation, rating, toolAudit } = deps;
 
@@ -756,6 +763,8 @@ export function buildPlatformToolHandlers(deps: {
       prisma: deps.prisma,
       messageCrypto: deps.messageCrypto,
       toolAudit: deps.toolAudit,
+      // Evict the cached Chat instance after mutations (stale-credential fix).
+      invalidateRuntime: deps.invalidateChannelRuntime,
     }),
   );
 

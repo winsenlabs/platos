@@ -44,6 +44,10 @@ CREATE TABLE IF NOT EXISTS "public"."PlatosChannelConnection" (
     "provider"       TEXT NOT NULL,
     "displayName"    TEXT,
     "agentId"        TEXT NOT NULL,
+    -- RUNTIME (one connection → many agents, v1): ordered rule list that
+    -- overrides `agentId` per-message. Null => every message uses `agentId`.
+    -- See schema.prisma PlatosChannelConnection.agentRouting for the shape.
+    "agentRouting"   JSONB,
     "enabled"        BOOLEAN NOT NULL DEFAULT true,
     "credentials"    TEXT,
     "config"         JSONB,
@@ -53,6 +57,12 @@ CREATE TABLE IF NOT EXISTS "public"."PlatosChannelConnection" (
 
     CONSTRAINT "PlatosChannelConnection_pkey" PRIMARY KEY ("id")
 );
+
+-- Idempotent add for databases that already carry a partial
+-- PlatosChannelConnection from earlier branch juggling (the CREATE TABLE
+-- above is a no-op via IF NOT EXISTS, so the new column needs its own guard).
+ALTER TABLE "public"."PlatosChannelConnection"
+    ADD COLUMN IF NOT EXISTS "agentRouting" JSONB;
 
 -- @@index([organizationId, projectId, environmentId, provider]) — truncated
 -- (59-char base + "_idx"); full name would be
@@ -72,11 +82,20 @@ CREATE TABLE IF NOT EXISTS "public"."PlatosChannelThread" (
     "channelThreadKey" TEXT NOT NULL,
     "platosThreadId"   TEXT NOT NULL,
     "platosEndUserId"  TEXT,
+    -- RUNTIME: the agent PINNED to this channel-native conversation on first
+    -- contact (resolved once via PlatosChannelConnection.agentRouting, then
+    -- frozen so a conversation never switches agents mid-thread).
+    "agentId"          TEXT,
     "createdAt"        TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt"        TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "PlatosChannelThread_pkey" PRIMARY KEY ("id")
 );
+
+-- Idempotent add for databases that already carry a partial
+-- PlatosChannelThread (CREATE TABLE above is a no-op via IF NOT EXISTS).
+ALTER TABLE "public"."PlatosChannelThread"
+    ADD COLUMN IF NOT EXISTS "agentId" TEXT;
 
 -- @@unique([connectionId, channelThreadKey]) — 53 chars, no truncation.
 CREATE UNIQUE INDEX IF NOT EXISTS "PlatosChannelThread_connectionId_channelThreadKey_key"
@@ -84,6 +103,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS "PlatosChannelThread_connectionId_channelThrea
 
 CREATE INDEX IF NOT EXISTS "PlatosChannelThread_platosThreadId_idx"
     ON "public"."PlatosChannelThread"("platosThreadId");
+
+-- @@index([agentId]) — 31 chars, no truncation. Pinned-agent lookups per
+-- channel-thread (and agent-scoped sweeps).
+CREATE INDEX IF NOT EXISTS "PlatosChannelThread_agentId_idx"
+    ON "public"."PlatosChannelThread"("agentId");
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- Foreign keys

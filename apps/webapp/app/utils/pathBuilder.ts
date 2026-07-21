@@ -938,6 +938,42 @@ export function agentConnectPath(
   return `${v3EnvironmentPath(organization, project, environment)}/agent-connect`;
 }
 
+// Agent-scoped Connect landing — deep-links the picker to a specific agent via
+// the `?agentId=` search param the Connect loader reads.
+export function agentConnectAgentPath(
+  organization: OrgForPath,
+  project: ProjectForPath,
+  environment: EnvironmentForPath,
+  agentId: string
+) {
+  return `${agentConnectPath(organization, project, environment)}?agentId=${encodeURIComponent(
+    agentId
+  )}`;
+}
+
+// Resource route the Connect page's channel CRUD fetchers POST to. Sibling of
+// the Connect landing (`.../agent-connect/channels`), matching the existing
+// `agent-connect/mint-token` resource-route convention.
+export function agentConnectChannelsPath(
+  organization: OrgForPath,
+  project: ProjectForPath,
+  environment: EnvironmentForPath
+) {
+  return `${agentConnectPath(organization, project, environment)}/channels`;
+}
+
+// EOBD.89 — per-agent share route (visibility toggle + embed snippet). The
+// Connect page's Web card posts its visibility toggle to this existing route's
+// action via a fetcher rather than duplicating the update logic.
+export function agentSharePath(
+  organization: OrgForPath,
+  project: ProjectForPath,
+  environment: EnvironmentForPath,
+  agentId: string
+) {
+  return `${agentPath(organization, project, environment, agentId)}/share`;
+}
+
 // Theme S — skill library + authoring.
 export function skillsPath(
   organization: OrgForPath,

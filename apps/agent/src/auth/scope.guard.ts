@@ -158,6 +158,16 @@ export class ScopeGuard implements CanActivate {
     // per-agent rate limits.
     if (url.startsWith("/api/v1/public/")) return true;
 
+    // Connect reimagining — inbound channel webhooks (Slack / Telegram /
+    // WhatsApp / Discord). No per-scope session context: the caller is the
+    // provider, not a Platos user. Auth is TWO-FACTOR and happens IN the
+    // controller, not here — (1) a timing-safe compare of the URL
+    // `:webhookSecret` against the connection row, then (2) the Chat SDK
+    // adapter verifies the provider signature (Slack HMAC / WhatsApp
+    // X-Hub-Signature-256 / Discord Ed25519 / Telegram secret_token) using the
+    // decrypted connection credentials. ScopeGuard just lets the request land.
+    if (url.startsWith("/api/v1/channels/inbound/")) return true;
+
     // Theme K — Platform MCP. Authed by `Authorization: Bearer
     // <PLATOS_MCP_TOKEN>` on every request; token verification + scope
     // pin happens inside McpPlatformController. Token CRUD sub-routes

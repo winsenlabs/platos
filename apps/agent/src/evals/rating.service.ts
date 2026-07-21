@@ -283,6 +283,50 @@ export class RatingService {
     return { days, total: rows.length, rows: out };
   }
 
+  /**
+   * Per-agent satisfaction rollup across EVERY agent in scope, in a single
+   * query (no per-agent fan-out). Powers the Plato Central agent-scorecard
+   * table — the caller joins the returned rows against its agent list by
+   * `agentId`. Ratings are anonymized (no userId surfacing), same invariant
+   * as `satisfactionByVersion`.
+   *
+   * Uses the (org, project, env, agentId) index; groups client-side by
+   * agentId rather than issuing one aggregate per agent, so the cost is O(1)
+   * queries regardless of agent count.
+   */
+  async satisfactionByAgent(
+    scope: ScopeTuple,
+    options: { days?: number } = {},
+  ): Promise<Array<{ agentId: string; ups: number; downs: number; total: number; score: number }>> {
+    const days = Math.max(1, Math.min(365, Math.floor(options.days ?? 30)));
+    const since = new Date(Date.now() - days * 86400_000);
+
+    const rows: Array<{ agentId: string; rating: number }> =
+      await this.prisma.platosMessageRating.findMany({
+        where: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          createdAt: { gte: since },
+        },
+        select: { agentId: true, rating: true },
+      });
+
+    const byAgent = new Map<string, { ups: number; downs: number }>();
+    for (const r of rows) {
+      if (!r.agentId) continue;
+      const b = byAgent.get(r.agentId) ?? { ups: 0, downs: 0 };
+      if (r.rating > 0) b.ups += 1;
+      else if (r.rating < 0) b.downs += 1;
+      byAgent.set(r.agentId, b);
+    }
+
+    return Array.from(byAgent.entries()).map(([agentId, b]) => {
+      const total = b.ups + b.downs;
+      return { agentId, ups: b.ups, downs: b.downs, total, score: total === 0 ? 0 : b.ups / total };
+    });
+  }
+
   private toRecord(r: any): RatingRecord {
     return {
       id: r.id,
