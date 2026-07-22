@@ -30,11 +30,14 @@ const PRE_CREATE: Record<string, PreCreateSpec> = {
   slack: {
     console: { label: "api.slack.com/apps", url: "https://api.slack.com/apps" },
     create: [
-      'Create an app at api.slack.com/apps — "From an app manifest" is the fastest path.',
-      "Install the app to your workspace so Slack generates the Bot User OAuth Token.",
+      "Create this connection first (you can leave the tokens blank) — you need the webhook URL it reveals.",
+      'Create the Slack app at api.slack.com/apps — "From an app manifest", pasting/downloading the manifest from the reveal step (URL already filled in).',
+      "Install the app to your workspace (OAuth & Permissions → Install) — Slack then mints the Bot User OAuth Token.",
+      "Back here: use the channel row's Update credentials button to add the Bot token (xoxb-…) and Signing secret.",
+      "You do NOT need an App-Level Token (xapp-…) — that's Socket Mode only; Platos receives events via the webhook URL below.",
     ],
     fields: [
-      { field: "Bot token", source: "OAuth & Permissions → Bot User OAuth Token (xoxb-…)" },
+      { field: "Bot token", source: "OAuth & Permissions → Bot User OAuth Token (xoxb-…) — not the xapp- App-Level Token" },
       {
         field: "Signing secret",
         source: "Basic Information → App Credentials → Signing Secret",
@@ -255,6 +258,7 @@ settings:
             "Subscribe to bot events: app_mention, message.channels, message.groups, message.im, message.mpim.",
             "Add OAuth bot scopes: app_mentions:read, channels:history, channels:read, chat:write, groups:history, groups:read, im:history, im:read, mpim:history, mpim:read, reactions:read, reactions:write, users:read.",
             "Reinstall the app to your workspace after saving.",
+            "After installing: add the Bot token + Signing secret via the channel row's Update credentials — inbound events verify against them.",
           ]}
         />
         <div>
