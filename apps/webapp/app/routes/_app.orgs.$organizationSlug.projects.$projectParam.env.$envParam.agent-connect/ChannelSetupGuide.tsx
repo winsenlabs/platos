@@ -32,9 +32,10 @@ const PRE_CREATE: Record<string, PreCreateSpec> = {
     create: [
       'Create an app at api.slack.com/apps — "From an app manifest" is the fastest path.',
       "Install the app to your workspace so Slack generates the Bot User OAuth Token.",
+      "You do NOT need an App-Level Token (xapp-…) — that's Socket Mode only; Platos receives events via the webhook URL below.",
     ],
     fields: [
-      { field: "Bot token", source: "OAuth & Permissions → Bot User OAuth Token (xoxb-…)" },
+      { field: "Bot token", source: "OAuth & Permissions → Bot User OAuth Token (xoxb-…) — not the xapp- App-Level Token" },
       {
         field: "Signing secret",
         source: "Basic Information → App Credentials → Signing Secret",
