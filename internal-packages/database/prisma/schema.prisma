@@ -3658,6 +3658,19 @@ model PlatosConnectedEntity {
   // An entity may carry more than one capability.
   capabilities String[] @default(["tools"]) // "tools" | "channel" | "identity"
 
+  // Transport discriminator — *how* this entity's tools are moved.
+  //   "wire" (default, all existing entities) — inbound platools handshake:
+  //     the customer backend connects to Platos (WS /tools/sync or an HTTP
+  //     callback) and Platos signs each dispatch with `serviceSecret` (HMAC).
+  //   "mcp" — outbound MCP client: Platos initiates the connection *to* an
+  //     external MCP server via the MCP SDK, authenticating with headers.
+  //     No serviceSecret handshake, no callback URL; Platos is the client.
+  //     Transport config lives on the 1:1 `mcpClient` (PlatosEntityMcpClient).
+  // Orthogonal to `capabilities` — an mcp entity is capabilities:["tools"],
+  // connectionKind:"mcp". `capabilities` = which doorway; connectionKind =
+  // which transport moves the tool call.
+  connectionKind String @default("wire") // "wire" | "mcp"
+
   // PIFSP-3 (Deliverable 9) — encrypted test credentials used only when a
   // dev clicks "Test" on a tool from the dashboard. Shape (after decrypt):
   //   { headers: [{name, value}, ...], userId?, updatedAt, updatedByUserId }
@@ -3677,6 +3690,11 @@ model PlatosConnectedEntity {
   /// MCP endpoint is registered but every request returns 403 so the
   /// dashboard can flip the flag without re-running migrations.
   mcpConfig    PlatosEntityMcpConfig?
+  /// MCP consumption (opposite direction to `mcpConfig`) — outbound MCP client
+  /// transport config (1:1 optional). Present iff `connectionKind == "mcp"`.
+  /// Do NOT confuse with `mcpConfig`: that is Platos *serving* MCP to external
+  /// clients; this is Platos *consuming* an external MCP server.
+  mcpClient    PlatosEntityMcpClient?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -3975,6 +3993,30 @@ model PlatosEntityMcpConfig {
   @@index([enabled])
 }
 
+/// MCP consumption (Surface 2) — outbound MCP client transport for a
+/// `connectionKind == "mcp"` entity (1:1, PK = entityPk). This is the OPPOSITE
+/// direction to `PlatosEntityMcpConfig`: that governs Platos *serving* MCP to
+/// external clients (Claude Desktop etc.); this governs Platos *consuming* an
+/// external MCP server (Composio, Linear-hosted, any streamable-HTTP MCP
+/// endpoint). Do NOT merge the two or reuse identityProviders/toolAllowlist
+/// across the boundary — two 1:1 configs, two directions, same entity.
+///
+/// These are the surviving transport fields of the deleted standalone MCP
+/// server row, reparented onto the entity. slug/displayName/agentId/command/
+/// args/envVars do NOT survive here — they map onto entity fields.
+model PlatosEntityMcpClient {
+  entityPk        String                @id
+  entity          PlatosConnectedEntity @relation(fields: [entityPk], references: [id], onDelete: Cascade)
+  transport       String // "remote-http" | "remote-sse" | "hosted-*" (stdio deferred, dev-only)
+  url             String? // remote only; MAY contain {{endUserId}}
+  credsSecretKey  String? // bare SecretStore var name; never the raw secret
+  headersTemplate Json? // { header: valueTemplate }; values may embed {{secret}} / {{endUserId}}
+  lastDiscoveryAt DateTime?
+  discoveryError  String?               @db.Text
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+}
+
 /// Central tool registry — one row per unique tool name. Shared across all
 /// entities, projects, and orgs. BM25 tokens are computed once here.
 model PlatosToolDefinition {
@@ -4020,7 +4062,12 @@ model PlatosEntityToolMapping {
   environment   RuntimeEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   enabled     Boolean @default(true)
-  callbackUrl String // where to execute this tool for this entity in this env
+  // Nullable: wire entities keep a callback URL; mcp-kind entities
+  // (connectionKind == "mcp") have none — dispatch is outbound via the MCP
+  // client and never reads this. The mcpDispatch branch fires before any
+  // callback read, so a null is safe. In-memory `OrgToolEntry.callbackUrl`
+  // stays typed `string` (coerced to the "mcp:noop" sentinel at hydration).
+  callbackUrl String? // where to execute this tool for this entity in this env (null for mcp-kind)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
