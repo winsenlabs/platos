@@ -36,7 +36,10 @@ import { env } from "../shared/env";
 // through a pooled official-SDK Client. Both are providers of ToolGatewayModule,
 // so DI supplies them; they stay @Optional() only so bare-constructor test
 // fixtures (no MCP) keep working — the mcp branch guards on their presence.
-import { McpCredentialService } from "./mcp-transport/mcp-credential.service";
+import {
+  McpCredentialService,
+  hasResidualEndUserTemplate,
+} from "./mcp-transport/mcp-credential.service";
 import { McpConnectionPool } from "./mcp-transport/mcp-client-pool.service";
 // Theme CTX.2 — tool-arg auto-injection + outgoing `_context` envelope
 // assembly. Both read from `scope.sessionContext` + `scope.contextMapping`
@@ -57,14 +60,6 @@ import {
   resolveToolMappings as resolveCtxToolMappings,
   type AgentContextMapping,
 } from "../agent-runtime/context-automap.service";
-
-/**
- * The literal per-user identity template token. mcpDispatch performs a final
- * post-substitution scan for this string on the resolved URL + every resolved
- * header value: if it survives, the call is refused with ZERO bytes upstream
- * (design §3.2 — the belt-and-suspenders half of the fail-closed invariant).
- */
-const MCP_END_USER_TEMPLATE = "{{endUserId}}";
 
 interface ToolCallRequest {
   tool: string;
@@ -1285,12 +1280,9 @@ export class ToolExecutorService {
 
       // Belt-and-suspenders dispatch-boundary scan (§3.2). If `{{endUserId}}`
       // survived substitution anywhere, refuse before ANY pool/transport touch.
-      if (
-        resolvedUrl.includes(MCP_END_USER_TEMPLATE) ||
-        Object.values(resolvedHeaders).some((v) =>
-          v.includes(MCP_END_USER_TEMPLATE),
-        )
-      ) {
+      // The predicate lives beside the resolver (ONE source of truth for the
+      // token literal) and has its own unit test (design Commit 2 / GAP-6).
+      if (hasResidualEndUserTemplate(resolvedUrl, resolvedHeaders)) {
         return await done("failed", { error: "tool requires a linked user" });
       }
 

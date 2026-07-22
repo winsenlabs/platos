@@ -26,6 +26,7 @@
     "@e2b/code-interpreter": "^2.4.0",
     "@internal/cost-rates": "workspace:*",
     "@internal/docs": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",

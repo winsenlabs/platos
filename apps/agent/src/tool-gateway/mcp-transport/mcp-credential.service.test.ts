@@ -20,6 +20,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   McpCredentialService,
   McpCredentialError,
+  hasResidualEndUserTemplate,
   type CredentialServerSlice,
 } from "./mcp-credential.service";
 import type {
@@ -191,5 +192,46 @@ describe("Per-user isolation invariant — two end users never share an identity
     const h1 = await svc.resolveHeaders(server, SCOPE, "alice");
     const h2 = await svc.resolveHeaders(server, SCOPE, "alice");
     expect(svc.credentialHash(h1)).toBe(svc.credentialHash(h2));
+  });
+});
+
+describe("hasResidualEndUserTemplate — the §3.2 dispatch-boundary refusal (belt-and-suspenders)", () => {
+  // This predicate is the second enforcement point of the fail-closed
+  // invariant: `mcpDispatch` calls it on the RESOLVED url + headers immediately
+  // before any pool/transport touch, and refuses the call (zero bytes upstream)
+  // when a `{{endUserId}}` literal survived substitution.
+
+  it("flags a resolved URL that still carries the {{endUserId}} literal", () => {
+    expect(
+      hasResidualEndUserTemplate("https://api.example.com/u/{{endUserId}}/mcp", {}),
+    ).toBe(true);
+  });
+
+  it("flags a resolved header value that still carries the {{endUserId}} literal", () => {
+    expect(
+      hasResidualEndUserTemplate("https://api.example.com/mcp", {
+        Authorization: "Bearer sk-live-abc",
+        "X-User-Id": "{{endUserId}}",
+      }),
+    ).toBe(true);
+  });
+
+  it("passes fully-substituted url + headers (dispatch may proceed)", () => {
+    expect(
+      hasResidualEndUserTemplate("https://api.example.com/u/alice/mcp", {
+        Authorization: "Bearer sk-live-abc",
+        "X-User-Id": "alice",
+      }),
+    ).toBe(false);
+  });
+
+  it("end-to-end with the resolver: resolved output for a real user never trips the boundary scan", async () => {
+    const { svc } = makeService();
+    const server: CredentialServerSlice = {
+      headersTemplate: { "X-User-Id": "{{endUserId}}" },
+    };
+    const url = svc.resolveUrl("https://api.example.com/u/{{endUserId}}/mcp", "alice");
+    const headers = await svc.resolveHeaders(server, SCOPE, "alice");
+    expect(hasResidualEndUserTemplate(url, headers)).toBe(false);
   });
 });

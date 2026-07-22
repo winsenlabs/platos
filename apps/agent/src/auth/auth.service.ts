@@ -446,8 +446,15 @@ export class AuthService {
                     transport: data.mcpClient.transport,
                     url: data.mcpClient.url ?? null,
                     credsSecretKey: data.mcpClient.credsSecretKey ?? null,
-                    headersTemplate: (data.mcpClient.headersTemplate ??
-                      null) as any,
+                    // OMIT the field when absent rather than passing a plain
+                    // `null`: Prisma rejects raw null for `Json?` write args
+                    // (it demands Prisma.JsonNull/DbNull), so `?? null` would
+                    // make every template-less mcp registration (the common
+                    // bearer-token case) throw at runtime. Omission leaves the
+                    // column at its NULL default — same end state, no sentinel.
+                    ...(data.mcpClient.headersTemplate != null
+                      ? { headersTemplate: data.mcpClient.headersTemplate as any }
+                      : {}),
                   },
                 },
               }

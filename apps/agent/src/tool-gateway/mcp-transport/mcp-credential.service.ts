@@ -63,6 +63,26 @@ export class McpCredentialError extends Error {
 const SECRET_TOKEN = "{{secret}}";
 const END_USER_TOKEN = "{{endUserId}}";
 
+/**
+ * Dispatch-boundary residual scan (design §3.2, belt-and-suspenders half).
+ * Returns true when the literal `{{endUserId}}` template SURVIVED substitution
+ * anywhere in the resolved URL or any resolved header value — i.e. a
+ * substitution bug slipped through the resolver throw. `mcpDispatch` calls this
+ * immediately before any pool/transport touch and refuses the call (structured
+ * failure, ZERO bytes upstream) when it returns true. Exported as a pure
+ * function so the invariant is unit-testable independent of the executor and
+ * there is exactly ONE source of truth for the token literal.
+ */
+export function hasResidualEndUserTemplate(
+  resolvedUrl: string,
+  resolvedHeaders: Record<string, string>,
+): boolean {
+  return (
+    resolvedUrl.includes(END_USER_TOKEN) ||
+    Object.values(resolvedHeaders).some((v) => v.includes(END_USER_TOKEN))
+  );
+}
+
 @Injectable()
 export class McpCredentialService {
   // Retained for symmetry with sibling services; this class deliberately logs
