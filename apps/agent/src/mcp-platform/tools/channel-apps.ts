@@ -1093,8 +1093,14 @@ export function buildChannelAppToolHandlers(deps: {
             : null;
         const grantedScopes = normalizeScopes(params["grantedScopes"]) ?? [];
 
+        // Static operator grant — clear any rotation state a previous OAuth
+        // install left behind (refreshToken / tokenExpiresAt): getFreshBotToken
+        // keys "this install rotates" off tokenExpiresAt, and a stale expiry
+        // would refresh the OLD grant over the freshly imported key.
         const data: Record<string, unknown> = {
           botToken: encryptSecret(botToken),
+          refreshToken: null,
+          tokenExpiresAt: null,
           isEnterpriseInstall,
           grantedScopes,
           teamName,

@@ -118,12 +118,17 @@ describe("channel_apps.import_installation (MCP)", () => {
     );
   });
 
-  it("is idempotent on (appId, teamId, enterpriseId)", async () => {
+  it("is idempotent on (appId, teamId, enterpriseId) and clears stale rotation state", async () => {
     await t["channel_apps.import_installation"].execute(
       { appId: "app1", teamId: "T1", botToken: "xoxb-1" },
       SCOPE,
       TOKEN,
     );
+    // Simulate rotation state left behind by a previous rotating OAuth install;
+    // a static-token re-import must clear it (getFreshBotToken keys the
+    // rotation decision off tokenExpiresAt).
+    prisma.installs[0].refreshToken = "old-refresh-envelope";
+    prisma.installs[0].tokenExpiresAt = new Date(Date.now() - 1000);
     await t["channel_apps.import_installation"].execute(
       { appId: "app1", teamId: "T1", botToken: "xoxb-2" },
       SCOPE,
@@ -131,6 +136,8 @@ describe("channel_apps.import_installation (MCP)", () => {
     );
     expect(prisma.installs.length).toBe(1);
     expect(messageCrypto.decryptJsonField(JSON.parse(prisma.installs[0].botToken))).toBe("xoxb-2");
+    expect(prisma.installs[0].refreshToken).toBeNull();
+    expect(prisma.installs[0].tokenExpiresAt).toBeNull();
   });
 
   it("rejects a cross-scope appId", async () => {

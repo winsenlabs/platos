@@ -42,6 +42,7 @@ type InstallRow = {
   teamName: string | null;
   botToken: string;
   refreshToken: string | null;
+  tokenExpiresAt: Date | null;
   botUserId: string | null;
   grantedScopes: string[];
   installedByUserId: string | null;
@@ -96,6 +97,7 @@ function makePrisma(seed: { apps?: AppRow[]; installs?: InstallRow[]; agents?: A
           teamName: data.teamName ?? null,
           botToken: data.botToken,
           refreshToken: data.refreshToken ?? null,
+          tokenExpiresAt: data.tokenExpiresAt ?? null,
           botUserId: data.botUserId ?? null,
           grantedScopes: data.grantedScopes ?? [],
           installedByUserId: data.installedByUserId ?? null,
@@ -188,9 +190,17 @@ describe("ChannelAppsController — operator install import", () => {
       teamId: "T100",
       botToken: "xoxb-1",
     });
-    // Soft-revoke it, then re-import the same workspace.
+    // Soft-revoke it, then re-import the same workspace. Also simulate stale
+    // ROTATION state left behind by a previous rotating OAuth install — a
+    // re-import with a static operator token must clear it, or the runtime's
+    // getFreshBotToken would treat the imported token as rotating and could
+    // refresh the OLD grant over the freshly imported key.
     await ctrl.revokeInstallation(req(SCOPE), "app1", first.installation.id);
     expect(prisma.installs[0].status).toBe("revoked");
+    prisma.installs[0].refreshToken = JSON.stringify(
+      messageCrypto.encryptJsonField("xoxe-old-refresh"),
+    );
+    prisma.installs[0].tokenExpiresAt = new Date(Date.now() - 1000);
     const second = await ctrl.importInstallation(req(SCOPE), "app1", {
       teamId: "T100",
       botToken: "xoxb-2",
@@ -200,8 +210,11 @@ describe("ChannelAppsController — operator install import", () => {
     expect(second.installation.id).toBe(first.installation.id);
     expect(prisma.installs[0].status).toBe("active");
     expect(prisma.installs[0].revokedAt).toBeNull();
-    // Re-keyed to the new token.
+    // Re-keyed to the new token, and the stale rotation state is cleared so the
+    // imported static token is authoritative (non-rotating short-circuit).
     expect(messageCrypto.decryptJsonField(JSON.parse(prisma.installs[0].botToken))).toBe("xoxb-2");
+    expect(prisma.installs[0].refreshToken).toBeNull();
+    expect(prisma.installs[0].tokenExpiresAt).toBeNull();
   });
 
   it("rejects a cross-scope appId (404) without writing", async () => {

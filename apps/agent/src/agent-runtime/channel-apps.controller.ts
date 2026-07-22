@@ -730,8 +730,15 @@ export class ChannelAppsController {
 
     // ENCRYPT with the SAME envelope the OAuth callback uses. On re-import
     // status is flipped back to active + revokedAt cleared (idempotent re-key).
+    // An operator-supplied token is a STATIC grant, so any rotation state a
+    // previous OAuth install left behind (refreshToken / tokenExpiresAt) is
+    // CLEARED: getFreshBotToken keys "this install rotates" off tokenExpiresAt,
+    // and a stale expiry would send every event through the refresh path —
+    // worst case rotating the OLD grant over the freshly imported key.
     const data: Record<string, unknown> = {
       botToken: this.encryptSecret(botToken),
+      refreshToken: null,
+      tokenExpiresAt: null,
       isEnterpriseInstall,
       grantedScopes,
       teamName,
