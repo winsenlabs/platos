@@ -32,6 +32,7 @@ import { AgentTaskService } from "../agent-runtime/agent-task.service";
 import { RatingService } from "../evals/rating.service";
 import { AuthService } from "../auth/auth.service";
 import { ToolExecutorService } from "../tool-gateway/tool-executor.service";
+import { EntityMcpDiscoveryService } from "../tool-gateway/mcp-transport/entity-mcp-discovery.service";
 import { SkillRegistryService } from "../skills/skill-registry.service";
 import { SkillImporterService } from "../skills/skill-importer.service";
 import { MemoryService } from "../memory/memory.service";
@@ -106,6 +107,9 @@ export class McpPlatformController {
     // K.5 entities.* + entities.wire_test
     private readonly auth: AuthService,
     private readonly toolExecutor: ToolExecutorService,
+    // MCP-connected-entity (design Commit 5) — outbound tools/list discovery,
+    // kicked by entities.register / entities.refresh_discovery.
+    private readonly entityMcpDiscovery: EntityMcpDiscoveryService,
     // K.7 skills.*
     private readonly skillRegistry: SkillRegistryService,
     private readonly skillImporter: SkillImporterService,
@@ -168,6 +172,9 @@ export class McpPlatformController {
         rating: this.rating,
         auth: this.auth,
         toolExecutor: this.toolExecutor,
+        // MCP-connected-entity (design Commit 5) — kicks tools/list discovery
+        // for entities.register / entities.refresh_discovery on mcp entities.
+        entityMcpDiscovery: this.entityMcpDiscovery,
         // MCPF-W1 — entity-management deps.
         toolRegistry: this.toolRegistry,
         bearerTokens: this.bearerTokens,

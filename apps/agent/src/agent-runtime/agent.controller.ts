@@ -18,6 +18,7 @@ import {
   ForbiddenException,
   BadRequestException,
   ServiceUnavailableException,
+  Logger,
 } from "@nestjs/common";
 import { type Request, type Response } from "express";
 import * as crypto from "node:crypto";
@@ -36,6 +37,11 @@ import { UtilizationService } from "../monitoring/utilization.service";
 import { ToolAuditService } from "../monitoring/tool-audit.service";
 import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { ToolExecutorService } from "../tool-gateway/tool-executor.service";
+// MCP-connected-entity (design Commit 5) — outbound tools/list discovery for
+// connectionKind=="mcp" entities. Exported by ToolGatewayModule (imported by
+// AgentRuntimeModule). Optional so hand-built test harnesses that omit it still
+// construct the controller.
+import { EntityMcpDiscoveryService } from "../tool-gateway/mcp-transport/entity-mcp-discovery.service";
 import { ProviderHealthService } from "../auth/provider-health.service";
 import { ProviderRegistryService } from "../providers/provider-registry.service";
 import { SecretsService } from "../auth/secrets.service";
@@ -76,6 +82,8 @@ import { env } from "../shared/env";
  */
 @Controller("api/v1/agent")
 export class AgentController {
+  private readonly logger = new Logger(AgentController.name);
+
   constructor(
     private readonly conversationService: ConversationService,
     private readonly agentTaskService: AgentTaskService,
@@ -115,6 +123,9 @@ export class AgentController {
     private readonly clusterService: AgentClusterService,
     // RG.1.5 — optional SkillRuntimeService (must come last — optional params follow required)
     @Optional() private readonly skillRuntime?: SkillRuntimeService,
+    // MCP-connected-entity (design Commit 5) — kicks discovery on mcp-kind
+    // register/refresh. Optional for the same test-harness reason as above.
+    @Optional() private readonly entityMcpDiscovery?: EntityMcpDiscoveryService,
   ) {}
 
   private getScope(req: Request): RequestScope {
@@ -2013,6 +2024,18 @@ export class AgentController {
       // PIFSP-3: `customParams` body field removed — column dropped. Any
       // stray request supplying the field is silently ignored (no longer
       // forwarded to registerEntity).
+      // MCP-connected-entity (design Commit 5 / §1.5a). Omit or "wire" for the
+      // classic inbound platools relationship; "mcp" for an OUTBOUND MCP client
+      // (Composio et al.). For "mcp", the outbound endpoint arrives as
+      // mcpClient.url (NOT mcpUrls), serviceSecret is auto-generated-and-ignored,
+      // and mcpUrls is optional.
+      connectionKind?: "wire" | "mcp";
+      mcpClient?: {
+        transport?: string;
+        url?: string | null;
+        credsSecretKey?: string | null;
+        headersTemplate?: unknown;
+      };
     },
   ) {
     const scope = this.getScope(req);
@@ -2033,21 +2056,136 @@ export class AgentController {
         HttpStatus.BAD_REQUEST,
       );
     }
+
+    const connectionKind = body.connectionKind === "mcp" ? "mcp" : "wire";
+    const mcpUrls = body.mcpUrls || [];
+
+    if (connectionKind === "mcp") {
+      // §1.5a — relax the wire "mcpUrls minItems:1" rule for the mcp kind: the
+      // endpoint rides mcpClient.url, so mcpUrls is legitimately []. Validate
+      // the outbound transport config instead.
+      const transport = body.mcpClient?.transport;
+      if (!transport || typeof transport !== "string") {
+        throw new HttpException(
+          {
+            error: "invalid_mcp_client",
+            message:
+              "connectionKind 'mcp' requires mcpClient.transport " +
+              "(remote-http | remote-sse | hosted-*).",
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (
+        (transport === "remote-http" || transport === "remote-sse") &&
+        !body.mcpClient?.url
+      ) {
+        throw new HttpException(
+          {
+            error: "invalid_mcp_client",
+            message: `mcpClient.url is required for transport "${transport}".`,
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+    // NOTE: the wire path preserves its historical behavior — this REST
+    // endpoint never enforced a minItems:1 on mcpUrls (only the entities.register
+    // MCP tool schema did), so we do NOT tighten it here. §1.5a's "keep minItems
+    // for wire" applies to that MCP tool schema, not this endpoint.
+
+    let entity: any;
     try {
-      return await this.authService.registerEntity({
+      entity = await this.authService.registerEntity({
         organizationId: scope.organizationId,
         projectId: scope.projectId,
         entityId: body.entityId,
         displayName: body.displayName,
-        mcpUrls: body.mcpUrls || [],
+        mcpUrls,
         serviceSecret: body.serviceSecret || "auto",
+        connectionKind,
+        ...(connectionKind === "mcp"
+          ? {
+              mcpClient: {
+                transport: body.mcpClient!.transport as string,
+                url: body.mcpClient?.url ?? null,
+                credsSecretKey: body.mcpClient?.credsSecretKey ?? null,
+                headersTemplate: body.mcpClient?.headersTemplate,
+              },
+            }
+          : {}),
       });
     } catch (err: any) {
       if (err?.statusCode === 409) {
         throw new HttpException(err.message, HttpStatus.CONFLICT);
       }
+      if (err?.statusCode === 400) {
+        throw new HttpException(err.message, HttpStatus.BAD_REQUEST);
+      }
       throw err;
     }
+
+    // Kick discovery for mcp entities (fire-and-forget — like the old
+    // controller did). tools/list registers into the shared matrix per env and
+    // stamps connectionStatus="connected", so census/list don't show the entity
+    // disconnected forever (§1.5a / §5).
+    if (connectionKind === "mcp" && this.entityMcpDiscovery && entity?.id) {
+      void this.entityMcpDiscovery
+        .discover(entity.id)
+        .catch((e: any) =>
+          this.logger.warn(
+            `initial MCP discovery for entity ${entity.id} failed: ${e?.message ?? e}`,
+          ),
+        );
+    }
+    return entity;
+  }
+
+  /**
+   * MCP-connected-entity (design Commit 5 / §5) — manual "refresh discovery"
+   * action. Re-runs the outbound tools/list round-trip for a `connectionKind
+   * === "mcp"` entity across every project environment, re-registering +
+   * pruning the shared tool matrix and re-stamping connectionStatus. Operators
+   * hit this after rotating an upstream key or when a server adds/removes tools
+   * between periodic sweeps. Idempotent-replace.
+   */
+  @Post("entities/:entityId/refresh-discovery")
+  async refreshEntityDiscovery(
+    @Req() req: Request,
+    @Param("entityId") entityId: string,
+  ) {
+    const scope = this.getScope(req);
+    // Operator-only — discovery reaches out to an external endpoint with the
+    // entity's resolved credentials; same trust posture as registration.
+    requireOperator(scope);
+    const entity = await this.authService.getEntity(
+      scope.organizationId,
+      scope.projectId,
+      entityId,
+    );
+    if (!entity) {
+      throw new NotFoundException({ error: "Entity not found", entityId });
+    }
+    if ((entity as { connectionKind?: string }).connectionKind !== "mcp") {
+      throw new HttpException(
+        {
+          error: "not_mcp_entity",
+          message:
+            "Discovery refresh only applies to connectionKind='mcp' entities.",
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (!this.entityMcpDiscovery) {
+      throw new HttpException(
+        { error: "discovery_unavailable" },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+    const result = await this.entityMcpDiscovery.discover(
+      (entity as { id: string }).id,
+    );
+    return { entityId, ...result };
   }
 
   @Post("entities/:entityId/regenerate-secret")

@@ -24,6 +24,7 @@
 import type { AuthService } from "../../auth/auth.service";
 import type { ToolExecutorService } from "../../tool-gateway/tool-executor.service";
 import type { ToolRegistryService } from "../../tool-gateway/tool-registry.service";
+import type { EntityMcpDiscoveryService } from "../../tool-gateway/mcp-transport/entity-mcp-discovery.service";
 import type { McpToolHandler } from "../mcp-router";
 import type { RequestScope } from "../../auth/scope.guard";
 import type { McpBearerTokenService } from "../mcp-bearer-token.service";
@@ -51,6 +52,10 @@ export function buildEntityToolHandlers(deps: {
   messageCrypto: MessageCryptoService;
   toolAudit: ToolAuditService;
   prisma: any;
+  // MCP-connected-entity (design Commit 5) — kicks outbound tools/list
+  // discovery when an mcp-kind entity is registered / manually refreshed.
+  // Optional (best-effort); absent in slim test harnesses.
+  entityMcpDiscovery?: EntityMcpDiscoveryService;
 }): McpToolHandler[] {
   const {
     auth,
@@ -60,6 +65,7 @@ export function buildEntityToolHandlers(deps: {
     messageCrypto,
     toolAudit,
     prisma,
+    entityMcpDiscovery,
   } = deps;
 
   /**
@@ -143,29 +149,112 @@ export function buildEntityToolHandlers(deps: {
       description:
         "Register a new connected entity. Destructive — defaults to " +
         "require_approval at platform tier. Returns the freshly generated " +
-        "serviceSecret in `plaintextSecret` — show once, never again.",
+        "serviceSecret in `plaintextSecret` — show once, never again. " +
+        "Set connectionKind='mcp' to register an OUTBOUND MCP server " +
+        "(Composio, Linear-hosted, any streamable-HTTP MCP endpoint): supply " +
+        "the endpoint as mcpClient.url (NOT mcpUrls — that stays [] for mcp), " +
+        "and discovery (tools/list) fires automatically to populate the tool " +
+        "matrix + flip connectionStatus to 'connected'.",
       inputSchema: {
         type: "object",
-        required: ["entityId", "displayName", "mcpUrls"],
+        // §1.5a — `mcpUrls` is NO LONGER hard-required with minItems:1 because
+        // the mcp kind registers with mcpUrls:[]. Per-kind requirements are
+        // enforced in the handler: wire needs ≥1 mcpUrl, mcp needs
+        // mcpClient.transport (+ url for remote transports).
+        required: ["entityId", "displayName"],
         properties: {
           entityId: { type: "string" },
           displayName: { type: "string" },
-          mcpUrls: { type: "array", items: { type: "string" }, minItems: 1 },
+          mcpUrls: { type: "array", items: { type: "string" } },
           serviceSecret: { type: "string" },
+          connectionKind: { type: "string", enum: ["wire", "mcp"] },
+          mcpClient: {
+            type: "object",
+            properties: {
+              transport: { type: "string" },
+              url: { type: "string" },
+              credsSecretKey: { type: "string" },
+              headersTemplate: { type: "object" },
+            },
+            additionalProperties: false,
+          },
           // PIFSP-3: `customParams` dropped from the entity schema — use
           // the agent-config editor's "MCP arguments" panel instead.
         },
         additionalProperties: false,
       },
       async execute(params, scope) {
-        return auth.registerEntity({
+        const connectionKind =
+          params["connectionKind"] === "mcp" ? "mcp" : "wire";
+        const mcpUrls = (params["mcpUrls"] as string[]) ?? [];
+        const rawClient = params["mcpClient"] as
+          | {
+              transport?: string;
+              url?: string | null;
+              credsSecretKey?: string | null;
+              headersTemplate?: unknown;
+            }
+          | undefined;
+
+        if (connectionKind === "mcp") {
+          const transport = rawClient?.transport;
+          if (!transport || typeof transport !== "string") {
+            return {
+              error: "invalid_mcp_client",
+              message:
+                "connectionKind 'mcp' requires mcpClient.transport " +
+                "(remote-http | remote-sse | hosted-*).",
+            };
+          }
+          if (
+            (transport === "remote-http" || transport === "remote-sse") &&
+            !rawClient?.url
+          ) {
+            return {
+              error: "invalid_mcp_client",
+              message: `mcpClient.url is required for transport "${transport}".`,
+            };
+          }
+        } else if (mcpUrls.length < 1) {
+          return {
+            error: "invalid_mcp_urls",
+            message: "wire entities require at least one mcpUrls entry.",
+          };
+        }
+
+        const entity = await auth.registerEntity({
           organizationId: scope.organizationId,
           projectId: scope.projectId,
           entityId: String(params["entityId"]),
           displayName: String(params["displayName"]),
-          mcpUrls: (params["mcpUrls"] as string[]) ?? [],
-          serviceSecret: (params["serviceSecret"] as string | undefined) ?? "auto",
+          mcpUrls,
+          serviceSecret:
+            (params["serviceSecret"] as string | undefined) ?? "auto",
+          connectionKind,
+          ...(connectionKind === "mcp" && rawClient
+            ? {
+                mcpClient: {
+                  transport: rawClient.transport as string,
+                  url: rawClient.url ?? null,
+                  credsSecretKey: rawClient.credsSecretKey ?? null,
+                  headersTemplate: rawClient.headersTemplate,
+                },
+              }
+            : {}),
         });
+
+        // Kick discovery for mcp entities (fire-and-forget). tools/list writes
+        // the shared matrix per env + stamps connectionStatus (§1.5a / §5).
+        if (
+          connectionKind === "mcp" &&
+          entityMcpDiscovery &&
+          (entity as { id?: string })?.id
+        ) {
+          void entityMcpDiscovery
+            .discover((entity as { id: string }).id)
+            .catch(() => undefined);
+        }
+        return entity;
       },
     },
     {
@@ -259,6 +348,92 @@ export function buildEntityToolHandlers(deps: {
             latencyMs: Date.now() - startedAt,
             error: err?.message || String(err),
           };
+        }
+      },
+    },
+
+    {
+      name: "entities.refresh_discovery",
+      description:
+        "MCP-connected-entity (design Commit 5 / §5) — manually re-run the " +
+        "outbound tools/list discovery for a connectionKind='mcp' entity " +
+        "across every project environment. Idempotent-replace: re-registers " +
+        "newly-reported tools, prunes dropped ones, and re-stamps " +
+        "connectionStatus ('connected' on success, 'disconnected' + " +
+        "discoveryError on failure). Use after rotating an upstream key or " +
+        "when a server changes its tool set between periodic sweeps. Rejects " +
+        "wire entities (their tools arrive via the inbound /tools/sync path).",
+      inputSchema: {
+        type: "object",
+        required: ["entityId"],
+        properties: { entityId: { type: "string" } },
+        additionalProperties: false,
+      },
+      async execute(params, scope) {
+        const entityId = String(params["entityId"]);
+        const startedAt = Date.now();
+        const entity = await auth.getEntity(
+          scope.organizationId,
+          scope.projectId,
+          entityId,
+        );
+        if (!entity) {
+          auditMutation(
+            scope,
+            "entities.refresh_discovery",
+            params,
+            null,
+            "failed",
+            startedAt,
+            "not_found",
+          );
+          return { error: "not_found", entityId };
+        }
+        if ((entity as { connectionKind?: string }).connectionKind !== "mcp") {
+          auditMutation(
+            scope,
+            "entities.refresh_discovery",
+            params,
+            null,
+            "failed",
+            startedAt,
+            "not_mcp_entity",
+          );
+          return {
+            error: "not_mcp_entity",
+            message:
+              "Discovery refresh only applies to connectionKind='mcp' entities.",
+            entityId,
+          };
+        }
+        if (!entityMcpDiscovery) {
+          return { error: "discovery_unavailable", entityId };
+        }
+        try {
+          const result = await entityMcpDiscovery.discover(
+            (entity as { id: string }).id,
+          );
+          auditMutation(
+            scope,
+            "entities.refresh_discovery",
+            params,
+            result,
+            "success",
+            startedAt,
+          );
+          return { entityId, ...result };
+        } catch (err: any) {
+          const message = err?.message ?? String(err);
+          auditMutation(
+            scope,
+            "entities.refresh_discovery",
+            params,
+            null,
+            "failed",
+            startedAt,
+            message,
+          );
+          return { error: "discovery_failed", message, entityId };
         }
       },
     },

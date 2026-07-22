@@ -334,6 +334,29 @@ export const AgentEnvSchema = z
     MCP_INTERACTIVE_APPROVALS: boolLike,
     // Optional SLA window for MCP approvals (seconds). Default 1h.
     MCP_APPROVAL_TTL_SECONDS: intString("MCP_APPROVAL_TTL_SECONDS", { min: 60 }),
+
+    // ── MCP consumption (Surface 2) — official-SDK client-pool knobs ──
+    // Idle window before a pooled MCP client connection is closed + dropped
+    // (ms). Default 300000 (5 min). Consumed in McpConnectionPool.
+    MCP_POOL_IDLE_MS: intString("MCP_POOL_IDLE_MS", { min: 1000 }),
+    // Max live pooled MCP client connections; the least-recently-used entry is
+    // evicted (and its Client closed) on overflow. Default 32.
+    MCP_POOL_SIZE: intString("MCP_POOL_SIZE", { min: 1 }),
+    // Per tools/call request timeout (ms). Default 30000. Consumed in
+    // McpToolExecutorService.
+    MCP_CALL_TIMEOUT_MS: intString("MCP_CALL_TIMEOUT_MS", { min: 1000 }),
+    // Discovery timeout — tools/list + the connect() handshake (ms).
+    // Default 15000. Consumed in McpServerRegistryService + McpConnectionPool.
+    MCP_DISCOVERY_TIMEOUT_MS: intString("MCP_DISCOVERY_TIMEOUT_MS", { min: 1000 }),
+    // Periodic MCP-entity discovery refresh interval (seconds). The sweep
+    // re-discovers connectionKind="mcp" entities whose lastDiscoveryAt is older
+    // than this window (design Commit 5 / §5). Default 300 (5 min). Consumed in
+    // EntityMcpDiscoverySchedulerService (used as the staleness threshold; the
+    // cron cadence itself is fixed at 1-min ticks).
+    PLATOS_MCP_DISCOVERY_INTERVAL_SEC: intString(
+      "PLATOS_MCP_DISCOVERY_INTERVAL_SEC",
+      { min: 30 },
+    ),
   })
   .passthrough() // Don't choke on unrelated env vars (PATH, HOME, etc.)
   .superRefine((data, ctx) => {

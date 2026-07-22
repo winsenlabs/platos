@@ -14,6 +14,12 @@ import { McpConnectionPool } from "./mcp-transport/mcp-client-pool.service";
 // per project environment. Depends on ToolRegistryService + the two relocated
 // mcp-transport primitives, all providers of this same module.
 import { EntityMcpDiscoveryService } from "./mcp-transport/entity-mcp-discovery.service";
+// Periodic discovery refresh sweep (design Commit 5 / §5) — re-discovers stale
+// connectionKind=="mcp" entities on a cron tick. Needs the @Global() PRISMA +
+// REDIS providers (single-flight lock) and EntityMcpDiscoveryService, all in
+// scope here. ScheduleModule.forRoot() is registered once in AppModule, so the
+// @Cron decorator is picked up without importing ScheduleModule locally.
+import { EntityMcpDiscoverySchedulerService } from "./mcp-transport/entity-mcp-discovery-scheduler.service";
 import { MonitoringModule } from "../monitoring/monitoring.module";
 // ProvidersModule exports ScopedEnvService, which McpCredentialService injects
 // to resolve `{{secret}}` credsSecretKey values. ProvidersModule imports
@@ -47,6 +53,7 @@ import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.
     McpCredentialService,
     McpConnectionPool,
     EntityMcpDiscoveryService,
+    EntityMcpDiscoverySchedulerService,
     // Issue #1 — see import comment above. Local registration avoids
     // a circular import. When the gate is enabled via
     // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1, ToolExecutorService now

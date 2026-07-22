@@ -67,6 +67,24 @@ export interface EntityRegistration {
   // PIFSP-3: `customParams` field removed — the column was dropped from
   // PlatosConnectedEntity (migration 20260424010000_*). Per-tool params
   // now live on the agent editor as "MCP arguments" (agent-config ticket).
+
+  // MCP-connected-entity (design Commit 5 / §1.5a). Default "wire" — the
+  // classic inbound platools relationship. "mcp" = an OUTBOUND MCP client
+  // relationship (Composio, Linear-hosted, any streamable-HTTP MCP server).
+  connectionKind?: "wire" | "mcp";
+  /**
+   * Transport config for a `connectionKind === "mcp"` entity — reparented onto
+   * the entity's 1:1 `PlatosEntityMcpClient` row. REQUIRED when
+   * `connectionKind === "mcp"`; ignored otherwise. The outbound endpoint lives
+   * here as `url`, NOT on `mcpUrls` (which is the wire "sync-from" list — §1.5a
+   * warns against overloading it).
+   */
+  mcpClient?: {
+    transport: string; // "remote-http" | "remote-sse" | "hosted-*" (stdio deferred)
+    url?: string | null; // remote only; MAY contain {{endUserId}}
+    credsSecretKey?: string | null; // bare SecretStore var name; never the raw secret
+    headersTemplate?: unknown; // { header: valueTemplate }; values may embed {{secret}}/{{endUserId}}
+  };
 }
 
 /**
@@ -388,9 +406,22 @@ export class AuthService {
     // fake secret to their backend, which failed to authenticate against
     // the old hash in the DB. To rotate a secret, use
     // `POST /entities/:id/regenerate-secret` (existing endpoint).
+    // §1.5a — the mcp kind satisfies the wire-only `serviceSecret` column via
+    // the same generate-and-ignore path (a valid-but-unused secret keeps
+    // provision/rotate/list working; nothing on the mcp dispatch path ever
+    // signs with it).
     const secret = !data.serviceSecret || data.serviceSecret === "auto"
       ? crypto.randomBytes(32).toString("hex")
       : data.serviceSecret;
+
+    const connectionKind = data.connectionKind === "mcp" ? "mcp" : "wire";
+    if (connectionKind === "mcp" && (!data.mcpClient || !data.mcpClient.transport)) {
+      const bad: any = new Error(
+        "connectionKind 'mcp' requires mcpClient.transport",
+      );
+      bad.statusCode = 400;
+      throw bad;
+    }
 
     try {
       const entity = await this.prisma.platosConnectedEntity.create({
@@ -402,8 +433,27 @@ export class AuthService {
           mcpUrls: data.mcpUrls,
           serviceSecret: secret,
           // PIFSP-3: `customParams` removed — column dropped in this release.
+          connectionKind,
           connectionStatus: "disconnected",
+          // Create the 1:1 outbound transport row in the SAME insert (design
+          // §1.3/§1.5a). The endpoint arrives as `mcpClient.url`, never on
+          // `mcpUrls`. Discovery (kicked by the caller) flips connectionStatus
+          // to "connected" on a successful tools/list.
+          ...(connectionKind === "mcp" && data.mcpClient
+            ? {
+                mcpClient: {
+                  create: {
+                    transport: data.mcpClient.transport,
+                    url: data.mcpClient.url ?? null,
+                    credsSecretKey: data.mcpClient.credsSecretKey ?? null,
+                    headersTemplate: (data.mcpClient.headersTemplate ??
+                      null) as any,
+                  },
+                },
+              }
+            : {}),
         },
+        include: { mcpClient: true },
       });
       return { ...entity, plaintextSecret: secret };
     } catch (err: any) {
@@ -431,6 +481,10 @@ export class AuthService {
     projectId: true,
     connectionStatus: true,
     lastConnectedAt: true,
+    // MCP-connected-entity (design Commit 5) — surface the transport
+    // discriminator so list/get/census can tell mcp entities from wire, and
+    // so the manual-refresh path can gate on it without a second read.
+    connectionKind: true,
     linkedAgentIds: true,
     allowedOrigins: true,
     testCredentials: true,

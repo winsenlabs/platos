@@ -30,6 +30,7 @@ import type { RequestScope } from "../../auth/scope.guard";
 
 import type { AuthService } from "../../auth/auth.service";
 import type { ToolExecutorService } from "../../tool-gateway/tool-executor.service";
+import type { EntityMcpDiscoveryService } from "../../tool-gateway/mcp-transport/entity-mcp-discovery.service";
 import type { ToolRegistryService } from "../../tool-gateway/tool-registry.service";
 import type { McpBearerTokenService } from "../mcp-bearer-token.service";
 import type { MessageCryptoService } from "../../monitoring/message-crypto.service";
@@ -102,6 +103,10 @@ export function buildPlatformToolHandlers(deps: {
   // K.5 entities + K.7 skills + K.8 control plane dependencies.
   auth: AuthService;
   toolExecutor: ToolExecutorService;
+  // MCP-connected-entity (design Commit 5) — kicks tools/list discovery when an
+  // mcp-kind entity is registered / refreshed via entities.register /
+  // entities.refresh_discovery. Optional; best-effort.
+  entityMcpDiscovery?: EntityMcpDiscoveryService;
   // MCPF-W1 — additional deps for the new entity-management tools.
   toolRegistry: ToolRegistryService;
   bearerTokens: McpBearerTokenService;
@@ -751,6 +756,9 @@ export function buildPlatformToolHandlers(deps: {
       messageCrypto: deps.messageCrypto,
       toolAudit: deps.toolAudit,
       prisma: deps.prisma,
+      ...(deps.entityMcpDiscovery
+        ? { entityMcpDiscovery: deps.entityMcpDiscovery }
+        : {}),
     }),
   );
 
