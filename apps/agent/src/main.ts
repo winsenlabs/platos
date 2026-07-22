@@ -185,6 +185,13 @@ async function bootstrap() {
     // /api/v1/channels/oauth prefix is GET-only, so the method check above
     // already skips it.
     { prefix: "/api/v1/channels/apps", cap: CHANNELS_BODY_CAP_BYTES },
+    // Connect v3 Phase C hosted account linking (/api/v1/channels/link/*). This
+    // is the same unauthenticated-bypass family; the caps list matches by exact
+    // prefix, and neither of the entries above covers `/link`. The link routes
+    // are GET-only today (the method check above skips them), so this is a
+    // forward-guard: if a POST link route is ever added, it inherits the same
+    // 1MB cap instead of falling back to the effectively-unbounded 15mb parser.
+    { prefix: "/api/v1/channels/link", cap: CHANNELS_BODY_CAP_BYTES },
   ];
   app.use((req: any, res: any, next: () => void) => {
     const method = req.method;

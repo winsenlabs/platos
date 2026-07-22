@@ -159,16 +159,71 @@ export class ChannelAppEventsController {
     // ── Lifecycle (uninstall/revoke) handled INLINE, before the detach ────
     const innerType =
       envelope?.type === "event_callback" ? envelope?.event?.type : null;
-    if (innerType === "app_uninstalled" || innerType === "tokens_revoked") {
+
+    // app_uninstalled — the whole app was removed. Always SOFT-revoke every
+    // installation for this (app, team, enterprise). Idempotent.
+    if (innerType === "app_uninstalled") {
       try {
         await this.revokeInstallations(String(app.id), teamId, enterpriseId);
         this.logger.log(
-          `[chanapp] lifecycle ${innerType} app=${appId} — installation revoked`,
+          `[chanapp] lifecycle app_uninstalled app=${appId} — installation revoked`,
         );
       } catch {
         this.logger.error(
-          `[chanapp] lifecycle ${innerType} revoke failed app=${appId}`,
+          `[chanapp] lifecycle app_uninstalled revoke failed app=${appId}`,
         );
+      }
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // tokens_revoked — `event.tokens` = { bot?: string[], oauth?: string[] }.
+    // Phase C splits the two revocation kinds Phase A conflated:
+    //   • BOT tokens revoked   → the installation can no longer act → SOFT-revoke
+    //     it (the original Phase A behavior).
+    //   • USER (oauth) tokens  → a user pulled their Sign-in-with-Slack consent
+    //     (or was deactivated). Do NOT revoke the installation — the bot still
+    //     works for everyone else — instead invalidate THAT user's linked
+    //     verified EMAIL identities so the linked-email trust no longer anchors
+    //     resolution / passes the `linking: required` policy gate.
+    // Fail-safe: if `tokens` is absent/unparseable (Slack always sends it), fall
+    // back to revoking the installation, preserving Phase A's "never leave a
+    // possibly-compromised token live" property.
+    if (innerType === "tokens_revoked") {
+      const tokens = envelope?.event?.tokens;
+      const botIds = Array.isArray(tokens?.bot)
+        ? (tokens.bot as unknown[]).filter((v): v is string => typeof v === "string")
+        : [];
+      const oauthIds = Array.isArray(tokens?.oauth)
+        ? (tokens.oauth as unknown[]).filter((v): v is string => typeof v === "string")
+        : [];
+      const unparseable = botIds.length === 0 && oauthIds.length === 0;
+
+      if (botIds.length > 0 || unparseable) {
+        try {
+          await this.revokeInstallations(String(app.id), teamId, enterpriseId);
+          this.logger.log(
+            `[chanapp] lifecycle tokens_revoked (bot) app=${appId} — installation revoked`,
+          );
+        } catch {
+          this.logger.error(
+            `[chanapp] lifecycle tokens_revoked revoke failed app=${appId}`,
+          );
+        }
+      }
+      if (oauthIds.length > 0) {
+        try {
+          await this.invalidateLinkedIdentities(
+            app,
+            teamId,
+            enterpriseId,
+            oauthIds,
+          );
+        } catch {
+          this.logger.error(
+            `[chanapp] lifecycle tokens_revoked identity-invalidate failed app=${appId}`,
+          );
+        }
       }
       res.status(200).json({ ok: true });
       return;
@@ -274,6 +329,90 @@ export class ChannelAppEventsController {
         },
         data: { status: "revoked", revokedAt },
       });
+    }
+  }
+
+  /**
+   * Phase C lifecycle — a USER (oauth) token was revoked (Sign-in-with-Slack
+   * consent pulled / member deactivated). Do NOT revoke the installation;
+   * instead invalidate that user's SIWS-linked EMAIL identities so the
+   * verified-email trust no longer anchors resolution or passes the
+   * `linking: required` gate.
+   *
+   * TRADEOFF (v1): we SET verified=false on the person's email identity rows
+   * rather than DELETE the slack→email linkage. Deletion is destructive and
+   * irreversible if the revoke was transient (e.g. a re-auth churn); flipping
+   * `verified` is reversible — a subsequent re-link restores it — and is enough
+   * to fail the trust gate. Scope is the app OWNER's (installations carry no
+   * scope of their own). The slack handle is `<team>:<userId>` (team = teamId ??
+   * enterpriseId), matching how the runtime attaches the identity. Per-user
+   * isolation: one bad lookup never aborts the rest. No PII (handle/email) is
+   * ever logged — only counts + appId.
+   */
+  private async invalidateLinkedIdentities(
+    app: any,
+    teamId: string | null,
+    enterpriseId: string | null,
+    userIds: string[],
+  ): Promise<void> {
+    const organizationId = String(app.organizationId);
+    const projectId = String(app.projectId);
+    const environmentId = String(app.environmentId);
+    // Candidate handle team components: the event carries the WORKSPACE team_id
+    // even for Grid org-level installs, but the runtime stored the slack handle
+    // with `installation.teamId ?? enterpriseId` — which is the ENTERPRISE id
+    // for org-installs (teamId null). We don't have the installation here, so
+    // try both forms (workspace team first, then enterprise) — same enterprise
+    // fallback shape findActiveInstallation/revokeInstallations use.
+    const teamCandidates = Array.from(
+      new Set([teamId, enterpriseId].filter((t): t is string => !!t)),
+    );
+    for (const userId of userIds) {
+      if (!userId) continue;
+      const handleCandidates =
+        teamCandidates.length > 0
+          ? teamCandidates.map((t) => `${t}:${userId}`)
+          : [userId];
+      try {
+        let slackIdentity: { platosEndUserId: string | null } | null = null;
+        for (const handle of handleCandidates) {
+          slackIdentity = await this.prisma.platosEndUserIdentity.findUnique({
+            where: {
+              organizationId_projectId_environmentId_channel_handle: {
+                organizationId,
+                projectId,
+                environmentId,
+                channel: "slack",
+                handle,
+              },
+            },
+            select: { platosEndUserId: true },
+          });
+          if (slackIdentity?.platosEndUserId) break;
+        }
+        if (!slackIdentity?.platosEndUserId) continue;
+        const { count } = await this.prisma.platosEndUserIdentity.updateMany({
+          where: {
+            organizationId,
+            projectId,
+            environmentId,
+            platosEndUserId: slackIdentity.platosEndUserId,
+            channel: "email",
+            verified: true,
+          },
+          data: { verified: false },
+        });
+        if (count > 0) {
+          this.logger.log(
+            `[chanapp] tokens_revoked invalidated ${count} email identity(ies) app=${String(app.id)}`,
+          );
+        }
+      } catch {
+        // Per-user isolation — one bad lookup must not abort the rest.
+        this.logger.error(
+          `[chanapp] tokens_revoked identity lookup failed app=${String(app.id)}`,
+        );
+      }
     }
   }
 
