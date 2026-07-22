@@ -700,6 +700,10 @@ export class McpPlatformController {
   async listTokens(@Req() req: Request) {
     const scope = (req as any).scope as RequestScope | undefined;
     if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
+    // SECURITY (audit authz-2026-07-22 F5) — platform-token inventory is an
+    // operator/dashboard read (enumerates every token's permissions + scope tier).
+    // Same admin-action tier as mintToken; end-user/guest tokens must not enumerate.
+    requireOperator(scope);
     const tokens = await this.tokenService.list(scope);
     return { tokens };
   }
@@ -708,6 +712,10 @@ export class McpPlatformController {
   async revokeToken(@Req() req: Request, @Body() _body: unknown) {
     const scope = (req as any).scope as RequestScope | undefined;
     if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
+    // SECURITY (audit authz-2026-07-22 F5) — token revocation is an operator
+    // action; without this an end-user/guest revokes the operator's own
+    // control-plane tokens (integrity/DoS on the whole scope's MCP access).
+    requireOperator(scope);
     const id = req.params["id"];
     if (!id) throw new HttpException("id missing", HttpStatus.BAD_REQUEST);
     const ok = await this.tokenService.revoke(id, scope);

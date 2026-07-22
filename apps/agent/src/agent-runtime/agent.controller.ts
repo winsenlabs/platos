@@ -968,12 +968,22 @@ export class AgentController {
   @Post("agents")
   async createAgent(@Req() req: Request, @Body() body: CreateAgentDto) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — agent creation is a mutating
+    // control-plane action; operator-only (audit fix: "every mutating handler
+    // in the :949-1385 block"). Runtime chat never creates agents.
+    requireOperator(scope);
     return this.agentCrud.create(scope, body);
   }
 
   @Get("agents")
   async listAgents(@Req() req: Request) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — `agentCrud.list` returns the FULL
+    // AgentRecord (systemPrompt, promptBlocks, toolsBlockConfig) for every agent
+    // in scope — the exact data the gated `getAgent` protects. Without this gate
+    // an end-user/guest reads every agent's config via the list sibling, defeating
+    // the getAgent gate. Operator/dashboard-only.
+    requireOperator(scope);
     const agents = await this.agentCrud.list(scope);
     return { agents, total: agents.length };
   }
@@ -1080,6 +1090,11 @@ export class AgentController {
     @Param("agentId") agentId: string,
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — per-agent tool matrix + param
+    // mappings are operator/dashboard config-reads ("every config-read handler
+    // in the :949-1385 block"). The scope-gate below is cross-SCOPE protection
+    // only; requireOperator is the cross-USER (end-user↔operator) gate.
+    requireOperator(scope);
     // Scope-gate the agent load before touching the tool matrix. Keeps the
     // endpoint from leaking per-tool metadata to anyone who can guess an
     // agent id in a foreign scope.
@@ -1168,6 +1183,10 @@ export class AgentController {
     @Param("agentId") agentId: string,
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — per-agent category config
+    // (enabledCategories + user-authored descriptions) is an operator/dashboard
+    // config-read ("every config-read handler in the :949-1385 block").
+    requireOperator(scope);
     const agent = await this.agentCrud.findById(agentId, scope);
     if (!agent) {
       throw new NotFoundException({ error: "Agent not found", agentId });
@@ -1714,6 +1733,12 @@ export class AgentController {
     upstreamStatus?: number;
   }> {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F3) — this Postman/wire-test dispatch
+    // fires a connected tool (HMAC-signed POST to the entity callbackUrl, or the
+    // executor for mcp-kind) with caller-supplied params + headers, bypassing the
+    // per-agent tool ACL exactly like `/tools/execute`. The rate limit is not an
+    // authz gate — gate the wire-test surface to operators (mirrors executeTool).
+    requireOperator(scope);
 
     // Rate limit: 20 req/min per user per scope.
     try {
