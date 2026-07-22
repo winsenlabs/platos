@@ -61,10 +61,21 @@ import { validateAgentRouting } from "./channel-routing";
  * BOTH. The app must additionally enable the "Agents & AI Apps" toggle in its
  * Slack config so the split-view panel + assistant_thread_started events are
  * delivered.
+ *
+ * ACCOUNT LINKING (`linking`, Connect v3 Phase C): `none` (default) | `optional`
+ * | `required`. `optional` exposes a "Connect your account" URL when the user
+ * types `link`/`connect` (and honours `unlink`); `required` additionally
+ * WITHHOLDS an unlinked user's turns until they complete Sign in with Slack,
+ * which attaches a verified email identity to the same canonical person. The
+ * hosted flow reuses THIS app's Slack client credentials for SIWS, so the app
+ * must register the extra OIDC redirect URL
+ * `<publicOrigin>/api/v1/channels/link/callback` in its Slack "Redirect URLs".
  */
 
 const APP_PROVIDERS = new Set(["slack"]);
 const DISTRIBUTIONS = new Set(["private", "public"]);
+// Connect v3 (Phase C) — hosted account-linking policy.
+const LINKING = new Set(["none", "optional", "required"]);
 const OAUTH_BASE = "/api/v1/channels/oauth";
 
 @Controller("api/v1/agent/channel-apps")
@@ -219,6 +230,7 @@ export class ChannelAppsController {
       scopes?: string[];
       distribution?: string;
       aiAppsSurface?: boolean;
+      linking?: string;
       defaultAgentId?: string | null;
       agentRouting?: unknown;
     },
@@ -254,6 +266,21 @@ export class ChannelAppsController {
         { error: "invalid_params", message: "distribution must be private | public" },
         HttpStatus.BAD_REQUEST,
       );
+    }
+
+    // linking (optional) — enum-validated; defaults to "none" at the DB layer.
+    let linking: string | undefined;
+    if (body?.linking !== undefined) {
+      linking = String(body.linking).trim().toLowerCase();
+      if (!LINKING.has(linking)) {
+        throw new HttpException(
+          {
+            error: "invalid_params",
+            message: "linking must be none | optional | required",
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
 
     const displayName =
@@ -300,6 +327,7 @@ export class ChannelAppsController {
         ...(displayName !== undefined ? { displayName } : {}),
         ...(scopes !== undefined ? { scopes } : {}),
         ...(aiAppsSurface !== undefined ? { aiAppsSurface } : {}),
+        ...(linking !== undefined ? { linking } : {}),
         ...(defaultAgentId ? { defaultAgentId } : {}),
         ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
       },
@@ -337,6 +365,7 @@ export class ChannelAppsController {
       scopes?: string[];
       distribution?: string;
       aiAppsSurface?: boolean;
+      linking?: string;
       defaultAgentId?: string | null;
       agentRouting?: unknown;
     },
@@ -385,6 +414,19 @@ export class ChannelAppsController {
       data.distribution = distribution;
     }
     if (typeof body.aiAppsSurface === "boolean") data.aiAppsSurface = body.aiAppsSurface;
+    if (typeof body.linking === "string") {
+      const linking = body.linking.trim().toLowerCase();
+      if (!LINKING.has(linking)) {
+        throw new HttpException(
+          {
+            error: "invalid_params",
+            message: "linking must be none | optional | required",
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      data.linking = linking;
+    }
     if (Object.prototype.hasOwnProperty.call(body, "defaultAgentId")) {
       const raw = body.defaultAgentId;
       if (raw === null || raw === "") {

@@ -3823,6 +3823,16 @@ model PlatosChannelApp {
   // than a bare app_mention bot. Default on for new apps.
   aiAppsSurface Boolean @default(true)
 
+  // Connect v3 (Phase C) — hosted account-linking policy:
+  //   none     — no linking behavior (default; zero behavior change).
+  //   optional — never blocks a turn; the connect URL is surfaced only when the
+  //              user types "link"/"connect".
+  //   required — an unlinked author's turn is WITHHELD until they complete Sign
+  //              in with Slack (attaches a verified email identity to the same
+  //              canonical person). Bindings are PlatosEndUserIdentity rows;
+  //              the hosted flow's nonces live in Redis (no table here).
+  linking String @default("none")
+
   // Fallback agent for a NEW installation when the install carries no binding
   // override. A per-install `agentId` (see PlatosChannelInstallation) wins.
   defaultAgentId String?

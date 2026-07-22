@@ -2,6 +2,7 @@ import {
   Injectable,
   Logger,
   Inject,
+  Optional,
   type OnModuleInit,
   type OnModuleDestroy,
 } from "@nestjs/common";
@@ -17,6 +18,13 @@ import {
   setAssistantSuggestedPrompts,
   setAssistantTitle,
 } from "./slack-assistant.api";
+// Connect v3 (Phase C) — hosted account linking. The link/unlink START of the
+// hosted SIWS flow lives in the OTHER slice's controller; this service CONSUMES
+// it via constructor DI. Injected @Optional() (see constructor) so that until
+// that slice lands — or in a focused test module that omits it — the service
+// degrades to `linking:none` behavior (no connect URLs, no gate) instead of
+// failing to construct.
+import { ChannelLinkService } from "./channel-link.controller";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Chat SDK (v4.34) — RUNTIME + BRIDGE slice.
@@ -215,6 +223,14 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
    */
   private readonly appCache = new Map<string, CachedAppCreds>();
   private readonly TTL_MS = 10 * 60 * 1000; // 10 min
+  /**
+   * Connect v3 (Phase C) — POSITIVE account-link memo: `installationId:slackHandle`
+   * → expiry epoch-ms. A `linking:required` app checks per message whether the
+   * author's slack person has a verified email link; a hit is cached for 10 min
+   * so the two-query lookup doesn't run on every turn. NEGATIVES are never cached
+   * (a user who links mid-conversation is unblocked on their very next message).
+   */
+  private readonly linkStatusCache = new Map<string, number>();
   /** Discord keep-warm sweep cadence (see onModuleInit). */
   private readonly DISCORD_WARM_INTERVAL_MS = 60 * 1000;
   private discordWarmTimer: ReturnType<typeof setInterval> | null = null;
@@ -224,6 +240,11 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     private readonly messageCrypto: MessageCryptoService,
     private readonly conversationService: ConversationService,
     private readonly agentTaskService: AgentTaskService,
+    // Connect v3 (Phase C) — owned by the link-controller slice. @Optional so its
+    // absence degrades cleanly to `linking:none` (no connect URLs surfaced).
+    @Optional()
+    @Inject(ChannelLinkService)
+    private readonly channelLinkService?: ChannelLinkService,
   ) {}
 
   // ───────────────────────────────────────────────────────────────────────
@@ -971,6 +992,36 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       userId: this.appConversationUserId(installationId, parsed.channelThreadKey),
     };
 
+    // ── Connect v3 (Phase C) — account-linking commands + policy gate ─────
+    // BEFORE any turn work: link/connect/unlink commands bypass the LLM, and a
+    // `linking:required` app withholds the turn for an unlinked author (posting
+    // the connect URL instead). Placed ahead of thread binding so a blocked /
+    // command message never mints a Platos thread or resolves an end-user. A
+    // `linking:none` app returns `proceed=true` immediately (zero behavior
+    // change). `isAssistantThread` is computed here (the same predicate the
+    // reply path uses) so a handled message can clear the assistant status.
+    const isAssistantThread =
+      parsed.channel.startsWith("D") && !!parsed.replyThreadTs;
+    // Originating WORKSPACE team id ("T…") off the signature-verified envelope
+    // (same derivation as the events controller). Needed by the SIWS callback's
+    // identity match: for an Enterprise Grid ORG-LEVEL install `team` is the
+    // "E…" enterprise id, but openid.connect.userInfo always returns the
+    // user's workspace id — matching against `team` there can never succeed.
+    const eventTeamId = String(
+      envelope?.team_id ?? envelope?.authorizations?.[0]?.team_id ?? "",
+    );
+    const proceed = await this.applyLinkingGate(app, installation, authorScope, botToken, {
+      team,
+      eventTeamId,
+      slackUserId: parsed.user,
+      slackHandle: handle,
+      text: parsed.text,
+      replyChannel: parsed.channel,
+      replyThreadTs: parsed.replyThreadTs,
+      isAssistantThread,
+    });
+    if (!proceed) return;
+
     // ── Resolve or create the (pinned) agent + Platos thread ──────────────
     let agentId: string;
     let platosThreadId: string;
@@ -999,8 +1050,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     // status before the turn; the reply's chat.postMessage clears it
     // automatically. A plain DM (no thread_ts) is NOT an assistant thread and
     // keeps its existing behavior (no status). Never fails the turn.
-    const isAssistantThread =
-      parsed.channel.startsWith("D") && !!parsed.replyThreadTs;
+    // (`isAssistantThread` was computed above for the linking gate.)
     if (isAssistantThread) {
       try {
         await setAssistantStatus(
@@ -1464,6 +1514,279 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(
         `[channel-apps] chat.postMessage rejected channel=${channel} error=${json?.error ?? res.status}`,
       );
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // CONNECT v3 (Phase C) — hosted account linking (bridge side)
+  //
+  // Three modes on PlatosChannelApp.linking:
+  //   none     — passthrough; not even the commands intercept (zero change).
+  //   optional — link/connect/unlink commands work; a turn is NEVER withheld.
+  //   required — commands work AND an unlinked author's turn is withheld until
+  //              they complete Sign in with Slack (a verified email identity on
+  //              the same canonical person). The hosted flow itself (nonce mint,
+  //              SIWS redirect, OIDC callback, identity attach) lives in the
+  //              link-controller slice; here we only START it and READ its
+  //              result off PlatosEndUserIdentity.
+  // ───────────────────────────────────────────────────────────────────────
+
+  /**
+   * Linking commands + policy gate, run BEFORE the turn. Returns `true` when the
+   * caller should proceed to run the normal agent turn, or `false` when this
+   * message was fully handled here (a link/connect/unlink command, or a withheld
+   * turn under `linking:required`).
+   *
+   * Command matching is a case-insensitive EXACT match on the trimmed text, so
+   * it fires for bare DM / assistant-thread text ("link") but NOT for a channel
+   * app_mention (whose text carries the `<@BOT>` prefix) — matching the "DM +
+   * assistant threads" contract without a surface special-case.
+   */
+  private async applyLinkingGate(
+    app: any,
+    installation: any,
+    scope: { organizationId: string; projectId: string; environmentId: string },
+    botToken: string,
+    ctx: {
+      team: string;
+      /** Originating workspace team id ("T…") from the event envelope (may be ""). */
+      eventTeamId?: string;
+      slackUserId: string;
+      /** `team:slackUserId` — the slack channel identity handle. */
+      slackHandle: string;
+      text: string;
+      replyChannel: string;
+      replyThreadTs?: string;
+      isAssistantThread: boolean;
+    },
+  ): Promise<boolean> {
+    // The hosted flow itself is owned by the link-controller slice (injected
+    // @Optional). If it isn't wired, the ENTIRE feature degrades to `none`
+    // (zero behavior change) — including the commands, which would otherwise
+    // surface a dead "not available" reply or a half-working unlink. This is
+    // the mandated "absence degrades to linking:none behavior" contract.
+    if (!this.channelLinkService) return true;
+
+    const linking = typeof app?.linking === "string" ? app.linking : "none";
+    // `none` (default) — zero behavior change: no command interception, no gate.
+    if (linking !== "optional" && linking !== "required") return true;
+
+    const command = ctx.text.trim().toLowerCase();
+
+    // ── Commands (bypass the LLM entirely) — active in optional + required ──
+    if (command === "link" || command === "connect") {
+      const url = await this.linkStartUrl(app, installation, ctx);
+      await this.postSlackMessage(
+        botToken,
+        ctx.replyChannel,
+        ctx.replyThreadTs,
+        url
+          ? `🔗 Connect your account: ${url}`
+          : "Account linking isn't available right now. Please try again later.",
+      );
+      if (ctx.isAssistantThread) await this.clearAssistantStatus(botToken, ctx);
+      return false;
+    }
+    if (command === "unlink") {
+      const removed = await this.unlinkEmailIdentities(scope, ctx.slackHandle);
+      // Drop the positive memo so a `required` app re-gates on the next message.
+      this.linkStatusCache.delete(this.linkCacheKey(installation, ctx.slackHandle));
+      await this.postSlackMessage(
+        botToken,
+        ctx.replyChannel,
+        ctx.replyThreadTs,
+        removed > 0
+          ? `✅ Unlinked — removed ${removed} linked email ${removed === 1 ? "identity" : "identities"}.`
+          : "You don't have a linked account to remove.",
+      );
+      if (ctx.isAssistantThread) await this.clearAssistantStatus(botToken, ctx);
+      return false;
+    }
+
+    // ── Policy gate — only `required` withholds a turn ─────────────────────
+    if (linking !== "required") return true; // optional never blocks
+
+    const linked = await this.isSlackUserLinked(installation, scope, ctx.slackHandle);
+    if (linked) return true;
+
+    const url = await this.linkStartUrl(app, installation, ctx);
+    await this.postSlackMessage(
+      botToken,
+      ctx.replyChannel,
+      ctx.replyThreadTs,
+      url
+        ? `🔗 Connect your account to continue: ${url}`
+        : "This assistant requires a linked account, but linking isn't available right now. Please try again later.",
+    );
+    if (ctx.isAssistantThread) await this.clearAssistantStatus(botToken, ctx);
+    return false;
+  }
+
+  /** Positive-link memo cache key. `team:slackUserId` already encodes the user. */
+  private linkCacheKey(installation: any, slackHandle: string): string {
+    return `${String(installation?.id ?? "")}:${slackHandle}`;
+  }
+
+  /**
+   * Start the hosted link flow via the OTHER slice's ChannelLinkService and
+   * return its connect URL, or null when the service is absent (feature not yet
+   * wired) or the call fails. Best-effort — never throws to the caller.
+   */
+  private async linkStartUrl(
+    app: any,
+    installation: any,
+    ctx: {
+      team: string;
+      eventTeamId?: string;
+      slackUserId: string;
+      replyChannel: string;
+      replyThreadTs?: string;
+    },
+  ): Promise<string | null> {
+    if (!this.channelLinkService) return null;
+    try {
+      // NOTE: the live ChannelLinkService.linkStart takes `{teamId, slackUserId,
+      // channel, threadTs}` (it maps channel→replyChannel / threadTs→replyThreadTs
+      // into its Redis nonce payload internally). The task brief named the last
+      // two `replyChannel`/`replyThreadTs`, but the merged controller is the
+      // ground truth and TypeScript enforces its shape — so pass channel/threadTs.
+      const url = await this.channelLinkService.linkStart(app, installation, {
+        teamId: ctx.team,
+        slackUserId: ctx.slackUserId,
+        channel: ctx.replyChannel,
+        threadTs: ctx.replyThreadTs,
+        // Workspace "T…" id off the event envelope — lets the SIWS callback
+        // match userInfo's team_id for Enterprise Grid org-level installs
+        // (where ctx.team is the "E…" enterprise id and could never match).
+        eventTeamId: ctx.eventTeamId || null,
+      });
+      return typeof url === "string" && url ? url : null;
+    } catch {
+      this.logger.error(
+        `[channel-apps] linkStart failed app=${String(app?.id ?? "")}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * True when the slack person (`team:slackUserId`) resolves to a canonical
+   * PlatosEndUser who ALSO carries a verified email-channel identity — i.e. they
+   * completed Sign in with Slack. Two scoped queries: slack handle row →
+   * platosEndUserId → any verified email row on that person. Positive results
+   * are memoized 10 min per (installation, slackHandle); negatives are not.
+   *
+   * FAIL CLOSED: on a DB error we return false (treat as unlinked). For a
+   * `required` gate the correct posture is "no positive confirmation ⇒ no turn"
+   * — surfacing the connect URL on a transient blip is safer than admitting an
+   * unverified user, and the turn would very likely fail on the same blip anyway.
+   */
+  private async isSlackUserLinked(
+    installation: any,
+    scope: { organizationId: string; projectId: string; environmentId: string },
+    slackHandle: string,
+  ): Promise<boolean> {
+    const key = this.linkCacheKey(installation, slackHandle);
+    const now = Date.now();
+    const memo = this.linkStatusCache.get(key);
+    if (memo && memo > now) return true;
+    if (memo && memo <= now) this.linkStatusCache.delete(key); // prune stale
+
+    try {
+      const slackRow = await this.prisma.platosEndUserIdentity.findUnique({
+        where: {
+          organizationId_projectId_environmentId_channel_handle: {
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+            channel: "slack",
+            handle: slackHandle,
+          },
+        },
+        select: { platosEndUserId: true },
+      });
+      if (!slackRow?.platosEndUserId) return false;
+
+      const emailRow = await this.prisma.platosEndUserIdentity.findFirst({
+        where: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          platosEndUserId: slackRow.platosEndUserId,
+          channel: "email",
+          verified: true,
+        },
+        select: { id: true },
+      });
+      if (emailRow) {
+        this.linkStatusCache.set(key, now + this.TTL_MS);
+        return true;
+      }
+      return false;
+    } catch {
+      this.logger.error("[channel-apps] link-status lookup failed");
+      return false; // fail closed — see docstring
+    }
+  }
+
+  /**
+   * `unlink` command (safe v1): delete the email-channel identity rows attached
+   * to the canonical person behind this slack handle. We deliberately do NOT
+   * delete the slack identity or the person, and we do NOT distinguish
+   * SIWS-created email rows from any other email identity on that person — the
+   * only email identities that ever land on a channel-app person are the ones
+   * this hosted flow attaches, so deleting all of them is both the simplest and
+   * the correct v1 behavior. Returns the number of rows removed. Scoped to the
+   * app owner; best-effort (never throws).
+   */
+  private async unlinkEmailIdentities(
+    scope: { organizationId: string; projectId: string; environmentId: string },
+    slackHandle: string,
+  ): Promise<number> {
+    try {
+      const slackRow = await this.prisma.platosEndUserIdentity.findUnique({
+        where: {
+          organizationId_projectId_environmentId_channel_handle: {
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+            channel: "slack",
+            handle: slackHandle,
+          },
+        },
+        select: { platosEndUserId: true },
+      });
+      if (!slackRow?.platosEndUserId) return 0;
+
+      const { count } = await this.prisma.platosEndUserIdentity.deleteMany({
+        where: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          platosEndUserId: slackRow.platosEndUserId,
+          channel: "email",
+        },
+      });
+      this.logger.log(
+        `[channel-apps] unlink removed ${count} email identity row(s)`,
+      );
+      return count;
+    } catch {
+      this.logger.error("[channel-apps] unlink failed");
+      return 0;
+    }
+  }
+
+  /** Best-effort: clear a lingering assistant-thread status (empty string). */
+  private async clearAssistantStatus(
+    botToken: string,
+    ctx: { replyChannel: string; replyThreadTs?: string },
+  ): Promise<void> {
+    if (!ctx.replyThreadTs) return;
+    try {
+      await setAssistantStatus(botToken, ctx.replyChannel, ctx.replyThreadTs, "");
+    } catch {
+      /* best-effort */
     }
   }
 

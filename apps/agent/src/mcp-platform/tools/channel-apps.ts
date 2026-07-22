@@ -28,6 +28,8 @@ import { validateAgentRouting } from "../../agent-runtime/channel-routing";
 
 const APP_PROVIDERS = new Set(["slack"]);
 const DISTRIBUTIONS = new Set(["private", "public"]);
+// Connect v3 (Phase C) — hosted account-linking policy.
+const LINKING = new Set(["none", "optional", "required"]);
 const OAUTH_BASE = "/api/v1/channels/oauth";
 
 function scopeTuple(scope: RequestScope) {
@@ -183,8 +185,17 @@ export function buildChannelAppToolHandlers(deps: {
         "`app_mentions:read` (mention-bot fallback). Also enable the app's " +
         "\"Agents & AI Apps\" toggle in the Slack app config so the split-view " +
         "assistant panel + assistant_thread_started events are delivered. " +
-        "Returns the app row (secrets redacted → `hasClientSecret` / " +
-        "`hasSigningSecret`) plus `installUrl` — the Add-to-Slack href.",
+        "`linking` (none|optional|required, default none) sets the hosted " +
+        "account-linking policy: `optional` surfaces a \"Connect your account\" " +
+        "URL when a user types link/connect (and honours unlink); `required` " +
+        "additionally WITHHOLDS an unlinked user's turns until they complete " +
+        "Sign in with Slack (attaching a verified email identity to the same " +
+        "person). SIWS reuses this app's Slack client credentials, so register " +
+        "the extra OIDC redirect URL " +
+        "`<publicOrigin>/api/v1/channels/link/callback` in the Slack app's " +
+        "Redirect URLs. Returns the app row (secrets redacted → " +
+        "`hasClientSecret` / `hasSigningSecret`) plus `installUrl` — the " +
+        "Add-to-Slack href.",
       inputSchema: {
         type: "object",
         required: ["clientId", "clientSecret", "signingSecret"],
@@ -197,6 +208,13 @@ export function buildChannelAppToolHandlers(deps: {
           scopes: { type: "array", items: { type: "string" } },
           distribution: { type: "string", enum: ["private", "public"] },
           aiAppsSurface: { type: "boolean" },
+          linking: {
+            type: "string",
+            enum: ["none", "optional", "required"],
+            description:
+              "Hosted account-linking policy (default none). required also needs " +
+              "<publicOrigin>/api/v1/channels/link/callback in the Slack app's Redirect URLs.",
+          },
           defaultAgentId: { type: "string" },
           agentRouting: {
             type: "array",
@@ -239,6 +257,10 @@ export function buildChannelAppToolHandlers(deps: {
           : "private";
         const aiAppsSurface =
           typeof params["aiAppsSurface"] === "boolean" ? params["aiAppsSurface"] : undefined;
+        const linking =
+          params["linking"] !== undefined
+            ? String(params["linking"]).trim().toLowerCase()
+            : undefined;
         const defaultAgentId =
           typeof params["defaultAgentId"] === "string" ? params["defaultAgentId"].trim() : "";
         const routingProvided =
@@ -250,6 +272,7 @@ export function buildChannelAppToolHandlers(deps: {
           clientId,
           displayName,
           distribution,
+          ...(linking !== undefined ? { linking } : {}),
           hasClientSecret: !!clientSecret,
           hasSigningSecret: !!signingSecret,
           scopeCount: scopes?.length ?? 0,
@@ -269,6 +292,11 @@ export function buildChannelAppToolHandlers(deps: {
         }
         if (!DISTRIBUTIONS.has(distribution)) {
           const err = "distribution must be private | public";
+          auditMutation(scope, "channel_apps.create", auditArgs, null, "failed", startedAt, err);
+          return { error: "invalid_params", message: err };
+        }
+        if (linking !== undefined && !LINKING.has(linking)) {
+          const err = "linking must be none | optional | required";
           auditMutation(scope, "channel_apps.create", auditArgs, null, "failed", startedAt, err);
           return { error: "invalid_params", message: err };
         }
@@ -315,6 +343,7 @@ export function buildChannelAppToolHandlers(deps: {
               ...(displayName !== undefined ? { displayName } : {}),
               ...(scopes !== undefined ? { scopes } : {}),
               ...(aiAppsSurface !== undefined ? { aiAppsSurface } : {}),
+              ...(linking !== undefined ? { linking } : {}),
               ...(defaultAgentId ? { defaultAgentId } : {}),
               ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
             },
@@ -394,10 +423,13 @@ export function buildChannelAppToolHandlers(deps: {
         "recommend `assistant:write` + `im:history` + `chat:write` + " +
         "`app_mentions:read`, and enable the app's \"Agents & AI Apps\" " +
         "toggle), `distribution` (private|public), `aiAppsSurface` (bool), " +
-        "`defaultAgentId` (string|null to clear — validated in-scope), " +
-        "`agentRouting` (array of `{match, agentId}` rules | null to clear). " +
-        "Scope-pinned — cross-scope ids return `{ error: 'not_found' }`. " +
-        "Returns the updated row with secrets redacted.",
+        "`linking` (none|optional|required — the hosted account-linking policy; " +
+        "`required` withholds unlinked users' turns until they Sign in with " +
+        "Slack, and needs <publicOrigin>/api/v1/channels/link/callback in the " +
+        "Slack app's Redirect URLs), `defaultAgentId` (string|null to clear — " +
+        "validated in-scope), `agentRouting` (array of `{match, agentId}` rules " +
+        "| null to clear). Scope-pinned — cross-scope ids return " +
+        "`{ error: 'not_found' }`. Returns the updated row with secrets redacted.",
       inputSchema: {
         type: "object",
         required: ["id"],
@@ -410,6 +442,13 @@ export function buildChannelAppToolHandlers(deps: {
           scopes: { type: "array", items: { type: "string" } },
           distribution: { type: "string", enum: ["private", "public"] },
           aiAppsSurface: { type: "boolean" },
+          linking: {
+            type: "string",
+            enum: ["none", "optional", "required"],
+            description:
+              "Hosted account-linking policy. required also needs " +
+              "<publicOrigin>/api/v1/channels/link/callback in the Slack app's Redirect URLs.",
+          },
           defaultAgentId: { type: ["string", "null"] },
           agentRouting: {
             type: ["array", "null"],
@@ -456,6 +495,9 @@ export function buildChannelAppToolHandlers(deps: {
             : {}),
           ...(typeof params["aiAppsSurface"] === "boolean"
             ? { aiAppsSurface: params["aiAppsSurface"] }
+            : {}),
+          ...(typeof params["linking"] === "string"
+            ? { linking: params["linking"] }
             : {}),
           ...(Object.prototype.hasOwnProperty.call(params, "defaultAgentId")
             ? { defaultAgentId: params["defaultAgentId"] }
@@ -515,6 +557,15 @@ export function buildChannelAppToolHandlers(deps: {
         }
         if (typeof params["aiAppsSurface"] === "boolean") {
           data.aiAppsSurface = params["aiAppsSurface"];
+        }
+        if (typeof params["linking"] === "string") {
+          const linking = params["linking"].trim().toLowerCase();
+          if (!LINKING.has(linking)) {
+            const err = "linking must be none | optional | required";
+            auditMutation(scope, "channel_apps.update", auditArgs, null, "failed", startedAt, err);
+            return { error: "invalid_params", message: err };
+          }
+          data.linking = linking;
         }
         if (Object.prototype.hasOwnProperty.call(params, "defaultAgentId")) {
           const raw = params["defaultAgentId"];

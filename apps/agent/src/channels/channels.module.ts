@@ -2,6 +2,10 @@ import { Module } from "@nestjs/common";
 import { ChannelsInboundController } from "./channels-inbound.controller";
 import { ChannelAppOAuthController } from "./channel-app-oauth.controller";
 import { ChannelAppEventsController } from "./channel-app-events.controller";
+import {
+  ChannelLinkController,
+  ChannelLinkService,
+} from "./channel-link.controller";
 import { ChannelRuntimeService } from "./channel-runtime.service";
 import { AgentRuntimeModule } from "../agent-runtime/agent-runtime.module";
 import { MemoryModule } from "../memory/memory.module";
@@ -16,6 +20,12 @@ import { MonitoringModule } from "../monitoring/monitoring.module";
  *   - ChannelAppEventsController — the single Slack Events API request URL per
  *     app (public; Slack v0 signature verify + event_id dedupe, hands verified
  *     events to ChannelRuntimeService.handleAppEvent).
+ *   - ChannelLinkController / ChannelLinkService — Phase C hosted account
+ *     linking (public; single-use Redis nonce + Sign-in-with-Slack OIDC +
+ *     userInfo-authoritative claims → verified email identity attach — see
+ *     scope.guard.ts allowlist `/api/v1/channels/link/`). ChannelLinkService is
+ *     EXPORTED so ChannelRuntimeService can call `linkStart(...)` from the
+ *     policy gate / `link` command (item (3)).
  *
  * Dependencies (all via already-exporting feature modules — nothing new
  * provided here except the channel components):
@@ -37,8 +47,9 @@ import { MonitoringModule } from "../monitoring/monitoring.module";
     ChannelsInboundController,
     ChannelAppOAuthController,
     ChannelAppEventsController,
+    ChannelLinkController,
   ],
-  providers: [ChannelRuntimeService],
-  exports: [ChannelRuntimeService],
+  providers: [ChannelRuntimeService, ChannelLinkService],
+  exports: [ChannelRuntimeService, ChannelLinkService],
 })
 export class ChannelsModule {}

@@ -179,13 +179,21 @@ export class ScopeGuard implements CanActivate {
     //     URL per app. Every POST is verified by the Slack v0 signature
     //     (HMAC-SHA256 over `v0:<ts>:<rawBody>` with the app's DECRYPTED
     //     signing secret, timing-safe) + a stale-timestamp reject.
-    // The caller is Slack (or a browser mid-install), not a Platos user, so
-    // there is no per-scope session context. ScopeGuard just lets it land.
-    // (The operator-only MANAGEMENT surface lives at /api/v1/agent/channel-apps
-    // and is NOT bypassed — it runs under normal scope extraction below.)
+    //   /api/v1/channels/link/{:nonce,callback} — Phase C hosted account
+    //     linking (Sign in with Slack / OIDC). GET-only; auth is IN the
+    //     controller — a single-use Redis nonce (bound to team+user), a second
+    //     OIDC `nonce` bound into the id_token, and a userInfo-authoritative
+    //     team_id/user_id + email_verified match. The caller is a browser
+    //     mid-flow, not a Platos user.
+    // The caller is Slack (or a browser mid-install/mid-link), not a Platos
+    // user, so there is no per-scope session context. ScopeGuard just lets it
+    // land. (The operator-only MANAGEMENT surface lives at
+    // /api/v1/agent/channel-apps and is NOT bypassed — it runs under normal
+    // scope extraction below.)
     if (
       url.startsWith("/api/v1/channels/oauth/") ||
-      url.startsWith("/api/v1/channels/apps/")
+      url.startsWith("/api/v1/channels/apps/") ||
+      url.startsWith("/api/v1/channels/link/")
     ) {
       return true;
     }
