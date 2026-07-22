@@ -261,6 +261,35 @@ export class ChannelAppEventsController {
 
   // ───────────────────────────────────────────────────────────────────────
   // Installation lookup / lifecycle
+  //
+  // ORG-INSTALL (Enterprise Grid) ROUTING INVARIANT — Phase D consistency audit.
+  // Every consumer that resolves an installation from an inbound envelope MUST
+  // agree on this handle/routing convention, or a Grid org-install silently
+  // misroutes turns or leaves a live token "active" forever:
+  //
+  //   • STORAGE: an Enterprise Grid ORG-level install is stored teamId=NULL,
+  //     enterpriseId=<E…>, isEnterpriseInstall=true (oauth.v2.access returns
+  //     team:null for an org grant). A classic workspace install is the mirror:
+  //     teamId=<T…>, enterpriseId=NULL.
+  //   • ROUTING: event / lifecycle envelopes ALWAYS carry the ORIGINATING
+  //     WORKSPACE's team_id (a "T…", never null) even inside a Grid, so the
+  //     exact (appId, teamId, enterpriseId) tuple can NEVER hit the org row.
+  //     When the exact match misses AND we are inside a Grid (enterpriseId
+  //     present AND teamId present), fall back to (teamId:null, enterpriseId,
+  //     isEnterpriseInstall:true, status:active) — the org row.
+  //     findActiveInstallation (resolve) and revokeInstallations (uninstall)
+  //     both apply this exact fallback below.
+  //   • HANDLE: the "team" component of a slack identity handle is
+  //     `teamId ?? enterpriseId` EVERYWHERE, so an org-install's handle is
+  //     `<enterpriseId>:<userId>`. The runtime stamps identities with that rule
+  //     and keys its decrypted-token cache (appCacheKey) by it;
+  //     invalidateLinkedIdentities cannot see the installation row, so it tries
+  //     BOTH handle forms (workspace team first, then enterprise).
+  //   • TOKEN REFRESH (Phase D): getFreshBotToken does NOT re-route — it keys off
+  //     the already-resolved installation.id for both its Postgres write and its
+  //     `chanapp:refresh:<installationId>` Redis lock, so it inherits whichever
+  //     row findActiveInstallation selected (org or workspace) and cannot drift
+  //     from this convention. (See channel-runtime.service.ts getFreshBotToken.)
   // ───────────────────────────────────────────────────────────────────────
 
   private async findActiveInstallation(
