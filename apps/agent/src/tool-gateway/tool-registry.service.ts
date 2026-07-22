@@ -153,7 +153,14 @@ export class ToolRegistryService implements OnModuleInit {
           description: m.tool.description,
           paramSchema: m.tool.paramSchema,
           category: m.tool.category,
-          callbackUrl: m.callbackUrl,
+          // `callbackUrl` is nullable in the DB: wire rows carry a real URL,
+          // mcp-kind rows carry NULL (dispatch is outbound and never reads it).
+          // Coerce NULL to the non-dereferenced "mcp:noop" sentinel so the
+          // in-memory `OrgToolEntry.callbackUrl` stays typed `string` and no
+          // null-guard churn spreads across the wire call sites. The sentinel
+          // is NEVER fetched — the mcpDispatch branch returns before the wire
+          // serviceSecret/callback block reads it. (design §1.3)
+          callbackUrl: m.callbackUrl ?? "mcp:noop",
           sourceEntityId: entity.entityId,
           entityPk: entity.id,
           enabled: m.enabled,
@@ -173,7 +180,16 @@ export class ToolRegistryService implements OnModuleInit {
 
   /**
    * Register tools from an entity. Called when the entity connects via WebSocket
-   * and pushes its tool schemas. The mapping is keyed by (entity, environment).
+   * and pushes its tool schemas (wire kind), OR by `EntityMcpDiscoveryService`
+   * once per project environment after an outbound `tools/list` (mcp kind).
+   * The mapping is keyed by (entity, environment).
+   *
+   * `callbackUrl` is optional: wire entities pass their per-env callback URL;
+   * mcp-kind entities pass `null`/omit it (dispatch is outbound via the MCP
+   * client and never reads a callback). A null persists as NULL in the now-
+   * nullable `PlatosEntityToolMapping.callbackUrl` column and is coerced to the
+   * "mcp:noop" sentinel for the in-memory cache entry so `OrgToolEntry.callbackUrl`
+   * stays typed `string`. (design §1.3 / §4)
    */
   async registerTools(
     params: {
@@ -184,7 +200,7 @@ export class ToolRegistryService implements OnModuleInit {
       sourceEntityId: string;  // human-readable entity slug
     },
     tools: ToolSchema[],
-    callbackUrl: string,
+    callbackUrl?: string | null,
   ): Promise<{ registered: number; updated: number; newTools: number }> {
     let registered = 0;
     let updated = 0;
@@ -284,12 +300,12 @@ export class ToolRegistryService implements OnModuleInit {
             environmentId: params.environmentId,
           },
         },
-        update: { callbackUrl, enabled: true },
+        update: { callbackUrl: callbackUrl ?? null, enabled: true },
         create: {
           toolId: existing.id,
           entityId: params.entityPk,
           environmentId: params.environmentId,
-          callbackUrl,
+          callbackUrl: callbackUrl ?? null,
           enabled: true,
         },
       });
@@ -305,7 +321,10 @@ export class ToolRegistryService implements OnModuleInit {
         description: tool.description,
         paramSchema: tool.paramSchema,
         category: resolvedCategory || null,
-        callbackUrl,
+        // Same NULL→sentinel coercion as the rebuild-hydration path: mcp-kind
+        // rows register with a null callback; keep the cached entry typed
+        // `string` via the never-dereferenced "mcp:noop" sentinel. (design §1.3)
+        callbackUrl: callbackUrl ?? "mcp:noop",
         sourceEntityId: params.sourceEntityId,
         entityPk: params.entityPk,
         enabled: true,
@@ -422,6 +441,74 @@ export class ToolRegistryService implements OnModuleInit {
 
     entry.enabled = enabled;
     return true;
+  }
+
+  /**
+   * Prune tools that a fresh discovery no longer reports for an
+   * (entity, environment) pair. Discovery is idempotent-REPLACE:
+   * `registerTools` is additive-upsert, so after re-registering the fresh set
+   * this removes every `PlatosEntityToolMapping` row for tools that vanished
+   * from the source (AC6). Single-env signature — `EntityMcpDiscoveryService`
+   * loops it once per env, mirroring the per-env registration pass. (design §5)
+   *
+   * For each stale mapping it:
+   *   1. deletes the `PlatosEntityToolMapping` row (this env only),
+   *   2. evicts the tool from the scoped in-memory cache bucket, and
+   *   3. removes the BM25 document ONLY if no mapping anywhere still references
+   *      that `PlatosToolDefinition` (the definition + its BM25 doc are shared
+   *      across entities/envs/orgs — a still-referenced doc must survive).
+   *
+   * The `PlatosToolDefinition` row itself is left intact — it is a shared,
+   * tenant-scoped registry row that other mappings may still point at.
+   */
+  async reconcileEntityTools(
+    entityPk: string,
+    environmentId: string,
+    freshToolNames: string[],
+  ): Promise<{ removed: number }> {
+    const fresh = new Set(freshToolNames);
+
+    // Current mappings for this (entity, env), joined to the tool for its name.
+    const mappings = await this.prisma.platosEntityToolMapping.findMany({
+      where: { entityId: entityPk, environmentId },
+      include: { tool: { select: { id: true, name: true } } },
+    });
+    const stale = mappings.filter(
+      (m: any) => m.tool && !fresh.has(m.tool.name),
+    );
+    if (stale.length === 0) return { removed: 0 };
+
+    // 1. Drop the mapping rows for this env.
+    await this.prisma.platosEntityToolMapping.deleteMany({
+      where: { id: { in: stale.map((m: any) => m.id) } },
+    });
+
+    // 2. Evict from the scoped cache. Rebuild the bucket key from the entity's
+    //    (org, project, slug) + this env — the same key registerTools writes.
+    const entity = await this.prisma.platosConnectedEntity.findFirst({
+      where: { id: entityPk },
+      select: { organizationId: true, projectId: true, entityId: true },
+    });
+    if (entity) {
+      const key = `${entity.organizationId}:${entity.projectId}:${environmentId}:${entity.entityId}`;
+      const bucket = this.scopedToolCache.get(key);
+      if (bucket) {
+        for (const m of stale) bucket.delete(m.tool.name);
+        if (bucket.size === 0) this.scopedToolCache.delete(key);
+      }
+    }
+
+    // 3. Remove each orphaned BM25 doc — but only when NO mapping anywhere still
+    //    references the (shared) tool definition, so we never yank a doc another
+    //    scope's find_tools still needs.
+    for (const m of stale) {
+      const remaining = await this.prisma.platosEntityToolMapping.count({
+        where: { toolId: m.tool.id },
+      });
+      if (remaining === 0) this.bm25.removeDocument(m.tool.id);
+    }
+
+    return { removed: stale.length };
   }
 
   /**

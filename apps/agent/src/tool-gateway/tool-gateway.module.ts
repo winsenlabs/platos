@@ -9,6 +9,11 @@ import { SchemaInjectorService } from "./schema-injector.service";
 // forthcoming mcpDispatch branch in ToolExecutorService (Commit 4).
 import { McpCredentialService } from "./mcp-transport/mcp-credential.service";
 import { McpConnectionPool } from "./mcp-transport/mcp-client-pool.service";
+// EntityMcpDiscoveryService (design Commit 3) — outbound tools/list for
+// connectionKind=="mcp" entities, registering into the shared tool matrix once
+// per project environment. Depends on ToolRegistryService + the two relocated
+// mcp-transport primitives, all providers of this same module.
+import { EntityMcpDiscoveryService } from "./mcp-transport/entity-mcp-discovery.service";
 import { MonitoringModule } from "../monitoring/monitoring.module";
 // ProvidersModule exports ScopedEnvService, which McpCredentialService injects
 // to resolve `{{secret}}` credsSecretKey values. ProvidersModule imports
@@ -41,6 +46,7 @@ import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.
     SchemaInjectorService,
     McpCredentialService,
     McpConnectionPool,
+    EntityMcpDiscoveryService,
     // Issue #1 — see import comment above. Local registration avoids
     // a circular import. When the gate is enabled via
     // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1, ToolExecutorService now
@@ -55,6 +61,7 @@ import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.
     SchemaInjectorService,
     McpCredentialService,
     McpConnectionPool,
+    EntityMcpDiscoveryService,
   ],
 })
 export class ToolGatewayModule {}
