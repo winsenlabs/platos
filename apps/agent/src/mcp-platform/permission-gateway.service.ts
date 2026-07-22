@@ -178,6 +178,23 @@ const PLATFORM_TIER_MINIMUMS: Array<{ pattern: string; min: McpPermissionState }
   { pattern: "channels.update", min: "require_approval" },
   { pattern: "channels.delete", min: "require_approval" },
   { pattern: "channels.rotate_webhook_secret", min: "require_approval" },
+  // Connect v3 — marketplace channel-APP mutations (PlatosChannelApp +
+  // PlatosChannelInstallation). An app is OAuth-installed into N external
+  // workspaces, so every write has cross-tenant blast radius:
+  //   - create             mints a publishable Slack app identity + stores its
+  //                        encrypted clientSecret / signingSecret.
+  //   - update             can rotate the app's OAuth/signing credentials or
+  //                        rebind the default agent for every installation.
+  //   - delete             cascades every PlatosChannelInstallation + thread
+  //                        (uninstalls the app from all workspaces at once).
+  //   - bind_installation  rebinds ONE external workspace to a different agent /
+  //                        routing table.
+  // channel_apps.list / get / list_installations stay auto-allow (read-only,
+  // secrets redacted).
+  { pattern: "channel_apps.create", min: "require_approval" },
+  { pattern: "channel_apps.update", min: "require_approval" },
+  { pattern: "channel_apps.delete", min: "require_approval" },
+  { pattern: "channel_apps.bind_installation", min: "require_approval" },
   // MCPF-W5 — knowledge graph mutations.
   //   - delete_node     irreversibly cascade-deletes the entity AND every
   //                     relationship pointing to or from it.

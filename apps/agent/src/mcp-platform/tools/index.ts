@@ -56,6 +56,9 @@ import { buildEndUserToolHandlers } from "./end-users";
 // Connect reimagining — channels.* messaging-channel doorway management
 // (create / list / get / update / delete / rotate_webhook_secret).
 import { buildChannelToolHandlers } from "./channels";
+// Connect v3 — channel_apps.* marketplace-app management (create / list / get /
+// update / delete / list_installations / bind_installation).
+import { buildChannelAppToolHandlers } from "./channel-apps";
 import { buildTriggerToolHandlers } from "./trigger";
 import { buildSkillToolHandlers } from "./skills";
 import { buildPlatosControlToolHandlers } from "./platos-control";
@@ -143,6 +146,13 @@ export function buildPlatformToolHandlers(deps: {
    * Optional (best-effort); wired by McpPlatformController via ModuleRef.
    */
   invalidateChannelRuntime?: (connectionId: string) => void;
+  /**
+   * Connect v3 channel_apps.* — evict the channels runtime's cached decrypted
+   * bot token(s) for an app after update / delete / revoke so credential /
+   * install changes take effect immediately. Optional (best-effort); wired by
+   * McpPlatformController via ModuleRef.
+   */
+  invalidateChannelApp?: (appId: string) => void;
 }): McpToolHandler[] {
   const { agentCrud, conversation, rating, toolAudit } = deps;
 
@@ -765,6 +775,21 @@ export function buildPlatformToolHandlers(deps: {
       toolAudit: deps.toolAudit,
       // Evict the cached Chat instance after mutations (stale-credential fix).
       invalidateRuntime: deps.invalidateChannelRuntime,
+    }),
+  );
+
+  // ── Connect v3 channel_apps.* — marketplace-app management (7 tools) ─────
+  // CRUD over PlatosChannelApp + list/bind of its workspace installations.
+  // Scope-pinned; defaultAgentId + routing rule ids validated against the token
+  // scope; clientSecret + signingSecret encrypted at rest via the same
+  // MessageCryptoService envelope; mutations audited + floored require_approval.
+  handlers.push(
+    ...buildChannelAppToolHandlers({
+      prisma: deps.prisma,
+      messageCrypto: deps.messageCrypto,
+      toolAudit: deps.toolAudit,
+      // Evict the cached decrypted bot token(s) after mutations.
+      invalidateApp: deps.invalidateChannelApp,
     }),
   );
 

@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ChannelsInboundController } from "./channels-inbound.controller";
+import { ChannelAppOAuthController } from "./channel-app-oauth.controller";
+import { ChannelAppEventsController } from "./channel-app-events.controller";
 import { ChannelRuntimeService } from "./channel-runtime.service";
 import { AgentRuntimeModule } from "../agent-runtime/agent-runtime.module";
 import { MemoryModule } from "../memory/memory.module";
@@ -8,14 +10,20 @@ import { MonitoringModule } from "../monitoring/monitoring.module";
 /**
  * Channels RUNTIME + BRIDGE slice — the inbound webhook doorway + per-connection
  * Chat SDK runtime + the Platos bridge (for slack / telegram / whatsapp /
- * discord).
+ * discord), PLUS the Connect v3 marketplace channel-app surfaces:
+ *   - ChannelAppOAuthController  — Slack OAuth V2 install/callback (public;
+ *     CSRF via Redis `state` nonce, in-controller auth — see scope.guard.ts).
+ *   - ChannelAppEventsController — the single Slack Events API request URL per
+ *     app (public; Slack v0 signature verify + event_id dedupe, hands verified
+ *     events to ChannelRuntimeService.handleAppEvent).
  *
  * Dependencies (all via already-exporting feature modules — nothing new
- * provided here except the two channel components):
+ * provided here except the channel components):
  *   - AgentTaskService     ← AgentRuntimeModule (runs the Platos turn)
  *   - ConversationService  ← MemoryModule (getOrCreateThread / resolveEndUser)
- *   - MessageCryptoService ← MonitoringModule (decrypt connection credentials)
+ *   - MessageCryptoService ← MonitoringModule (decrypt connection/app secrets)
  *   - PRISMA_TOKEN         ← DatabaseModule (@Global — no import needed)
+ *   - REDIS_TOKEN          ← RedisModule (@Global — no import needed)
  *
  * The management surface (channels.controller.ts / channels.* MCP tools) lives
  * in AgentRuntimeModule; it evicts a stale Chat instance after an
@@ -25,7 +33,11 @@ import { MonitoringModule } from "../monitoring/monitoring.module";
  */
 @Module({
   imports: [AgentRuntimeModule, MemoryModule, MonitoringModule],
-  controllers: [ChannelsInboundController],
+  controllers: [
+    ChannelsInboundController,
+    ChannelAppOAuthController,
+    ChannelAppEventsController,
+  ],
   providers: [ChannelRuntimeService],
   exports: [ChannelRuntimeService],
 })
