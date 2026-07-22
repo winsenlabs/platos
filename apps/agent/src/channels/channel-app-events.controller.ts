@@ -175,6 +175,14 @@ export class ChannelAppEventsController {
     }
 
     // ── ACK fast, then route + run the turn DETACHED ──────────────────────
+    // Every non-url_verification, non-lifecycle event is admitted here and
+    // handed WHOLE to runtime.handleAppEvent — there is NO inner-type allowlist
+    // in this controller. That is deliberate: the "Agents & AI Apps" surface
+    // events (assistant_thread_started / assistant_thread_context_changed,
+    // Phase B) ride the SAME per-app events URL and MUST reach the runtime,
+    // which decides what to do per inner type. Do NOT add a type filter here —
+    // it would silently drop the assistant surface. Dedupe + ACK above are
+    // type-agnostic and stay identical.
     res.status(200).json({ ok: true });
     void (async () => {
       try {
