@@ -21,7 +21,6 @@ import { EvalsModule } from "./evals/evals.module";
 import { TestModule } from "./test/test.module";
 import { OpenApiModule } from "./openapi/openapi.module";
 import { McpPlatformModule } from "./mcp-platform/mcp-platform.module";
-import { McpAgentModule } from "./mcp-agent/mcp-agent.module";
 import { DocsMcpModule } from "./mcp-docs/docs-mcp.module";
 import { OAuthModule } from "./oauth/oauth.module";
 import { FilesModule } from "./files/files.module";
@@ -57,9 +56,6 @@ const imports = [
   EvalsModule,
   // Theme K — Platform MCP gateway: /mcp/platform + token mint + permission gate.
   McpPlatformModule,
-  // Theme K.6 — Agent MCP: third-party MCP server registry + per-agent
-  // binding + tool-dispatch executor (Surface 2).
-  McpAgentModule,
   // Phase 3 — Docs MCP: public, unauthenticated read-only catalog of
   // `content/{docs,guides}/*.md` exposed at `/mcp/docs`. Used by the
   // marketing site's "Talk to Platos" agent + any third-party MCP
