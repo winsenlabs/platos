@@ -17,6 +17,7 @@ import { ProviderRegistryService } from "./provider-registry.service";
 import { ScopedEnvService } from "./scoped-env.service";
 import { ModelCatalogService } from "./model-catalog.service";
 import type { RequestScope } from "../auth/scope.guard";
+import { requireOperator } from "../auth/scope.guard";
 
 /**
  * PIFSP-14 — Provider key management endpoints.
@@ -59,6 +60,9 @@ export class ProvidersController {
   @Get("keys")
   async listKeys(@Req() req: Request) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F7) — BYOK key inventory is operator-only
+    // (mirrors FilesController). No secret material, but scope-wide config metadata.
+    requireOperator(scope);
     const keys = await this.prisma.platosProviderKey.findMany({
       where: {
         organizationId: scope.organizationId,
@@ -97,6 +101,8 @@ export class ProvidersController {
     @Body() body: { provider: string; label: string; envVarName: string; isDefault?: boolean },
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F7) — provider-key config mutation is operator-only.
+    requireOperator(scope);
     if (!body.provider || !body.label || !body.envVarName) {
       throw new HttpException("provider, label, and envVarName are required", HttpStatus.BAD_REQUEST);
     }
@@ -149,6 +155,8 @@ export class ProvidersController {
     @Body() body: { label?: string; isDefault?: boolean },
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F7) — provider-key config mutation is operator-only.
+    requireOperator(scope);
     const existing = await this.prisma.platosProviderKey.findFirst({
       where: { id, organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
     });
@@ -182,6 +190,8 @@ export class ProvidersController {
   @Delete("keys/:id")
   async deleteKey(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F7) — provider-key deletion is operator-only.
+    requireOperator(scope);
     const existing = await this.prisma.platosProviderKey.findFirst({
       where: { id, organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
     });

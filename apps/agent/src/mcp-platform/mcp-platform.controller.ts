@@ -26,6 +26,7 @@ import { MCPPermissionGatewayService } from "./permission-gateway.service";
 import { buildPlatformToolHandlers } from "./tools";
 import { MacroRecordingState } from "./tools/macros";
 import type { RequestScope } from "../auth/scope.guard";
+import { requireOperator } from "../auth/scope.guard";
 import { AgentCrudService } from "../agent-runtime/agent-crud.service";
 import { ConversationService } from "../memory/conversation.service";
 import { AgentTaskService } from "../agent-runtime/agent-task.service";
@@ -674,6 +675,11 @@ export class McpPlatformController {
   ) {
     const scope = (req as any).scope as RequestScope | undefined;
     if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
+    // SECURITY (audit authz-2026-07-22 F5) — platform-token issuance is an
+    // operator/dashboard action. Without this, an end-user/guest session token
+    // self-mints an all-permissions `plt_mcp_` token (tier "scope",
+    // permissions:["*"]) and drives the operator control-plane. Fails CLOSED.
+    requireOperator(scope);
     try {
       return await this.tokenService.mint({
         scope,

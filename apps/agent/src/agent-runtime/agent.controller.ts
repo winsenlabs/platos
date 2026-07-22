@@ -306,7 +306,11 @@ export class AgentController {
       tag,
       pinned: pinnedFlag,
       archived: archivedFlag,
-      allUsers: allUsers === "true" || allUsers === "1",
+      // SECURITY (audit authz-2026-07-22 F1/F6) — `allUsers` drops the per-user
+      // ownership filter; it is an operator-only capability. Honor the flag ONLY
+      // for operator principals (mirror connections.gateway.ts:1073). A
+      // non-operator passing allUsers is scoped to their own userId, not 403'd.
+      allUsers: (allUsers === "true" || allUsers === "1") && scope.principal === "operator",
     });
   }
 
@@ -320,7 +324,9 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     const thread = await this.conversationService.getThread(threadId, scope, {
-      allUsers: allUsers === "true" || allUsers === "1",
+      // SECURITY (audit authz-2026-07-22 F1/F6) — operator-only cross-user view;
+      // non-operators fall back to their own-thread ownership check.
+      allUsers: (allUsers === "true" || allUsers === "1") && scope.principal === "operator",
     });
     if (!thread) return { error: "Thread not found", status: 404 };
     return thread;
@@ -518,7 +524,9 @@ export class AgentController {
     return this.conversationService.getMessages(threadId, scope, {
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
-      allUsers: allUsers === "true" || allUsers === "1",
+      // SECURITY (audit authz-2026-07-22 F1/F6) — operator-only cross-user view;
+      // non-operators fall back to their own-thread ownership check.
+      allUsers: (allUsers === "true" || allUsers === "1") && scope.principal === "operator",
     });
   }
 
@@ -973,6 +981,10 @@ export class AgentController {
   @Get("agents/:agentId")
   async getAgent(@Req() req: Request, @Param("agentId") agentId: string) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — full agent config (systemPrompt,
+    // tools, model routes) is an operator/dashboard read. The agent-pin only
+    // authenticates WHICH agent a runtime token may drive, not config access.
+    requireOperator(scope);
     const agent = await this.agentCrud.findById(agentId, scope);
     if (!agent) return { error: "Agent not found", status: 404 };
     return agent;
@@ -1214,12 +1226,16 @@ export class AgentController {
     @Body() body: UpdateAgentDto,
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — agent config mutation is operator-only.
+    requireOperator(scope);
     return this.agentCrud.update(agentId, scope, body);
   }
 
   @Delete("agents/:agentId")
   async deleteAgent(@Req() req: Request, @Param("agentId") agentId: string) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — agent deletion is operator-only.
+    requireOperator(scope);
     const deleted = await this.agentCrud.delete(agentId, scope);
     return { deleted };
   }
@@ -1246,6 +1262,8 @@ export class AgentController {
     @Query("take") take?: string,
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — version history exposes full config; operator-only.
+    requireOperator(scope);
     try {
       const parsedTake = take ? Number.parseInt(take, 10) : undefined;
       const result = await this.agentCrud.listVersions(agentId, scope, {
@@ -1270,6 +1288,8 @@ export class AgentController {
     @Param("versionId") versionId: string,
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — version config read; operator-only.
+    requireOperator(scope);
     const version = await this.agentCrud.getVersion(agentId, versionId, scope);
     if (!version) return { error: "Version not found", status: 404 };
     return version;
@@ -1283,6 +1303,8 @@ export class AgentController {
     @Param("versionId") versionId: string,
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — version rollback is operator-only.
+    requireOperator(scope);
     try {
       const agent = await this.agentCrud.rollbackToVersion(agentId, versionId, scope);
       return { agent };
@@ -1302,6 +1324,8 @@ export class AgentController {
     @Body() body: { canaryVersionId?: string | null; canaryPercent?: number },
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — canary routing config is operator-only.
+    requireOperator(scope);
     try {
       const agent = await this.agentCrud.setCanary(agentId, scope, {
         canaryVersionId: body.canaryVersionId ?? null,
@@ -1326,6 +1350,9 @@ export class AgentController {
     @Query("hours") hoursRaw?: string,
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — canary metrics aggregate is operator-only
+    // (mirrors the monitoring-aggregate norm in the same controller).
+    requireOperator(scope);
     const hours = hoursRaw ? parseInt(hoursRaw, 10) : undefined;
     try {
       return await this.agentCrud.getCanaryMetrics(agentId, scope, {
@@ -1344,6 +1371,8 @@ export class AgentController {
     @Body() body: { featureFlags?: Record<string, boolean> },
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — feature-flag mutation is operator-only.
+    requireOperator(scope);
     try {
       const agent = await this.agentCrud.setFeatureFlags(
         agentId,
@@ -1386,6 +1415,8 @@ export class AgentController {
   @Post("agents/:agentId/canary/promote")
   async promoteAgentCanary(@Req() req: Request, @Param("agentId") agentId: string) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F2) — canary promotion is operator-only.
+    requireOperator(scope);
     try {
       const agent = await this.agentCrud.promoteCanary(agentId, scope);
       return { agent };
@@ -1603,6 +1634,9 @@ export class AgentController {
     @Body() body: { enabled: boolean },
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F3) — flips a tool env-wide for all agents;
+    // operator/dashboard-only.
+    requireOperator(scope);
     const updated = await this.toolRegistry.setToolEnabled(
       this.scopeTuple(scope),
       entityId,
@@ -1627,6 +1661,11 @@ export class AgentController {
     @Body() body: { tool: string; params?: Record<string, unknown>; purpose?: string },
   ): Promise<any> {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F3) — the raw executor bypasses the
+    // per-agent tool ACL and fires connected integration side-effects under the
+    // entity HMAC. This wire-test surface is operator/dashboard-only; legitimate
+    // non-operator tool invocation must go through the agent loop (isVisibleToAgent).
+    requireOperator(scope);
     if (!body?.tool) {
       return { error: "tool name required", status: 400 };
     }
@@ -2852,6 +2891,17 @@ export class AgentController {
   @Get("monitoring/trace/:threadId")
   async getThreadTrace(@Req() req: Request, @Param("threadId") threadId: string) {
     const scope = this.getScope(req);
+    // SECURITY (audit authz-2026-07-22 F4) — buildThreadTrace filters by the
+    // (org,project,env) tuple alone, so any co-tenant token with a victim
+    // threadId read the victim's full messages+spans+cost. Ownership-gate the
+    // thread first (mirrors getThreadCost / audit H2): end-users only their own
+    // thread; operators any in-scope thread via allUsers.
+    const thread = await this.conversationService.getThread(threadId, scope as any, {
+      allUsers: scope.principal === "operator",
+    });
+    if (!thread) {
+      return { error: "Thread not found", status: 404 };
+    }
     const trace = await this.traceService.buildThreadTrace(this.scopeTuple(scope), threadId);
     if (!trace) {
       return { error: "Thread not found", status: 404 };
