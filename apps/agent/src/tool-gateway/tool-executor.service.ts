@@ -28,6 +28,16 @@ import {
   fetchWithValidatedRedirects,
 } from "../shared/url-validator";
 import type { RequestScope } from "../auth/scope.guard";
+import { env } from "../shared/env";
+// MCP-as-connected-entity (design Commit 4) — the two Phase-1 transport
+// primitives, relocated onto the entity dispatch path in Commit 2. mcpDispatch
+// resolves per-user credentials/URL through McpCredentialService (fail-closed
+// on a templated-but-unlinked `{{endUserId}}`) and calls the external server
+// through a pooled official-SDK Client. Both are providers of ToolGatewayModule,
+// so DI supplies them; they stay @Optional() only so bare-constructor test
+// fixtures (no MCP) keep working — the mcp branch guards on their presence.
+import { McpCredentialService } from "./mcp-transport/mcp-credential.service";
+import { McpConnectionPool } from "./mcp-transport/mcp-client-pool.service";
 // Theme CTX.2 — tool-arg auto-injection + outgoing `_context` envelope
 // assembly. Both read from `scope.sessionContext` + `scope.contextMapping`
 // (populated at stream() entry). Fail-open when unset.
@@ -47,6 +57,14 @@ import {
   resolveToolMappings as resolveCtxToolMappings,
   type AgentContextMapping,
 } from "../agent-runtime/context-automap.service";
+
+/**
+ * The literal per-user identity template token. mcpDispatch performs a final
+ * post-substitution scan for this string on the resolved URL + every resolved
+ * header value: if it survives, the call is refused with ZERO bytes upstream
+ * (design §3.2 — the belt-and-suspenders half of the fail-closed invariant).
+ */
+const MCP_END_USER_TEMPLATE = "{{endUserId}}";
 
 interface ToolCallRequest {
   tool: string;
@@ -89,6 +107,16 @@ export interface ToolCallOrigin {
     | "wire_test";
   mcpUserId?: string;
   mcpClientId?: string;
+  /**
+   * MCP per-user isolation (the crown jewel). The resolved
+   * `PlatosEndUser.externalUserId` — the customer-meaningful opaque id that
+   * becomes Composio's `user_id`. `mcpDispatch` substitutes it into the
+   * `connectionKind="mcp"` server's URL + headers wherever `{{endUserId}}`
+   * appears. When a template needs it and it is null/absent, dispatch fails
+   * CLOSED (§3.2) — we NEVER fall back to `scope.userId`, an org id, or any
+   * shared identity. Wire dispatch ignores this field entirely.
+   */
+  endUserId?: string | null;
 }
 
 /**
@@ -127,6 +155,13 @@ export class ToolExecutorService {
     // persisted approval + Socket.IO event + BLPOP wait.
     @Optional() private readonly approvalsService?: MonitoringApprovalsService,
     @Optional() @Inject(REDIS_TOKEN) private readonly redis?: Redis,
+    // MCP-as-connected-entity (design Commit 4) — pooled outbound MCP client +
+    // per-user credential/URL resolver. Both are ToolGatewayModule providers, so
+    // DI always supplies them in the running binary; @Optional() only keeps
+    // bare-constructor test fixtures (which never exercise an mcp entity)
+    // working. The `connectionKind === "mcp"` branch guards on their presence.
+    @Optional() private readonly mcpCredentials?: McpCredentialService,
+    @Optional() private readonly mcpPool?: McpConnectionPool,
   ) {
     this.prisma = prisma;
   }
@@ -678,6 +713,11 @@ export class ToolExecutorService {
         source: origin?.source ?? null,
         mcpUserId: origin?.mcpUserId ?? null,
         mcpClientId: origin?.mcpClientId ?? null,
+        // MCP per-user isolation — persist the resolved end-user identity
+        // (externalUserId) verbatim so the replay endpoint can reconstruct
+        // `origin.endUserId` and re-dispatch to the same user (or fail closed
+        // when null). Null for wire calls. Design §3.1.
+        endUserId: origin?.endUserId ?? null,
       });
       if (auditId) {
         return { ...result, auditId };
@@ -740,13 +780,26 @@ export class ToolExecutorService {
       // back another tenant's HMAC signing key. PlatosConnectedEntity is scoped
       // by (organizationId, projectId) only — it has NO environmentId column,
       // so do not add one here.
+      // MCP-as-connected-entity (design Commit 4) — also load `connectionKind`
+      // (the transport discriminator) and the 1:1 `mcpClient` transport config.
+      // `mcpClient: true` inside a `select` returns the full related row (the
+      // select-mode equivalent of `include: { mcpClient: true }`) while keeping
+      // the read tight, per the audit-L2 defense-in-depth note above.
       const entity = await this.prisma.platosConnectedEntity.findFirst({
         where: {
           id: toolEntry.entityPk,
           organizationId: scope.organizationId,
           projectId: scope.projectId,
         },
-        select: { serviceSecret: true, entityId: true, organizationId: true, projectId: true },
+        select: {
+          id: true,
+          serviceSecret: true,
+          entityId: true,
+          organizationId: true,
+          projectId: true,
+          connectionKind: true,
+          mcpClient: true,
+        },
       });
       if (!entity) {
         return {
@@ -761,6 +814,29 @@ export class ToolExecutorService {
           entityPk: toolEntry.entityPk,
         };
       }
+
+      // ── connectionKind === "mcp" DISPATCH BRANCH (design §4) ───────────────
+      // The single executor change. Fires BEFORE any wire read: no
+      // `serviceSecret`, no HMAC, no `_context` envelope, no OIDC-token block,
+      // no CTX.6 arg-injection, no WS/HTTP callback — all of those are wire-only.
+      // An mcp entity is outbound: Platos is the CLIENT. Per-user identity flows
+      // via `{{endUserId}}` substituted into the pooled client's URL/headers and
+      // fails CLOSED when a template needs an end user we don't have (§3.2).
+      // mcpDispatch never throws — it always returns the standard result shape,
+      // so it is safe inside this try. `entity.connectionKind` defaults to
+      // "wire" for every pre-migration row, so the wire path is untouched (AC7).
+      if (entity.connectionKind === "mcp") {
+        return await this.mcpDispatch(
+          entity,
+          entity.mcpClient ?? null,
+          toolEntry,
+          call,
+          scope,
+          origin,
+          startTime,
+        );
+      }
+
       serviceSecret = entity.serviceSecret;
 
       // Theme CTX.6 — 4-tier resolution (constant → session-override →
@@ -1080,14 +1156,205 @@ export class ToolExecutorService {
   }
 
   /**
+   * MCP-as-connected-entity dispatch (design §3.2 / §4) — the outbound path for
+   * a `connectionKind === "mcp"` entity. Platos is the CLIENT here: it resolves
+   * the per-user URL + headers, then calls the external server through a pooled
+   * official-SDK `Client`. There is no HMAC handshake, no callback URL, no
+   * `_context` envelope, and no OIDC-token block — those are all wire-only.
+   *
+   * The per-user isolation invariant is enforced twice, belt-and-suspenders:
+   *   1. `resolveUrl` / `resolveHeaders` THROW `McpCredentialError` when a
+   *      template references `{{endUserId}}` and no end user is resolved — the
+   *      throw is caught here and surfaced as a structured failure with ZERO
+   *      bytes upstream (no pool `getClient`, no `callTool`).
+   *   2. A final post-substitution scan on the resolved URL + every resolved
+   *      header value: if the literal `{{endUserId}}` survived (a substitution
+   *      bug), refuse before touching the pool/transport. We NEVER fall back to
+   *      `scope.userId`, an org id, or any shared identity (AC3 + AC4).
+   * A pooled `Client` is therefore only ever built from fully-substituted
+   * url+headers, and the pool key includes both (§3.3), so two users can never
+   * share a session even if a wrong value slipped through.
+   *
+   * Never throws — always returns the standard `{ result, toolId, entityId,
+   * entityPk }` shape so the `execute()` wrapper records health + audit (with
+   * `entityPk` now dereferencing a real `PlatosConnectedEntity`). Redaction: it
+   * never logs resolved headers or a resolved URL, per the McpCredentialService
+   * contract (AC7).
+   */
+  private async mcpDispatch(
+    entity: { id: string; entityId: string },
+    mcpClient:
+      | {
+          transport: string;
+          url?: string | null;
+          headersTemplate?: unknown;
+          credsSecretKey?: string | null;
+        }
+      | null,
+    toolEntry: OrgToolEntry,
+    call: ToolCallRequest,
+    scope: RequestScope,
+    origin: ToolCallOrigin | undefined,
+    startTime: number,
+  ): Promise<{
+    result: ToolCallResult;
+    toolId?: string;
+    entityId?: string;
+    entityPk?: string;
+  }> {
+    const ids = {
+      toolId: toolEntry.toolId,
+      entityId: toolEntry.sourceEntityId,
+      entityPk: toolEntry.entityPk,
+    };
+    // Every return path records health (like the wire path) + carries the ids so
+    // the audit row is attributed. `extra` supplies error/result.
+    const done = async (
+      status: "success" | "failed" | "timeout",
+      extra: { error?: string; result?: unknown },
+    ) => {
+      const latencyMs = Date.now() - startTime;
+      await this.recordHealth(
+        ids.toolId,
+        ids.entityPk,
+        scope.environmentId,
+        status,
+        latencyMs,
+      ).catch(() => {});
+      return { result: { tool: call.tool, status, latencyMs, ...extra }, ...ids };
+    };
+
+    // The pool + credential resolver are ToolGatewayModule providers; missing
+    // only in a bare test fixture. Fail structured rather than NPE.
+    if (!this.mcpCredentials || !this.mcpPool) {
+      return await done("failed", {
+        error: "MCP transport not wired in this process",
+      });
+    }
+
+    try {
+      if (!mcpClient) {
+        return await done("failed", {
+          error: "MCP entity has no transport configuration (mcpClient row missing)",
+        });
+      }
+      const transport = mcpClient.transport;
+      if (transport !== "remote-http" && transport !== "remote-sse") {
+        if (transport === "stdio") {
+          return await done("failed", {
+            error: "stdio transport dispatch not yet implemented (K.10)",
+          });
+        }
+        if (typeof transport === "string" && transport.startsWith("hosted-")) {
+          return await done("failed", {
+            error: `hosted transport dispatch not yet implemented: ${transport}`,
+          });
+        }
+        return await done("failed", {
+          error: `unsupported MCP transport: ${transport}`,
+        });
+      }
+      // Capture into a local so the non-null narrowing is robust (variable, not
+      // property, narrowing) across the resolver call below.
+      const urlTemplate = mcpClient.url;
+      if (!urlTemplate) {
+        return await done("failed", {
+          error: "mcpClient.url missing for remote transport",
+        });
+      }
+
+      // Per-user identity from the origin. NEVER `scope.userId` — a missing id
+      // must fail closed, not silently reuse the operator/session identity.
+      const endUserId = origin?.endUserId ?? null;
+      const scopeTuple = {
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+      };
+
+      // Fail-closed resolution (§3.2). Both may THROW McpCredentialError on a
+      // templated-but-unlinked `{{endUserId}}` (or a `{{secret}}` that can't be
+      // resolved) — caught below, surfaced structured, zero bytes upstream. The
+      // secret (if any) is fetched lazily per-env via ScopedEnvService.
+      const resolvedUrl = this.mcpCredentials.resolveUrl(urlTemplate, endUserId);
+      const resolvedHeaders = await this.mcpCredentials.resolveHeaders(
+        mcpClient,
+        scopeTuple,
+        endUserId,
+      );
+
+      // Belt-and-suspenders dispatch-boundary scan (§3.2). If `{{endUserId}}`
+      // survived substitution anywhere, refuse before ANY pool/transport touch.
+      if (
+        resolvedUrl.includes(MCP_END_USER_TEMPLATE) ||
+        Object.values(resolvedHeaders).some((v) =>
+          v.includes(MCP_END_USER_TEMPLATE),
+        )
+      ) {
+        return await done("failed", { error: "tool requires a linked user" });
+      }
+
+      // Cheap early SSRF reject; the pool re-validates + address-pins every hop
+      // of every request too (defense in depth). Never surfaces header/secret.
+      const urlCheck = await validatePublicUrl(resolvedUrl);
+      if (!urlCheck.ok) {
+        return await done("failed", {
+          error: `MCP server URL blocked: ${describeUrlValidationError(urlCheck.error)}`,
+        });
+      }
+
+      // Only fully-substituted url+headers reach the pool; the key includes both
+      // so per-user sessions never collide (§3.3).
+      const sdkClient = await this.mcpPool.getClient({
+        server: { id: entity.id },
+        resolvedUrl,
+        resolvedHeaders,
+        transportKind: transport,
+      });
+      const callRes: any = await sdkClient.callTool(
+        {
+          name: call.tool,
+          arguments: (call.params ?? {}) as Record<string, unknown>,
+        },
+        undefined,
+        { timeout: env.MCP_CALL_TIMEOUT_MS ?? 30_000 },
+      );
+
+      // The SDK returns `{ content, isError? }` for a tool-level error rather
+      // than throwing; a transport/protocol error throws (caught below). Pass
+      // the full result through either way so the LLM sees the content.
+      const isErr =
+        callRes && typeof callRes === "object" && callRes.isError === true;
+      return await done(isErr ? "failed" : "success", {
+        result: callRes,
+        ...(isErr ? { error: "MCP tool returned an error result" } : {}),
+      });
+    } catch (err: any) {
+      // Covers the fail-closed McpCredentialError throw ("tool requires a linked
+      // end user"), secret-resolution failures, and transport/timeout errors.
+      const msg = err?.message ? String(err.message) : "MCP dispatch failed";
+      const isTimeout = /timed?\s*out|timeout/i.test(msg);
+      return await done(isTimeout ? "timeout" : "failed", { error: msg });
+    }
+  }
+
+  /**
    * Execute multiple tool calls in parallel.
    * Each call runs independently — one failure doesn't affect others.
+   *
+   * `origin` (design Commit 4) is forwarded into every `execute()` so the
+   * turn-loop + skill entry points can carry the resolved end-user identity all
+   * the way to `mcpDispatch`. Optional + defaulted, so the many 2-arg wire call
+   * sites are unaffected. Without this forward, every `{{endUserId}}` MCP tool
+   * invoked from a live turn or a skill would fail closed — a functional
+   * regression, not just an isolation gap.
    */
   async executeBatch(
     calls: ToolCallRequest[],
     scope: RequestScope,
+    origin?: ToolCallOrigin,
   ): Promise<ToolCallResult[]> {
-    return Promise.all(calls.map((call) => this.execute(call, scope)));
+    return Promise.all(calls.map((call) => this.execute(call, scope, origin)));
   }
 
   /**

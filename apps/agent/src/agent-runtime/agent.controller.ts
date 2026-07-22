@@ -1716,10 +1716,41 @@ export class AgentController {
         organizationId: scope.organizationId,
         projectId: scope.projectId,
       },
-      select: { serviceSecret: true, entityId: true },
+      // GAP-4 — also load the transport discriminator so mcp-kind entities take
+      // the executor-delegated path below instead of the wire HMAC-POST.
+      select: { serviceSecret: true, entityId: true, connectionKind: true },
     });
     if (!entity) {
       throw new NotFoundException({ error: "Entity not found for this tool", toolId });
+    }
+
+    // GAP-4 (design §4) — mcp-kind entities have no serviceSecret to HMAC-sign
+    // and no callbackUrl to POST (dummy secret + "mcp:noop"/null callback), so
+    // the wire dispatch below is meaningless for them. Delegate to the executor
+    // so the call runs through the mcpDispatch branch (pooled SDK client.callTool
+    // + per-user {{endUserId}} resolution) — full parity, one branch. This
+    // dashboard test carries no end-user context, so a {{endUserId}}-templated
+    // tool fails closed at the §3.2 boundary (never a shared identity). The
+    // endpoint must NEVER read entity.serviceSecret or toolEntry.callbackUrl for
+    // an mcp row — the branch returns before either is touched.
+    if (entity.connectionKind === "mcp") {
+      const t0 = Date.now();
+      const execResult = await this.toolExecutor.execute(
+        { tool: toolEntry.toolName, params: body.params ?? {}, purpose: "ui_test" },
+        scope,
+        { source: "wire_test" },
+      );
+      const durationMs = Date.now() - t0;
+      const ok = execResult.status === "success";
+      return {
+        status: ok ? 200 : 502,
+        headers: {},
+        body: ok
+          ? execResult.result ?? null
+          : { error: execResult.error ?? "MCP dispatch failed" },
+        durationMs,
+        ...(ok ? {} : { error: execResult.error ?? "MCP dispatch failed" }),
+      };
     }
 
     // Build request body — same shape as production path.
@@ -2080,6 +2111,10 @@ export class AgentController {
           purpose: "wire-test",
         },
         scope,
+        // EOBD.97 wire-test attributes its audit row. NO endUserId is
+        // synthesized here (design §3.1 row iv-b) — for an mcp-kind entity a
+        // {{endUserId}} tool fails closed at the §3.2 guard, which is correct.
+        { source: "wire_test" },
       );
       return {
         status: result.status,
@@ -3846,6 +3881,18 @@ Write the summary now:`;
         purpose: "replay",
       },
       scope,
+      // MCP-as-connected-entity (design §3.1 row iii) — reconstruct the origin
+      // from the stored audit row so a replayed connectionKind="mcp" tool
+      // re-substitutes the SAME end user (`endUserId`) it originally ran as, and
+      // OIDC identity (`mcpUserId`) is preserved. A row with no stored end user
+      // fails closed on a `{{endUserId}}` template — correct: you cannot
+      // silently re-attribute it. `source: "replay"` tags the replay's own row.
+      {
+        source: "replay",
+        endUserId: original.endUserId ?? undefined,
+        mcpUserId: original.mcpUserId ?? undefined,
+        mcpClientId: original.mcpClientId ?? undefined,
+      },
     );
 
     return {

@@ -237,6 +237,11 @@ export function buildEntityToolHandlers(deps: {
           const result = await toolExecutor.execute(
             { tool: toolName, params: toolParams, purpose: "wire-test" },
             scope as RequestScope,
+            // Attribute the audit row. NO endUserId is synthesized (design §3.1
+            // row iv) — entities.wire_test targets wire entities; if ever aimed
+            // at an mcp-kind tool with a {{endUserId}} template it fails closed
+            // at the §3.2 guard, which is correct.
+            { source: "wire_test" },
           );
           return {
             entityId,

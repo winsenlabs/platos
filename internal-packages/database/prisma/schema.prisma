@@ -4162,6 +4162,14 @@ model PlatosToolCallAudit {
   /// OAuth client id that made the call (the MCP client's DCR-assigned
   /// client_id). Populated only on `source = "mcp_client"`.
   mcpClientId String?
+  /// The resolved end-user identity substituted into a `connectionKind="mcp"`
+  /// dispatch — the customer-meaningful opaque id (PlatosEndUser.externalUserId,
+  /// i.e. Composio's `user_id`). Stored VERBATIM (like mcpUserId), not as the
+  /// `platosEndUserId` FK, because it is the exact value that was substituted
+  /// into `{{endUserId}}` and it is what replay reconstructs into `origin` so a
+  /// re-dispatch targets the same user (or fails closed when null). Nullable —
+  /// wire calls and legacy rows leave it null. See design §3.1/§3.2.
+  endUserId   String?
 
   createdAt DateTime @default(now())
 

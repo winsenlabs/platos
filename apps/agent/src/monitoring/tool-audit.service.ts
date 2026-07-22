@@ -30,6 +30,12 @@ export interface ToolAuditRecord {
   source: string | null;
   mcpUserId: string | null;
   mcpClientId: string | null;
+  /**
+   * MCP per-user isolation — the PlatosEndUser.externalUserId substituted into
+   * a `connectionKind="mcp"` dispatch's `{{endUserId}}`. Verbatim (like
+   * mcpUserId), null for wire/legacy rows. Replay reads it back into `origin`.
+   */
+  endUserId: string | null;
   createdAt: string;
 }
 
@@ -66,6 +72,12 @@ export interface RecordToolAuditInput {
   source?: string | null;
   mcpUserId?: string | null;
   mcpClientId?: string | null;
+  /**
+   * MCP per-user isolation — the resolved end-user identity (externalUserId)
+   * substituted into a `connectionKind="mcp"` dispatch. Nullable; wire calls
+   * pass none.
+   */
+  endUserId?: string | null;
 }
 
 /**
@@ -141,6 +153,8 @@ export class ToolAuditService {
           source: input.source ?? null,
           mcpUserId: input.mcpUserId ?? null,
           mcpClientId: input.mcpClientId ?? null,
+          // MCP per-user isolation — verbatim externalUserId (Composio user_id).
+          endUserId: input.endUserId ?? null,
         },
         select: { id: true },
       });
@@ -239,6 +253,7 @@ export class ToolAuditService {
       source: r.source ?? null,
       mcpUserId: r.mcpUserId ?? null,
       mcpClientId: r.mcpClientId ?? null,
+      endUserId: r.endUserId ?? null,
       createdAt:
         r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     };

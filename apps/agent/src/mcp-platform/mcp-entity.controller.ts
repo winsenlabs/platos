@@ -354,6 +354,38 @@ export class McpEntityController {
     };
   }
 
+  /**
+   * MCP-as-connected-entity (design §3.1 row ii) — resolve the end-user identity
+   * for a tool `origin` on the inbound mcp_client path. The scope's `userId` is
+   * `token.mcpUserId`; look up a `PlatosEndUser` by that `externalUserId` in
+   * scope and return its `externalUserId` (Composio's `user_id`) when one exists.
+   *
+   * FAIL-CLOSED by omission: when no `PlatosEndUser` resolves (e.g. an
+   * `mcp:oidc:*` token that maps through the OIDC session, not an externalUserId,
+   * or a client with no end-user row yet) this returns `undefined`, so a
+   * downstream `connectionKind="mcp"` tool with a `{{endUserId}}` template fails
+   * closed at the §3.2 guard — never a shared/wrong identity. Any error →
+   * `undefined` (fail closed).
+   */
+  private async resolveEndUserIdForScope(
+    scope: RequestScope,
+  ): Promise<string | undefined> {
+    try {
+      const endUser = await this.prisma.platosEndUser.findFirst({
+        where: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          externalUserId: scope.userId,
+        },
+        select: { externalUserId: true },
+      });
+      return endUser?.externalUserId ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Filter the entity's matrix to `toolAllowlist`. Empty list = no tools. */
   private filteredAllowlist(entityCfg: { toolAllowlist: string[] }): Set<string> {
     return new Set(entityCfg.toolAllowlist ?? []);
@@ -980,6 +1012,10 @@ export class McpEntityController {
       };
     }
 
+    // MCP-as-connected-entity (design §3.1 row ii) — resolve the end user so a
+    // downstream connectionKind="mcp" tool can substitute `{{endUserId}}`;
+    // undefined ⇒ templated mcp tool fails closed at the §3.2 guard.
+    const endUserId = await this.resolveEndUserIdForScope(scope);
     const result = await this.toolExecutor.execute(
       {
         tool: name,
@@ -995,6 +1031,7 @@ export class McpEntityController {
         source: "mcp_client",
         mcpUserId: token.mcpUserId,
         mcpClientId: token.clientId,
+        endUserId,
       },
     );
 

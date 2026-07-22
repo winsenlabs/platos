@@ -1478,6 +1478,47 @@ export class AgentService {
     }
   }
 
+  /**
+   * MCP-as-connected-entity (design §3.1) — resolve the turn's end-user identity
+   * (`PlatosEndUser.externalUserId`, i.e. Composio's `user_id`) for the tool-call
+   * `origin`. Loads the thread's `platosEndUserId` FK (resolved earlier by
+   * `ConversationService.resolveEndUser`), then that end user's `externalUserId`.
+   * Returns `null` when unresolvable — a `{{endUserId}}`-templated MCP tool then
+   * fails CLOSED at the dispatch boundary (§3.2). Both reads are scope-pinned;
+   * any error → `null` (fail closed, never throw into the turn loop).
+   */
+  private async resolveOriginEndUserId(
+    scope: RequestScope,
+  ): Promise<string | null> {
+    try {
+      const threadId = scope.sessionId;
+      if (!threadId) return null;
+      const thread = await this.prisma.platosAgentThread.findFirst({
+        where: {
+          id: threadId,
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+        },
+        select: { platosEndUserId: true },
+      });
+      const endUserPk = thread?.platosEndUserId;
+      if (!endUserPk) return null;
+      const endUser = await this.prisma.platosEndUser.findFirst({
+        where: {
+          id: endUserPk,
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+        },
+        select: { externalUserId: true },
+      });
+      return endUser?.externalUserId ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   private buildMetaTools(
     scope: RequestScope,
     agentConfig?: AgentConfig,
@@ -1680,6 +1721,19 @@ export class AgentService {
       },
     };
 
+    // MCP-as-connected-entity (design §3.1) — per-turn memo of the resolved
+    // end-user identity (externalUserId → Composio user_id). Resolved lazily on
+    // the first remote dispatch and reused for the whole turn so a turn with N
+    // execute_tools calls does at most one thread+end-user lookup. `undefined` =
+    // not yet resolved; `null` = resolved-to-none (fail closed downstream).
+    let _originEndUserId: string | null | undefined;
+    const resolveEndUserOnce = async (): Promise<string | null> => {
+      if (_originEndUserId === undefined) {
+        _originEndUserId = await this.resolveOriginEndUserId(scope);
+      }
+      return _originEndUserId;
+    };
+
     // execute_tools — call tools on the org's backend
     tools.execute_tools = {
       description: "Execute one or more tools. Each tool call runs on the organization's backend and returns structured results.",
@@ -1761,6 +1815,8 @@ export class AgentService {
               });
             }
           } else {
+            // Carry the resolved end user to mcpDispatch (design §3.1 row i).
+            const endUserId = await resolveEndUserOnce();
             const remote = await this.toolExecutor.executeBatch(
               remoteCalls.map(({ call }) => ({
                 tool: call.tool,
@@ -1768,6 +1824,7 @@ export class AgentService {
                 purpose: call.purpose,
               })),
               scope,
+              { source: "agent_turn", endUserId },
             );
             remote.forEach((r, j) => {
               const remoteEntry = remoteCalls[j];
@@ -3874,9 +3931,12 @@ export class AgentService {
           // Filter by enabled tools
           const allowed = calls.filter((c: any) => args.enabledTools.includes(c.tool));
           const blocked = calls.filter((c: any) => !args.enabledTools.includes(c.tool));
+          // Carry the owning thread's end user to mcpDispatch (design §3.1 row v).
+          const endUserId = await this.resolveOriginEndUserId(args.scope);
           const results = await this.toolExecutor!.executeBatch(
             allowed.map((c: any) => ({ tool: c.tool, params: c.params })),
             args.scope,
+            { source: "skill_invocation", endUserId },
           );
           return {
             results,

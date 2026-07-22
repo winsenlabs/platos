@@ -135,6 +135,13 @@ export class InternalExecuteToolController {
         parentSpanId?: string;
       };
       origin?: { agentId?: string; threadId?: string; callId?: string };
+      // MCP-as-connected-entity (design §7) — the resolved end-user identity
+      // (externalUserId) threaded through the HMAC-signed payload so a
+      // connectionKind="mcp" tool invoked from a durable Trigger.dev task can
+      // substitute `{{endUserId}}`. Absent ⇒ a templated mcp tool fails closed
+      // at the §3.2 guard (correct — a durable task with no reconstructed end
+      // user cannot silently borrow a shared identity).
+      endUserId?: string;
     },
   ) {
     if (!timestamp) {
@@ -177,6 +184,9 @@ export class InternalExecuteToolController {
     const result = await this.toolExecutor.execute(
       { tool: body.tool, params: body.params ?? {}, purpose: body.purpose || "durable" },
       scope,
+      // Reconstructed agent-turn origin (design §3.1 row vi). `endUserId` rides
+      // the HMAC-verified payload; absent ⇒ templated mcp tool fails closed.
+      { source: "agent_turn", endUserId: body.endUserId },
     );
     return {
       status: result.status,
