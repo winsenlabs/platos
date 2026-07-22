@@ -178,6 +178,13 @@ const PLATFORM_TIER_MINIMUMS: Array<{ pattern: string; min: McpPermissionState }
   { pattern: "channels.update", min: "require_approval" },
   { pattern: "channels.delete", min: "require_approval" },
   { pattern: "channels.rotate_webhook_secret", min: "require_approval" },
+  // Connect v3 (Phase D) — BYO manifest MINT on the connection tier. Strictly
+  // MORE powerful than channels.create: it creates a PlatosChannelConnection
+  // row, POSTs the pasted config token to Slack's apps.manifest.create, and
+  // stores the returned client_secret / signing_secret encrypted on the row.
+  // The REST path is operator-gated; without this entry the MCP path would
+  // resolve to auto_allow for a scope-tier token. Gate it like its siblings.
+  { pattern: "channels.mint_from_manifest", min: "require_approval" },
   // Connect v3 — marketplace channel-APP mutations (PlatosChannelApp +
   // PlatosChannelInstallation). An app is OAuth-installed into N external
   // workspaces, so every write has cross-tenant blast radius:

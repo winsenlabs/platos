@@ -7,6 +7,8 @@ import {
   type OnModuleDestroy,
 } from "@nestjs/common";
 import { PRISMA_TOKEN } from "../shared/database.provider";
+import { REDIS_TOKEN } from "../shared/redis.provider";
+import type Redis from "ioredis";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { ConversationService } from "../memory/conversation.service";
 import { AgentTaskService } from "../agent-runtime/agent-task.service";
@@ -224,6 +226,15 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   private readonly appCache = new Map<string, CachedAppCreds>();
   private readonly TTL_MS = 10 * 60 * 1000; // 10 min
   /**
+   * Connect v3 (Phase D) token rotation — refresh a rotating installation's bot
+   * token when it is within this window of expiry (or already past). Slack
+   * rotating tokens live 43200s (12h); 120s of headroom refreshes ahead of any
+   * plausible clock skew / in-flight turn without churning.
+   */
+  private static readonly TOKEN_REFRESH_SKEW_MS = 120 * 1000; // 120s
+  /** TTL of the single-refresh Redis lock `chanapp:refresh:<installationId>`. */
+  private static readonly REFRESH_LOCK_TTL_S = 30;
+  /**
    * Connect v3 (Phase C) — POSITIVE account-link memo: `installationId:slackHandle`
    * → expiry epoch-ms. A `linking:required` app checks per message whether the
    * author's slack person has a verified email link; a hit is cached for 10 min
@@ -237,6 +248,10 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    // Connect v3 (Phase D) — token rotation needs a fleet-wide single-refresh
+    // lock so concurrent events can't double-refresh a single-use refresh token.
+    // RedisModule is @Global, so no ChannelsModule import is required.
+    @Inject(REDIS_TOKEN) private readonly redis: Redis,
     private readonly messageCrypto: MessageCryptoService,
     private readonly conversationService: ConversationService,
     private readonly agentTaskService: AgentTaskService,
@@ -868,7 +883,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   // a bare Slack Web API `chat.postMessage` over global fetch. No adapter, no
   // Postgres adapter-state, no ESM SDK load on this path. When Phase B adds the
   // AI-Apps streaming surface, a cached Chat instance can slot in behind the
-  // same getAppBotToken/invalidateApp seam.
+  // same getFreshBotToken/invalidateApp seam.
   // ───────────────────────────────────────────────────────────────────────
 
   /**
@@ -943,9 +958,11 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
 
     // Resolve the reply token UP FRONT — no point running a turn we cannot
     // deliver. Fail-closed: an undecryptable token skips the event entirely.
+    // getFreshBotToken also ROTATES the token when this is a rotating install
+    // (Phase D) within 120s of expiry, under a fleet-wide single-refresh lock.
     let botToken: string;
     try {
-      botToken = this.getAppBotToken(app, installation);
+      botToken = await this.getFreshBotToken(installation, app);
     } catch {
       this.logger.error(
         `[channel-apps] bot token unavailable app=${appId} installation=${installationId}`,
@@ -1154,9 +1171,11 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Need the bot token to decorate the thread; fail-closed on decrypt.
+    // getFreshBotToken rotates a Phase-D rotating token near expiry (single
+    // Redis-locked refresh) before we use it on the assistant surface.
     let botToken: string;
     try {
-      botToken = this.getAppBotToken(app, installation);
+      botToken = await this.getFreshBotToken(installation, app);
     } catch {
       this.logger.error(
         `[channel-apps] bot token unavailable (assistant_thread_started) app=${appId} installation=${installationId}`,
@@ -1445,17 +1464,352 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Bot token for an installation, ROTATION-fresh (Phase D). THE single entry
+   * point every bot-token read must go through — handleAppEvent and
+   * handleAssistantThreadStarted both route here (and this method is `public`
+   * so a future caller such as the account-link confirmation DM can reuse the
+   * same locked-refresh seam instead of decrypting a possibly-expired token).
+   *
+   * NON-ROTATING installs (the default; no `tokenExpiresAt` recorded) short
+   * circuit to the plain decrypted token — ZERO behavior change, zero extra I/O.
+   * The runtime signal for "this install rotates" is the per-installation
+   * `tokenExpiresAt` (populated by the OAuth callback only when Slack returns
+   * `expires_in`), NOT the app-level `PlatosChannelApp.tokenRotation` flag:
+   * `tokenExpiresAt` reflects the ACTUAL grant Slack issued, so it is the
+   * strictly-more-precise place to key the runtime decision (the app flag gates
+   * the manifest/OAuth side; a grant that carries an expiry must be refreshed
+   * regardless of the flag, and one that carries none cannot be).
+   *
+   * ORG-INSTALL (Enterprise Grid) NOTE: `installation` here has already been
+   * resolved by the events controller's findActiveInstallation (which applies
+   * the teamId:null→enterpriseId Grid fallback), so refresh keys off the
+   * resolved row's `id` for BOTH the DB write and the Redis lock — there is no
+   * (teamId/enterpriseId) re-routing on this path to drift from the controller's
+   * convention. See the ORG-INSTALL invariant block in
+   * channel-app-events.controller.ts.
+   *
+   * Fail-closed on a TOTAL decrypt failure (THROWS, like getAppBotToken — the
+   * caller skips the event). A failed REFRESH degrades to the current token
+   * (best-effort): a token still valid for up to 120s can serve this one event
+   * while the next event retries.
+   */
+  async getFreshBotToken(installation: any, app: any): Promise<string> {
+    // Current decrypted token — also the ONLY path for non-rotating installs.
+    // Throws (fail-closed) when the stored token is entirely unusable.
+    const current = this.getAppBotToken(app, installation);
+
+    // No expiry recorded ⇒ not a rotating install ⇒ current token is authoritative.
+    const expMs = this.expiryMs(installation.tokenExpiresAt);
+    if (!expMs) return current;
+    // Comfortably before the refresh window ⇒ current token is still good.
+    if (Date.now() < expMs - ChannelRuntimeService.TOKEN_REFRESH_SKEW_MS) {
+      return current;
+    }
+    // Within 120s of expiry (or past) ⇒ rotate under a fleet-wide single-flight
+    // lock (refresh tokens are SINGLE-USE with a 2-active cap — a concurrent
+    // double-refresh orphans one).
+    return this.rotateBotToken(installation, app, current);
+  }
+
+  /**
+   * Rotate a rotating installation's bot token under a cross-process
+   * single-refresh lock (`chanapp:refresh:<installationId>`, SET NX EX 30).
+   * WINNER performs the Slack refresh; LOSER waits for the lock to clear then
+   * re-reads the freshly-rotated row. On a Redis outage we refresh WITHOUT the
+   * lock (a rare duplicate refresh is within Slack's 2-active cap, whereas
+   * skipping the refresh entirely would post an expired token).
+   */
+  private async rotateBotToken(
+    installation: any,
+    app: any,
+    current: string,
+  ): Promise<string> {
+    const installationId = String(installation?.id ?? "");
+    if (!installationId) return current; // nothing to key a lock / update on
+    const lockKey = `chanapp:refresh:${installationId}`;
+
+    let haveLock = false;
+    try {
+      haveLock =
+        (await this.redis.set(
+          lockKey,
+          "1",
+          "EX",
+          ChannelRuntimeService.REFRESH_LOCK_TTL_S,
+          "NX",
+        )) === "OK";
+    } catch {
+      // Redis unreachable — cannot coordinate; refresh unlocked (see docstring).
+      return this.performRefresh(installation, app, current);
+    }
+
+    if (!haveLock) {
+      // Another event owns the refresh — wait it out, then re-read its result.
+      return this.awaitRotatedToken(installation, app, current, lockKey);
+    }
+
+    try {
+      // Re-read UNDER the lock: a peer may have finished refreshing between our
+      // expiry check and acquiring the lock. If the row is now comfortably
+      // valid, adopt it and skip a redundant (token-orphaning) refresh.
+      const row = (await this.reloadInstallation(installationId)) ?? installation;
+      const rowExp = this.expiryMs(row.tokenExpiresAt);
+      if (
+        rowExp &&
+        Date.now() < rowExp - ChannelRuntimeService.TOKEN_REFRESH_SKEW_MS
+      ) {
+        const token = this.adoptRefreshedRow(installation, app, row);
+        if (token) return token;
+      }
+      return this.performRefresh(installation, app, current);
+    } finally {
+      try {
+        await this.redis.del(lockKey);
+      } catch {
+        /* best-effort — the 30s TTL is the backstop */
+      }
+    }
+  }
+
+  /**
+   * LOSER path: another event holds the refresh lock. Poll for it to clear
+   * (bounded ≈3s), then re-read the row — the winner has by then written the
+   * rotated token. Falls back to the current token if the wait/read yields
+   * nothing newer (the event proceeds best-effort rather than blocking).
+   */
+  private async awaitRotatedToken(
+    installation: any,
+    app: any,
+    current: string,
+    lockKey: string,
+  ): Promise<string> {
+    const installationId = String(installation?.id ?? "");
+    for (let i = 0; i < 10; i++) {
+      await this.sleep(300);
+      let held: string | null;
+      try {
+        held = await this.redis.get(lockKey);
+      } catch {
+        held = null; // treat a read error as "clear" and re-read the row
+      }
+      if (!held) break; // winner released the lock
+    }
+    if (!installationId) return current;
+    const row = await this.reloadInstallation(installationId);
+    if (row) {
+      const token = this.adoptRefreshedRow(installation, app, row);
+      if (token) return token;
+    }
+    return current;
+  }
+
+  /**
+   * Perform the Slack token refresh and persist the rotated grant. Best-effort:
+   * on ANY failure (no refresh token, undecryptable app creds, Slack error,
+   * network) it degrades to `current` rather than throwing. Mutates the caller's
+   * in-memory `installation` + primes the decrypted-token cache so the rest of
+   * the handler sees the fresh token. NEVER logs tokens/secrets.
+   *
+   *   POST https://slack.com/api/oauth.v2.access
+   *   form: grant_type=refresh_token, refresh_token, client_id, client_secret
+   *   → { ok, access_token (xoxe.…), refresh_token (xoxe-1-…), expires_in 43200 }
+   */
+  private async performRefresh(
+    installation: any,
+    app: any,
+    current: string,
+  ): Promise<string> {
+    const installationId = String(installation?.id ?? "");
+    const refreshToken = this.decryptSecretField(installation.refreshToken);
+    if (!refreshToken) {
+      // Rotation is on (expiry set) but no usable refresh token to rotate with.
+      this.logger.warn(
+        `[channel-apps] token near expiry but no refresh token installation=${installationId}`,
+      );
+      return current;
+    }
+    const clientId = typeof app?.clientId === "string" ? app.clientId : "";
+    const clientSecret = this.decryptSecretField(app?.clientSecret);
+    if (!clientId || !clientSecret) {
+      this.logger.error(
+        `[channel-apps] token refresh blocked — app credentials unavailable installation=${installationId}`,
+      );
+      return current;
+    }
+
+    let json: any = null;
+    try {
+      const form = new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: clientId,
+        client_secret: clientSecret,
+      });
+      const res = await fetch("https://slack.com/api/oauth.v2.access", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: form.toString(),
+        signal: AbortSignal.timeout(10_000),
+      });
+      json = await res.json();
+    } catch {
+      this.logger.error(
+        `[channel-apps] token refresh request failed installation=${installationId}`,
+      );
+      return current;
+    }
+    if (
+      !json?.ok ||
+      typeof json.access_token !== "string" ||
+      !json.access_token
+    ) {
+      // Only the Slack error code — never a token/secret.
+      this.logger.error(
+        `[channel-apps] token refresh rejected installation=${installationId} error=${json?.error ?? "unknown"}`,
+      );
+      return current;
+    }
+
+    const newBotToken = json.access_token as string;
+    // Slack MAY roll the refresh token too; keep the old one if it doesn't.
+    const newRefreshToken =
+      typeof json.refresh_token === "string" && json.refresh_token
+        ? json.refresh_token
+        : refreshToken;
+    const newExpiresAt =
+      typeof json.expires_in === "number" && json.expires_in > 0
+        ? new Date(Date.now() + json.expires_in * 1000)
+        : null;
+
+    const encBot = this.encryptSecretField(newBotToken);
+    const encRefresh = this.encryptSecretField(newRefreshToken);
+
+    // Persist (best-effort — the in-memory token still serves THIS event even if
+    // the write fails; the next event refreshes again).
+    try {
+      await this.prisma.platosChannelInstallation.update({
+        where: { id: installationId },
+        data: {
+          botToken: encBot,
+          refreshToken: encRefresh,
+          ...(newExpiresAt ? { tokenExpiresAt: newExpiresAt } : {}),
+        },
+      });
+    } catch {
+      this.logger.error(
+        `[channel-apps] token refresh persist failed installation=${installationId}`,
+      );
+    }
+
+    // Keep the caller's in-memory row + decrypted-token cache coherent with the
+    // rotated grant (the encrypted-source self-invalidation key now matches, so
+    // a later getAppBotToken on this same row returns the new token from cache).
+    installation.botToken = encBot;
+    installation.refreshToken = encRefresh;
+    if (newExpiresAt) installation.tokenExpiresAt = newExpiresAt;
+    this.cacheAppToken(app, installation, encBot, newBotToken);
+
+    this.logger.log(
+      `[channel-apps] bot token refreshed installation=${installationId}`,
+    );
+    return newBotToken;
+  }
+
+  /**
+   * Adopt a freshly-reloaded installation row's token onto the caller's
+   * in-memory `installation` + the decrypted-token cache, returning the
+   * decrypted token (or null if the row's token can't be decrypted). Used by
+   * both the under-lock re-read and the loser's post-wait re-read so a peer's
+   * rotation is picked up WITHOUT a second Slack call.
+   */
+  private adoptRefreshedRow(
+    installation: any,
+    app: any,
+    row: any,
+  ): string | null {
+    const token = this.decryptSecretField(row?.botToken);
+    if (!token || typeof row.botToken !== "string") return null;
+    installation.botToken = row.botToken;
+    if (typeof row.refreshToken === "string") {
+      installation.refreshToken = row.refreshToken;
+    }
+    if (row.tokenExpiresAt) installation.tokenExpiresAt = row.tokenExpiresAt;
+    this.cacheAppToken(app, installation, row.botToken, token);
+    return token;
+  }
+
+  private async reloadInstallation(installationId: string): Promise<any | null> {
+    try {
+      return await this.prisma.platosChannelInstallation.findUnique({
+        where: { id: installationId },
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  /** Epoch-ms of a stored expiry (Date | string | null) or 0 when absent/invalid. */
+  private expiryMs(v: unknown): number {
+    if (!v) return 0;
+    const t = v instanceof Date ? v.getTime() : new Date(v as any).getTime();
+    return Number.isFinite(t) ? t : 0;
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Encrypt a scalar secret into the stored envelope — the inverse of
+   * decryptSecretField, mirroring channel-app-oauth.controller's
+   * encryptSecretString so a rotated token is stored in the identical shape the
+   * OAuth callback wrote.
+   */
+  private encryptSecretField(value: string): string {
+    return JSON.stringify(this.messageCrypto.encryptJsonField(value));
+  }
+
+  /**
+   * Canonical decrypted-token cache key for an installation:
+   * `app:<appId>:<teamId|enterpriseId|id>`. The team component follows the same
+   * `teamId ?? enterpriseId` handle convention used everywhere (an org-install
+   * has teamId null ⇒ keyed by enterpriseId); `id` is the final defensive
+   * fallback. See the ORG-INSTALL invariant in channel-app-events.controller.ts.
+   */
+  private appCacheKey(app: any, installation: any): string {
+    const team = String(
+      installation.teamId ?? installation.enterpriseId ?? installation.id ?? "",
+    );
+    return `app:${String(app.id)}:${team}`;
+  }
+
+  /** Prime the decrypted-token cache under the canonical key. */
+  private cacheAppToken(
+    app: any,
+    installation: any,
+    encSource: string,
+    botToken: string,
+  ): void {
+    this.appCache.set(this.appCacheKey(app, installation), {
+      enc: encSource,
+      botToken,
+      builtAt: Date.now(),
+    });
+  }
+
+  /**
    * Decrypted bot token for an installation, memoized per `app:<appId>:<team>`
    * with the same 10-min TTL as the connection cache. Fail-closed: an
    * undecryptable/absent token THROWS (the caller then skips the event) rather
    * than posting with an empty Authorization header.
+   *
+   * This is the raw decrypt+cache PRIMITIVE — it does NOT rotate. Callers that
+   * need a rotation-fresh token go through getFreshBotToken, which wraps this.
    */
   private getAppBotToken(app: any, installation: any): string {
-    const team = String(
-      installation.teamId ?? installation.enterpriseId ?? installation.id ?? "",
-    );
-    const key = `app:${String(app.id)}:${team}`;
-    const encSource = typeof installation.botToken === "string" ? installation.botToken : "";
+    const key = this.appCacheKey(app, installation);
+    const encSource =
+      typeof installation.botToken === "string" ? installation.botToken : "";
     const cached = this.appCache.get(key);
     // Reuse only when both the encrypted source AND the TTL still hold — a
     // re-install rotates the source and forces a fresh decrypt on the spot.
@@ -1464,7 +1818,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     }
     const botToken = this.decryptSecretField(installation.botToken);
     if (!botToken) throw new Error("channel-app bot token unavailable");
-    this.appCache.set(key, { enc: encSource, botToken, builtAt: Date.now() });
+    this.cacheAppToken(app, installation, encSource, botToken);
     return botToken;
   }
 

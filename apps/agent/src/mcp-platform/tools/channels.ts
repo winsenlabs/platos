@@ -90,6 +90,77 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === "object" && !Array.isArray(v);
 }
 
+// ── Connect v3 (Phase D) — BYO app mint via the Slack App Manifest API ────────
+// `apps.manifest.create` requires a MANUALLY-generated App Configuration Token
+// (xoxe.xoxp-… access + xoxe-… refresh, 12h TTL, created by the user at
+// api.slack.com/apps → "Your App Configuration Tokens"). There is NO
+// delegated/OAuth path to mint config tokens, so the one paste is unavoidable.
+const SLACK_MANIFEST_CREATE_URL = "https://slack.com/api/apps.manifest.create";
+const SLACK_HTTP_TIMEOUT_MS = 10_000;
+// Bot scopes = the Phase-A/B recommended AI-Apps set (scope-minimized).
+const SLACK_BYO_BOT_SCOPES = [
+  "assistant:write",
+  "chat:write",
+  "im:history",
+  "app_mentions:read",
+] as const;
+// Slack caps display_information.name at 35 chars, bot_user.display_name at 80.
+const SLACK_APP_NAME_MAX = 35;
+
+/**
+ * Build a Slack app manifest for apps.manifest.create. Targets Slack's
+ * first-class "Agents & AI Apps" surface so a BYO app matches the marketplace
+ * tier: presence of `features.assistant_view` turns the surface ON,
+ * `assistant:write` (in the bot scopes) unlocks assistant.threads.*, and the
+ * `assistant_thread_*` bot events deliver the panel lifecycle. `request_url`
+ * is the connection's OWN secret-bearing inbound URL — known only AFTER the row
+ * is created (create-row-first ordering). The BYO bot token arrives later
+ * (OAuth-install or manual paste), so token rotation stays off here (it's a
+ * marketplace-tier property: PlatosChannelApp.tokenRotation).
+ */
+function buildSlackAppManifest(appName: string, requestUrl: string) {
+  const name = appName.slice(0, SLACK_APP_NAME_MAX);
+  return {
+    display_information: { name },
+    features: {
+      app_home: {
+        home_tab_enabled: true,
+        messages_tab_enabled: true,
+        messages_tab_read_only_enabled: false,
+      },
+      bot_user: {
+        display_name: appName.slice(0, 80),
+        always_online: true,
+      },
+      // Presence of assistant_view ENABLES the "Agents & AI Apps" surface.
+      assistant_view: {
+        assistant_description: `${name} is an AI assistant available in Slack.`,
+      },
+    },
+    oauth_config: {
+      scopes: { bot: [...SLACK_BYO_BOT_SCOPES] },
+    },
+    settings: {
+      event_subscriptions: {
+        request_url: requestUrl,
+        bot_events: [
+          "app_mention",
+          "message.im",
+          "assistant_thread_started",
+          "assistant_thread_context_changed",
+        ],
+      },
+      // No interactivity handler on the BYO connection tier (it processes
+      // message + assistant events only), so leave it off — enabling it would
+      // require a registered interactivity request_url.
+      interactivity: { is_enabled: false },
+      org_deploy_enabled: false,
+      socket_mode_enabled: false,
+      token_rotation_enabled: false,
+    },
+  };
+}
+
 export function buildChannelToolHandlers(deps: {
   prisma: any;
   messageCrypto: MessageCryptoService;
@@ -323,6 +394,266 @@ export function buildChannelToolHandlers(deps: {
           auditMutation(scope, "channels.create", auditArgs, null, "failed", startedAt, message);
           return { error: "create_failed", message };
         }
+      },
+    },
+
+    {
+      name: "channels.mint_from_manifest",
+      description:
+        "Connect v3 (Phase D) — BYO app MINT: \"paste one Slack App " +
+        "Configuration Token, Platos builds your Slack app.\" Operates on the " +
+        "CONNECTION tier (the customer-owned BYO app), not the marketplace app " +
+        "tier. `configToken` is an App Configuration Token (xoxe.xoxp-… access, " +
+        "12h TTL) the user generates MANUALLY at api.slack.com/apps → \"Your " +
+        "App Configuration Tokens\" — there is NO OAuth way to mint it. " +
+        "`provider` must be 'slack'. FLOW: creates a PlatosChannelConnection " +
+        "row FIRST (so its secret-bearing inbound URL exists), bakes that URL " +
+        "into a manifest that enables Slack's \"Agents & AI Apps\" surface " +
+        "(assistant:write + assistant_thread_* events) with the recommended " +
+        "bot scopes, calls apps.manifest.create, then stores the returned " +
+        "client_id / client_secret / signing_secret ENCRYPTED on the row " +
+        "(signing_secret is what verifies inbound Slack signatures). The app " +
+        "is NOT installed by this call — the bot token arrives later via the " +
+        "returned `oauthAuthorizeUrl` or a manual paste. The config token is " +
+        "NEVER persisted or logged; the optional `configRefreshToken` is " +
+        "accepted but DISCARDED (v1 is a one-shot create). Returns the row " +
+        "(secrets redacted), `appId`, `oauthAuthorizeUrl`, and the one-time " +
+        "`webhookUrl` / `webhookSecret`.",
+      inputSchema: {
+        type: "object",
+        required: ["agentId", "configToken"],
+        properties: {
+          provider: { type: "string", enum: ["slack"] },
+          agentId: { type: "string" },
+          displayName: { type: "string" },
+          configToken: { type: "string" },
+          configRefreshToken: { type: "string" },
+        },
+        additionalProperties: false,
+      },
+      async execute(params, scope) {
+        const startedAt = Date.now();
+        const provider = String(params["provider"] ?? "slack").trim().toLowerCase();
+        const agentId = String(params["agentId"] ?? "").trim();
+        const configToken =
+          typeof params["configToken"] === "string" ? params["configToken"].trim() : "";
+        const displayName =
+          typeof params["displayName"] === "string" ? params["displayName"].trim() : "";
+
+        // Redacted audit args — NEVER echo the config token / refresh token.
+        const auditArgs = {
+          provider,
+          agentId,
+          displayName,
+          hasConfigToken: configToken.length > 0,
+          hasConfigRefreshToken:
+            typeof params["configRefreshToken"] === "string" &&
+            params["configRefreshToken"].length > 0,
+        };
+
+        if (provider !== "slack") {
+          const err = "manifest mint supports provider 'slack' only";
+          auditMutation(scope, "channels.mint_from_manifest", auditArgs, null, "failed", startedAt, err);
+          return { error: "unsupported_provider", message: err };
+        }
+        if (!agentId) {
+          const err = "agentId required";
+          auditMutation(scope, "channels.mint_from_manifest", auditArgs, null, "failed", startedAt, err);
+          return { error: "invalid_params", message: err };
+        }
+        if (!configToken) {
+          const err = "configToken required";
+          auditMutation(scope, "channels.mint_from_manifest", auditArgs, null, "failed", startedAt, err);
+          return { error: "invalid_params", message: err };
+        }
+
+        // In-scope guard (forged ids rejected) + name fallback for the manifest.
+        const agent = await prisma.platosAgent.findFirst({
+          where: { id: agentId, ...scopeTuple(scope) },
+          select: { id: true, name: true },
+        });
+        if (!agent) {
+          auditMutation(
+            scope,
+            "channels.mint_from_manifest",
+            auditArgs,
+            null,
+            "failed",
+            startedAt,
+            "unknown_agent_id",
+          );
+          return { error: "unknown_agent_id", agentId };
+        }
+
+        // The manifest's request_url must be an absolute HTTPS URL — refuse
+        // BEFORE creating anything if the public origin isn't configured.
+        const origin = publicOrigin();
+        if (!origin) {
+          auditMutation(
+            scope,
+            "channels.mint_from_manifest",
+            auditArgs,
+            null,
+            "failed",
+            startedAt,
+            "public_origin_unconfigured",
+          );
+          return {
+            error: "public_origin_unconfigured",
+            message:
+              "PLATOS_PUBLIC_BASE_URL (or PLATOS_AGENT_PUBLIC_WS_URL) must be set so the app's event request URL can be built.",
+          };
+        }
+
+        const appName =
+          (displayName || (agent as any).name || "Platos Agent").trim() || "Platos Agent";
+
+        // (1) CREATE the connection row FIRST so its inbound URL (id + secret)
+        // exists — the chicken-and-egg the manifest request_url depends on.
+        const webhookSecret = crypto.randomBytes(32).toString("hex");
+        let row: any;
+        try {
+          row = await prisma.platosChannelConnection.create({
+            data: {
+              ...scopeTuple(scope),
+              provider,
+              agentId,
+              ...(displayName ? { displayName } : {}),
+              webhookSecret,
+            },
+          });
+        } catch (err: any) {
+          const message = err?.message ?? String(err);
+          auditMutation(scope, "channels.mint_from_manifest", auditArgs, null, "failed", startedAt, message);
+          return { error: "create_failed", message };
+        }
+
+        /** Best-effort rollback — a credential-less row verifies/posts nothing. */
+        const rollback = async () => {
+          try {
+            await prisma.platosChannelConnection.delete({ where: { id: row.id } });
+          } catch {
+            // Already gone / raced — nothing to undo.
+          }
+        };
+
+        const requestUrl = `${origin}${webhookPathFull(row.id, webhookSecret)}`;
+        const manifest = buildSlackAppManifest(appName, requestUrl);
+
+        // (2) CALL apps.manifest.create. Config token + manifest ride in the
+        // FORM BODY (never the URL); nothing here is logged. 10s bound.
+        let json: any;
+        try {
+          const form = new URLSearchParams({
+            token: configToken,
+            manifest: JSON.stringify(manifest),
+          });
+          const resp = await fetch(SLACK_MANIFEST_CREATE_URL, {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: form.toString(),
+            signal: AbortSignal.timeout(SLACK_HTTP_TIMEOUT_MS),
+          });
+          json = await resp.json();
+        } catch {
+          await rollback();
+          const message = "could not reach Slack to create the app";
+          auditMutation(scope, "channels.mint_from_manifest", auditArgs, null, "failed", startedAt, "slack_unreachable");
+          return { error: "slack_unreachable", message };
+        }
+
+        if (!json?.ok) {
+          await rollback();
+          // Surface ONLY the Slack error code — never the config token/manifest.
+          const slackError = typeof json?.error === "string" ? json.error : "unknown_error";
+          auditMutation(
+            scope,
+            "channels.mint_from_manifest",
+            auditArgs,
+            null,
+            "failed",
+            startedAt,
+            `manifest_create_failed:${slackError}`,
+          );
+          return {
+            error: "manifest_create_failed",
+            slackError,
+            message: `Slack rejected the manifest (code: ${slackError}).`,
+          };
+        }
+
+        // (3) STORE the returned credentials ENCRYPTED. signing_secret →
+        // credentials.signingSecret (the key the Slack adapter reads for
+        // signature verification); client_id/client_secret ride the same
+        // envelope. Bot token is absent — it arrives via OAuth-install / paste.
+        // `json` is the untyped Slack response — read fields off it directly.
+        const clientId =
+          typeof json?.credentials?.client_id === "string" ? json.credentials.client_id : "";
+        const clientSecret =
+          typeof json?.credentials?.client_secret === "string" ? json.credentials.client_secret : "";
+        const signingSecret =
+          typeof json?.credentials?.signing_secret === "string" ? json.credentials.signing_secret : "";
+        const appId = typeof json.app_id === "string" ? json.app_id : null;
+        const oauthAuthorizeUrl =
+          typeof json.oauth_authorize_url === "string" ? json.oauth_authorize_url : null;
+
+        const encryptedCreds = encryptCredentials({
+          ...(clientId ? { clientId } : {}),
+          ...(clientSecret ? { clientSecret } : {}),
+          ...(signingSecret ? { signingSecret } : {}),
+        });
+        const config: Record<string, unknown> = {
+          ...(appId ? { slackAppId: appId } : {}),
+          // clientId is PUBLIC (rides the authorize URL) — surface it in config
+          // so a later OAuth-install step has it without a decrypt.
+          ...(clientId ? { slackClientId: clientId } : {}),
+        };
+
+        let updated: any;
+        try {
+          updated = await prisma.platosChannelConnection.update({
+            where: { id: row.id },
+            data: {
+              ...(encryptedCreds !== null ? { credentials: encryptedCreds } : {}),
+              config,
+            },
+          });
+        } catch {
+          // The app WAS created at Slack but the secret store failed. Do NOT
+          // roll back (that orphans a live Slack app pointing here) — return the
+          // connectionId so the caller can retry the store. A generic message
+          // (never the raw DB error, which could echo the write payload) + no
+          // secret is ever logged.
+          auditMutation(scope, "channels.mint_from_manifest", auditArgs, null, "failed", startedAt, "secret_store_failed");
+          return {
+            error: "secret_store_failed",
+            connectionId: row.id,
+            appId,
+            message: "The Slack app was created but its credentials could not be saved.",
+          };
+        }
+        evictRuntime(row.id);
+
+        // Redacted audit — log the id + appId presence, never the secrets/URL.
+        auditMutation(
+          scope,
+          "channels.mint_from_manifest",
+          auditArgs,
+          { id: row.id, appId, minted: true },
+          "success",
+          startedAt,
+        );
+
+        // One-time reveal: the secret-bearing inbound URL (already registered at
+        // Slack as the request URL) + the authorize URL to finish the install.
+        return {
+          ...projectRow(updated),
+          appId,
+          oauthAuthorizeUrl,
+          webhookSecret,
+          webhookPath: webhookPathFull(row.id, webhookSecret),
+          webhookUrl: requestUrl,
+        };
       },
     },
 

@@ -3823,6 +3823,17 @@ model PlatosChannelApp {
   // than a bare app_mention bot. Default on for new apps.
   aiAppsSurface Boolean @default(true)
 
+  // Connect v3 (Phase D) — OAuth token rotation. Slack's
+  // `token_rotation_enabled` is a ONE-WAY app-level setting (manifest
+  // settings.token_rotation_enabled); when on, oauth.v2.access returns a
+  // 12h `xoxe.` bot token + a single-use `xoxe-1-` refresh token +
+  // expires_in=43200. This bool mirrors that app-level property so the
+  // runtime knows to expect + refresh rotating tokens (the refresh LOGIC —
+  // getFreshBotToken + the per-installation Redis lock — lives in
+  // channel-runtime). Phase A already tolerates a refresh_token's absence,
+  // so leaving this false is a zero-behavior-change default.
+  tokenRotation Boolean @default(false)
+
   // Connect v3 (Phase C) — hosted account-linking policy:
   //   none     — no linking behavior (default; zero behavior change).
   //   optional — never blocks a turn; the connect URL is surfaced only when the

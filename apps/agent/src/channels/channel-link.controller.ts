@@ -13,6 +13,7 @@ import type {
   Request as ExpressRequest,
   Response as ExpressResponse,
 } from "express";
+import { ModuleRef } from "@nestjs/core";
 import * as crypto from "node:crypto";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
@@ -108,6 +109,10 @@ export class ChannelLinkService {
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
     private readonly messageCrypto: MessageCryptoService,
     private readonly conversationService: ConversationService,
+    // Phase D — used to lazily resolve ChannelRuntimeService so the
+    // confirmation DM reads its bot token through the shared locked-refresh
+    // seam (getFreshBotToken). ModuleRef is always container-provided.
+    private readonly moduleRef: ModuleRef,
   ) {}
 
   // ───────────────────────────────────────────────────────────────────────
@@ -492,7 +497,7 @@ export class ChannelLinkService {
 
     // Best-effort confirmation DM — fire-and-forget so the success page renders
     // immediately (never blocks / fails the linking result).
-    void this.postConfirmationDm(installationId, replyChannel, replyThreadTs, email);
+    void this.postConfirmationDm(installationId, app, replyChannel, replyThreadTs, email);
 
     return { ok: true, email };
   }
@@ -503,6 +508,7 @@ export class ChannelLinkService {
 
   private async postConfirmationDm(
     installationId: string,
+    app: any,
     channel: string,
     threadTs: string | null,
     email: string,
@@ -514,7 +520,29 @@ export class ChannelLinkService {
           where: { id: String(installationId) },
         });
       if (!installation) return;
-      const botToken = this.decryptSecretField(installation.botToken);
+      // Phase D — read the bot token through ChannelRuntimeService's shared
+      // locked-refresh seam so a rotating install's near-expiry token is
+      // refreshed (under `chanapp:refresh:<installationId>`) BEFORE we post,
+      // rather than decrypting a possibly-expired token here. Lazy `require`
+      // (not a top-level import) because channel-runtime.service.ts already
+      // imports THIS file for linkStart — a static back-import would form a
+      // load-order cycle that breaks ChannelRuntimeService's own
+      // @Inject(ChannelLinkService) design:paramtypes. Resolved via ModuleRef
+      // (strict:false) since both providers live in the same module.
+      let botToken: string | null = null;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { ChannelRuntimeService: Runtime } = require("./channel-runtime.service");
+        const runtime = this.moduleRef.get(Runtime, { strict: false });
+        if (runtime) botToken = await runtime.getFreshBotToken(installation, app);
+      } catch {
+        botToken = null;
+      }
+      // Fallback: runtime not registered (e.g. a focused test module) or a
+      // total decrypt failure — best-effort direct decrypt keeps the prior
+      // behavior. A rotating token past expiry that also fails to refresh is
+      // already handled inside getFreshBotToken (degrades to current token).
+      if (!botToken) botToken = this.decryptSecretField(installation.botToken);
       if (!botToken) return;
       const body: Record<string, unknown> = {
         channel,
