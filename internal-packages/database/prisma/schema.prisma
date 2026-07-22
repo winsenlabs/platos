@@ -3902,6 +3902,12 @@ model PlatosChannelInstallation {
   status    String    @default("active")
   revokedAt DateTime?
 
+  // Additive telemetry (operator status surface). Stamped fire-and-forget by
+  // handleAppEvent when a real inbound message is admitted for this install —
+  // never on control flow, so routing/reply behaviour is unchanged. Null until
+  // the first inbound event.
+  lastEventAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

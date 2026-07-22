@@ -901,6 +901,27 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Fire-and-forget telemetry stamp for the operator status surface — records
+   * the moment a real inbound message was admitted for this install. Strictly
+   * ADDITIVE: never awaited, never on a control-flow branch, and swallows every
+   * error, so hosted-OAuth event routing / reply behaviour is unchanged whether
+   * the write succeeds, fails, or the column is absent on an un-migrated DB.
+   */
+  private stampInstallationLastEvent(installationId: string): void {
+    if (!installationId) return;
+    try {
+      this.prisma.platosChannelInstallation
+        .updateMany({
+          where: { id: installationId },
+          data: { lastEventAt: new Date() },
+        })
+        .catch(() => undefined);
+    } catch {
+      // Telemetry only — a stamp failure must never disturb the turn.
+    }
+  }
+
+  /**
    * Handle ONE already-verified Slack event for an installed app. Called
    * DETACHED by the events controller (after its fast 200 ACK), so this may
    * run the full turn inline — there is no < 3s budget and no SDK per-thread
@@ -984,6 +1005,10 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     }
     // Per-install routing override wins over the app-level table.
     const agentRouting = installation.agentRouting ?? app.agentRouting ?? null;
+
+    // Additive telemetry for the operator status surface — never awaited, never
+    // gates anything below (see stampInstallationLastEvent).
+    this.stampInstallationLastEvent(installationId);
 
     this.logger.log(
       `[channel-apps] inbound app=${appId} installation=${installationId}`,
