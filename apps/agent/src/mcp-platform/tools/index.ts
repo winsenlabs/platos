@@ -778,8 +778,9 @@ export function buildPlatformToolHandlers(deps: {
     }),
   );
 
-  // ── Connect v3 channel_apps.* — marketplace-app management (7 tools) ─────
-  // CRUD over PlatosChannelApp + list/bind of its workspace installations.
+  // ── Connect v3 channel_apps.* — marketplace-app management (10 tools) ────
+  // CRUD over PlatosChannelApp + list/bind/import/revoke/status of its
+  // workspace installations.
   // Scope-pinned; defaultAgentId + routing rule ids validated against the token
   // scope; clientSecret + signingSecret encrypted at rest via the same
   // MessageCryptoService envelope; mutations audited + floored require_approval.
