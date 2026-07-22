@@ -99,6 +99,27 @@ interface CachedBot {
   gatewayStop?: () => void | Promise<void>;
 }
 
+/**
+ * Connect v3 (channel APPS tier) — a per-installation decrypted bot-token
+ * memo. The app tier does NOT build a Chat SDK instance (see handleAppEvent
+ * for why v1 is a direct bridge + direct fetch), so unlike the v2 connection
+ * cache there is nothing expensive to hold here — just the decrypted bot token
+ * for a workspace, so a busy install doesn't re-decrypt on every message. Keyed
+ * `app:<appId>:<team>`; evicted by invalidateApp on credential/reinstall.
+ */
+interface CachedAppCreds {
+  /**
+   * The ENCRYPTED botToken source string this entry was derived from. Used as
+   * a self-invalidation key: when a workspace re-installs (OAuth callback
+   * upserts a fresh encrypted botToken on the same installation row), the next
+   * event sees a different `enc` and re-decrypts WITHOUT waiting for the TTL or
+   * an explicit invalidateApp — the events runtime always passes the fresh row.
+   */
+  enc: string;
+  botToken: string;
+  builtAt: number;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // PURE routing helpers (contract-shaped, no I/O — safe to share with the
 // management slice's channel-routing.ts once it lands; kept here to avoid a
@@ -182,6 +203,11 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   private readonly cache = new Map<string, CachedBot>();
   /** connectionId → in-flight build (async build ⇒ dedupe concurrent hits). */
   private readonly building = new Map<string, Promise<CachedBot>>();
+  /**
+   * Connect v3 — `app:<appId>:<team>` → decrypted bot token. Evicted by
+   * invalidateApp on app-credential edits + workspace re-install + revoke.
+   */
+  private readonly appCache = new Map<string, CachedAppCreds>();
   private readonly TTL_MS = 10 * 60 * 1000; // 10 min
   /** Discord keep-warm sweep cadence (see onModuleInit). */
   private readonly DISCORD_WARM_INTERVAL_MS = 60 * 1000;
@@ -226,6 +252,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       this.cache.delete(id);
       this.stopCached(cached);
     }
+    // Connect v3 — drop decrypted app tokens on shutdown (no sockets to close).
+    this.appCache.clear();
   }
 
   /** Ensure a live bot per enabled discord connection; evict dead ones. */
@@ -325,6 +353,31 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     // → no-op). Fire-and-forget; the 60s sweep is the backstop.
     if (cached.provider === "discord" && this.discordWarmTimer) {
       void this.warmDiscordConnections();
+    }
+  }
+
+  /**
+   * Connect v3 — evict the cached decrypted bot token(s) for a channel APP.
+   * Mirrors invalidate() for the v2 connection cache: called after the app's
+   * credentials change (management PATCH/DELETE), after a workspace re-installs
+   * (OAuth callback upserts a fresh botToken on the same installation row), and
+   * after an installation is revoked (uninstall / tokens_revoked). Without it
+   * a rotated bot token keeps posting from memory for up to the 10-min TTL.
+   * One app fans out to many workspace installations, so every cache entry
+   * under the `app:<appId>:` prefix is dropped. Idempotent + best-effort.
+   */
+  invalidateApp(appId: string): void {
+    if (!appId) return;
+    const prefix = `app:${appId}:`;
+    const doomed: string[] = [];
+    for (const key of this.appCache.keys()) {
+      if (key.startsWith(prefix)) doomed.push(key);
+    }
+    for (const key of doomed) this.appCache.delete(key);
+    if (doomed.length > 0) {
+      this.logger.log(
+        `[channel-apps] invalidated ${doomed.length} cached token(s) app=${appId}`,
+      );
     }
   }
 
@@ -768,6 +821,416 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       agentId: row.agentId ?? agentId,
       platosThreadId: row.platosThreadId,
     };
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // CONNECT v3 — channel APP bridge (marketplace / OAuth-installed apps)
+  //
+  // The v2 tier (above) is ONE customer-owned connection → ONE cached Chat
+  // instance. The v3 APP tier is ONE platform/org-owned app OAuth-installed
+  // into N external workspaces (PlatosChannelInstallation rows), each talking
+  // to the app owner's agent. Its inbound URL (`/api/v1/channels/apps/:appId/
+  // events`) verifies the Slack signature + parses + dedupes at the controller,
+  // then hands the already-parsed envelope here.
+  //
+  // DELIBERATE v1 SHAPE: unlike the v2 bridge we do NOT build a Chat SDK
+  // instance for the app tier. The SDK owns webhook parsing (already done at
+  // the controller) and thread delivery — but the contract's "SIMPLEST CORRECT
+  // v1 … keep it dependency-light" mandate lands on a direct bridge: reuse the
+  // pure routing/identity/thread-pinning helpers, run the turn, and reply with
+  // a bare Slack Web API `chat.postMessage` over global fetch. No adapter, no
+  // Postgres adapter-state, no ESM SDK load on this path. When Phase B adds the
+  // AI-Apps streaming surface, a cached Chat instance can slot in behind the
+  // same getAppBotToken/invalidateApp seam.
+  // ───────────────────────────────────────────────────────────────────────
+
+  /**
+   * Conversation identity for a channel-APP thread — the app-tier twin of
+   * channelConversationUserId. Deterministic per (installation, thread) so
+   * every participant in a shared Slack thread resolves the SAME Platos thread
+   * (single-user PlatosAgentThread ownership); the real author's verified
+   * identity still flows through the author scope's claims for endUser linkage.
+   */
+  private appConversationUserId(
+    installationId: string,
+    channelThreadKey: string,
+  ): string {
+    return `channel-app:${installationId}:${channelThreadKey}`;
+  }
+
+  /**
+   * Handle ONE already-verified Slack event for an installed app. Called
+   * DETACHED by the events controller (after its fast 200 ACK), so this may
+   * run the full turn inline — there is no < 3s budget and no SDK per-thread
+   * lock to escape (the v2 bridge's out-of-handler dance does not apply).
+   *
+   * `app` + `installation` are the freshly-loaded rows the controller routed
+   * to (envelope team_id/enterprise_id → active installation); `envelope` is
+   * the parsed Slack `event_callback` body. Scope for the turn is the app
+   * OWNER's (org/project/env) — installations are external workspaces talking
+   * to the owner's agent, never their own scope.
+   */
+  async handleAppEvent(app: any, installation: any, envelope: any): Promise<void> {
+    const appId = String(app?.id ?? "");
+    const installationId = String(installation?.id ?? "");
+    if (!appId || !installationId) return;
+    // v1 apps are Slack-only; ignore anything else defensively.
+    if (String(app?.provider ?? "slack") !== "slack") return;
+    // Revoked installs never process events (the controller already routes
+    // only to active installs — this is defence-in-depth).
+    if (installation?.status && installation.status !== "active") return;
+
+    // Never react to bot-authored messages (our own replies, other bots) —
+    // the hard stop against reply loops, mirroring the v2 bridge.
+    const event = envelope?.event;
+    if (event?.bot_id) return;
+
+    const parsed = this.parseSlackAppEvent(envelope);
+    if (!parsed) return;
+    // Our own bot's echo (the app posting into a channel it's a member of).
+    if (installation.botUserId && parsed.user === String(installation.botUserId)) {
+      return;
+    }
+
+    // Resolve the reply token UP FRONT — no point running a turn we cannot
+    // deliver. Fail-closed: an undecryptable token skips the event entirely.
+    let botToken: string;
+    try {
+      botToken = this.getAppBotToken(app, installation);
+    } catch {
+      this.logger.error(
+        `[channel-apps] bot token unavailable app=${appId} installation=${installationId}`,
+      );
+      return;
+    }
+
+    // Default agent: installation override → app default. Both null ⇒ the app
+    // has no agent bound yet ⇒ nothing to answer with.
+    const defaultAgentId =
+      (typeof installation.agentId === "string" && installation.agentId) ||
+      (typeof app.defaultAgentId === "string" && app.defaultAgentId) ||
+      "";
+    if (!defaultAgentId) {
+      this.logger.warn(
+        `[channel-apps] no agent bound app=${appId} installation=${installationId}`,
+      );
+      return;
+    }
+    // Per-install routing override wins over the app-level table.
+    const agentRouting = installation.agentRouting ?? app.agentRouting ?? null;
+
+    this.logger.log(
+      `[channel-apps] inbound app=${appId} installation=${installationId}`,
+    );
+
+    // ── Identity + scope (app OWNER's scope) ──────────────────────────────
+    // Slack user ids are unique only PER WORKSPACE, so qualify with the team
+    // (or enterprise) id — the same cross-workspace-merge guard as the v2
+    // bridge. installationId already isolates the workspace for thread pinning;
+    // the qualified handle keeps the canonical PlatosEndUser truthful.
+    const team = String(installation.teamId ?? installation.enterpriseId ?? "");
+    const handle = team ? `${team}:${parsed.user}` : parsed.user;
+    const claims = [{ channel: "slack", handle, verified: true }];
+    const authorScope: RequestScope = {
+      organizationId: String(app.organizationId),
+      projectId: String(app.projectId),
+      environmentId: String(app.environmentId),
+      userId: `slack:${handle}`,
+      userIdentities: claims,
+    };
+    const conversationScope: RequestScope = {
+      ...authorScope,
+      userId: this.appConversationUserId(installationId, parsed.channelThreadKey),
+    };
+
+    // ── Resolve or create the (pinned) agent + Platos thread ──────────────
+    let agentId: string;
+    let platosThreadId: string;
+    try {
+      const resolved = await this.resolveAppThreadBinding(
+        installationId,
+        defaultAgentId,
+        agentRouting,
+        authorScope,
+        conversationScope,
+        parsed.channelThreadKey,
+        parsed.text,
+      );
+      agentId = resolved.agentId;
+      platosThreadId = resolved.platosThreadId;
+    } catch {
+      this.logger.error(
+        `[channel-apps] thread-binding failed app=${appId} installation=${installationId}`,
+      );
+      return;
+    }
+
+    // ── Turn → reply (already detached by the controller) ─────────────────
+    const turnScope = {
+      ...conversationScope,
+      agentId,
+      threadId: platosThreadId,
+    } as RequestScope;
+    try {
+      const result = await this.agentTaskService.executeNonStreamingTurn(
+        parsed.text,
+        turnScope,
+        { agentId, threadId: platosThreadId },
+      );
+      if (result?.threadId && result.threadId !== platosThreadId) {
+        this.logger.warn(
+          `[channel-apps] turn thread diverged app=${appId} installation=${installationId} pinned=${platosThreadId} got=${result.threadId}`,
+        );
+      }
+      const reply = (result?.text ?? "").trim();
+      if (reply) {
+        await this.postSlackMessage(
+          botToken,
+          parsed.channel,
+          parsed.replyThreadTs,
+          reply,
+        );
+      }
+    } catch {
+      this.logger.error(
+        `[channel-apps] turn failed app=${appId} installation=${installationId}`,
+      );
+      try {
+        await this.postSlackMessage(
+          botToken,
+          parsed.channel,
+          parsed.replyThreadTs,
+          "Sorry — something went wrong on my end. Please try again in a moment.",
+        );
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+
+  /**
+   * Extract the answerable slice of a Slack `event_callback`, or null to skip.
+   *
+   * v1 handles exactly two surfaces: `app_mention` (bot @-mentioned in a
+   * channel) and `message` with `channel_type === "im"` (a DM to the bot).
+   * Plain user messages carry NO `subtype` — anything with one (edits,
+   * deletes, joins, `bot_message`, …) is skipped. Threading:
+   *   • already-threaded (`thread_ts`)  → pin + reply on that root;
+   *   • DM, un-threaded                 → one Platos thread per DM channel,
+   *                                        reply at top level (linear DM UX);
+   *   • channel mention, un-threaded    → start a thread rooted at this ts.
+   * The `channelThreadKey` is shaped `slack:<channel>[:<root_ts>]` so the
+   * shared extractPlatformChannelId helper yields the channel id for
+   * "channel"-type routing rules.
+   */
+  private parseSlackAppEvent(envelope: any): {
+    channel: string;
+    user: string;
+    text: string;
+    channelThreadKey: string;
+    replyThreadTs?: string;
+  } | null {
+    const event = envelope?.event;
+    if (!event || typeof event !== "object") return null;
+    const type = String(event.type ?? "");
+    const channelType = String(event.channel_type ?? "");
+    const isMention = type === "app_mention";
+    const isDm = type === "message" && channelType === "im";
+    if (!isMention && !isDm) return null;
+    // Only plain, first-class user messages — no edits/deletes/system subtypes.
+    if (event.subtype != null) return null;
+
+    const channel = typeof event.channel === "string" ? event.channel : "";
+    const user = typeof event.user === "string" ? event.user : "";
+    const text = typeof event.text === "string" ? event.text : "";
+    const ts = typeof event.ts === "string" ? event.ts : "";
+    if (!channel || !user || !ts) return null;
+    const threadTs = typeof event.thread_ts === "string" ? event.thread_ts : "";
+
+    let channelThreadKey: string;
+    let replyThreadTs: string | undefined;
+    if (threadTs) {
+      channelThreadKey = `slack:${channel}:${threadTs}`;
+      replyThreadTs = threadTs;
+    } else if (isDm) {
+      channelThreadKey = `slack:${channel}`;
+      replyThreadTs = undefined;
+    } else {
+      channelThreadKey = `slack:${channel}:${ts}`;
+      replyThreadTs = ts;
+    }
+    return { channel, user, text, channelThreadKey, replyThreadTs };
+  }
+
+  /**
+   * App-tier twin of resolveThreadBinding over PlatosChannelAppThread (unique
+   * on installationId + channelThreadKey). On first contact the agent is
+   * resolved from the (install-override-or-app) routing table + PINNED on the
+   * row; later messages reuse it. Owned by the per-thread conversation userId
+   * so every participant resolves the same Platos thread; the real author's
+   * scope drives endUser linkage only.
+   */
+  private async resolveAppThreadBinding(
+    installationId: string,
+    defaultAgentId: string,
+    agentRouting: unknown,
+    authorScope: RequestScope,
+    conversationScope: RequestScope,
+    channelThreadKey: string,
+    text: string,
+  ): Promise<{ agentId: string; platosThreadId: string }> {
+    const existing = await this.prisma.platosChannelAppThread.findUnique({
+      where: {
+        installationId_channelThreadKey: { installationId, channelThreadKey },
+      },
+    });
+    if (existing) {
+      return {
+        agentId: existing.agentId ?? defaultAgentId,
+        platosThreadId: existing.platosThreadId,
+      };
+    }
+
+    // First contact — resolve the agent from the routing rules.
+    const platformChannelId = extractPlatformChannelId(channelThreadKey);
+    const agentId = resolveAgentForMessage(
+      { agentId: defaultAgentId, agentRouting },
+      { platformChannelId, text },
+    );
+
+    const platosThread = await this.conversationService.getOrCreateThread(
+      { ...conversationScope, agentId },
+      agentId,
+      undefined,
+    );
+    const platosThreadId = platosThread.id;
+
+    // Best-effort canonical PlatosEndUser link (link-not-merge) off the REAL
+    // author scope so the person record reflects the first author.
+    let platosEndUserId: string | null = null;
+    try {
+      platosEndUserId = await this.conversationService.resolveEndUser(
+        authorScope,
+        {},
+      );
+    } catch {
+      platosEndUserId = null;
+    }
+
+    // Race-safe on the (installationId, channelThreadKey) unique — a concurrent
+    // inbound that already created the row wins; this call's fresh Platos thread
+    // is orphaned (rare; acceptable for v1 — the conversation never splits).
+    const row = await this.prisma.platosChannelAppThread.upsert({
+      where: {
+        installationId_channelThreadKey: { installationId, channelThreadKey },
+      },
+      create: {
+        installationId,
+        channelThreadKey,
+        platosThreadId,
+        platosEndUserId,
+        agentId,
+      },
+      update: {},
+    });
+
+    return {
+      agentId: row.agentId ?? agentId,
+      platosThreadId: row.platosThreadId,
+    };
+  }
+
+  /**
+   * Decrypted bot token for an installation, memoized per `app:<appId>:<team>`
+   * with the same 10-min TTL as the connection cache. Fail-closed: an
+   * undecryptable/absent token THROWS (the caller then skips the event) rather
+   * than posting with an empty Authorization header.
+   */
+  private getAppBotToken(app: any, installation: any): string {
+    const team = String(
+      installation.teamId ?? installation.enterpriseId ?? installation.id ?? "",
+    );
+    const key = `app:${String(app.id)}:${team}`;
+    const encSource = typeof installation.botToken === "string" ? installation.botToken : "";
+    const cached = this.appCache.get(key);
+    // Reuse only when both the encrypted source AND the TTL still hold — a
+    // re-install rotates the source and forces a fresh decrypt on the spot.
+    if (cached && cached.enc === encSource && Date.now() - cached.builtAt < this.TTL_MS) {
+      return cached.botToken;
+    }
+    const botToken = this.decryptSecretField(installation.botToken);
+    if (!botToken) throw new Error("channel-app bot token unavailable");
+    this.appCache.set(key, { enc: encSource, botToken, builtAt: Date.now() });
+    return botToken;
+  }
+
+  /**
+   * Post a reply through the Slack Web API. Direct fetch (NOT the Chat SDK) to
+   * keep the app-events path dependency-light. 10s timeout; the bot token +
+   * message text are NEVER logged — only the Slack error code on failure.
+   *
+   * chat.postMessage — https://api.slack.com/methods/chat.postMessage
+   *   POST https://slack.com/api/chat.postMessage
+   *   Authorization: Bearer <botToken>
+   *   Content-Type: application/json; charset=utf-8
+   *   body: { channel, text, thread_ts? }
+   */
+  private async postSlackMessage(
+    botToken: string,
+    channel: string,
+    threadTs: string | undefined,
+    text: string,
+  ): Promise<void> {
+    const body: Record<string, unknown> = { channel, text };
+    if (threadTs) body.thread_ts = threadTs;
+    let res: Response;
+    try {
+      res = await fetch("https://slack.com/api/chat.postMessage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          Authorization: `Bearer ${botToken}`,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      this.logger.error(
+        `[channel-apps] chat.postMessage request failed channel=${channel}`,
+      );
+      return;
+    }
+    let json: any = null;
+    try {
+      json = await res.json();
+    } catch {
+      /* non-JSON response — treat as failure below */
+    }
+    if (!json?.ok) {
+      this.logger.error(
+        `[channel-apps] chat.postMessage rejected channel=${channel} error=${json?.error ?? res.status}`,
+      );
+    }
+  }
+
+  /**
+   * Decrypt a single ENCRYPTED-envelope string column (the app tier stores each
+   * secret — botToken / signingSecret / clientSecret — as its own
+   * `JSON.stringify(encryptJsonField(plain))`, unlike the v2 connection which
+   * wraps ALL creds in one object). Returns the plaintext or null when the
+   * value is absent, unparseable, or the decrypt key is missing (the crypto
+   * service returns its `{ __platos_enc, error }` marker → not a string → null).
+   */
+  private decryptSecretField(stored: unknown): string | null {
+    if (typeof stored !== "string" || !stored) return null;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stored);
+    } catch {
+      return null;
+    }
+    const dec = this.messageCrypto.decryptJsonField(parsed);
+    return typeof dec === "string" && dec ? dec : null;
   }
 
   // ───────────────────────────────────────────────────────────────────────

@@ -3783,6 +3783,139 @@ model PlatosChannelThread {
   @@index([agentId])
 }
 
+/// Connect v3 (Phase A) — the PUBLISHABLE channel-app identity. Where
+/// PlatosChannelConnection (v2, T-BYO) is a single customer-owned channel
+/// bound to one agent, PlatosChannelApp is ONE platform-owned app (per
+/// provider) installed into N external workspaces via OAuth V2 — the
+/// marketplace / "Add to Slack" tier. The owner scope
+/// (organizationId/projectId/environmentId) is the AGENT owner; each
+/// PlatosChannelInstallation is a foreign workspace talking to that owner's
+/// agent. `clientSecret` / `signingSecret` are ENCRYPTED envelopes
+/// (MessageCryptoService, same pattern as PlatosChannelConnection.credentials).
+model PlatosChannelApp {
+  id String @id @default(cuid())
+
+  // Scope = the agent OWNER (Theme A invariant — scalar axes only, matching
+  // PlatosChannelConnection). Installations are external workspaces; they do
+  // NOT carry scope of their own.
+  organizationId String
+  projectId      String
+  environmentId  String
+
+  provider    String // "slack" (v1)
+  displayName String?
+
+  // OAuth V2 app credentials. `clientId` is public; `clientSecret` and
+  // `signingSecret` are ENCRYPTED envelopes (MessageCryptoService) — opaque
+  // base64 blobs → String maps to Postgres TEXT. Never returned by the
+  // management API (hasCredentials-style booleans only).
+  clientId      String
+  clientSecret  String // ENCRYPTED envelope
+  signingSecret String // ENCRYPTED envelope
+
+  // OAuth scopes requested at install time (joined into the authorize URL).
+  scopes String[] @default([])
+
+  // "private" (unlisted, direct install link only) | "public" (marketplace).
+  distribution String @default("private")
+
+  // Target Slack's first-class "Agents & AI Apps" surface (Phase B) rather
+  // than a bare app_mention bot. Default on for new apps.
+  aiAppsSurface Boolean @default(true)
+
+  // Fallback agent for a NEW installation when the install carries no binding
+  // override. A per-install `agentId` (see PlatosChannelInstallation) wins.
+  defaultAgentId String?
+
+  // Ordered routing rules — SAME shape as PlatosChannelConnection.agentRouting
+  // (first matching rule wins, else `defaultAgentId`). An installation's own
+  // `agentRouting` overrides this per-install.
+  agentRouting Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  installations PlatosChannelInstallation[]
+
+  @@index([organizationId, projectId, environmentId, provider])
+}
+
+/// Connect v3 (Phase A) — one row per external workspace that installed a
+/// PlatosChannelApp. Keyed by (appId, teamId, enterpriseId): a classic
+/// workspace install has teamId set + enterpriseId null; an Enterprise Grid
+/// org-install has teamId null + enterpriseId set + isEnterpriseInstall true.
+/// `botToken` / `refreshToken` are ENCRYPTED envelopes (MessageCryptoService).
+/// Uninstall is SOFT (status=revoked) — app_uninstalled / tokens_revoked
+/// arrive in an unguaranteed order, so handlers are idempotent and never
+/// hard-delete.
+model PlatosChannelInstallation {
+  id    String           @id @default(cuid())
+  appId String
+  app   PlatosChannelApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  // Workspace identity. `teamId` is null on an Enterprise Grid org-install
+  // (keyed by `enterpriseId` instead); both feed the (appId, teamId,
+  // enterpriseId) unique key.
+  teamId              String?
+  enterpriseId        String?
+  isEnterpriseInstall Boolean @default(false)
+  teamName            String?
+
+  // ENCRYPTED envelopes (MessageCryptoService). `refreshToken` +
+  // `tokenExpiresAt` are populated only under token rotation (Phase D).
+  botToken       String // ENCRYPTED envelope
+  refreshToken   String? // ENCRYPTED envelope (token rotation, Phase D)
+  tokenExpiresAt DateTime?
+
+  botUserId     String?
+  grantedScopes String[] @default([])
+
+  // Per-install binding override. Null => fall back to app.defaultAgentId.
+  agentId      String?
+  // Per-install routing override. Null => fall back to app.agentRouting.
+  agentRouting Json?
+
+  installedByUserId String?
+
+  // "active" | "revoked". SOFT lifecycle — see model doc comment.
+  status    String    @default("active")
+  revokedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  threads PlatosChannelAppThread[]
+
+  @@unique([appId, teamId, enterpriseId])
+  @@index([appId, status])
+}
+
+/// Connect v3 (Phase A) — maps a channel-native conversation inside an
+/// INSTALLED workspace to a Platos thread. The app-tier analogue of
+/// PlatosChannelThread; (installationId, channelThreadKey) is unique. FK to
+/// PlatosChannelInstallation cascades on delete.
+model PlatosChannelAppThread {
+  id             String                    @id @default(cuid())
+  installationId String
+  installation   PlatosChannelInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  // Chat SDK thread id, e.g. "slack:C123ABC:1234567890.123456".
+  channelThreadKey String
+  platosThreadId   String
+  platosEndUserId  String?
+
+  // Agent PINNED to this conversation on first contact (resolved once via the
+  // installation/app routing, then frozen so a conversation never switches
+  // agents mid-thread). Mirrors PlatosChannelThread.agentId.
+  agentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([installationId, channelThreadKey])
+  @@index([platosThreadId])
+}
+
 /// PIFSP-21 — per-entity MCP gateway configuration. One row per
 /// PlatosConnectedEntity.id (1:1, optional). Every Platos customer-facing
 /// MCP endpoint pulls its toggle / identity mode / tool allow-list /

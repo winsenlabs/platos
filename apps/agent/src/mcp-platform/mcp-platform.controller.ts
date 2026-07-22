@@ -220,6 +220,19 @@ export class McpPlatformController {
             // ChannelsModule absent — the runtime TTL bounds staleness.
           }
         },
+        // Connect v3 — evict the runtime's cached decrypted bot token(s) for an
+        // app after channel_apps.update / delete / revoke so credential /
+        // install changes take effect immediately (not after the 10-min TTL).
+        // Same lazy ModuleRef pattern; best-effort.
+        invalidateChannelApp: (appId: string) => {
+          try {
+            this.moduleRef
+              .get(ChannelRuntimeService, { strict: false })
+              ?.invalidateApp(appId);
+          } catch {
+            // ChannelsModule absent — the runtime TTL bounds staleness.
+          }
+        },
       }),
     );
     // K.17 — attach recorder so the router captures successful tool

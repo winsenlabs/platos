@@ -168,6 +168,28 @@ export class ScopeGuard implements CanActivate {
     // decrypted connection credentials. ScopeGuard just lets the request land.
     if (url.startsWith("/api/v1/channels/inbound/")) return true;
 
+    // Connect v3 — marketplace channel apps (Slack-first). Two PUBLIC
+    // surfaces, each self-authenticating IN the controller (never here):
+    //   /api/v1/channels/oauth/:appId/{install,callback} — the OAuth V2
+    //     install dance. CSRF-guarded by a single-use 256-bit `state` nonce
+    //     minted into Redis on /install and GETDEL-verified (== this appId)
+    //     on /callback; the app's client secret is decrypted only to POST
+    //     oauth.v2.access and never leaves the server.
+    //   /api/v1/channels/apps/:appId/events — the one Slack Events API request
+    //     URL per app. Every POST is verified by the Slack v0 signature
+    //     (HMAC-SHA256 over `v0:<ts>:<rawBody>` with the app's DECRYPTED
+    //     signing secret, timing-safe) + a stale-timestamp reject.
+    // The caller is Slack (or a browser mid-install), not a Platos user, so
+    // there is no per-scope session context. ScopeGuard just lets it land.
+    // (The operator-only MANAGEMENT surface lives at /api/v1/agent/channel-apps
+    // and is NOT bypassed — it runs under normal scope extraction below.)
+    if (
+      url.startsWith("/api/v1/channels/oauth/") ||
+      url.startsWith("/api/v1/channels/apps/")
+    ) {
+      return true;
+    }
+
     // Theme K — Platform MCP. Authed by `Authorization: Bearer
     // <PLATOS_MCP_TOKEN>` on every request; token verification + scope
     // pin happens inside McpPlatformController. Token CRUD sub-routes

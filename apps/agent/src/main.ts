@@ -178,6 +178,13 @@ async function bootstrap() {
     { prefix: "/oauth", cap: PUBLIC_BODY_CAP_BYTES },
     { prefix: "/api/v1/public", cap: PUBLIC_BODY_CAP_BYTES },
     { prefix: "/api/v1/channels/inbound", cap: CHANNELS_BODY_CAP_BYTES },
+    // Connect v3 marketplace-app events (POST /api/v1/channels/apps/:id/events)
+    // — same unauthenticated-bypass shape as /channels/inbound (auth is the
+    // in-controller Slack signature check, which runs AFTER the body is
+    // buffered). Slack event payloads are far under 1MB. The sibling
+    // /api/v1/channels/oauth prefix is GET-only, so the method check above
+    // already skips it.
+    { prefix: "/api/v1/channels/apps", cap: CHANNELS_BODY_CAP_BYTES },
   ];
   app.use((req: any, res: any, next: () => void) => {
     const method = req.method;
