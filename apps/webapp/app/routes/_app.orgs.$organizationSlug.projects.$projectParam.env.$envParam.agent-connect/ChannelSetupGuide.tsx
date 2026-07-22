@@ -89,12 +89,44 @@ const PRE_CREATE: Record<string, PreCreateSpec> = {
 
 const chipClass = "shrink-0 rounded bg-charcoal-700 px-1.5 py-0.5 font-mono text-text-bright";
 
-function SetupCodeBlock({ code, language }: { code: string; language: string }) {
+function SetupCodeBlock({
+  code,
+  language,
+  downloadFileName,
+}: {
+  code: string;
+  language: string;
+  /** When set, renders a Download button that saves the snippet as this file. */
+  downloadFileName?: string;
+}) {
+  const download = () => {
+    const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = downloadFileName ?? "snippet.txt";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
   return (
     <div className="relative overflow-hidden rounded-lg border border-charcoal-700 bg-charcoal-900">
       <div className="flex items-center justify-between border-b border-charcoal-700 bg-charcoal-850 px-3 py-1.5">
         <span className="text-xs text-text-dimmed">{language}</span>
-        <CopyButton value={code} variant="icon" size="small" showTooltip={false} />
+        <div className="flex items-center gap-1.5">
+          {downloadFileName ? (
+            <button
+              type="button"
+              onClick={download}
+              className="rounded border border-charcoal-600 px-2 py-0.5 text-xs text-text-dimmed transition hover:border-charcoal-500 hover:text-text-bright"
+              title={`Download ${downloadFileName}`}
+            >
+              Download {downloadFileName.split(".").pop()?.toUpperCase()}
+            </button>
+          ) : null}
+          <CopyButton value={code} variant="icon" size="small" showTooltip={false} />
+        </div>
       </div>
       <pre className="overflow-x-auto px-4 py-3 text-xs leading-relaxed text-text-bright">
         <code>{code}</code>
@@ -229,7 +261,11 @@ settings:
           <div className="mb-1 text-xs text-text-dimmed">
             Minimal manifest (URL already filled in)
           </div>
-          <SetupCodeBlock language="Slack app manifest (YAML)" code={manifest} />
+          <SetupCodeBlock
+            language="Slack app manifest (YAML)"
+            code={manifest}
+            downloadFileName="platos-slack-manifest.yml"
+          />
         </div>
       </div>
     );
