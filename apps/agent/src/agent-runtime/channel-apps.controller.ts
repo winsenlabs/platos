@@ -48,6 +48,19 @@ import { validateAgentRouting } from "./channel-routing";
  * install-time bot tokens live on the installation rows and are likewise
  * redacted (`hasBotToken`). `clientId` is a public identifier and IS returned.
  * POST returns `installUrl` — the "Add to Slack" href.
+ *
+ * RECOMMENDED Slack `scopes` for the "Agents & AI Apps" surface (send in the
+ * create/update body):
+ *   - `assistant:write`   — assistant.threads.setTitle / setStatus /
+ *                           setSuggestedPrompts on the assistant thread.
+ *   - `im:history`        — read the user's messages in the assistant DM thread.
+ *   - `chat:write`        — post replies (also clears the thinking status).
+ *   - `app_mentions:read` — mention-bot fallback surface.
+ * Per Slack's 2026-03-05 change `setStatus` also accepts `chat:write`, but the
+ * other `assistant.threads.*` methods still require `assistant:write` — request
+ * BOTH. The app must additionally enable the "Agents & AI Apps" toggle in its
+ * Slack config so the split-view panel + assistant_thread_started events are
+ * delivered.
  */
 
 const APP_PROVIDERS = new Set(["slack"]);

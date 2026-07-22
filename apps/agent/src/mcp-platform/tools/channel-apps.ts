@@ -174,6 +174,15 @@ export function buildChannelAppToolHandlers(deps: {
         "(bool, default true), `defaultAgentId` (fallback agent for new " +
         "installs — validated in-scope), `agentRouting` (ordered `{match, " +
         "agentId}` rules, same shape + in-scope validation as channels.*). " +
+        "RECOMMENDED Slack `scopes` for the AI-Apps surface: `assistant:write` " +
+        "(assistant.threads.setTitle/setStatus/setSuggestedPrompts), " +
+        "`im:history` (read DMs in the assistant thread), `chat:write` (post " +
+        "replies — also clears the thinking status; since 2026-03-05 " +
+        "setStatus accepts chat:write too, but the other assistant.threads.* " +
+        "methods still need assistant:write, so request BOTH), and " +
+        "`app_mentions:read` (mention-bot fallback). Also enable the app's " +
+        "\"Agents & AI Apps\" toggle in the Slack app config so the split-view " +
+        "assistant panel + assistant_thread_started events are delivered. " +
         "Returns the app row (secrets redacted → `hasClientSecret` / " +
         "`hasSigningSecret`) plus `installUrl` — the Add-to-Slack href.",
       inputSchema: {
@@ -381,12 +390,14 @@ export function buildChannelAppToolHandlers(deps: {
       description:
         "Partial-patch a channel app: `displayName` (string|null), `clientId` " +
         "(string), `clientSecret` / `signingSecret` (re-encrypt; omit to keep " +
-        "the current value), `scopes` (string[]), `distribution` " +
-        "(private|public), `aiAppsSurface` (bool), `defaultAgentId` " +
-        "(string|null to clear — validated in-scope), `agentRouting` (array of " +
-        "`{match, agentId}` rules | null to clear). Scope-pinned — cross-scope " +
-        "ids return `{ error: 'not_found' }`. Returns the updated row with " +
-        "secrets redacted.",
+        "the current value), `scopes` (string[] — for the AI-Apps surface " +
+        "recommend `assistant:write` + `im:history` + `chat:write` + " +
+        "`app_mentions:read`, and enable the app's \"Agents & AI Apps\" " +
+        "toggle), `distribution` (private|public), `aiAppsSurface` (bool), " +
+        "`defaultAgentId` (string|null to clear — validated in-scope), " +
+        "`agentRouting` (array of `{match, agentId}` rules | null to clear). " +
+        "Scope-pinned — cross-scope ids return `{ error: 'not_found' }`. " +
+        "Returns the updated row with secrets redacted.",
       inputSchema: {
         type: "object",
         required: ["id"],

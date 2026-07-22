@@ -11,6 +11,12 @@ import { ConversationService } from "../memory/conversation.service";
 import { AgentTaskService } from "../agent-runtime/agent-task.service";
 import { env } from "../shared/env";
 import type { RequestScope } from "../auth/scope.guard";
+import {
+  buildAssistantPrompts,
+  setAssistantStatus,
+  setAssistantSuggestedPrompts,
+  setAssistantTitle,
+} from "./slack-assistant.api";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Chat SDK (v4.34) — RUNTIME + BRIDGE slice.
@@ -881,9 +887,31 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     if (installation?.status && installation.status !== "active") return;
 
     // Never react to bot-authored messages (our own replies, other bots) —
-    // the hard stop against reply loops, mirroring the v2 bridge.
+    // the hard stop against reply loops, mirroring the v2 bridge. Assistant
+    // threads echo the bot's OWN posts back as message.im events; those carry
+    // `bot_id` (this guard) AND a `bot_message` subtype (parseSlackAppEvent
+    // drops any subtype) AND user==botUserId (the self-echo check below), so
+    // the reply loop is closed by three independent guards on the message path.
     const event = envelope?.event;
     if (event?.bot_id) return;
+
+    // ── "Agents & AI Apps" surface events (Phase B) ───────────────────────
+    // The events controller admits these on the SAME per-app events URL; they
+    // are NOT message events, so parseSlackAppEvent would drop them — branch
+    // here first. Both are best-effort decoration; neither runs a turn.
+    const eventType = typeof event?.type === "string" ? event.type : "";
+    if (eventType === "assistant_thread_started") {
+      await this.handleAssistantThreadStarted(app, installation, event);
+      return;
+    }
+    if (eventType === "assistant_thread_context_changed") {
+      // v1 stores no per-thread context (it is informational; the thread row is
+      // already pinned). Debug-log only — no persistent update.
+      this.logger.debug(
+        `[channel-apps] assistant_thread_context_changed app=${appId} installation=${installationId}`,
+      );
+      return;
+    }
 
     const parsed = this.parseSlackAppEvent(envelope);
     if (!parsed) return;
@@ -965,6 +993,27 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    // ── Assistant-surface "is thinking…" status (best-effort) ─────────────
+    // A message.im WITHIN an assistant thread has a thread_ts (parsed into
+    // replyThreadTs) and a DM channel (starts with "D"). Set the ephemeral
+    // status before the turn; the reply's chat.postMessage clears it
+    // automatically. A plain DM (no thread_ts) is NOT an assistant thread and
+    // keeps its existing behavior (no status). Never fails the turn.
+    const isAssistantThread =
+      parsed.channel.startsWith("D") && !!parsed.replyThreadTs;
+    if (isAssistantThread) {
+      try {
+        await setAssistantStatus(
+          botToken,
+          parsed.channel,
+          parsed.replyThreadTs as string,
+          "is thinking…",
+        );
+      } catch {
+        /* best-effort — never blocks the turn */
+      }
+    }
+
     // ── Turn → reply (already detached by the controller) ─────────────────
     const turnScope = {
       ...conversationScope,
@@ -990,6 +1039,20 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
           parsed.replyThreadTs,
           reply,
         );
+      } else if (isAssistantThread) {
+        // Empty/tool-only turn: nothing gets posted, so the "is thinking…"
+        // status would stick forever (Slack only clears it when the app posts
+        // or explicitly clears it). An empty status string clears it.
+        try {
+          await setAssistantStatus(
+            botToken,
+            parsed.channel,
+            parsed.replyThreadTs as string,
+            "",
+          );
+        } catch {
+          /* best-effort */
+        }
       }
     } catch {
       this.logger.error(
@@ -1005,6 +1068,197 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       } catch {
         /* best-effort */
       }
+    }
+  }
+
+  /**
+   * Handle an `assistant_thread_started` event for the "Agents & AI Apps"
+   * surface. DETACHED, best-effort decoration — it runs NO turn:
+   *   (a) PIN a PlatosChannelAppThread row for this (installation, thread) NOW
+   *       — keyed `slack:<D-channel>:<thread_ts>`, IDENTICAL to the key the
+   *       first user message.im computes — so the first message reuses the same
+   *       Platos thread + agent instead of racing a fresh one.
+   *   (b) setSuggestedPrompts — up to 4 prompts derived from the bound agent's
+   *       description (generic defaults today; see buildAssistantPrompts) under
+   *       the heading "Ask <agent name>".
+   *   (c) setTitle — the agent's display name.
+   * Routing note: an assistant thread is a 1:1 DM split view with no message
+   * text and no channel to route on, so the pinned agent is the default
+   * (install override → app default); text-prefix / channel routing rules do
+   * not apply to this surface. Context (team/channel the user navigated from)
+   * is informational; v1 persists none (no schema change) — see the
+   * assistant_thread_context_changed debug-only branch in handleAppEvent.
+   */
+  private async handleAssistantThreadStarted(
+    app: any,
+    installation: any,
+    event: any,
+  ): Promise<void> {
+    const appId = String(app?.id ?? "");
+    const installationId = String(installation?.id ?? "");
+    const parsed = this.parseAssistantThreadEvent(event);
+    if (!parsed) return;
+    // Defensive self-skip (the opener is a human, never our bot).
+    if (installation.botUserId && parsed.user === String(installation.botUserId)) {
+      return;
+    }
+
+    // Need the bot token to decorate the thread; fail-closed on decrypt.
+    let botToken: string;
+    try {
+      botToken = this.getAppBotToken(app, installation);
+    } catch {
+      this.logger.error(
+        `[channel-apps] bot token unavailable (assistant_thread_started) app=${appId} installation=${installationId}`,
+      );
+      return;
+    }
+
+    // Default agent: install override → app default. None ⇒ nothing to bind.
+    const defaultAgentId =
+      (typeof installation.agentId === "string" && installation.agentId) ||
+      (typeof app.defaultAgentId === "string" && app.defaultAgentId) ||
+      "";
+    if (!defaultAgentId) {
+      this.logger.warn(
+        `[channel-apps] no agent bound (assistant_thread_started) app=${appId} installation=${installationId}`,
+      );
+      return;
+    }
+    const agentRouting = installation.agentRouting ?? app.agentRouting ?? null;
+
+    this.logger.log(
+      `[channel-apps] assistant_thread_started app=${appId} installation=${installationId}`,
+    );
+
+    // ── Identity + scope (app OWNER's scope), mirroring the message path ───
+    const team = String(installation.teamId ?? installation.enterpriseId ?? "");
+    const handle = team ? `${team}:${parsed.user}` : parsed.user;
+    const claims = [{ channel: "slack", handle, verified: true }];
+    const authorScope: RequestScope = {
+      organizationId: String(app.organizationId),
+      projectId: String(app.projectId),
+      environmentId: String(app.environmentId),
+      userId: `slack:${handle}`,
+      userIdentities: claims,
+    };
+    const conversationScope: RequestScope = {
+      ...authorScope,
+      userId: this.appConversationUserId(installationId, parsed.channelThreadKey),
+    };
+
+    // (a) PIN the thread row NOW (empty text ⇒ default agent) so the first user
+    //     message reuses it. Best-effort — a failure just means the first
+    //     message creates the row instead; still decorate with the default agent.
+    let agentId = defaultAgentId;
+    try {
+      const resolved = await this.resolveAppThreadBinding(
+        installationId,
+        defaultAgentId,
+        agentRouting,
+        authorScope,
+        conversationScope,
+        parsed.channelThreadKey,
+        "",
+      );
+      agentId = resolved.agentId;
+    } catch {
+      this.logger.error(
+        `[channel-apps] thread pin failed (assistant_thread_started) app=${appId} installation=${installationId}`,
+      );
+    }
+
+    // Load the pinned agent's display fields (name always; displayName /
+    // description are read defensively — not modeled in the current schema).
+    const agent = await this.loadAgentDisplay(app, agentId);
+    const name = (agent?.name && agent.name.trim()) || "the assistant";
+    const displayName =
+      (typeof agent?.displayName === "string" && agent.displayName.trim()) || name;
+    const description =
+      typeof agent?.description === "string" ? agent.description : null;
+
+    // (b) suggested prompts + (c) title — both best-effort, never throw.
+    try {
+      await setAssistantSuggestedPrompts(
+        botToken,
+        parsed.channel,
+        parsed.threadTs,
+        buildAssistantPrompts(description),
+        `Ask ${name}`,
+      );
+    } catch {
+      /* best-effort */
+    }
+    try {
+      await setAssistantTitle(
+        botToken,
+        parsed.channel,
+        parsed.threadTs,
+        displayName,
+      );
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  /**
+   * Extract the coordinates of an assistant-thread event
+   * (`assistant_thread_started` / `assistant_thread_context_changed`), or null
+   * to skip. Shape:
+   *   event.assistant_thread = { user_id: "U…", channel_id: "D…", thread_ts, context? }
+   * `channelThreadKey` is `slack:<channel_id>:<thread_ts>` — IDENTICAL to the
+   * key parseSlackAppEvent computes for the first threaded message.im, so the
+   * pinned row is reused.
+   */
+  private parseAssistantThreadEvent(event: any): {
+    channel: string;
+    user: string;
+    threadTs: string;
+    channelThreadKey: string;
+  } | null {
+    const at = event?.assistant_thread;
+    if (!at || typeof at !== "object") return null;
+    const channel = typeof at.channel_id === "string" ? at.channel_id : "";
+    const user = typeof at.user_id === "string" ? at.user_id : "";
+    const threadTs = typeof at.thread_ts === "string" ? at.thread_ts : "";
+    if (!channel || !user || !threadTs) return null;
+    return {
+      channel,
+      user,
+      threadTs,
+      channelThreadKey: `slack:${channel}:${threadTs}`,
+    };
+  }
+
+  /**
+   * Load the bound agent's display fields for assistant-thread decoration.
+   * Scope-pinned to the app owner. `name` is the only field guaranteed by the
+   * current schema; `displayName` / `description` are read defensively (absent
+   * today — Phase B is schema-free) via a no-`select` fetch so the query cannot
+   * throw an "unknown field" error and the fields light up automatically if a
+   * future migration adds them.
+   */
+  private async loadAgentDisplay(
+    app: any,
+    agentId: string,
+  ): Promise<{
+    name?: string;
+    displayName?: string;
+    description?: string;
+  } | null> {
+    if (!agentId) return null;
+    try {
+      const row = await this.prisma.platosAgent.findFirst({
+        where: {
+          id: agentId,
+          organizationId: String(app.organizationId),
+          projectId: String(app.projectId),
+          environmentId: String(app.environmentId),
+        },
+      });
+      return (row as any) ?? null;
+    } catch {
+      return null;
     }
   }
 
