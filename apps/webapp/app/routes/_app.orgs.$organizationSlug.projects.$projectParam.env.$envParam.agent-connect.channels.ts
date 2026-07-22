@@ -12,7 +12,7 @@
  *
  * Intents (form field `intent`):
  *   - create        → POST   /channels           { provider, agentId, displayName, credentials, config }
- *   - toggle/patch  → PATCH  /channels/:id        { enabled?, displayName? }
+ *   - toggle/patch  → PATCH  /channels/:id        { enabled?, displayName?, credentials? }
  *   - delete        → DELETE /channels/:id
  *   - rotate-secret → POST   /channels/:id/rotate-secret
  *
@@ -130,6 +130,27 @@ export async function action({ request, params }: ActionFunctionArgs) {
       if (fd.has("displayName")) {
         const dn = fd.get("displayName");
         patch.displayName = typeof dn === "string" && dn.trim() !== "" ? dn.trim() : null;
+      }
+
+      // Optional `credentials` — a JSON-encoded object of the fields to re-encrypt
+      // (the backend PATCH re-seals whatever it's handed). Only forward it when it
+      // parses to a non-empty plain object; empty-object or invalid JSON is dropped
+      // rather than sent, so a blank form never wipes stored secrets.
+      const credentialsRaw = fd.get("credentials");
+      if (typeof credentialsRaw === "string" && credentialsRaw.trim() !== "") {
+        try {
+          const parsed = JSON.parse(credentialsRaw) as unknown;
+          if (
+            parsed != null &&
+            typeof parsed === "object" &&
+            !Array.isArray(parsed) &&
+            Object.keys(parsed as Record<string, unknown>).length > 0
+          ) {
+            patch.credentials = parsed;
+          }
+        } catch {
+          // Malformed JSON — omit credentials rather than forwarding garbage.
+        }
       }
 
       const res = await fetch(`${AGENT_API_URL}/api/v1/agent/channels/${encodeURIComponent(id)}`, {

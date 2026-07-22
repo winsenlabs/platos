@@ -666,6 +666,121 @@ function RotateSecretAction({
   );
 }
 
+/**
+ * Per-row credential update — the way to add tokens after the fact. Slack (and
+ * friends) can't hand you a bot token until the app is installed, which itself
+ * needs the webhook URL this connection reveals, so rows are often created with
+ * blank credentials. This opens a dialog with just that provider's credential
+ * fields and PATCHes the non-empty ones (the backend re-encrypts them).
+ */
+function UpdateCredentialsAction({
+  channel,
+  actionPath,
+}: {
+  channel: ChannelRow;
+  actionPath: string;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const busy = fetcher.state !== "idle";
+  const spec = providerSpec(channel.provider);
+  const [open, setOpen] = useState(false);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [pending, setPending] = useState(false);
+
+  // Close on a settled successful save; leave the dialog open (with the inline
+  // error) on failure. Tracking `pending` keeps a stale ok from an earlier save
+  // from auto-closing the dialog the next time it's opened.
+  useEffect(() => {
+    if (pending && fetcher.state === "idle") {
+      setPending(false);
+      if (fetcher.data?.ok) {
+        setOpen(false);
+        setValues({});
+      }
+    }
+  }, [pending, fetcher.state, fetcher.data]);
+
+  // Nothing to update for a provider with no known credential schema.
+  if (spec.credentials.length === 0) return null;
+
+  function submit() {
+    // Only the fields the user actually typed — blanks mean "leave unchanged".
+    const credentials: Record<string, string> = {};
+    for (const field of spec.credentials) {
+      const v = (values[field.key] ?? "").trim();
+      if (v !== "") credentials[field.key] = v;
+    }
+    setPending(true);
+    fetcher.submit(
+      { intent: "patch", id: channel.id, credentials: JSON.stringify(credentials) },
+      { method: "post", action: actionPath }
+    );
+  }
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="minimal/small"
+        onClick={() => setOpen(true)}
+        title={
+          fetcher.data?.error
+            ? `Update failed: ${fetcher.data.error}`
+            : "Update stored credentials"
+        }
+      >
+        Update credentials
+      </Button>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) setValues({});
+          setOpen(next);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update {spec.label} credentials</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-4">
+            <p className="text-xs text-text-dimmed">
+              hasCredentials:{" "}
+              <span className="text-text-bright">{channel.hasCredentials ? "yes" : "no"}</span>
+            </p>
+            {spec.credentials.map((field) => (
+              <div key={`updcred-${channel.id}-${field.key}`}>
+                <label className="mb-1 block text-xs text-text-dimmed">{field.label}</label>
+                <input
+                  name={`cred_${field.key}`}
+                  type={field.secret ? "password" : "text"}
+                  value={values[field.key] ?? ""}
+                  onChange={(e) =>
+                    setValues((v) => ({ ...v, [field.key]: e.target.value }))
+                  }
+                  placeholder="unchanged — paste to replace"
+                  autoComplete="off"
+                  className={inputClass}
+                />
+              </div>
+            ))}
+
+            {fetcher.data?.error && <Callout variant="error">{fetcher.data.error}</Callout>}
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="minimal/small" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="primary/small" disabled={busy} onClick={submit}>
+                {busy ? "Saving…" : "Save credentials"}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function ChannelRowItem({
   channel,
   actionPath,
@@ -695,6 +810,7 @@ function ChannelRowItem({
       <Badge variant={enabled ? "success" : "outline-rounded"}>
         {enabled ? "Enabled" : "Disabled"}
       </Badge>
+      <UpdateCredentialsAction channel={channel} actionPath={actionPath} />
       <RotateSecretAction
         channel={channel}
         actionPath={actionPath}

@@ -93,6 +93,31 @@ export class ChannelsInboundController {
       return;
     }
 
+    // ── Slack URL-verification fast path ──────────────────────────────────
+    // Slack's setup handshake POSTs { type: "url_verification", challenge }
+    // and expects the challenge echoed within ~3s. It must NOT depend on the
+    // full Chat-instance build: the adapter's initialize() calls auth.test
+    // with the bot token, and during first-time setup the token often does
+    // not exist yet (the manifest needs THIS URL before the app is even
+    // installed — a circular dependency we must absorb). The 256-bit
+    // webhookSecret in the path already authenticates the caller, so echoing
+    // the challenge without a signature check is safe — verification only
+    // proves URL ownership, it grants nothing.
+    if (String(connection.provider) === "slack") {
+      try {
+        const parsed = JSON.parse((req.rawBody ?? Buffer.from("")).toString("utf8"));
+        if (parsed?.type === "url_verification" && typeof parsed.challenge === "string") {
+          this.logger.log(
+            `[channels] slack url_verification fast-ack connection=${connectionId}`,
+          );
+          res.status(200).json({ challenge: parsed.challenge });
+          return;
+        }
+      } catch {
+        /* not JSON / not the handshake — fall through to the adapter */
+      }
+    }
+
     // Cached, per-connection Chat instance (auth layer 2 lives inside it).
     let bot: any;
     let provider: string;
