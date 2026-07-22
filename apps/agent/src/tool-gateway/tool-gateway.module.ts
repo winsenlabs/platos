@@ -4,7 +4,16 @@ import { ToolExecutorService } from "./tool-executor.service";
 import { ToolRouterService } from "./tool-router.service"; // PIFSP-11
 import { ToolSyncWsService } from "./tool-sync-ws.service"; // canonical raw-WS service speaking platools protocol
 import { SchemaInjectorService } from "./schema-injector.service";
+// mcp-transport — the two Phase-1 primitives relocated onto the entity dispatch
+// path (design Commit 2). Independent of PlatosMCPServer; consumed by the
+// forthcoming mcpDispatch branch in ToolExecutorService (Commit 4).
+import { McpCredentialService } from "./mcp-transport/mcp-credential.service";
+import { McpConnectionPool } from "./mcp-transport/mcp-client-pool.service";
 import { MonitoringModule } from "../monitoring/monitoring.module";
+// ProvidersModule exports ScopedEnvService, which McpCredentialService injects
+// to resolve `{{secret}}` credsSecretKey values. ProvidersModule imports
+// nothing back into tool-gateway, so no circular module graph.
+import { ProvidersModule } from "../providers/providers.module";
 // Issue #1 — `MCPPermissionGatewayService` is also exported by
 // `McpPlatformModule`, but that module already imports
 // `ToolGatewayModule` (for ToolExecutorService). Importing it back
@@ -23,13 +32,15 @@ import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.
   // Importing MonitoringModule makes SpansService (Theme E.1) and
   // ToolAuditService (Theme E.5) available for ToolExecutorService to inject
   // optionally. MonitoringModule has no edges into tool-gateway, so no cycle.
-  imports: [MonitoringModule],
+  imports: [MonitoringModule, ProvidersModule],
   providers: [
     ToolRegistryService,
     ToolExecutorService,
     ToolRouterService,
     ToolSyncWsService,
     SchemaInjectorService,
+    McpCredentialService,
+    McpConnectionPool,
     // Issue #1 — see import comment above. Local registration avoids
     // a circular import. When the gate is enabled via
     // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1, ToolExecutorService now
@@ -42,6 +53,8 @@ import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.
     ToolRouterService,
     ToolSyncWsService,
     SchemaInjectorService,
+    McpCredentialService,
+    McpConnectionPool,
   ],
 })
 export class ToolGatewayModule {}

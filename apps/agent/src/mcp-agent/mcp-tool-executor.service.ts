@@ -1,9 +1,12 @@
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { MCPPermissionGatewayService } from "../mcp-platform/permission-gateway.service";
 import { McpServerRegistryService, type ServerRow } from "./server-registry.service";
+import { McpCredentialService } from "../tool-gateway/mcp-transport/mcp-credential.service";
+import { McpConnectionPool } from "../tool-gateway/mcp-transport/mcp-client-pool.service";
 import { ToolAuditService } from "../monitoring/tool-audit.service";
 import type { RequestScope } from "../auth/scope.guard";
-import { validatePublicUrl, describeUrlValidationError, fetchWithValidatedRedirects } from "../shared/url-validator";
+import { validatePublicUrl, describeUrlValidationError } from "../shared/url-validator";
+import { env } from "../shared/env";
 
 /**
  * Theme K.12 — MCP tool dispatcher used by the customer-agent turn
@@ -46,6 +49,8 @@ export class McpToolExecutorService {
   constructor(
     private readonly registry: McpServerRegistryService,
     private readonly permissionGateway: MCPPermissionGatewayService,
+    private readonly credentials: McpCredentialService,
+    private readonly pool: McpConnectionPool,
     @Optional() private readonly toolAudit?: ToolAuditService,
   ) {}
 
@@ -113,7 +118,7 @@ export class McpToolExecutorService {
     }
 
     try {
-      const result = await this.dispatch(server, toolName, params);
+      const result = await this.dispatch(scope, server, toolName, params);
       const latencyMs = Date.now() - started;
       // Audit (fire-and-forget) — same `PlatosToolCallAudit` table
       // entity tools use, with the `type: "mcp"` distinguisher.
@@ -180,43 +185,50 @@ export class McpToolExecutorService {
   }
 
   private async dispatch(
+    scope: RequestScope,
     server: ServerRow,
     toolName: string,
     params: Record<string, unknown>,
   ): Promise<unknown> {
     if (server.transport === "remote-http" || server.transport === "remote-sse") {
       if (!server.url) throw new Error("server.url missing");
-      // BUG-15: validate server.url before fetch — defense-in-depth even after
-      // BUG-4 registration guard, in case a row was inserted via admin tools
-      // or before the registration guard was added.
+      // BUG-15: cheap early SSRF reject before we touch the pool — defense-in-
+      // depth even after the BUG-4 registration guard, in case a row was
+      // inserted via admin tools. The pool's fetch re-validates + address-pins
+      // every hop of every request too.
       const urlCheck = await validatePublicUrl(server.url);
       if (!urlCheck.ok) {
         throw new Error(`server url blocked by SSRF guard: ${describeUrlValidationError(urlCheck.error)}`);
       }
-      const body = {
-        jsonrpc: "2.0",
-        id: `call-${Date.now()}`,
-        method: "tools/call",
-        params: { name: toolName, arguments: params },
-      };
-      const res = await fetchWithValidatedRedirects(server.url, 3, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json, text/event-stream",
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(30_000),
-      });
-      if (!res.ok) throw new Error(`tools/call returned ${res.status}`);
-      const json = (await res.json()) as {
-        result?: unknown;
-        error?: { code: number; message: string };
-      };
-      if (json.error) {
-        throw new Error(`MCP server error ${json.error.code}: ${json.error.message}`);
+      // Phase 1: resolvedUrl is server.url as-is (no per-user templating).
+      const resolvedUrl = server.url;
+      let resolvedHeaders: Record<string, string>;
+      try {
+        resolvedHeaders = await this.credentials.resolveHeaders(server, {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+        });
+      } catch (err: any) {
+        // Redacted — resolveHeaders never echoes secret/header values.
+        throw new Error(`credential resolution failed: ${err?.message ?? "unknown"}`);
       }
-      return json.result;
+      const client = await this.pool.getClient({
+        server,
+        resolvedUrl,
+        resolvedHeaders,
+        transportKind: server.transport,
+      });
+      // callTool throws an McpError on a JSON-RPC protocol error (caught by
+      // execute()'s try/catch → audited as failed); a tool-level `isError`
+      // result is returned as-is, matching the pre-SDK behavior (which only
+      // threw on the JSON-RPC envelope error, not on tool-level errors).
+      const result = await client.callTool(
+        { name: toolName, arguments: params },
+        undefined,
+        { timeout: env.MCP_CALL_TIMEOUT_MS ?? 30_000 },
+      );
+      return result;
     }
     if (server.transport.startsWith("hosted-")) {
       // Platos-hosted servers: the specific handler lives in

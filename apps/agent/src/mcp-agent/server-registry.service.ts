@@ -3,7 +3,10 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import type { RequestScope } from "../auth/scope.guard";
-import { validatePublicUrl, describeUrlValidationError, fetchWithValidatedRedirects } from "../shared/url-validator";
+import { validatePublicUrl, describeUrlValidationError } from "../shared/url-validator";
+import { env } from "../shared/env";
+import { McpCredentialService } from "../tool-gateway/mcp-transport/mcp-credential.service";
+import { McpConnectionPool } from "../tool-gateway/mcp-transport/mcp-client-pool.service";
 
 /**
  * Theme K.6 — MCP server registry.
@@ -74,6 +77,8 @@ export class McpServerRegistryService {
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
+    private readonly credentials: McpCredentialService,
+    private readonly pool: McpConnectionPool,
   ) {}
 
   // ── Server CRUD ────────────────────────────────────────────────
@@ -184,7 +189,7 @@ export class McpServerRegistryService {
     let tools: ServerToolRow[] = [];
     let error: string | null = null;
     try {
-      tools = await this.fetchToolsList(server);
+      tools = await this.fetchToolsList(scope, server);
     } catch (err: any) {
       error = err?.message?.slice(0, 500) ?? "discovery failed";
     }
@@ -225,40 +230,38 @@ export class McpServerRegistryService {
     return { tools, ...(error ? { error } : {}) };
   }
 
-  private async fetchToolsList(server: ServerRow): Promise<ServerToolRow[]> {
+  private async fetchToolsList(
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+    server: ServerRow,
+  ): Promise<ServerToolRow[]> {
     if (server.transport === "remote-http" || server.transport === "remote-sse") {
       if (!server.url) throw new Error("server.url missing");
-      // BUG-4/15: defense-in-depth — validate before discovery fetch too.
+      // BUG-4/15: cheap early SSRF reject. Defense-in-depth — the pool's fetch
+      // re-validates + address-pins every hop of every request too.
       const urlCheck = await validatePublicUrl(server.url);
       if (!urlCheck.ok) {
         throw new Error(`server url blocked by SSRF guard: ${describeUrlValidationError(urlCheck.error)}`);
       }
-      const body = {
-        jsonrpc: "2.0",
-        id: `discovery-${Date.now()}`,
-        method: "tools/list",
-        params: {},
-      };
-      const res = await fetchWithValidatedRedirects(server.url, 3, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json, text/event-stream",
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(15_000),
+      // Phase 1: resolvedUrl is server.url as-is (no per-user templating).
+      const resolvedUrl = server.url;
+      let resolvedHeaders: Record<string, string>;
+      try {
+        resolvedHeaders = await this.credentials.resolveHeaders(server, scope);
+      } catch (err: any) {
+        // Redacted — resolveHeaders never echoes secret/header values.
+        throw new Error(`credential resolution failed: ${err?.message ?? "unknown"}`);
+      }
+      const client = await this.pool.getClient({
+        server,
+        resolvedUrl,
+        resolvedHeaders,
+        transportKind: server.transport,
       });
-      if (!res.ok) throw new Error(`tools/list returned ${res.status}`);
-      const json = (await res.json()) as {
-        result?: {
-          tools?: Array<{
-            name: string;
-            description?: string;
-            inputSchema?: unknown;
-          }>;
-        };
-      };
-      const raw = json?.result?.tools ?? [];
+      const listed = await client.listTools(
+        {},
+        { timeout: env.MCP_DISCOVERY_TIMEOUT_MS ?? 15_000 },
+      );
+      const raw = listed?.tools ?? [];
       return raw.map((t) => ({
         name: t.name,
         description: t.description ?? null,
