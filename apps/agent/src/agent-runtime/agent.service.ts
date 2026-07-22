@@ -80,6 +80,15 @@ import {
   textFallbackDescription,
 } from "./multimodal-adapter";
 import { env } from "../shared/env";
+import {
+  SUBAGENT_MAX_DEPTH,
+  isSpawnDepthAllowed,
+  childSpawnDepth,
+  normalizeSpawnDepth,
+  narrowSpawnToolAcl,
+  resolveMaxChildrenPerTurn,
+  spawnDedupeKey,
+} from "./subagent-guardrails";
 import { type ArtifactKind } from "./artifact-meta";
 // Theme CTX.2 — session-context auto-injection helpers. All fail-open on
 // missing config so existing turns (no sessionContext / no contextMapping)
@@ -617,6 +626,13 @@ export interface AgentConfig {
    */
   maxBgosPerTurn?: number | null;
   /**
+   * Subagent spawning — per-agent cap on how many `spawn_agent` children may
+   * be spawned within a single turn (shares the per-turn `bgo_cap` Redis
+   * counter with spawn_bgo / agent_batch). Overrides
+   * PLATOS_MAX_CHILDREN_PER_TURN. null / undefined = env var (default 5).
+   */
+  maxChildrenPerTurn?: number | null;
+  /**
    * LAUNCH-2 — per-agent retry/fallback waterfall. When set, each rule
    * overrides DEFAULT_RETRY_RULES for the matching trigger. When null,
    * the runtime falls back to the built-in defaults.
@@ -656,6 +672,7 @@ export const META_TOOL_CATEGORIES: Record<string, string> = {
   spawn_bgo: "orchestration",
   spawn_task: "orchestration",
   agent_batch: "orchestration",
+  spawn_agent: "orchestration",
   // approvals — in-the-loop HITL
   request_approval: "approvals",
   request_durable_approval: "approvals",
@@ -2730,6 +2747,296 @@ export class AgentService {
             itemCount: items.length,
             message: `agent_batch queued in Redis stub (trigger.dev not configured). batchRunId=${batchRunId}.`,
           };
+        },
+      };
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // spawn_agent — durable, multi-turn, autonomous subagent. Unlike
+    // `delegate_to_sub_agent` (synchronous, inline, one turn) or `agent_batch`
+    // (N items × one turn each), this spawns a FULL agent loop on a CHILD
+    // thread (parentThreadId lineage) via `platos.agent.subrun`, and — in
+    // background mode — reports back into THIS thread so the parent reasons
+    // over the result. Composition of owned rails (spec: docs/subagent-spawning-spec.md).
+    //
+    // Guardrails (all enforced server-side here, never client-trusted):
+    //   • scope INHERITED — the child payload copies the parent's tuple 1:1;
+    //     the arg schema exposes NO scope fields, so the caller cannot choose it.
+    //   • depth ≤ 2 — a grandchild (depth 2) may not spawn.
+    //   • children cap per turn — shares the spawn_bgo `bgo_cap` Redis counter.
+    //   • budget = shared pool — enforced inside the subrun loop (budgetCents)
+    //     + the scope-wide BudgetService backstop (child inherits parent scope).
+    //   • tool-ACL narrowing — child tools ⊆ parent tools ∩ spec.allowedTools.
+    //   • dedupe — idempotencyKey on (parentThread, task-hash) so a retried
+    //     parent turn doesn't double-spawn.
+    //   • run tagged parentThreadId/parentRunId for the runs tree.
+    const spawnAgentEnabled =
+      agentConfig?.metaTools?.spawn_agent === undefined ? true : !!agentConfig.metaTools.spawn_agent;
+    if (spawnAgentEnabled) {
+      const spawnAgentParameters = z.object({
+        agentId: z
+          .string()
+          .optional()
+          .describe(
+            "WHO (mode a): id of a real Platos agent to run as — gets its own memory/skills/config. Omit to use an ephemeral inline spec (mode b, the default/cheaper path).",
+          ),
+        spec: z
+          .object({
+            model: z.string().optional().describe("Model label for the ephemeral subagent (e.g. 'anthropic:claude-haiku')."),
+            systemPrompt: z.string().optional().describe("System prompt for the ephemeral subagent."),
+            allowedTools: z
+              .array(z.string())
+              .optional()
+              .describe(
+                "Tool names the subagent may use. NARROWED server-side to a strict subset of THIS agent's current tool matrix — you can never grant the child a tool you don't hold. Omit to inherit (still bounded by) the parent matrix.",
+              ),
+            skills: z.array(z.string()).optional().describe("Skill names to enable for the ephemeral subagent."),
+          })
+          .optional()
+          .describe("WHO (mode b): ephemeral inline spec — disposable, no registry row."),
+        task: z.string().min(1).describe("WHAT: the task for the subagent to accomplish autonomously."),
+        context: z.string().optional().describe("Any context the subagent should start with (prior findings, constraints)."),
+        mode: z
+          .enum(["background", "wait"])
+          .optional()
+          .describe(
+            "background (default): returns immediately; the subagent reports back into this thread when done and wakes you to reason over it. wait: blocks for a short subtask and returns the result as the tool result.",
+          ),
+        maxTurns: z.number().int().min(1).max(20).optional().describe("Max autonomous turns the subagent may take (default 6)."),
+        budgetCents: z
+          .number()
+          .int()
+          .min(1)
+          .max(10000)
+          .optional()
+          .describe("Shared-pool spend ceiling (cents) drawn from the parent's budget; the subagent stops cleanly with a partial report when exhausted (default 50)."),
+      });
+
+      tools.spawn_agent = {
+        description:
+          "Spawn a durable, autonomous, multi-turn subagent that works toward a task and REPORTS BACK so you reason over its result (research a topic, fix a bug, verify a claim). Runs the full agent loop on a child thread with retries + durability. Use this — not agent_batch — when you need the RESULT as input to further reasoning. Returns { spawned, runId } immediately in background mode.",
+        inputSchema: spawnAgentParameters,
+        execute: async (args) => {
+          const {
+            agentId: refAgentId,
+            spec,
+            task: spawnTask,
+            context: spawnContext,
+            mode: rawMode,
+            maxTurns: rawMaxTurns,
+            budgetCents: rawBudgetCents,
+          } = args;
+          const mode: "background" | "wait" = rawMode === "wait" ? "wait" : "background";
+          const maxTurns = Math.max(1, Math.min(20, rawMaxTurns ?? 6));
+          const budgetCents = Math.max(1, Math.min(10000, rawBudgetCents ?? 50));
+
+          // GUARDRAIL — depth cap ≤ 2. Read the runtime-stamped depth of the
+          // CURRENT turn (0 for root turns; set by /internal/subagent-turn for
+          // child turns). A depth-2 grandchild may not spawn.
+          const currentDepth = normalizeSpawnDepth((scope as any).spawnDepth);
+          if (!isSpawnDepthAllowed(currentDepth)) {
+            return {
+              spawned: false,
+              error: "depth_cap_exceeded",
+              message: `Subagent depth cap (${SUBAGENT_MAX_DEPTH}) reached — a grandchild agent cannot spawn further agents.`,
+            };
+          }
+          const spawnDepth = childSpawnDepth(currentDepth);
+
+          // GUARDRAIL — children cap per turn. Reuse the SHARED spawn_bgo
+          // per-turn Redis counter (bounds spawn_bgo + agent_batch + spawn_agent
+          // combined per turn) but enforce spawn_agent's own lower ceiling.
+          const maxChildren = resolveMaxChildrenPerTurn(
+            agentConfig?.maxChildrenPerTurn,
+            process.env.PLATOS_MAX_CHILDREN_PER_TURN,
+          );
+          const capKey = `bgo_cap:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.sessionId || "notread"}`;
+          try {
+            const count = await this.redis.incr(capKey);
+            if (count === 1) await this.redis.expire(capKey, 600);
+            if (count > maxChildren) {
+              return {
+                spawned: false,
+                error: "children_cap_exceeded",
+                message: `spawn_agent cap of ${maxChildren} children per turn reached (shared with spawn_bgo / agent_batch). Stop spawning.`,
+              };
+            }
+          } catch {
+            // Redis hiccup — fail-open (availability over strict cap), same as spawn_bgo.
+          }
+
+          // GUARDRAIL — tool-ACL narrowing. Child ENTITY tools ⊆ parent matrix ∩
+          // spec.allowedTools. Computed here where we know the parent's
+          // effective tool set; passed through to every child turn (narrows the
+          // child's `execute_tools` dispatch surface).
+          const parentTools = agentConfig?.toolsBlockConfig?.enabledTools ?? [];
+          const childEntityTools = narrowSpawnToolAcl(parentTools, spec?.allowedTools);
+          // Depth ≤ 2 is a REAL capability, not just a block: a first-level
+          // child (depth 1) keeps `spawn_agent` so it may spawn once more; a
+          // depth-2 grandchild is denied the tool here AND refused by the depth
+          // guard in its own handler (belt + suspenders). The narrowed entity
+          // subset above is unaffected — child entity tools stay ⊆ parent.
+          const childAllowedTools =
+            spawnDepth < SUBAGENT_MAX_DEPTH ? [...childEntityTools, "spawn_agent"] : childEntityTools;
+
+          const parentThreadId = (scope as any).threadId ?? scope.sessionId ?? "";
+          const parentAgentId = scope.agentId || "default";
+          const parentRunId = (scope as any).runId ?? null;
+
+          if (!triggerReady() || !triggerSdk?.tasks?.trigger) {
+            return {
+              spawned: false,
+              error: "trigger_unavailable",
+              message:
+                "spawn_agent requires trigger.dev (durable execution), which is not configured for this environment. Use delegate_to_sub_agent for an inline delegation instead.",
+            };
+          }
+
+          // GUARDRAIL — scope INHERITED, never chosen. Copy the parent tuple 1:1.
+          const childScope = {
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+            userId: scope.userId,
+            agentId: refAgentId || parentAgentId,
+            sessionId: scope.sessionId,
+            userToken: scope.userToken,
+            entityId: scope.entityId,
+            traceId: scope.traceId,
+            parentSpanId: scope.parentSpanId,
+          };
+
+          const payload = {
+            scope: childScope,
+            parentThreadId,
+            parentAgentId,
+            parentRunId,
+            spawnDepth,
+            task: spawnTask,
+            context: spawnContext ?? null,
+            referencedAgentId: refAgentId ?? null,
+            spec: spec
+              ? { model: spec.model ?? null, systemPrompt: spec.systemPrompt ?? null, skills: spec.skills ?? null }
+              : null,
+            allowedTools: childAllowedTools,
+            maxTurns,
+            budgetCents,
+            mode,
+          };
+
+          // GUARDRAIL — dedupe. idempotencyKey on (parentThread, task-hash) so a
+          // retried parent turn returns the existing child run.
+          const idempotencyKey = spawnDedupeKey({
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+            parentThreadId,
+            task: spawnTask,
+            spec: spec ?? refAgentId ?? null,
+          });
+
+          // GUARDRAIL — run tagged parentThreadId/parentRunId for the runs tree.
+          const spawnTags = [
+            ...scopeTags,
+            `parentThread:${parentThreadId || "unscoped"}`,
+            `spawnDepth:${spawnDepth}`,
+            "kind:subagent",
+            ...(parentRunId ? [`parentRun:${parentRunId}`] : []),
+          ];
+          const spawnMetadata = {
+            ...scopeMetadata,
+            parentThreadId,
+            spawnDepth,
+            kind: "subagent",
+            task: spawnTask.slice(0, 200),
+          };
+          const queue = {
+            name: `org:${scope.organizationId}:subagent`,
+            concurrencyLimit: parseInt(process.env.PLATOS_PER_ORG_SUBAGENT_CONCURRENCY ?? "20", 10),
+          };
+
+          try {
+            const handle = await triggerSdk.tasks.trigger("platos.agent.subrun", payload, {
+              idempotencyKey,
+              tags: spawnTags,
+              metadata: spawnMetadata,
+              queue,
+            });
+
+            // Stream child progress into the PARENT thread's room (agent_batch
+            // pattern) so the parent conversation shows the subagent working.
+            const runsBridge = this.getRunsBridge();
+            if (runsBridge && parentThreadId) {
+              try {
+                runsBridge.subscribe(handle.id, scope, parentThreadId);
+              } catch (err: any) {
+                this.logger.warn(`[spawn_agent] runsBridge.subscribe failed for runId=${handle.id}: ${err?.message}`);
+              }
+            }
+
+            if (mode === "wait") {
+              // Short subtask — poll the run to terminal (bounded) and return
+              // its output as the tool result. Degrades to background semantics
+              // (result reported into the thread) if the poll times out.
+              const TERMINAL = new Set([
+                "COMPLETED",
+                "FAILED",
+                "CANCELED",
+                "CRASHED",
+                "TIMED_OUT",
+                "SYSTEM_FAILURE",
+              ]);
+              const waitTimeoutMs = Math.min(180_000, Math.max(20_000, maxTurns * 20_000));
+              const deadline = Date.now() + waitTimeoutMs;
+              while (Date.now() < deadline) {
+                if (abortSignal?.aborted) break;
+                let run: any = null;
+                try {
+                  run = await triggerSdk.runs?.retrieve?.(handle.id);
+                } catch {
+                  // retrieve unavailable/transient — fall through to poll again.
+                }
+                const status = String(run?.status ?? "");
+                if (TERMINAL.has(status)) {
+                  return {
+                    spawned: true,
+                    durable: true,
+                    waited: true,
+                    runId: handle.id,
+                    status,
+                    result: run?.output ?? null,
+                    message: `Subagent finished (${status}).`,
+                  };
+                }
+                await new Promise((r) => setTimeout(r, 2500));
+              }
+              return {
+                spawned: true,
+                durable: true,
+                waited: false,
+                runId: handle.id,
+                message:
+                  "Subagent wait timed out; it continues in the background and will report back into this thread when done.",
+              };
+            }
+
+            return {
+              spawned: true,
+              durable: true,
+              runId: handle.id,
+              mode,
+              spawnDepth,
+              allowedTools: childAllowedTools,
+              message: `spawn_agent dispatched (runId=${handle.id}, depth=${spawnDepth}). The subagent runs durably on a child thread and will report back into this thread when done — you'll be able to reason over its result then.`,
+            };
+          } catch (err: any) {
+            this.logger.warn(`[spawn_agent] trigger.dev dispatch failed: ${err?.message}`);
+            return {
+              spawned: false,
+              error: "dispatch_failed",
+              message: `Failed to dispatch subagent: ${err?.message ?? String(err)}`,
+            };
+          }
         },
       };
     }

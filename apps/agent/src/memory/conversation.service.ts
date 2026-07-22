@@ -163,7 +163,19 @@ export class ConversationService {
     scope: RequestScope,
     agentId: string,
     title?: string,
-    opts?: { displayName?: string; email?: string },
+    opts?: {
+      displayName?: string;
+      email?: string;
+      /**
+       * Subagent spawning — records CHILD-thread lineage on the pre-existing
+       * self-relation `parentThreadId` column (schema.prisma
+       * `PlatosAgentThreadForks`). Distinct semantics from `forkThread`: a
+       * spawn creates an EMPTY child thread (no message history copied), it
+       * just links the child back to the spawning parent so the runs/thread
+       * tree shows the tree. See docs/subagent-spawning-spec.md.
+       */
+      parentThreadId?: string;
+    },
   ): Promise<Thread> {
     // PPR-58 — fail-closed scope check. `findUnique({id})` + a JS-side scope
     // compare leaks "agent exists in some other scope" via a distinct error
@@ -235,6 +247,9 @@ export class ConversationService {
         ...(platosEndUserId ? { platosEndUserId } : {}),
         // PRA-AC: stamp cluster FK when the creating agent is a cluster member.
         ...(scope.clusteringId ? { clusteringId: scope.clusteringId } : {}),
+        // Subagent spawning — link the child thread back to its spawning parent
+        // (empty-history child, NOT a fork/clone).
+        ...(opts?.parentThreadId ? { parentThreadId: opts.parentThreadId } : {}),
       },
     });
   }

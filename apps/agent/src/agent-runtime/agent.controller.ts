@@ -4511,6 +4511,102 @@ Write the summary now:`;
   }
 
   /**
+   * Subagent spawning — report-back callback. Invoked by the
+   * `platos.agent.subrun` trigger task when a background subagent finishes.
+   * WAKES THE PARENT: the child's result rides in as a synthetic
+   * `[subagent_report]` message (pre-formatted by the task) and a durable
+   * PARENT turn runs in-process on the parent thread — the parent then reasons
+   * over the result (spawn more / synthesize / finish).
+   *
+   * Uses the EXACT durable-turn wake mechanism: run `executeStreamingTurn`
+   * in-process on the parent thread and relay each event to the parent thread's
+   * Socket.IO room via the generic `overview:event` Redis forwarder — ONE relay
+   * loop, so no double-emit. Admin-token gated + `adminCallbackScopeOwns`
+   * (the body's scope must own the parent agent + thread) exactly like
+   * `internalDurableTurn`.
+   */
+  @Post("internal/subagent-report")
+  async internalSubagentReport(
+    @Req() req: Request,
+    @Body() body: {
+      agentId: string;
+      /** Parent thread the report is injected into (the spawn origin). */
+      threadId: string;
+      /** Pre-formatted synthetic `[subagent_report]` message (from the task). */
+      report: string;
+      childThreadId?: string | null;
+      finalStatus?: string;
+      costCents?: number;
+      turnsUsed?: number;
+      scope: {
+        organizationId: string;
+        projectId: string;
+        environmentId: string;
+        userId: string;
+        agentId?: string;
+        threadId?: string;
+      };
+    },
+  ) {
+    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!this.verifyAdminToken(req)) return { status: "forbidden" };
+    if (!body?.report || !body?.scope || !body?.threadId) {
+      return { status: "invalid", reason: "report, threadId and scope required" };
+    }
+    // SECURITY (audit C2) — the body's scope must own its parent agent/thread.
+    if (!(await this.adminCallbackScopeOwns(body))) {
+      return { status: "forbidden", reason: "scope does not own the target agent/thread" };
+    }
+    const start = Date.now();
+    const threadId = body.threadId;
+    const room = `thread:${threadId}`;
+    try {
+      // Wake the parent: seed a durable parent turn with the subagent report as
+      // a synthetic user-role message. Relay each event to the parent thread
+      // room via the generic Redis forwarder (same as internalDurableTurn) —
+      // a single relay loop, so a client joined to the thread room gets each
+      // event exactly once (no double-emit).
+      let fullText = "";
+      let messageId: string | undefined;
+      let costCents = 0;
+      for await (const event of this.agentTaskService.executeStreamingTurn(body.report, body.scope as any, {
+        agentId: body.agentId,
+        threadId,
+      })) {
+        this.redis
+          .publish("overview:event", JSON.stringify({ room, event: "agent_event", data: { ...event, threadId } }))
+          .catch(() => undefined);
+        if (event.type === "token") fullText += (event as any).text ?? "";
+        else if ((event as any).type === "message_persisted") {
+          messageId = (event as any).messageId;
+          costCents = (event as any).costCents ?? costCents;
+        }
+      }
+      return {
+        status: "ok" as const,
+        threadId,
+        text: fullText,
+        messageId,
+        costCents,
+        durationMs: Date.now() - start,
+      };
+    } catch (err: any) {
+      this.redis
+        .publish(
+          "overview:event",
+          JSON.stringify({ room, event: "agent_event", data: { type: "error", message: err?.message ?? String(err), threadId } }),
+        )
+        .catch(() => undefined);
+      return {
+        status: "failed" as const,
+        reason: err?.message ?? String(err),
+        threadId,
+        durationMs: Date.now() - start,
+      };
+    }
+  }
+
+  /**
    * REFACTOR — skill-as-task callback. Invoked by the `platos.skill.run`
    * trigger task to execute a heavy/parallel/long skill tool off the agent
    * event loop. Runs the skill handler in-scope via SkillRuntimeService.

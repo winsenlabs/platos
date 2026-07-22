@@ -116,6 +116,14 @@ export interface RequestScope {
   /** PRA-AC: stamped at runtime (not from auth token) when the executing agent is a cluster member. */
   clusteringId?: string | null;
   /**
+   * Subagent-spawning depth of the CURRENT turn. Root turns are 0/undefined; a
+   * turn spawned by `spawn_agent` runs at depth ≥ 1. Runtime-stamped ONLY — set
+   * by the `/internal/subagent-turn` callback from the HMAC-verified payload,
+   * NEVER from a client token. `buildMetaTools` reads it to enforce the depth
+   * cap (a depth-2 grandchild may not spawn). See docs/subagent-spawning-spec.md.
+   */
+  spawnDepth?: number;
+  /**
    * LAUNCH-12 — the actual logged-in operator before any Postman override.
    * Set by the WS gateway when an org admin simulates a different `userId`
    * via `postmanUserId`. `userId` then becomes the simulated id; this field
@@ -291,6 +299,12 @@ export class ScopeGuard implements CanActivate {
     // callback from the `platos-agent-batch` trigger.dev task so it can
     // invoke AgentTaskService.executeNonStreamingTurn once per batch item.
     if (url.startsWith("/internal/batch-turn")) return true;
+    // Subagent spawning — `/internal/subagent-turn` is the per-turn callback
+    // from the `platos.agent.subrun` trigger.dev task. Same HMAC-signed,
+    // scope-in-body pattern as batch-turn, but it threads the CHILD thread id
+    // through so multi-turn history accumulates on one thread. The controller
+    // verifies the HMAC before running the turn.
+    if (url.startsWith("/internal/subagent-turn")) return true;
 
     // Admin endpoints authenticated by PLATOS_ADMIN_TOKEN header (e.g. the
     // LiteLLM cost-catalog ingest POSTed by the scheduled trigger.dev task).
@@ -338,6 +352,11 @@ export class ScopeGuard implements CanActivate {
       url.startsWith("/api/v1/agent/internal/chat/reap-sessions") ||
       url.startsWith("/api/v1/agent/internal/employee-run") ||
       url.startsWith("/api/v1/agent/internal/skill-run") ||
+      // Subagent report-back — the `platos.agent.subrun` task POSTs the child's
+      // result here (admin-token gated + scope-in-body); the controller
+      // re-verifies the token AND that the body's scope owns the parent
+      // agent/thread before waking a durable parent turn.
+      url.startsWith("/api/v1/agent/internal/subagent-report") ||
       // Managed-cloud maintenance-task callbacks — same admin-token gate +
       // scope-in-body. These run as scheduled trigger.dev tasks on Trigger
       // Cloud and reach the agent through the public proxy; each controller

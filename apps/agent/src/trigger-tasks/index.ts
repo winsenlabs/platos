@@ -14,6 +14,12 @@ export type {
   AgentBatchItemResult,
 } from "./agent-batch.task";
 
+// Subagent spawning — durable multi-turn tool-calling agent loop on a CHILD
+// thread (parentThreadId lineage) that reports back into the parent thread so
+// the parent reasons over the result. Fired by the `spawn_agent` meta-tool.
+export { agentSubrun } from "./agent-subrun.task";
+export type { AgentSubrunPayload, AgentSubrunOutput } from "./agent-subrun.task";
+
 export { agentScheduledRun } from "./agent-scheduled-run.task";
 
 export { litellmCostRefresh } from "./litellm-cost-refresh.task";

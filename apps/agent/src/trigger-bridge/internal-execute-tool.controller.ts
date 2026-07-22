@@ -3,6 +3,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { ToolExecutorService } from "../tool-gateway/tool-executor.service";
 import { ScopedEnvService } from "../providers/scoped-env.service";
 import { AgentTaskService } from "../agent-runtime/agent-task.service";
+import { ConversationService } from "../memory/conversation.service";
+import { SUBAGENT_MAX_DEPTH } from "../agent-runtime/subagent-guardrails";
 import type { RequestScope } from "../auth/scope.guard";
 
 /**
@@ -54,6 +56,10 @@ export class InternalExecuteToolController {
     // /internal/batch-turn endpoint. Used by the `agent_batch` durable
     // executor to run one agent turn per batch item.
     private readonly agentTaskService: AgentTaskService,
+    // Subagent spawning — ConversationService (from MemoryModule) mints the
+    // CHILD thread with parentThreadId lineage on the first /internal/subagent-turn
+    // call so multi-turn history accumulates on one thread.
+    private readonly conversationService: ConversationService,
   ) {}
 
   /**
@@ -275,6 +281,126 @@ export class InternalExecuteToolController {
         text: result.text,
         threadId: result.threadId,
         costCents: result.costCents ?? 0,
+      };
+    } catch (err: any) {
+      return {
+        status: "failed" as const,
+        error: err?.message ?? String(err),
+        latencyMs: Date.now() - startedAt,
+      };
+    }
+  }
+
+  /**
+   * Subagent spawning — per-turn callback for the `platos.agent.subrun`
+   * durable executor. HMAC-signed (same scheme as /batch-turn). Runs ONE
+   * non-streaming agent turn against the CHILD thread and returns
+   * `{ status, text, threadId, costCents, hadToolCalls }`. The subrun task
+   * loops over turns on this one thread until a done-signal / maxTurns /
+   * budget floor.
+   *
+   * Differs from /batch-turn in two security-relevant ways:
+   *   1. It THREADS the child threadId through every call (batch mints a fresh
+   *      thread per item) — on the first call (threadId absent) it mints the
+   *      child thread with `parentThreadId` lineage; later calls reuse it, so
+   *      multi-turn history accumulates on one thread.
+   *   2. It stamps `scope.spawnDepth` from the HMAC-verified body so the CHILD
+   *      turn's own `buildMetaTools` enforces the grandchild depth cap. The
+   *      depth is server-controlled end-to-end (handler → task → here); it is
+   *      NEVER read from a client token. We re-check the cap here as
+   *      defense-in-depth.
+   *
+   * Scope is rebuilt entirely from the HMAC-verified body — the child never
+   * accepts a caller-chosen scope; it is the parent's tuple copied 1:1.
+   */
+  @Post("subagent-turn")
+  async subagentTurn(
+    @Headers("x-platos-signature") signature: string | undefined,
+    @Headers("x-platos-timestamp") timestamp: string | undefined,
+    @Body() body: {
+      organizationId: string;
+      projectId: string;
+      environmentId: string;
+      userId: string;
+      agentId: string;
+      message: string;
+      allowedTools?: string[] | null;
+      threadId?: string | null;
+      parentThreadId?: string | null;
+      spawnDepth?: number;
+      systemPromptOverride?: string | null;
+      modelLabel?: string | null;
+      scopeExtras?: {
+        sessionId?: string;
+        userToken?: string;
+        entityId?: string;
+        traceId?: string;
+        parentSpanId?: string;
+      };
+    },
+  ) {
+    this.verifySignature(signature, timestamp, body);
+
+    // Defense-in-depth: refuse to run a child past the depth cap even though
+    // the spawning handler already gated it.
+    const spawnDepth = typeof body.spawnDepth === "number" ? body.spawnDepth : 1;
+    if (spawnDepth < 1 || spawnDepth > SUBAGENT_MAX_DEPTH) {
+      return {
+        status: "failed" as const,
+        error: `spawnDepth ${spawnDepth} outside 1..${SUBAGENT_MAX_DEPTH}`,
+      };
+    }
+
+    const scope: RequestScope = {
+      organizationId: body.organizationId,
+      projectId: body.projectId,
+      environmentId: body.environmentId,
+      userId: body.userId,
+      agentId: body.agentId,
+      sessionId: body.scopeExtras?.sessionId,
+      userToken: body.scopeExtras?.userToken,
+      entityId: body.scopeExtras?.entityId,
+      traceId: body.scopeExtras?.traceId,
+      parentSpanId: body.scopeExtras?.parentSpanId,
+      // Runtime-stamped depth so the child turn's buildMetaTools enforces the
+      // grandchild cap. NEVER from a token.
+      spawnDepth,
+    };
+
+    const startedAt = Date.now();
+    try {
+      // Resolve/mint the child thread with parentThreadId lineage on first use.
+      let childThreadId = body.threadId ?? undefined;
+      if (!childThreadId) {
+        const childThread = await this.conversationService.createThread(
+          scope,
+          body.agentId,
+          undefined,
+          body.parentThreadId ? { parentThreadId: body.parentThreadId } : undefined,
+        );
+        childThreadId = childThread.id;
+      }
+
+      const result = await this.agentTaskService.executeNonStreamingTurn(body.message, scope, {
+        agentId: body.agentId,
+        threadId: childThreadId,
+        allowedTools: body.allowedTools ?? undefined,
+        systemPromptOverride: body.systemPromptOverride ?? undefined,
+        modelLabel: body.modelLabel ?? undefined,
+      });
+
+      // The subrun loop stops early when the child produced a final answer with
+      // no tool calls (it stopped acting → it is done).
+      const hadToolCalls = Array.isArray(result.events)
+        ? result.events.some((e: any) => e?.type === "tool_call")
+        : undefined;
+
+      return {
+        status: "success" as const,
+        text: result.text,
+        threadId: result.threadId ?? childThreadId,
+        costCents: result.costCents ?? 0,
+        hadToolCalls,
       };
     } catch (err: any) {
       return {

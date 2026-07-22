@@ -6,6 +6,7 @@ import { ToolGatewayModule } from "../tool-gateway/tool-gateway.module";
 import { ConnectionsModule } from "../connections/connections.module";
 import { ProvidersModule } from "../providers/providers.module";
 import { AgentRuntimeModule } from "../agent-runtime/agent-runtime.module";
+import { MemoryModule } from "../memory/memory.module";
 
 /**
  * Bridge module between Platos agent and Trigger.dev.
@@ -33,6 +34,10 @@ import { AgentRuntimeModule } from "../agent-runtime/agent-runtime.module";
     // provider-instantiation time.
     ConnectionsModule,
     ProvidersModule,
+    // Subagent spawning — MemoryModule exports ConversationService so the
+    // InternalExecuteToolController can mint the CHILD thread (with
+    // parentThreadId lineage) on the first /internal/subagent-turn call.
+    MemoryModule,
     // AgentRuntimeModule still forwardRef'd — TriggerBridgeModule is
     // imported transitively from ConnectionsModule→AgentRuntimeModule,
     // so the import lookup order here still benefits from deferred
