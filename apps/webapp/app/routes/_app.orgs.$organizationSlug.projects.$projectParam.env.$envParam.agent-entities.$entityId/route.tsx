@@ -10,6 +10,7 @@ import {
   KeyIcon,
   PencilIcon,
   PlusIcon,
+  ServerStackIcon,
   ShareIcon,
   TrashIcon,
 } from "@heroicons/react/20/solid";
@@ -249,6 +250,38 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return redirect("..");
   }
 
+  // UNIT D (MCP consumption) — manual outbound-discovery refresh for a
+  // connectionKind="mcp" entity. Re-runs tools/list against the external MCP
+  // server across every project env and re-stamps connectionStatus +
+  // lastDiscoveryAt/discoveryError. Operator-only server-side. Discovery
+  // reaches an external endpoint, so give it a longer timeout than the other
+  // intents. Returns the `DiscoveryResult` shape { envs, registered, pruned,
+  // error }.
+  if (intent === "refresh-discovery") {
+    const res = await fetch(
+      `${AGENT_API_URL}/api/v1/agent/entities/${encodeURIComponent(entityId)}/refresh-discovery`,
+      {
+        method: "POST",
+        headers,
+        signal: AbortSignal.timeout(30000),
+      },
+    );
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return typedjson(
+        { error: `Discovery refresh failed: ${text || res.status}` },
+        { status: res.status },
+      );
+    }
+    const data = (await res.json()) as {
+      envs?: number;
+      registered?: number;
+      pruned?: number;
+      error?: string;
+    };
+    return typedjson({ discovered: true, discovery: data });
+  }
+
   // EOBD.79 — flip a single tool mapping's enabled flag for this (entity,
   // env). Agent service already exposes `PATCH /tools/:entityId/:toolName/enabled`
   // and writes scope-safe via tool-registry.
@@ -402,6 +435,12 @@ export default function EntityDetailPage() {
   // while the backend stabilizes on `entityId`.
   const entityIdentifier: string = entity.entityId ?? entity.orgId ?? "";
   const wsUrl = agentWsUrl.replace(/^http/, "ws") + "/tools/sync";
+  // UNIT D — mcp entities are OUTBOUND clients: there is no inbound WS, so
+  // their status comes from the discovery sweep (persisted connectionStatus)
+  // rather than the live WS `liveConnected` flag, and the WebSocket URL row is
+  // irrelevant.
+  const isMcp = entity.connectionKind === "mcp";
+  const mcpConnected = entity.connectionStatus === "connected";
   const storedSecret = (actionData?.regenerated && actionData.serviceSecret) || entity.serviceSecret;
   const showFreshSecret = actionData?.regenerated === true;
 
@@ -446,16 +485,38 @@ export default function EntityDetailPage() {
             <div className="mt-3 rounded-lg border border-charcoal-700 bg-charcoal-850 divide-y divide-charcoal-700">
               <RowItem label="Entity ID" value={entityIdentifier} mono onCopy={() => copy("entityId", entityIdentifier)} copied={copied === "entityId"} />
               <RowItem label="Display Name" value={entity.displayName} />
+              {/* UNIT D — connection-kind row so the operator knows whether this
+                  is an inbound wire relationship or an outbound MCP client. */}
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-xs text-text-dimmed font-medium w-36 shrink-0">Connection type</span>
+                <Badge
+                  variant="small"
+                  className={
+                    isMcp
+                      ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                      : "border-charcoal-600 bg-charcoal-800 text-text-dimmed"
+                  }
+                >
+                  {isMcp ? "MCP client (outbound)" : "Wire (inbound WebSocket)"}
+                </Badge>
+              </div>
               <RowItem label="Created" value={new Date(entity.createdAt).toLocaleString()} />
               <RowItem label="Last Connected" value={entity.lastConnectedAt ? new Date(entity.lastConnectedAt).toLocaleString() : "Never"} />
               <div className="flex items-center justify-between px-4 py-3">
                 <span className="text-xs text-text-dimmed font-medium w-36 shrink-0">Status</span>
-                <Badge variant={entity.liveConnected ? "success" : "error"}>
-                  <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${entity.liveConnected ? "bg-green-500" : "bg-red-500"}`} />
-                  {entity.liveConnected ? "connected" : "disconnected"}
-                </Badge>
+                {isMcp ? (
+                  <Badge variant={mcpConnected ? "success" : "error"}>
+                    <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${mcpConnected ? "bg-green-500" : "bg-red-500"}`} />
+                    {mcpConnected ? "connected" : "disconnected"}
+                  </Badge>
+                ) : (
+                  <Badge variant={entity.liveConnected ? "success" : "error"}>
+                    <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${entity.liveConnected ? "bg-green-500" : "bg-red-500"}`} />
+                    {entity.liveConnected ? "connected" : "disconnected"}
+                  </Badge>
+                )}
               </div>
-              {!entity.liveConnected && entity.connectedInOtherEnv ? (
+              {!isMcp && !entity.liveConnected && entity.connectedInOtherEnv ? (
                 <div className="px-4 py-3 text-xs text-amber-400">
                   This entity is connected to a different environment. Set the bridge's PLATOS_ENV (or env query param on /tools/sync) to this environment.
                 </div>
@@ -463,7 +524,19 @@ export default function EntityDetailPage() {
             </div>
           </section>
 
-          {/* Service secret */}
+          {/* UNIT D — outbound MCP transport + discovery panel (mcp entities
+              only). Replaces the wire "Service Secret / WebSocket URL" section,
+              which is meaningless for an outbound client. */}
+          {isMcp && (
+            <McpClientPanel
+              mcpClient={entity.mcpClient ?? null}
+              connectionStatus={entity.connectionStatus ?? "disconnected"}
+              toolCount={toolCount}
+            />
+          )}
+
+          {/* Service secret (wire only — mcp dispatch is outbound, not HMAC WS) */}
+          {!isMcp && (
           <section>
             <div className="flex items-center justify-between mb-3">
               <Header3>Service Secret</Header3>
@@ -530,8 +603,12 @@ export default function EntityDetailPage() {
               <RowItem label="WebSocket URL" value={wsUrl} mono onCopy={() => copy("ws", wsUrl)} copied={copied === "ws"} />
             </div>
           </section>
+          )}
 
-          {/* Theme EA — per-entity agent allow-list (pills + add dropdown). */}
+          {/* Theme EA — per-entity agent allow-list (pills + add dropdown).
+              Works identically for wire + mcp entities: the allow-list is a
+              PATCH on linkedAgentIds regardless of transport. This is Surface 3
+              (agent-linking) — link/unlink an entity to specific agents. */}
           <LinkedAgentsPanel
             initialIds={Array.isArray(entity.linkedAgentIds) ? entity.linkedAgentIds : []}
             scopeAgents={scopeAgents}
@@ -541,7 +618,7 @@ export default function EntityDetailPage() {
               "Test" button on each tool and the PIFSP-4 Postman-style
               test sheet. Never used in production dispatch (that's HMAC-
               signed with the service secret above). */}
-          <TestCredentialsPanel initial={testCredentials ?? null} />
+          {!isMcp && <TestCredentialsPanel initial={testCredentials ?? null} />}
 
           {/* EOBD.79 — Tools registered, with enabled toggle + health view.
               PIFSP-3 Deliverable 5 — ToolHealthRow below does NOT render
@@ -552,7 +629,9 @@ export default function EntityDetailPage() {
             <Header3>Tools registered ({toolCount})</Header3>
             {toolCount === 0 ? (
               <Paragraph variant="small" className="mt-2">
-                No tools pushed yet. Connect your backend via the platools SDK with the secret above and the tools will appear here.
+                {isMcp
+                  ? "No tools discovered yet. Use “Refresh discovery” above to run tools/list against the MCP server. If it keeps failing, check the URL, credentials secret key, and header template."
+                  : "No tools pushed yet. Connect your backend via the platools SDK with the secret above and the tools will appear here."}
               </Paragraph>
             ) : (
               <div className="mt-3 rounded-lg border border-charcoal-700 bg-charcoal-850 divide-y divide-charcoal-700 max-h-[32rem] overflow-y-auto">
@@ -840,6 +919,172 @@ function LinkedAgentsPanel({
           ) : null}
         </div>
       </div>
+    </section>
+  );
+}
+
+// UNIT D (MCP consumption / Surface 2) — outbound MCP transport + discovery
+// panel. Renders the read-only transport config (transport / url /
+// credsSecretKey / headersTemplate) surfaced by ENTITY_SAFE_SELECT.mcpClient,
+// plus the last discovery timestamp / error, and a "Refresh discovery" button
+// that POSTs `intent=refresh-discovery` (agent re-runs tools/list). Uses a
+// `useFetcher` so the refresh doesn't blow away the rest of the page — mirrors
+// the LinkedAgentsPanel / ToolHealthRow fetcher pattern.
+type McpClientSlice = {
+  transport: string;
+  url: string | null;
+  credsSecretKey: string | null;
+  headersTemplate: unknown;
+  lastDiscoveryAt: string | null;
+  discoveryError: string | null;
+};
+
+function McpClientPanel({
+  mcpClient,
+  connectionStatus,
+  toolCount,
+}: {
+  mcpClient: McpClientSlice | null;
+  connectionStatus: string;
+  toolCount: number;
+}) {
+  const fetcher = useFetcher<{
+    discovered?: boolean;
+    discovery?: { envs?: number; registered?: number; pruned?: number; error?: string };
+    error?: string;
+  }>();
+  const refreshing = fetcher.state !== "idle";
+
+  // headersTemplate is a Json column → normalise to displayable [key, value]
+  // pairs. Tolerate a null/scalar shape (defensive — the column is Json?).
+  const headerPairs: Array<[string, string]> =
+    mcpClient?.headersTemplate &&
+    typeof mcpClient.headersTemplate === "object" &&
+    !Array.isArray(mcpClient.headersTemplate)
+      ? Object.entries(mcpClient.headersTemplate as Record<string, unknown>).map(
+          ([k, v]) => [k, String(v)],
+        )
+      : [];
+
+  const result = fetcher.data?.discovery;
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <ServerStackIcon className="size-4 text-violet-400" />
+          <Header3>MCP transport &amp; discovery</Header3>
+        </div>
+        <fetcher.Form method="post">
+          <input type="hidden" name="intent" value="refresh-discovery" />
+          <Button
+            type="submit"
+            variant="tertiary/small"
+            LeadingIcon={ArrowPathIcon}
+            disabled={refreshing}
+          >
+            {refreshing ? "Discovering…" : "Refresh discovery"}
+          </Button>
+        </fetcher.Form>
+      </div>
+      <Paragraph variant="small" className="mb-3">
+        Platos connects OUT to this MCP server and dispatches tool calls to it.
+        Discovery runs <code className="font-mono text-xs">tools/list</code>{" "}
+        against the server across every environment and registers the results
+        into the shared tool matrix.
+      </Paragraph>
+
+      {fetcher.data?.error ? (
+        <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm text-red-400">
+          {fetcher.data.error}
+        </div>
+      ) : null}
+      {fetcher.data?.discovered ? (
+        result?.error ? (
+          <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm text-amber-300">
+            Discovery completed with an error: {result.error}
+            {typeof result.envs === "number" ? ` (${result.envs} env(s) swept)` : ""}
+          </div>
+        ) : (
+          <div className="mb-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-300">
+            Discovery complete — {result?.registered ?? 0} tool
+            {(result?.registered ?? 0) === 1 ? "" : "s"} registered
+            {typeof result?.pruned === "number" && result.pruned > 0
+              ? `, ${result.pruned} pruned`
+              : ""}{" "}
+            across {result?.envs ?? 0} environment
+            {(result?.envs ?? 0) === 1 ? "" : "s"}.
+          </div>
+        )
+      ) : null}
+
+      {!mcpClient ? (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
+          This entity is registered as an MCP client but has no transport config
+          on record. Re-register the entity with a transport + URL.
+        </div>
+      ) : (
+        <div className="rounded-lg border border-charcoal-700 bg-charcoal-850 divide-y divide-charcoal-700">
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-xs text-text-dimmed font-medium w-36 shrink-0">Transport</span>
+            <Badge variant="outline-rounded">{mcpClient.transport}</Badge>
+          </div>
+          <RowItem label="URL" value={mcpClient.url || "—"} mono />
+          <RowItem
+            label="Creds secret key"
+            value={mcpClient.credsSecretKey || "— (none)"}
+            mono
+          />
+          <div className="px-4 py-3">
+            <div className="text-xs text-text-dimmed font-medium mb-2">
+              Header template ({headerPairs.length})
+            </div>
+            {headerPairs.length === 0 ? (
+              <span className="text-sm text-text-dimmed italic">No headers configured.</span>
+            ) : (
+              <div className="space-y-1.5">
+                {headerPairs.map(([name, value]) => (
+                  <div key={name} className="flex items-start gap-2 text-sm">
+                    <span className="text-text-bright font-mono shrink-0">{name}:</span>
+                    <span className="text-text-dimmed font-mono break-all">{value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-xs text-text-dimmed font-medium w-36 shrink-0">Discovery status</span>
+            <Badge variant={connectionStatus === "connected" ? "success" : "error"}>
+              <span
+                className={`inline-block w-2 h-2 rounded-full mr-1.5 ${
+                  connectionStatus === "connected" ? "bg-green-500" : "bg-red-500"
+                }`}
+              />
+              {connectionStatus}
+            </Badge>
+          </div>
+          <RowItem
+            label="Last discovery"
+            value={
+              mcpClient.lastDiscoveryAt
+                ? new Date(mcpClient.lastDiscoveryAt).toLocaleString()
+                : "Never"
+            }
+          />
+          <RowItem label="Discovered tools" value={`${toolCount}`} />
+          {mcpClient.discoveryError ? (
+            <div className="px-4 py-3">
+              <div className="text-xs text-red-400 font-medium mb-1 flex items-center gap-1">
+                <ExclamationTriangleIcon className="size-3.5" />
+                Last discovery error
+              </div>
+              <p className="text-sm text-red-300/90 font-mono break-all">
+                {mcpClient.discoveryError}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      )}
     </section>
   );
 }

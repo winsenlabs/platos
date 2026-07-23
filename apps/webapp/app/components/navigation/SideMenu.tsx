@@ -102,6 +102,7 @@ import {
   agentsPath,
   agentToolsPath,
   agentEntitiesPath,
+  agentAccountsPath,
   agentMonitoringPath,
   agentFilesPath,
   agentMcpsPath,
@@ -477,6 +478,15 @@ export function SideMenu({
                 inactiveIconColor="text-blue-500"
                 to={agentEntitiesPath(organization, project, environment)}
                 data-action="agent-entities"
+                isCollapsed={isCollapsed}
+              />
+              <SideMenuItem
+                name="Connected Accounts"
+                icon={UsersIcon}
+                activeIconColor="text-blue-400"
+                inactiveIconColor="text-blue-400"
+                to={agentAccountsPath(organization, project, environment)}
+                data-action="agent-accounts"
                 isCollapsed={isCollapsed}
               />
               <SideMenuItem

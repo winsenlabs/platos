@@ -823,6 +823,17 @@ export function agentEntitiesPath(
   return `${v3EnvironmentPath(organization, project, environment)}/agent-entities`;
 }
 
+// UNIT D (MCP consumption) — per-user connected-accounts view. Lists the
+// PlatosEndUsers in this scope with their adopted linkedExternalId (Composio
+// user_id) + verified channel identities. Read-only operator visibility.
+export function agentAccountsPath(
+  organization: OrgForPath,
+  project: ProjectForPath,
+  environment: EnvironmentForPath
+) {
+  return `${v3EnvironmentPath(organization, project, environment)}/agent-accounts`;
+}
+
 export function agentMonitoringPath(
   organization: OrgForPath,
   project: ProjectForPath,

@@ -67,6 +67,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     // nudge rule. When the agent service isn't available we pull both from
     // Prisma so the badge still renders.
     createdAt: string | null;
+    // UNIT D (MCP consumption) — transport discriminator + outbound-discovery
+    // error surfaced on the list so operators can spot a broken mcp entity
+    // without opening the detail page.
+    connectionKind: "wire" | "mcp";
+    discoveryError: string | null;
   }> = [];
 
   try {
@@ -79,14 +84,28 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       // Tolerate the legacy `orgs` key for one release so stale SDK
       // middleware doesn't break the list page.
       const rows = (result as any).entities ?? (result as any).orgs ?? [];
-      entities = rows.map((o: any) => ({
-        entityId: o.entityId ?? o.orgId,
-        displayName: o.displayName,
-        connectionStatus: o.liveConnected ? "connected" : (o.connectionStatus || "disconnected"),
-        toolCount: 0, // filled in below via Prisma
-        lastConnectedAt: o.lastConnectedAt,
-        createdAt: o.createdAt ?? null,
-      }));
+      entities = rows.map((o: any) => {
+        const kind: "wire" | "mcp" = o.connectionKind === "mcp" ? "mcp" : "wire";
+        // Wire status comes from the live WS connection; mcp status is stamped
+        // by the outbound-discovery sweep (there is no WS), so fall back to the
+        // persisted connectionStatus for mcp entities.
+        const status =
+          kind === "mcp"
+            ? o.connectionStatus || "disconnected"
+            : o.liveConnected
+              ? "connected"
+              : o.connectionStatus || "disconnected";
+        return {
+          entityId: o.entityId ?? o.orgId,
+          displayName: o.displayName,
+          connectionStatus: status,
+          toolCount: 0, // filled in below via Prisma
+          lastConnectedAt: o.lastConnectedAt,
+          createdAt: o.createdAt ?? null,
+          connectionKind: kind,
+          discoveryError: o.mcpClient?.discoveryError ?? null,
+        };
+      });
     }
   } catch {
     // Agent service not running
@@ -200,6 +219,7 @@ export default function AgentEntitiesPage() {
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>Entity</TableHeaderCell>
+                <TableHeaderCell>Kind</TableHeaderCell>
                 <TableHeaderCell>Status</TableHeaderCell>
                 <TableHeaderCell>Tools</TableHeaderCell>
                 <TableHeaderCell>Last Connected</TableHeaderCell>
@@ -216,6 +236,20 @@ export default function AgentEntitiesPage() {
                       <span className="text-text-dimmed ml-2 text-xs">{entity.entityId}</span>
                     </TableCell>
                     <TableCell to={entity.entityId}>
+                      {/* UNIT D — transport discriminator. mcp = outbound MCP
+                          client (Composio et al.); wire = inbound platools WS. */}
+                      <Badge
+                        variant="small"
+                        className={
+                          entity.connectionKind === "mcp"
+                            ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                            : "border-charcoal-600 bg-charcoal-800 text-text-dimmed"
+                        }
+                      >
+                        {entity.connectionKind === "mcp" ? "MCP client" : "Wire"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell to={entity.entityId}>
                       <div className="flex items-center gap-2">
                         <Badge variant={entity.connectionStatus === "connected" ? "success" : "error"}>
                           <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${
@@ -223,6 +257,14 @@ export default function AgentEntitiesPage() {
                           }`} />
                           {entity.connectionStatus}
                         </Badge>
+                        {/* UNIT D — surface the last outbound-discovery failure
+                            inline so a broken mcp entity is obvious. */}
+                        {entity.connectionKind === "mcp" && entity.discoveryError && (
+                          <Badge variant="small" className="border-red-500/40 bg-red-500/10 text-red-300">
+                            <ExclamationTriangleIcon className="size-3 mr-1" />
+                            discovery error
+                          </Badge>
+                        )}
                         {/* PIFSP-3 Deliverable 7 — orphan nudge. Amber badge
                             flags entities that never connected and are >7d
                             old. Clicking the row opens the detail page where

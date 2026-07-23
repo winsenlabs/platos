@@ -496,6 +496,15 @@ export class AuthService {
     allowedOrigins: true,
     testCredentials: true,
     mcpConfig: true,
+    // MCP consumption (Surface 2 / UNIT D) — surface the OUTBOUND transport
+    // config (transport/url/credsSecretKey/headersTemplate) + discovery
+    // status (lastDiscoveryAt/discoveryError) so the dashboard can render +
+    // edit an mcp entity and show a "Refresh discovery" result. Present iff
+    // connectionKind === "mcp"; null for wire entities. credsSecretKey is a
+    // bare SecretStore var NAME (never the raw secret) and headersTemplate
+    // values embed {{secret}}/{{endUserId}} TEMPLATES (never resolved secrets),
+    // so this is safe to return alongside the other safe columns.
+    mcpClient: true,
     createdAt: true,
     updatedAt: true,
   } as const;

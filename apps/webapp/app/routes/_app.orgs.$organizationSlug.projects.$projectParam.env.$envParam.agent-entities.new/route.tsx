@@ -3,10 +3,12 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
+  PlusIcon,
+  TrashIcon,
 } from "@heroicons/react/20/solid";
 import { Form, useActionData, useNavigation, type MetaFunction } from "@remix-run/react";
 import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/server-runtime";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import { PageBody, PageContainer } from "~/components/layout/AppLayout";
 import { Button, LinkButton } from "~/components/primitives/Buttons";
@@ -30,6 +32,21 @@ export const meta: MetaFunction = () => [{ title: "Connect Entity | Platos" }];
 // sync with `AgentController.ENTITY_ID_REGEX` on the server — both sides
 // must agree or the live check says "available" + the POST then 400s.
 const ENTITY_ID_REGEX = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$|^[a-z0-9]$/;
+
+// UNIT D (MCP consumption) — the outbound transports the register form
+// offers. hosted-* variants exist server-side but are provisioned by a
+// different flow, so the dashboard only offers the two remote transports
+// that require a caller-supplied URL. Mirrors the server validation in
+// `AgentController.registerEntity` (remote-http/remote-sse require a url).
+const MCP_TRANSPORTS = [
+  { value: "remote-http", label: "Streamable HTTP (remote-http)" },
+  { value: "remote-sse", label: "Server-Sent Events (remote-sse)" },
+] as const;
+type McpTransport = (typeof MCP_TRANSPORTS)[number]["value"];
+
+// HTTP header-name grammar (RFC 7230 token) — validate the key/value editor
+// client-side so a bad header name is caught before the POST round-trip.
+const HEADER_NAME_RE = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   await requireUserId(request);
@@ -71,11 +88,10 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<R
   const entityId = ((formData.get("entityId") as string | null) ?? (formData.get("orgId") as string | null))?.trim();
   const displayName = (formData.get("displayName") as string | null)?.trim();
   const mcpUrlsRaw = (formData.get("mcpUrls") as string | null) || "";
-  // PIFSP-3: MCP headers + arguments + customParams were dropped from the
-  // entity form. Per-tool MCP headers/arguments move to the
-  // agent-configuration editor (next ticket) where they actually belong;
-  // customParams was a redundant injection vector that duplicated the
-  // agent's MCP-arguments feature.
+  // UNIT D — connection-kind discriminator. "wire" = classic inbound platools
+  // WebSocket relationship (unchanged); "mcp" = OUTBOUND MCP client (Composio
+  // et al.) where Platos consumes an external MCP server.
+  const connectionKind = (formData.get("connectionKind") as string | null) === "mcp" ? "mcp" : "wire";
 
   if (!entityId || !displayName) {
     return typedjson<ActionResponse>({ success: false, error: "entityId and displayName are required" }, { status: 400 });
@@ -93,7 +109,72 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<R
     );
   }
 
-  const mcpUrls = mcpUrlsRaw.split("\n").map((s) => s.trim()).filter(Boolean);
+  // Wire entities keep the newline-split mcpUrls list; mcp entities ride
+  // mcpClient.url instead and legitimately register with an empty mcpUrls.
+  const mcpUrls =
+    connectionKind === "wire"
+      ? mcpUrlsRaw.split("\n").map((s) => s.trim()).filter(Boolean)
+      : [];
+
+  // UNIT D — build the outbound transport config for mcp entities. Validated
+  // both here and server-side (defence-in-depth); the agent is authoritative.
+  let mcpClient:
+    | {
+        transport: McpTransport;
+        url: string;
+        credsSecretKey?: string;
+        headersTemplate?: Record<string, string>;
+      }
+    | undefined;
+  if (connectionKind === "mcp") {
+    const transport = ((formData.get("transport") as string | null) || "").trim() as McpTransport;
+    const url = ((formData.get("mcpUrl") as string | null) || "").trim();
+    const credsSecretKey = ((formData.get("credsSecretKey") as string | null) || "").trim();
+    const headersRaw = (formData.get("headersTemplate") as string | null) || "{}";
+
+    if (transport !== "remote-http" && transport !== "remote-sse") {
+      return typedjson<ActionResponse>(
+        { success: false, error: "Choose an MCP transport (remote-http or remote-sse)." },
+        { status: 400 },
+      );
+    }
+    if (!url) {
+      return typedjson<ActionResponse>(
+        { success: false, error: `An MCP URL is required for transport "${transport}".` },
+        { status: 400 },
+      );
+    }
+
+    let headersTemplate: Record<string, string> = {};
+    try {
+      const parsed = JSON.parse(headersRaw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        for (const [k, v] of Object.entries(parsed)) {
+          const name = String(k).trim();
+          if (!name) continue;
+          if (!HEADER_NAME_RE.test(name)) {
+            return typedjson<ActionResponse>(
+              { success: false, error: `"${name}" is not a valid HTTP header name.` },
+              { status: 400 },
+            );
+          }
+          headersTemplate[name] = String(v);
+        }
+      }
+    } catch {
+      return typedjson<ActionResponse>(
+        { success: false, error: "Header template must be valid JSON." },
+        { status: 400 },
+      );
+    }
+
+    mcpClient = {
+      transport,
+      url,
+      ...(credsSecretKey ? { credsSecretKey } : {}),
+      ...(Object.keys(headersTemplate).length > 0 ? { headersTemplate } : {}),
+    };
+  }
 
   try {
     const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
@@ -110,11 +191,13 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<R
         entityId,
         displayName,
         mcpUrls,
+        connectionKind,
+        ...(mcpClient ? { mcpClient } : {}),
         organizationId: scope.organizationId,
         projectId: scope.projectId,
         environmentId: scope.environmentId,
       }),
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) {
       const err = await res.text();
@@ -251,6 +334,12 @@ function useEntityAvailability(input: string) {
   return { state, checkNow };
 }
 
+// UNIT D — one editable header row for the mcp headers-template editor.
+type HeaderRow = { id: string; name: string; value: string };
+function nextHeaderId(): string {
+  return `h-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default function NewEntityPage() {
   const { agentWsUrl } = useTypedLoaderData<typeof loader>();
   const actionData = useActionData() as ActionResponse | undefined;
@@ -259,6 +348,46 @@ export default function NewEntityPage() {
 
   const [entityId, setEntityId] = useState("");
   const { state: availability, checkNow } = useEntityAvailability(entityId);
+
+  // UNIT D — connection-kind toggle + mcp transport fields.
+  const [connectionKind, setConnectionKind] = useState<"wire" | "mcp">("wire");
+  const [transport, setTransport] = useState<McpTransport>("remote-http");
+  const [mcpUrl, setMcpUrl] = useState("");
+  const [credsSecretKey, setCredsSecretKey] = useState("");
+  const [headerRows, setHeaderRows] = useState<HeaderRow[]>([
+    { id: nextHeaderId(), name: "Authorization", value: "Bearer {{secret}}" },
+  ]);
+
+  const isMcp = connectionKind === "mcp";
+
+  // Serialize the header rows into the `{ header: valueTemplate }` object the
+  // agent expects. Empty-named rows are dropped.
+  const headersTemplateJson = useMemo(() => {
+    const obj: Record<string, string> = {};
+    for (const r of headerRows) {
+      const name = r.name.trim();
+      if (!name) continue;
+      obj[name] = r.value;
+    }
+    return JSON.stringify(obj);
+  }, [headerRows]);
+
+  const headerNameErrors = headerRows.some(
+    (r) => r.name.trim() !== "" && !HEADER_NAME_RE.test(r.name.trim()),
+  );
+
+  const addHeader = () =>
+    setHeaderRows((prev) => [...prev, { id: nextHeaderId(), name: "", value: "" }]);
+  const removeHeader = (id: string) =>
+    setHeaderRows((prev) => prev.filter((r) => r.id !== id));
+  const updateHeader = (id: string, patch: Partial<HeaderRow>) =>
+    setHeaderRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  const submitDisabled =
+    isSubmitting ||
+    availability.kind === "checking" ||
+    availability.kind === "invalid_format" ||
+    (isMcp && (!mcpUrl.trim() || headerNameErrors));
 
   return (
     <PageContainer>
@@ -270,6 +399,12 @@ export default function NewEntityPage() {
       </NavBar>
       <PageBody>
         <Form method="post" className="max-w-2xl">
+          {/* Hidden inputs mirror the controlled state so the action receives
+              the mcp transport config even though the fields are conditionally
+              rendered. */}
+          <input type="hidden" name="connectionKind" value={connectionKind} />
+          {isMcp && <input type="hidden" name="headersTemplate" value={headersTemplateJson} />}
+
           <div className="space-y-6">
             {actionData && actionData.success === false && (
               <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 flex items-start gap-2">
@@ -278,11 +413,41 @@ export default function NewEntityPage() {
               </div>
             )}
 
+            {/* UNIT D — connection-kind selector. Segmented control mirroring
+                the app's button styling. */}
             <section>
-              <Header3>What is a Connected Entity?</Header3>
+              <Header3>Connection type</Header3>
               <Paragraph variant="small" className="mt-1 mb-3">
-                A Connected Entity is an external backend that pushes tools to Platos via WebSocket and accepts HMAC-signed tool-call requests from agents.
-                When you register an entity here, Platos mints a service secret. Your backend uses that secret + the WS URL ({agentWsUrl}) to connect.
+                Choose how Platos talks to this entity.
+              </Paragraph>
+              <div className="inline-flex rounded-lg border border-charcoal-700 bg-charcoal-850 p-1 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setConnectionKind("wire")}
+                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    connectionKind === "wire"
+                      ? "bg-charcoal-700 text-text-bright"
+                      : "text-text-dimmed hover:text-text-bright"
+                  }`}
+                >
+                  Wire (inbound WebSocket)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConnectionKind("mcp")}
+                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    connectionKind === "mcp"
+                      ? "bg-charcoal-700 text-text-bright"
+                      : "text-text-dimmed hover:text-text-bright"
+                  }`}
+                >
+                  MCP (outbound client)
+                </button>
+              </div>
+              <Paragraph variant="small" className="mt-3">
+                {connectionKind === "wire"
+                  ? "Your backend connects to Platos over WebSocket and pushes tools via the platools SDK. Platos mints a service secret it uses for HMAC-signed tool calls."
+                  : `Platos connects OUT to an external MCP server (Composio, a hosted MCP endpoint, etc.), discovers its tools, and dispatches to it. The connection URL can embed {{endUserId}} for per-user binding. WS URL for reference: ${agentWsUrl}.`}
               </Paragraph>
             </section>
 
@@ -293,7 +458,7 @@ export default function NewEntityPage() {
                   <label className="text-xs text-text-dimmed font-medium">Entity ID (unique identifier, lowercase, no spaces)</label>
                   <Input
                     name="entityId"
-                    placeholder="winsen-prod"
+                    placeholder={isMcp ? "composio-gmail" : "winsen-prod"}
                     required
                     autoFocus
                     value={entityId}
@@ -310,48 +475,156 @@ export default function NewEntityPage() {
                 </Fieldset>
                 <Fieldset>
                   <label className="text-xs text-text-dimmed font-medium">Display Name</label>
-                  <Input name="displayName" placeholder="Winsen Production" required />
+                  <Input name="displayName" placeholder={isMcp ? "Gmail (Composio)" : "Winsen Production"} required />
                 </Fieldset>
               </div>
             </section>
 
-            <section>
-              <Header3>MCP URLs (optional)</Header3>
-              <Paragraph variant="small" className="mt-1 mb-3">
-                One URL per line. Used only if the entity has multiple MCP endpoints it wants Platos to reference directly. Leave empty if all tool execution goes through the WebSocket sync.
-              </Paragraph>
-              <Fieldset>
-                <textarea
-                  name="mcpUrls"
-                  rows={3}
-                  className="w-full rounded-md border border-charcoal-700 bg-charcoal-800 px-3 py-2 text-sm text-text-bright font-mono resize-y"
-                  placeholder={"https://api.winsen.app/mcp\nhttps://billing.winsen.app/mcp"}
-                />
-              </Fieldset>
-            </section>
+            {/* WIRE branch — MCP URLs list (unchanged behaviour). */}
+            {!isMcp && (
+              <section>
+                <Header3>MCP URLs (optional)</Header3>
+                <Paragraph variant="small" className="mt-1 mb-3">
+                  One URL per line. Used only if the entity has multiple MCP endpoints it wants Platos to reference directly. Leave empty if all tool execution goes through the WebSocket sync.
+                </Paragraph>
+                <Fieldset>
+                  <textarea
+                    name="mcpUrls"
+                    rows={3}
+                    className="w-full rounded-md border border-charcoal-700 bg-charcoal-800 px-3 py-2 text-sm text-text-bright font-mono resize-y"
+                    placeholder={"https://api.winsen.app/mcp\nhttps://billing.winsen.app/mcp"}
+                  />
+                </Fieldset>
+              </section>
+            )}
 
-            {/*
-              PIFSP-3 Deliverable 3 — "Custom Params" JSON block removed.
-              Per-agent arg injection lives on the agent-configuration
-              editor ("MCP arguments") where it belongs. Also drops the
-              MCP headers section (Deliverable 4) that some branches had
-              added here.
-              TODO(PIFSP agent-config ticket): build the "MCP headers"
-              and "MCP arguments" editor there. These fields are intentionally
-              NOT part of the entity form anymore.
-            */}
+            {/* MCP branch — outbound transport config. */}
+            {isMcp && (
+              <section>
+                <Header3>MCP transport</Header3>
+                <Paragraph variant="small" className="mt-1 mb-3">
+                  How Platos reaches the external MCP server and authenticates each request.
+                </Paragraph>
+                <div className="space-y-4">
+                  <Fieldset>
+                    <label className="text-xs text-text-dimmed font-medium">Transport</label>
+                    <select
+                      name="transport"
+                      value={transport}
+                      onChange={(e) => setTransport(e.currentTarget.value as McpTransport)}
+                      className="w-full rounded-md border border-charcoal-700 bg-charcoal-800 px-3 py-2 text-sm text-text-bright"
+                    >
+                      {MCP_TRANSPORTS.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Fieldset>
+
+                  <Fieldset>
+                    <label className="text-xs text-text-dimmed font-medium">MCP URL</label>
+                    <Input
+                      name="mcpUrl"
+                      value={mcpUrl}
+                      onChange={(e) => setMcpUrl(e.currentTarget.value)}
+                      placeholder="https://mcp.composio.dev/gmail/{{endUserId}}"
+                      className="font-mono"
+                      required
+                    />
+                    <p className="mt-1 text-[11px] text-text-dimmed leading-relaxed">
+                      Embed{" "}
+                      <code className="font-mono text-text-bright">{"{{endUserId}}"}</code>{" "}
+                      to bind the connection per end-user (resolves to the
+                      user's <span className="font-mono">linkedExternalId</span>{" "}
+                      — the Composio user_id — when set, otherwise the opaque
+                      external user id).
+                    </p>
+                  </Fieldset>
+
+                  <Fieldset>
+                    <label className="text-xs text-text-dimmed font-medium">
+                      Credentials secret key (optional)
+                    </label>
+                    <Input
+                      name="credsSecretKey"
+                      value={credsSecretKey}
+                      onChange={(e) => setCredsSecretKey(e.currentTarget.value)}
+                      placeholder="COMPOSIO_API_KEY"
+                      className="font-mono"
+                    />
+                    <p className="mt-1 text-[11px] text-text-dimmed leading-relaxed">
+                      The <span className="font-mono">bare SecretStore variable name</span>{" "}
+                      (not the secret itself) whose value is substituted for{" "}
+                      <code className="font-mono text-text-bright">{"{{secret}}"}</code>{" "}
+                      in the header templates below. Set the value under Environment
+                      Secrets.
+                    </p>
+                  </Fieldset>
+
+                  <Fieldset>
+                    <label className="text-xs text-text-dimmed font-medium">Header template</label>
+                    <p className="mb-2 text-[11px] text-text-dimmed leading-relaxed">
+                      Sent on every outbound request. Values may embed{" "}
+                      <code className="font-mono text-text-bright">{"{{secret}}"}</code>{" "}
+                      and{" "}
+                      <code className="font-mono text-text-bright">{"{{endUserId}}"}</code>.
+                    </p>
+                    <div className="space-y-2">
+                      {headerRows.map((row) => {
+                        const invalid =
+                          row.name.trim() !== "" && !HEADER_NAME_RE.test(row.name.trim());
+                        return (
+                          <div key={row.id} className="flex items-center gap-2">
+                            <Input
+                              placeholder="Header name (e.g. Authorization)"
+                              value={row.name}
+                              onChange={(e) => updateHeader(row.id, { name: e.currentTarget.value })}
+                              className={`w-56 ${invalid ? "border-red-500/50" : ""}`}
+                            />
+                            <Input
+                              placeholder="Value (e.g. Bearer {{secret}})"
+                              value={row.value}
+                              onChange={(e) => updateHeader(row.id, { value: e.currentTarget.value })}
+                              className="flex-1 font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeHeader(row.id)}
+                              className="text-red-400 hover:text-red-300 shrink-0"
+                              aria-label="remove header"
+                            >
+                              <TrashIcon className="size-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {headerNameErrors && (
+                        <p className="text-xs text-red-400">
+                          One or more header names are not valid HTTP header tokens.
+                        </p>
+                      )}
+                      <Button
+                        type="button"
+                        variant="tertiary/small"
+                        LeadingIcon={PlusIcon}
+                        onClick={addHeader}
+                      >
+                        Add header
+                      </Button>
+                    </div>
+                  </Fieldset>
+                </div>
+              </section>
+            )}
 
             <div className="flex items-center gap-3">
-              <Button
-                type="submit"
-                variant="primary/medium"
-                disabled={
-                  isSubmitting ||
-                  availability.kind === "checking" ||
-                  availability.kind === "invalid_format"
-                }
-              >
-                {isSubmitting ? "Registering..." : "Generate Secret & Register"}
+              <Button type="submit" variant="primary/medium" disabled={submitDisabled}>
+                {isSubmitting
+                  ? "Registering..."
+                  : isMcp
+                    ? "Register & Discover Tools"
+                    : "Generate Secret & Register"}
               </Button>
               <LinkButton to=".." variant="tertiary/medium">Cancel</LinkButton>
             </div>
