@@ -5,8 +5,17 @@
  * signingSecret) OWNED by the token's scope and OAuth-installed into N external
  * workspaces (PlatosChannelInstallation rows). These tools are the management
  * surface over that model — create / list / get / update / delete the app +
- * list / bind its installations. The OAuth install/callback + per-app events
- * webhook that receive Slack traffic are SEPARATE runtime slices.
+ * list / bind / import / revoke / status its installations. The OAuth
+ * install/callback + per-app events webhook that receive Slack traffic are
+ * SEPARATE runtime slices.
+ *
+ * `import_installation` is the OPERATOR-driven twin of the OAuth callback's
+ * persistence: it registers an install from an operator-supplied bot token
+ * (manually-created app / migration) WITHOUT the browser OAuth dance, encrypting
+ * the token with the SAME envelope and upserting on the SAME nullable
+ * (appId, teamId, enterpriseId) tuple (idempotent). `installations_status` is
+ * the operator lifecycle-visibility surface; `revoke_installation` is the MCP
+ * mirror of the REST soft-revoke.
  *
  * Contract, mirroring `channels.ts`:
  *   - Scope is ALWAYS taken from the verified MCP token, never the LLM args.
@@ -161,6 +170,60 @@ export function buildChannelAppToolHandlers(deps: {
   /** Encrypt a single secret string into the stored envelope. */
   function encryptSecret(plain: string): string {
     return JSON.stringify(messageCrypto.encryptJsonField(plain));
+  }
+
+  /**
+   * Compact operator status view of an install row — mirrors the REST
+   * installationStatusView. `app` supplies the app-level fallback so
+   * `agentBinding.source` / `effectiveAgentId` reflect the SAME resolution
+   * handleAppEvent performs. Never leaks the bot token.
+   */
+  function projectInstallationStatus(row: any, app: any) {
+    const overrideAgentId =
+      typeof row?.agentId === "string" && row.agentId ? row.agentId : null;
+    const appDefaultAgentId =
+      typeof app?.defaultAgentId === "string" && app.defaultAgentId ? app.defaultAgentId : null;
+    return {
+      installationId: row.id,
+      teamId: row.teamId ?? null,
+      teamName: row.teamName ?? null,
+      enterpriseId: row.enterpriseId ?? null,
+      isEnterpriseInstall: row.isEnterpriseInstall ?? false,
+      status: row.status ?? "active",
+      revokedAt: row.revokedAt ?? null,
+      lastEventAt: row.lastEventAt ?? null,
+      agentBinding: {
+        agentId: overrideAgentId,
+        effectiveAgentId: overrideAgentId ?? appDefaultAgentId,
+        source: overrideAgentId ? "installation" : appDefaultAgentId ? "app" : "none",
+        hasRoutingOverride: row.agentRouting != null,
+      },
+    };
+  }
+
+  /**
+   * Explicit find-then-write "upsert" on the nullable (appId, teamId,
+   * enterpriseId) tuple — the SAME contract the OAuth callback uses. NOT
+   * prisma.upsert: NULLs are DISTINCT in a Postgres unique index, so an
+   * ON CONFLICT upsert would duplicate-insert on re-import of a normal
+   * workspace; findFirst with `teamId: null` compiles to `IS NULL`.
+   */
+  async function importUpsert(
+    appId: string,
+    teamId: string | null,
+    enterpriseId: string | null,
+    data: Record<string, unknown>,
+  ): Promise<any> {
+    const existing = await prisma.platosChannelInstallation.findFirst({
+      where: { appId, teamId, enterpriseId },
+      select: { id: true },
+    });
+    if (existing) {
+      return prisma.platosChannelInstallation.update({ where: { id: existing.id }, data });
+    }
+    return prisma.platosChannelInstallation.create({
+      data: { appId, teamId, enterpriseId, ...data },
+    });
   }
 
   return [
@@ -855,6 +918,330 @@ export function buildChannelAppToolHandlers(deps: {
           auditMutation(scope, "channel_apps.bind_installation", auditArgs, null, "failed", startedAt, message);
           return { error: "bind_failed", message };
         }
+      },
+    },
+
+    {
+      name: "channel_apps.import_installation",
+      description:
+        "Import / register a workspace installation of an app from an " +
+        "OPERATOR-supplied bot token — for a manually-created Slack app, or " +
+        "migrating an install from elsewhere — WITHOUT the browser OAuth dance. " +
+        "`appId` identifies the (in-scope) parent app. Required: `botToken` " +
+        "(stored ENCRYPTED via the SAME MessageCryptoService envelope as the " +
+        "OAuth callback, NEVER returned) and `teamId` (or `enterpriseId` for a " +
+        "Grid org-install). Optional `teamName`, `enterpriseId`, " +
+        "`isEnterpriseInstall`, `botUserId`, `grantedScopes` (string[]), " +
+        "`installedByUserId`, and `agentId` / `agentRouting` to bind the install " +
+        "at import time (same in-scope guards as bind_installation). IDEMPOTENT " +
+        "on (appId, teamId, enterpriseId): re-import updates the row in place and " +
+        "flips a revoked install back to active. Returns the installation row " +
+        "with the bot token redacted (`hasBotToken`).",
+      inputSchema: {
+        type: "object",
+        required: ["appId", "botToken"],
+        properties: {
+          appId: { type: "string" },
+          botToken: { type: "string" },
+          teamId: { type: ["string", "null"] },
+          enterpriseId: { type: ["string", "null"] },
+          isEnterpriseInstall: { type: "boolean" },
+          teamName: { type: ["string", "null"] },
+          botUserId: { type: ["string", "null"] },
+          grantedScopes: { type: "array", items: { type: "string" } },
+          installedByUserId: { type: ["string", "null"] },
+          agentId: { type: ["string", "null"] },
+          agentRouting: {
+            type: ["array", "null"],
+            maxItems: 32,
+            items: {
+              type: "object",
+              required: ["match", "agentId"],
+              properties: {
+                match: {
+                  type: "object",
+                  required: ["type"],
+                  properties: {
+                    type: { type: "string", enum: ["channel", "prefix"] },
+                    id: { type: "string", description: "platform channel id (type=channel)" },
+                    value: { type: "string", description: "handle prefix (type=prefix)" },
+                  },
+                  additionalProperties: false,
+                },
+                agentId: { type: "string" },
+              },
+              additionalProperties: false,
+            },
+          },
+        },
+        additionalProperties: false,
+      },
+      async execute(params, scope) {
+        const startedAt = Date.now();
+        const appId = String(params["appId"] ?? "").trim();
+        const teamId =
+          typeof params["teamId"] === "string" && params["teamId"].trim()
+            ? params["teamId"].trim()
+            : null;
+        const enterpriseId =
+          typeof params["enterpriseId"] === "string" && params["enterpriseId"].trim()
+            ? params["enterpriseId"].trim()
+            : null;
+        const isEnterpriseInstall = params["isEnterpriseInstall"] === true;
+        const botToken =
+          typeof params["botToken"] === "string" ? params["botToken"].trim() : "";
+        const hasAgentId = Object.prototype.hasOwnProperty.call(params, "agentId");
+        const hasAgentRouting = Object.prototype.hasOwnProperty.call(params, "agentRouting");
+
+        // Redacted audit args — NEVER echo the bot token.
+        const auditArgs: Record<string, unknown> = {
+          appId,
+          teamId,
+          enterpriseId,
+          isEnterpriseInstall,
+          hasBotToken: !!botToken,
+          ...(hasAgentId ? { agentId: params["agentId"] } : {}),
+          ...(hasAgentRouting ? { hasAgentRouting: params["agentRouting"] != null } : {}),
+        };
+
+        if (!appId) {
+          const err = "appId required";
+          auditMutation(scope, "channel_apps.import_installation", auditArgs, null, "failed", startedAt, err);
+          return { error: "invalid_params", message: err };
+        }
+        if (!botToken) {
+          const err = "botToken is required";
+          auditMutation(scope, "channel_apps.import_installation", auditArgs, null, "failed", startedAt, err);
+          return { error: "invalid_params", message: err };
+        }
+        if (!teamId && !enterpriseId) {
+          const err = "teamId (or enterpriseId for a Grid org-install) is required";
+          auditMutation(scope, "channel_apps.import_installation", auditArgs, null, "failed", startedAt, err);
+          return { error: "invalid_params", message: err };
+        }
+        if (isEnterpriseInstall && !enterpriseId) {
+          const err = "enterpriseId is required when isEnterpriseInstall is true";
+          auditMutation(scope, "channel_apps.import_installation", auditArgs, null, "failed", startedAt, err);
+          return { error: "invalid_params", message: err };
+        }
+
+        const app = await prisma.platosChannelApp.findFirst({
+          where: { id: appId, ...scopeTuple(scope) },
+          select: { id: true },
+        });
+        if (!app) {
+          auditMutation(scope, "channel_apps.import_installation", auditArgs, null, "failed", startedAt, "not_found");
+          return { error: "not_found", appId };
+        }
+
+        let agentId: string | null | undefined;
+        if (hasAgentId) {
+          const raw = params["agentId"];
+          if (raw === null || raw === "") {
+            agentId = null;
+          } else if (typeof raw === "string") {
+            const trimmed = raw.trim();
+            if (!(await agentInScope(scope, trimmed))) {
+              auditMutation(
+                scope,
+                "channel_apps.import_installation",
+                auditArgs,
+                null,
+                "failed",
+                startedAt,
+                "unknown_agent_id",
+              );
+              return { error: "unknown_agent_id", agentId: trimmed };
+            }
+            agentId = trimmed;
+          }
+        }
+        let agentRoutingData: unknown | null | undefined;
+        if (hasAgentRouting) {
+          const ar = params["agentRouting"];
+          if (ar === null) {
+            agentRoutingData = null;
+          } else {
+            const routing = await validateAgentRouting(prisma, scope, ar);
+            if (!routing.ok) {
+              auditMutation(
+                scope,
+                "channel_apps.import_installation",
+                auditArgs,
+                null,
+                "failed",
+                startedAt,
+                routing.error,
+              );
+              return { error: routing.error, message: routing.message };
+            }
+            agentRoutingData = routing.rules;
+          }
+        }
+
+        const teamName =
+          typeof params["teamName"] === "string" && params["teamName"].trim()
+            ? params["teamName"].trim()
+            : null;
+        const botUserId =
+          typeof params["botUserId"] === "string" && params["botUserId"].trim()
+            ? params["botUserId"].trim()
+            : null;
+        const installedByUserId =
+          typeof params["installedByUserId"] === "string" && params["installedByUserId"].trim()
+            ? params["installedByUserId"].trim()
+            : null;
+        const grantedScopes = normalizeScopes(params["grantedScopes"]) ?? [];
+
+        // Static operator grant — clear any rotation state a previous OAuth
+        // install left behind (refreshToken / tokenExpiresAt): getFreshBotToken
+        // keys "this install rotates" off tokenExpiresAt, and a stale expiry
+        // would refresh the OLD grant over the freshly imported key.
+        const data: Record<string, unknown> = {
+          botToken: encryptSecret(botToken),
+          refreshToken: null,
+          tokenExpiresAt: null,
+          isEnterpriseInstall,
+          grantedScopes,
+          teamName,
+          botUserId,
+          installedByUserId,
+          status: "active",
+          revokedAt: null,
+          ...(agentId !== undefined ? { agentId } : {}),
+          ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
+        };
+
+        try {
+          const row = await importUpsert(appId, teamId, enterpriseId, data);
+          // Re-keying a live install must evict any cached bot token.
+          evictApp(appId);
+          auditMutation(
+            scope,
+            "channel_apps.import_installation",
+            auditArgs,
+            { installationId: row.id, appId },
+            "success",
+            startedAt,
+          );
+          return projectInstallation(row);
+        } catch (err: any) {
+          const message = err?.message ?? String(err);
+          auditMutation(scope, "channel_apps.import_installation", auditArgs, null, "failed", startedAt, message);
+          return { error: "import_failed", message };
+        }
+      },
+    },
+
+    {
+      name: "channel_apps.revoke_installation",
+      description:
+        "Revoke ONE workspace installation of an app (SOFT — status=revoked, " +
+        "revokedAt=now; never hard-deletes, since Slack's uninstall lifecycle is " +
+        "order-unstable and the row is the audit trail). `appId` + " +
+        "`installationId` identify the row; scope-pinned via the parent app. " +
+        "Evicts the cached bot token so the workspace stops receiving replies " +
+        "immediately. Returns the updated row (bot token redacted). The MCP " +
+        "mirror of REST DELETE :id/installations/:installationId.",
+      inputSchema: {
+        type: "object",
+        required: ["appId", "installationId"],
+        properties: {
+          appId: { type: "string" },
+          installationId: { type: "string" },
+        },
+        additionalProperties: false,
+      },
+      async execute(params, scope) {
+        const startedAt = Date.now();
+        const appId = String(params["appId"] ?? "").trim();
+        const installationId = String(params["installationId"] ?? "").trim();
+        const auditArgs = { appId, installationId };
+
+        if (!appId || !installationId) {
+          const err = "appId and installationId required";
+          auditMutation(scope, "channel_apps.revoke_installation", auditArgs, null, "failed", startedAt, err);
+          return { error: "invalid_params", message: err };
+        }
+        const app = await prisma.platosChannelApp.findFirst({
+          where: { id: appId, ...scopeTuple(scope) },
+          select: { id: true },
+        });
+        if (!app) {
+          auditMutation(scope, "channel_apps.revoke_installation", auditArgs, null, "failed", startedAt, "not_found");
+          return { error: "not_found", appId };
+        }
+        const installation = await prisma.platosChannelInstallation.findFirst({
+          where: { id: installationId, appId },
+          select: { id: true },
+        });
+        if (!installation) {
+          auditMutation(
+            scope,
+            "channel_apps.revoke_installation",
+            auditArgs,
+            null,
+            "failed",
+            startedAt,
+            "installation_not_found",
+          );
+          return { error: "installation_not_found", installationId };
+        }
+        try {
+          const updated = await prisma.platosChannelInstallation.update({
+            where: { id: installationId },
+            data: { status: "revoked", revokedAt: new Date() },
+          });
+          evictApp(appId);
+          auditMutation(
+            scope,
+            "channel_apps.revoke_installation",
+            auditArgs,
+            { installationId },
+            "success",
+            startedAt,
+          );
+          return { revoked: true, ...projectInstallation(updated) };
+        } catch (err: any) {
+          const message = err?.message ?? String(err);
+          auditMutation(scope, "channel_apps.revoke_installation", auditArgs, null, "failed", startedAt, message);
+          return { error: "revoke_failed", message };
+        }
+      },
+    },
+
+    {
+      name: "channel_apps.installations_status",
+      description:
+        "Operator STATUS view of every workspace installation of an app " +
+        "(`appId`, scope-filtered), newest first — a compact, lifecycle-focused " +
+        "shape per install: `{ installationId, teamId, teamName, enterpriseId, " +
+        "isEnterpriseInstall, status, revokedAt, lastEventAt, agentBinding }`. " +
+        "Read live off the SAME rows the uninstall / tokens_revoked webhook " +
+        "mutates, so an uninstall shows here as status=revoked. `agentBinding` " +
+        "reports the resolved agent (installation override → app default) exactly " +
+        "as handleAppEvent resolves it. Read-only; never returns bot tokens.",
+      inputSchema: {
+        type: "object",
+        required: ["appId"],
+        properties: { appId: { type: "string" } },
+        additionalProperties: false,
+      },
+      async execute(params, scope) {
+        const appId = String(params["appId"] ?? "").trim();
+        if (!appId) return { error: "invalid_params", message: "appId required" };
+        const app = await prisma.platosChannelApp.findFirst({
+          where: { id: appId, ...scopeTuple(scope) },
+          select: { id: true, defaultAgentId: true },
+        });
+        if (!app) return { error: "not_found", appId };
+        const rows = await prisma.platosChannelInstallation.findMany({
+          where: { appId },
+          orderBy: { createdAt: "desc" },
+        });
+        return {
+          installations: (rows as any[]).map((r) => projectInstallationStatus(r, app)),
+        };
       },
     },
   ];

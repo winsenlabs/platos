@@ -36,6 +36,10 @@ import { validateAgentRouting } from "./channel-routing";
  *   PATCH  /api/v1/agent/channel-apps/:id                     — partial-patch an app
  *   DELETE /api/v1/agent/channel-apps/:id                     — delete an app (cascades installs)
  *   GET    /api/v1/agent/channel-apps/:id/installations       — list installs
+ *   GET    /api/v1/agent/channel-apps/:id/installations/status
+ *                                                             — operator status view (lifecycle + agent binding)
+ *   POST   /api/v1/agent/channel-apps/:id/installations/import
+ *                                                             — import/register an install from an operator bot token (idempotent)
  *   POST   /api/v1/agent/channel-apps/:id/installations/:installationId/bind
  *                                                             — rebind agent / routing
  *   DELETE /api/v1/agent/channel-apps/:id/installations/:installationId
@@ -173,6 +177,67 @@ export class ChannelAppsController {
   /** Encrypt a single secret string into the stored envelope. */
   private encryptSecret(plain: string): string {
     return JSON.stringify(this.messageCrypto.encryptJsonField(plain));
+  }
+
+  /**
+   * Compact operator status view of an installation row (teamId / teamName /
+   * status / lastEventAt + the resolved agent binding). `app` supplies the
+   * app-level fallback so `agentBinding.source` / `effectiveAgentId` reflect the
+   * SAME resolution `handleAppEvent` performs (`installation.agentId` wins, else
+   * `app.defaultAgentId`). Never leaks the bot token.
+   */
+  private installationStatusView(row: any, app: any) {
+    const overrideAgentId =
+      typeof row?.agentId === "string" && row.agentId ? row.agentId : null;
+    const appDefaultAgentId =
+      typeof app?.defaultAgentId === "string" && app.defaultAgentId
+        ? app.defaultAgentId
+        : null;
+    return {
+      installationId: row.id,
+      teamId: row.teamId ?? null,
+      teamName: row.teamName ?? null,
+      enterpriseId: row.enterpriseId ?? null,
+      isEnterpriseInstall: row.isEnterpriseInstall ?? false,
+      status: row.status ?? "active",
+      revokedAt: row.revokedAt ?? null,
+      lastEventAt: row.lastEventAt ?? null,
+      agentBinding: {
+        agentId: overrideAgentId,
+        effectiveAgentId: overrideAgentId ?? appDefaultAgentId,
+        source: overrideAgentId ? "installation" : appDefaultAgentId ? "app" : "none",
+        hasRoutingOverride: row.agentRouting != null,
+      },
+    };
+  }
+
+  /**
+   * Explicit find-then-write "upsert" on the nullable (appId, teamId,
+   * enterpriseId) tuple — the SAME contract the OAuth callback's
+   * upsertInstallation uses. NOT prisma.upsert: teamId/enterpriseId are nullable
+   * and Postgres treats NULLs in a unique index as DISTINCT, so an ON CONFLICT
+   * upsert would duplicate-insert on re-import of a normal workspace. A findFirst
+   * with `teamId: null` compiles to `IS NULL` and reads the existing row.
+   */
+  private async importUpsert(
+    appId: string,
+    teamId: string | null,
+    enterpriseId: string | null,
+    data: Record<string, unknown>,
+  ): Promise<any> {
+    const existing = await this.prisma.platosChannelInstallation.findFirst({
+      where: { appId, teamId, enterpriseId },
+      select: { id: true },
+    });
+    if (existing) {
+      return this.prisma.platosChannelInstallation.update({
+        where: { id: existing.id },
+        data,
+      });
+    }
+    return this.prisma.platosChannelInstallation.create({
+      data: { appId, teamId, enterpriseId, ...data },
+    });
   }
 
   /** Forged-id guard — the agent must belong to this exact scope. */
@@ -509,6 +574,187 @@ export class ChannelAppsController {
     return {
       installations: (rows as any[]).map((r) => this.projectInstallation(r)),
     };
+  }
+
+  /**
+   * Operator-visible per-install STATUS surface (requirement c). Compact,
+   * lifecycle-focused view of every installation of an app —
+   * `{ installationId, teamId, teamName, enterpriseId, isEnterpriseInstall,
+   * status, revokedAt, lastEventAt, agentBinding }` — read live off the SAME
+   * rows the uninstall / tokens_revoked webhook mutates, so an uninstall shows
+   * up here as `status: "revoked"` with no extra plumbing. Never returns the
+   * bot token. `agentBinding` reflects the exact resolution handleAppEvent uses.
+   */
+  @Get(":id/installations/status")
+  async installationsStatus(@Req() req: Request, @Param("id") id: string) {
+    const scope = this.getScope(req);
+    requireOperator(scope);
+    const app = await this.prisma.platosChannelApp.findFirst({
+      where: { id, ...this.scopeWhere(scope) },
+      select: { id: true, defaultAgentId: true },
+    });
+    if (!app) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
+    const rows = await this.prisma.platosChannelInstallation.findMany({
+      where: { appId: id },
+      orderBy: { createdAt: "desc" },
+    });
+    return {
+      installations: (rows as any[]).map((r) => this.installationStatusView(r, app)),
+    };
+  }
+
+  /**
+   * Operator-driven install IMPORT (requirement 1). Registers a
+   * PlatosChannelInstallation under an existing in-scope app from an
+   * operator-supplied bot token — for a manually-created Slack app, or migrating
+   * an install from elsewhere — WITHOUT the browser OAuth dance. This is the
+   * additive twin of the OAuth callback's persistence: same encryption
+   * (MessageCryptoService envelope), same explicit find-then-write upsert on the
+   * nullable (appId, teamId, enterpriseId) tuple, so it is IDEMPOTENT (re-import
+   * of the same workspace updates the row in place and flips a revoked install
+   * back to active). Optional `agentId` / `agentRouting` bind the install at
+   * import time (same in-scope guards as bind). The hosted-OAuth flow is
+   * untouched; this is a parallel entry point onto the same rows.
+   */
+  @Post(":id/installations/import")
+  async importInstallation(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body()
+    body: {
+      teamId?: string | null;
+      enterpriseId?: string | null;
+      isEnterpriseInstall?: boolean;
+      teamName?: string | null;
+      botToken?: string;
+      botUserId?: string | null;
+      grantedScopes?: string[];
+      installedByUserId?: string | null;
+      agentId?: string | null;
+      agentRouting?: unknown;
+    },
+  ) {
+    const scope = this.getScope(req);
+    requireOperator(scope);
+
+    // App must exist in the operator's scope (forged/cross-scope appId rejected).
+    const app = await this.prisma.platosChannelApp.findFirst({
+      where: { id, ...this.scopeWhere(scope) },
+      select: { id: true },
+    });
+    if (!app) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
+
+    const teamId =
+      typeof body?.teamId === "string" && body.teamId.trim() ? body.teamId.trim() : null;
+    const enterpriseId =
+      typeof body?.enterpriseId === "string" && body.enterpriseId.trim()
+        ? body.enterpriseId.trim()
+        : null;
+    const isEnterpriseInstall = body?.isEnterpriseInstall === true;
+    const botToken = typeof body?.botToken === "string" ? body.botToken.trim() : "";
+
+    if (!botToken) {
+      throw new HttpException(
+        { error: "invalid_params", message: "botToken is required" },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    // Keyed by (appId, teamId, enterpriseId) — at least one workspace anchor is
+    // needed. A Grid org-install is teamId=null + enterpriseId set.
+    if (!teamId && !enterpriseId) {
+      throw new HttpException(
+        {
+          error: "invalid_params",
+          message: "teamId (or enterpriseId for a Grid org-install) is required",
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (isEnterpriseInstall && !enterpriseId) {
+      throw new HttpException(
+        {
+          error: "invalid_params",
+          message: "enterpriseId is required when isEnterpriseInstall is true",
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const teamName =
+      typeof body?.teamName === "string" && body.teamName.trim() ? body.teamName.trim() : null;
+    const botUserId =
+      typeof body?.botUserId === "string" && body.botUserId.trim() ? body.botUserId.trim() : null;
+    const installedByUserId =
+      typeof body?.installedByUserId === "string" && body.installedByUserId.trim()
+        ? body.installedByUserId.trim()
+        : null;
+    const grantedScopes = this.normalizeScopes(body?.grantedScopes) ?? [];
+
+    // Optional per-install agent binding at import time (same guards as bind).
+    let agentId: string | null | undefined;
+    if (Object.prototype.hasOwnProperty.call(body, "agentId")) {
+      const raw = body.agentId;
+      if (raw === null || raw === "") {
+        agentId = null;
+      } else if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (!(await this.agentInScope(scope, trimmed))) {
+          throw new HttpException(
+            {
+              error: "unknown_agent_id",
+              message: `agent ${trimmed} not found in scope`,
+              agentId: trimmed,
+            },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        agentId = trimmed;
+      }
+    }
+    let agentRoutingData: unknown | null | undefined;
+    if (Object.prototype.hasOwnProperty.call(body, "agentRouting")) {
+      const ar = body.agentRouting;
+      if (ar === null) {
+        agentRoutingData = null;
+      } else {
+        const routing = await validateAgentRouting(this.prisma, scope, ar);
+        if (!routing.ok) {
+          throw new HttpException(
+            { error: routing.error, message: routing.message },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        agentRoutingData = routing.rules;
+      }
+    }
+
+    // ENCRYPT with the SAME envelope the OAuth callback uses. On re-import
+    // status is flipped back to active + revokedAt cleared (idempotent re-key).
+    // An operator-supplied token is a STATIC grant, so any rotation state a
+    // previous OAuth install left behind (refreshToken / tokenExpiresAt) is
+    // CLEARED: getFreshBotToken keys "this install rotates" off tokenExpiresAt,
+    // and a stale expiry would send every event through the refresh path —
+    // worst case rotating the OLD grant over the freshly imported key.
+    const data: Record<string, unknown> = {
+      botToken: this.encryptSecret(botToken),
+      refreshToken: null,
+      tokenExpiresAt: null,
+      isEnterpriseInstall,
+      grantedScopes,
+      teamName,
+      botUserId,
+      installedByUserId,
+      status: "active",
+      revokedAt: null,
+      ...(agentId !== undefined ? { agentId } : {}),
+      ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
+    };
+
+    const row = await this.importUpsert(id, teamId, enterpriseId, data);
+    // A re-import that re-keys a live install must evict any cached bot token so
+    // the new token takes effect immediately instead of after the runtime TTL.
+    this.invalidateApp(id);
+    return { installation: this.projectInstallation(row) };
   }
 
   /**

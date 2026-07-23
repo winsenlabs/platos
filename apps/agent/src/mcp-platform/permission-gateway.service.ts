@@ -196,12 +196,18 @@ const PLATFORM_TIER_MINIMUMS: Array<{ pattern: string; min: McpPermissionState }
   //                        (uninstalls the app from all workspaces at once).
   //   - bind_installation  rebinds ONE external workspace to a different agent /
   //                        routing table.
-  // channel_apps.list / get / list_installations stay auto-allow (read-only,
-  // secrets redacted).
+  //   - import_installation registers an external workspace install from an
+  //                        operator-supplied bot token (stores an encrypted
+  //                        credential + can bind an agent) WITHOUT OAuth.
+  //   - revoke_installation soft-revokes ONE external workspace (cuts its bot).
+  // channel_apps.list / get / list_installations / installations_status stay
+  // auto-allow (read-only, secrets redacted).
   { pattern: "channel_apps.create", min: "require_approval" },
   { pattern: "channel_apps.update", min: "require_approval" },
   { pattern: "channel_apps.delete", min: "require_approval" },
   { pattern: "channel_apps.bind_installation", min: "require_approval" },
+  { pattern: "channel_apps.import_installation", min: "require_approval" },
+  { pattern: "channel_apps.revoke_installation", min: "require_approval" },
   // MCPF-W5 — knowledge graph mutations.
   //   - delete_node     irreversibly cascade-deletes the entity AND every
   //                     relationship pointing to or from it.
