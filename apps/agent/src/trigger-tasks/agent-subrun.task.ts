@@ -331,6 +331,12 @@ export const agentSubrun = task({
         const reportBody = {
           agentId: parentAgentId,
           threadId: parentThreadId,
+          // SECURITY (subagent depth cap) — the parent thread we are waking sits
+          // ONE level shallower than this child. The report handler stamps this
+          // onto the woken turn's scope.spawnDepth so its depth cap holds. Omit
+          // (or send 0) ⇒ the wake defaults to depth 0, which would reset the
+          // counter on every report-back and let the tree recurse without bound.
+          parentSpawnDepth: Math.max(0, spawnDepth - 1),
           scope: {
             organizationId: scope.organizationId,
             projectId: scope.projectId,

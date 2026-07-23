@@ -4538,6 +4538,16 @@ Write the summary now:`;
       finalStatus?: string;
       costCents?: number;
       turnsUsed?: number;
+      /**
+       * SECURITY (subagent depth cap) — the spawn depth of the PARENT thread
+       * being woken (the reporting child's depth minus one). Stamped onto the
+       * woken turn's scope so its `buildMetaTools` enforces the grandchild cap.
+       * WITHOUT this, the wake turn defaults to depth 0 and can spawn a fresh
+       * subtree from any level — resetting the depth counter on every
+       * report-back and defeating the ≤2 cap. Runtime-derived by the subrun
+       * task; absent ⇒ treated as 0 (a legitimately-root parent).
+       */
+      parentSpawnDepth?: number;
       scope: {
         organizationId: string;
         projectId: string;
@@ -4560,6 +4570,20 @@ Write the summary now:`;
     const start = Date.now();
     const threadId = body.threadId;
     const room = `thread:${threadId}`;
+    // SECURITY (subagent depth cap) — resume the woken parent turn at the
+    // parent thread's TRUE depth, not 0. `body.scope` intentionally carries no
+    // spawnDepth of its own, so without this stamp the woken turn's
+    // buildMetaTools would see depth 0 and permit spawning a fresh subtree from
+    // any tree level — an unbounded-recursion bypass of the ≤2 cap through the
+    // report-back path. The subrun task derives parentSpawnDepth server-side
+    // (reporting child depth − 1). Clamp defensively.
+    const wakeSpawnDepth =
+      typeof body.parentSpawnDepth === "number" &&
+      Number.isFinite(body.parentSpawnDepth) &&
+      body.parentSpawnDepth > 0
+        ? Math.floor(body.parentSpawnDepth)
+        : 0;
+    const wakeScope = { ...body.scope, spawnDepth: wakeSpawnDepth };
     try {
       // Wake the parent: seed a durable parent turn with the subagent report as
       // a synthetic user-role message. Relay each event to the parent thread
@@ -4569,7 +4593,7 @@ Write the summary now:`;
       let fullText = "";
       let messageId: string | undefined;
       let costCents = 0;
-      for await (const event of this.agentTaskService.executeStreamingTurn(body.report, body.scope as any, {
+      for await (const event of this.agentTaskService.executeStreamingTurn(body.report, wakeScope as any, {
         agentId: body.agentId,
         threadId,
       })) {
