@@ -3357,6 +3357,14 @@ model PlatosAgentThread {
   createdByUserId        String?
   platosEndUserId        String?
   platosEndUser          PlatosEndUser? @relation(fields: [platosEndUserId], references: [id], onDelete: SetNull)
+  /// IDENTITY-CORE §C — single-end-user gate for `{{endUserId}}`.
+  /// True ⇒ exactly one human owns this thread, so `{{endUserId}}` may
+  /// resolve (DM / assistant / web / API / direct). False ⇒ multi-human
+  /// (shared channel / group DM / any non-Slack channel thread with no DM
+  /// predicate): per-user Composio-MCP fails closed. Web/API/direct threads
+  /// keep the default `true` (one token = one end user). Channel-minted
+  /// threads compute it from the platform channel id (Slack `"D"` = DM).
+  singleEndUser          Boolean        @default(true)
   title                  String?
   status                 String         @default("active") // active, completed, archived
   compactedSummary       String?        @db.Text // Rolling summary of messages older than contextLimit
