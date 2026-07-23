@@ -1509,6 +1509,13 @@ export class AgentService {
     scope: RequestScope,
   ): Promise<string | null> {
     try {
+      // IDENTITY-CORE §B.3 (G3) — server-stamped override short-circuit. When
+      // `/internal/batch-turn` stamped `resolvedEndUserId`, the parent already
+      // resolved + §C-gated it (including a deliberate `null`); return it
+      // verbatim. Must test `!== undefined` — a `null` is a signal (gated
+      // closed), NOT an absence. Only `undefined` falls through to the
+      // thread-based path below.
+      if (scope.resolvedEndUserId !== undefined) return scope.resolvedEndUserId;
       const threadId = scope.sessionId;
       if (!threadId) return null;
       const thread = await this.prisma.platosAgentThread.findFirst({
@@ -2668,6 +2675,17 @@ export class AgentService {
           const parentThreadId = (scope as any).threadId ?? scope.sessionId ?? "";
           const parentAgentId = scope.agentId || "default";
 
+          // IDENTITY-CORE §B.3 (G3) — resolve the end user ONCE here (post-§C-
+          // gate, so `null` when the origin thread gated closed) and carry it
+          // down. Batch mints a FRESH thread per item with no parentThreadId, so
+          // §B.2's thread-copy does NOT apply — the id must be threaded
+          // explicitly and stamped server-side onto each item's scope. ALWAYS
+          // include the key, even when `null`: a `null` is a signal (gated
+          // closed), and dropping it would let the item fall through to the
+          // fresh-per-item thread path and resolve a live walleId (fail-OPEN
+          // hazard G3).
+          const endUserId = await this.resolveOriginEndUserId(scope);
+
           const payload = {
             batchRunId,
             scope: {
@@ -2691,6 +2709,8 @@ export class AgentService {
             // so raising `max_concurrency` later is a task-only change.
             maxConcurrency: 1,
             label: label ?? null,
+            // §B.3 (G3) — always present (string | null), never omitted.
+            endUserId,
           };
 
           if (triggerReady() && triggerSdk?.tasks?.trigger) {

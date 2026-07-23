@@ -124,6 +124,20 @@ export interface RequestScope {
    */
   spawnDepth?: number;
   /**
+   * IDENTITY-CORE §B.3 (G3) — server-stamped, pre-resolved end-user EXTERNAL id
+   * ({{endUserId}}). Runtime-stamped ONLY (like `spawnDepth`) — set by
+   * `/internal/batch-turn` from the HMAC-verified payload, NEVER from a client
+   * token. When present (`!== undefined`), `resolveOriginEndUserId`
+   * short-circuits and returns it verbatim — the parent already resolved +
+   * §C-gated this value, INCLUDING a deliberate `null` (gated closed). The
+   * explicit `null` is a signal, not an absence: it must be preserved across
+   * every hop and stamped UNCONDITIONALLY, or a gated-closed batch item would
+   * fall through to the fresh-per-item thread path and silently resolve a live
+   * walleId (fail-OPEN hazard G3). `undefined` = not a batch item; run the
+   * normal thread-based resolution.
+   */
+  resolvedEndUserId?: string | null;
+  /**
    * LAUNCH-12 — the actual logged-in operator before any Postman override.
    * Set by the WS gateway when an org admin simulates a different `userId`
    * via `postmanUserId`. `userId` then becomes the simulated id; this field

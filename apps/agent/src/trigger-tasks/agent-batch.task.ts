@@ -55,6 +55,16 @@ export interface AgentBatchPayload {
   allowedTools?: string[];
   maxConcurrency?: number;
   label?: string;
+  /**
+   * IDENTITY-CORE §B.3 (G3) — the end-user EXTERNAL id ({{endUserId}}),
+   * resolved ONCE by the parent (agent_batch handler, post-§C-gate) and
+   * carried here. `null` = the origin thread gated closed (a signal, NOT an
+   * absence). Forwarded UNCONDITIONALLY into each `/internal/batch-turn` body
+   * (null-preserving), where it is stamped onto the rebuilt scope so the
+   * fresh-per-item thread NEVER re-resolves a live walleId (fail-OPEN hazard
+   * G3).
+   */
+  endUserId?: string | null;
 }
 
 export interface AgentBatchItemResult {
@@ -175,6 +185,13 @@ export const agentBatch = task({
         agentId: parentAgentId,
         message,
         allowedTools: allowedTools ?? null,
+        // IDENTITY-CORE §B.3 (G3) — forward the resolved end user
+        // UNCONDITIONALLY (null-preserving). `?? null` coerces a missing key to
+        // the fail-closed signal; a real `null` from the parent is preserved
+        // verbatim. NEVER conditionally spread this key — `/internal/batch-turn`
+        // stamps it onto the rebuilt scope, and a dropped `null` would fall
+        // through to the fresh-per-item thread path and resolve a live walleId.
+        endUserId: payload.endUserId ?? null,
         batch: {
           batchRunId,
           index,

@@ -229,6 +229,12 @@ export class InternalExecuteToolController {
       agentId: string;
       message: string;
       allowedTools?: string[] | null;
+      // IDENTITY-CORE §B.3 (G3) — the parent-resolved end user, forwarded
+      // null-preservingly by the batch task. `string` = a live id; `null` =
+      // the origin thread gated closed; absent = legacy payload. All three are
+      // stamped below (absent coerced to `null` ⇒ fail closed) so the override
+      // is ALWAYS defined and the short-circuit never falls through.
+      endUserId?: string | null;
       batch?: {
         batchRunId: string;
         index: number;
@@ -259,6 +265,19 @@ export class InternalExecuteToolController {
       traceId: body.scopeExtras?.traceId,
       parentSpanId: body.scopeExtras?.parentSpanId,
     };
+    // IDENTITY-CORE §B.3 (G3) — stamp the server-only end-user override
+    // UNCONDITIONALLY on the rebuilt scope (exactly like `spawnDepth` is
+    // stamped on the subagent path). This scope is REBUILT field-by-field
+    // above (it does NOT spread the incoming scope), so the override must be
+    // added here explicitly. `resolveOriginEndUserId` short-circuits on
+    // `!== undefined`, so stamping the parent's value — INCLUDING a deliberate
+    // `null` (gated closed) — is what stops a fresh-per-item thread from
+    // re-resolving a live walleId. Stamping "only if truthy" would reopen the
+    // fail-OPEN hazard: a gated-closed parent (`null`) would leave the field
+    // `undefined` and fall through to the fresh-thread path. The batch task
+    // always sends the key (null-preserving), so `body.endUserId` is
+    // `string | null` in practice.
+    scope.resolvedEndUserId = body.endUserId ?? null;
 
     const startedAt = Date.now();
     try {
