@@ -396,8 +396,6 @@ model RuntimeEnvironment {
   platosMemoryRelationships PlatosMemoryRelationship[]
   // Theme K — MCP gateway.
   platosMCPTokens           PlatosMCPToken[]
-  platosMCPServers          PlatosMCPServer[]
-  platosAgentMCPBindings    PlatosAgentMCPBinding[]
   platosOrgMcpPolicies      PlatosOrgMcpPolicy[]
   // Theme K.15 — event bus + notification rules.
   platosEvents              PlatosEvent[]
@@ -5166,103 +5164,6 @@ model PlatosMCPToken {
   @@index([expiresAt], map: "platos_mcp_token_expires_idx")
 }
 
-/// Theme K — registered MCP server (third-party or platos-hosted).
-/// `agentId` nullable: null = org-scope install (visible to any agent
-/// that binds to it via PlatosAgentMCPBinding); set = per-agent
-/// private install.
-model PlatosMCPServer {
-  id String @id @default(cuid())
-
-  organizationId String
-  projectId      String
-  environmentId  String
-  environment    RuntimeEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  /// Per-agent install when set; org-scope when null.
-  agentId String?
-
-  /// Unique per (scope, agentId). `slug = linear`, `slug = my-slack`.
-  slug        String
-  displayName String
-
-  /// "remote-http" | "remote-sse" | "stdio" | "hosted-linear"
-  /// | "hosted-slack" | "hosted-github" | "hosted-gitlab" | "hosted-notion"
-  transport String
-
-  /// Remote transports only.
-  url String?
-
-  /// stdio only. Command + args + env vars for the subprocess.
-  command String?
-  args    Json?
-  envVars Json?
-
-  /// SecretStore key holding API key / OAuth token / etc. The raw
-  /// secret is never stored in this row.
-  credsSecretKey String?
-
-  /// When did we last succeed at `tools/list` discovery? Stale
-  /// servers get flagged in the UI.
-  lastDiscoveryAt DateTime?
-  discoveryError  String?   @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tools    PlatosMCPServerTool[]
-  bindings PlatosAgentMCPBinding[]
-
-  @@unique([organizationId, projectId, environmentId, agentId, slug], map: "platos_mcp_server_uniq")
-  @@index([organizationId, projectId, environmentId], map: "platos_mcp_server_scope_idx")
-}
-
-/// Theme K — cached `tools/list` entry for a registered MCP server.
-/// Refreshed every 5 min by the registry service.
-model PlatosMCPServerTool {
-  id String @id @default(cuid())
-
-  serverId String
-  server   PlatosMCPServer @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  /// Tool name as reported by the server. Uniqueness is per-server.
-  name        String
-  description String? @db.Text
-  /// JSON Schema for inputs as reported by the server.
-  inputSchema Json
-
-  discoveredAt DateTime @default(now())
-
-  @@unique([serverId, name], map: "platos_mcp_server_tool_uniq")
-}
-
-/// Theme K — per-agent toggle matrix: which MCP servers + which
-/// specific tools are enabled for this agent. `enabledTools` empty
-/// = NO tools enabled; use `null` to mean "all server tools enabled".
-model PlatosAgentMCPBinding {
-  id String @id @default(cuid())
-
-  organizationId String
-  projectId      String
-  environmentId  String
-  environment    RuntimeEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  agentId  String
-  serverId String
-  server   PlatosMCPServer @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  /// String array. Empty array = ZERO tools enabled. The app layer
-  /// distinguishes "all enabled" via a nullable column would be
-  /// cleaner but Prisma/Postgres `String[]` can't be nullable — so
-  /// we use a separate `allToolsEnabled` boolean.
-  enabledTools    String[]
-  allToolsEnabled Boolean  @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([organizationId, projectId, environmentId, agentId, serverId], map: "platos_mcp_binding_uniq")
-  @@index([organizationId, projectId, environmentId, agentId], map: "platos_mcp_binding_agent_idx")
-}
 
 /// Theme K — tier-2 MCP permission policy rows. Exact tool names or
 /// glob-ish patterns map to one of three states.
