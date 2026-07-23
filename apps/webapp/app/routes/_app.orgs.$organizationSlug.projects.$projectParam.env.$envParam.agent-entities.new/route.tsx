@@ -211,6 +211,19 @@ export async function action({ request, params }: ActionFunctionArgs): Promise<R
     };
 
     void telemetry.platos.entityConnected({ organizationId: scope.organizationId, entityId: entity.entityId });
+
+    // UNIT D — an mcp entity's auto-minted serviceSecret is never used (outbound
+    // dispatch isn't HMAC-signed WS), so skip the initial-secret flash — showing
+    // "save this secret forever" copy for a secret the operator never needs is
+    // misleading. Land them on the entity detail page instead, where the MCP
+    // transport config + discovery status (kicked server-side on register)
+    // render. Matches the "Register & Discover Tools" button.
+    if (connectionKind === "mcp") {
+      return redirect(
+        `/orgs/${organizationSlug}/projects/${projectParam}/env/${envParam}/agent-entities/${entity.entityId}`,
+      );
+    }
+
     // PPR-70: flash the plaintext through Redis so we never embed it in the
     // action-data JSON. The browser's `useActionData()` therefore never sees
     // the secret — only the dedicated `initial-secret` page (which renders
