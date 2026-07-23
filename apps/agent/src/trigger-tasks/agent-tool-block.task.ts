@@ -73,6 +73,15 @@ export interface AgentToolBlockPayload {
   environmentId?: string;
   userId?: string;
   agentId?: string;
+  /**
+   * IDENTITY-CORE §B.1 (G2) — the resolved end-user EXTERNAL id
+   * ({{endUserId}} = Composio `user_id`), resolved ONCE by the parent
+   * (`spawn_bgo` handler, post-§C-gate) and carried on the LEGACY top-level
+   * payload shape. `null` when the origin thread gated closed. The task
+   * forwards it into the HMAC-signed `/internal/execute-tool` body so the
+   * durable tool call substitutes the same person the streaming turn would.
+   */
+  endUserId?: string | null;
 }
 
 export interface AgentToolBlockOutput {
@@ -107,6 +116,12 @@ function normalizePayload(p: AgentToolBlockPayload): AgentToolBlockPayload | nul
         threadId: "",
         callId: `legacy-${Date.now()}`,
       },
+      // IDENTITY-CORE §B.1 (G2) — this legacy branch RECONSTRUCTS a fresh
+      // payload object, so it must explicitly carry the top-level `endUserId`
+      // through; without this line the resolved end user is silently dropped
+      // (the whole point of G2). `spawn_bgo` hits THIS branch, not the
+      // new-shape `:93` passthrough.
+      endUserId: p.endUserId,
     };
   }
   return null;
@@ -135,7 +150,7 @@ export const agentToolBlock = task({
         attempts: ctx?.attempt?.number ?? 1,
       };
     }
-    const { tool, params, scope, origin } = normalized;
+    const { tool, params, scope, origin, endUserId } = normalized;
 
     metadata.set("organizationId", scope.organizationId);
     metadata.set("projectId", scope.projectId);
@@ -170,6 +185,11 @@ export const agentToolBlock = task({
       agentId: origin.agentId,
       tool,
       params,
+      // IDENTITY-CORE §B.1 (G2) — carry the resolved end user into the
+      // durable receiver so {{endUserId}} substitutes the SAME person the
+      // streaming turn resolved (post-§C-gate). `/internal/execute-tool`
+      // already reads `body.endUserId`. `null`/absent ⇒ fail closed there.
+      endUserId,
       purpose: "durable",
       scopeExtras: {
         sessionId: scope.sessionId ?? origin.threadId,

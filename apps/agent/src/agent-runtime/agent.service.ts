@@ -2428,6 +2428,16 @@ export class AgentService {
         // Redis hiccup — fail-open (availability over strict cap).
       }
 
+      // IDENTITY-CORE §B.1 (G2) — resolve the end user ONCE here (post-gate, so
+      // `null` when §C closes the thread) and carry it down into the durable
+      // payload. `spawn_bgo` uses the LEGACY top-level payload shape, which the
+      // task's `normalizePayload` reconstructs into a fresh object — a top-level
+      // `endUserId` only survives because that reconstruction now forwards it.
+      // The legacy bgo payload's `origin.threadId=""` means server-side
+      // re-resolution can't work anyway, so threading the id explicitly is the
+      // only correct path.
+      const endUserId = await this.resolveOriginEndUserId(scope);
+
       // Resolve API key from DB for this environment — no TRIGGER_SECRET_KEY needed.
       const _bgoClient = await getScopedTriggerClient(this.prisma, scope.environmentId);
       if (_bgoClient?.triggerTask) {
@@ -2442,6 +2452,7 @@ export class AgentService {
             environmentId: scope.environmentId,
             userId: scope.userId,
             agentId: scope.agentId || "default",
+            endUserId,
           };
           const handle = await _bgoClient.triggerTask(
             "platos-agent-tool-block",
