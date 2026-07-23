@@ -3220,6 +3220,11 @@ model PlatosEndUser {
   /// Opaque user id forwarded by the entity backend (scope.userId).
   externalUserId String
 
+  /// Adopted EXTERNAL id (e.g. the Walle DB user id = Composio user_id). When
+  /// set, PREFERRED over externalUserId as {{endUserId}}. Null = fall back to
+  /// externalUserId (reproduces pre-adoption behaviour exactly).
+  linkedExternalId String?
+
   /// Display metadata extracted from sessionContext on first contact.
   displayName String?
   email       String?
@@ -3240,6 +3245,7 @@ model PlatosEndUser {
   updatedAt DateTime @updatedAt
 
   @@unique([organizationId, projectId, environmentId, externalUserId], map: "platos_end_user_scope_ext_uniq")
+  @@unique([organizationId, projectId, environmentId, linkedExternalId], map: "platos_end_user_scope_linked_ext_uniq")
   @@index([organizationId, projectId, environmentId, lastActiveAt(sort: Desc)], map: "platos_end_user_scope_last_active_idx")
 }
 
