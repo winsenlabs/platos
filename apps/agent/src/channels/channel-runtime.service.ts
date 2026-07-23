@@ -816,6 +816,22 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       { platformChannelId, text },
     );
 
+    // IDENTITY-CORE §C (G1 + G6) — compute the single-end-user gate from the
+    // platform channel id. SLACK: a DM channel id begins with "D" (matches the
+    // assistant-thread predicate below at `parsed.channel.startsWith("D")`);
+    // group DMs ("G"/mpim) and channels ("C") are multi-human ⇒ false. Any
+    // NON-SLACK provider on this v1 path has NO DM predicate and a "D"-prefix
+    // test is meaningless for its channel-id scheme, so we FAIL CLOSED (false)
+    // until a per-provider predicate lands: a false-negative only withholds
+    // per-user Composio, while a false-positive would be a cross-user execution
+    // bug. Passed through to createThread's `singleEndUser` so a shared thread's
+    // `resolveOriginEndUserId` returns null (fails closed) instead of running
+    // Composio as the first author.
+    const isDmOrAssistant =
+      connCtx.provider === "slack"
+        ? platformChannelId?.startsWith("D") === true
+        : false;
+
     // Create the Platos thread bound to the resolved agent. Owned by the
     // per-channel-thread conversation userId (NOT the author) so later
     // participants can resolve it through getThread's ownership filter.
@@ -823,6 +839,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       { ...conversationScope, agentId },
       agentId,
       undefined,
+      { singleEndUser: isDmOrAssistant },
     );
     const platosThreadId = platosThread.id;
 
@@ -1446,10 +1463,19 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       { platformChannelId, text },
     );
 
+    // IDENTITY-CORE §C (G1) — single-end-user gate. Channel-apps are Slack-only
+    // (handleAppEvent short-circuits any non-slack provider), so the Slack DM
+    // predicate applies directly: a DM channel id begins with "D"; group DMs
+    // ("G"/mpim) and channels ("C") are multi-human ⇒ false. Passed through to
+    // createThread's `singleEndUser` so a shared thread fails closed for
+    // `{{endUserId}}`.
+    const isDmOrAssistant = platformChannelId?.startsWith("D") === true;
+
     const platosThread = await this.conversationService.getOrCreateThread(
       { ...conversationScope, agentId },
       agentId,
       undefined,
+      { singleEndUser: isDmOrAssistant },
     );
     const platosThreadId = platosThread.id;
 

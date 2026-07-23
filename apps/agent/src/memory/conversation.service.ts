@@ -175,6 +175,15 @@ export class ConversationService {
        * tree shows the tree. See docs/subagent-spawning-spec.md.
        */
       parentThreadId?: string;
+      /**
+       * IDENTITY-CORE §C — single-end-user gate. When omitted, defaults to
+       * `true` (web/API/direct threads: one token = one end user), preserving
+       * today's behaviour byte-for-byte. Channel bindings pass `false` for
+       * shared / non-DM threads so `resolveOriginEndUserId` fails closed and
+       * per-user Composio-MCP never runs as the wrong human (G1). See
+       * `resolveThreadBinding` / `resolveAppThreadBinding`.
+       */
+      singleEndUser?: boolean;
     },
   ): Promise<Thread> {
     // PPR-58 — fail-closed scope check. `findUnique({id})` + a JS-side scope
@@ -244,6 +253,10 @@ export class ConversationService {
         title,
         status: "active",
         turnCount: 0,
+        // IDENTITY-CORE §C (G1) — stamp the single-end-user gate. Default true
+        // so web/API/direct threads are unchanged; channel bindings pass false
+        // for shared / non-DM threads (fail-closed for {{endUserId}}).
+        singleEndUser: opts?.singleEndUser ?? true,
         ...(platosEndUserId ? { platosEndUserId } : {}),
         // PRA-AC: stamp cluster FK when the creating agent is a cluster member.
         ...(scope.clusteringId ? { clusteringId: scope.clusteringId } : {}),
@@ -1498,13 +1511,20 @@ export class ConversationService {
     scope: RequestScope,
     agentId: string,
     threadId?: string,
+    // IDENTITY-CORE §C (G1 — the real seam). Until now this method called
+    // `createThread(scope, agentId)` with NO opts, so a `singleEndUser` opt on
+    // createThread could never reach a channel-minted thread and the gate would
+    // FAIL OPEN for exactly the shared threads it exists to close. Accept an
+    // opts bag (extensible) and FORWARD it to createThread. Omitted ⇒
+    // createThread defaults `singleEndUser` to true (web/API/direct unchanged).
+    opts?: { singleEndUser?: boolean },
   ): Promise<Thread> {
     if (threadId) {
       const existing = await this.getThread(threadId, scope);
       if (existing) return existing;
     }
     // PRA-AC: scope.clusteringId is stamped onto the new thread inside createThread.
-    return this.createThread(scope, agentId);
+    return this.createThread(scope, agentId, undefined, opts);
   }
 
   // ═══════════════════════════════════════════════════════

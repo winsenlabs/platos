@@ -1518,8 +1518,15 @@ export class AgentService {
           projectId: scope.projectId,
           environmentId: scope.environmentId,
         },
-        select: { platosEndUserId: true },
+        select: { platosEndUserId: true, singleEndUser: true },
       });
+      // IDENTITY-CORE §C — single-end-user gate. A multi-human thread (shared
+      // channel / group DM / non-Slack channel thread with no DM predicate) has
+      // `singleEndUser === false`; fail CLOSED before reading the pinned person
+      // so per-user Composio-MCP never runs as the wrong human. In a 1:1 thread
+      // the single (adopted) pinned person IS the one human — correct by
+      // construction, and composes with the §A resolver rule below.
+      if (thread?.singleEndUser === false) return null;
       const endUserPk = thread?.platosEndUserId;
       if (!endUserPk) return null;
       const endUser = await this.prisma.platosEndUser.findFirst({
