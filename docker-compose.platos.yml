@@ -418,7 +418,7 @@ services:
       # domains. Self-hosters keep it off.
       PLATOS_CORS_UNIVERSAL: "${PLATOS_CORS_UNIVERSAL:-false}"
       PLATOS_DEFAULT_MODEL: "${PLATOS_DEFAULT_MODEL:-anthropic:claude-haiku-4-5-20251001}"
-      TRIGGER_API_URL: "http://webapp:3030"
+      TRIGGER_API_URL: "https://api.trigger.dev"
       TRIGGER_SECRET_KEY: "${TRIGGER_SECRET_KEY:-}"
       TRIGGER_INTERNAL_SECRET: "${TRIGGER_INTERNAL_SECRET:?required — openssl rand -hex 32}"
       # Trigger Sessions durable chat (Option 1 — Platos proxies). When true,
