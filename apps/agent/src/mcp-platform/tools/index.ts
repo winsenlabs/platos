@@ -52,7 +52,7 @@ import type { GoldenSetService } from "../../evals/golden-set.service";
 import type { SpansService } from "../../monitoring/spans.service";
 
 import { buildEntityToolHandlers } from "./entities";
-// EUI — end-user identity management (end_users.get / link_identity / unlink_identity).
+// EUI — end-user identity management (end_users.get / link_identity / bind_external_id / unlink_identity).
 import { buildEndUserToolHandlers } from "./end-users";
 // Connect reimagining — channels.* messaging-channel doorway management
 // (create / list / get / update / delete / rotate_webhook_secret).
@@ -762,9 +762,10 @@ export function buildPlatformToolHandlers(deps: {
     }),
   );
 
-  // ── EUI end_users.* — end-user identity management (3 tools) ──────
+  // ── EUI end_users.* — end-user identity management (4 tools) ──────
   // Read + manual-edit surface over the PlatosEndUser ↔ PlatosEndUserIdentity
-  // link-not-merge graph. Scope-pinned; link/unlink mutations are audited.
+  // link-not-merge graph, plus external-id adoption (bind_external_id, the
+  // per-user Composio {{endUserId}} anchor). Scope-pinned; mutations audited.
   handlers.push(
     ...buildEndUserToolHandlers({
       prisma: deps.prisma,
