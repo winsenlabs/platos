@@ -288,7 +288,7 @@ export const agentSubrun = task({
         maxTurns,
         spawnDepth,
         status: "success",
-        childThreadId,
+        childThreadId: childThreadId ?? null,
         costCents: result.costCents ?? 0,
       });
 
