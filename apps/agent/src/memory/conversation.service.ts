@@ -229,7 +229,35 @@ export class ConversationService {
     // thread.userId below stays `scope.userId` — resolveEndUser only affects the
     // `platosEndUserId` FK, never thread scoping / ownership.
     let platosEndUserId: string | null = null;
-    if (scope.userId) {
+    // IDENTITY-CORE §C (G1) — the gate flag stamped on the new row. Defaults to
+    // the caller's opts (or true); overwritten by the parent's flag on the
+    // subagent thread-copy path below.
+    let singleEndUserForThread: boolean = opts?.singleEndUser ?? true;
+    if (opts?.parentThreadId) {
+      // IDENTITY-CORE §B.2 — subagent thread-copy. The child scope carries NO
+      // `userIdentities`, so re-running resolveEndUser(childScope) would
+      // re-derive by `externalUserId = scope.userId` and could land on a
+      // DIFFERENT person than the parent's verified-claim person (or bypass the
+      // §C gate). Instead, COPY the parent's scope-pinned `platosEndUserId` +
+      // `singleEndUser` and SKIP resolveEndUser, so the child re-derives the
+      // parent's exact adopted person. Isolation intact: the scope tuple is
+      // still copied 1:1 by the caller; the person is inherited, never
+      // client-chosen. Fail-closed: a null parent `platosEndUserId` (or a
+      // parent gated closed) yields a null/false child → downstream fails
+      // closed.
+      const parentThread = await this.prisma.platosAgentThread.findFirst({
+        where: {
+          id: opts.parentThreadId,
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+        },
+        select: { platosEndUserId: true, singleEndUser: true },
+      });
+      platosEndUserId = parentThread?.platosEndUserId ?? null;
+      // Explicit opts wins (extensibility); else inherit the parent's flag.
+      singleEndUserForThread = opts.singleEndUser ?? parentThread?.singleEndUser ?? true;
+    } else if (scope.userId) {
       platosEndUserId = await this.resolveEndUser(scope, {
         displayName: opts?.displayName,
         email: opts?.email,
@@ -255,8 +283,9 @@ export class ConversationService {
         turnCount: 0,
         // IDENTITY-CORE §C (G1) — stamp the single-end-user gate. Default true
         // so web/API/direct threads are unchanged; channel bindings pass false
-        // for shared / non-DM threads (fail-closed for {{endUserId}}).
-        singleEndUser: opts?.singleEndUser ?? true,
+        // for shared / non-DM threads (fail-closed for {{endUserId}}); a
+        // subagent child (§B.2) inherits the parent thread's flag.
+        singleEndUser: singleEndUserForThread,
         ...(platosEndUserId ? { platosEndUserId } : {}),
         // PRA-AC: stamp cluster FK when the creating agent is a cluster member.
         ...(scope.clusteringId ? { clusteringId: scope.clusteringId } : {}),
