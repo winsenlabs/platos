@@ -18,6 +18,7 @@ import {
 import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
 import { PRISMA_TOKEN } from "../shared/database.provider";
+import { pickExternalId } from "../shared/end-user-id";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { OAuthService } from "../oauth/oauth.service";
@@ -378,9 +379,16 @@ export class McpEntityController {
           environmentId: scope.environmentId,
           externalUserId: scope.userId,
         },
-        select: { externalUserId: true },
+        select: { linkedExternalId: true, externalUserId: true },
       });
-      return endUser?.externalUserId ?? undefined;
+      if (!endUser) return undefined;
+      // §A.2 frozen rule: prefer the adopted linkedExternalId; empty-string
+      // guarded. Coerce the helper's `null` (unresolved) to `undefined` for
+      // this path's string|undefined contract — both fail closed downstream.
+      return (
+        pickExternalId(endUser.linkedExternalId, endUser.externalUserId) ??
+        undefined
+      );
     } catch {
       return undefined;
     }

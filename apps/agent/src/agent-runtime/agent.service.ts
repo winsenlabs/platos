@@ -33,6 +33,7 @@ import type { RequestScope } from "../auth/scope.guard";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { PRISMA_TOKEN } from "../shared/database.provider";
+import { pickExternalId } from "../shared/end-user-id";
 import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
 import { ToolExecutorService } from "../tool-gateway/tool-executor.service";
 import { ToolRouterService } from "../tool-gateway/tool-router.service";
@@ -1528,9 +1529,12 @@ export class AgentService {
           projectId: scope.projectId,
           environmentId: scope.environmentId,
         },
-        select: { externalUserId: true },
+        select: { linkedExternalId: true, externalUserId: true },
       });
-      return endUser?.externalUserId ?? null;
+      if (!endUser) return null;
+      // §A.2 frozen rule: prefer the adopted linkedExternalId; empty-string
+      // guarded; null ⇒ fail closed downstream.
+      return pickExternalId(endUser.linkedExternalId, endUser.externalUserId);
     } catch {
       return null;
     }
