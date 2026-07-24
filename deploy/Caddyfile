@@ -1,0 +1,27 @@
+test.platos.dev {
+	handle /mcp/platform* {
+		reverse_proxy localhost:3100
+	}
+	handle_path /agent-io/* {
+		reverse_proxy localhost:3100
+	}
+	handle /api/v1/memory/* {
+		reverse_proxy localhost:3100
+	}
+	handle /api/v1/channels/* {
+		reverse_proxy localhost:3100
+	}
+	handle /tools/sync* {
+		reverse_proxy localhost:3100
+	}
+	handle /api/v1/agent/* {
+		reverse_proxy localhost:3100
+	}
+	handle {
+		reverse_proxy localhost:3030
+	}
+}
+
+agent.test.platos.dev {
+	reverse_proxy localhost:3100
+}
