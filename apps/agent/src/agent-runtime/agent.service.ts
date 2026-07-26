@@ -5788,6 +5788,33 @@ export class AgentService {
       // from throwing AI_InvalidPromptError on tool turns. Idempotent + mutates
       // the same `tools` object the call below reads.
       hardenToolResults(tools);
+      // DIAGNOSTIC (temp, DIAG.msgparts) — the AI_InvalidPromptError on tool turns
+      // is standardizePrompt() rejecting the INITIAL `messages[]` for a malformed
+      // tool part (undefined toolCallId/toolName/approved). Every builder is
+      // believed text-only, so if a non-text/non-multimodal part appears here it
+      // IS the source. Log its exact shape so the fix targets the real producer.
+      try {
+        const suspects: unknown[] = [];
+        for (let i = 0; i < (messages as unknown[]).length; i++) {
+          const m = (messages as Array<{ role?: string; content?: unknown }>)[i];
+          if (Array.isArray(m?.content)) {
+            for (const p of m.content as Array<{ type?: string }>) {
+              const t = p?.type;
+              if (t && t !== "text" && t !== "image" && t !== "file") {
+                suspects.push({ msgIndex: i, role: m.role, part: p });
+              }
+            }
+          }
+        }
+        if (suspects.length > 0) {
+          this.logger.warn(
+            `[DIAG.msgparts] ${suspects.length} non-text tool-ish part(s) in initial messages (AI_InvalidPromptError source): ` +
+              JSON.stringify(suspects).slice(0, 4000),
+          );
+        }
+      } catch {
+        /* diagnostic must never break a turn */
+      }
       const result = streamText({
         model,
         messages,
