@@ -11,7 +11,7 @@ import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { ConversationService } from "../memory/conversation.service";
-import { AgentTaskService } from "../agent-runtime/agent-task.service";
+import { TurnDispatchService } from "../agent-runtime/turn-dispatch.service";
 import { env } from "../shared/env";
 import type { RequestScope } from "../auth/scope.guard";
 import {
@@ -254,7 +254,15 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
     private readonly messageCrypto: MessageCryptoService,
     private readonly conversationService: ConversationService,
-    private readonly agentTaskService: AgentTaskService,
+    // The durable-vs-direct chokepoint. Both channel turn call-sites route
+    // through collectTurn so a durable Walle/Slack agent dispatches to
+    // platos.agent.durable-turn (Trigger) and the channel posts the awaited
+    // final text back — the invariant now holds on the channel path too. The
+    // Slack post-back stays a channel-only TAIL, downstream of the decision.
+    // (This replaced the direct AgentTaskService.executeNonStreamingTurn call
+    // both call-sites used to make — the channel no longer touches the runner
+    // directly, so AgentTaskService is no longer injected here.)
+    private readonly dispatch: TurnDispatchService,
     // Connect v3 (Phase C) — owned by the link-controller slice. @Optional so its
     // absence degrades cleanly to `linking:none` (no connect URLs surfaced).
     @Optional()
@@ -726,11 +734,17 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     const chatThreadId = threadKey;
     void (async () => {
       try {
-        const result = await this.agentTaskService.executeNonStreamingTurn(
-          userText,
-          turnScope,
-          { agentId, threadId: platosThreadId },
-        );
+        // Route through the dispatch chokepoint (collected-result mode). A
+        // DIRECT agent runs in-process exactly as before; a DURABLE agent now
+        // dispatches to platos.agent.durable-turn (Trigger) and we await the
+        // run's final text. Fail-open: a dispatch failure falls back to the
+        // in-process turn (never a dropped turn). The Slack post-back below is
+        // a channel-only TAIL, downstream of this decision.
+        const result = await this.dispatch.collectTurn(agentId, {
+          scope: turnScope,
+          message: userText,
+          threadId: platosThreadId,
+        });
         if (result?.threadId && result.threadId !== platosThreadId) {
           // Should be impossible now that the conversation userId is
           // per-channel-thread — surface loudly if it ever regresses.
@@ -1130,11 +1144,17 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       threadId: platosThreadId,
     } as RequestScope;
     try {
-      const result = await this.agentTaskService.executeNonStreamingTurn(
-        parsed.text,
-        turnScope,
-        { agentId, threadId: platosThreadId },
-      );
+      // Route through the dispatch chokepoint (collected-result mode). A
+      // DURABLE app-tier (Walle white-label) agent now dispatches to
+      // platos.agent.durable-turn (Trigger) and we await the run's final text;
+      // a DIRECT agent runs in-process as before. Fail-open on a dispatch
+      // failure → in-process (never a dropped turn). The chat.postMessage
+      // post-back below is a channel-only TAIL, downstream of the decision.
+      const result = await this.dispatch.collectTurn(agentId, {
+        scope: turnScope,
+        message: parsed.text,
+        threadId: platosThreadId,
+      });
       if (result?.threadId && result.threadId !== platosThreadId) {
         this.logger.warn(
           `[channel-apps] turn thread diverged app=${appId} installation=${installationId} pinned=${platosThreadId} got=${result.threadId}`,
