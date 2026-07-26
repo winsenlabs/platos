@@ -255,13 +255,15 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     private readonly messageCrypto: MessageCryptoService,
     private readonly conversationService: ConversationService,
     // The durable-vs-direct chokepoint. Both channel turn call-sites route
-    // through collectTurn so a durable Walle/Slack agent dispatches to
-    // platos.agent.durable-turn (Trigger) and the channel posts the awaited
-    // final text back — the invariant now holds on the channel path too. The
-    // Slack post-back stays a channel-only TAIL, downstream of the decision.
-    // (This replaced the direct AgentTaskService.executeNonStreamingTurn call
-    // both call-sites used to make — the channel no longer touches the runner
-    // directly, so AgentTaskService is no longer injected here.)
+    // through collectTurn so a durable Walle/Slack agent now drives a Trigger
+    // SESSION (the ONE durable mechanism — the SAME session envelope the
+    // dashboard demo uses) and the channel posts the awaited final text
+    // (accumulated off the session's durable .out) back — the invariant holds on
+    // the channel path too. The Slack post-back stays a channel-only TAIL,
+    // downstream of the decision. (This replaced the direct
+    // AgentTaskService.executeNonStreamingTurn call both call-sites used to
+    // make — the channel no longer touches the runner directly, so
+    // AgentTaskService is no longer injected here.)
     private readonly dispatch: TurnDispatchService,
     // Connect v3 (Phase C) — owned by the link-controller slice. @Optional so its
     // absence degrades cleanly to `linking:none` (no connect URLs surfaced).
@@ -736,10 +738,10 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       try {
         // Route through the dispatch chokepoint (collected-result mode). A
         // DIRECT agent runs in-process exactly as before; a DURABLE agent now
-        // dispatches to platos.agent.durable-turn (Trigger) and we await the
-        // run's final text. Fail-open: a dispatch failure falls back to the
-        // in-process turn (never a dropped turn). The Slack post-back below is
-        // a channel-only TAIL, downstream of this decision.
+        // drives a Trigger SESSION and we return the reply accumulated off its
+        // durable .out. Fail-open: a session unavailable pre-commit falls back
+        // to the in-process turn (never a dropped turn). The Slack post-back
+        // below is a channel-only TAIL, downstream of this decision.
         const result = await this.dispatch.collectTurn(agentId, {
           scope: turnScope,
           message: userText,
@@ -1145,11 +1147,12 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     } as RequestScope;
     try {
       // Route through the dispatch chokepoint (collected-result mode). A
-      // DURABLE app-tier (Walle white-label) agent now dispatches to
-      // platos.agent.durable-turn (Trigger) and we await the run's final text;
-      // a DIRECT agent runs in-process as before. Fail-open on a dispatch
-      // failure → in-process (never a dropped turn). The chat.postMessage
-      // post-back below is a channel-only TAIL, downstream of the decision.
+      // DURABLE app-tier (Walle white-label) agent now drives a Trigger SESSION
+      // (the ONE durable mechanism) and we return the reply accumulated off its
+      // durable .out; a DIRECT agent runs in-process as before. Fail-open on a
+      // session unavailable pre-commit → in-process (never a dropped turn). The
+      // chat.postMessage post-back below is a channel-only TAIL, downstream of
+      // the decision.
       const result = await this.dispatch.collectTurn(agentId, {
         scope: turnScope,
         message: parsed.text,

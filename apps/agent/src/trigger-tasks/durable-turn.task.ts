@@ -1,6 +1,15 @@
 import { task, logger, metadata } from "@trigger.dev/sdk";
 
 /**
+ * @deprecated DORMANT — chat dispatch now runs `executionMode==="durable"` on
+ * Trigger SESSIONS (`platos.chat.session` — see `chat-session.task.ts`), driven
+ * by `TurnDispatchService.driveSession`. Nothing dispatches THIS task anymore
+ * (the chokepoint's `triggerDurable` is uncalled by the chat path; the gateway's
+ * former `tryDispatchDurable` was removed). The task file + its
+ * `/internal/durable-turn` callback are retained (dormant, still functional)
+ * pending removal — verify no non-chat caller depends on them before deleting.
+ * Do NOT wire new dispatch to `platos.agent.durable-turn`.
+ *
  * REFACTOR (control-plane + trigger substrate) — durable agent turn.
  *
  * The `durable` half of the per-agent `executionMode`. When a

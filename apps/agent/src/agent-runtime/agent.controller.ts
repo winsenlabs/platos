@@ -542,11 +542,11 @@ export class AgentController {
     @Body() body: { message: string; agentId?: string; attachmentIds?: string[] },
   ) {
     const scope = this.getScope(req);
-    // Route through the dispatch chokepoint: a durable agent here now
-    // dispatches to Trigger and returns the awaited final text; a direct agent
-    // runs in-process exactly as before (collectTurn's direct arm returns the
-    // same {text, threadId, events, costCents} shape as executeNonStreamingTurn,
-    // plus an additive messageId).
+    // Route through the dispatch chokepoint: a durable agent here now drives a
+    // Trigger SESSION (the ONE durable mechanism) and returns the reply
+    // accumulated off its durable .out; a direct agent runs in-process exactly
+    // as before (collectTurn's direct arm returns the same {text, threadId,
+    // events, costCents} shape as executeNonStreamingTurn, plus messageId).
     const agentId = await this.resolveThreadAgentId(threadId, body.agentId, scope);
     const result = await this.dispatch.collectTurn(agentId, {
       scope,
@@ -776,9 +776,10 @@ export class AgentController {
     res.on("close", onClose);
     // Route through the dispatch chokepoint. For a DIRECT agent, streamTurn
     // yields EXACTLY what executeStreamingTurn yields (byte-for-byte token
-    // stream — zero behavior change). For a DURABLE agent it dispatches to
-    // Trigger and surfaces the run result over SSE, fail-open to the in-process
-    // stream on a dispatch failure.
+    // stream — zero behavior change). For a DURABLE agent it drives a Trigger
+    // SESSION and relays its durable .out (real token deltas + message_persisted
+    // + done) over SSE, fail-open to the in-process stream when the session is
+    // unavailable pre-commit.
     const agentId = await this.resolveThreadAgentId(threadId, body.agentId, scope);
     const rawEvents = this.dispatch.streamTurn(agentId, {
       scope,
@@ -1070,10 +1071,10 @@ export class AgentController {
     const scope = { ...this.getScope(req), agentId };
     const agentConfigOverride = this.parsePlatosConfigHeader(req);
     // Route through the dispatch chokepoint (agentId is the path param — always
-    // explicit). Direct → identical in-process result shape; durable →
-    // dispatched to Trigger, awaited to final text. Same option forwarding as
-    // before (outputSchema is intentionally still not forwarded here, matching
-    // prior behavior — zero behavior change for direct agents).
+    // explicit). Direct → identical in-process result shape; durable → driven
+    // on a Trigger SESSION, reply accumulated off its durable .out. Same option
+    // forwarding as before (outputSchema is intentionally still not forwarded
+    // here, matching prior behavior — zero behavior change for direct agents).
     const result = await this.dispatch.collectTurn(agentId, {
       scope,
       message: body.message,
@@ -1111,8 +1112,9 @@ export class AgentController {
     const attachmentIds = attachmentIdsRaw ? attachmentIdsRaw.split(",").filter(Boolean) : undefined;
     const agentConfigOverride = this.parsePlatosConfigHeader(req);
     // Route through the dispatch chokepoint (agentId is the path param). Direct
-    // → identical in-process token stream; durable → dispatched to Trigger,
-    // fail-open to in-process on a dispatch failure.
+    // → identical in-process token stream; durable → driven on a Trigger SESSION
+    // and its durable .out relayed over SSE, fail-open to in-process when the
+    // session is unavailable pre-commit.
     const rawEvents = this.dispatch.streamTurn(agentId, {
       scope,
       message,
@@ -4350,6 +4352,13 @@ Write the summary now:`;
   }
 
   /**
+   * @deprecated DORMANT — the callback of the retired `platos.agent.durable-
+   * turn` task. Chat dispatch now runs `executionMode==="durable"` on Trigger
+   * SESSIONS (`/internal/chat/stream-turn`), so nothing dispatches that task
+   * anymore and nothing calls this endpoint. Retained (still functional, still
+   * admin-token gated) alongside the dormant task pending removal — do NOT wire
+   * new callers to it.
+   *
    * REFACTOR — durable agent turn callback. Invoked by the
    * `platos.agent.durable-turn` trigger task when an agent's
    * executionMode==="durable". Runs one turn in-process (reusing the same
