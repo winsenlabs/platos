@@ -7,17 +7,18 @@ import type { AgentStreamEvent } from "./agent.service";
  * Unit tests for the durable-vs-direct chokepoint.
  *
  * THE INVARIANT under test: durable-vs-direct is decided ONLY by the agent's
- * executionMode (read once, here), NEVER by the entry path. These tests pin the
- * four dispatch-decision units the refactor must guarantee:
- *   1. durable → trigger path
+ * executionMode (read once, here), NEVER by the entry path. And now "durable"
+ * ALWAYS means Trigger SESSIONS (never the retired durable-turn task). These
+ * tests pin the dispatch-decision units the refactor must guarantee:
+ *   1. durable → Sessions (streamSession / collectSession)
  *   2. direct  → in-process
- *   3. fallback-on-trigger-failure (dispatch failure → in-process, never dropped)
- *   4. channel collected-result (durable → await run → final text)
+ *   3. fail-open on pre-commit session-unavailable → in-process (never dropped)
+ *   4. the retired durable-turn TASK dispatch (triggerDurable) is NOT called
  *
- * The trigger.dev SDK send + run-await are extracted verbatim from the
- * already-working gateway path and depend on the module singleton, so the
- * decision/ROUTING is tested by stubbing the service's own seams rather than
- * the SDK.
+ * The Trigger Sessions drive (`driveSession`) is extracted verbatim from the
+ * already-working gateway path and depends on the SDK module singleton + Redis,
+ * so the decision/ROUTING is tested by stubbing the service's own seams
+ * (streamSession / collectSession / streamDirect) rather than the SDK.
  */
 
 function makeScope(): RequestScope {
@@ -41,13 +42,17 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
   let prisma: any;
   let agentTaskService: any;
   let conversationService: any;
+  let redis: any;
   let svc: TurnDispatchService;
 
   beforeEach(() => {
     prisma = { platosAgent: { findFirst: vi.fn() } };
     agentTaskService = { executeStreamingTurn: vi.fn() };
     conversationService = { getOrCreateThread: vi.fn() };
-    svc = new TurnDispatchService(prisma, agentTaskService, conversationService);
+    // driveSession is stubbed at the primitive seam in these tests, so a
+    // minimal Redis stub suffices (cursor get/set are never exercised here).
+    redis = { get: vi.fn().mockResolvedValue(null), set: vi.fn().mockResolvedValue("OK") };
+    svc = new TurnDispatchService(prisma, agentTaskService, conversationService, redis);
   });
 
   describe("resolveMode — the ONE executionMode read", () => {
@@ -89,8 +94,9 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
   });
 
   describe("collectTurn — routes on the decision (channel path)", () => {
-    it("direct → drains the in-process turn, never triggers durable", async () => {
+    it("direct → drains the in-process turn, never touches Sessions", async () => {
       vi.spyOn(svc, "resolveMode").mockResolvedValue("direct");
+      const session = vi.spyOn(svc, "collectSession");
       const trig = vi.spyOn(svc, "triggerDurable");
       vi.spyOn(svc, "streamDirect").mockReturnValue(
         gen(
@@ -102,31 +108,34 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
         ),
       );
       const r = await svc.collectTurn("a1", makeCtx());
-      expect(r).toEqual({ text: "hello", threadId: "t1", costCents: 3, messageId: "m1" });
+      // collectDirect also returns the full `events` log — assert the meaningful
+      // fields with a subset match.
+      expect(r).toMatchObject({ text: "hello", threadId: "t1", costCents: 3, messageId: "m1" });
+      expect(session).not.toHaveBeenCalled();
       expect(trig).not.toHaveBeenCalled();
     });
 
-    it("durable → dispatches to trigger and returns the awaited run's final text", async () => {
+    it("durable → drives a Session and returns its collected reply (NOT the durable-turn task)", async () => {
       vi.spyOn(svc, "resolveMode").mockResolvedValue("durable");
-      const trig = vi.spyOn(svc, "triggerDurable").mockResolvedValue({ runId: "run1", threadId: "t9" });
-      vi.spyOn(svc as any, "awaitDurableRun").mockResolvedValue({
-        text: "durable reply",
-        costCents: 7,
-        messageId: "m9",
-        status: "COMPLETED",
-      });
+      const trig = vi.spyOn(svc, "triggerDurable");
+      const session = vi
+        .spyOn(svc, "collectSession")
+        .mockResolvedValue({ text: "durable reply", threadId: "t9", costCents: 7, messageId: "m9" });
       const streamDirect = vi.spyOn(svc, "streamDirect");
       const r = await svc.collectTurn("a1", makeCtx({ threadId: "t9" }));
       expect(r).toEqual({ text: "durable reply", threadId: "t9", costCents: 7, messageId: "m9" });
-      expect(trig).toHaveBeenCalledOnce();
-      // A durable turn must NOT also run in-process.
+      expect(session).toHaveBeenCalledOnce();
+      // The retired durable-turn TASK must NOT be dispatched, and a committed
+      // session turn must NOT also run in-process.
+      expect(trig).not.toHaveBeenCalled();
       expect(streamDirect).not.toHaveBeenCalled();
     });
 
-    it("fail-open: a durable DISPATCH failure falls back to the in-process turn (never dropped)", async () => {
+    it("fail-open: a session unavailable PRE-COMMIT falls back to the in-process turn (never dropped)", async () => {
       vi.spyOn(svc, "resolveMode").mockResolvedValue("durable");
-      vi.spyOn(svc, "triggerDurable").mockRejectedValue(new Error("trigger unreachable"));
-      const awaitRun = vi.spyOn(svc as any, "awaitDurableRun");
+      // collectSession returns null when the session never dispatched a run.
+      vi.spyOn(svc, "collectSession").mockResolvedValue(null);
+      const trig = vi.spyOn(svc, "triggerDurable");
       vi.spyOn(svc, "streamDirect").mockReturnValue(
         gen(
           { type: "meta", thread_id: "t2" } as AgentStreamEvent,
@@ -135,9 +144,8 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
         ),
       );
       const r = await svc.collectTurn("a1", makeCtx());
-      expect(r).toEqual({ text: "fallback", threadId: "t2", costCents: 1, messageId: "m2" });
-      // No run ever started → we must not await one.
-      expect(awaitRun).not.toHaveBeenCalled();
+      expect(r).toMatchObject({ text: "fallback", threadId: "t2", costCents: 1, messageId: "m2" });
+      expect(trig).not.toHaveBeenCalled();
     });
   });
 
@@ -150,30 +158,35 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
         { type: "done" },
       ] as AgentStreamEvent[];
       vi.spyOn(svc, "streamDirect").mockReturnValue(gen(...events));
+      const session = vi.spyOn(svc, "streamSession");
       const out: AgentStreamEvent[] = [];
       for await (const e of svc.streamTurn("a1", makeCtx())) out.push(e);
       expect(out).toEqual(events);
+      expect(session).not.toHaveBeenCalled();
     });
 
-    it("durable → dispatches, then surfaces the run's text as meta+token+done", async () => {
+    it("durable → relays the Session .out (meta+token+done), NOT the durable-turn task", async () => {
       vi.spyOn(svc, "resolveMode").mockResolvedValue("durable");
-      vi.spyOn(svc, "triggerDurable").mockResolvedValue({ runId: "run1", threadId: "t5" });
-      vi.spyOn(svc as any, "awaitDurableRun").mockResolvedValue({
-        text: "durable stream",
-        costCents: 2,
-        messageId: "m5",
-        status: "COMPLETED",
-      });
+      const trig = vi.spyOn(svc, "triggerDurable");
+      vi.spyOn(svc, "streamSession").mockReturnValue(
+        gen(
+          { type: "meta", thread_id: "t5", threadId: "t5", durable: true, session: true } as unknown as AgentStreamEvent,
+          { type: "token", text: "durable stream" } as AgentStreamEvent,
+          { type: "done" } as AgentStreamEvent,
+        ),
+      );
       const out: any[] = [];
       for await (const e of svc.streamTurn("a1", makeCtx({ threadId: "t5" }))) out.push(e);
-      expect(out[0]).toEqual({ type: "meta", thread_id: "t5" });
+      expect(out[0]).toMatchObject({ type: "meta", thread_id: "t5", session: true });
       expect(out).toContainEqual({ type: "token", text: "durable stream" });
       expect(out.at(-1)).toEqual({ type: "done" });
+      expect(trig).not.toHaveBeenCalled();
     });
 
-    it("durable dispatch failure → fails open to the in-process stream", async () => {
+    it("session unavailable pre-commit → fails open to the in-process stream", async () => {
       vi.spyOn(svc, "resolveMode").mockResolvedValue("durable");
-      vi.spyOn(svc, "triggerDurable").mockRejectedValue(new Error("nope"));
+      // streamSession yields NOTHING when the session is unavailable.
+      vi.spyOn(svc, "streamSession").mockReturnValue(gen());
       vi.spyOn(svc, "streamDirect").mockReturnValue(
         gen({ type: "token", text: "direct-fallback" } as AgentStreamEvent),
       );
@@ -183,7 +196,7 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
     });
   });
 
-  describe("triggerDurable — pre-send guards", () => {
+  describe("triggerDurable — DORMANT (retired durable-turn task dispatch), guards retained", () => {
     it("throws when managed trigger is not configured (so callers fail-open)", async () => {
       vi.spyOn(svc as any, "triggerReady").mockReturnValue(false);
       await expect(svc.triggerDurable("a1", makeCtx())).rejects.toThrow();
