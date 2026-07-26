@@ -11,6 +11,7 @@ import { Server, Socket } from "socket.io";
 import { Inject, OnModuleInit, Optional } from "@nestjs/common";
 import IORedis from "ioredis";
 import { AgentTaskService } from "../agent-runtime/agent-task.service";
+import { TurnDispatchService } from "../agent-runtime/turn-dispatch.service";
 import { AuthService } from "../auth/auth.service";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import { PRISMA_TOKEN } from "../shared/database.provider";
@@ -91,6 +92,11 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
 
   constructor(
     private readonly agentTaskService: AgentTaskService,
+    // The durable-vs-direct chokepoint. The gateway sources the dispatch
+    // DECISION (executionMode read) from here instead of its two former inline
+    // findFirsts, and delegates the durable trigger send to it — keeping only
+    // the socket TAIL (room join + RunsBridge subscribe + meta emit) local.
+    private readonly dispatch: TurnDispatchService,
     private readonly authService: AuthService,
     @Inject(REDIS_TOKEN) private readonly redis: IORedis,
     // Phase 1 review follow-up — Prisma is needed on the gateway so
@@ -610,24 +616,32 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       // to the thread panel (not the main timeline), including done/error.
       const threadSuffix = replyToMessageId ? { replyToMessageId } : {};
 
-      // REFACTOR (Trigger Sessions — Option 1) — durable chat via a Trigger
-      // SESSION (platos.chat.session worker + Platos proxy-bridge). Flag-gated
-      // rollout: PLATOS_CHAT_SESSIONS=true routes durable agents through the
-      // session path; otherwise the older durable-turn task path below runs.
-      // Phase 6 (cutover) flips the flag on and deletes the old path.
-      if (await this.tryDispatchSession(data, scopeWithAgent, agentId, replyToMessageId, client)) {
-        return;
-      }
-
-      // REFACTOR (control-plane + trigger substrate) — durable executionMode.
-      // If the agent is executionMode="durable" AND managed trigger is
-      // configured, hand the turn to the platos.agent.durable-turn task and
-      // bridge its run to the thread room instead of running in-process.
-      // Dormant + zero-regression until managed trigger keys exist (falls back
-      // to the direct in-process path below when trigger is unconfigured or no
-      // threadId is present).
-      if (await this.tryDispatchDurable(data, scopeWithAgent, agentId, replyToMessageId, client)) {
-        return;
+      // THE INVARIANT (single chokepoint) — the durable-vs-direct decision is
+      // read ONCE here, from TurnDispatchService.resolveMode (the only place
+      // executionMode is read for dispatch, across every entry path). The
+      // gateway no longer re-reads executionMode inside tryDispatchSession /
+      // tryDispatchDurable; both are now attempted ONLY when the mode is
+      // "durable". A "direct" agent (or a deployment without managed trigger)
+      // falls straight through to the in-process stream below — unchanged.
+      const dispatchMode = await this.dispatch.resolveMode(agentId, scopeWithAgent);
+      if (dispatchMode === "durable") {
+        // Trigger-Sessions SUB-strategy (gateway-resident, socket-coupled): a
+        // flag-gated rollout of the durable path via a Trigger SESSION
+        // (platos.chat.session worker + Platos proxy-bridge). It is layered on
+        // top of the durable decision — not a distinct executionMode — so it
+        // stays here. Returns false (fall through) when its own flags/SDK gates
+        // aren't met.
+        if (await this.tryDispatchSession(data, scopeWithAgent, agentId, replyToMessageId, client)) {
+          return;
+        }
+        // Durable-turn via the chokepoint: dispatch to platos.agent.durable-turn
+        // and bridge its run to the thread room (RunsBridge) instead of running
+        // in-process. Fail-open: a dispatch failure returns false and falls
+        // through to the identical direct in-process path below (never a
+        // dropped turn).
+        if (await this.tryDispatchDurable(data, scopeWithAgent, agentId, replyToMessageId, client)) {
+          return;
+        }
       }
 
       for await (const event of this.agentTaskService.executeStreamingTurn(
@@ -737,28 +751,15 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     replyToMessageId: string | undefined,
     client: Socket,
   ): Promise<boolean> {
+    // NOTE (chokepoint): executionMode is NOT read here anymore. handleMessage
+    // only calls this after TurnDispatchService.resolveMode has already decided
+    // "durable" — this method now owns only the SESSION sub-strategy's own gates
+    // (rollout flag, trigger secret, no sub-thread replies, chat SDK present).
     if (process.env.PLATOS_CHAT_SESSIONS !== "true") return false;
     if (!process.env.TRIGGER_SECRET_KEY) return false;
     // Sub-thread replies keep the existing paths (session wire has no
     // replyToMessageId concept yet).
     if (replyToMessageId) return false;
-
-    let executionMode = "direct";
-    try {
-      const agent = await this.prisma.platosAgent.findFirst({
-        where: {
-          id: agentId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        },
-        select: { executionMode: true },
-      });
-      executionMode = agent?.executionMode ?? "direct";
-    } catch {
-      return false;
-    }
-    if (executionMode !== "durable") return false;
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const chatSdk = (() => {
@@ -933,108 +934,44 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     replyToMessageId: string | undefined,
     client: Socket,
   ): Promise<boolean> {
-    let threadId = data?.threadId as string | undefined;
-
-    let executionMode = "direct";
+    // The DECISION (executionMode read), the trigger-availability gate, the
+    // IDOR-gated thread resolution, and the platos.agent.durable-turn send now
+    // ALL live in TurnDispatchService.triggerDurable (the chokepoint) —
+    // extracted verbatim, so the dashboard durable path is byte-for-byte
+    // unchanged. handleMessage only reaches here when resolveMode already
+    // returned "durable"; this method owns solely the socket TAIL.
+    //
+    // Fail-open: any dispatch failure (trigger unconfigured, thread resolution,
+    // trigger send) throws out of triggerDurable → we return false →
+    // handleMessage falls through to the identical in-process path below. Never
+    // a dropped turn.
+    let handle: { runId?: string; threadId: string };
     try {
-      const agent = await this.prisma.platosAgent.findFirst({
-        where: {
-          id: agentId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        },
-        select: { executionMode: true },
+      handle = await this.dispatch.triggerDurable(agentId, {
+        scope,
+        message: data.message,
+        threadId: data?.threadId as string | undefined,
+        replyToMessageId: replyToMessageId ?? null,
+        idempotencyKey: (data as any).idempotencyKey as string | undefined,
       });
-      executionMode = agent?.executionMode ?? "direct";
     } catch {
-      return false;
+      return false; // fail-open → direct in-process path
     }
-    if (executionMode !== "durable") return false;
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const triggerSdk = (() => {
-      try {
-        return require("@trigger.dev/sdk");
-      } catch {
-        return null;
-      }
-    })();
-    const triggerReady = !!process.env.TRIGGER_SECRET_KEY && !!triggerSdk?.tasks?.trigger;
-    if (!triggerReady) return false; // managed trigger not configured → direct
-
-    // SECURITY (cross-tenant IDOR — same as tryDispatchSession) — ALWAYS
-    // resolve through getOrCreateThread so a client-supplied threadId is
-    // scope+owner-gated before we join the room / bridge the run. A foreign
-    // threadId resolves to a freshly minted owned thread rather than joining
-    // `thread:<victimId>`. Also gives us a concrete id to hand the run and for
-    // the client to adopt via the meta event below.
-    try {
-      const convo = (this.agentTaskService as any).conversationService;
-      const resolved = await convo?.getOrCreateThread?.(scope, agentId, data?.threadId);
-      threadId = resolved?.id as string | undefined;
-    } catch {
-      return false;
-    }
-    if (!threadId) return false;
-
-    try {
-      const clientMessageId = (data as any).idempotencyKey as string | undefined;
-      const handle = await triggerSdk.tasks.trigger(
-        "platos.agent.durable-turn",
-        {
-          threadId,
-          agentId,
-          message: data.message,
-          replyToMessageId: replyToMessageId ?? null,
-          clientMessageId: clientMessageId ?? null,
-          scope: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-            userId: scope.userId,
-            agentId,
-            threadId,
-          },
-        },
-        {
-          // Model A per-tenant fairness — one shared trigger project, isolated
-          // by org-scoped concurrency key.
-          concurrencyKey: `org-${scope.organizationId}`,
-          // SECURITY (audit L4) — scope-namespace the Trigger idempotency key
-          // so a cuid collision across tenants can't dedup one org's turn
-          // against another's. Write-only (Trigger dedups server-side).
-          ...(clientMessageId
-            ? {
-                idempotencyKey: `turn-${scope.organizationId}:${scope.projectId}:${scope.environmentId}-${threadId}-${clientMessageId}`,
-              }
-            : {}),
-          tags: [
-            `org:${scope.organizationId}`,
-            `project:${scope.projectId}`,
-            `env:${scope.environmentId}`,
-            `thread:${threadId}`,
-          ],
-        },
-      );
-      const runId = handle?.id as string | undefined;
-      await client.join(`thread:${threadId}`);
-      // Bridge the durable run's realtime events into the thread room (client
-      // is joined). RunsBridge no-ops if the SDK realtime isn't available.
-      if (runId) this.getRunsBridge()?.subscribe(runId, scope, threadId);
-      client.emit("agent_event", {
-        type: "meta",
-        thread_id: threadId,
-        threadId,
-        durable: true,
-        runId,
-        ...(replyToMessageId ? { replyToMessageId } : {}),
-      });
-      return true;
-    } catch {
-      // Dispatch failed — fall back to the in-process path.
-      return false;
-    }
+    await client.join(`thread:${handle.threadId}`);
+    // Bridge the durable run's realtime events into the thread room (client is
+    // joined). RunsBridge no-ops if the SDK realtime isn't available. This is
+    // the SAME dashboard streaming path as before — unchanged.
+    if (handle.runId) this.getRunsBridge()?.subscribe(handle.runId, scope, handle.threadId);
+    client.emit("agent_event", {
+      type: "meta",
+      thread_id: handle.threadId,
+      threadId: handle.threadId,
+      durable: true,
+      runId: handle.runId,
+      ...(replyToMessageId ? { replyToMessageId } : {}),
+    });
+    return true;
   }
 
   /**
