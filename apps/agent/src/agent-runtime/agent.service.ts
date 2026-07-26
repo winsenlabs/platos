@@ -27,6 +27,7 @@ import { openai, createOpenAI } from "@ai-sdk/openai";
 import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createVertex } from "@ai-sdk/google-vertex";
 import { makeRetryFetch, DEFAULT_RETRY_RULES, type RetryRule } from "./retry-fetch";
+import { hardenToolResults } from "./tool-result-sanitizer";
 import { z } from "zod";
 import * as crypto from "crypto";
 import type { RequestScope } from "../auth/scope.guard";
@@ -3223,9 +3224,12 @@ export class AgentService {
             comment: parsed.comment ?? null,
           });
           return {
+            // Normalize optional fields to null so the returned object never
+            // carries an `undefined` property into the tool-result part (the
+            // hardenToolResults boundary also enforces this, defence in depth).
             approved: !!parsed.approved,
-            comment: parsed.comment,
-            respondedBy: parsed.respondedBy,
+            comment: parsed.comment ?? null,
+            respondedBy: parsed.respondedBy ?? null,
           };
         } catch (err: any) {
           return { approved: false, reason: "error", message: err?.message || "Approval wait failed" };
@@ -4319,6 +4323,10 @@ export class AgentService {
     ];
 
     const subStartNs = Date.now() * 1_000_000;
+    // TOOL-RESULT BOUNDARY — harden the sub-agent's execute_tools return too
+    // (see stream() for rationale). Its `blocked: undefined` branch and raw
+    // executeBatch results pass through the same serialization guard.
+    hardenToolResults(subTools);
     // PRELAUNCH-A2-6 — propagate parent's abort signal to the nested LLM call.
     const result = await generateText({
       model,
@@ -5773,6 +5781,13 @@ export class AgentService {
       // persisted onto responseJson.usage for post-hoc cost audit.
       let lastInputTokenDetails: Record<string, unknown> | null = null;
       let lastOutputTokenDetails: Record<string, unknown> | null = null;
+      // TOOL-RESULT BOUNDARY — coerce every tool `execute` return into a valid,
+      // JSON-serializable tool-result part before the SDK's multi-step loop can
+      // embed it in the next step's ModelMessage[]. Prevents an undefined /
+      // non-serializable return (e.g. a skill handler that resolves undefined)
+      // from throwing AI_InvalidPromptError on tool turns. Idempotent + mutates
+      // the same `tools` object the call below reads.
+      hardenToolResults(tools);
       const result = streamText({
         model,
         messages,
@@ -6403,6 +6418,9 @@ export class AgentService {
     // PRELAUNCH-A2-13 — non-streaming generateText path. Same abort
     // propagation as the streaming path so stop-button behaviour is
     // consistent across run() / stream().
+    // TOOL-RESULT BOUNDARY — see stream() for rationale: guarantee every tool
+    // return embeds as a valid tool-result part (no undefined / non-serializable).
+    hardenToolResults(tools);
     const result = await generateText({
       model,
       instructions: systemPrompt,
