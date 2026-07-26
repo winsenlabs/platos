@@ -5,6 +5,7 @@ import { ChannelsController } from "./channels.controller";
 import { ChannelAppsController } from "./channel-apps.controller";
 import { AgentService } from "./agent.service";
 import { AgentTaskService } from "./agent-task.service";
+import { TurnDispatchService } from "./turn-dispatch.service";
 import { AgentCrudService } from "./agent-crud.service";
 import { AgentClusterService } from "./agent-cluster.service";
 import { PromptBuilderService } from "./prompt-builder.service";
@@ -43,7 +44,11 @@ import { PromptCacheService } from "./prompt-cache.service";
     // here.
   ],
   controllers: [AgentController, PlatosTasksController, ChannelsController, ChannelAppsController],
-  providers: [AgentService, AgentTaskService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
-  exports: [AgentService, AgentTaskService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
+  // TurnDispatchService — the durable-vs-direct chokepoint. Exported so the WS
+  // gateway (ConnectionsModule), the SSE/REST controller (this module), and the
+  // Slack channel (ChannelsModule) all route dispatch through the ONE service
+  // that reads executionMode.
+  providers: [AgentService, AgentTaskService, TurnDispatchService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
+  exports: [AgentService, AgentTaskService, TurnDispatchService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
 })
 export class AgentRuntimeModule {}

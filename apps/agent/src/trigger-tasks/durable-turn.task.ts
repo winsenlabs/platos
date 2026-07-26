@@ -48,6 +48,15 @@ export interface DurableTurnOutput {
   status: "ok" | "skipped" | "failed";
   reason?: string;
   threadId: string;
+  /**
+   * Final assembled assistant text for the turn. Carried on the run's
+   * terminal `output` so NON-STREAMING callers (the channel collected-result
+   * path via TurnDispatchService.collectTurn) can await the run to terminal
+   * and read the reply without a socket/SSE stream. The internal callback
+   * (`/internal/durable-turn`) already returns `text: fullText`; this field
+   * is what surfaces it through `runs.subscribeToRun`/`runs.retrieve`.
+   */
+  text?: string;
   messageId?: string;
   costCents?: number;
   durationMs?: number;
@@ -91,6 +100,11 @@ export const durableTurn = task({
         status: (result.status as DurableTurnOutput["status"]) ?? "ok",
         reason: result.reason,
         threadId: payload.threadId,
+        // Carry the callback's assembled reply onto the run output so a
+        // non-streaming caller (channel collectTurn) can read it off the
+        // terminal run. Previously dropped — the run's output had no `text`,
+        // so the only way to get the reply was to stream the thread room.
+        text: typeof result.text === "string" ? result.text : undefined,
         messageId: result.messageId,
         costCents: result.costCents,
         durationMs: Date.now() - start,
