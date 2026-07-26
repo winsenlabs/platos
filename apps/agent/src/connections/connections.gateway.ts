@@ -16,8 +16,6 @@ import { AuthService } from "../auth/auth.service";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
-import { ModuleRef } from "@nestjs/core";
-import type { RunsBridgeService } from "../trigger-bridge/runs-bridge.service";
 import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
 import { RateLimitService } from "../monitoring/rate-limit.service";
@@ -93,9 +91,10 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
   constructor(
     private readonly agentTaskService: AgentTaskService,
     // The durable-vs-direct chokepoint. The gateway sources the dispatch
-    // DECISION (executionMode read) from here instead of its two former inline
-    // findFirsts, and delegates the durable trigger send to it — keeping only
-    // the socket TAIL (room join + RunsBridge subscribe + meta emit) local.
+    // DECISION (executionMode read) from here, and durable ALWAYS means a
+    // Trigger SESSION driven inside the chokepoint (dispatch.streamSession). The
+    // gateway keeps only the socket TAIL: room join + meta emit to the client +
+    // the background pump of the session's frames to the thread room.
     private readonly dispatch: TurnDispatchService,
     private readonly authService: AuthService,
     @Inject(REDIS_TOKEN) private readonly redis: IORedis,
@@ -103,10 +102,6 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     // `join_thread` can scope-gate the thread lookup. DatabaseModule is
     // `@Global()`, so PRISMA_TOKEN resolves without changing module imports.
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
-    // REFACTOR — lazy RunsBridge lookup for the durable executionMode dispatch
-    // (avoids the RunsBridge↔gateway constructor cycle; same pattern as
-    // AgentService.getRunsBridge).
-    private readonly moduleRef: ModuleRef,
     @Optional() private readonly approvalsService?: MonitoringApprovalsService,
     /**
      * PRELAUNCH-A3-9 — RateLimitService for the WS message handler. Without
@@ -618,30 +613,69 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
 
       // THE INVARIANT (single chokepoint) — the durable-vs-direct decision is
       // read ONCE here, from TurnDispatchService.resolveMode (the only place
-      // executionMode is read for dispatch, across every entry path). The
-      // gateway no longer re-reads executionMode inside tryDispatchSession /
-      // tryDispatchDurable; both are now attempted ONLY when the mode is
-      // "durable". A "direct" agent (or a deployment without managed trigger)
-      // falls straight through to the in-process stream below — unchanged.
+      // executionMode is read for dispatch, across every entry path). A
+      // "direct" agent (or a deployment without managed trigger) falls straight
+      // through to the in-process stream below — unchanged.
       const dispatchMode = await this.dispatch.resolveMode(agentId, scopeWithAgent);
       if (dispatchMode === "durable") {
-        // Trigger-Sessions SUB-strategy (gateway-resident, socket-coupled): a
-        // flag-gated rollout of the durable path via a Trigger SESSION
-        // (platos.chat.session worker + Platos proxy-bridge). It is layered on
-        // top of the durable decision — not a distinct executionMode — so it
-        // stays here. Returns false (fall through) when its own flags/SDK gates
-        // aren't met.
-        if (await this.tryDispatchSession(data, scopeWithAgent, agentId, replyToMessageId, client)) {
+        // Durable ALWAYS means a Trigger SESSION now — the chokepoint owns the
+        // WHOLE drive (IDOR-gated thread, scope-namespaced Redis cursor, run-
+        // finalization race guard, fresh-AgentChat-per-message, .out translate).
+        // The gateway keeps ONLY the socket TAIL:
+        //   1. await the FIRST frame (meta) — this both learns the resolved
+        //      threadId and tells us the session is available; if streamSession
+        //      yields nothing (flags off / SDK missing / sub-thread reply /
+        //      thread won't resolve) we fall through to the in-process direct
+        //      path below (the ONLY fallback — the durable-turn task is retired).
+        //   2. join the room + emit meta to the requesting client (mirrors the
+        //      former session pump's client.emit).
+        //   3. pump the remaining frames to the thread ROOM in a NON-AWAITED
+        //      background task so the handler returns while the durable session
+        //      keeps producing (a reconnecting client in the room resumes).
+        // The async generator is its own iterator — drive it with .next() so we
+        // can await the FIRST frame in the foreground (availability decision)
+        // and pump the rest in the background.
+        const sessionGen = this.dispatch.streamSession(agentId, {
+          scope: scopeWithAgent,
+          message: data.message,
+          threadId: data.threadId,
+          replyToMessageId,
+          idempotencyKey: (data as any).idempotencyKey as string | undefined,
+        });
+        const first = await sessionGen.next();
+        if (!first.done) {
+          const metaEvt = first.value as Record<string, unknown>;
+          const tid = (metaEvt.thread_id as string) ?? data.threadId ?? "";
+          const room = `thread:${tid}`;
+          await client.join(room);
+          client.emit("agent_event", metaEvt);
+          void (async () => {
+            let sawDone = false;
+            try {
+              for (;;) {
+                const n = await sessionGen.next();
+                if (n.done) break;
+                const frame = n.value as Record<string, unknown>;
+                if (frame.type === "done") sawDone = true;
+                this.server?.to(room).emit("agent_event", { ...frame, threadId: tid });
+              }
+            } catch (err: any) {
+              this.server?.to(room).emit("agent_event", {
+                type: "error",
+                message: err?.message ?? String(err),
+                threadId: tid,
+              });
+            } finally {
+              // Guarantee a terminal done reaches the room even on the (defensive)
+              // path where the stream ends without one.
+              if (!sawDone) {
+                this.server?.to(room).emit("agent_event", { type: "done", threadId: tid });
+              }
+            }
+          })();
           return;
         }
-        // Durable-turn via the chokepoint: dispatch to platos.agent.durable-turn
-        // and bridge its run to the thread room (RunsBridge) instead of running
-        // in-process. Fail-open: a dispatch failure returns false and falls
-        // through to the identical direct in-process path below (never a
-        // dropped turn).
-        if (await this.tryDispatchDurable(data, scopeWithAgent, agentId, replyToMessageId, client)) {
-          return;
-        }
+        // session unavailable → fall through to the in-process direct path below
       }
 
       for await (const event of this.agentTaskService.executeStreamingTurn(
@@ -687,291 +721,6 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     } finally {
       if (resolvedThreadId) this.activeStreams.delete(ackey(resolvedThreadId));
     }
-  }
-
-  // REFACTOR — lazy RunsBridge resolver (mirrors AgentService.getRunsBridge).
-  // Deferred require so the CJS RunsBridge↔gateway cycle is settled first.
-  private cachedRunsBridge: RunsBridgeService | null = null;
-  private getRunsBridge(): RunsBridgeService | null {
-    if (this.cachedRunsBridge) return this.cachedRunsBridge;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { RunsBridgeService: Svc } = require("../trigger-bridge/runs-bridge.service");
-      this.cachedRunsBridge = this.moduleRef.get(Svc, { strict: false });
-      return this.cachedRunsBridge;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * REFACTOR (control-plane + trigger substrate) — durable executionMode
-   * dispatch. Returns true if the turn was handed to the
-   * `platos.agent.durable-turn` trigger task (and its run bridged to the
-   * thread room); false to fall back to the in-process (direct) path.
-   *
-   * Dormant unless ALL hold: agent.executionMode==="durable" and
-   * TRIGGER_SECRET_KEY set (managed trigger configured). So on a deployment
-   * without managed trigger every turn stays direct — zero behaviour change
-   * until the substrate exists.
-   *
-   * New-thread turns are supported: when the client sends no threadId (a fresh
-   * conversation, e.g. the demo chat's first message), we mint the thread
-   * up-front so the client can be joined to its room before the async run
-   * starts streaming, and so message #1 runs durably too. (Previously the first
-   * message of every durable conversation silently fell back to the direct
-   * path — the agent looked like it "wasn't using trigger" until the 2nd turn.)
-   */
-  /**
-   * REFACTOR (Trigger Sessions — Option 1, Platos proxies) — durable chat via
-   * a Trigger SESSION. The `platos.chat.session` `chat.customAgent` worker owns
-   * the durable session; each turn calls back into this agent's
-   * `/internal/chat/stream-turn` (so the EXISTING executeStreamingTurn does
-   * config/keys/tools/memory/cost/persistence), and the reply lands in the
-   * session's durable `.out`. This method is the PROXY-BRIDGE: it drives the
-   * session server-side via `AgentChat` and forwards stream parts to the
-   * thread room as the client's existing `agent_event` frames — the browser
-   * never talks to Trigger (3rd parties only ever touch Platos), and there is
-   * exactly ONE emit per event (no scope/thread double-emit).
-   *
-   * Wins over the durable-turn path it replaces: the turn completes even if
-   * the CLIENT disconnects mid-stream (worker keeps consuming; result persists
-   * + is resumable from `.out`), replies are re-readable after gateway
-   * restarts, and the relay is one ordered stream instead of ad-hoc
-   * multi-room emits. (Agent-process restarts still abort the in-flight
-   * generation — inherent to reusing the in-agent loop; accepted trade.)
-   *
-   * Flag-gated: PLATOS_CHAT_SESSIONS=true + executionMode="durable" +
-   * TRIGGER_SECRET_KEY. Returns false to fall through to older paths.
-   */
-  private async tryDispatchSession(
-    data: any,
-    scope: RequestScope,
-    agentId: string,
-    replyToMessageId: string | undefined,
-    client: Socket,
-  ): Promise<boolean> {
-    // NOTE (chokepoint): executionMode is NOT read here anymore. handleMessage
-    // only calls this after TurnDispatchService.resolveMode has already decided
-    // "durable" — this method now owns only the SESSION sub-strategy's own gates
-    // (rollout flag, trigger secret, no sub-thread replies, chat SDK present).
-    if (process.env.PLATOS_CHAT_SESSIONS !== "true") return false;
-    if (!process.env.TRIGGER_SECRET_KEY) return false;
-    // Sub-thread replies keep the existing paths (session wire has no
-    // replyToMessageId concept yet).
-    if (replyToMessageId) return false;
-
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const chatSdk = (() => {
-      try {
-        return require("@trigger.dev/sdk/chat");
-      } catch {
-        return null;
-      }
-    })();
-    if (!chatSdk?.AgentChat) return false;
-
-    // SECURITY (cross-tenant IDOR) — ALWAYS resolve the threadId through
-    // getOrCreateThread, which scope+owner-gates it (getThread filters by the
-    // full scope tuple AND userId/createdByUserId). Never trust a client-
-    // supplied threadId directly: without this, a caller could pass a victim's
-    // threadId and get joined to `thread:<victimId>` — reading the victim's
-    // streamed turns and injecting into their live UI. A non-owned threadId
-    // resolves to a freshly minted (owned) thread instead. The session
-    // externalId IS this resolved threadId, so it must exist first anyway.
-    let threadId: string | undefined;
-    try {
-      const convo = (this.agentTaskService as any).conversationService;
-      const resolved = await convo?.getOrCreateThread?.(scope, agentId, data?.threadId);
-      threadId = resolved?.id as string | undefined;
-    } catch {
-      return false;
-    }
-    if (!threadId) return false;
-
-    try {
-      // FRESH AgentChat per message (deliberate — do NOT cache): with the
-      // one-turn-per-run worker (chat.endRun after each turn), the previous
-      // run has fully exited by the next message. A cached instance believes
-      // its run is still alive and appends into a dead run's inbox — the
-      // message never dispatches (observed live: turn 2 done/0 chars, no
-      // continuation run spawned). A fresh instance takes the trigger path:
-      // sessions.start is idempotent, the server sees no active run, and
-      // spawns a continuation run. Replay of old .out chunks is prevented
-      // server-side since 4.5.2 (cursor advance fix); the Redis lastEventId
-      // is belt-and-braces when available.
-      {
-        // SECURITY (audit L4) — scope-namespace the cursor key. Defense in
-        // depth against a cuid collision across tenants. NOTE: the same key is
-        // rebuilt as a literal on the write side below — both must match.
-        const cursorKey = `chatsess:cursor:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${threadId}`;
-        let lastEventId: string | undefined;
-        try {
-          lastEventId = (await this.redis.get(cursorKey)) ?? undefined;
-        } catch {
-          lastEventId = undefined;
-        }
-
-        // RACE GUARD — one-turn-per-run means the previous run spends ~10s
-        // finalizing after its last chunk. An append during that window lands
-        // in the exiting run's inbox and is never consumed (server only
-        // re-triggers when no run is alive). If the user replies within the
-        // window, wait for the previous run to fully exit first. No-ops on
-        // first messages (no session yet) and costs one retrieve (~100ms)
-        // on relaxed-cadence turns.
-        if (lastEventId) {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const { sessions: sessionsSdk, runs: runsSdk } = require("@trigger.dev/sdk");
-            const sess = await sessionsSdk.retrieve(threadId!).catch(() => null);
-            const prevRunId = (sess as any)?.currentRunId as string | undefined;
-            if (prevRunId) {
-              for (let i = 0; i < 20; i++) {
-                const r: any = await runsSdk.retrieve(prevRunId).catch(() => null);
-                if (!r || r.isCompleted || !["EXECUTING", "QUEUED", "DEQUEUED", "WAITING"].includes(String(r.status))) break;
-                await new Promise((res) => setTimeout(res, 1000));
-              }
-            }
-          } catch {
-            // best-effort; proceed
-          }
-        }
-        const chatClient = new chatSdk.AgentChat({
-          agent: "platos.chat.session",
-          id: threadId,
-          clientData: {
-            agentId,
-            threadId,
-            scope: {
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-              userId: scope.userId,
-            },
-          },
-          ...(lastEventId ? { session: { lastEventId } } : {}),
-          onTurnComplete: async ({ lastEventId: cursor }: { lastEventId?: string }) => {
-            if (cursor) {
-              await (this.redis as any)
-                .set(cursorKey, cursor, "EX", 60 * 60 * 24 * 30)
-                .catch(() => undefined);
-            }
-          },
-        });
-
-      const room = `thread:${threadId}`;
-      await client.join(room);
-      client.emit("agent_event", {
-        type: "meta",
-        thread_id: threadId,
-        threadId,
-        durable: true,
-        session: true,
-      });
-
-      const stream = await chatClient.sendMessage(data.message);
-
-      // Forward the durable .out stream to the room. Deliberately not awaited:
-      // the WS handler returns while the bridge pumps. One emit per event.
-      void (async () => {
-        try {
-          for await (const part of stream as AsyncIterable<any>) {
-            let evt: Record<string, unknown> | null = null;
-            if (part?.type === "text-delta") {
-              evt = { type: "token", text: part.delta ?? "" };
-            } else if (part?.type === "data-platos-event") {
-              evt = part.data as Record<string, unknown>;
-            } else if (part?.type === "error") {
-              evt = { type: "error", message: part.errorText ?? "turn failed" };
-            }
-            if (evt) {
-              this.server?.to(room).emit("agent_event", { ...evt, threadId });
-            }
-          }
-          // Persist the session cursor DIRECTLY off the client (proven
-          // available post-stream; the onTurnComplete callback alone was
-          // unreliable here). The cursor is load-bearing: the NEXT message's
-          // fresh AgentChat must be constructed hydrated (session:{lastEventId})
-          // or its sessions.start short-circuits on idempotency and the append
-          // lands in the dead one-turn run's inbox — message never dispatches
-          // (server only probes/re-triggers on the hydrated append path).
-          const cursor = (chatClient as any)?.session?.lastEventId as string | undefined;
-          if (cursor) {
-            await (this.redis as any)
-              .set(
-                // SECURITY (audit L4) — MUST match the scoped cursorKey built
-                // on the read side; a mismatch breaks cursor hydration.
-                `chatsess:cursor:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${threadId}`,
-                cursor,
-                "EX",
-                60 * 60 * 24 * 30,
-              )
-              .catch(() => undefined);
-          }
-          this.server?.to(room).emit("agent_event", { type: "done", threadId });
-        } catch (err: any) {
-          this.server?.to(room).emit("agent_event", {
-            type: "error",
-            message: err?.message ?? String(err),
-            threadId,
-          });
-          this.server?.to(room).emit("agent_event", { type: "done", threadId });
-        }
-      })();
-
-      return true;
-      }
-    } catch {
-      // Session dispatch failed — fall through to durable-turn / direct.
-      return false;
-    }
-  }
-
-  private async tryDispatchDurable(
-    data: any,
-    scope: RequestScope,
-    agentId: string,
-    replyToMessageId: string | undefined,
-    client: Socket,
-  ): Promise<boolean> {
-    // The DECISION (executionMode read), the trigger-availability gate, the
-    // IDOR-gated thread resolution, and the platos.agent.durable-turn send now
-    // ALL live in TurnDispatchService.triggerDurable (the chokepoint) —
-    // extracted verbatim, so the dashboard durable path is byte-for-byte
-    // unchanged. handleMessage only reaches here when resolveMode already
-    // returned "durable"; this method owns solely the socket TAIL.
-    //
-    // Fail-open: any dispatch failure (trigger unconfigured, thread resolution,
-    // trigger send) throws out of triggerDurable → we return false →
-    // handleMessage falls through to the identical in-process path below. Never
-    // a dropped turn.
-    let handle: { runId?: string; threadId: string };
-    try {
-      handle = await this.dispatch.triggerDurable(agentId, {
-        scope,
-        message: data.message,
-        threadId: data?.threadId as string | undefined,
-        replyToMessageId: replyToMessageId ?? null,
-        idempotencyKey: (data as any).idempotencyKey as string | undefined,
-      });
-    } catch {
-      return false; // fail-open → direct in-process path
-    }
-
-    await client.join(`thread:${handle.threadId}`);
-    // Bridge the durable run's realtime events into the thread room (client is
-    // joined). RunsBridge no-ops if the SDK realtime isn't available. This is
-    // the SAME dashboard streaming path as before — unchanged.
-    if (handle.runId) this.getRunsBridge()?.subscribe(handle.runId, scope, handle.threadId);
-    client.emit("agent_event", {
-      type: "meta",
-      thread_id: handle.threadId,
-      threadId: handle.threadId,
-      durable: true,
-      runId: handle.runId,
-      ...(replyToMessageId ? { replyToMessageId } : {}),
-    });
-    return true;
   }
 
   /**
