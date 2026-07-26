@@ -24,6 +24,7 @@ import { type Request, type Response } from "express";
 import * as crypto from "node:crypto";
 import { ConversationService } from "../memory/conversation.service";
 import { AgentTaskService } from "./agent-task.service";
+import { TurnDispatchService } from "./turn-dispatch.service";
 import { withHeartbeat } from "../shared/async-heartbeat";
 import { AgentService } from "./agent.service";
 import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
@@ -87,6 +88,12 @@ export class AgentController {
   constructor(
     private readonly conversationService: ConversationService,
     private readonly agentTaskService: AgentTaskService,
+    // The durable-vs-direct chokepoint. The turn endpoints route through this
+    // (collectTurn for non-streaming, streamTurn for SSE) instead of calling
+    // execute*Turn directly, so a durable agent hitting the REST/SSE surface
+    // dispatches to Trigger like any other entry path — the decision is no
+    // longer forgotten here.
+    private readonly dispatch: TurnDispatchService,
     private readonly agentService: AgentService,
     private readonly toolRegistry: ToolRegistryService,
     private readonly toolSync: ToolSyncWsService,
@@ -145,6 +152,36 @@ export class AgentController {
       projectId: scope.projectId,
       environmentId: scope.environmentId,
     };
+  }
+
+  /**
+   * Resolve the effective agentId for a thread-scoped turn so the dispatch
+   * chokepoint reads executionMode for the RIGHT agent. The SDK's
+   * `threads.send` / `threads.stream` routinely omit agentId (the thread
+   * already stores it), so — mirroring executeStreamingTurn's own resolution —
+   * fall back to the thread row's agentId when none is passed. Resolved through
+   * ConversationService.getThread, which is scope + ownership gated (IDOR-safe);
+   * a thread the caller can't see resolves to the "default" fallback (a durable
+   * turn's own getOrCreateThread then re-gates on dispatch). Last resort:
+   * "default" — identical to the runtime's own agentId fallback.
+   */
+  private async resolveThreadAgentId(
+    threadId: string | undefined,
+    explicit: string | undefined,
+    scope: RequestScope,
+  ): Promise<string> {
+    if (explicit) return explicit;
+    if (threadId) {
+      try {
+        const thread = await this.conversationService.getThread(threadId, scope);
+        if ((thread as { agentId?: string } | null)?.agentId) {
+          return (thread as { agentId: string }).agentId;
+        }
+      } catch {
+        /* fall through to default */
+      }
+    }
+    return "default";
   }
 
   /**
@@ -505,9 +542,18 @@ export class AgentController {
     @Body() body: { message: string; agentId?: string; attachmentIds?: string[] },
   ) {
     const scope = this.getScope(req);
-    const result = await this.agentTaskService.executeNonStreamingTurn(
-      body.message, scope, { threadId, agentId: body.agentId, attachmentIds: body.attachmentIds },
-    );
+    // Route through the dispatch chokepoint: a durable agent here now
+    // dispatches to Trigger and returns the awaited final text; a direct agent
+    // runs in-process exactly as before (collectTurn's direct arm returns the
+    // same {text, threadId, events, costCents} shape as executeNonStreamingTurn,
+    // plus an additive messageId).
+    const agentId = await this.resolveThreadAgentId(threadId, body.agentId, scope);
+    const result = await this.dispatch.collectTurn(agentId, {
+      scope,
+      message: body.message,
+      threadId,
+      attachmentIds: body.attachmentIds,
+    });
     return result;
   }
 
@@ -728,23 +774,26 @@ export class AgentController {
     };
     req.on("close", onClose);
     res.on("close", onClose);
-    const rawEvents = this.agentTaskService.executeStreamingTurn(
-      body.message,
+    // Route through the dispatch chokepoint. For a DIRECT agent, streamTurn
+    // yields EXACTLY what executeStreamingTurn yields (byte-for-byte token
+    // stream — zero behavior change). For a DURABLE agent it dispatches to
+    // Trigger and surfaces the run result over SSE, fail-open to the in-process
+    // stream on a dispatch failure.
+    const agentId = await this.resolveThreadAgentId(threadId, body.agentId, scope);
+    const rawEvents = this.dispatch.streamTurn(agentId, {
       scope,
-      {
-        threadId,
-        agentId: body.agentId,
-        dynamicBlocks: body.dynamicBlocks,
-        attachmentIds: body.attachmentIds,
-        systemPromptOverride: body.systemPromptOverride ?? null,
-        outputSchema: body.outputSchema,
-        modelLabel: body.modelLabel,
-        abortSignal: ac.signal,
-        idempotencyKey:
-          (req.headers["idempotency-key"] as string | undefined) ||
-          (req.headers["Idempotency-Key"] as string | undefined),
-      },
-    );
+      message: body.message,
+      threadId,
+      dynamicBlocks: body.dynamicBlocks,
+      attachmentIds: body.attachmentIds,
+      systemPromptOverride: body.systemPromptOverride ?? null,
+      outputSchema: body.outputSchema,
+      modelLabel: body.modelLabel,
+      abortSignal: ac.signal,
+      idempotencyKey:
+        (req.headers["idempotency-key"] as string | undefined) ||
+        (req.headers["Idempotency-Key"] as string | undefined),
+    });
     // EOBD.106 — wrap SSE output in the heartbeat merger so a 30-60s
     // reverse-proxy idle timeout can't close the stream while a tool
     // is running. Socket.IO callers don't need this — their transport
@@ -1020,18 +1069,20 @@ export class AgentController {
   ) {
     const scope = { ...this.getScope(req), agentId };
     const agentConfigOverride = this.parsePlatosConfigHeader(req);
-    const result = await this.agentTaskService.executeNonStreamingTurn(
-      body.message,
+    // Route through the dispatch chokepoint (agentId is the path param — always
+    // explicit). Direct → identical in-process result shape; durable →
+    // dispatched to Trigger, awaited to final text. Same option forwarding as
+    // before (outputSchema is intentionally still not forwarded here, matching
+    // prior behavior — zero behavior change for direct agents).
+    const result = await this.dispatch.collectTurn(agentId, {
       scope,
-      {
-        threadId: body.threadId,
-        agentId,
-        attachmentIds: body.attachmentIds,
-        ...(body.systemPromptOverride !== undefined ? { systemPromptOverride: body.systemPromptOverride } : {}),
-        modelLabel: body.modelLabel,
-        ...(agentConfigOverride ? { agentConfigOverride } : {}),
-      },
-    );
+      message: body.message,
+      threadId: body.threadId,
+      attachmentIds: body.attachmentIds,
+      ...(body.systemPromptOverride !== undefined ? { systemPromptOverride: body.systemPromptOverride } : {}),
+      modelLabel: body.modelLabel,
+      ...(agentConfigOverride ? { agentConfigOverride } : {}),
+    });
     return result;
   }
 
@@ -1059,17 +1110,17 @@ export class AgentController {
     res.on("close", onClose);
     const attachmentIds = attachmentIdsRaw ? attachmentIdsRaw.split(",").filter(Boolean) : undefined;
     const agentConfigOverride = this.parsePlatosConfigHeader(req);
-    const rawEvents = this.agentTaskService.executeStreamingTurn(
-      message,
+    // Route through the dispatch chokepoint (agentId is the path param). Direct
+    // → identical in-process token stream; durable → dispatched to Trigger,
+    // fail-open to in-process on a dispatch failure.
+    const rawEvents = this.dispatch.streamTurn(agentId, {
       scope,
-      {
-        threadId,
-        agentId,
-        attachmentIds,
-        abortSignal: ac.signal,
-        ...(agentConfigOverride ? { agentConfigOverride } : {}),
-      },
-    );
+      message,
+      threadId,
+      attachmentIds,
+      abortSignal: ac.signal,
+      ...(agentConfigOverride ? { agentConfigOverride } : {}),
+    });
     const heartbeatMs = Math.max(1000, env.PLATOS_STREAM_HEARTBEAT_MS ?? 15_000);
     const events = withHeartbeat(rawEvents, { intervalMs: heartbeatMs, signal: ac.signal });
     await this.streamingService.streamToSSE(events, res);

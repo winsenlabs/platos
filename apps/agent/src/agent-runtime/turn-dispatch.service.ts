@@ -100,6 +100,14 @@ export interface CollectedTurnResult {
   threadId: string;
   costCents: number;
   messageId?: string;
+  /**
+   * Full event log — populated ONLY on the DIRECT arm (drained in-process
+   * turn), matching `executeNonStreamingTurn`'s response shape so the REST
+   * endpoints that return this verbatim keep their contract. Absent on the
+   * durable arm (a durable run surfaces only its final text/cost, not the
+   * per-event log).
+   */
+  events?: AgentStreamEvent[];
 }
 
 /**
@@ -378,6 +386,7 @@ export class TurnDispatchService {
       threadId: meta?.thread_id ?? ctx.threadId ?? "",
       costCents: typeof persisted?.costCents === "number" ? persisted.costCents : 0,
       messageId: persisted?.messageId,
+      events,
     };
   }
 
