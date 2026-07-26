@@ -856,13 +856,14 @@ export class ConversationService {
       // Just close it. A session's externalId is IMMUTABLE (the server rejects
       // any attempt to change it: "externalId cannot be changed after
       // creation"), so we can't unbind the thread — but we don't need to. Once
-      // the session is closed, the gateway's next sessions.start(threadId)
-      // fails fast ("Session is closed; use a different externalId") and the
-      // durable-chat dispatcher (connections.gateway.tryDispatchSession returns
-      // false → tryDispatchDurable → executeStreamingTurn) falls through to the
-      // durable-turn / direct path. The session path only ever serves
-      // executionMode="durable" agents, so a resumed thread stays durable — it
-      // just runs via the task path instead of the session path. No brick.
+      // the session is closed, the next turn's sessions.start(threadId) (inside
+      // TurnDispatchService.driveSession's sendMessage) fails fast ("Session is
+      // closed; use a different externalId"). driveSession catches that
+      // PRE-COMMIT (no run dispatched) and returns null, so the chokepoint
+      // (streamTurn/collectTurn/gateway) falls open to the ONLY fallback — the
+      // in-process DIRECT path. The turn still completes (no brick); a thread
+      // whose session was reaped simply runs direct from then on (the
+      // durable-turn task path is retired — direct is the sole fallback now).
       await sessions.close(sessionId, { reason });
       // Drop the now-stale streaming cursor. Belt-and-braces: the fallback path
       // doesn't read it, and a closed session can't be appended to anyway, so a
