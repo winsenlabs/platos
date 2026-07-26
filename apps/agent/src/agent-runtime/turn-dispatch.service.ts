@@ -156,14 +156,19 @@ export class TurnDispatchService {
   );
 
   /** Hard wall-clock bound on a single session `.out` drain inside
-   *  `driveSession`. Comfortably inside the task's `timeout:"1h"` but bounds a
-   *  hung stream (the "warm loop deaf to appends" failure mode if the race
-   *  guard is ever insufficient). On expiry the drain is aborted and whatever
-   *  text accumulated so far is returned (collected) / an error+done is emitted
-   *  (streaming). */
+   *  `driveSession`. This is a SAFETY NET for a genuinely hung stream (the
+   *  "warm loop deaf to appends" failure mode if the race guard is ever
+   *  insufficient — the `.out` never completes), NOT a normal-operation cap.
+   *  The former gateway session pump had NO wall-clock cap (it ran to `.out`
+   *  completion, bounded only by the task's `timeout:"1h"`), so to preserve the
+   *  demo's "streams to completion" behavior the default is GENEROUS (10m —
+   *  comfortably inside the task's 1h, longer than any healthy chat turn, but
+   *  bounding a true hang). Tune down via PLATOS_SESSION_DRIVE_TIMEOUT_MS. On
+   *  expiry the drain is aborted and whatever text accumulated so far is
+   *  returned (collected) / an error+done is emitted (streaming). */
   private readonly sessionDriveTimeoutMs = Math.max(
     15_000,
-    Number(process.env.PLATOS_SESSION_DRIVE_TIMEOUT_MS) || 90_000,
+    Number(process.env.PLATOS_SESSION_DRIVE_TIMEOUT_MS) || 600_000,
   );
 
   constructor(
