@@ -550,6 +550,20 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
         }
         clearTimeout(pending.timer);
         this.pending.delete(callId);
+        // Observability: the receipt log above only prints `type=tool_error`,
+        // which swallows the connector's actual error message and makes
+        // connector-side failures (e.g. a thrown identity/auth check) opaque
+        // from the platform logs. Surface the error string + first traceback
+        // line here so the *cause* is visible without needing the connector's
+        // own logs. Truncated to keep the line bounded.
+        {
+          const errStr = String(msg.error || "tool_error").slice(0, 500);
+          const tb =
+            typeof msg.traceback === "string" ? ` | tb: ${msg.traceback.split("\n")[0]?.slice(0, 300)}` : "";
+          this.logger.warn(
+            `[tool_error] ${conn.entityId}/${conn.environmentId} tool=${pending.toolName} call=${callId} error="${errStr}"${tb}`,
+          );
+        }
         pending.reject(new Error(String(msg.error || "tool_error")));
         return;
       }
