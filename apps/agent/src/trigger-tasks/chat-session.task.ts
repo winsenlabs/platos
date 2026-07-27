@@ -25,8 +25,17 @@ import { logger, sessions } from "@trigger.dev/sdk";
  * agent SSE (AgentStreamEvents) → UIMessageChunks → `turn.complete()` →
  * durable `.out` → Platos proxy → client.
  *
- * clientData (set by the gateway at session start, non-secret only):
- *   { agentId, threadId, scope: { organizationId, projectId, environmentId, userId } }
+ * clientData (set by the gateway at session start):
+ *   { agentId, threadId, scope: { organizationId, projectId, environmentId,
+ *     userId, userToken?, entityId? } }
+ *
+ * `userToken` is the ONE deliberate exception to the former "non-secret only"
+ * rule: it is a SHORT-LIVED (120s) per-user HMAC turn-proof the client mints,
+ * not a durable credential. It MUST cross this boundary because the entity
+ * tool connector re-verifies it (verifyTurnProof) and Platos cannot regenerate
+ * it in the durable worker (the signing secret lives only client-side). Without
+ * it, every entity-tool call on the durable path fails turn-proof. `entityId`
+ * is the minting-entity hint (Mode 2), carried for the same identity reason.
  */
 
 interface PlatosChatClientData {
@@ -37,6 +46,10 @@ interface PlatosChatClientData {
     projectId: string;
     environmentId: string;
     userId: string;
+    /** 120s per-user HMAC turn-proof — forwarded to entity tool calls. */
+    userToken?: string;
+    /** Minting-entity hint (Mode 2). */
+    entityId?: string;
   };
 }
 

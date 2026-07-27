@@ -50,6 +50,14 @@ export interface DurableTurnPayload {
     userId: string;
     agentId?: string;
     threadId?: string;
+    // Durable-tool-proof — carry the per-user HMAC turn-proof (and
+    // minting-entity hint) across the durable boundary so entity tool calls
+    // pass verifyTurnProof. This task is currently inert (SESSIONS is the live
+    // durable path), but the identical omission here was the same bug: if
+    // anything re-wires to platos.agent.durable-turn, these MUST be populated.
+    // See chat-session.task.ts / turn-dispatch.service.ts.
+    userToken?: string;
+    entityId?: string;
   };
 }
 

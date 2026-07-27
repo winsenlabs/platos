@@ -4473,6 +4473,13 @@ Write the summary now:`;
         userId: string;
         agentId?: string;
         threadId?: string;
+        // Durable-tool-proof — the session worker forwards the per-user
+        // HMAC turn-proof (and minting-entity hint) so entity tool calls on
+        // the durable path pass verifyTurnProof. Flows into the RequestScope
+        // via `body.scope as any` below and rides through to the tool
+        // executor's `__platos` envelope unchanged. See chat-session.task.ts.
+        userToken?: string;
+        entityId?: string;
       };
     },
   ) {

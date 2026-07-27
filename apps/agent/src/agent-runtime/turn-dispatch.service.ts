@@ -568,6 +568,22 @@ export class TurnDispatchService {
             projectId: scope.projectId,
             environmentId: scope.environmentId,
             userId: scope.userId,
+            // IDENTITY-CORE / durable-tool-proof — carry the per-user identity
+            // proof across the Trigger-session boundary. `userToken` is the
+            // 120s HMAC turn-proof the CLIENT mints (over BRIDGE_TURN_SECRET,
+            // a secret Platos does NOT hold and CANNOT regenerate in the
+            // durable worker), so it MUST be propagated end-to-end from the
+            // request scope. Without it the reconstructed session scope has no
+            // userToken → the entity tool envelope omits it → the connector's
+            // verifyTurnProof(userId, undefined) fails → "turn proof
+            // missing/invalid — rejecting (enforcement on)". This is why
+            // durable/session turns failed every entity-tool call while direct
+            // turns (same request scope, in-process) succeeded. `entityId` is
+            // the minting-entity hint (Mode 2); carried for the same reason.
+            // NOTE: this intentionally places a SHORT-LIVED signed proof (not a
+            // durable credential) into session clientData — low blast radius.
+            ...(scope.userToken ? { userToken: scope.userToken } : {}),
+            ...(scope.entityId ? { entityId: scope.entityId } : {}),
           },
         },
         ...(lastEventId ? { session: { lastEventId } } : {}),
