@@ -4988,8 +4988,15 @@ export class AgentService {
           // the catch below logs + proceeds with no memory block — the LLM
           // still answers, just without the "things I remember" enrichment.
           const injectTimeoutMs = env.PLATOS_MEMORY_INJECT_TIMEOUT_MS ?? 5000;
-          const hits = await Promise.race([
-            this.memoryService.semanticSearch(
+          // Multi-signal retrieval (dense ⊕ graph) for the AUTOMATIC injection
+          // — the knowledge graph now participates in EVERY turn's context,
+          // not just explicit recall(). Memories connected to people/orgs in
+          // the message rank higher, and the resolved entity/relationship
+          // slice is injected too. Still raced against the hard inject timeout
+          // so a slow embedding key can never stall the turn pre-LLM.
+          const fused = await Promise.race([
+            fuseContextRetrieval(
+              { memory: this.memoryService, graph: this.knowledgeGraph },
               {
                 organizationId: scope.organizationId,
                 projectId: scope.projectId,
@@ -5002,18 +5009,10 @@ export class AgentService {
                 minScore: 0.35,
                 // Defaults exclude "private"; pass agent-visible + hidden.
                 visibilityIn: ["agent_visible", "hidden"],
-                // audit L5 — RAG document chunks are agent_visible/kind:"fact"
-                // and (as of this change) carry an agentId, so they now match
-                // the filter below. Exclude them here: raw document text must
-                // never silently consume the 8-slot / 800-token injection
-                // budget. rag_retrieve deliberately does NOT pass this — it
-                // must still find these rows.
-                excludeRag: true,
                 // Agent-scoped injection: own agent, or cluster MEMBERS when
-                // clustered — never scope-wide. (Original leak: Mark the
-                // fitness coach opened with Ada the SDR's Pulsegrid/cold-email
-                // background. Clustered agents previously still leaked
-                // scope-wide here; now member-resolved.)
+                // clustered — never scope-wide (the Mark/Ada leak fix). RAG
+                // chunks are excluded inside the fusion so raw document text
+                // never eats the injection budget.
                 ...(await this.memoryAgentFilter(scope.agentId, injectClusteringId, scope)),
               },
             ),
@@ -5022,13 +5021,14 @@ export class AgentService {
                 () =>
                   reject(
                     new Error(
-                      `memory semanticSearch exceeded ${injectTimeoutMs}ms inject budget`,
+                      `memory retrieval exceeded ${injectTimeoutMs}ms inject budget`,
                     ),
                   ),
                 injectTimeoutMs,
               ),
             ),
           ]);
+          const hits = fused.memories;
           // Theme M.5 — drop memories flagged by a thumbs-down rating.
           // The metadata.flaggedByRating marker is written by
           // MemoryFeedbackService.applyRating; we treat it as "quarantined
@@ -5068,6 +5068,20 @@ export class AgentService {
           }
           if (lines.length > 0) {
             memoryBlock = `## Things I remember about this user\n\n${lines.join("\n")}`;
+          }
+          // Inject the KG slice the message resolved to — the people/orgs in
+          // the situation + how they relate. Compact + capped; gives the agent
+          // "who and what is involved, and how" without needing a recall()
+          // call. Labels/relationships are decrypted EntityRows.
+          if (fused.entities.length > 0) {
+            const entLines = fused.entities.slice(0, 8).map((e) => `- ${e.label} (${e.type})`);
+            const relLines = fused.relationships
+              .slice(0, 10)
+              .map((r) => `- ${r.from} —${r.type}→ ${r.to}`);
+            const parts = [`### People & things involved\n${entLines.join("\n")}`];
+            if (relLines.length > 0) parts.push(`### How they relate\n${relLines.join("\n")}`);
+            const graphBlock = `## Related in your world\n\n${parts.join("\n\n")}`;
+            memoryBlock = memoryBlock ? `${memoryBlock}\n\n${graphBlock}` : graphBlock;
           }
         }
       } catch (err: any) {

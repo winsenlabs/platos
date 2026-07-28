@@ -67,6 +67,10 @@ export interface FuseInput {
   agentIds?: string[];
   kind?: string;
   limit?: number;
+  /** Min cosine score for the dense arm (injection path passes 0.35). */
+  minScore?: number;
+  /** Visibility filter for the dense arm; when omitted, agent-visible only. */
+  visibilityIn?: SemanticSearchInput["visibilityIn"];
 }
 
 /** The entity slugs a memory was tagged with by extraction. */
@@ -98,8 +102,9 @@ export async function fuseContextRetrieval(
         userId: input.userId,
         kind: input.kind,
         limit: denseLimit,
-        agentVisibleOnly: true,
         excludeRag: true,
+        ...(input.minScore !== undefined ? { minScore: input.minScore } : {}),
+        ...(input.visibilityIn ? { visibilityIn: input.visibilityIn } : { agentVisibleOnly: true }),
         ...scopeFilter,
       })
       .catch(() => [] as MemorySearchHit[]),
