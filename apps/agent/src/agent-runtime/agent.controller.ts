@@ -207,18 +207,23 @@ export class AgentController {
     // both ids to skip every check (Fable verify BLOCKER B). Require at least
     // one verifiable ownership anchor.
     if (!body.agentId && !body.threadId) return false;
-    if (body.agentId) {
-      const agent = await this.agentCrud
-        .findById(body.agentId, body.scope as any)
-        .catch(() => null);
-      if (!agent) return false;
-    }
-    if (body.threadId) {
-      const thread = await this.conversationService
-        .getThread(body.threadId, body.scope as any, { allUsers: true })
-        .catch(() => null);
-      if (!thread) return false;
-    }
+    // LATENCY (audit F4) — run both ownership checks concurrently instead of
+    // serially. Both are still REQUIRED (fail-closed): the guards below only
+    // reject on an absent anchor's failed lookup, so an omitted id short-
+    // circuits its own guard exactly as before. One round-trip saved per
+    // internal callback.
+    const [agent, thread] = await Promise.all([
+      body.agentId
+        ? this.agentCrud.findById(body.agentId, body.scope as any).catch(() => null)
+        : Promise.resolve(null),
+      body.threadId
+        ? this.conversationService
+            .getThread(body.threadId, body.scope as any, { allUsers: true })
+            .catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    if (body.agentId && !agent) return false;
+    if (body.threadId && !thread) return false;
     return true;
   }
 
