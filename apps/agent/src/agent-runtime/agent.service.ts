@@ -4717,12 +4717,20 @@ export class AgentService {
       const providerId =
         colonIdx > 0 ? agentConfig.model.slice(0, colonIdx) : "anthropic";
       try {
-        const groups = await this.providerRegistry.availableModels({
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        });
-        const hit = groups.find((g) => g.provider === providerId);
+        // LATENCY (audit F7) — gate only the ONE provider this model uses, not
+        // all ~14. availableModels() fanned out to stateFor() for every
+        // manifest → ~15-30 secret-store lookups per turn; getOne() resolves a
+        // single provider. Availability was `enabled && envReady` (the filter
+        // availableModels applied before returning groups) — replicated here.
+        const state = await this.providerRegistry.getOne(
+          {
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+          },
+          providerId,
+        );
+        const available = !!state && state.enabled && state.envReady;
         // Manifests list models with the provider prefix (e.g.
         // "anthropic:claude-sonnet-4-6"), so match against the full model
         // string. Fall back to the bare model for legacy configs that
@@ -4730,14 +4738,14 @@ export class AgentService {
         const bareModel =
           colonIdx > 0 ? agentConfig.model.slice(colonIdx + 1) : agentConfig.model;
         const modelMatches =
-          !!hit &&
-          (hit.models.includes(agentConfig.model) ||
-            hit.models.includes(bareModel));
-        if (!hit || !modelMatches) {
+          available &&
+          (state!.models.includes(agentConfig.model) ||
+            state!.models.includes(bareModel));
+        if (!available || !modelMatches) {
           yield {
             type: "error",
             code: "provider_unavailable",
-            message: hit
+            message: available
               ? `Model "${agentConfig.model}" is not in the scope-filtered catalog for provider "${providerId}". Update the agent's model or link a compatible provider.`
               : `Provider "${providerId}" is not linked or its required env vars are missing in this environment. Link it under Agent Providers before running the agent.`,
             model: agentConfig.model,

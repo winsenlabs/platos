@@ -515,19 +515,26 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       // where org admins simulate user IDs while testing their own agents.
       // Now we check OrgMember.role within scope.organizationId.
       let isOrgAdmin = false;
-      try {
-        const orgMember = await this.prisma.orgMember.findFirst({
-          where: {
-            userId: scope.userId,
-            organizationId: scope.organizationId,
-          },
-          select: { role: true },
-        });
-        isOrgAdmin = orgMember?.role === "ADMIN";
-      } catch {
-        // Defensive: if the role lookup blows up, fall through to no-op
-        // (effectiveUserId stays as scope.userId — preserves BUG-11 guarantee).
-        isOrgAdmin = false;
+      // LATENCY (audit F8) — isOrgAdmin is consumed ONLY by the Postman
+      // simulation branch below, so skip this org-admin DB lookup entirely on
+      // the common path (no postmanUserId). It was an unconditional query on
+      // every WS message; guarding it removes one round-trip per turn with no
+      // behavior change (effectiveUserId stays scope.userId when not simulating).
+      if (data.postmanUserId && data.postmanUserId !== scope.userId) {
+        try {
+          const orgMember = await this.prisma.orgMember.findFirst({
+            where: {
+              userId: scope.userId,
+              organizationId: scope.organizationId,
+            },
+            select: { role: true },
+          });
+          isOrgAdmin = orgMember?.role === "ADMIN";
+        } catch {
+          // Defensive: if the role lookup blows up, fall through to no-op
+          // (effectiveUserId stays as scope.userId — preserves BUG-11 guarantee).
+          isOrgAdmin = false;
+        }
       }
       // PIFSP-9 Postman mode: only allow simulating a different userId when
       // the caller is an ADMIN of scope.organizationId.
