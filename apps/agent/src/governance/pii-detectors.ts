@@ -49,8 +49,11 @@ function luhn(digits: string): boolean {
   return sum % 10 === 0;
 }
 
-/** Verhoeff algorithm for Aadhaar numbers. */
-function verhoeff(digits: string): boolean {
+/** Verhoeff algorithm for Aadhaar numbers. Exported so the safety-service
+ * checkText PII pass can checksum-validate its aadhaar hits the same way
+ * this catalogue does (12 random digits ≈ 10% false-positive rate without it,
+ * and phone numbers with country codes are 12 digits). */
+export function verhoeff(digits: string): boolean {
   const d = [
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],

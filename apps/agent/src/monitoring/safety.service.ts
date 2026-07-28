@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { verhoeff } from "../governance/pii-detectors";
 
 interface SafetyFlag {
   type: "pii" | "injection" | "exfiltration" | "grounded" | "tool_param";
@@ -42,7 +43,13 @@ const PII_PATTERNS: Array<{ type: string; pattern: RegExp; severity: "low" | "me
   { type: "email", pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, severity: "low" },
   { type: "phone", pattern: /\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, severity: "medium" },
   { type: "ip_address", pattern: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g, severity: "low" },
-  { type: "aadhaar", pattern: /\b\d{4}\s?\d{4}\s?\d{4}\b/g, severity: "high" },
+  // Aadhaar: 12 digits is ALSO the shape of an international phone number
+  // with country code (+91 9003124242 → "919003124242"), so (a) never match
+  // digits preceded by "+" (tel links, E.164 numbers), and (b) checkText
+  // additionally Verhoeff-validates hits (same as the governance catalogue)
+  // so random 12-digit runs don't flag. Both guards exist because a real
+  // phone number CAN pass Verhoeff by chance (~1 in 10).
+  { type: "aadhaar", pattern: /(?<!\+)\b\d{4}\s?\d{4}\s?\d{4}\b/g, severity: "high" },
   { type: "pan", pattern: /\b[A-Z]{5}\d{4}[A-Z]\b/g, severity: "high" },
   // Theme H.1 — additional high-signal patterns
   { type: "iban", pattern: /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g, severity: "high" },
@@ -110,6 +117,9 @@ export class SafetyService {
       if (matches) {
         for (const match of matches) {
           if (type === "credit_card" && !luhnCheck(match)) continue;
+          // Checksum-validate aadhaar hits (Verhoeff, same as the governance
+          // catalogue) — a bare 12-digit regex flags phone numbers and ids.
+          if (type === "aadhaar" && !verhoeff(match.replace(/[\s-]/g, ""))) continue;
           flags.push({
             type: "pii",
             severity,
@@ -143,7 +153,13 @@ export class SafetyService {
     }
 
     return {
-      passed: flags.filter((f) => f.severity === "high").length === 0,
+      // PII is policy "warn" by default (DEFAULT_POLICY.pii) but the input
+      // gate in agent-task treats `passed=false` as a hard turn-kill, which
+      // silently blocked legitimate messages (a signature with a phone
+      // number read as "aadhaar" killed the turn twice). PII flags are
+      // recorded + surfaced but never fail the check; only high-severity
+      // injection/exfiltration signals do.
+      passed: flags.filter((f) => f.severity === "high" && f.type !== "pii").length === 0,
       flags,
     };
   }
@@ -235,14 +251,15 @@ export class SafetyService {
       type: "tool_param",
       detail: `${f.detail} (tool=${toolName})`,
     }));
-    const highOrInjection = tagged.filter(
-      (f) => f.severity === "high" || (policy.injection === "block" && f.injectionPattern),
-    );
-    const passed =
-      policy.pii !== "block" || !tagged.some((f) => f.piiType && f.severity === "high")
-        ? highOrInjection.length === 0 || policy.injection !== "block"
-        : false;
-    return { passed, flags: tagged };
+    // Apply each detector family under ITS OWN policy knob — previously a
+    // high-severity PII hit rode the injection gate ("severity === high")
+    // and blocked tool calls even when policy.pii was "warn".
+    const piiBlocked =
+      policy.pii === "block" && tagged.some((f) => f.piiType && f.severity === "high");
+    const injectionBlocked =
+      policy.injection === "block" &&
+      tagged.some((f) => f.injectionPattern || (f.severity === "high" && !f.piiType));
+    return { passed: !piiBlocked && !injectionBlocked, flags: tagged };
   }
 
   /**

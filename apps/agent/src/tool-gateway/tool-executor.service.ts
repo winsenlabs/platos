@@ -752,6 +752,36 @@ export class ToolExecutorService {
     const toolEntry = scopedTools.find((t) => t.toolName === call.tool);
 
     if (!toolEntry) {
+      // Dynamic-executor fallback — an entity can mark ONE of its tools with
+      // `"x-dynamic-executor": true` in its registered param schema, declaring
+      // "I can execute tool names beyond the registered set" (e.g. a gateway
+      // whose search tool surfaces thousands of downstream action slugs like
+      // GMAIL_SEND_EMAIL that would be absurd to register individually). When
+      // the LLM calls such a discovered slug directly, re-route the call
+      // through the executor tool as { tool_slug, arguments } instead of
+      // failing TOOL_NOT_IN_SCOPE. One-level recursion only: the rewritten
+      // name resolves (or fails) as a normal registered tool. The tool.call
+      // span + audit row keep the ORIGINAL slug, which is the truthful record
+      // of what the model asked for.
+      const dynamicExecutor = scopedTools.find(
+        (t) =>
+          t.toolName !== call.tool &&
+          (t.paramSchema as Record<string, unknown> | null | undefined)?.[
+            "x-dynamic-executor"
+          ] === true,
+      );
+      if (dynamicExecutor) {
+        return this.executeInner(
+          {
+            ...call,
+            tool: dynamicExecutor.toolName,
+            params: { tool_slug: call.tool, arguments: call.params ?? {} },
+          },
+          scope,
+          startTime,
+          origin,
+        );
+      }
       return {
         result: {
           tool: call.tool,
