@@ -51,6 +51,7 @@ import { SpansService } from "../monitoring/spans.service";
 // AgentRuntimeModule imports MemoryModule so they're always present.
 import { MemoryService } from "../memory/memory.service";
 import { KnowledgeGraphService } from "../memory/knowledge-graph.service";
+import { fuseContextRetrieval } from "../memory/retrieval/context-retrieval";
 // Theme O — memory extraction service for the manual `memory_extract`
 // meta-tool. Optional so the unit-test harness without MemoryModule still
 // boots.
@@ -1958,10 +1959,10 @@ export class AgentService {
       },
     };
 
-    // recall — cosine-similarity search over long-term memory.
+    // recall — multi-signal (dense ⊕ graph) retrieval over long-term memory.
     tools.recall = {
       description:
-        "Search your long-term memory for facts relevant to the current conversation. Returns an array of { id, content, kind, score } ordered by relevance.",
+        "Search your long-term memory for context relevant to the current conversation. Fuses semantic (cosine) recall with the knowledge graph: memories connected to people/orgs/projects in your query rank higher, and the related entities + relationships are returned alongside. Returns { results: [{ id, content, kind, score }], graph: { entities, relationships } }.",
       inputSchema: z.object({
         query: z.string().describe("What to search for in memory"),
         kind: z
@@ -1979,44 +1980,40 @@ export class AgentService {
       execute: async ({ query, kind, limit }) => {
         if (this.memoryService) {
           try {
-            // PRA-AC: when agent is in a cluster, search across all cluster
-            // agents' memories (agentId filter omitted). Single-agent: normal search.
-            const hits = agentConfig?.clusteringId
-              ? await (this.memoryService as any).semanticSearchForCluster(
-                  scopeTuple, query, memoryUserId,
-                  { limit, clusteringId: agentConfig.clusteringId },
-                )
-              : await this.memoryService.semanticSearch(scopeTuple, {
-                  query,
-                  userId: memoryUserId,
-                  kind,
-                  limit,
-                  agentVisibleOnly: true,
-                  // audit L5 — `recall` returns MEMORIES (facts/preferences/
-                  // events), not RAG document chunks. Now that RAG rows carry an
-                  // agentId they match the agentId filter below, so without this
-                  // the recall tool would surface raw document text as
-                  // "memories". Document retrieval is `rag_retrieve`, which does
-                  // NOT set excludeRag and still finds these rows.
-                  excludeRag: true,
-                  // Memory is agent-scoped unless the agent is clustered
-                  // (cluster branch above shares across members). Without
-                  // this, one agent recalls another's memories — observed
-                  // live: Mark (fitness) surfaced Ada's (SDR) Pulsegrid
-                  // outreach context for the same user.
-                  ...(scope.agentId ? { agentId: scope.agentId } : {}),
-                });
+            // Agent/cluster scoping (fail-closed to single agent) — memory
+            // crosses agents only within a cluster. Mirrors the single-agent
+            // recall leak fix (Mark surfaced Ada's context) and the cluster
+            // share rule, resolved in ONE place now.
+            const filter = await this.memoryAgentFilter(
+              scope.agentId,
+              agentConfig?.clusteringId,
+              scope,
+            );
+            const fused = await fuseContextRetrieval(
+              { memory: this.memoryService, graph: this.knowledgeGraph },
+              scopeTuple,
+              { query, userId: memoryUserId, kind, limit, ...filter },
+            );
+            const results = fused.memories.map((h: any) => ({
+              id: h.id,
+              content: h.content,
+              kind: h.kind,
+              score: typeof h.score === "number" ? Number(h.score.toFixed(4)) : undefined,
+              // Which signals surfaced this (dense / graph) — accounting.
+              ...(Array.isArray(h.signals) ? { signals: h.signals } : {}),
+              metadata: h.metadata,
+              createdAt: h.createdAt,
+            }));
             return {
               query,
-              total: hits.length,
-              results: hits.map((h: any) => ({
-                id: h.id,
-                content: h.content,
-                kind: h.kind,
-                score: Number(h.score.toFixed(4)),
-                metadata: h.metadata,
-                createdAt: h.createdAt,
-              })),
+              total: results.length,
+              results,
+              // The KG slice the situation resolved to — the graph now
+              // PARTICIPATES in recall instead of being write-only.
+              ...(fused.entities.length
+                ? { graph: { entities: fused.entities, relationships: fused.relationships } }
+                : {}),
+              signals: fused.signals,
             };
           } catch (err: any) {
             return { query, total: 0, results: [], error: err?.message || "recall failed" };
