@@ -2948,6 +2948,19 @@ export class AgentController {
     return this.costService.getScopeDailyCost(this.scopeTuple(scope), date);
   }
 
+  @Get("monitoring/cost/user/:userId")
+  async getUserCost(
+    @Req() req: Request,
+    @Param("userId") userId: string,
+    @Query("date") date?: string,
+  ) {
+    const scope = this.getScope(req);
+    // Operator-only — this exposes another end-user's spend (mirrors the
+    // scope-cost dashboard gate). Reads the cost:user rollup recordUsage writes.
+    requireOperator(scope);
+    return this.costService.getUserDailyCost(this.scopeTuple(scope), userId, date);
+  }
+
   @Get("monitoring/cost/thread/:threadId")
   async getThreadCost(@Req() req: Request, @Param("threadId") threadId: string) {
     // SECURITY (audit H2) — cross-TENANT IDOR: this took no scope and read a

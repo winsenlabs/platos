@@ -748,6 +748,35 @@ export class CostService {
   }
 
   /**
+   * Per-end-user daily cost — reads the `cost:user:<scope>:<userId>:<day>`
+   * rollup that recordUsage already fans out to (see the `options.userId`
+   * branch). The write side existed but had no reader, so per-user spend was
+   * un-surfaceable; this pairs with the `GET /monitoring/cost/user/:userId`
+   * endpoint. Mirrors getAgentDailyCost.
+   */
+  async getUserDailyCost(
+    scope: ScopeTuple,
+    userId: string,
+    date?: string,
+  ): Promise<{
+    inputTokens: number;
+    outputTokens: number;
+    costCents: number;
+    costWithCacheCents: number;
+    calls: number;
+  }> {
+    const day = date || new Date().toISOString().slice(0, 10);
+    const data = await this.redis.hgetall(`cost:user:${scopeKey(scope)}:${userId}:${day}`);
+    return {
+      inputTokens: parseInt(data.input_tokens || "0", 10),
+      outputTokens: parseInt(data.output_tokens || "0", 10),
+      costCents: parseFloat(data.cost_cents || "0"),
+      costWithCacheCents: parseFloat(data.cost_with_cache_cents || "0"),
+      calls: parseInt(data.calls || "0", 10),
+    };
+  }
+
+  /**
    * PPR-24 — Redis ↔ Postgres cost reconcile.
    *
    * Postgres (`PlatosAgentMessage.responseJson.cost_cents` + `agent_id` + `usage`

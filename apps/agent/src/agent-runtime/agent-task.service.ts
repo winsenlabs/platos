@@ -975,6 +975,12 @@ export class AgentTaskService {
       messageId: storedAssistant.id,
       threadId: thread.id,
       costCents,
+      // Surface token usage alongside cost so consumers (UI, batch/collected
+      // path, cost widgets) get it off the SAME event instead of re-deriving
+      // it — the counts are already computed for costCents above.
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      totalTokens: totalInputTokens + totalOutputTokens,
       ...(options.replyToMessageId ? { replyToMessageId: options.replyToMessageId } : {}),
     } as any;
 

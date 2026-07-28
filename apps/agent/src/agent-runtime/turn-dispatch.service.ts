@@ -182,7 +182,24 @@ export class TurnDispatchService {
     // cursor-key literal (`chatsess:cursor:...`) stays byte-identical across
     // the deploy and live cursors survive.
     @Inject(REDIS_TOKEN) private readonly redis: IORedis,
-  ) {}
+  ) {
+    // Ops hygiene — the drain/collect timeouts fall back to their built-in
+    // default when the env var doesn't parse (Number("foo") → NaN → default),
+    // which silently hides a misconfiguration. Warn at boot so a typo'd
+    // PLATOS_SESSION_DRIVE_TIMEOUT_MS=6O0000 (letter O) is visible rather than
+    // mysteriously behaving like the default.
+    for (const key of [
+      "PLATOS_SESSION_DRIVE_TIMEOUT_MS",
+      "PLATOS_DURABLE_COLLECT_TIMEOUT_MS",
+    ]) {
+      const raw = process.env[key];
+      if (raw !== undefined && raw !== "" && (!Number.isFinite(Number(raw)) || Number(raw) <= 0)) {
+        this.logger.warn(
+          `[config] ${key}="${raw}" is not a positive number — ignoring it and using the built-in default.`,
+        );
+      }
+    }
+  }
 
   /** True only when managed trigger is configured AND the durable-turn trigger
    *  entrypoint is loadable. When false, durable is unreachable ⇒ every turn is
@@ -515,6 +532,12 @@ export class TurnDispatchService {
 
     let chatClient: any;
     let stream: AsyncIterable<any>;
+    // The authoritative continuation cursor: `onTurnComplete` fires with the
+    // run's final `lastEventId` when the turn actually completes. Captured here
+    // so the post-drain persist prefers it over reading it back off the client
+    // (which lags / can be undefined, esp. on a timed-out drain → the next
+    // turn's fresh AgentChat would hydrate from a stale cursor and replay).
+    let committedCursor: string | undefined;
     try {
       let lastEventId: string | undefined;
       try {
@@ -574,6 +597,7 @@ export class TurnDispatchService {
         ...(lastEventId ? { session: { lastEventId } } : {}),
         onTurnComplete: async ({ lastEventId: cursor }: { lastEventId?: string }) => {
           if (cursor) {
+            committedCursor = cursor; // authoritative — prefer at post-drain persist
             await (this.redis as any)
               .set(cursorKey, cursor, "EX", 60 * 60 * 24 * 30)
               .catch(() => undefined);
@@ -662,11 +686,14 @@ export class TurnDispatchService {
       onPart?.({ type: "error", message: "durable session timed out" });
     }
 
-    // Persist the session cursor DIRECTLY off the client (the reliable persist;
-    // onTurnComplete alone was flaky). Load-bearing: the NEXT message's fresh
+    // Persist the session cursor (load-bearing: the NEXT message's fresh
     // AgentChat must be constructed hydrated or its sessions.start
-    // short-circuits and the append lands in a dead run's inbox.
-    const cursor = (chatClient as any)?.session?.lastEventId as string | undefined;
+    // short-circuits and the append lands in a dead run's inbox). Prefer the
+    // authoritative `committedCursor` captured in onTurnComplete; fall back to
+    // reading it off the client only if the turn didn't signal completion
+    // (e.g. a timed-out drain) — and never overwrite a live cursor with undefined.
+    const cursor =
+      committedCursor ?? ((chatClient as any)?.session?.lastEventId as string | undefined);
     if (cursor) {
       await (this.redis as any)
         .set(cursorKey, cursor, "EX", 60 * 60 * 24 * 30)
