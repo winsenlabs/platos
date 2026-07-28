@@ -5075,6 +5075,12 @@ model PlatosMemoryEntity {
   aliases    String[]
   metadata   Json?
 
+  /// pgvector embedding of the entity's label + aliases. Nullable so the row
+  /// can be written before the embedding lands — upsertEntity back-fills it
+  /// asynchronously (mirrors PlatosMemory.embedding). Enables semantic entity
+  /// search and embedding-based entity resolution (context-compiler piece 4).
+  embedding Unsupported("vector(1536)")?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

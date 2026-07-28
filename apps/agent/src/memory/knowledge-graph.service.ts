@@ -79,6 +79,12 @@ export interface UpsertEntityInput {
  */
 import { Optional } from "@nestjs/common";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
+import { EmbeddingService } from "./embedding.service";
+
+/** pgvector literal — `[a,b,c]`. Same shape MemoryService uses. */
+function vectorToEntityLiteral(vec: number[]): string {
+  return `[${vec.join(",")}]`;
+}
 
 @Injectable()
 export class KnowledgeGraphService {
@@ -89,6 +95,7 @@ export class KnowledgeGraphService {
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
     @Optional() private readonly crypto?: MessageCryptoService,
+    @Optional() private readonly embeddings?: EmbeddingService,
   ) {}
 
   /** EOBD.22 — envelope-stringify for String columns carrying PII. */
@@ -192,6 +199,32 @@ export class KnowledgeGraphService {
           : {}),
       },
     });
+    // Async embedding back-fill (context-compiler piece 4) — embed the
+    // PLAINTEXT label + aliases so the entity becomes semantically searchable
+    // and resolvable. Fire-and-forget: never blocks the upsert (so it adds no
+    // latency to a per-turn relate() call or the extraction sweep); the column
+    // is nullable and just fills in on completion. Mirrors the memory
+    // back-fill pattern. No-op when no embedding provider is configured.
+    if (this.embeddings) {
+      const embedText = [input.label || input.entityKey, ...(input.aliases ?? [])]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      if (embedText) {
+        void this.embeddings
+          .embed(embedText, scope)
+          .then((vec) =>
+            vec && vec.length > 0
+              ? this.prisma.$executeRawUnsafe(
+                  `UPDATE "PlatosMemoryEntity" SET "embedding" = $1::vector WHERE "id" = $2`,
+                  vectorToEntityLiteral(vec),
+                  row.id,
+                )
+              : undefined,
+          )
+          .catch(() => undefined);
+      }
+    }
     return toEntityRow(row, (v) => this.decString(v), (v) => this.crypto?.decryptJsonField(v) ?? v);
   }
 
