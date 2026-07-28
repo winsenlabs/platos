@@ -4254,6 +4254,11 @@ Write the summary now:`;
         userId: string;
         agentId?: string | null;
       };
+      // C1 FIX — the dispatching turn's resolved agent config, forwarded so
+      // this callback doesn't hardcode it. Optional for pre-deploy runs.
+      contextLimit?: number;
+      compactThreshold?: number;
+      historyMode?: string;
     },
   ) {
     const expected = env.PLATOS_ADMIN_TOKEN;
@@ -4285,14 +4290,18 @@ Write the summary now:`;
     }
     const start = Date.now();
     try {
-      // Resolve agent config from the thread's agentId. Compaction needs
-      // historyMode + contextLimit + compactThreshold from the agent.
-      const agentId = body.scope.agentId;
-      let config: any = { historyMode: "compact", contextLimit: 30, compactThreshold: 40 };
-      if (agentId) {
-        const resolved = await (this.agentTaskService as any).resolveConfigForThread?.(agentId, body.threadId, body.scope);
-        if (resolved) config = resolved;
-      }
+      // C1 FIX — use the config the dispatching turn already resolved and sent
+      // in the payload. Previously this hardcoded contextLimit=30/threshold=40
+      // and called resolveConfigForThread on the WRONG service
+      // (agentTaskService has no such method → the `?.` silently no-op'd), so
+      // compact-mode threads with a non-default contextLimit lost a band of
+      // messages (kept neither verbatim nor summarized). Fall back to the real
+      // system defaults only for a pre-deploy run that lacks the fields.
+      const config: any = {
+        historyMode: body.historyMode ?? "compact",
+        contextLimit: typeof body.contextLimit === "number" ? body.contextLimit : 20,
+        compactThreshold: typeof body.compactThreshold === "number" ? body.compactThreshold : 40,
+      };
       await this.agentTaskService.runCompaction(body.threadId, body.scope as any, config);
       return {
         status: "ok",

@@ -31,6 +31,13 @@ export interface CompactionTaskPayload {
     userId: string;
     agentId?: string | null;
   };
+  // C1 FIX — the dispatching turn already has the resolved agent config, so it
+  // rides along in the payload and the callback uses it directly (instead of
+  // hardcoding contextLimit/compactThreshold + a broken re-resolution). Kept
+  // optional for back-compat with any in-flight runs enqueued pre-deploy.
+  contextLimit?: number;
+  compactThreshold?: number;
+  historyMode?: string;
 }
 
 export interface CompactionTaskOutput {

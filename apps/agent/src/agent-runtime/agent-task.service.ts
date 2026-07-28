@@ -1232,7 +1232,7 @@ export class AgentTaskService {
     //    (threadId + latestMessageId) so a duplicate fire is a no-op.
     //    Falls back to the original in-process behavior when trigger.dev
     //    isn't configured (dev / docker without TRIGGER_API_URL).
-    if (config.historyMode === "compact") {
+    if (config.historyMode === "compact" && (await this.assessCompactionNeed(thread.id, scope, config))) {
       const triggerSdk = (() => {
         try { return require("@trigger.dev/sdk"); } catch { return null; }
       })();
@@ -1257,6 +1257,15 @@ export class AgentTaskService {
               userId: scope.userId,
               agentId: scope.agentId ?? null,
             },
+            // C1 FIX — carry the REAL agent config through the payload so the
+            // durable callback uses it directly. Previously the callback
+            // hardcoded {contextLimit:30, compactThreshold:40} and called
+            // resolveConfigForThread on the wrong service (a silent no-op),
+            // so compact-mode threads with a different contextLimit lost a
+            // band of messages (kept neither verbatim nor summarized).
+            contextLimit: config.contextLimit,
+            compactThreshold: config.compactThreshold,
+            historyMode: config.historyMode,
           },
           {
             idempotencyKey,
@@ -1391,6 +1400,70 @@ export class AgentTaskService {
     return this.compactIfNeeded(threadId, scope, config);
   }
 
+  /**
+   * COMPACTION VOLUME GUARD — decide, cheaply, whether a compaction run is
+   * worth spawning. Previously the turn-tail dispatched a durable
+   * `platos.compaction` run on EVERY turn for compact-mode threads (prod
+   * showed ~1 compaction run per chat turn), and the task no-op'd inside
+   * when below threshold. This moves the decision to the dispatch site so a
+   * run is spawned only when (a) the thread is at/over `compactThreshold`
+   * AND (b) at least a batch of messages has aged out of the live window
+   * since the last compaction (tracked via `compactedUpToMessageId`). Any
+   * error assessing → return true (dispatch), so the guard can never
+   * silently suppress compaction.
+   */
+  private async assessCompactionNeed(
+    threadId: string,
+    scope: RequestScope,
+    config: AgentConfig,
+  ): Promise<boolean> {
+    try {
+      const prisma = (this.conversationService as any).prisma;
+      if (!prisma?.platosAgentMessage) return true;
+      const msgWhere = {
+        threadId,
+        role: { in: ["user", "assistant"] },
+        thread: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          userId: scope.userId,
+        },
+      } as const;
+      const total = await prisma.platosAgentMessage.count({ where: msgWhere });
+      if (total < config.compactThreshold) return false;
+      // How many messages have aged out of the live window but are NOT yet
+      // summarized (pending)? Only fire when a full batch is pending, so we
+      // compact roughly every `minBatch` aged-out messages, not every turn.
+      let alreadyCompacted = 0;
+      const threadRow = await prisma.platosAgentThread.findFirst({
+        where: {
+          id: threadId,
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+        },
+        select: { compactedUpToMessageId: true },
+      });
+      if (threadRow?.compactedUpToMessageId) {
+        const cursor = await prisma.platosAgentMessage.findUnique({
+          where: { id: threadRow.compactedUpToMessageId },
+          select: { createdAt: true },
+        });
+        if (cursor?.createdAt) {
+          alreadyCompacted = await prisma.platosAgentMessage.count({
+            where: { ...msgWhere, createdAt: { lte: cursor.createdAt } },
+          });
+        }
+      }
+      const pending = total - config.contextLimit - alreadyCompacted;
+      const minBatch = Math.max(5, Math.round(config.contextLimit / 2));
+      return pending >= minBatch;
+    } catch {
+      return true;
+    }
+  }
+
   private async compactIfNeeded(
     threadId: string,
     scope: RequestScope,
@@ -1419,7 +1492,7 @@ export class AgentTaskService {
         environmentId: scope.environmentId,
         userId: scope.userId,
       },
-      select: { id: true, compactedSummary: true, compactionInFlight: true },
+      select: { id: true, compactedSummary: true, compactionInFlight: true, compactedUpToMessageId: true },
     });
     if (!threadRow) return;
 
@@ -1448,82 +1521,120 @@ export class AgentTaskService {
       },
     } as const;
 
-    const totalMessages = await prisma.platosAgentMessage.count({
-      where: messageScopeWhere,
-    });
-    if (totalMessages < config.compactThreshold) return;
+    // MUTEX-LEAK FIX — `compactionInFlight` was set true above; the previous
+    // early-returns (below threshold / too few messages) and any summarizer
+    // error returned WITHOUT releasing it, permanently blocking compaction on
+    // that thread. Everything past mutex acquisition now runs in try/finally
+    // so the mutex is released on EVERY path.
+    let compactedCount = 0;
+    let summaryLen = 0;
+    try {
+      const totalMessages = await prisma.platosAgentMessage.count({
+        where: messageScopeWhere,
+      });
+      if (totalMessages < config.compactThreshold) return;
 
-    // Figure out the cutoff: we keep the LAST contextLimit messages intact,
-    // summarize everything older. Fetch oldest (total - contextLimit) messages.
-    const toCompactCount = totalMessages - config.contextLimit;
-    if (toCompactCount < 5) return; // not worth it
+      // INCREMENTAL — only summarize messages that have aged out of the live
+      // window SINCE the last compaction (the `compactedUpToMessageId`
+      // cursor), not from the very beginning every run. Prevents O(n²)
+      // re-summarization and unbounded re-reading of already-summarized
+      // history; the cursor advances to cover everything compacted this run.
+      const cursorId = (threadRow as any).compactedUpToMessageId as string | null | undefined;
+      let cursorCreatedAt: Date | null = null;
+      if (cursorId) {
+        const c = await prisma.platosAgentMessage.findUnique({
+          where: { id: cursorId },
+          select: { createdAt: true },
+        });
+        cursorCreatedAt = c?.createdAt ?? null;
+      }
+      // All summarizable messages AFTER the cursor, oldest first. EOBD.19 —
+      // select encKeyVersion so decryptIfNeeded can round-trip ciphertext
+      // rows (else the summarizer is fed base64 garbage and leaks ciphertext
+      // into compactedSummary).
+      const postCursor = await prisma.platosAgentMessage.findMany({
+        where: {
+          ...messageScopeWhere,
+          content: { not: null },
+          ...(cursorCreatedAt ? { createdAt: { gt: cursorCreatedAt } } : {}),
+        },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, role: true, content: true, encKeyVersion: true },
+      });
+      // Keep the LAST contextLimit messages verbatim (the live window);
+      // summarize everything older that isn't already summarized.
+      const toCompact = postCursor.slice(0, Math.max(0, postCursor.length - config.contextLimit));
+      if (toCompact.length < 5) return; // nothing meaningful aged out since last run
 
-    const toCompact = await prisma.platosAgentMessage.findMany({
-      where: { ...messageScopeWhere, content: { not: null } },
-      orderBy: { createdAt: "asc" },
-      take: toCompactCount,
-      // EOBD.19 review follow-up — we MUST select encKeyVersion alongside
-      // content so the decryptIfNeeded call below can round-trip
-      // ciphertext rows. Pre-EOBD the summarizer was fed base64 garbage
-      // any time PLATOS_MESSAGE_ENCRYPTION_KEY was configured, producing
-      // useless summaries that also leaked ciphertext into the
-      // compactedSummary column (unencrypted).
-      select: { role: true, content: true, encKeyVersion: true },
-    });
+      // Decrypt row-by-row via the conversation service's crypto wrapper.
+      // Unencrypted / pre-encryption rows pass through unchanged.
+      const cryptoSvc = (this.conversationService as any).crypto as
+        | { decryptIfNeeded: (c: string | null, v: number | null) => string | null }
+        | undefined;
+      const conversationText = toCompact
+        .map((m: any) => {
+          const plain = cryptoSvc
+            ? cryptoSvc.decryptIfNeeded(m.content, m.encKeyVersion ?? null)
+            : m.content;
+          return `${m.role.toUpperCase()}: ${plain}`;
+        })
+        .join("\n\n");
 
-    // Decrypt row-by-row via the conversation service's crypto wrapper.
-    // Unencrypted / pre-encryption rows pass through unchanged.
-    const cryptoSvc = (this.conversationService as any).crypto as
-      | { decryptIfNeeded: (c: string | null, v: number | null) => string | null }
-      | undefined;
-    const conversationText = toCompact
-      .map((m: any) => {
-        const plain = cryptoSvc
-          ? cryptoSvc.decryptIfNeeded(m.content, m.encKeyVersion ?? null)
-          : m.content;
-        return `${m.role.toUpperCase()}: ${plain}`;
-      })
-      .join("\n\n");
+      // Cheap model for compaction
+      const model = anthropic("claude-haiku-4-5-20251001");
+      // PRELAUNCH-A2-7 — propagate abort signal.
+      const summary = await generateText({
+        model,
+        instructions: "You are a conversation summarizer. Produce a concise, factual summary of the conversation below that preserves key facts, decisions, user preferences, and context — but NOT verbatim messages. Write in past tense from an observer's perspective. Keep under 500 words.",
+        messages: [{ role: "user" as const, content: conversationText }],
+        abortSignal,
+      });
 
-    // Cheap model for compaction
-    const model = anthropic("claude-haiku-4-5-20251001");
-    // PRELAUNCH-A2-7 — propagate abort signal.
-    const summary = await generateText({
-      model,
-      instructions: "You are a conversation summarizer. Produce a concise, factual summary of the conversation below that preserves key facts, decisions, user preferences, and context — but NOT verbatim messages. Write in past tense from an observer's perspective. Keep under 500 words.",
-      messages: [{ role: "user" as const, content: conversationText }],
-      abortSignal,
-    });
+      // Merge with any existing summary (already loaded under scope above).
+      const merged = threadRow.compactedSummary
+        ? `${threadRow.compactedSummary}\n\n---\n\n${summary.text}`
+        : summary.text;
 
-    // Merge with any existing summary (already loaded under scope above).
-    const merged = threadRow.compactedSummary
-      ? `${threadRow.compactedSummary}\n\n---\n\n${summary.text}`
-      : summary.text;
+      // Advance the cursor to the last message summarized this run. `updateMany`
+      // + scope filter fails closed on a scope-move race (scope is immutable,
+      // but the query stays correct if that invariant ever weakens).
+      const lastCompacted = toCompact[toCompact.length - 1] as any;
+      await prisma.platosAgentThread.updateMany({
+        where: {
+          id: threadId,
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          userId: scope.userId,
+        },
+        data: {
+          compactedSummary: merged,
+          compactedAt: new Date(),
+          compactedUpToMessageId: lastCompacted?.id ?? null,
+        },
+      });
+      compactedCount = toCompact.length;
+      summaryLen = summary.text.length;
+    } finally {
+      // Always release the mutex — covers the early returns above AND any
+      // summarizer error. Separate from the summary update so a failed run
+      // can't leave the thread stuck `compactionInFlight`.
+      await prisma.platosAgentThread
+        .updateMany({
+          where: {
+            id: threadId,
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+          },
+          data: { compactionInFlight: false },
+        })
+        .catch(() => undefined);
+    }
 
-    // `updateMany` + scope filter so we atomically fail-closed on a race
-    // where the thread moves scope (unlikely — scope is immutable — but the
-    // query gets compiled into a scoped UPDATE and stays correct if the
-    // invariant ever weakens).
-    // Get the last message id that was compacted (for observability).
-    const lastCompacted = toCompact[toCompact.length - 1] as any;
-    await prisma.platosAgentThread.updateMany({
-      where: {
-        id: threadId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        userId: scope.userId,
-      },
-      data: {
-        compactedSummary: merged,
-        // PIFSP-17: stamp observability fields + release mutex.
-        compactedAt: new Date(),
-        compactedUpToMessageId: lastCompacted?.id ?? null,
-        compactionInFlight: false,
-      },
-    });
-
-    console.log(`[compaction] thread ${threadId}: compacted ${toCompactCount} msgs → ${summary.text.length} chars summary`);
+    if (compactedCount > 0) {
+      console.log(`[compaction] thread ${threadId}: compacted ${compactedCount} msgs → ${summaryLen} chars summary`);
+    }
   }
 
   /**
