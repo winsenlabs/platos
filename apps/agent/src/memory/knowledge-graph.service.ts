@@ -522,25 +522,35 @@ export class KnowledgeGraphService {
       orderBy: { updatedAt: "desc" },
     });
 
-    const scored: Array<{ entity: EntityRow; score: number }> = [];
+    // LATENCY (audit F6) — searchEntities now runs on EVERY turn (the
+    // recall/injection graph signal), so decrypting metadata for all ~1000
+    // candidates just to substring-match on label was pure per-turn waste.
+    // Match/score using only the decrypted label + plaintext aliases, then
+    // build the full EntityRow (which also decrypts metadata) ONLY for the
+    // top `limit` winners. Identical return; metadata decrypt drops from
+    // ~1000/turn to ≤ limit.
+    const matched: Array<{ raw: (typeof candidates)[number]; score: number }> = [];
     for (const c of candidates) {
-      const decoded = toEntityRow(
-        c,
-        (v) => this.decString(v),
-        (v) => this.crypto?.decryptJsonField(v) ?? v,
-      );
-      const label = (decoded.label ?? "").toLowerCase();
-      const aliases = (decoded.aliases ?? []).map((a) => (a ?? "").toLowerCase());
+      const label = (this.decString(c.label) ?? "").toLowerCase();
+      // aliases are stored plaintext (see upsertEntity) — no decrypt needed.
+      const aliases = ((c.aliases as string[]) ?? []).map((a) => (a ?? "").toLowerCase());
       let score = 0;
       if (label === q) score = 1.0;
       else if (label.startsWith(q)) score = 0.9;
       else if (label.includes(q)) score = 0.7;
       else if (aliases.some((a) => a.includes(q))) score = 0.5;
-      if (score > 0) scored.push({ entity: decoded, score });
+      if (score > 0) matched.push({ raw: c, score });
     }
 
-    scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, limit);
+    matched.sort((a, b) => b.score - a.score);
+    return matched.slice(0, limit).map(({ raw, score }) => ({
+      entity: toEntityRow(
+        raw,
+        (v) => this.decString(v),
+        (v) => this.crypto?.decryptJsonField(v) ?? v,
+      ),
+      score,
+    }));
   }
 
   /**
