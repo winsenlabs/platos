@@ -11,6 +11,7 @@ import { KnowledgeGraphService } from "./knowledge-graph.service";
 import { validateMemoryPayload } from "./memory-kind.validator";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { CostService } from "../monitoring/cost.service";
+import { ProfileCacheService } from "./profile-cache.service";
 import { env } from "../shared/env";
 
 /**
@@ -135,6 +136,7 @@ export class MemoryExtractionService {
     @Optional() private readonly scopedEnv?: ScopedEnvService,
     @Optional() private readonly crypto?: MessageCryptoService,
     @Optional() private readonly costService?: CostService,
+    @Optional() private readonly profileCache?: ProfileCacheService,
     @Optional() @Inject(REDIS_TOKEN) private readonly redis?: any,
   ) {}
 
@@ -379,12 +381,113 @@ export class MemoryExtractionService {
     // are skipped by subsequent sweeps.
     setWatermark();
 
+    // PROFILE SYNTHESIS — roll the user's atoms into the maintained narrative
+    // profile (throttled per user+agent; best-effort, never fails extraction).
+    // Awaited so it finishes within this async sweep, catch-guarded so a
+    // synthesis failure can't undo the extraction that already committed.
+    if (thread.userId) {
+      await this.synthesizeProfile(scope, thread.userId, thread.agentId ?? "default").catch(
+        () => undefined,
+      );
+    }
+
     return {
       memoriesCreated,
       entitiesCreated,
       relationshipsCreated,
       skipped,
     };
+  }
+
+  /**
+   * PROFILE SYNTHESIS — the consolidation step that makes the profile
+   * self-maintain.
+   *
+   * The extraction judge only ever emitted fact/preference/event/relationship
+   * atoms; the user PROFILE (kind="profile") was written ONLY by explicit
+   * `update_user_profile` calls, so it never kept up on its own. This rolls the
+   * user's accumulated atoms (for this agent) into a concise narrative and
+   * stores it as a `kind="profile"` row keyed `_synthesized` — which the
+   * turn-start `__user_profile` injector already reads. Throttled per
+   * (user, agent); best-effort (never fails extraction). Agent-scoped, matching
+   * the memory model (a coach's profile of a user ≠ an SDR's).
+   */
+  async synthesizeProfile(
+    scope: ScopeTuple,
+    userId: string,
+    agentId: string,
+    opts?: { force?: boolean; throttleMs?: number },
+  ): Promise<{ ok: boolean; reason?: string }> {
+    if (!userId) return { ok: false, reason: "no-user" };
+    const throttleMs = opts?.throttleMs ?? 60 * 60 * 1000; // once/hour by default
+    try {
+      const prior = await this.prisma.platosMemory.findFirst({
+        where: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          userId,
+          agentId,
+          kind: "profile",
+          metadata: { path: ["profileKey"], equals: "_synthesized" },
+        },
+        select: { id: true, metadata: true },
+      });
+      if (!opts?.force && prior) {
+        const synAt = (prior.metadata as { synthesizedAt?: string } | null)?.synthesizedAt;
+        if (synAt && Date.now() - new Date(synAt).getTime() < throttleMs) {
+          return { ok: false, reason: "throttled" };
+        }
+      }
+
+      // The user's durable atoms for THIS agent (decrypted via list()).
+      const all = await this.memoryService.list(scope, { userId, agentId, limit: 80 });
+      const atoms = all.filter(
+        (m) => ["fact", "preference", "event", "relationship"].includes(m.kind) && m.source !== "rag",
+      );
+      if (atoms.length < 4) return { ok: false, reason: "too-few-atoms" };
+
+      const transcript = atoms.map((a) => `(${a.kind}) ${a.content}`).join("\n");
+      const modelString = env.PLATOS_MEMORY_EXTRACTION_MODEL || DEFAULT_EXTRACTION_MODEL;
+      const envVar = apiKeyEnvVarFor(modelString);
+      const apiKey = envVar && this.scopedEnv ? await this.scopedEnv.get(scope, envVar) : undefined;
+      const resolved = resolveJudgeModel(modelString, apiKey);
+      if (!resolved) return { ok: false, reason: "judge-unavailable" };
+
+      const { text } = await generateText({
+        model: resolved,
+        system:
+          'You maintain a living profile of a user for an AI assistant. From the durable facts below, write a concise profile: who they are, their role and context, how they communicate and work, their key preferences, and the important people, projects, and organisations in their world. 2-4 short paragraphs, present tense, second person ("You are…"). State ONLY what the facts support — never invent. No preamble, no headings.',
+        prompt: transcript,
+      });
+      const narrative = (text || "").trim();
+      if (!narrative) return { ok: false, reason: "empty" };
+
+      // Supersede the prior synthesized row, then write the fresh one.
+      if (prior) await this.memoryService.delete(scope, prior.id).catch(() => undefined);
+      await this.memoryService.add(scope, {
+        userId,
+        agentId,
+        kind: "profile",
+        content: narrative,
+        metadata: {
+          profileKey: "_synthesized",
+          synthesizedAt: new Date().toISOString(),
+          atomCount: atoms.length,
+        },
+        source: "manual",
+        visibility: "private",
+        agentVisible: true,
+      });
+      await this.profileCache?.invalidate(scope, agentId, userId).catch(() => undefined);
+      this.logger.log(
+        `[profile-synth] ${scope.organizationId}/${userId}/${agentId}: ${atoms.length} atoms -> ${narrative.length} chars`,
+      );
+      return { ok: true };
+    } catch (err: any) {
+      this.logger.warn(`[profile-synth] failed for ${userId}/${agentId}: ${err?.message ?? err}`);
+      return { ok: false, reason: err?.message || "error" };
+    }
   }
 
   /** Run the judge LLM and parse its JSON response. Returns null when the

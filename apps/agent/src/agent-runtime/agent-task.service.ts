@@ -640,7 +640,20 @@ export class AgentTaskService {
           }
         }
         if (profileData && Object.keys(profileData).length > 0) {
-          dynamicContext.__user_profile = `## What you know about this user\n${JSON.stringify(profileData, null, 2)}`;
+          // The synthesized narrative (profileKey "_synthesized", written by
+          // MemoryExtractionService.synthesizeProfile) renders as PROSE; the
+          // remaining structured key→values render as JSON beneath it.
+          const { _synthesized, ...structured } = profileData as Record<string, unknown>;
+          const parts: string[] = [];
+          if (typeof _synthesized === "string" && _synthesized.trim().length > 0) {
+            parts.push(String(_synthesized).trim());
+          }
+          if (Object.keys(structured).length > 0) {
+            parts.push(`Known details:\n${JSON.stringify(structured, null, 2)}`);
+          }
+          if (parts.length > 0) {
+            dynamicContext.__user_profile = `## What you know about this user\n${parts.join("\n\n")}`;
+          }
         }
       } catch { /* swallow — missing memory rows shouldn't block a turn */ }
     }
