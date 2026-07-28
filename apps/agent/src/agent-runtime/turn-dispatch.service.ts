@@ -6,6 +6,7 @@ import { AgentTaskService } from "./agent-task.service";
 import { ConversationService } from "../memory/conversation.service";
 import type { AgentStreamEvent, AgentConfig } from "./agent.service";
 import type { RequestScope } from "../auth/scope.guard";
+import { buildSessionScope } from "./session-scope";
 
 /**
  * Trigger.dev SDK — same lazy-require + configure pattern as
@@ -563,28 +564,12 @@ export class TurnDispatchService {
         clientData: {
           agentId,
           threadId,
-          scope: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-            userId: scope.userId,
-            // IDENTITY-CORE / durable-tool-proof — carry the per-user identity
-            // proof across the Trigger-session boundary. `userToken` is the
-            // 120s HMAC turn-proof the CLIENT mints (over BRIDGE_TURN_SECRET,
-            // a secret Platos does NOT hold and CANNOT regenerate in the
-            // durable worker), so it MUST be propagated end-to-end from the
-            // request scope. Without it the reconstructed session scope has no
-            // userToken → the entity tool envelope omits it → the connector's
-            // verifyTurnProof(userId, undefined) fails → "turn proof
-            // missing/invalid — rejecting (enforcement on)". This is why
-            // durable/session turns failed every entity-tool call while direct
-            // turns (same request scope, in-process) succeeded. `entityId` is
-            // the minting-entity hint (Mode 2); carried for the same reason.
-            // NOTE: this intentionally places a SHORT-LIVED signed proof (not a
-            // durable credential) into session clientData — low blast radius.
-            ...(scope.userToken ? { userToken: scope.userToken } : {}),
-            ...(scope.entityId ? { entityId: scope.entityId } : {}),
-          },
+          // Single source of truth for what crosses the Trigger-session
+          // boundary — see session-scope.ts. Carries userToken (turn-proof),
+          // entityId, principal (trust tier), userIdentities (end-user
+          // linking) and sessionContext (timezone / user.*). Every hop below
+          // is typed to SessionScope so no field can silently drop again.
+          scope: buildSessionScope(scope),
         },
         ...(lastEventId ? { session: { lastEventId } } : {}),
         onTurnComplete: async ({ lastEventId: cursor }: { lastEventId?: string }) => {

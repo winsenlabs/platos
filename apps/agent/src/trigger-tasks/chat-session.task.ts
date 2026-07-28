@@ -2,6 +2,9 @@ import { chat } from "@trigger.dev/sdk/ai";
 // 4.5.3+: the chat wire types moved to the public /chat subpath (changelog #4218).
 import type { ChatTaskWirePayload } from "@trigger.dev/sdk/chat";
 import { logger, sessions } from "@trigger.dev/sdk";
+// Type-only (erased at build — does NOT pull agent-runtime into the worker
+// bundle). Single source of truth for what crosses the session boundary.
+import type { SessionScope } from "../agent-runtime/session-scope";
 
 /**
  * Platos durable chat — Trigger Sessions re-platform, Option 1 (Platos proxies).
@@ -25,32 +28,19 @@ import { logger, sessions } from "@trigger.dev/sdk";
  * agent SSE (AgentStreamEvents) → UIMessageChunks → `turn.complete()` →
  * durable `.out` → Platos proxy → client.
  *
- * clientData (set by the gateway at session start):
- *   { agentId, threadId, scope: { organizationId, projectId, environmentId,
- *     userId, userToken?, entityId? } }
- *
- * `userToken` is the ONE deliberate exception to the former "non-secret only"
- * rule: it is a SHORT-LIVED (120s) per-user HMAC turn-proof the client mints,
- * not a durable credential. It MUST cross this boundary because the entity
- * tool connector re-verifies it (verifyTurnProof) and Platos cannot regenerate
- * it in the durable worker (the signing secret lives only client-side). Without
- * it, every entity-tool call on the durable path fails turn-proof. `entityId`
- * is the minting-entity hint (Mode 2), carried for the same identity reason.
+ * clientData (set by the gateway at session start): { agentId, threadId,
+ * scope: SessionScope }. `SessionScope` (session-scope.ts) is the single source
+ * of truth for which fields cross this boundary — userToken (120s HMAC
+ * turn-proof, the one deliberate non-"secret-only" exception, re-verified by
+ * the entity connector and un-regenerable in the worker), entityId, principal,
+ * userIdentities, and sessionContext. A field omitted there is silently absent
+ * on durable turns only; add it in one place and it flows end-to-end.
  */
 
 interface PlatosChatClientData {
   agentId: string;
   threadId: string;
-  scope: {
-    organizationId: string;
-    projectId: string;
-    environmentId: string;
-    userId: string;
-    /** 120s per-user HMAC turn-proof — forwarded to entity tool calls. */
-    userToken?: string;
-    /** Minting-entity hint (Mode 2). */
-    entityId?: string;
-  };
+  scope: SessionScope;
 }
 
 /** Minimal UIMessageChunk shapes we emit (AI SDK v7 wire vocabulary). */

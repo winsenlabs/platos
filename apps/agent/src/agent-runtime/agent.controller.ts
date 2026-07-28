@@ -56,6 +56,7 @@ import {
 import { SkillRuntimeService } from "../skills/skill-runtime.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { requireOperator } from "../auth/scope.guard";
+import type { SessionScope } from "./session-scope";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { BudgetService, type BudgetPeriod, type BudgetScopeType } from "../monitoring/budget.service";
@@ -4475,21 +4476,14 @@ Write the summary now:`;
       message: string;
       replyToMessageId?: string | null;
       clientMessageId?: string | null;
-      scope: {
-        organizationId: string;
-        projectId: string;
-        environmentId: string;
-        userId: string;
-        agentId?: string;
-        threadId?: string;
-        // Durable-tool-proof — the session worker forwards the per-user
-        // HMAC turn-proof (and minting-entity hint) so entity tool calls on
-        // the durable path pass verifyTurnProof. Flows into the RequestScope
-        // via `body.scope as any` below and rides through to the tool
-        // executor's `__platos` envelope unchanged. See chat-session.task.ts.
-        userToken?: string;
-        entityId?: string;
-      };
+      // The session worker reconstructs the turn scope from clientData
+      // (`{ ...cd.scope, agentId, threadId }`), so this is exactly a
+      // SessionScope plus the re-stamped agentId/threadId. It flows into the
+      // RequestScope via `body.scope as any` below and rides through to the
+      // tool executor's `__platos` envelope unchanged. SessionScope
+      // (session-scope.ts) is the single source of truth for the carried set —
+      // userToken, entityId, principal, userIdentities, sessionContext.
+      scope: SessionScope & { agentId?: string; threadId?: string };
     },
   ) {
     if (!env.PLATOS_ADMIN_TOKEN) {

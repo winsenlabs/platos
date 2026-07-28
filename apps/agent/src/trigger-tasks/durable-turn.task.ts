@@ -1,4 +1,8 @@
 import { task, logger, metadata } from "@trigger.dev/sdk";
+// Type-only (erased at build). Same source of truth for the carried scope as
+// the live session path — so a future re-wire to this task can't reintroduce
+// the boundary-drop bug class. See session-scope.ts.
+import type { SessionScope } from "../agent-runtime/session-scope";
 
 /**
  * @deprecated DORMANT — chat dispatch now runs `executionMode==="durable"` on
@@ -43,22 +47,11 @@ export interface DurableTurnPayload {
   message: string;
   replyToMessageId?: string | null;
   clientMessageId?: string | null;
-  scope: {
-    organizationId: string;
-    projectId: string;
-    environmentId: string;
-    userId: string;
-    agentId?: string;
-    threadId?: string;
-    // Durable-tool-proof — carry the per-user HMAC turn-proof (and
-    // minting-entity hint) across the durable boundary so entity tool calls
-    // pass verifyTurnProof. This task is currently inert (SESSIONS is the live
-    // durable path), but the identical omission here was the same bug: if
-    // anything re-wires to platos.agent.durable-turn, these MUST be populated.
-    // See chat-session.task.ts / turn-dispatch.service.ts.
-    userToken?: string;
-    entityId?: string;
-  };
+  // SessionScope + the re-stamped agentId/threadId — same carried set as the
+  // live session path (userToken, entityId, principal, userIdentities,
+  // sessionContext), so a re-wire to this (dormant) task can't reintroduce the
+  // boundary-drop bug class.
+  scope: SessionScope & { agentId?: string; threadId?: string };
 }
 
 export interface DurableTurnOutput {
