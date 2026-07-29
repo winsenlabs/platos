@@ -829,6 +829,22 @@ function filterToolsAllowlist(
 @Injectable()
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
+
+  /**
+   * LATENCY (audit F9) — LAUNCH-4 fallback-ping health cache.
+   *
+   * Agents with fallback rules pay a synchronous 1-token `generateText` ping
+   * per candidate route BEFORE the real stream starts, on EVERY turn (+50-200ms
+   * healthy, up to 5s per dead route). A route that answered seconds ago does
+   * not need re-proving.
+   *
+   * POSITIVE-ONLY by design: a cached success skips the ping; a FAILURE is
+   * never cached, so a route that recovers is picked up on the very next turn
+   * (no lockout). Keyed by model + a short hash of the api key — never the key
+   * itself. Process-local; a restart just re-pings once.
+   */
+  private readonly pingOkCache = new Map<string, number>();
+  private static readonly PING_OK_TTL_MS = 60_000;
   private prisma: any;
 
   constructor(
@@ -1017,6 +1033,24 @@ export class AgentService {
 
     for (const c of candidates) {
       try {
+        // LATENCY (audit F9) — skip the ping when this exact (model, key) was
+        // proven healthy within the TTL. Only SUCCESS is cached, so a failing
+        // route is always re-pinged and a recovered one is picked up on the
+        // next turn. Key never contains the raw api key.
+        const pingKey = `${c.modelString}:${crypto
+          .createHash("sha256")
+          .update(String(c.apiKey ?? ""))
+          .digest("hex")
+          .slice(0, 12)}`;
+        const okAt = this.pingOkCache.get(pingKey);
+        if (okAt !== undefined && Date.now() - okAt < AgentService.PING_OK_TTL_MS) {
+          if (c.routeLabel) {
+            this.logger.log(
+              `[agent.stream] LAUNCH-4 ping cache hit for route '${c.routeLabel}' (model=${c.modelString})`,
+            );
+          }
+          return { apiKey: c.apiKey, model: c.model, routeLabel: c.routeLabel };
+        }
         // Tiny ping. Retry-fetch (LAUNCH-2) will already retry transient
         // 429/5xx; this ping fails on permanent issues only (bad key,
         // sustained outage, unknown model). The 5s timeout caps how long
@@ -1027,6 +1061,12 @@ export class AgentService {
           maxOutputTokens: 1,
           abortSignal: AbortSignal.timeout(5_000),
         });
+        this.pingOkCache.set(pingKey, Date.now());
+        // Bound the map (many models × keys over a long-lived process).
+        if (this.pingOkCache.size > 200) {
+          const oldest = [...this.pingOkCache.entries()].sort((a, b) => a[1] - b[1])[0];
+          if (oldest) this.pingOkCache.delete(oldest[0]);
+        }
         if (c.routeLabel) {
           this.logger.log(
             `[agent.stream] LAUNCH-4 ping selected fallback route '${c.routeLabel}' (model=${c.modelString})`,

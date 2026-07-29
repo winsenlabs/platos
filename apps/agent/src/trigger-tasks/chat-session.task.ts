@@ -239,10 +239,45 @@ export const platosChatSession = chat.customAgent({
         // turn-complete. Runs complete in ~14s with this path.
         const out = sessions.open((payload as any).sessionId ?? turn.chatId).out;
         let fullText = "";
+        // LATENCY (audit F2) — COALESCE text deltas. Every append is an awaited
+        // network write from this worker to the Trigger platform, so appending
+        // per chunk serialized the whole stream at one round-trip per token:
+        // a 150-token reply paid ~150 sequential RTTs and the drain rate was
+        // capped by the network, not the LLM. Merge consecutive same-id text
+        // deltas into ~FLUSH_MS windows (typically 150 appends -> ~10-20).
+        //
+        // ORDERING IS PRESERVED EXACTLY: any non-text chunk (tool_call,
+        // tool_result, data-platos-event incl. message_persisted, error) is a
+        // hard barrier — the buffer is flushed before it is appended, so
+        // relative order on the wire is unchanged. The buffer is also flushed
+        // when the stream ends, so no text can be lost.
+        const FLUSH_MS = 40;
+        let pending: { type: "text-delta"; id: string; delta: string } | null = null;
+        let pendingSince = 0;
+        const flushText = async () => {
+          if (!pending) return;
+          const p = pending;
+          pending = null;
+          await out.append(p as any);
+        };
         for await (const chunk of toUIChunks(parseSSE(res.body!))) {
-          if (chunk.type === "text-delta") fullText += chunk.delta;
-          await out.append(chunk);
+          if (chunk.type === "text-delta") {
+            fullText += chunk.delta;
+            if (pending && pending.id === chunk.id) {
+              pending.delta += chunk.delta;
+            } else {
+              await flushText();
+              pending = { type: "text-delta", id: chunk.id, delta: chunk.delta };
+              pendingSince = Date.now();
+            }
+            // Bound how long text can sit buffered while actively streaming.
+            if (Date.now() - pendingSince >= FLUSH_MS) await flushText();
+          } else {
+            await flushText();
+            await out.append(chunk);
+          }
         }
+        await flushText();
         await turn.addResponse({
           id: `platos-${turn.chatId}-${turn.number}`,
           role: "assistant",
