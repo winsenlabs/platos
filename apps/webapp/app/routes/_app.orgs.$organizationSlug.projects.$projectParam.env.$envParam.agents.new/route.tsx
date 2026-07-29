@@ -844,6 +844,64 @@ export default function NewAgentPage() {
                   </div>
                 </section>
 
+                {/* CONSISTENCY (audit #7) — sub-agent fields at CREATE.
+                    The action has always parsed subAgentModel / subAgentMaxSteps
+                    / subAgentSystemPrompt, but the wizard never rendered them:
+                    picking "Sub-agent" here silently applied hardcoded defaults
+                    and you only discovered the real config on the edit page.
+                    Rendered conditionally so the create and edit flows expose
+                    the same fields; blank inputs keep the same defaults the
+                    action already applied. */}
+                {toolMode === "sub-agent" && (
+                  <section className="rounded border border-charcoal-700 p-3 space-y-3">
+                    <Header3>Sub-agent configuration</Header3>
+                    <Paragraph variant="small">
+                      The dedicated tool-calling agent. Leave blank to use the defaults.
+                    </Paragraph>
+                    <div>
+                      <label className="text-xs text-text-dimmed font-medium" htmlFor="subAgentModel">
+                        Sub-agent model
+                      </label>
+                      <input
+                        id="subAgentModel"
+                        type="text"
+                        name="subAgentModel"
+                        placeholder="anthropic:claude-haiku-4-5-20251001"
+                        className="mt-1 w-full rounded border border-charcoal-700 bg-charcoal-900 px-2 py-1.5 text-sm text-text-bright"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-text-dimmed font-medium" htmlFor="subAgentMaxSteps">
+                        Max steps
+                      </label>
+                      <input
+                        id="subAgentMaxSteps"
+                        type="number"
+                        name="subAgentMaxSteps"
+                        min={1}
+                        max={50}
+                        placeholder="10"
+                        className="mt-1 w-full rounded border border-charcoal-700 bg-charcoal-900 px-2 py-1.5 text-sm text-text-bright"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="text-xs text-text-dimmed font-medium"
+                        htmlFor="subAgentSystemPrompt"
+                      >
+                        Sub-agent system prompt
+                      </label>
+                      <textarea
+                        id="subAgentSystemPrompt"
+                        name="subAgentSystemPrompt"
+                        rows={3}
+                        placeholder="Optional — instructions for the tool-calling sub-agent."
+                        className="mt-1 w-full rounded border border-charcoal-700 bg-charcoal-900 px-2 py-1.5 text-sm text-text-bright"
+                      />
+                    </div>
+                  </section>
+                )}
+
                 {/* Live prompt preview */}
                 <section>
                   <Header3>System prompt preview</Header3>

@@ -485,6 +485,14 @@ export default function AgentToolsTab() {
           <DeclaredKeysEditor keys={declaredFromDraft} onChange={setDeclaredKeys} />
         </section>
 
+        {/* CONSISTENCY (audit #5) — displayMode is what ACTUALLY governs tool
+            inlining, but it had no control anywhere: the pinned-tools panel
+            below even tells you to "set displayMode to hybrid" with no way to
+            do it. This is its natural owner. */}
+        <DisplayModePanel
+          rawToolsBlockConfig={rawToolsBlockConfig as Record<string, unknown>}
+        />
+
         {/* TL.3 — category descriptions editor */}
         <CategoryDescriptionsPanel
           categories={categories}
@@ -593,6 +601,92 @@ export default function AgentToolsTab() {
 // user override if set, otherwise the hardcoded default so the operator
 // sees the baseline the LLM gets today and can tweak inline. Clearing the
 // textarea back to empty drops the override (blank reverts to default).
+/**
+ * CONSISTENCY (audit #5) — the displayMode control.
+ *
+ * `toolsBlockConfig.displayMode` is what ACTUALLY decides how much of the tool
+ * layer the main LLM sees each turn (full schemas / summary / meta-tools only /
+ * hybrid). It drove real runtime behaviour but was settable from NO screen —
+ * the pinned-tools panel below literally instructs you to "set displayMode to
+ * hybrid" with no control to do it, and the tool-call-method copy on the agent
+ * editor wrongly claimed displayMode's behaviour for itself.
+ *
+ * Saves through the same `patch-tbc` intent as the other panels, spreading the
+ * stored config so no sibling key is lost (and the backend now deep-merges too).
+ */
+function DisplayModePanel({
+  rawToolsBlockConfig,
+}: {
+  rawToolsBlockConfig: Record<string, unknown>;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const stored = (rawToolsBlockConfig?.displayMode as string) ?? "full";
+  const [mode, setMode] = useState(stored);
+  const saving = fetcher.state !== "idle";
+  const dirty = mode !== stored;
+
+  const OPTIONS: Array<{ value: string; label: string; desc: string }> = [
+    { value: "full", label: "Full", desc: "Every enabled tool's full schema is visible. Most capable, most tokens." },
+    { value: "summary", label: "Summary", desc: "No tool schemas — meta-tools plus a category/count hint. Reach tools via find_tools." },
+    { value: "meta-tool", label: "Meta-tools only", desc: "Pure discovery: meta-tools, no category hint. Fewest tokens." },
+    { value: "hybrid", label: "Hybrid", desc: "Pinned tools in full, everything else via discovery. Set pinned tools below." },
+  ];
+
+  function save() {
+    const nextTbc = { ...(rawToolsBlockConfig ?? {}), displayMode: mode };
+    const fd = new FormData();
+    fd.set("intent", "patch-tbc");
+    fd.set("toolsBlockConfig", JSON.stringify(nextTbc));
+    fetcher.submit(fd, { method: "post" });
+  }
+
+  return (
+    <section className="mb-6 rounded-md border border-grid-dimmed bg-background-dimmed p-4">
+      <div className="flex items-center gap-2">
+        <Header3>Tool display mode</Header3>
+        <Badge variant="small">{stored}</Badge>
+      </div>
+      <Paragraph variant="small" className="mt-1 mb-3">
+        How much of the tool layer the agent sees each turn. This is the setting that
+        controls schema inlining.
+      </Paragraph>
+      <div className="space-y-2">
+        {OPTIONS.map((opt) => (
+          <label
+            key={opt.value}
+            className={`flex items-start gap-3 rounded border p-2.5 cursor-pointer ${
+              mode === opt.value ? "border-emerald-500/60 bg-emerald-500/5" : "border-grid-dimmed"
+            }`}
+          >
+            <input
+              type="radio"
+              name="displayMode"
+              value={opt.value}
+              checked={mode === opt.value}
+              onChange={() => setMode(opt.value)}
+              className="mt-0.5 accent-emerald-500"
+            />
+            <div>
+              <p className="text-sm font-medium text-text-bright">{opt.label}</p>
+              <p className="text-xs text-text-dimmed">{opt.desc}</p>
+            </div>
+          </label>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-3">
+        <Button variant="secondary/small" onClick={save} disabled={!dirty || saving}>
+          {saving ? "Saving…" : "Save display mode"}
+        </Button>
+        {fetcher.data?.error ? (
+          <span className="text-xs text-error">{fetcher.data.error}</span>
+        ) : fetcher.data?.ok && !dirty ? (
+          <span className="text-xs text-text-dimmed">Saved.</span>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function CategoryDescriptionsPanel({
   categories,
   rawToolsBlockConfig,

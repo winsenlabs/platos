@@ -110,9 +110,24 @@ export class PromptBuilderService {
         id: "tools",
         type: "tools",
         name: "Tool Instructions",
+        // CONSISTENCY (audit #10) — MODE-NEUTRAL by design.
+        //
+        // This block is created at agent-creation time (wizard step 2) — BEFORE
+        // the tool-call method is chosen (step 4) — and it is user-editable, so
+        // it can never be safely rewritten later. The old default hardcoded
+        // "use find_tools then execute_tools", which is a lie in two of the
+        // three modes: sub-agent mode deletes execute_tools (the parent
+        // delegates instead), and execute-tool mode strips the discretionary
+        // meta-tools. The model was being told to call a tool it did not have.
+        //
+        // The text now describes the CONTRACT that holds in every mode — use
+        // the tools you can actually see, discover with find_tools when it is
+        // available — and the runtime's own tool addendum (display-mode block)
+        // supplies the mode-specific detail.
         content: [
-          "You have access to tools via the find_tools and execute_tools meta-tools.",
-          "First search for relevant tools with find_tools, then call them with execute_tools.",
+          "Use the tools available to you in this conversation to help the user.",
+          "If a find_tools meta-tool is available, search with it first to discover the right tool, then call the tool it points you to.",
+          "Only call tools you can actually see — never assume a tool exists.",
           "When calling tools, provide all required parameters.",
           "If a tool call fails, explain the error to the user and suggest alternatives.",
         ].join("\n"),

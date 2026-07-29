@@ -4135,6 +4135,46 @@ export class AgentService {
       delete tools.execute_tools;
     }
 
+    // CONSISTENCY (audit #4) — `execute-tool` mode is now REAL.
+    //
+    // Both UIs offered it and the copy promised "minimalist — max token
+    // savings", but the runtime only ever branched on "sub-agent", so it
+    // behaved identically to "direct": the option was a no-op and the promise
+    // was false. Per its docstring ("parent gets find_tools + execute_tools
+    // only") this strips the DISCRETIONARY meta-tools, leaving the discovery
+    // pair plus anything safety-critical.
+    //
+    // Deliberately a NAME-LIST, not a "delete everything except": entity tools
+    // and future meta-tools are untouched, so this can't silently disable a
+    // capability it doesn't know about. `request_approval` is NEVER stripped —
+    // it is the human-in-the-loop gate, not a convenience. Discovery/execution
+    // (find_tools / execute_tools) is the whole point of the mode.
+    if (toolMode === "execute-tool") {
+      const DISCRETIONARY_META_TOOLS = [
+        // memory
+        "recall", "remember", "forget", "list_memories", "relate", "memory_extract",
+        // profile
+        "recall_user_profile", "update_user_profile",
+        // background orchestration (+ deprecated aliases)
+        "spawn_bgo", "list_bgos", "schedule_bgo",
+        "spawn_task", "list_tasks", "trigger_with_delay",
+        // sub-agent delegation is a different mode's mechanism
+        "delegate_to_sub_agent",
+      ];
+      let stripped = 0;
+      for (const name of DISCRETIONARY_META_TOOLS) {
+        if (name in tools) {
+          delete tools[name];
+          stripped += 1;
+        }
+      }
+      if (stripped > 0) {
+        this.logger.log(
+          `[agent.buildMetaTools] execute-tool mode: stripped ${stripped} discretionary meta-tools (find_tools/execute_tools + approvals retained)`,
+        );
+      }
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // TL.2 — display-mode routing.
     //
