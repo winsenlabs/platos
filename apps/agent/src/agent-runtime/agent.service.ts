@@ -5469,9 +5469,23 @@ export class AgentService {
     // describing the delegation pattern, and the verbose per-tool block
     // is parked in `subAgentArgHintHolder` so `runSubAgent` can splice it
     // into the sub-agent's systemPrompt at dispatch time.
-    const isSubAgentMode =
-      agentConfig?.toolsBlockConfig?.mode === "sub-agent" ||
-      agentConfig?.subAgentConfig != null;
+    // BUGFIX — this gate MUST match the one that actually builds
+    // `delegate_to_sub_agent` in buildMetaTools, which is strictly
+    // `toolsBlockConfig.mode === "sub-agent"`. It used to also fire on
+    // `subAgentConfig != null`, which is far looser: merely HAVING a
+    // subAgentConfig row (Walle has `{toolMode:"direct", promptCaching:true}`)
+    // flipped it true while the agent ran in direct/execute-tool mode. Two
+    // things then went wrong for a parent that owns its own tool calling:
+    //   1. the CTX.6 arg-expectations block — the only thing telling the LLM
+    //      which params each tool needs — was diverted into
+    //      `subAgentArgHintHolder` for a sub-agent that never runs, so the
+    //      parent silently lost it; and
+    //   2. the parent was instead told "You have find_tools +
+    //      delegate_to_sub_agent", advertising a tool that was never built
+    //      (buildMetaTools gates it on the strict check), i.e. the model was
+    //      pointed at a delegation path that does not exist.
+    // Aligning the two gates fixes both.
+    const isSubAgentMode = agentConfig?.toolsBlockConfig?.mode === "sub-agent";
     let ctxHintBlock = "";
     try {
       if (this.toolRegistry && (contextMapping || sessionContext)) {
