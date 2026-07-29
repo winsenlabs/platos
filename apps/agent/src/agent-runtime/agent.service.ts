@@ -4180,8 +4180,22 @@ export class AgentService {
         // sub-agent delegation is a different mode's mechanism
         "delegate_to_sub_agent",
       ];
+      // REGRESSION FIX — an EXPLICIT per-tool enable beats the coarse mode
+      // default. `mode: "execute-tool"` is a blunt "keep it minimal" setting;
+      // `metaTools` is the operator saying exactly which tools they want. When
+      // they conflict, the specific choice wins.
+      //
+      // Observed live: Winsen Walle was switched to execute-tool mode while
+      // metaTools had recall/remember/forget/list_memories/relate/
+      // memory_extract all set to true, and this loop stripped all 8 memory +
+      // profile tools anyway — while its system prompt still instructed
+      // "ALWAYS recall before answering identity-shaped questions". The agent
+      // was told to call tools that had been removed from under it, so memory
+      // silently stopped working.
+      const explicit = agentConfig?.metaTools ?? {};
       let stripped = 0;
       for (const name of DISCRETIONARY_META_TOOLS) {
+        if (explicit[name] === true) continue; // operator explicitly wants it
         if (name in tools) {
           delete tools[name];
           stripped += 1;
