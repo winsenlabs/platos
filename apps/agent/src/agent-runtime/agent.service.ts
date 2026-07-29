@@ -1683,7 +1683,27 @@ export class AgentService {
     // found" for skill queries and the LLM never tried execute_tools.
     const _skillToolIndex = skillToolIndex ?? [];
 
-    tools.find_tools = {
+    // BUGFIX — honour the `metaTools` toggles for the discovery pair.
+    //
+    // `find_tools` and `execute_tools` were assigned UNCONDITIONALLY, unlike
+    // every other meta-tool, so an operator turning them off in the agent
+    // config had NO effect: the model was still handed both. Live example
+    // (Winsen Walle): config said `{find_tools:false, execute_tools:false}`
+    // because that agent reaches its apps through its OWN entity tools, yet
+    // both were present — so the system prompt had to spend a paragraph
+    // telling the model "do NOT use find_tools to look for a connected app",
+    // and `execute_tools` was a dead end anyway (it filters against
+    // `toolsBlockConfig.enabledTools`, which was `[]`, so every call it made
+    // would be blocked).
+    //
+    // Semantics deliberately match `metaEnabledMemory` (enabled UNLESS
+    // explicitly false) rather than `metaEnabled` (which treats a missing key
+    // as false) — the latter would strip these from every agent that never set
+    // the key, a breaking change. Only an explicit `false` disables them.
+    const discoveryEnabled = (name: string): boolean =>
+      (agentConfig?.metaTools ?? {})[name] !== false;
+
+    if (discoveryEnabled("find_tools")) tools.find_tools = {
       description:
         `Search for available tools by describing what you need. Returns matching tool names, descriptions, and parameter summaries.${_entityHint}`,
       inputSchema: z.object({
@@ -1811,8 +1831,9 @@ export class AgentService {
       return _originEndUserId;
     };
 
-    // execute_tools — call tools on the org's backend
-    tools.execute_tools = {
+    // execute_tools — call tools on the org's backend.
+    // Gated on the same explicit-false toggle as find_tools (see above).
+    if (discoveryEnabled("execute_tools")) tools.execute_tools = {
       description: "Execute one or more tools. Each tool call runs on the organization's backend and returns structured results.",
       inputSchema: z.object({
         calls: z.array(z.object({
