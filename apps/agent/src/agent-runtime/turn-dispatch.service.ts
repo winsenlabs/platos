@@ -588,6 +588,31 @@ export class TurnDispatchService {
       //     within ~250ms of the run actually exiting instead of up to 1s late.
       //
       // Missing/expired stamp ⇒ unknown ⇒ run the guard (fail safe).
+      //
+      // RESUME-FROM-HEAD (2026-07-28 live forensics — the "one turn behind"
+      // bug): the stored Redis cursor only advances via onTurnComplete, so a
+      // turn whose events were never fully consumed (approval suspension →
+      // continuation ran after the caller's sendMessage returned) leaves the
+      // cursor permanently behind the session head. Every later sendMessage
+      // then REPLAYS the previous turn's tail first — whose replayed terminal
+      // `done` ends the new caller's stream in seconds (observed: constant
+      // ~6.7s runs each delivering the PREVIOUS turn's reply, one turn behind,
+      // indefinitely), and the replay boundary clipped the first text-delta
+      // ("Got it," arriving as "it,"). Fix: resume from the session's LIVE
+      // head event id — backlog belongs to prior turns the caller already
+      // handled. The stored cursor stays as the fallback.
+      //
+      // MERGE NOTE (why the head capture is NOT inside the guard): the F1
+      // skip above turns the guard off on relaxed-cadence turns, which is
+      // MOST turns. The head id comes from `sessions.retrieve`, so gating
+      // that retrieve on `guardNeeded` would leave `headEventId` undefined
+      // exactly when the guard is skipped, silently falling back to the stale
+      // cursor and resurrecting the one-turn-behind bug — while still looking
+      // correct in quick-reply testing, where the guard does run. So the
+      // single cheap `sessions.retrieve` runs whenever a cursor exists, and
+      // only the multi-second `runs.retrieve` POLL is gated on `guardNeeded`.
+      // That keeps F1's real win (skipping the poll, up to 20s) and costs one
+      // ~300ms round-trip.
       let guardNeeded = !!lastEventId;
       if (guardNeeded) {
         try {
@@ -600,13 +625,19 @@ export class TurnDispatchService {
           // Redis unavailable — fall through and run the guard (fail safe).
         }
       }
-      if (guardNeeded) {
+      let headEventId: string | undefined;
+      if (lastEventId) {
         try {
           const sessionsSdk = triggerSdk?.sessions;
           const runsSdk = triggerSdk?.runs;
           const sess = await sessionsSdk?.retrieve(threadId).catch(() => null);
+          // Always captured (see MERGE NOTE) — this is what the new turn
+          // resumes from, and it must not depend on whether the guard runs.
+          headEventId = ((sess as any)?.lastEventId as string | undefined) ?? undefined;
           const prevRunId = (sess as any)?.currentRunId as string | undefined;
-          if (prevRunId && runsSdk?.retrieve) {
+          // Only the POLL is gated: it is the expensive part (up to 20s), and
+          // it is only needed when the previous run may still be finalizing.
+          if (guardNeeded && prevRunId && runsSdk?.retrieve) {
             // Deadline-bounded (Fable verify A2): a fixed iteration count made
             // the real ceiling iterations × (sleep + API RTT), so shortening
             // the sleep silently GREW the worst case. Bound the wall clock
@@ -649,7 +680,11 @@ export class TurnDispatchService {
           // is typed to SessionScope so no field can silently drop again.
           scope: buildSessionScope(scope),
         },
-        ...(lastEventId ? { session: { lastEventId } } : {}),
+        // Prefer the live head over the stored cursor (see RESUME-FROM-HEAD
+        // above) so stale-cursor backlog can never replay into a new turn.
+        ...(headEventId || lastEventId
+          ? { session: { lastEventId: headEventId ?? lastEventId } }
+          : {}),
         onTurnComplete: async ({ lastEventId: cursor }: { lastEventId?: string }) => {
           if (cursor) {
             committedCursor = cursor; // authoritative — prefer at post-drain persist
