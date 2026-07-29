@@ -2541,10 +2541,9 @@ export class AgentService {
                   agentId: scope.agentId || "default",
                   taskIdHint: taskId,
                 },
-                queue: {
-                  name: `org:${scope.organizationId}`,
-                  concurrencyLimit: parseInt(process.env.PLATOS_PER_ORG_CONCURRENCY ?? "100", 10),
-                },
+                // Trigger v4: object-form queue fails validation; per-org
+                // fairness via concurrencyKey on the task's own queue.
+                concurrencyKey: `org:${scope.organizationId}`,
               },
             },
           );
@@ -2786,10 +2785,9 @@ export class AgentService {
                   }),
                   tags: scopeTags,
                   metadata: { ...scopeMetadata, batchRunId, label: label ?? null },
-                  queue: {
-                    name: `org:${scope.organizationId}:batch`,
-                    concurrencyLimit: parseInt(process.env.PLATOS_PER_ORG_BATCH_CONCURRENCY ?? "20", 10),
-                  },
+                  // Trigger v4: object-form queue fails validation; per-org
+                  // fairness via concurrencyKey on the task's own queue.
+                  concurrencyKey: `org:${scope.organizationId}`,
                 },
               );
               // W.1.2 — subscribe the batch run to the parent thread's
@@ -3051,17 +3049,17 @@ export class AgentService {
             kind: "subagent",
             task: spawnTask.slice(0, 200),
           };
-          const queue = {
-            name: `org:${scope.organizationId}:subagent`,
-            concurrencyLimit: parseInt(process.env.PLATOS_PER_ORG_SUBAGENT_CONCURRENCY ?? "20", 10),
-          };
-
           try {
+            // Trigger v4: per-trigger `queue` must be a queue NAME (string);
+            // ad-hoc { name, concurrencyLimit } objects fail validation
+            // ("Expected string, received object") and EVERY spawn died with
+            // dispatch_failed. Per-org fairness now rides on concurrencyKey,
+            // which partitions the task's own queue per key.
             const handle = await triggerSdk.tasks.trigger("platos.agent.subrun", payload, {
               idempotencyKey,
               tags: spawnTags,
               metadata: spawnMetadata,
-              queue,
+              concurrencyKey: `org:${scope.organizationId}`,
             });
 
             // Stream child progress into the PARENT thread's room (agent_batch

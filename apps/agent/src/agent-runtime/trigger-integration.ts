@@ -154,9 +154,9 @@ export async function triggerAgentTask(
     body: JSON.stringify({
       payload,
       options: {
-        queue: {
-          concurrencyKey: `thread-${payload.threadId}`,
-        },
+        // Trigger v4: `queue` must be a string queue name; concurrencyKey is
+        // a top-level option (partitions the task's queue per thread).
+        concurrencyKey: `thread-${payload.threadId}`,
         tags: [
           `org:${payload.organizationId}`,
           `project:${payload.projectId}`,
