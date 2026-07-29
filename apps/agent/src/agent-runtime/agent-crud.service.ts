@@ -93,10 +93,18 @@ export type ToolCallMode = (typeof TOOL_CALL_MODES)[number];
  * Applied on create AND update, so a legacy row self-heals on its next save
  * (no data migration required). `"tool-wrapper"` maps to its intended
  * semantics (`execute-tool`); any other unknown value falls back to `direct`.
+ *
+ * CRITICAL (Fable verify B1) — only touches a patch that ACTUALLY CARRIES a
+ * `mode` key. A partial patch without one (e.g. the Tools tab sending just
+ * `{displayMode}`) must pass through untouched: injecting a default `mode`
+ * here would, after the shallow merge in `update()`, overwrite a stored
+ * `sub-agent` with `direct` — silently resetting the tool-call method on
+ * every partial API/MCP patch, i.e. the very bug this function exists to fix.
  */
 export function normalizeToolsBlockConfig(cfg: unknown): unknown {
   if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return cfg;
   const c = cfg as Record<string, unknown>;
+  if (!("mode" in c)) return cfg;
   const mode = c.mode;
   if (typeof mode === "string" && (TOOL_CALL_MODES as readonly string[]).includes(mode)) {
     return cfg;

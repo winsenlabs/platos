@@ -582,8 +582,9 @@ export class TurnDispatchService {
       //     stamp marks drain completion, which is ~10s BEFORE the run
       //     actually exits. Skipping on mere existence would reintroduce the
       //     silent message loss this guard prevents.
-      //  2. POLL FASTER — 250ms instead of 1000ms, with the iteration count
-      //     scaled so the total ceiling is unchanged (~20s). The wait now ends
+      //  2. POLL FASTER — 250ms instead of 1000ms, bounded by a wall-clock
+      //     DEADLINE (~20s) rather than an iteration count, so the ceiling
+      //     stays honest no matter the API round-trip time. The wait now ends
       //     within ~250ms of the run actually exiting instead of up to 1s late.
       //
       // Missing/expired stamp ⇒ unknown ⇒ run the guard (fail safe).
@@ -606,7 +607,13 @@ export class TurnDispatchService {
           const sess = await sessionsSdk?.retrieve(threadId).catch(() => null);
           const prevRunId = (sess as any)?.currentRunId as string | undefined;
           if (prevRunId && runsSdk?.retrieve) {
-            for (let i = 0; i < 80; i++) {
+            // Deadline-bounded (Fable verify A2): a fixed iteration count made
+            // the real ceiling iterations × (sleep + API RTT), so shortening
+            // the sleep silently GREW the worst case. Bound the wall clock
+            // instead — the ceiling is now honestly ~20s regardless of RTT,
+            // and the faster poll only makes the common case exit sooner.
+            const deadline = Date.now() + 20_000;
+            for (;;) {
               const r: any = await runsSdk.retrieve(prevRunId).catch(() => null);
               if (
                 !r ||
@@ -615,6 +622,7 @@ export class TurnDispatchService {
               ) {
                 break;
               }
+              if (Date.now() >= deadline) break;
               await new Promise((res) => setTimeout(res, 250));
             }
           }
@@ -706,6 +714,7 @@ export class TurnDispatchService {
     // and surface what we have. The server-side run continues (durable) — we
     // only bound the LOCAL drain.
     let timedOut = false;
+    let drainErrored = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<void>((resolve) => {
       timer = setTimeout(() => {
@@ -718,6 +727,7 @@ export class TurnDispatchService {
     } catch (err: any) {
       // The `.out` drain threw (stream error) — surface it like the gateway's
       // former pump catch did (error frame, then the terminal done below).
+      drainErrored = true;
       onPart?.({ type: "error", message: err?.message ?? String(err) });
     } finally {
       if (timer) clearTimeout(timer);
@@ -741,13 +751,26 @@ export class TurnDispatchService {
     // (e.g. a timed-out drain) — and never overwrite a live cursor with undefined.
     // LATENCY (audit F1) — stamp when this turn's drain finished so the NEXT
     // turn can skip the race guard once the finalization window has provably
-    // passed. Written unconditionally (even on a timed-out drain) because it
-    // records "the drain ended at T", which is exactly what the skip check
-    // ages off. 1h TTL: past that the stamp is absent and the guard simply
-    // runs (fail safe).
-    await (this.redis as any)
-      .set(prevDoneKey, String(Date.now()), "EX", 3600)
-      .catch(() => undefined);
+    // passed.
+    //
+    // CRITICAL (Fable verify BLOCKER A1): only stamp on a CLEAN completion.
+    // The skip check reads this as "the run was at its ~10s finalization at
+    // T" — which is only true when the turn actually completed. On a
+    // timed-out or errored drain the SERVER-SIDE RUN KEEPS EXECUTING
+    // (durable; we only bound the local drain), so stamping there would let
+    // a later message skip the guard and append into a still-live run's
+    // inbox — silently lost under maxTurns:1. `committedCursor` is set by
+    // onTurnComplete, i.e. proof the turn itself finished.
+    //
+    // And on the non-clean paths we must DELETE the key, not merely skip the
+    // write: a stale stamp from an earlier turn would be even older and would
+    // trigger the skip on its own. Deleting forces the next turn through the
+    // full guard (fail safe).
+    const drainCompletedCleanly = !timedOut && !drainErrored && committedCursor !== undefined;
+    await (drainCompletedCleanly
+      ? (this.redis as any).set(prevDoneKey, String(Date.now()), "EX", 3600)
+      : (this.redis as any).del(prevDoneKey)
+    ).catch(() => undefined);
 
     const cursor =
       committedCursor ?? ((chatClient as any)?.session?.lastEventId as string | undefined);

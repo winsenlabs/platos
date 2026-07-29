@@ -609,7 +609,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
     body.subAgentConfig = {
       model: subAgentModel || "anthropic:claude-haiku-4-5-20251001",
       maxSteps: subAgentMaxStepsRaw ? parseInt(subAgentMaxStepsRaw, 10) : 10,
-      ...(subAgentSystemPrompt ? { systemPrompt: subAgentSystemPrompt } : {}),
+      // Explicit null, never omission (Fable verify B2): under the merge
+      // semantics above, an OMITTED key preserves the stored value — so
+      // clearing this textarea would silently leave the old prompt steering
+      // the sub-agent. A null value survives the shallow merge and reads as
+      // "unset" downstream.
+      systemPrompt: subAgentSystemPrompt || null,
     };
   }
 
