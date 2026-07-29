@@ -4745,6 +4745,89 @@ export class AgentService {
       // warn: continue with original text; safety event logged by PiiFilterService.
     }
 
+    // LATENCY (audit F5, narrow scope) — KICK OFF memory retrieval HERE and
+    // await it much later (at prompt assembly). It used to run inline just
+    // before the LLM call, adding its full cost (200-800ms typical, up to the
+    // 5s race budget on a cold embedding key) to time-to-first-token. Nothing
+    // between here and the consumption site depends on it, so its budget now
+    // overlaps the provider gate, route resolution (which can itself ping) and
+    // the prompt-cache lookup — by the time we await, it is usually resolved.
+    //
+    // Deliberately NOT the full F5 restructure: reordering the mutex /
+    // idempotency / rate-limit / budget-reservation gates in
+    // executeStreamingTurn would trade real fail-closed correctness guarantees
+    // for ~300ms against a 1-3s dispatch. This is the safe, high-value subset.
+    //
+    // Self-contained: resolves to the fused result, or null when memory is
+    // unavailable / policy-disabled / it timed out. NEVER rejects (the catch
+    // is inside), so there is no unhandled rejection while it is in flight.
+    let memoryFusePromise: Promise<Awaited<ReturnType<typeof fuseContextRetrieval>> | null> | null =
+      null;
+    if (
+      this.memoryService &&
+      scope.userId &&
+      typeof message === "string" &&
+      message.trim().length > 0
+    ) {
+      const memSvc = this.memoryService;
+      memoryFusePromise = (async () => {
+        try {
+          let policyEnabled = true;
+          let injectClusteringId: string | null = null;
+          if (scope.agentId) {
+            const agentRow = await this.prisma.platosAgent.findFirst({
+              where: {
+                id: scope.agentId,
+                organizationId: scope.organizationId,
+                projectId: scope.projectId,
+                environmentId: scope.environmentId,
+              },
+              select: { extractionPolicy: true, clusteringId: true },
+            });
+            const policy = resolveExtractionPolicy(agentRow?.extractionPolicy ?? null);
+            policyEnabled = policy.enabled;
+            injectClusteringId = (agentRow as any)?.clusteringId ?? null;
+          }
+          if (!policyEnabled) return null;
+          // Hard timeout preserved exactly — a slow embedding key can never
+          // stall the turn; on expiry we proceed with no memory block.
+          const injectTimeoutMs = env.PLATOS_MEMORY_INJECT_TIMEOUT_MS ?? 5000;
+          return await Promise.race([
+            fuseContextRetrieval(
+              { memory: memSvc, graph: this.knowledgeGraph },
+              {
+                organizationId: scope.organizationId,
+                projectId: scope.projectId,
+                environmentId: scope.environmentId,
+              },
+              {
+                query: message,
+                userId: scope.userId,
+                limit: 8,
+                minScore: 0.35,
+                // Defaults exclude "private"; pass agent-visible + hidden.
+                visibilityIn: ["agent_visible", "hidden"],
+                // Agent-scoped injection: own agent, or cluster MEMBERS when
+                // clustered — never scope-wide (the Mark/Ada leak fix). RAG
+                // chunks are excluded inside the fusion so raw document text
+                // never eats the injection budget.
+                ...(await this.memoryAgentFilter(scope.agentId, injectClusteringId, scope)),
+              },
+            ),
+            new Promise<never>((_, reject) =>
+              setTimeout(
+                () => reject(new Error(`memory retrieval exceeded ${injectTimeoutMs}ms inject budget`)),
+                injectTimeoutMs,
+              ),
+            ),
+          ]);
+        } catch (err: any) {
+          this.logger.warn(`[agent.stream] memory injection failed: ${err?.message ?? err}`);
+          return null;
+        }
+      })();
+    }
+
     // PPR-65 — pre-stream provider gate. If the configured model's provider
     // isn't in this scope's `availableModels` list (i.e. env vars missing or
     // the provider was toggled off on the `/agent-providers` page), we fail
@@ -5011,71 +5094,17 @@ export class AgentService {
       message.trim().length > 0
     ) {
       try {
-        let policyEnabled = true;
-        let injectClusteringId: string | null = null;
-        if (scope.agentId) {
-          const agentRow = await this.prisma.platosAgent.findFirst({
-            where: {
-              id: scope.agentId,
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-            },
-            select: { extractionPolicy: true, clusteringId: true },
-          });
-          const policy = resolveExtractionPolicy(agentRow?.extractionPolicy ?? null);
-          policyEnabled = policy.enabled;
-          injectClusteringId = (agentRow as any)?.clusteringId ?? null;
-        }
-        if (policyEnabled) {
+        // LATENCY (audit F5, narrow) — consume the retrieval kicked off far
+        // earlier (before the provider gate). Its hard 5s budget has been
+        // running concurrently with the gate, route resolution and prompt-cache
+        // work, so by the time we get here it is normally already resolved:
+        // memory injection adds ~0 to time-to-first-token instead of
+        // 200-800ms (or the full race budget on a cold embedding key).
+        // Resolves to null when memory is unavailable, policy-disabled, or it
+        // timed out — all of which mean "no memory block", same as before.
+        const fused = memoryFusePromise ? await memoryFusePromise : null;
+        if (fused) {
           const budget = Math.max(100, env.PLATOS_MEMORY_INJECT_BUDGET_TOKENS ?? 800);
-          // Memory injection is best-effort and must NEVER block the response.
-          // semanticSearch embeds the query (an external provider HTTP call) +
-          // hits pgvector; a slow embedding key once stalled a turn ~64s
-          // pre-LLM. Race it against a hard timeout (default 5s). On timeout
-          // the catch below logs + proceeds with no memory block — the LLM
-          // still answers, just without the "things I remember" enrichment.
-          const injectTimeoutMs = env.PLATOS_MEMORY_INJECT_TIMEOUT_MS ?? 5000;
-          // Multi-signal retrieval (dense ⊕ graph) for the AUTOMATIC injection
-          // — the knowledge graph now participates in EVERY turn's context,
-          // not just explicit recall(). Memories connected to people/orgs in
-          // the message rank higher, and the resolved entity/relationship
-          // slice is injected too. Still raced against the hard inject timeout
-          // so a slow embedding key can never stall the turn pre-LLM.
-          const fused = await Promise.race([
-            fuseContextRetrieval(
-              { memory: this.memoryService, graph: this.knowledgeGraph },
-              {
-                organizationId: scope.organizationId,
-                projectId: scope.projectId,
-                environmentId: scope.environmentId,
-              },
-              {
-                query: message,
-                userId: scope.userId,
-                limit: 8,
-                minScore: 0.35,
-                // Defaults exclude "private"; pass agent-visible + hidden.
-                visibilityIn: ["agent_visible", "hidden"],
-                // Agent-scoped injection: own agent, or cluster MEMBERS when
-                // clustered — never scope-wide (the Mark/Ada leak fix). RAG
-                // chunks are excluded inside the fusion so raw document text
-                // never eats the injection budget.
-                ...(await this.memoryAgentFilter(scope.agentId, injectClusteringId, scope)),
-              },
-            ),
-            new Promise<never>((_, reject) =>
-              setTimeout(
-                () =>
-                  reject(
-                    new Error(
-                      `memory retrieval exceeded ${injectTimeoutMs}ms inject budget`,
-                    ),
-                  ),
-                injectTimeoutMs,
-              ),
-            ),
-          ]);
           const hits = fused.memories;
           // Theme M.5 — drop memories flagged by a thumbs-down rating.
           // The metadata.flaggedByRating marker is written by
