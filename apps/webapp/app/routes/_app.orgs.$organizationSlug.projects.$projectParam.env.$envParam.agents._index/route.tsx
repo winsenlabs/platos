@@ -63,6 +63,10 @@ type AgentRow = {
   slug: string;
   model: string;
   toolMode: string;
+  /** CONSISTENCY (audit #6) — the REAL tool-call method. `toolMode` is the
+   *  dead legacy column (never written by the webapp), so the badge below
+   *  reads this first and only falls back to the legacy value. */
+  toolsBlockConfig?: { mode?: string } | null;
   isActive: boolean;
   threadCount: number;
   createdAt: string;
@@ -265,7 +269,7 @@ export default function AgentsPage() {
               <TableRow>
                 <TableHeaderCell>Name</TableHeaderCell>
                 <TableHeaderCell>Model</TableHeaderCell>
-                <TableHeaderCell>Tool Mode</TableHeaderCell>
+                <TableHeaderCell>Tool-call method</TableHeaderCell>
                 <TableHeaderCell>Conversations</TableHeaderCell>
                 <TableHeaderCell>Status</TableHeaderCell>
                 <TableHeaderCell hiddenLabel>Actions</TableHeaderCell>
@@ -280,7 +284,7 @@ export default function AgentsPage() {
                   </TableCell>
                   <TableCell>{agent.model}</TableCell>
                   <TableCell>
-                    <Badge variant="outline-rounded">{agent.toolMode}</Badge>
+                    <Badge variant="outline-rounded">{agent.toolsBlockConfig?.mode ?? agent.toolMode}</Badge>
                   </TableCell>
                   <TableCell>{agent.threadCount}</TableCell>
                   <TableCell>

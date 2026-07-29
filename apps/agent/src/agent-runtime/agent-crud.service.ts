@@ -76,12 +76,54 @@ function coerceBlockList(value: unknown): unknown[] | null {
  */
 export type ToolDisplayMode = "full" | "summary" | "meta-tool" | "hybrid";
 
+/** The only valid tool-call methods. Anything else is coerced (see
+ *  `normalizeToolsBlockConfig`). */
+export const TOOL_CALL_MODES = ["direct", "sub-agent", "execute-tool"] as const;
+export type ToolCallMode = (typeof TOOL_CALL_MODES)[number];
+
+/**
+ * CONSISTENCY (audit #1) — coerce `toolsBlockConfig.mode` to a valid value.
+ *
+ * The create wizard used to submit `"tool-wrapper"`, which is not in the enum:
+ * nothing validated it, so it was stored raw, ignored at runtime (the only
+ * runtime branch is `=== "sub-agent"`), and rendered BLANK in the edit
+ * select — re-saving then skipped the field, making the bad value sticky.
+ * That was the literal "I picked a tool mode and it wasn't respected".
+ *
+ * Applied on create AND update, so a legacy row self-heals on its next save
+ * (no data migration required). `"tool-wrapper"` maps to its intended
+ * semantics (`execute-tool`); any other unknown value falls back to `direct`.
+ */
+export function normalizeToolsBlockConfig(cfg: unknown): unknown {
+  if (!cfg || typeof cfg !== "object" || Array.isArray(cfg)) return cfg;
+  const c = cfg as Record<string, unknown>;
+  const mode = c.mode;
+  if (typeof mode === "string" && (TOOL_CALL_MODES as readonly string[]).includes(mode)) {
+    return cfg;
+  }
+  const coerced: ToolCallMode = mode === "tool-wrapper" ? "execute-tool" : "direct";
+  return { ...c, mode: coerced };
+}
+
+/**
+ * CONSISTENCY (audit #2) — shallow-merge a partial JSON config patch over the
+ * stored object so a client that owns only some keys can't wipe the rest.
+ * Explicit `null` clears the column; a non-object patch (or no prior value)
+ * passes through unchanged.
+ */
+export function mergeJsonConfig(existing: unknown, patch: unknown): unknown {
+  if (patch === null) return null;
+  if (!patch || typeof patch !== "object" || Array.isArray(patch)) return patch;
+  if (!existing || typeof existing !== "object" || Array.isArray(existing)) return patch;
+  return { ...(existing as Record<string, unknown>), ...(patch as Record<string, unknown>) };
+}
+
 export interface ToolsBlockConfig {
   /**
    * Execution mode — untouched by TL.2. Governs whether the parent LLM
    * calls tools directly, through a sub-agent, or via execute_tools only.
    */
-  mode: "direct" | "sub-agent" | "execute-tool";
+  mode: ToolCallMode;
   enabledTools: string[];
   perToolPerms?: Record<string, { requiresApproval?: boolean; destructive?: boolean }>;
   /**
@@ -280,6 +322,10 @@ export interface AgentVersionSnapshot {
   compactThreshold: number;
   enableUserProfiling: boolean;
   toolMode: string;
+  /** CONSISTENCY (audit #8) — surfaced on the record so callers (e.g. clone)
+   *  can carry it. The column always existed; only the type omitted it, which
+   *  is exactly why agents_clone_from silently dropped durable mode. */
+  executionMode?: string | null;
   toolsBlockConfig: ToolsBlockConfig | null;
   subAgentConfig: SubAgentConfig | null;
   memoryConfig: Record<string, unknown> | null;
@@ -326,6 +372,10 @@ export interface AgentRecord {
   compactThreshold: number;
   enableUserProfiling: boolean;
   toolMode: string;
+  /** CONSISTENCY (audit #8) — surfaced on the record so callers (e.g. clone)
+   *  can carry it. The column always existed; only the type omitted it, which
+   *  is exactly why agents_clone_from silently dropped durable mode. */
+  executionMode?: string | null;
   toolsBlockConfig: ToolsBlockConfig | null;
   subAgentConfig: SubAgentConfig | null;
   memoryConfig: Record<string, unknown> | null;
@@ -504,7 +554,7 @@ export class AgentCrudService {
         enableUserProfiling: dto.enableUserProfiling ?? false,
         toolMode: dto.toolMode || "direct",
         executionMode: dto.executionMode || "direct",
-        toolsBlockConfig: (dto.toolsBlockConfig as any) || null,
+        toolsBlockConfig: (normalizeToolsBlockConfig(dto.toolsBlockConfig) as any) || null,
         subAgentConfig: (dto.subAgentConfig as any) || null,
         memoryConfig: dto.memoryConfig || null,
         metaTools: dto.metaTools || {
@@ -669,8 +719,26 @@ export class AgentCrudService {
         ...(dto.clusteringId !== undefined && { clusteringId: dto.clusteringId ?? null }),
         ...(dto.toolMode !== undefined && { toolMode: dto.toolMode }),
         ...(dto.executionMode !== undefined && { executionMode: dto.executionMode }),
-        ...(dto.toolsBlockConfig !== undefined && { toolsBlockConfig: (dto.toolsBlockConfig as any) }),
-        ...(dto.subAgentConfig !== undefined && { subAgentConfig: (dto.subAgentConfig as any) }),
+        // CONSISTENCY (audit #2) — MERGE these two JSON configs instead of
+        // replacing them. Multiple screens own different keys of the same
+        // column (the Basic form owns `mode`; the Tools tab owns displayMode /
+        // pinnedTools / enabledCategories / categoryDescriptions, and
+        // subAgentConfig.toolMode / promptCaching). A wholesale replace meant
+        // whichever screen saved last wiped the other's keys. A shallow merge
+        // over the stored object makes partial patches safe for every client
+        // (webapp, MCP, API). Explicit `null` still clears the column.
+        ...(dto.toolsBlockConfig !== undefined && {
+          toolsBlockConfig: mergeJsonConfig(
+            (existing as any)?.toolsBlockConfig,
+            normalizeToolsBlockConfig(dto.toolsBlockConfig),
+          ) as any,
+        }),
+        ...(dto.subAgentConfig !== undefined && {
+          subAgentConfig: mergeJsonConfig(
+            (existing as any)?.subAgentConfig,
+            dto.subAgentConfig,
+          ) as any,
+        }),
         ...(dto.memoryConfig !== undefined && { memoryConfig: dto.memoryConfig }),
         ...(dto.metaTools !== undefined && { metaTools: dto.metaTools }),
         ...(dto.featureFlags !== undefined && { featureFlags: dto.featureFlags as any }),

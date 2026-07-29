@@ -172,6 +172,17 @@ export class TurnDispatchService {
     Number(process.env.PLATOS_SESSION_DRIVE_TIMEOUT_MS) || 600_000,
   );
 
+  /** LATENCY (audit F1) — how long after the previous turn's drain finished we
+   *  still run the session race guard. Past this, the previous run has provably
+   *  finalized (observed total run time ~14s, of which ~10s is post-drain
+   *  finalization), so the guard's two Trigger Cloud round-trips are pure
+   *  overhead and are skipped. Deliberately generous (>2x observed). Floor of
+   *  15s keeps a mistuned env var from disabling the guard. */
+  private readonly guardSkipMs = Math.max(
+    15_000,
+    Number(process.env.PLATOS_SESSION_GUARD_SKIP_MS) || 30_000,
+  );
+
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
     private readonly agentTaskService: AgentTaskService,
@@ -529,6 +540,10 @@ export class TurnDispatchService {
     // byte-identical to the gateway's former literal so live cursors survive
     // the deploy (same Redis singleton, same platos: keyPrefix).
     const cursorKey = `chatsess:cursor:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${threadId}`;
+    // LATENCY (audit F1) — wall-clock stamp of when the PREVIOUS turn's drain
+    // finished, used to skip the race guard's Trigger Cloud round-trips when
+    // the previous run has provably finalized. See the guard below.
+    const prevDoneKey = `chatsess:prevdone:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${threadId}`;
 
     let chatClient: any;
     let stream: AsyncIterable<any>;
@@ -546,20 +561,52 @@ export class TurnDispatchService {
         lastEventId = undefined;
       }
 
-      // RACE GUARD (the multi-turn-SDK-bug workaround — KEEP VERBATIM). One
-      // turn per run means the previous run spends ~10s finalizing after its
-      // last chunk. An append during that window lands in the exiting run's
-      // inbox and is never consumed. If the user replies within the window,
-      // wait for the previous run to fully exit first. No-ops on first messages
-      // (no cursor yet) and costs one retrieve on relaxed-cadence turns.
-      if (lastEventId) {
+      // RACE GUARD (the multi-turn-SDK-bug workaround). One turn per run means
+      // the previous run spends ~10s finalizing after its last chunk. An append
+      // during that window lands in the exiting run's inbox and is never
+      // consumed, so the message is silently lost — the guard waits it out.
+      //
+      // LATENCY (audit F1): the guard used to pay TWO cross-region Trigger
+      // Cloud round-trips (sessions.retrieve + runs.retrieve) on EVERY turn
+      // after the first, and polled at a 1s interval (overshooting the actual
+      // exit by up to 1s). Two safe reductions, neither of which weakens the
+      // protection:
+      //
+      //  1. SKIP WHEN PROVABLY SAFE — we stamp wall-clock time when the
+      //     previous turn's drain finished (`prevDoneKey`). If more than
+      //     `guardSkipMs` has elapsed since then, the previous run has long
+      //     since finalized (observed total run time ~14s; default margin is
+      //     >2x that), so the guard can be skipped entirely — zero API calls.
+      //     This is the relaxed-cadence case, i.e. most turns.
+      //     NOTE: deliberately NOT "skip whenever the stamp exists" — the
+      //     stamp marks drain completion, which is ~10s BEFORE the run
+      //     actually exits. Skipping on mere existence would reintroduce the
+      //     silent message loss this guard prevents.
+      //  2. POLL FASTER — 250ms instead of 1000ms, with the iteration count
+      //     scaled so the total ceiling is unchanged (~20s). The wait now ends
+      //     within ~250ms of the run actually exiting instead of up to 1s late.
+      //
+      // Missing/expired stamp ⇒ unknown ⇒ run the guard (fail safe).
+      let guardNeeded = !!lastEventId;
+      if (guardNeeded) {
+        try {
+          const prevDoneRaw = await this.redis.get(prevDoneKey);
+          const prevDoneAt = prevDoneRaw ? Number(prevDoneRaw) : NaN;
+          if (Number.isFinite(prevDoneAt) && Date.now() - prevDoneAt > this.guardSkipMs) {
+            guardNeeded = false;
+          }
+        } catch {
+          // Redis unavailable — fall through and run the guard (fail safe).
+        }
+      }
+      if (guardNeeded) {
         try {
           const sessionsSdk = triggerSdk?.sessions;
           const runsSdk = triggerSdk?.runs;
           const sess = await sessionsSdk?.retrieve(threadId).catch(() => null);
           const prevRunId = (sess as any)?.currentRunId as string | undefined;
           if (prevRunId && runsSdk?.retrieve) {
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 80; i++) {
               const r: any = await runsSdk.retrieve(prevRunId).catch(() => null);
               if (
                 !r ||
@@ -568,7 +615,7 @@ export class TurnDispatchService {
               ) {
                 break;
               }
-              await new Promise((res) => setTimeout(res, 1000));
+              await new Promise((res) => setTimeout(res, 250));
             }
           }
         } catch {
@@ -692,6 +739,16 @@ export class TurnDispatchService {
     // authoritative `committedCursor` captured in onTurnComplete; fall back to
     // reading it off the client only if the turn didn't signal completion
     // (e.g. a timed-out drain) — and never overwrite a live cursor with undefined.
+    // LATENCY (audit F1) — stamp when this turn's drain finished so the NEXT
+    // turn can skip the race guard once the finalization window has provably
+    // passed. Written unconditionally (even on a timed-out drain) because it
+    // records "the drain ended at T", which is exactly what the skip check
+    // ages off. 1h TTL: past that the stamp is absent and the guard simply
+    // runs (fail safe).
+    await (this.redis as any)
+      .set(prevDoneKey, String(Date.now()), "EX", 3600)
+      .catch(() => undefined);
+
     const cursor =
       committedCursor ?? ((chatClient as any)?.session?.lastEventId as string | undefined);
     if (cursor) {

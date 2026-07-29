@@ -7,7 +7,7 @@
  *   3. Dynamic   — context limit, history mode, compact threshold,
  *                  user profiling, memory settings, extraction policy.
  *                  Bug fix: Next advances even when memory toggles are on.
- *   4. Tool mode — direct / sub-agent / tool-wrapper + live prompt preview.
+ *   4. Tool-call method — direct / sub-agent / execute-tool + live prompt preview.
  *                  Create button submits.
  *
  * Tools config is NOT part of the wizard — belongs on agent detail.
@@ -292,7 +292,7 @@ const STEPS: { step: WizardStep; label: string }[] = [
   { step: 1, label: "Identity" },
   { step: 2, label: "Prompt" },
   { step: 3, label: "Behavior" },
-  { step: 4, label: "Tool Mode" },
+  { step: 4, label: "Tool-call method" },
 ];
 
 // ─── Prompt preview ───────────────────────────────────────────────────────────
@@ -324,14 +324,14 @@ function buildPromptPreview(
     lines.push("");
   }
 
-  // Tool mode block.
+  // Tool-call method block.
   switch (toolMode) {
     case "sub-agent":
       lines.push("[tools — sub-agent] You have a sub-agent available via delegate_to_sub_agent.");
       lines.push("Use find_tools to discover capabilities, then delegate.");
       break;
-    case "tool-wrapper":
-      lines.push("[tools — tool-wrapper] Use find_tools to search, then execute_tools to call.");
+    case "execute-tool":
+      lines.push("[tools — execute-tool] Use find_tools to search, then execute_tools to call.");
       lines.push("Tool schemas are NOT inlined — query by category or name.");
       break;
     default:
@@ -381,7 +381,7 @@ export default function NewAgentPage() {
   const [executionMode, setExecutionMode] = useState<"direct" | "durable">("direct");
 
   // Step 4.
-  const [toolMode, setToolMode] = useState<"direct" | "sub-agent" | "tool-wrapper">("direct");
+  const [toolMode, setToolMode] = useState<"direct" | "sub-agent" | "execute-tool">("direct");
 
   const promptPreview = buildPromptPreview(agentName, toolMode, userProfiling, blocks as unknown[]);
 
@@ -623,9 +623,9 @@ export default function NewAgentPage() {
                 )}
               </section>
 
-              {/* Execution mode */}
+              {/* Turn execution (executionMode: in-process vs durable) */}
               <section>
-                <Header3>Execution mode</Header3>
+                <Header3>Turn execution</Header3>
                 <Paragraph variant="small" className="mt-1 mb-3">
                   How this agent's turns are executed.
                 </Paragraph>
@@ -634,12 +634,12 @@ export default function NewAgentPage() {
                     [
                       {
                         value: "direct",
-                        label: "Direct",
+                        label: "In-process (streamed)",
                         desc: "Runs in-process, streamed live.",
                       },
                       {
                         value: "durable",
-                        label: "Durable",
+                        label: "Durable (Trigger.dev)",
                         desc: "Runs as a Trigger.dev run — survives restarts/redeploys and can suspend for human approval.",
                       },
                     ] as const
@@ -780,18 +780,18 @@ export default function NewAgentPage() {
                 </Button>
                 {/* PIFSP-5 bug fix: always enabled regardless of memory toggle state */}
                 <Button type="button" variant="primary/medium" onClick={advance}>
-                  Next: Tool Mode →
+                  Next: Tool-call method →
                 </Button>
               </div>
             </div>
           )}
 
-          {/* ── Step 4: Tool mode + preview ──────────────────────── */}
+          {/* ── Step 4: Tool-call method + preview ─────────────────── */}
           {step === 4 && (
             <Form method="post">
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-base font-semibold text-text-bright mb-0.5">Tool Mode</h2>
+                  <h2 className="text-base font-semibold text-text-bright mb-0.5">Tool-call method</h2>
                   <Paragraph variant="small">
                     How this agent calls tools. The preview below shows the exact system prompt
                     Platos will send on turn 1.
@@ -805,7 +805,7 @@ export default function NewAgentPage() {
                         {
                           value: "direct",
                           label: "Direct",
-                          desc: "Tool schemas inlined into main LLM context. Best for <30 tools.",
+                          desc: "The agent calls tools itself. Default — best for <30 tools.",
                         },
                         {
                           value: "sub-agent",
@@ -813,8 +813,8 @@ export default function NewAgentPage() {
                           desc: "Dedicated tool-calling agent (Claude Haiku). Best for 100+ tools.",
                         },
                         {
-                          value: "tool-wrapper",
-                          label: "Tool wrapper",
+                          value: "execute-tool",
+                          label: "Execute-tool wrapper",
                           desc: "Minimalist — use find_tools then execute_tools. Max token savings.",
                         },
                       ] as const

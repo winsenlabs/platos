@@ -413,6 +413,12 @@ export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpTool
           compactThreshold: src.compactThreshold,
           enableUserProfiling: src.enableUserProfiling,
           toolMode: src.toolMode,
+          // CONSISTENCY (audit #8) — carry executionMode through the clone.
+          // It was omitted, so cloning a DURABLE agent silently produced a
+          // direct one (the DTO has supported the field all along).
+          ...(src.executionMode
+            ? { executionMode: src.executionMode as "direct" | "durable" }
+            : {}),
           ...(src.toolsBlockConfig ? { toolsBlockConfig: src.toolsBlockConfig } : {}),
           ...(src.subAgentConfig ? { subAgentConfig: src.subAgentConfig } : {}),
           ...(src.memoryConfig ? { memoryConfig: src.memoryConfig } : {}),

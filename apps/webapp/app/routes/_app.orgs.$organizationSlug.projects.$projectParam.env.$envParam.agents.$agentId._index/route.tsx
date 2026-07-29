@@ -593,19 +593,23 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (promptBlocks !== undefined) body.promptBlocks = promptBlocks;
   if (maxStepsRaw) body.maxSteps = parseInt(maxStepsRaw, 10);
 
+  // CONSISTENCY (audit #2) — send ONLY the fields this form owns. It used to
+  // rebuild the whole toolsBlockConfig ({mode, enabledTools: [], perToolPerms:
+  // {}}), which silently wiped everything the Tools tab maintains
+  // (displayMode, pinnedTools, enabledCategories, categoryDescriptions, ...)
+  // on every save of the Basic form — two screens fighting over one JSON
+  // column, and this one always lost data. The backend now deep-merges
+  // toolsBlockConfig/subAgentConfig (agent-crud.service.ts), so a partial
+  // patch preserves every key it doesn't mention.
   if (toolsBlockMode) {
-    body.toolsBlockConfig = {
-      mode: toolsBlockMode,
-      enabledTools: [],
-      perToolPerms: {},
-    };
+    body.toolsBlockConfig = { mode: toolsBlockMode };
   }
 
   if (toolsBlockMode === "sub-agent") {
     body.subAgentConfig = {
       model: subAgentModel || "anthropic:claude-haiku-4-5-20251001",
       maxSteps: subAgentMaxStepsRaw ? parseInt(subAgentMaxStepsRaw, 10) : 10,
-      systemPrompt: subAgentSystemPrompt || undefined,
+      ...(subAgentSystemPrompt ? { systemPrompt: subAgentSystemPrompt } : {}),
     };
   }
 
@@ -964,9 +968,9 @@ export default function AgentDetailPage() {
               )}
             </section>
 
-            {/* Tools Block — Execution Mode */}
+            {/* Tool-call method (toolsBlockConfig.mode) */}
             <section>
-              <Header3>Tools Block — Execution Mode</Header3>
+              <Header3>Tool-call method</Header3>
               <Paragraph variant="small" className="mt-1 mb-3">
                 How this agent calls tools. Sub-agent mode uses Claude Haiku for precision tool calling.
               </Paragraph>
@@ -977,7 +981,7 @@ export default function AgentDetailPage() {
                   onChange={(e) => setToolsBlockMode(e.target.value)}
                   className="w-full rounded-md border border-charcoal-700 bg-charcoal-800 px-3 py-2 text-sm text-text-bright"
                 >
-                  <option value="direct">Direct — schemas in main LLM (default, good for &lt;30 tools)</option>
+                  <option value="direct">Direct — parent LLM calls tools itself (default)</option>
                   <option value="sub-agent">Sub-agent — dedicated tool-calling agent (recommended for 100+ tools)</option>
                   <option value="execute-tool">Execute-tool wrapper — minimalist (max token savings, ~15% retry rate)</option>
                 </select>
@@ -1080,9 +1084,9 @@ export default function AgentDetailPage() {
               </Fieldset>
             </section>
 
-            {/* Execution mode */}
+            {/* Execution mode (executionMode: in-process vs durable) */}
             <section>
-              <Header3>Execution mode</Header3>
+              <Header3>Turn execution</Header3>
               <Paragraph variant="small" className="mt-1 mb-3">
                 How this agent's turns are executed.
               </Paragraph>
@@ -1091,12 +1095,12 @@ export default function AgentDetailPage() {
                   [
                     {
                       value: "direct",
-                      label: "Direct",
+                      label: "In-process (streamed)",
                       desc: "Runs in-process, streamed live.",
                     },
                     {
                       value: "durable",
-                      label: "Durable",
+                      label: "Durable (Trigger.dev)",
                       desc: "Runs as a Trigger.dev run — survives restarts/redeploys and can suspend for human approval.",
                     },
                   ] as const
