@@ -606,11 +606,35 @@ export function renderCategorySummaryBlock(
       DEFAULT_CATEGORY_DESCRIPTIONS[id] ??
       "";
     const tail = desc.length > 0 ? ` — ${desc}` : "";
-    const toolWord = count === 1 ? "tool" : "tools";
-    lines.push(`- **${id}** (${count} ${toolWord})${tail}`);
+    lines.push(`- **${id}** (${describeToolCount(count)})${tail}`);
   }
 
   return lines.join("\n");
+}
+
+/**
+ * PROMPT-CACHE (audit finding 7) — bucket a category's tool count.
+ *
+ * This block is spliced into the system prompt, so an EXACT count made the
+ * cached prefix depend on the live size of the tool registry. That moves for
+ * reasons that have nothing to do with the agent: an MCP server publishing one
+ * new tool, a connected entity re-discovering, the ~5-minute discovery cron. Any
+ * of those rewrote the prompt and forced a full-price prefix write on the next
+ * turn, for every agent in summary or hybrid display mode.
+ *
+ * A bucket keeps the signal the count was there for — roughly how much lives
+ * behind this category — while being effectively immutable in a real deployment:
+ * a registry sitting at 47 tools reads "many" whether it drifts to 40 or 400.
+ * The exact number was never actionable anyway; the model cannot behave
+ * differently knowing a category holds 47 tools rather than 48, and categories
+ * with zero tools are not emitted at all, so "at least one" is already implied.
+ */
+export function describeToolCount(count: number): string {
+  const n = Math.max(0, Math.floor(count || 0));
+  if (n <= 1) return `${n} tool`;
+  if (n <= 5) return "a few tools";
+  if (n <= 20) return "several tools";
+  return "many tools";
 }
 
 /**

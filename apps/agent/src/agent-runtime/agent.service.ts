@@ -1672,8 +1672,24 @@ export class AgentService {
     const _findToolsRawEntityIds = _findToolsCtxBag
       ? resolveCtxPath(_findToolsCtxBag, _findToolsEntityKey)
       : undefined;
+    // PROMPT-CACHE (audit finding 8). Sorted + deduped because this list is
+    // rendered into `find_tools`'s DESCRIPTION below, and tool descriptions sit
+    // in the `tools` block — which precedes `system` in Anthropic's cache
+    // prefix, so a single reordered byte here invalidates the tool definitions,
+    // the system prompt, AND every cached message after them. The caller's array
+    // order is arbitrary (it comes straight off per-turn sessionContext), so the
+    // same set of entities could render two different strings on two turns.
+    // The SET itself must stay per-turn — it is a tenancy boundary (a request
+    // from customer A must never see customer B's tools), and different sets
+    // correctly get different cache entries. Only the ordering is noise.
     const _findToolsEntityIds: string[] = Array.isArray(_findToolsRawEntityIds)
-      ? _findToolsRawEntityIds.filter((e): e is string => typeof e === "string" && e.length > 0)
+      ? Array.from(
+          new Set(
+            _findToolsRawEntityIds.filter(
+              (e): e is string => typeof e === "string" && e.length > 0,
+            ),
+          ),
+        ).sort()
       : [];
 
     // Build a dynamic description so the LLM knows which entities are in scope
