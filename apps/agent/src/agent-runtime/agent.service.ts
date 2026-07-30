@@ -6683,6 +6683,24 @@ export class AgentService {
       { role: "user", content: message },
     ];
 
+    // WORKSTREAM A / audit finding 11 — this non-streaming path had NO cache
+    // breakpoint at all, not even on the system prompt, while running the same
+    // multi-step tool loop as stream() (`stopWhen: isStepCount(maxSteps)` on the
+    // generateText call below). Every step re-paid full price for the entire
+    // growing history. It carries real traffic — batch executor, run-once flows,
+    // admin summaries — so it gets the same treatment stream() gets: a
+    // breakpoint on the system message, rolling breakpoints across the message
+    // array, and a `prepareStep` that moves the trailing one forward as the SDK
+    // appends each step's tool_use / tool_result blocks.
+    //
+    // Provider derived exactly as stream() does it (`model.split(":")[0]`) so the
+    // two paths cannot drift on what counts as the Anthropic path.
+    const runProvider = agentConfig.model.split(":")[0] || "anthropic";
+    const runAnthropicCacheOpts =
+      runProvider === "anthropic"
+        ? { anthropic: { cacheControl: { type: "ephemeral" as const } } }
+        : undefined;
+
     // Theme F.5 — structured-output path. Bail out early with a
     // validated object or StructuredOutputError.
     const turnSchema = resolveTurnSchema({
@@ -6778,9 +6796,53 @@ export class AgentService {
     const result = await generateText({
       model,
       instructions: systemPrompt,
-      messages: baseMessages,
+      // Audit finding 11 — breakpoints on the message array. The system prompt
+      // travels via `instructions`, which cannot carry providerOptions, but that
+      // is fine: an Anthropic cache entry at position P covers the WHOLE prefix
+      // [0..P], so a breakpoint on a message also caches the tool definitions
+      // and the system prompt ahead of it.
+      messages: runAnthropicCacheOpts
+        ? (withAnthropicCacheBreakpoints(
+            baseMessages as unknown as CacheableMessage[],
+          ) as unknown as CoreMessage[])
+        : baseMessages,
       tools,
       stopWhen: isStepCount(agentConfig.maxSteps),
+      // Move the trailing breakpoint forward as generateText appends each step's
+      // tool_use / tool_result blocks — without this the breakpoint goes stale at
+      // step 1 and every later step re-pays full price for the whole history.
+      // `any` on the callback params: the SDK types these through generics bound
+      // to the tool set, so a hand-written narrower type is not assignable
+      // (parameter contravariance).
+      ...(runAnthropicCacheOpts
+        ? {
+            prepareStep: ({ messages: stepMessages }: any) => ({
+              messages: withAnthropicCacheBreakpoints(
+                stepMessages as unknown as CacheableMessage[],
+              ) as any,
+            }),
+          }
+        : {}),
+      // WORKSTREAM C — same in-place repair of a stringified tool input that
+      // stream() gets, for the same reason: bouncing the error back to the model
+      // costs a full-price step per retry.
+      repairToolCall: async ({ toolCall, inputSchema, error }: any) => {
+        try {
+          if (error?.name === "AI_NoSuchToolError") return null;
+          const schema = (await inputSchema({ toolName: toolCall.toolName })) as any;
+          const repaired = repairStringifiedToolInput(toolCall.input, schema);
+          if (!repaired) return null;
+          this.logger.warn(
+            `[agent.run] repaired stringified tool input for '${toolCall.toolName}' (saved a full-price retry step)`,
+          );
+          return { ...toolCall, input: repaired } as any;
+        } catch (err: any) {
+          this.logger.warn(
+            `[agent.run] tool-input repair failed for '${toolCall?.toolName}': ${err?.message ?? err}`,
+          );
+          return null;
+        }
+      },
       abortSignal: turnOverrides?.abortSignal,
     });
 

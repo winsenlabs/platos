@@ -137,6 +137,52 @@ describe("anthropic wire format — cacheControl actually reaches the API", () =
     expect(sys[0].cache_control).toEqual({ type: "ephemeral" });
   });
 
+  /**
+   * Audit finding 11 — the non-streaming `run()` path passes the system prompt
+   * via `instructions`, which cannot carry providerOptions, so its breakpoints
+   * live only on the message array. This asserts that still caches the static
+   * prefix: an Anthropic cache entry at position P covers the whole prefix
+   * [0..P], so the tool definitions and the system prompt sitting AHEAD of a
+   * marked message are inside the cached region.
+   */
+  it("run()-shaped call: instructions + message breakpoints still mark the wire", async () => {
+    let body: any;
+    const anthropic = createAnthropic({
+      apiKey: "test-key-not-used",
+      fetch: (async (_url: any, init: any) => {
+        body = JSON.parse(String(init.body));
+        return anthropicResponse();
+      }) as any,
+    });
+    const msgs = withAnthropicCacheBreakpoints([
+      { role: "user", content: "do the thing" },
+      {
+        role: "assistant",
+        content: [{ type: "tool-call", toolCallId: "c1", toolName: "t", input: { a: 1 } }],
+      },
+      {
+        role: "tool",
+        content: [
+          { type: "tool-result", toolCallId: "c1", toolName: "t", output: { type: "json", value: { ok: true } } },
+        ],
+      },
+    ]);
+    await generateText({
+      model: anthropic("claude-sonnet-4-5"),
+      instructions: "SYSTEM PROMPT VIA INSTRUCTIONS",
+      messages: msgs as any,
+    } as any);
+
+    // The system prompt reached the wire via the top-level `system` field...
+    const sysText = JSON.stringify(body.system ?? "");
+    expect(sysText).toContain("SYSTEM PROMPT VIA INSTRUCTIONS");
+    // ...and at least one message breakpoint is present, which is what pulls
+    // that system field into the cached prefix.
+    const found = markers(body);
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.length).toBeLessThanOrEqual(4);
+  });
+
   it("never exceeds Anthropic's 4-breakpoint limit on a long tool-heavy turn", async () => {
     const msgs: CacheableMessage[] = [
       { role: "system", content: "SYS", providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } },
