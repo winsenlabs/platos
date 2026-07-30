@@ -6177,21 +6177,34 @@ export class AgentService {
             Number(providerMeta?.vertex?.cacheCreationInputTokens ?? 0);
           cacheCreationTotal += stepCacheCreation;
           cacheReadTotal += stepCacheRead;
-          // WORKSTREAM A req.6 — per-step cache metrics at debug level so a
-          // future regression is visible in a trace instead of only in the
-          // bill. `uncached` is the number that must stay small on steps 2+:
-          // if `read` sits near 0 while `uncached` tracks the whole context,
-          // something in the prefix is invalidating the cache (a timestamp in
-          // the system prompt, a rebuilt/reordered toolset, per-step
-          // randomization) — see the cache-prefix stability audit in
+          // WORKSTREAM A req.6 — per-step cache metrics, so a future regression
+          // is visible in a trace instead of only in the bill. `uncached` is the
+          // number that must stay small on steps 2+: if `read` sits near 0 while
+          // `uncached` tracks the whole context, something in the prefix is
+          // invalidating the cache (a timestamp in the system prompt, a
+          // rebuilt/reordered toolset, per-step randomization) — see the
+          // cache-prefix stability audit in
           // docs/research/llm-serving-and-caching.md.
+          //
+          // Emitted at LOG level, not debug. Nest suppresses `debug` when
+          // NODE_ENV=production, so as a debug line this metric was invisible on
+          // exactly the deployment whose bill it exists to explain — the
+          // verification hook could never fire where it mattered. One line per
+          // LLM step, and only when the provider actually reported cache
+          // counters, so non-caching providers stay silent.
           {
             const stepIn = Number((usage as any)?.inputTokens ?? 0);
             const uncached = Math.max(0, stepIn - stepCacheRead - stepCacheCreation);
             const pct = stepIn > 0 ? Math.round((stepCacheRead / stepIn) * 100) : 0;
-            this.logger.debug(
-              `[agent.cache] step in=${stepIn} read=${stepCacheRead} write=${stepCacheCreation} uncached=${uncached} read_pct=${pct}% model=${agentConfig.model}`,
-            );
+            if (stepCacheRead > 0 || stepCacheCreation > 0) {
+              this.logger.log(
+                `[agent.cache] step in=${stepIn} read=${stepCacheRead} write=${stepCacheCreation} uncached=${uncached} read_pct=${pct}% model=${agentConfig.model}`,
+              );
+            } else {
+              this.logger.debug(
+                `[agent.cache] step in=${stepIn} read=0 write=0 uncached=${uncached} read_pct=0% model=${agentConfig.model}`,
+              );
+            }
           }
           // PRELAUNCH-A1-3 — reasoning tokens. Canonical v6 path is
           // `outputTokenDetails.reasoningTokens`; provider fallbacks for
