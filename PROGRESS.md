@@ -271,14 +271,54 @@ Against the brief's stop conditions: **C** is done with regression tests; **B** 
 sections and a committed recommendation; **A** is code-complete and measured on the real code path,
 but its *live* gate is still open because only the operator can deploy.
 
+## Iteration 4 — DEPLOYED to test.platos, A's gate PASSED on the live binary
+
+Operator lifted the no-deploy constraint. Branch pushed to `origin`, agent and webapp both built and
+deployed **sequentially** (never concurrently — a concurrent build previously OOM-killed dockerd on
+this 7.9 GB box). Peak load: agent build 4.1, webapp build 7.0, versus 89 during that incident. All
+six services healthy throughout; the agent stayed healthy for the whole webapp build.
+
+### A's verification gate — PASSED with real numbers
+
+Driven against a disposable `zz-cache-verify` agent on `anthropic:claude-sonnet-5` with a
+deliberately long (>1024-token) prompt and read-only memory tools, so nothing outward-facing could
+fire. Walle itself was deliberately NOT used to drive turns — it holds live mail/calendar/CRM tools
+and a multi-step turn could have taken real actions.
+
+Turn 1, five steps, straight off `docker logs`:
+
+```
+[agent.cache] step in=4512 read=0    write=4510 uncached=2 read_pct=0%
+[agent.cache] step in=4610 read=4510 write=98   uncached=2 read_pct=98%
+[agent.cache] step in=4704 read=4608 write=94   uncached=2 read_pct=98%
+[agent.cache] step in=4802 read=4702 write=98   uncached=2 read_pct=98%
+[agent.cache] step in=4900 read=4800 write=98   uncached=2 read_pct=98%
+```
+
+Turn 2 in the same thread, first step: `in=4545 read=4510 write=33 uncached=2 read_pct=99%`.
+
+- **Gate was "steps 2+ at >= 90% cache read". Actual: 98%.** Only **2 tokens per step** pay full
+  price.
+- **Cross-turn caching confirmed.** Turn 2 starts *warm* at 99% rather than cold. That is the direct
+  proof that findings 2-9 (timestamp relocation, deterministic ordering, no double-append, bucketed
+  counts) work on the live binary — before them, turn 2 step 1 would have read 0.
+
+**Honest limit on this measurement.** Tool results here were ~98 tokens per step, so the absolute
+saving on this particular turn is small. The 3-5x whole-turn figure applies to turns shaped like the
+evidence trace, where large tool payloads accumulate across a dozen steps. What is proven live is the
+mechanism and the hit rate; the magnitude scales with how much history a turn actually accrues.
+
+### A bug found only by deploying
+
+The per-step metric was written as `logger.debug`. Nest suppresses `debug` under
+`NODE_ENV=production`, so on the live agent it emitted **nothing** — the verification hook could
+never fire on the deployment whose bill it exists to explain. Confirmed empirically (zero DEBUG lines
+in the container). Promoted to `log` level, gated on the provider actually reporting cache counters
+so non-caching providers stay quiet. Everything above was measured only after that second deploy.
+
 ## Operator actions
 
-1. **A's live verification gate — the one genuinely blocked item.** After deploying this branch, run
-   a multi-step tool turn on an Anthropic-provider agent. The per-step debug line
-   `[agent.cache] step in= read= write= uncached= read_pct=` prints what is needed. Expect: steps in
-   the back half of the turn at `read_pct` >= 85 (step 12 of the simulation hit 91%), full-price
-   tokens at or near zero from step 2, and whole-turn cost down 3-5x against the trace baseline of
-   1,684,498 input / 198,224 read / 300.85 cents. Record the numbers here.
+1. ~~A's live verification gate~~ **DONE — see Iteration 4.** 98% steady-state, 99% cross-turn.
 2. **Sonnet 5 price step 2026-09-01**: USD 2/10 -> 3/15 per 1M. Needs a dated catalog entry.
 3. **MCP discovery vs cache retention** (finding 10): the ~5-minute discovery cron mutates the tool
    registry on roughly the same cadence as Anthropic's 5-minute cache window, so a busy environment
@@ -288,13 +328,79 @@ but its *live* gate is still open because only the operator can deploy.
 4. **Together account + key** as a scope secret (`scopedEnv.get()` has no `process.env` fallback),
    plus model-string remaps: `zai-org/GLM-4.5`, `GLM-4.5-Air`, `GLM-4.6` are gone from Together's
    live catalog and will fail opaquely.
-5. **Two pre-existing cost-reporting bugs, deliberately left alone.** A stale `gemini-2.5-flash-lite`
-   cached price in `defaultPrices.ts`, and additive summing at `registry.ts:150-156` that
-   double-counts Gemini cached tokens because `promptTokenCount` is already inclusive. Both are real,
-   both affect billing accuracy rather than caching, and both are outside this brief — flagging
-   rather than changing pricing code on my own initiative.
+5. ~~Two pre-existing cost-reporting bugs~~ **FIXED and deployed** — see "Billing" below.
+
+6. **NEW / PRE-EXISTING — ClickHouse is unprovisioned on test.platos, so LLM cost metrics do not
+   persist.** Found while verifying the deploy. The agent logs
+   `[Platos Spans] clickhouse write failed: Database trigger_dev does not exist` on every turn.
+   ClickHouse holds only `default`, `system` and the two information schemas, and `default` contains
+   **zero tables** — no `platos_spans_v1`, no `llm_metrics_v1`. `CLICKHOUSE_MIGRATIONS=1` is set in
+   `.env`, so migrations are nominally enabled but have not run.
+
+   Not caused by this deploy: `INSERT INTO trigger_dev.platos_spans_v1` is hardcoded in
+   `spans.service.ts` and has been since 2026-05-05 (`fcc6854`), and this branch touches no
+   ClickHouse or span file.
+
+   Why it matters here: the billing double-count fix operates on the span-enrichment path, so its
+   corrected numbers currently have nowhere to land on this box. The fix is right and deployed; it
+   will start producing correct output the moment ClickHouse is migrated. **Per-turn cost tracking is
+   unaffected** — that runs through the agent's own Postgres-backed cost service, which is what
+   produced the 300.85 cents figure and the `costCents` on the verification turns above.
 6. **Prompt-authoring note, no action required.** Callers that pass their own per-turn-fresh
    `sessionContext` values (a caller-supplied `custom.now`, a per-request request ID) referenced from
    a *system* prompt block will still defeat cross-turn caching. Finding 4 only covers keys that mean
    "now" by contract; Platos cannot tell a deliberately-fixed timestamp from a live one by shape
    alone.
+
+## Billing fixes (added on operator request, deployed)
+
+Both were flagged during the research; each was re-verified at the source rather than taken on trust,
+and the verification changed the conclusion in both directions.
+
+**1. Cached tokens billed twice — webapp OTLP cost enrichment.**
+`gen_ai.usage.input_tokens` is the AI SDK's `usage.inputTokens`, which is INCLUSIVE of the cache
+slice, and `calculateCost` sums usage types additively. So cached tokens were charged at the full
+input rate inside `input` and again at the cached rate. A step reading 18k of 20k context from cache
+billed 21,800 base-token-equivalents instead of 3,800 — **5.7x overstated**, and the error *grows* as
+caching improves, so this branch's own caching work would have made reported cost progressively
+wronger.
+
+Scope was narrower than reported in one way and broader in another: the report blamed
+`registry.ts:150-156` and called it Gemini-specific. The additive loop is the mechanism, but the
+registry is a generic price-table evaluator whose contract only holds if counts do not overlap, so
+fixing it there would break callers that already pass exclusive values. Fixed at the boundary that
+knows the SDK's semantics (`toBillableUsage`). And it was never Gemini-specific — the SDK normalises
+to inclusive, so it hit every provider on that path. The agent's own cost path was already correct.
+
+**2. Gemini 2.5 Flash-Lite cached-input price.**
+Catalog carried $0.025/1M; Google publishes **$0.01/1M**. I initially believed this claim was wrong —
+$0.025 is 25% of the $0.10 input price, a common ratio — and checked Google's pricing page before
+touching anything. It quotes "Context caching: $0.01 (text / image / video)". The report was right
+and my reasoning was wrong. The three sibling prices were checked at the same time and are all
+already correct (`gemini-2.5-flash` $0.03, `gemini-2.5-pro` $0.125 / $0.25) and deliberately left
+alone.
+
+`defaultPrices.ts` is generated from a JSON file synced verbatim from Langfuse upstream, so editing
+either would have been reverted by the next `pnpm run sync-prices`, silently restoring the
+mispricing. Added `price-overrides.json`, applied by `generate.mjs` on top of the sync, recording the
+provider quote, source URL and verification date. The generator throws if an override targets a
+missing model/tier/key **or if upstream catches up and the override becomes redundant**, so overrides
+get deleted rather than accumulating.
+
+Not modelled: Google also charges cache storage at $1.00/1M tokens/hour for explicit caching. The
+catalog is a per-token table with no notion of time-based storage — that needs a schema change, not a
+price entry. Noted in the override file.
+
+Both verified in the running webapp bundle: `calculateCost(responseModel, toBillableUsage(usageDetails))`
+is present, `input_cached_tokens: 1e-8` is present, and the old `2.5e-8` appears zero times.
+
+## Deployment record
+
+| | |
+|---|---|
+| Branch | `feat/prompt-caching-and-serving-research` @ `20b2fc5`, pushed to origin |
+| Deployed | test.platos.dev (187.127.142.170), agent + webapp, sequentially |
+| Rollback | previous tree preserved at `/opt/platos-prev` |
+| Services | all six healthy; agent healthy in 20s, webapp in 20s |
+| Live gate | **PASSED** — 98% steady-state cache read, 99% cross-turn |
+| Verified in binary | breakpoints/volatile-vars/repair modules compiled in; `toBillableUsage` and `1e-8` present in the webapp bundle |
