@@ -109,25 +109,68 @@ export function selectBreakpointIndices(
   return chosen.sort((a, b) => a - b);
 }
 
+/** Remove our `cacheControl` marker from a message, preserving everything else. */
+function stripCacheControl<T extends CacheableMessage>(m: T): T {
+  const existing = m.providerOptions as Record<string, unknown> | undefined;
+  const anthropic = existing?.anthropic as Record<string, unknown> | undefined;
+  if (!anthropic || anthropic.cacheControl === undefined) return m;
+  const { cacheControl: _dropped, ...restAnthropic } = anthropic;
+  const nextProviderOptions: Record<string, unknown> = { ...existing };
+  if (Object.keys(restAnthropic).length > 0) {
+    nextProviderOptions.anthropic = restAnthropic;
+  } else {
+    delete nextProviderOptions.anthropic;
+  }
+  const next = { ...m } as T;
+  if (Object.keys(nextProviderOptions).length > 0) {
+    (next as CacheableMessage).providerOptions = nextProviderOptions;
+  } else {
+    delete (next as CacheableMessage).providerOptions;
+  }
+  return next;
+}
+
 /**
  * Return a copy of `messages` with Anthropic `cache_control` breakpoints
- * applied. Non-destructive: existing `providerOptions` (e.g. attachment
- * settings) and any existing `anthropic` options are preserved, only
- * `cacheControl` is added. Messages that are not chosen are returned as-is, so
- * this is safe to call on every step.
+ * applied.
+ *
+ * STRIP BEFORE APPLY — this is load-bearing, do not "simplify" it.
+ *
+ * `prepareStep` calls this on EVERY step, and a `messages` override returned
+ * from `prepareStep` CARRIES FORWARD to later steps. So the array handed to us
+ * on step N already contains the markers we placed on step N-1, at positions
+ * that are no longer the head. An additive implementation therefore accumulates
+ * markers instead of moving them. Measured, before this fix, over 8 tool steps:
+ *
+ *     markers per step: 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 11
+ *
+ * against Anthropic's hard limit of 4 per request. Once the limit is exceeded
+ * the request is rejected or the overflow is dropped in document order, which
+ * discards the newest (trailing head) breakpoint — precisely the one that makes
+ * the next step a cache hit. Net effect: message-history caching silently
+ * became a no-op from step 3 onward and the turn reverted to the full-price
+ * behaviour this module exists to fix.
+ *
+ * So: clear our own markers from every non-system message first, then place the
+ * fresh set. System messages are never touched — their breakpoint is applied
+ * once where the array is assembled and must persist across all steps.
+ *
+ * Non-destructive otherwise: unrelated `providerOptions` (attachment settings,
+ * other providers) and other `anthropic` options are preserved.
  */
 export function withAnthropicCacheBreakpoints<T extends CacheableMessage>(
   messages: readonly T[],
   options?: { budget?: number; stride?: number },
 ): T[] {
   const targets = new Set(selectBreakpointIndices(messages, options));
-  if (targets.size === 0) return messages as T[];
   return messages.map((m, i) => {
-    if (!targets.has(i)) return m;
-    const existing = (m.providerOptions ?? {}) as Record<string, unknown>;
+    if (m?.role === "system") return m; // system owns its own, persistent breakpoint
+    const cleaned = stripCacheControl(m);
+    if (!targets.has(i)) return cleaned;
+    const existing = (cleaned.providerOptions ?? {}) as Record<string, unknown>;
     const existingAnthropic = (existing.anthropic ?? {}) as Record<string, unknown>;
     return {
-      ...m,
+      ...cleaned,
       providerOptions: {
         ...existing,
         anthropic: { ...existingAnthropic, cacheControl: { type: "ephemeral" as const } },

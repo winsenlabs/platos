@@ -118,6 +118,75 @@ describe("withAnthropicCacheBreakpoints", () => {
     expect(JSON.stringify(twice)).toBe(JSON.stringify(once));
   });
 
+  /**
+   * REGRESSION — marker accumulation across prepareStep calls.
+   *
+   * The original implementation was additive only. Because a `messages`
+   * override returned from prepareStep carries forward, step N received the
+   * markers placed on step N-1 and added more, measured 2 -> 3 -> 4 -> ... -> 11
+   * markers over 8 tool steps against Anthropic's limit of 4. The overflow is
+   * dropped in document order (or the request is rejected), which discards the
+   * trailing head breakpoint — exactly the one that makes the next step a hit —
+   * so history caching silently became a no-op from step 3 onward.
+   *
+   * The earlier "idempotent" test did not catch it: it re-applied to the SAME
+   * array, where the chosen indices are identical. The bug only appears when the
+   * array has GROWN, moving the head while the stale markers remain.
+   */
+  it("does NOT accumulate markers across simulated prepareStep steps", () => {
+    let msgs: CacheableMessage[] = [
+      { role: "system", content: "SYS", providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } },
+      user("go"),
+    ];
+    msgs = withAnthropicCacheBreakpoints(msgs);
+    const counts: number[] = [];
+    for (let n = 1; n <= 10; n++) {
+      msgs = [...msgs, ...toolStep(n)]; // the SDK appends the step's blocks
+      msgs = withAnthropicCacheBreakpoints(msgs); // prepareStep re-applies
+      counts.push(msgs.filter(hasBp).length);
+    }
+    // Never exceed Anthropic's 4 (3 message breakpoints + the system one).
+    for (const c of counts) {
+      expect(c).toBeLessThanOrEqual(MESSAGE_BREAKPOINT_BUDGET + 1);
+    }
+    // And it must stabilise, not creep upward.
+    expect(counts[counts.length - 1]).toBe(counts[counts.length - 2]);
+    // The system breakpoint must survive every step.
+    expect(hasBp(msgs[0])).toBe(true);
+    // The head must still be marked on the final step.
+    expect(hasBp(msgs[msgs.length - 1])).toBe(true);
+  });
+
+  it("strips a stale marker that is no longer at a chosen position", () => {
+    // Head marker from a previous step, now mid-array after growth.
+    const stale: CacheableMessage[] = [
+      sys(),
+      { role: "user", content: "old", providerOptions: { anthropic: { cacheControl: { type: "ephemeral" } } } },
+      ...toolStep(1),
+    ];
+    const out = withAnthropicCacheBreakpoints(stale, { budget: 1 });
+    // With budget 1 only the head may carry a marker; the stale one is cleared.
+    expect(out.filter(hasBp)).toHaveLength(1);
+    expect(hasBp(out[out.length - 1])).toBe(true);
+    expect(hasBp(out[1])).toBe(false);
+  });
+
+  it("stripping preserves sibling providerOptions and other anthropic options", () => {
+    const msgs: CacheableMessage[] = [
+      sys(),
+      {
+        role: "user",
+        content: "old",
+        providerOptions: { openai: { foo: 1 }, anthropic: { bar: 2, cacheControl: { type: "ephemeral" } } },
+      },
+      ...toolStep(1),
+    ];
+    const out = withAnthropicCacheBreakpoints(msgs, { budget: 1 });
+    const po = out[1].providerOptions as any;
+    expect(po.openai).toEqual({ foo: 1 });
+    expect(po.anthropic).toEqual({ bar: 2 }); // cacheControl gone, bar kept
+  });
+
   it("moves the head forward as the conversation grows (the per-step behaviour)", () => {
     const step1 = withAnthropicCacheBreakpoints([sys(), user(), ...toolStep(1)]);
     const step2 = withAnthropicCacheBreakpoints([sys(), user(), ...toolStep(1), ...toolStep(2)]);
