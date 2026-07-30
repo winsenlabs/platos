@@ -41,15 +41,64 @@ if (existsSync(pricesJsonPath)) {
     })),
   }));
 
+  // Apply local price corrections on top of the upstream sync. Upstream is
+  // fetched verbatim, so a wrong value there cannot be fixed by editing the JSON
+  // — the next sync-prices would revert it. See src/price-overrides.json.
+  const overridesPath = join(srcDir, "price-overrides.json");
+  let appliedOverrides = 0;
+  if (existsSync(overridesPath)) {
+    const { overrides = [] } = JSON.parse(readFileSync(overridesPath, "utf-8"));
+    for (const ov of overrides) {
+      const model = stripped.find((m) => m.modelName === ov.modelName);
+      if (!model) {
+        throw new Error(
+          `price-overrides.json targets unknown model "${ov.modelName}". ` +
+            `Upstream may have renamed or dropped it — update or remove the override.`,
+        );
+      }
+      const tier = model.pricingTiers.find((t) => t.name === ov.tierName);
+      if (!tier) {
+        throw new Error(
+          `price-overrides.json targets unknown tier "${ov.tierName}" on "${ov.modelName}". ` +
+            `Known tiers: ${model.pricingTiers.map((t) => t.name).join(", ")}.`,
+        );
+      }
+      for (const [key, value] of Object.entries(ov.prices)) {
+        if (!(key in tier.prices)) {
+          throw new Error(
+            `price-overrides.json targets unknown price key "${key}" on ` +
+              `"${ov.modelName}" / "${ov.tierName}". Remove it or pick a real key.`,
+          );
+        }
+        if (tier.prices[key] === value) {
+          // Upstream has caught up. Fail loudly rather than silently no-op, so
+          // stale overrides get deleted instead of accumulating forever.
+          throw new Error(
+            `price-overrides.json override for "${ov.modelName}" / "${ov.tierName}" / ` +
+              `"${key}" is now REDUNDANT — upstream already has ${value}. Delete the override.`,
+          );
+        }
+        console.log(
+          `  override: ${ov.modelName} [${ov.tierName}] ${key}: ${tier.prices[key]} -> ${value}`,
+        );
+        tier.prices[key] = value;
+        appliedOverrides++;
+      }
+    }
+  }
+
   let out = 'import type { DefaultModelDefinition } from "./types.js";\n\n';
   out += "// Auto-generated from default-model-prices.json — do not edit manually.\n";
   out += "// Run `pnpm run sync-prices` to update the JSON, then `pnpm run generate` to regenerate.\n";
-  out += "// Source: https://github.com/langfuse/langfuse\n\n";
+  out += "// Source: https://github.com/langfuse/langfuse\n";
+  out += "// Local corrections from price-overrides.json are applied on top of that source.\n\n";
   out += "export const defaultModelPrices: DefaultModelDefinition[] = ";
   out += JSON.stringify(stripped, null, 2) + ";\n";
 
   writeFileSync(join(srcDir, "defaultPrices.ts"), out);
-  console.log(`Generated defaultPrices.ts (${stripped.length} models)`);
+  console.log(
+    `Generated defaultPrices.ts (${stripped.length} models, ${appliedOverrides} local override(s))`,
+  );
 } else {
   console.log("Skipping defaultPrices.ts — default-model-prices.json not found");
 }

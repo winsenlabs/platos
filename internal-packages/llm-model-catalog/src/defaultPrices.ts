@@ -3,6 +3,7 @@ import type { DefaultModelDefinition } from "./types.js";
 // Auto-generated from default-model-prices.json — do not edit manually.
 // Run `pnpm run sync-prices` to update the JSON, then `pnpm run generate` to regenerate.
 // Source: https://github.com/langfuse/langfuse
+// Local corrections from price-overrides.json are applied on top of that source.
 
 export const defaultModelPrices: DefaultModelDefinition[] = [
   {
@@ -2208,8 +2209,8 @@ export const defaultModelPrices: DefaultModelDefinition[] = [
           "input_modality_1": 1e-7,
           "prompt_token_count": 1e-7,
           "promptTokenCount": 1e-7,
-          "input_cached_tokens": 2.5e-8,
-          "cached_content_token_count": 2.5e-8,
+          "input_cached_tokens": 1e-8,
+          "cached_content_token_count": 1e-8,
           "output": 4e-7,
           "output_text": 4e-7,
           "output_modality_1": 4e-7,

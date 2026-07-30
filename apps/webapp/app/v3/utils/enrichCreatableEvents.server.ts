@@ -94,7 +94,10 @@ function enrichLlmMetrics(event: CreateEventInput): void {
   // for gateway/openrouter models automatically in its match() method.
   let cost: ReturnType<NonNullable<typeof _registry>["calculateCost"]> | null = null;
   if (_registry?.isLoaded) {
-    cost = _registry.calculateCost(responseModel, usageDetails);
+    // toBillableUsage strips the cache slice out of `input` first — the SDK
+    // reports it inclusive, and calculateCost sums additively, so passing the
+    // raw map billed cached tokens twice. See toBillableUsage for the detail.
+    cost = _registry.calculateCost(responseModel, toBillableUsage(usageDetails));
   }
 
   // Fallback: extract cost from provider metadata (gateway/openrouter report per-request cost)
@@ -240,6 +243,48 @@ function extractUsageDetails(props: Record<string, unknown>): Record<string, num
   }
 
   return details;
+}
+
+/**
+ * BILLING FIX — cached tokens were billed twice.
+ *
+ * `gen_ai.usage.input_tokens` comes from the AI SDK's `usage.inputTokens`, which
+ * is INCLUSIVE of the cache slice: it already contains the cache-read and
+ * cache-write tokens. The agent's own cost path knows this — see
+ * `CostService.calculateCostWithCache`: "v6 inputTokens is INCLUSIVE of cache.
+ * Strip the cache slice to recover the fresh-token portion before billing it at
+ * 1.0x." This OTLP-enrichment path never got the same treatment.
+ *
+ * `LlmPricingRegistry.calculateCost` sums every usage type additively, so cached
+ * tokens were charged at the FULL input rate as part of `input` AND again at the
+ * cached rate as `input_cached_tokens`. The overcharge is worst exactly where
+ * caching works best — and it grows as caching improves, so the prompt-caching
+ * work in this branch would have made the reported numbers progressively more
+ * wrong rather than less.
+ *
+ * Deliberately a separate view rather than a mutation of `extractUsageDetails`:
+ * that map also drives the token-count pill and `_llmMetrics`, where `input`
+ * SHOULD mean total input including cache. Only the price calculation needs the
+ * non-overlapping split.
+ *
+ * Fixed here rather than inside the registry so the registry's contract stays
+ * coherent — it is a generic price-table evaluator, and "bill each usage type at
+ * its rate" only holds if the counts do not overlap. This is the boundary that
+ * knows the SDK's semantics.
+ */
+export function toBillableUsage(details: Record<string, number>): Record<string, number> {
+  const cachedSlice =
+    (details["input_cached_tokens"] ?? 0) + (details["cache_creation_input_tokens"] ?? 0);
+  if (cachedSlice <= 0 || details["input"] === undefined) return details;
+
+  const billable = { ...details };
+  // Clamp at zero: a provider reporting a cache slice larger than its own input
+  // count is malformed, and a negative token count would become a negative cost
+  // and silently credit the account.
+  const fresh = Math.max(0, billable["input"] - cachedSlice);
+  if (fresh === 0) delete billable["input"];
+  else billable["input"] = fresh;
+  return billable;
 }
 
 function enrichStyle(event: CreateEventInput) {
