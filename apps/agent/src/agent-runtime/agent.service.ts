@@ -110,6 +110,8 @@ import {
   substitutePromptVars,
   type ContextMapping,
 } from "./context-resolver";
+// PROMPT-CACHE (audit finding 4) — keeps the live clock out of the cached prefix.
+import { relocateVolatilePromptVars } from "./volatile-prompt-vars";
 // Theme CTX.6 — 4-tier arg-resolution + auto-match + LLM-fill prompt hint.
 // The resolver walks the agent's enabled tools once per turn and emits:
 //   (a) a system-prompt block telling the LLM what args it must provide for
@@ -5549,6 +5551,28 @@ export class AgentService {
     // dynamicBlocks, skill prompt blocks — resolve against
     // `thread.sessionContext`. Fail-open: absent sessionContext OR no
     // matching key → placeholder stays verbatim.
+    // PROMPT-CACHE (audit finding 4). Relocate volatile vars BEFORE substituting.
+    // `user.current_time` is auto-injected above as `new Date().toISOString()`, so
+    // resolving it here would write a millisecond-precision timestamp into the
+    // CACHED system prompt — a byte that differs on every turn, which invalidates
+    // the entire prefix (tools + system + all cached history) every single turn
+    // for any agent whose prompt references it. Same fix the `datetime` prompt
+    // block already gets below: the live value lives post-breakpoint, and the
+    // cached region carries a pointer to it rather than a stale copy.
+    let volatileVarsRelocated: string[] = [];
+    if (systemPrompt) {
+      const reloc = relocateVolatilePromptVars(systemPrompt, {
+        promptVars: contextMapping?.promptVars,
+      });
+      systemPrompt = reloc.prompt;
+      volatileVarsRelocated = reloc.relocated;
+      if (volatileVarsRelocated.length > 0) {
+        this.logger.log(
+          `[agent.cache] relocated volatile promptVars out of the cached system prompt: ${JSON.stringify(volatileVarsRelocated)}`,
+        );
+      }
+    }
+
     if (sessionContext && systemPrompt) {
       const before = [...systemPrompt.matchAll(/\{\{([^}]+)\}\}/g)].map(m => m[1]);
       systemPrompt = substitutePromptVars(
@@ -5581,8 +5605,14 @@ export class AgentService {
       const hasEnabledDateTimeBlock = promptBlocks.some(
         (b) => b && b.type === "datetime" && b.enabled !== false,
       );
+      // If we relocated `{{user.current_time}}` out of the cached system prompt
+      // (audit finding 4), the pointer we left behind MUST resolve to something.
+      // Force the datetime block on so the live value is actually present here,
+      // post-breakpoint — otherwise the prompt points at a block that is absent
+      // and the agent loses the clock it used to have.
+      const needsDateTimeForPointer = volatileVarsRelocated.length > 0;
       const pb = this.getPromptBuilder();
-      if (hasEnabledDateTimeBlock && pb) {
+      if ((hasEnabledDateTimeBlock || needsDateTimeForPointer) && pb) {
         try {
           const dt = pb.renderDateTimeBlockText({
             user_timezone: (sessionContext as any)?.user_timezone,
