@@ -52,6 +52,11 @@ import { SpansService } from "../monitoring/spans.service";
 import { MemoryService } from "../memory/memory.service";
 import { KnowledgeGraphService } from "../memory/knowledge-graph.service";
 import { fuseContextRetrieval } from "../memory/retrieval/context-retrieval";
+import {
+  withAnthropicCacheBreakpoints,
+  type CacheableMessage,
+} from "./anthropic-cache-breakpoints";
+import { repairStringifiedToolInput } from "./tool-input-repair";
 // Theme O — memory extraction service for the manual `memory_extract`
 // meta-tool. Optional so the unit-test harness without MemoryModule still
 // boots.
@@ -5667,7 +5672,7 @@ export class AgentService {
       }
     }
 
-    const messages: CoreMessage[] = [
+    const messagesBase: CoreMessage[] = [
       // System prompt as first message with cache_control breakpoint
       ...(systemPrompt
         ? [{
@@ -5681,6 +5686,25 @@ export class AgentService {
         ? []
         : [{ role: "user" as const, content: finalUserContent as any }]),
     ];
+
+    // WORKSTREAM A — cache the MESSAGE ARRAY, not just the system prompt.
+    //
+    // Before this, only the system message carried a breakpoint, so on a
+    // multi-step tool turn every internal step re-paid full price for the
+    // entire (growing) history. Real trace: 1,684,498 input tokens billed
+    // against 198,224 cache reads on a 12-step turn, 300.85 cents for ONE
+    // turn. See anthropic-cache-breakpoints.ts for the mechanics and the
+    // evidence, and `prepareStep` on the streamText call below for how the
+    // trailing breakpoint moves forward as the SDK appends each step's
+    // tool_use / tool_result blocks.
+    //
+    // Anthropic-only: OpenAI prefix-caches automatically and Google/Vertex
+    // cache implicitly, so a breakpoint there is a no-op at best.
+    const messages: CoreMessage[] = anthropicCacheOpts
+      ? (withAnthropicCacheBreakpoints(
+          messagesBase as unknown as CacheableMessage[],
+        ) as unknown as CoreMessage[])
+      : messagesBase;
 
       // ===== VERBOSE PAYLOAD LOGGING (BLOCK 1 prompt caching verification) =====
       const promptChars = systemPrompt?.length || 0;
@@ -5974,6 +5998,53 @@ export class AgentService {
         // AI SDK v6 — `maxSteps: N` removed; use `stopWhen` predicate.
         // `isStepCount(N)` halts the tool-calling loop after N steps.
         stopWhen: isStepCount(agentConfig.maxSteps),
+        // WORKSTREAM A — move the cache breakpoint forward on EVERY internal
+        // step. This is the whole fix: `streamText` runs the tool loop itself,
+        // appending tool_use / tool_result blocks to the message array between
+        // steps, so a breakpoint placed once on the initial array goes stale
+        // immediately and every later step re-pays full price for the history.
+        // `prepareStep` is the SDK's per-step hook; a returned `messages`
+        // override carries forward, so re-marking here keeps the trailing
+        // breakpoint on the newest block while the intermediate ones stay
+        // inside Anthropic's ~20-block lookback.
+        ...(anthropicCacheOpts
+          ? {
+              // `any` on the callback params: the SDK types these through
+              // generics bound to the tool set, so a hand-written narrower
+              // parameter type is not assignable (contravariance).
+              prepareStep: ({ messages: stepMessages }: any) => ({
+                messages: withAnthropicCacheBreakpoints(
+                  stepMessages as unknown as CacheableMessage[],
+                ) as any,
+              }),
+            }
+          : {}),
+        // WORKSTREAM C — repair a stringified tool input IN PLACE instead of
+        // bouncing the error back to the model. Same trace burned three
+        // full-price 100k-token steps because `execute_tools.calls` arrived as
+        // a JSON string; this fires on that exact error class and costs zero
+        // extra LLM round-trips. Schema-driven, so a legitimately
+        // JSON-looking string argument is never corrupted (see
+        // tool-input-repair.ts). Returning null lets the original error stand.
+        // `any` params for the same generic-inference reason as prepareStep.
+        repairToolCall: async ({ toolCall, inputSchema, error }: any) => {
+          try {
+            // Only an invalid-INPUT error is repairable; an unknown tool is not.
+            if (error?.name === "AI_NoSuchToolError") return null;
+            const schema = (await inputSchema({ toolName: toolCall.toolName })) as any;
+            const repaired = repairStringifiedToolInput(toolCall.input, schema);
+            if (!repaired) return null;
+            this.logger.warn(
+              `[agent.stream] repaired stringified tool input for '${toolCall.toolName}' (saved a full-price retry step)`,
+            );
+            return { ...toolCall, input: repaired } as any;
+          } catch (err: any) {
+            this.logger.warn(
+              `[agent.stream] tool-input repair failed for '${toolCall?.toolName}': ${err?.message ?? err}`,
+            );
+            return null;
+          }
+        },
         // EOBD.26/27 — caller's abort signal: closes on stop button
         // OR turn timeout. Vercel AI SDK propagates this to the
         // underlying provider HTTP stream.
@@ -6014,6 +6085,22 @@ export class AgentService {
             Number(providerMeta?.vertex?.cacheCreationInputTokens ?? 0);
           cacheCreationTotal += stepCacheCreation;
           cacheReadTotal += stepCacheRead;
+          // WORKSTREAM A req.6 — per-step cache metrics at debug level so a
+          // future regression is visible in a trace instead of only in the
+          // bill. `uncached` is the number that must stay small on steps 2+:
+          // if `read` sits near 0 while `uncached` tracks the whole context,
+          // something in the prefix is invalidating the cache (a timestamp in
+          // the system prompt, a rebuilt/reordered toolset, per-step
+          // randomization) — see the cache-prefix stability audit in
+          // docs/research/llm-serving-and-caching.md.
+          {
+            const stepIn = Number((usage as any)?.inputTokens ?? 0);
+            const uncached = Math.max(0, stepIn - stepCacheRead - stepCacheCreation);
+            const pct = stepIn > 0 ? Math.round((stepCacheRead / stepIn) * 100) : 0;
+            this.logger.debug(
+              `[agent.cache] step in=${stepIn} read=${stepCacheRead} write=${stepCacheCreation} uncached=${uncached} read_pct=${pct}% model=${agentConfig.model}`,
+            );
+          }
           // PRELAUNCH-A1-3 — reasoning tokens. Canonical v6 path is
           // `outputTokenDetails.reasoningTokens`; provider fallbacks for
           // OpenAI o-series, Google 2.5-series thinking, Vertex.
