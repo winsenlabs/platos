@@ -300,6 +300,7 @@ export class PromptBuilderService {
     variables?: Record<string, unknown>,
     memoryContext?: string,
     retrievalResolver?: RetrievalResolver,
+    options?: { omitDateTimeBlock?: boolean },
   ): Promise<string> {
     const vars: Record<string, unknown> = {
       current_date: new Date().toISOString().slice(0, 10),
@@ -323,7 +324,21 @@ export class PromptBuilderService {
         continue;
       }
       if (block.type === "datetime") {
-        parts.push(this.renderDateTimeBlock(vars));
+        // PROMPT-CACHE (audit finding 5). `renderDateTimeBlock` emits a
+        // SECOND-precision timestamp, and this string becomes the agent's
+        // systemPrompt — i.e. it lands inside the cached prefix and changes on
+        // every turn, invalidating tools + system + all cached history.
+        //
+        // The save path already excludes datetime from the stored systemPrompt
+        // for exactly this reason (see PromptBlockEditor's comment), but this
+        // turn-time re-assemble put it back. Callers that inject a fresh
+        // timestamp POST-cache-breakpoint (the streaming turn path writes it
+        // into dynamicContext as `__datetime`) pass `omitDateTimeBlock`, so the
+        // clock renders once in the cache-exempt position instead of twice in
+        // two positions holding two different values.
+        if (!options?.omitDateTimeBlock) {
+          parts.push(this.renderDateTimeBlock(vars));
+        }
         continue;
       }
       const rendered = this.renderTemplate(block.content, vars);

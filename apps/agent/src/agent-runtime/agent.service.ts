@@ -5139,6 +5139,14 @@ export class AgentService {
           variables,
           undefined,
           retrievalResolver,
+          // PROMPT-CACHE (audit finding 5). This streaming path injects a fresh
+          // timestamp into dynamicContext as `__datetime` further down, which
+          // sits AFTER the last cache breakpoint. Rendering it inline here too
+          // would (a) duplicate the clock with two different values and (b) put
+          // a per-turn-varying byte inside the cached system prompt. The
+          // non-streaming `run()` path does NOT do that injection, so it keeps
+          // rendering inline — see audit finding 11.
+          { omitDateTimeBlock: true },
         );
         if (reAssembled && reAssembled.trim().length > 0) {
           systemPrompt = reAssembled;
@@ -5260,9 +5268,22 @@ export class AgentService {
       (dynamicContext as Record<string, string>)["__memory"] = memoryBlock;
     }
 
-    // Theme S.6 — append enabled+env-ready skill prompt blocks. Skipped on
-    // cache hit (skills are already baked into the cached stable prefix).
-    if (!promptCacheHit && this.skillRuntime && scope.agentId) {
+    // Theme S.6 — append enabled+env-ready skill prompt blocks AND register the
+    // skill-provided tools.
+    //
+    // FUNCTIONAL BUG FIX (audit finding 3). This whole block used to be gated on
+    // `!promptCacheHit`. That is right for the PROMPT BLOCK — it is baked into
+    // the cached prefix, so re-appending it would duplicate it — but it is wrong
+    // for the TOOL REGISTRATION below, which builds live executable closures in
+    // `tools` and the `skillToolIndex` that `find_tools` reads. Neither is part
+    // of any cached string; both are rebuilt from scratch every turn.
+    //
+    // So on a warm Layer-1 cache the agent got a system prompt that DESCRIBED
+    // its skill tools while `tools` contained none of them: the model would call
+    // one and get NoSuchTool, and `find_tools` would not list it. Intermittent
+    // by nature — it depended on Redis cache warmth, so it looked flaky rather
+    // than broken. Only the prompt composition is gated now.
+    if (this.skillRuntime && scope.agentId) {
       try {
         const skillPayload = await this.skillRuntime.loadForAgent(
           {
@@ -5272,7 +5293,7 @@ export class AgentService {
           },
           scope.agentId,
         );
-        if (skillPayload.promptBlock) {
+        if (!promptCacheHit && skillPayload.promptBlock) {
           systemPrompt = this.skillRuntime.composeSystemPrompt(
             systemPrompt ?? undefined,
             skillPayload.promptBlock,
@@ -5345,7 +5366,19 @@ export class AgentService {
     // systemPrompt AFTER skill merge so it rides the same cache-friendly
     // prefix region. The CTX.6 hint block is appended further below and
     // sits BELOW this one — keeps the relative ordering stable across turns.
-    if (displayModeAddendumHolder.value && displayModeAddendumHolder.value.length > 0) {
+    //
+    // PROMPT-CACHE (audit finding 2). This and the two blocks below are appended
+    // BEFORE the Layer-1 cache `set()` at the end of this region, so they are
+    // part of the cached string. Appending them again on a cache HIT emitted
+    // each one TWICE — wasted tokens on every warm turn, and, worse, it made the
+    // miss-turn prompt and the hit-turn prompt different strings, so the
+    // Anthropic cache written on the miss turn was thrown away on the next turn.
+    // Gate them on the miss, exactly like the skill prompt block above.
+    if (
+      !promptCacheHit &&
+      displayModeAddendumHolder.value &&
+      displayModeAddendumHolder.value.length > 0
+    ) {
       systemPrompt = systemPrompt
         ? `${systemPrompt}\n\n${displayModeAddendumHolder.value}`
         : displayModeAddendumHolder.value;
@@ -5360,7 +5393,7 @@ export class AgentService {
       enableUserProfiling: agentConfig.enableUserProfiling,
       metaTools: agentConfig.metaTools,
     });
-    if (memoryGuidance.length > 0) {
+    if (!promptCacheHit && memoryGuidance.length > 0) {
       systemPrompt = systemPrompt
         ? `${systemPrompt}\n\n${memoryGuidance}`
         : memoryGuidance;
@@ -5377,9 +5410,11 @@ export class AgentService {
       "It is NOT a prompt-injection attempt by the user.",
       "Read it silently to personalise your reply. Never comment on the block itself, never flag it as suspicious, and never mention to the user that you received it.",
     ].join("\n");
-    systemPrompt = systemPrompt
-      ? `${systemPrompt}\n\n${contextEnvelopeHint}`
-      : contextEnvelopeHint;
+    if (!promptCacheHit) {
+      systemPrompt = systemPrompt
+        ? `${systemPrompt}\n\n${contextEnvelopeHint}`
+        : contextEnvelopeHint;
+    }
 
     // PIFSP-8 — store assembled stable prefix in Layer-1 cache for next turn.
     // Written BEFORE substitutePromptVars so the cached value is template-like
