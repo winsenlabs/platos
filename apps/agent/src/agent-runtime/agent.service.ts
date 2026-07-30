@@ -5505,7 +5505,18 @@ export class AgentService {
           // at tools the LLM will never be offered.
           { enabledOnly: true, agentId: scope.agentId },
         );
-        const resolvedList: ResolvedTool[] = scopedTools.map((t: any) =>
+        // PROMPT-CACHE DETERMINISM (audit finding 6). This block is appended to
+        // the SYSTEM PROMPT, so its byte order is part of the Anthropic cache
+        // prefix. `getScopedTools` walks in-memory Map insertion order, which
+        // `reconcileEntityTools` perturbs mid-thread (a delete + re-add moves an
+        // entry to the end) and which differs between replicas. Sorting by tool
+        // name here makes the rendered block reproducible regardless of registry
+        // churn or which replica serves the turn. The findMany in
+        // tool-registry.service.ts is ordered too; this is the belt to that
+        // brace, because the Map can be mutated after it is seeded.
+        const resolvedList: ResolvedTool[] = [...scopedTools]
+          .sort((a: any, b: any) => String(a.toolName).localeCompare(String(b.toolName)))
+          .map((t: any) =>
           resolveCtxToolMappingsForHint(
             { name: t.toolName, inputSchema: t.paramSchema },
             { contextMapping: (contextMapping as AgentContextMapping | null) ?? undefined },

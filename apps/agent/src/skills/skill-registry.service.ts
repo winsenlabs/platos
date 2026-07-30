@@ -325,6 +325,14 @@ export class SkillRegistryService {
         environmentId: scope.environmentId,
       },
       include: { skill: true },
+      // PROMPT-CACHE DETERMINISM (audit finding 9). This list drives both the
+      // order skill tools are appended to the `tools` object and the order of
+      // skill prompt blocks inside "## Enabled Skills". Without an explicit
+      // orderBy, Postgres returns heap order, which CHANGES when any row is
+      // updated (e.g. toggling `enabled`). Two consecutive turns then emit the
+      // same tools in a different byte order, which invalidates the whole
+      // Anthropic cache prefix (tools -> system -> messages) for no reason.
+      orderBy: [{ skillId: "asc" }],
     });
     const out: AgentSkillRecord[] = [];
     for (const r of rows) {

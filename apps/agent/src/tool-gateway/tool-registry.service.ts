@@ -139,6 +139,14 @@ export class ToolRegistryService implements OnModuleInit {
       // gates the PIFSP-21 `_context` envelope merge in ToolExecutorService.
       const mappings = await this.prisma.platosEntityToolMapping.findMany({
         include: { tool: true, entity: { include: { mcpConfig: true } } },
+        // PROMPT-CACHE DETERMINISM (audit finding 6). The scoped-tool cache is
+        // a Map seeded in this order, and `collectScopedEntries` iterates it in
+        // insertion order. That order reaches the SYSTEM PROMPT through the
+        // CTX.6 arg-expectations block, so an unordered findMany means two
+        // agent replicas serving the same thread render different bytes and
+        // every replica switch is a full cache invalidation. Explicit order
+        // makes it reproducible across processes and restarts.
+        orderBy: [{ toolId: "asc" }, { environmentId: "asc" }],
       });
       for (const m of mappings) {
         const entity = m.entity;
