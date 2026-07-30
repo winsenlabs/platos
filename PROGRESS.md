@@ -178,7 +178,123 @@ Neither is touched yet.
 5. **Findings 4/5/7/8 may need prompt or agent-config edits** (e.g. dropping
    `{{user.current_time}}` from prompt blocks), which is your call, not mine.
 
-## Next action
+## Iteration 3 — audit findings closed out, A measured
 
-Fix finding 4 (timestamp out of the system prefix) — the highest-value remaining unlock — then 3
-(skills silently dropped on cache hits, a real functional bug), then 2/5/7/8, then 11.
+All 13 audit findings are now resolved. Ten were fixed in code; one is an operator decision; two
+needed no action.
+
+| # | Finding | Status |
+|---|---|---|
+| 1 | Breakpoints accumulate across steps; newest dropped | FIXED — strip-before-apply |
+| 2 | Layer-1 cache HIT double-appends 3 prefix blocks | FIXED — gated on the miss |
+| 3 | Skill tools dropped entirely on a Layer-1 cache HIT | FIXED — **was a live functional bug** |
+| 4 | `{{user.current_time}}` resolves inside the cached prompt | FIXED — relocated to a pointer |
+| 5 | `assembleAsync` bakes a second-precision clock into the prefix | FIXED — `omitDateTimeBlock` |
+| 6 | CTX.6 block ordered by Map iteration / unordered `findMany` | FIXED — sort + `orderBy` |
+| 7 | Exact tool counts in `## Available tool categories` | FIXED — bucketed |
+| 8 | Entity IDs in `find_tools`' description reorder per turn | FIXED — sorted + deduped |
+| 9 | Skill tools/prompt blocks from unordered `findMany` | FIXED — `orderBy` |
+| 10 | MCP discovery cron refreshes the toolset every ~5 min | **OPERATOR DECISION** |
+| 11 | `run()` had no breakpoint at all | FIXED — full parity with `stream()` |
+| 11b | Claude via Vertex/Bedrock excluded by the provider gate | **NOT APPLICABLE** — no such route exists |
+| 12 | `__datetime` / `__memory` / `__user_profile` post-breakpoint | correct as designed |
+| 13 | Meta-tool key order; canary `Math.random` | no action |
+
+Two of these deserve calling out because they were not really caching bugs:
+
+- **Finding 3 was a live functional bug.** The skill block was gated on `!promptCacheHit` as a whole,
+  but that block also *registers the executable tool closures* and the `find_tools` index — runtime
+  state that is rebuilt every turn and is in no cached string. So on a warm Layer-1 cache the agent
+  received a system prompt describing skill tools that were absent from `tools`: the model called one
+  and got `NoSuchTool`, and `find_tools` would not list it. It tracked Redis warmth, so it presented
+  as flakiness rather than breakage.
+- **Finding 11b is not applicable.** The audit flagged Claude-on-Vertex as excluded by the
+  `provider === "anthropic"` gate, but Platos has no Vertex-Anthropic route at all — the
+  `google-vertex` manifest carries only Gemini and the GLM MaaS models. Nothing to exclude, and the
+  serving research independently lands on keeping Claude on the Anthropic API direct.
+
+### Workstream A — measured end to end
+
+A billed turn needs a deploy or a live key, so the fix is measured against a fake endpoint
+implementing Anthropic's documented prefix-cache semantics. The seam is worth stating precisely:
+
+- **Real:** the message array, breakpoint placement, `prepareStep`, the provider's wire
+  serialisation, the SDK's multi-step tool loop. The inspected request bodies are the exact bytes
+  that would reach `api.anthropic.com`.
+- **Simulated:** the token accounting — prefix entry at P covers `[0..P]`, longest-prefix match
+  within the ~20-block lookback, at most 4 breakpoints honoured with overflow dropped in document
+  order.
+
+12-step turn, both arms through the same fake:
+
+| metric | before | after |
+|---|---|---|
+| full-price tokens | 127,200 | **0** |
+| cache-read tokens | 20,504 | 126,329 |
+| cache-write tokens | 1,864 | 23,239 |
+| billed base-token-equivalents | 131,580 | **41,682 (3.16x cheaper)** |
+| cache-read share at step 12 | 8% | **91%** |
+| peak breakpoints per request | 1 | 3 (limit 4) |
+
+The before arm reproduces the production trace's signature exactly: cache-read pinned **flat** at the
+system prefix while full-price grows every step. That is what 1,684,498 input against 198,224 read
+looks like from the inside.
+
+Asserted on **cost**, not cache-read share, because share flatters the fix — the non-read remainder
+moves from full price (1.0x) to writes, which cost *more* per token (1.25x), not less. 3.16x is the
+floor for this shape: the synthetic tool results are large relative to the system prompt, so the
+cached prefix is a smaller fraction of each request than in the real trace, where 12 steps averaged
+~140k context.
+
+Two harness bugs surfaced while building this, both of which had produced confidently wrong numbers
+before being caught — worth recording because either would have made the fix look wrong:
+
+1. Hits were looked up only at positions marked in the *current* request. Anthropic does a
+   longest-prefix match, and the prefix cached at the previous step's breakpoint is still a
+   byte-identical prefix of this request.
+2. `cache_control` was included in the hashed content. It is metadata about where to cut, not
+   content — if it were hashed, advancing a breakpoint would change the bytes of the block it used to
+   sit on and every hit would miss, making Anthropic's own documented "move the breakpoint forward"
+   pattern impossible. This one pinned reads at the system prefix and made the fix look inert.
+
+## Final state
+
+| | |
+|---|---|
+| Branch | `feat/prompt-caching-and-serving-research`, 8 commits, **not deployed** |
+| Tests | 60 new, all passing (breakpoints 17, repair 11, wire 5, volatile 12, datetime 5, categories 9, simulation 2) |
+| Typecheck | clean |
+| Pre-existing agent-suite failures | 17, confirmed identical on `main` — none mine |
+| Report | `docs/research/llm-serving-and-caching.md`, 1,021 lines, 5 sections + table + recommendation |
+
+Against the brief's stop conditions: **C** is done with regression tests; **B** is done with all five
+sections and a committed recommendation; **A** is code-complete and measured on the real code path,
+but its *live* gate is still open because only the operator can deploy.
+
+## Operator actions
+
+1. **A's live verification gate — the one genuinely blocked item.** After deploying this branch, run
+   a multi-step tool turn on an Anthropic-provider agent. The per-step debug line
+   `[agent.cache] step in= read= write= uncached= read_pct=` prints what is needed. Expect: steps in
+   the back half of the turn at `read_pct` >= 85 (step 12 of the simulation hit 91%), full-price
+   tokens at or near zero from step 2, and whole-turn cost down 3-5x against the trace baseline of
+   1,684,498 input / 198,224 read / 300.85 cents. Record the numbers here.
+2. **Sonnet 5 price step 2026-09-01**: USD 2/10 -> 3/15 per 1M. Needs a dated catalog entry.
+3. **MCP discovery vs cache retention** (finding 10): the ~5-minute discovery cron mutates the tool
+   registry on roughly the same cadence as Anthropic's 5-minute cache window, so a busy environment
+   can lose the prefix to discovery alone. Findings 6/7/8 removed the *incidental* churn (ordering,
+   counts, ID order), so what remains is genuine change — a real new tool appearing. Options: lengthen
+   the cron, or only rebuild the prefix when the tool set actually differs. Your call.
+4. **Together account + key** as a scope secret (`scopedEnv.get()` has no `process.env` fallback),
+   plus model-string remaps: `zai-org/GLM-4.5`, `GLM-4.5-Air`, `GLM-4.6` are gone from Together's
+   live catalog and will fail opaquely.
+5. **Two pre-existing cost-reporting bugs, deliberately left alone.** A stale `gemini-2.5-flash-lite`
+   cached price in `defaultPrices.ts`, and additive summing at `registry.ts:150-156` that
+   double-counts Gemini cached tokens because `promptTokenCount` is already inclusive. Both are real,
+   both affect billing accuracy rather than caching, and both are outside this brief — flagging
+   rather than changing pricing code on my own initiative.
+6. **Prompt-authoring note, no action required.** Callers that pass their own per-turn-fresh
+   `sessionContext` values (a caller-supplied `custom.now`, a per-request request ID) referenced from
+   a *system* prompt block will still defeat cross-turn caching. Finding 4 only covers keys that mean
+   "now" by contract; Platos cannot tell a deliberately-fixed timestamp from a live one by shape
+   alone.
