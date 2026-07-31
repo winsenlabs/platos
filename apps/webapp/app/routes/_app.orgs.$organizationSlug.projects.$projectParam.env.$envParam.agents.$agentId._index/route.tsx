@@ -601,8 +601,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
   // column, and this one always lost data. The backend now deep-merges
   // toolsBlockConfig/subAgentConfig (agent-crud.service.ts), so a partial
   // patch preserves every key it doesn't mention.
-  if (toolsBlockMode) {
-    body.toolsBlockConfig = { mode: toolsBlockMode };
+  // HARMONISATION — this form now owns `toolExposure` alongside `mode`, so the
+  // Basic screen and the wizard describe tools the same way. Still a PARTIAL
+  // patch (deep-merged server-side), so keys owned by the Tools tab —
+  // displayMode, pinnedTools, enabledCategories — are untouched.
+  const toolExposureRaw = formData.get("toolExposure") as string | null;
+  if (toolsBlockMode || toolExposureRaw) {
+    body.toolsBlockConfig = {
+      ...(toolsBlockMode ? { mode: toolsBlockMode } : {}),
+      ...(toolExposureRaw ? { toolExposure: toolExposureRaw === "direct" ? "direct" : "meta" } : {}),
+    };
   }
 
   if (toolsBlockMode === "sub-agent") {
@@ -734,6 +742,9 @@ export default function AgentDetailPage() {
   const isSavingConfig =
     mainNavigation.state !== "idle" && !mainNavigation.formData?.get("intent");
   const [blocks, setBlocks] = useState(initialBlocks || []);
+  const [toolExposure, setToolExposure] = useState<"meta" | "direct">(
+    ((agent as any).toolsBlockConfig?.toolExposure === "direct" ? "direct" : "meta"),
+  );
   const [toolsBlockMode, setToolsBlockMode] = useState<string>(
     (agent as any).toolsBlockConfig?.mode || "direct"
   );
@@ -972,6 +983,33 @@ export default function AgentDetailPage() {
                 </>
               )}
             </section>
+
+            {/* Tool exposure (toolsBlockConfig.toolExposure) — what the model
+                can CALL. Kept adjacent to tool-call method so the two are read
+                together; they were previously split across screens, which is
+                how an operator could pick "Direct" here and still get
+                meta-tools at runtime. */}
+            <Fieldset>
+              <Label>Tools</Label>
+              <select
+                name="toolExposure"
+                value={toolExposure}
+                onChange={(e) => setToolExposure(e.target.value as "meta" | "direct")}
+                className="w-full rounded-md border border-charcoal-700 bg-charcoal-800 px-3 py-2 text-sm text-text-bright"
+              >
+                <option value="direct">
+                  Direct — connected-entity tools given to the agent as callable tools
+                </option>
+                <option value="meta">
+                  Meta tools — agent gets find_tools + execute_tools and reaches entity tools through them
+                </option>
+              </select>
+              <Paragraph variant="small" className="mt-1">
+                {toolExposure === "direct"
+                  ? "Every tool under Connected Entities is provided directly, with its full schema, inside the cached prompt prefix. find_tools and execute_tools are not injected. Context tools (memory, profile, artifacts, schedules) stay exposed as ticked."
+                  : "The agent discovers entity tools via find_tools and calls them via execute_tools. If a connected entity is itself a gateway with its own search/execute pair, this stacks two layers of indirection."}
+              </Paragraph>
+            </Fieldset>
 
             {/* Tool-call method (toolsBlockConfig.mode) */}
             <section>

@@ -133,6 +133,17 @@ export interface ToolsBlockConfig {
    */
   mode: ToolCallMode;
   enabledTools: string[];
+  /**
+   * TOOL EXPOSURE — what the model can actually CALL.
+   *
+   * "meta" (default): find_tools + execute_tools; entity tools sit behind them.
+   * "direct": every scoped entity tool injected as a real schema, no meta-tools.
+   *
+   * Distinct from `mode` (who drives the calling) and `displayMode` (how much
+   * is described in the prompt) -- neither of those ever governed callability.
+   * Context tools (memory/profile/artifacts) are unaffected in both modes.
+   */
+  toolExposure?: "direct" | "meta";
   perToolPerms?: Record<string, { requiresApproval?: boolean; destructive?: boolean }>;
   /**
    * TL.2 — display-mode for the tool layer. See `ToolDisplayMode`.

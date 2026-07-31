@@ -194,10 +194,21 @@ export async function action({ request, params }: ActionFunctionArgs) {
     try { dynamicBlocks = JSON.parse(dynamicBlocksJson) as unknown[]; } catch {}
   }
 
+  const toolExposure =
+    (formData.get("toolExposure") as string) === "direct" ? "direct" : "meta";
   const toolsBlockConfig = {
     mode: toolsBlockMode,
-    enabledTools: [] as string[],
+    // HARMONISATION — the wizard used to send `enabledTools: []`, which the
+    // sub-agent execute_tools filters with `enabledTools.includes(tool)`. An
+    // empty array there blocks EVERY call, so any agent created in sub-agent
+    // mode through this wizard could not call a single tool. Omit the key
+    // instead of sending an empty allow-list that means "deny all".
     perToolPerms: {} as Record<string, unknown>,
+    toolExposure,
+    // The wizard previously sent no displayMode at all, so new agents silently
+    // got "full" and could only be changed on a different screen. Send it
+    // explicitly and keep it consistent with the exposure choice.
+    displayMode: toolExposure === "direct" ? "full" : "meta-tool",
   };
   const subAgentConfig =
     toolsBlockMode === "sub-agent"
@@ -382,6 +393,10 @@ export default function NewAgentPage() {
 
   // Step 4.
   const [toolMode, setToolMode] = useState<"direct" | "sub-agent" | "execute-tool">("direct");
+  // TOOL EXPOSURE — what the agent can actually CALL. Distinct from the
+  // tool-call METHOD below (which decides who drives the calling). Defaults to
+  // "meta" so a new agent behaves like every existing one.
+  const [toolExposure, setToolExposure] = useState<"meta" | "direct">("meta");
 
   const promptPreview = buildPromptPreview(agentName, toolMode, userProfiling, blocks as unknown[]);
 
@@ -790,6 +805,76 @@ export default function NewAgentPage() {
           {step === 4 && (
             <Form method="post">
               <div className="space-y-6">
+                {/* ── Tool exposure (Direct vs Meta) ──────────────────────
+                    The control that decides what the model can CALL. Placed
+                    ABOVE tool-call method because it is the more consequential
+                    choice, and because "method" only makes sense once you know
+                    whether meta-tools exist at all. */}
+                <section>
+                  <h2 className="text-base font-semibold text-text-bright mb-0.5">Tools</h2>
+                  <Paragraph variant="small">
+                    How this agent's connected-entity tools reach the model.
+                  </Paragraph>
+                  <div className="mt-3 space-y-2">
+                    {(
+                      [
+                        {
+                          value: "direct" as const,
+                          label: "Direct",
+                          desc: "Every tool from Connected Entities is given to the agent as a real tool it can call by name. No discovery step, no execute wrapper.",
+                        },
+                        {
+                          value: "meta" as const,
+                          label: "Meta tools",
+                          desc: "The agent gets find_tools and execute_tools, and reaches entity tools through them. Best when the agent has hundreds of tools.",
+                        },
+                      ]
+                    ).map((opt) => (
+                      <label
+                        key={opt.value}
+                        className={`flex items-start gap-3 rounded border p-3 cursor-pointer ${
+                          toolExposure === opt.value
+                            ? "border-emerald-500/60 bg-emerald-500/5"
+                            : "border-charcoal-700 hover:border-charcoal-600"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="toolExposureChoice"
+                          value={opt.value}
+                          checked={toolExposure === opt.value}
+                          onChange={() => setToolExposure(opt.value)}
+                          className="mt-0.5 accent-emerald-500"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-text-bright">{opt.label}</p>
+                          <p className="text-xs text-text-dimmed">{opt.desc}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  {toolExposure === "direct" ? (
+                    <div className="mt-3 rounded border border-emerald-500/30 bg-emerald-500/5 p-3">
+                      <p className="text-xs text-text-dimmed">
+                        Every tool listed under <strong>Connected Entities</strong> will be provided
+                        to the agent directly, as callable tools with their full schemas, inside the
+                        cached prompt prefix. <strong>find_tools</strong> and{" "}
+                        <strong>execute_tools</strong> are not injected. Context tools (memory,
+                        profile, artifacts, schedules) stay exposed exactly as you tick them.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded border border-charcoal-700 bg-charcoal-800/50 p-3">
+                      <p className="text-xs text-text-dimmed">
+                        The agent receives <strong>find_tools</strong> and{" "}
+                        <strong>execute_tools</strong>. Entity tools are discovered and called
+                        through them. Note: if a connected entity is itself a gateway with its own
+                        search/execute pair, this stacks two layers of indirection.
+                      </p>
+                    </div>
+                  )}
+                </section>
+
                 <div>
                   <h2 className="text-base font-semibold text-text-bright mb-0.5">Tool-call method</h2>
                   <Paragraph variant="small">
@@ -942,6 +1027,7 @@ export default function NewAgentPage() {
                 <input type="hidden" name="extract_confidenceThreshold" value={extractConfidence} />
                 <input type="hidden" name="extract_maxPerSession" value={extractMax} />
                 <input type="hidden" name="maxSteps" value={20} />
+                <input type="hidden" name="toolExposure" value={toolExposure} />
 
                 <div className="flex justify-between pt-2">
                   <Button type="button" variant="tertiary/medium" onClick={back}>

@@ -621,6 +621,13 @@ function DisplayModePanel({
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const stored = (rawToolsBlockConfig?.displayMode as string) ?? "full";
+  // HARMONISATION — surface the exposure this agent is actually running under.
+  // When it is "direct" the find_tools / execute_tools toggles below do nothing
+  // (the runtime omits both), and displayMode only governs prompt text. Saying
+  // so here is the difference between three screens that agree and three that
+  // quietly contradict each other, which is what shipped before.
+  const exposure =
+    (rawToolsBlockConfig?.toolExposure as string) === "direct" ? "direct" : "meta";
   const [mode, setMode] = useState(stored);
   const saving = fetcher.state !== "idle";
   const dirty = mode !== stored;
@@ -647,9 +654,28 @@ function DisplayModePanel({
         <Badge variant="small">{stored}</Badge>
       </div>
       <Paragraph variant="small" className="mt-1 mb-3">
-        How much of the tool layer the agent sees each turn. This is the setting that
-        controls schema inlining.
+        How much of the tool layer is DESCRIBED in the system prompt each turn. This does
+        not decide what the agent can call — Tools (Direct / Meta) on the Basic config
+        screen does that.
       </Paragraph>
+      {exposure === "direct" ? (
+        <div className="mb-3 rounded border border-emerald-500/30 bg-emerald-500/5 p-2.5">
+          <p className="text-xs text-text-dimmed">
+            This agent is on <strong>Direct</strong> exposure: every connected-entity tool is
+            injected as a callable tool, and <strong>find_tools</strong> /{" "}
+            <strong>execute_tools</strong> are not injected at all — their toggles below have
+            no effect. Context tools (memory, profile, artifacts, schedules) still apply.
+          </p>
+        </div>
+      ) : (
+        <div className="mb-3 rounded border border-charcoal-700 bg-charcoal-800/50 p-2.5">
+          <p className="text-xs text-text-dimmed">
+            This agent is on <strong>Meta</strong> exposure: it reaches entity tools through
+            find_tools and execute_tools. Switch to Direct on the Basic config screen to give
+            it the tools outright.
+          </p>
+        </div>
+      )}
       <div className="space-y-2">
         {OPTIONS.map((opt) => (
           <label

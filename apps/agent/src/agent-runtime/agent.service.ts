@@ -112,6 +112,14 @@ import {
 } from "./context-resolver";
 // PROMPT-CACHE (audit finding 4) — keeps the live clock out of the cached prefix.
 import { relocateVolatilePromptVars } from "./volatile-prompt-vars";
+// TOOL EXPOSURE — direct injection of connected-entity tools. See
+// tool-exposure.ts for why this path did not exist and what it fixes.
+import {
+  resolveToolExposure,
+  selectDirectTools,
+  normaliseParamSchema,
+  directModeSystemNote,
+} from "./tool-exposure";
 // Theme CTX.6 — 4-tier arg-resolution + auto-match + LLM-fill prompt hint.
 // The resolver walks the agent's enabled tools once per turn and emits:
 //   (a) a system-prompt block telling the LLM what args it must provide for
@@ -590,6 +598,17 @@ export interface AgentConfig {
   toolsBlockConfig?: {
     mode: "direct" | "sub-agent" | "execute-tool";
     enabledTools: string[];
+  /**
+   * TOOL EXPOSURE — what the model can actually CALL.
+   *
+   * "meta" (default): find_tools + execute_tools; entity tools sit behind them.
+   * "direct": every scoped entity tool injected as a real schema, no meta-tools.
+   *
+   * Distinct from `mode` (who drives the calling) and `displayMode` (how much
+   * is described in the prompt) -- neither of those ever governed callability.
+   * Context tools (memory/profile/artifacts) are unaffected in both modes.
+   */
+  toolExposure?: "direct" | "meta";
     perToolPerms?: Record<string, { requiresApproval?: boolean; destructive?: boolean }>;
     /**
      * TL.2 — display-mode for the tool layer. See agent-crud.service.ts
@@ -1660,6 +1679,12 @@ export class AgentService {
   ): Record<string, CoreTool> {
     const tools: Record<string, CoreTool> = {};
     const toolMode = agentConfig?.toolsBlockConfig?.mode || "direct";
+    // TOOL EXPOSURE — the control that answers "what can the model call?".
+    // `mode` answers "who drives the calling" and `displayMode` answers "how
+    // much is described in the prompt"; neither ever governed what was
+    // callable. Defaults to "meta" (today's behaviour) so nothing changes for
+    // an agent that has not opted in. See tool-exposure.ts.
+    const toolExposure = resolveToolExposure(agentConfig?.toolsBlockConfig);
 
     // find_tools — BM25 search over the tool registry.
     // `source` narrows the search to a single entity (e.g. "winsen-g0-prod-service").
@@ -1723,8 +1748,15 @@ export class AgentService {
     // explicitly false) rather than `metaEnabled` (which treats a missing key
     // as false) — the latter would strip these from every agent that never set
     // the key, a breaking change. Only an explicit `false` disables them.
+    // In DIRECT exposure the two meta-tools are removed entirely — the model
+    // gets the real entity tools instead, so a discovery step and an execute
+    // wrapper are not just redundant but actively harmful: they re-create the
+    // double-indirection that made models collapse the middle layer.
+    // Context tools (memory, profile, artifacts, schedules, approvals) are NOT
+    // meta-tools and are untouched by this — they stay exposed per their own
+    // `metaTools` ticks in both modes.
     const discoveryEnabled = (name: string): boolean =>
-      (agentConfig?.metaTools ?? {})[name] !== false;
+      toolExposure !== "direct" && (agentConfig?.metaTools ?? {})[name] !== false;
 
     if (discoveryEnabled("find_tools")) tools.find_tools = {
       description:
@@ -4259,6 +4291,100 @@ export class AgentService {
     // `execute` to post-filter the scoped matrix. Meta-tools are always
     // visible (their category is informational only).
     // ─────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // DIRECT TOOL EXPOSURE — inject connected-entity tools as real schemas.
+    //
+    // This is the path that never existed. Entity tools were only ever
+    // reachable through `execute_tools`, so an entity that is ITSELF a gateway
+    // (Walle's MCP server, with its own search/execute pair) meant the model
+    // had to nest three levels deep. It routinely collapsed the middle one:
+    // 28 failed calls, 13 slugs, five models across four providers.
+    //
+    // Every enforcement guarantee is preserved by routing execution through
+    // `toolExecutor.executeBatch` — the SAME call `execute_tools` makes — so
+    // CTX.6 arg injection, approval gating, entity_ids tenancy filtering and
+    // the audit trail all still apply. Direct exposure changes what the model
+    // can SEE, never what it is allowed to DO.
+    // ─────────────────────────────────────────────────────────────────
+    if (toolExposure === "direct" && this.toolRegistry && this.toolExecutor) {
+      try {
+        const scopedForDirect = this.toolRegistry.getScopedTools(
+          {
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+          },
+          { enabledOnly: true, agentId: scope.agentId },
+        );
+        // Honour the same per-turn entity_ids narrowing execute_tools applies.
+        // Without it a direct-mode agent would SEE every tenant's tools even
+        // though calling one would still be refused — leaking the tool list is
+        // itself a disclosure, so filter before injecting, not after.
+        const ctxMapDirect = scope.contextMapping as AgentContextMapping | null | undefined;
+        const entityNarrowed = ctxMapDirect && scope.sessionContext
+          ? filterToolsByEntityIds(
+              scopedForDirect,
+              resolveCtxPath(scope.sessionContext, ctxMapDirect.entityIdsKey || "entity_ids"),
+            )
+          : scopedForDirect;
+        const categoryNarrowed = filterToolsByEnabledCategories(
+          entityNarrowed,
+          agentConfig?.toolsBlockConfig?.enabledCategories,
+        );
+        const directTools = selectDirectTools(categoryNarrowed);
+
+        let injected = 0;
+        for (const t of directTools) {
+          // Never let an entity tool shadow a context tool or a skill the agent
+          // already has — a first-write-wins collision would silently swap the
+          // implementation the operator configured for a third-party one.
+          if (tools[t.toolName]) continue;
+          try {
+            tools[t.toolName] = {
+              description: t.description,
+              inputSchema: aiJsonSchema(
+                normaliseParamSchema(t.paramSchema) as Parameters<typeof aiJsonSchema>[0],
+              ),
+              execute: async (params: Record<string, unknown>) => {
+                const endUserId = await resolveEndUserOnce();
+                const [r] = await this.toolExecutor!.executeBatch(
+                  [{ tool: t.toolName, params: params ?? {} }],
+                  scope,
+                  { source: "agent_turn", endUserId },
+                );
+                return r;
+              },
+            } as CoreTool;
+            injected++;
+          } catch (err: any) {
+            // One malformed schema costs its own tool, never the turn.
+            this.logger.warn(
+              `[agent.tools] direct exposure skipped "${t.toolName}": ${err?.message ?? err}`,
+            );
+          }
+        }
+        // Tell the model there is no discovery step. Without this it can still
+        // reach for find_tools out of habit and then reason about the absence.
+        // Byte-stable text with no counts or names — it lands in the cached
+        // prefix, and an earlier block that embedded live tool counts there
+        // invalidated the cache every time an integration published a tool.
+        if (systemPromptAddendumHolder) {
+          systemPromptAddendumHolder.value = systemPromptAddendumHolder.value
+            ? `${systemPromptAddendumHolder.value}\n\n${directModeSystemNote()}`
+            : directModeSystemNote();
+        }
+        this.logger.log(
+          `[agent.tools] direct exposure: injected ${injected}/${directTools.length} entity tools (find_tools/execute_tools omitted)`,
+        );
+      } catch (err: any) {
+        // Fail LOUD but not fatal: without entity tools AND without meta-tools
+        // the agent has no reach at all, so say so plainly in the logs.
+        this.logger.error(
+          `[agent.tools] direct exposure FAILED — agent has no entity tools this turn: ${err?.message ?? err}`,
+        );
+      }
+    }
+
     const tlb = agentConfig?.toolsBlockConfig ?? null;
     const displayModeRaw = (tlb?.displayMode ?? "full") as string;
     const displayMode: "full" | "summary" | "meta-tool" | "hybrid" =
