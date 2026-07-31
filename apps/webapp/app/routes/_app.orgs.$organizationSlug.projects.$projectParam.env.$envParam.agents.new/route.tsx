@@ -313,6 +313,7 @@ function buildPromptPreview(
   toolMode: string,
   userProfiling: boolean,
   blocks: unknown[],
+  toolExposure: "meta" | "direct" = "meta",
 ): string {
   const lines: string[] = [];
 
@@ -335,21 +336,27 @@ function buildPromptPreview(
     lines.push("");
   }
 
-  // Tool-call method block.
-  switch (toolMode) {
-    case "sub-agent":
-      lines.push("[tools — sub-agent] You have a sub-agent available via delegate_to_sub_agent.");
-      lines.push("Use find_tools to discover capabilities, then delegate.");
-      break;
-    case "execute-tool":
-      lines.push("[tools — execute-tool] Use find_tools to search, then execute_tools to call.");
-      lines.push("Tool schemas are NOT inlined — query by category or name.");
-      break;
-    default:
-      lines.push("[tools — direct] Tools available:");
-      lines.push("  [tool schemas will be inlined here based on linked entities + entity_ids routing]");
-      break;
+  // Tools block.
+  //
+  // This preview used to claim, for mode "direct", that "tool schemas will be
+  // inlined here" — which was never true of ANY mode: entity tools were only
+  // ever reachable behind execute_tools. Operators picked Direct expecting
+  // inlined schemas and got meta-tools, with no way to tell from this screen.
+  // Exposure is what decides inlining, so the preview now keys off that.
+  if (toolExposure === "direct") {
+    lines.push("[tools — direct exposure] Every tool from your Connected Entities is");
+    lines.push("injected here as a callable tool with its full schema (name-sorted,");
+    lines.push("inside the cached prefix). find_tools / execute_tools are NOT injected.");
+  } else {
+    lines.push("[tools — meta] find_tools + execute_tools are injected.");
+    lines.push("Entity tool schemas are NOT inlined — the agent discovers them at");
+    lines.push("run time via find_tools and calls them via execute_tools.");
+    if (toolMode === "sub-agent") {
+      lines.push("delegate_to_sub_agent replaces execute_tools; the sub-agent does the calling.");
+    }
   }
+  lines.push("Context tools (memory, profile, artifacts, schedules) are injected directly");
+  lines.push("in both cases, per the toggles on the Tools tab.");
 
   return lines.join("\n");
 }
@@ -398,7 +405,9 @@ export default function NewAgentPage() {
   // "meta" so a new agent behaves like every existing one.
   const [toolExposure, setToolExposure] = useState<"meta" | "direct">("meta");
 
-  const promptPreview = buildPromptPreview(agentName, toolMode, userProfiling, blocks as unknown[]);
+  const promptPreview = buildPromptPreview(
+    agentName, toolMode, userProfiling, blocks as unknown[], toolExposure,
+  );
 
   function canAdvance(s: WizardStep): boolean {
     // Step 1: only require agent name — model routes are configured via
@@ -887,20 +896,27 @@ export default function NewAgentPage() {
                   <div className="space-y-2">
                     {(
                       [
+                        // Labels deliberately avoid the word "Direct": the Tools
+                        // control above already uses it for EXPOSURE, and two
+                        // controls both offering "Direct" for different things is
+                        // the confusion this screen exists to remove. The old
+                        // "<30 tools" / "100+ tools" guidance is gone too — it
+                        // implied schema inlining scaled with tool count, which
+                        // was never what this setting did.
                         {
                           value: "direct",
-                          label: "Direct",
-                          desc: "The agent calls tools itself. Default — best for <30 tools.",
+                          label: "This agent calls tools",
+                          desc: "The agent invokes tools itself. Default.",
                         },
                         {
                           value: "sub-agent",
-                          label: "Sub-agent",
-                          desc: "Dedicated tool-calling agent (Claude Haiku). Best for 100+ tools.",
+                          label: "Delegate to a sub-agent",
+                          desc: "A dedicated tool-calling agent does the invoking and reports back. Useful when tool work is long or noisy.",
                         },
                         {
                           value: "execute-tool",
-                          label: "Execute-tool wrapper",
-                          desc: "Minimalist — use find_tools then execute_tools. Max token savings.",
+                          label: "Minimal meta-tools only",
+                          desc: "Keeps find_tools + execute_tools and drops the other meta-tools. Ignored when Tools is set to Direct.",
                         },
                       ] as const
                     ).map((opt) => (

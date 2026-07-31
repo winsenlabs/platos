@@ -509,7 +509,7 @@ export default function AgentToolsTab() {
             panel from the main agent editor. Saves through a dedicated
             PATCH path so the updateAgent DTO's `metaTools` field is the
             only source of truth. */}
-        <MetaToolsPanel metaTools={rawMetaTools} />
+        <MetaToolsPanel metaTools={rawMetaTools} rawToolsBlockConfig={rawToolsBlockConfig} />
 
         {/* TL.5 — read-only skills summary. Install / import / enable still
             lives on the dedicated Skills tab; this is just the list + link. */}
@@ -632,11 +632,17 @@ function DisplayModePanel({
   const saving = fetcher.state !== "idle";
   const dirty = mode !== stored;
 
+  // These describe the PROMPT TEXT only. "Full" used to claim "every enabled
+  // tool's full schema is visible" and "Hybrid" claimed "pinned tools in full" —
+  // neither was ever true: displayMode has never injected a schema. Schema
+  // injection is Tools = Direct, on the Basic config screen. Keeping the old
+  // wording is what let an operator believe they had configured direct tool
+  // access when they had not.
   const OPTIONS: Array<{ value: string; label: string; desc: string }> = [
-    { value: "full", label: "Full", desc: "Every enabled tool's full schema is visible. Most capable, most tokens." },
-    { value: "summary", label: "Summary", desc: "No tool schemas — meta-tools plus a category/count hint. Reach tools via find_tools." },
-    { value: "meta-tool", label: "Meta-tools only", desc: "Pure discovery: meta-tools, no category hint. Fewest tokens." },
-    { value: "hybrid", label: "Hybrid", desc: "Pinned tools in full, everything else via discovery. Set pinned tools below." },
+    { value: "full", label: "Full", desc: "No extra tool block in the prompt. Use with Tools = Direct, where the schemas themselves are the description." },
+    { value: "summary", label: "Summary", desc: "Adds a category summary to the prompt so the agent knows roughly what exists before it searches." },
+    { value: "meta-tool", label: "Meta-tools only", desc: "No tool block at all. Fewest prompt tokens; the agent discovers everything at run time." },
+    { value: "hybrid", label: "Hybrid", desc: "Category summary plus a named list of pinned tools the agent can call without searching first." },
   ];
 
   function save() {
@@ -1025,9 +1031,18 @@ function PinnedToolsPanel({
 // (form fields were named `meta_*` but the action never parsed them).
 function MetaToolsPanel({
   metaTools,
+  rawToolsBlockConfig,
 }: {
   metaTools: Record<string, boolean>;
+  rawToolsBlockConfig?: Record<string, unknown> | null;
 }) {
+  // Under Direct exposure the runtime omits find_tools / execute_tools
+  // entirely, so their toggles here decide nothing. Showing them as live
+  // controls is how config screens drift from runtime behaviour — the exact
+  // problem this page is being fixed for. Mark them inert instead.
+  const exposureDirect =
+    (rawToolsBlockConfig?.toolExposure as string) === "direct";
+  const META_ONLY = new Set(["find_tools", "execute_tools"]);
   const fetcher = useFetcher();
   const keys = useMemo(
     () => Object.keys(metaTools ?? {}).sort((a, b) => a.localeCompare(b)),
@@ -1066,9 +1081,11 @@ function MetaToolsPanel({
         </Badge>
       </div>
       <Paragraph variant="small" className="mt-1 text-text-dimmed">
-        Built-in Platos tools the LLM can always see (search / dispatch /
-        memory / approvals / artifacts). Disable the ones this agent
-        shouldn't reach for — the runtime skips them at turn build time.
+        Built-in Platos tools the LLM can see. Only <strong>find_tools</strong> and{" "}
+        <strong>execute_tools</strong> are meta-tools; the rest (memory, profile,
+        approvals, artifacts, schedules) are context tools and stay exposed in both
+        exposure modes. Disable the ones this agent shouldn't reach for — the runtime
+        skips them at turn build time.
       </Paragraph>
       <div className="mt-3 grid grid-cols-2 gap-1 md:grid-cols-3">
         {keys.map((k) => {
@@ -1082,9 +1099,23 @@ function MetaToolsPanel({
                 type="checkbox"
                 checked={on}
                 onChange={() => toggle(k)}
-                className="accent-emerald-500"
+                disabled={exposureDirect && META_ONLY.has(k)}
+                className="accent-emerald-500 disabled:opacity-40"
               />
-              <code className={on ? "text-text-bright" : "text-text-dimmed"}>
+              <code
+                className={
+                  exposureDirect && META_ONLY.has(k)
+                    ? "text-text-dimmed line-through"
+                    : on
+                      ? "text-text-bright"
+                      : "text-text-dimmed"
+                }
+                title={
+                  exposureDirect && META_ONLY.has(k)
+                    ? "Not injected under Direct exposure — this toggle has no effect"
+                    : undefined
+                }
+              >
                 {k}
               </code>
             </label>

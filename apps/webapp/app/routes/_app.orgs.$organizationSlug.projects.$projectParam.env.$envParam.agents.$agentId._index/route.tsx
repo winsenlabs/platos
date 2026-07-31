@@ -1024,9 +1024,14 @@ export default function AgentDetailPage() {
                   onChange={(e) => setToolsBlockMode(e.target.value)}
                   className="w-full rounded-md border border-charcoal-700 bg-charcoal-800 px-3 py-2 text-sm text-text-bright"
                 >
-                  <option value="direct">Direct — parent LLM calls tools itself (default)</option>
-                  <option value="sub-agent">Sub-agent — dedicated tool-calling agent (recommended for 100+ tools)</option>
-                  <option value="execute-tool">Execute-tool wrapper — minimalist (max token savings, ~15% retry rate)</option>
+                  {/* Labels avoid "Direct" — the Tools control above uses it for
+                      EXPOSURE, and two controls offering "Direct" for different
+                      things is exactly the confusion being removed here. The
+                      tool-count guidance is gone: it implied schema inlining
+                      scaled with tool count, which this setting never did. */}
+                  <option value="direct">This agent calls tools itself (default)</option>
+                  <option value="sub-agent">Delegate to a sub-agent — it invokes tools and reports back</option>
+                  <option value="execute-tool">Minimal meta-tools only — keeps find_tools + execute_tools, drops the rest</option>
                 </select>
               </Fieldset>
             </section>
