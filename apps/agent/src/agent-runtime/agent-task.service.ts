@@ -889,6 +889,16 @@ export class AgentTaskService {
     //     error and can retry. Previously: Redis cost bump happened
     //     first, so a Postgres outage billed the user + lost the
     //     assistant row.
+    // HISTORICAL RATES — resolve once, alongside the cost that used them, so the
+    // stamped figures and `cost_cents` can never disagree. Fail-open: a rate
+    // lookup must never cost us the turn or the message row.
+    let turnRates: Record<string, unknown> | undefined;
+    try {
+      turnRates = await this.costService.resolveEffectiveRates(config.model);
+    } catch {
+      turnRates = undefined;
+    }
+
     const storedAssistant = await this.conversationService.storeMessage(thread.id, scopeWithCluster, {
       role: "assistant",
       content: fullText || undefined,
@@ -924,6 +934,23 @@ export class AgentTaskService {
           noCacheInputTokens: noCacheInputTokens,
           ...(lastInputTokenDetails ? { inputTokenDetails: lastInputTokenDetails } : {}),
           ...(lastOutputTokenDetails ? { outputTokenDetails: lastOutputTokenDetails } : {}),
+          // HISTORICAL RATES — stamp the per-1M-token rates actually used, in
+          // cents, so this row is self-describing and its cost can be re-derived
+          // later without knowing which catalog version, verified override, or
+          // fallback tier happened to be live at the time.
+          //
+          // The comment above already promised that the token-detail blobs let
+          // us "replay billing math against historical rate changes" — but the
+          // rates themselves were never stored, so a replay could only ever use
+          // TODAY's prices. A price change silently rewrote history. This closes
+          // that: `rates` is the missing half.
+          //
+          // `cacheRead`/`cacheWrite` are EFFECTIVE rates (per-model when the
+          // price source states one, otherwise input x the per-provider
+          // multiplier), and `source` records which tier answered, so a row
+          // priced by the conservative estimator is distinguishable from one
+          // priced by a verified provider figure.
+          rates: turnRates,
         },
         cost_cents: costCents,
         // MC.2 — cache-adjusted cost lives on the same row. When there was

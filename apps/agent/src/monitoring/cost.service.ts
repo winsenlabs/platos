@@ -1,4 +1,4 @@
-import { Injectable, Inject } from "@nestjs/common";
+import { Injectable, Inject, Logger } from "@nestjs/common";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
@@ -268,27 +268,81 @@ function modelLookupKeys(model: string): string[] {
  * Returns raw (unrounded) rates so callers can do their own precision math
  * (calculateCost rounds at 0.01¢, calculateCostWithCache at 0.0001¢).
  */
-function resolveRates(
-  model: string,
-  catalog: LiteLLMCatalog | null,
-): { input: number; output: number } {
+export interface ResolvedRates {
+  /** Cents per 1M tokens. */
+  input: number;
+  output: number;
+  /**
+   * Cents per 1M CACHE-READ tokens, when the price source states it per model.
+   * `undefined` means "not known for this model" and the caller falls back to
+   * the coarse per-provider multiplier in CACHE_RATES.
+   */
+  cacheRead?: number;
+  /** Cents per 1M CACHE-WRITE tokens; same fallback semantics. */
+  cacheWrite?: number;
+  /** Where the numbers came from — stamped onto the turn for auditability. */
+  source: "verified" | "catalog" | "fallback-table" | "conservative";
+}
+
+/**
+ * PRECISION (2026-07-31) — resolve cache rates PER MODEL, not per provider.
+ *
+ * The catalog has always carried `cache_read_input_token_cost` /
+ * `cache_creation_input_token_cost`, and this function has always thrown them
+ * away, leaving `calculateCostWithCache` to apply a per-PROVIDER multiplier
+ * (`CACHE_RATES`) instead. Those multipliers are a blunt instrument and were
+ * measurably wrong:
+ *
+ *   CACHE_RATES.openai = { read: 0.5, write: 1.0 }
+ *   gpt-5.6-luna actual =  read 0.1x,  write 2.5x
+ *
+ * Cache writes on that model cost 2.5x fresh input — more, not less — while
+ * reads cost a fifth of what we assumed. On a turn that is 70-95% cache reads
+ * those two errors do not cancel; they compound. Per-model figures remove the
+ * guess entirely wherever the source states them, and the multiplier survives
+ * only as the fallback for models that do not.
+ */
+function resolveRates(model: string, catalog: LiteLLMCatalog | null): ResolvedRates {
   const keys = modelLookupKeys(model);
-  if (catalog) {
+  const perMillionCents = (perToken: number | undefined): number | undefined =>
+    perToken === undefined || perToken === null ? undefined : perToken * 1_000_000 * 100;
+
+  // Verified provider figures outrank the catalog — see verified-prices.ts for
+  // why the catalog alone is not trustworthy on a per-row basis.
+  const verified = verifiedPriceFor(keys);
+
+  if (catalog || verified) {
     for (const k of keys) {
-      const entry = catalog[k];
-      if (!entry) continue;
-      const inputCents = (entry.input_cost_per_token ?? 0) * 1_000_000 * 100;
-      const outputCents = (entry.output_cost_per_token ?? 0) * 1_000_000 * 100;
+      const merged = applyVerifiedPrice(catalog?.[k], verified);
+      if (!merged) continue;
+      const inputCents = perMillionCents(merged.input_cost_per_token) ?? 0;
+      const outputCents = perMillionCents(merged.output_cost_per_token) ?? 0;
       if (inputCents > 0 || outputCents > 0) {
-        return { input: inputCents, output: outputCents };
+        return {
+          input: inputCents,
+          output: outputCents,
+          cacheRead: perMillionCents(merged.cache_read_input_token_cost),
+          cacheWrite: perMillionCents(merged.cache_creation_input_token_cost),
+          source: verified ? "verified" : "catalog",
+        };
       }
+    }
+    // A verified entry with no catalog row at all still prices the model.
+    if (verified && (verified.input !== undefined || verified.output !== undefined)) {
+      return {
+        input: perMillionCents(verified.input) ?? 0,
+        output: perMillionCents(verified.output) ?? 0,
+        cacheRead: perMillionCents(verified.cacheRead),
+        cacheWrite: perMillionCents(verified.cacheWrite),
+        source: "verified",
+      };
     }
   }
   for (const k of keys) {
     const pricing = FALLBACK_PRICING[k];
-    if (pricing) return pricing;
+    if (pricing) return { ...pricing, source: "fallback-table" };
   }
-  return conservativeFallbackRates(model);
+  return { ...conservativeFallbackRates(model), source: "conservative" };
 }
 
 function conservativeFallbackRates(model: string): { input: number; output: number } {
@@ -319,11 +373,18 @@ function conservativeFallbackRates(model: string): { input: number; output: numb
 
 const CATALOG_KEY = "cost:model_catalog";
 const CATALOG_CACHE_TTL_MS = 60_000; // in-process memo for one minute
+/** Upstream price catalog — same source the daily refresh task uses. */
+const LITELLM_CATALOG_URL =
+  "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
+/** After a failed lazy fetch, don't retry for this long (upstream outage guard). */
+const CATALOG_FETCH_BACKOFF_MS = 300_000; // 5 minutes
 
 interface LiteLLMCatalogEntry {
   input_cost_per_token?: number;
   output_cost_per_token?: number;
   cache_read_input_token_cost?: number;
+  /** Per-model cache-WRITE price. Present for Anthropic + newer OpenAI rows. */
+  cache_creation_input_token_cost?: number;
   litellm_provider?: string;
 }
 type LiteLLMCatalog = Record<string, LiteLLMCatalogEntry>;
@@ -350,6 +411,9 @@ import {
   cacheRatesFor,
   providerForModel,
 } from "@internal/cost-rates";
+// PRECISION — provider-verified overrides layered on top of the upstream
+// catalog, because LiteLLM is wrong on a per-row basis (see verified-prices.ts).
+import { applyVerifiedPrice, verifiedPriceFor } from "./verified-prices";
 
 /**
  * CostService — tracks LLM token usage and cost per conversation, per scope.
@@ -364,6 +428,9 @@ import {
  */
 @Injectable()
 export class CostService {
+  /** Nest logger — added with the lazy catalog load so a cold/failed fetch is
+   *  visible in the deployment logs rather than silently degrading rates. */
+  private readonly logger = new Logger(CostService.name);
   private prisma: any;
   private catalogMemo: { catalog: LiteLLMCatalog | null; loadedAt: number } = {
     catalog: null,
@@ -414,7 +481,80 @@ export class CostService {
     } catch {
       // fall through
     }
-    return this.lastKnownCatalog;
+    // SELF-HEAL (2026-07-31) — a cold catalog used to stay cold forever.
+    //
+    // The catalog is populated by the daily `litellm-cost-refresh` Trigger task,
+    // which POSTs it back to this service. That task resolves the agent URL as
+    // `PLATOS_AGENT_HTTP_URL || PLATOS_AGENT_API_URL || "http://localhost:3100"`,
+    // and the task runs on Trigger Cloud — where localhost is the Trigger worker,
+    // not this process. With neither var set the write never arrived, Redis stayed
+    // empty, and EVERY modern model silently fell through to the conservative
+    // 100/300 cents-per-million estimator. Verified empty on the live deployment.
+    //
+    // Rather than depend on that callback being configured correctly, fetch the
+    // catalog directly on a miss. The scheduled task stays as the freshness
+    // mechanism; this is the floor that stops a misconfiguration turning into
+    // months of quietly wrong billing.
+    return this.lazyLoadCatalog();
+  }
+
+  /** In-flight dedupe so a burst of turns triggers exactly one upstream fetch. */
+  private catalogFetchInFlight: Promise<LiteLLMCatalog | null> | null = null;
+  private catalogFetchFailedAt = 0;
+
+  private async lazyLoadCatalog(): Promise<LiteLLMCatalog | null> {
+    // Never reach the network from a unit test. Without this, stubbing Redis to
+    // return null (which every cost test does) silently turns a hermetic test
+    // into a live fetch of a 1.6 MB catalog — non-deterministic, slow, and
+    // failing offline. Opt back in explicitly if a test wants the real thing.
+    if (
+      process.env.NODE_ENV === "test" &&
+      process.env.PLATOS_ALLOW_LIVE_PRICE_FETCH !== "1"
+    ) {
+      return this.lastKnownCatalog;
+    }
+    // Back off after a failure so an upstream outage cannot turn every turn
+    // into a 20s stall. Serving `lastKnownCatalog` (or null → fallback table)
+    // is always better than blocking a user's turn on GitHub being reachable.
+    if (Date.now() - this.catalogFetchFailedAt < CATALOG_FETCH_BACKOFF_MS) {
+      return this.lastKnownCatalog;
+    }
+    if (this.catalogFetchInFlight) return this.catalogFetchInFlight;
+
+    this.catalogFetchInFlight = (async () => {
+      try {
+        const res = await fetch(LITELLM_CATALOG_URL, {
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const parsed = (await res.json()) as LiteLLMCatalog;
+        if (!parsed || typeof parsed !== "object" || Object.keys(parsed).length < 100) {
+          throw new Error("catalog payload looks truncated");
+        }
+        this.catalogMemo = { catalog: parsed, loadedAt: Date.now() };
+        this.lastKnownCatalog = parsed;
+        // Share it with every other replica, and survive our own restart.
+        // Best-effort: a Redis write failure must not fail the turn.
+        try {
+          await this.redis.set(CATALOG_KEY, JSON.stringify(parsed), "EX", 86_400);
+        } catch {
+          /* in-process memo still serves this replica */
+        }
+        this.logger.log(
+          `[cost] lazily loaded price catalog (${Object.keys(parsed).length} models) — Redis was cold`,
+        );
+        return parsed;
+      } catch (err: any) {
+        this.catalogFetchFailedAt = Date.now();
+        this.logger.warn(
+          `[cost] lazy catalog load failed (${err?.message ?? err}); using last-known/fallback rates`,
+        );
+        return this.lastKnownCatalog;
+      } finally {
+        this.catalogFetchInFlight = null;
+      }
+    })();
+    return this.catalogFetchInFlight;
   }
 
   /**
@@ -485,6 +625,37 @@ export class CostService {
    * cache slice off to get the fresh-token component before applying the
    * write/read multipliers. Zero cache fields → identical to `calculateCost`.
    */
+  /**
+   * Resolve the EFFECTIVE per-1M-token rates for a model, in cents.
+   *
+   * "Effective" means post-fallback: `cacheRead`/`cacheWrite` are the numbers
+   * actually used in the billing math, whether they came from a per-model price
+   * or from the per-provider multiplier. Stamping these onto the turn makes the
+   * row self-describing — the cost can be re-derived later without knowing which
+   * catalog version or which fallback tier was live at the time, which is the
+   * whole point of keeping a historical rate.
+   */
+  async resolveEffectiveRates(
+    model: string,
+    providerId?: string | null,
+  ): Promise<{
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheWrite: number;
+    source: ResolvedRates["source"];
+  }> {
+    const resolved = resolveRates(model, await this.getCatalog());
+    const multipliers = cacheRatesFor(providerId ?? providerForModel(model));
+    return {
+      input: resolved.input,
+      output: resolved.output,
+      cacheRead: resolved.cacheRead ?? resolved.input * multipliers.read,
+      cacheWrite: resolved.cacheWrite ?? resolved.input * multipliers.write,
+      source: resolved.source,
+    };
+  }
+
   async calculateCostWithCache(
     model: string,
     inputTokens: number,
@@ -505,8 +676,8 @@ export class CostService {
     // rounded the sum again, propagating a 0.005-0.0075¢ error on tiny
     // totals (e.g. Google rate test 0.0825¢ was rounding to 0.09¢).
     const catalog = await this.getCatalog();
-    const { input: inputCentsPerMillion, output: outputCentsPerMillion } =
-      resolveRates(model, catalog);
+    const resolved = resolveRates(model, catalog);
+    const { input: inputCentsPerMillion, output: outputCentsPerMillion } = resolved;
 
     const freshInputTokens = Math.max(
       0,
@@ -514,9 +685,17 @@ export class CostService {
     );
     const freshCost = (freshInputTokens / 1_000_000) * inputCentsPerMillion;
     const outputCost = (outputTokens / 1_000_000) * outputCentsPerMillion;
-    const rates = cacheRatesFor(providerId ?? providerForModel(model));
-    const writeCost = (cacheCreationInputTokens / 1_000_000) * inputCentsPerMillion * rates.write;
-    const readCost = (cacheReadInputTokens / 1_000_000) * inputCentsPerMillion * rates.read;
+    // PRECISION — prefer the PER-MODEL cache rate when the price source states
+    // it; the per-provider multiplier is now only the fallback. See resolveRates
+    // for the measured case (gpt-5.6-luna: real 0.1x read / 2.5x write against
+    // an assumed 0.5x / 1.0x) that motivated this.
+    const multipliers = cacheRatesFor(providerId ?? providerForModel(model));
+    const writeCentsPerMillion =
+      resolved.cacheWrite ?? inputCentsPerMillion * multipliers.write;
+    const readCentsPerMillion =
+      resolved.cacheRead ?? inputCentsPerMillion * multipliers.read;
+    const writeCost = (cacheCreationInputTokens / 1_000_000) * writeCentsPerMillion;
+    const readCost = (cacheReadInputTokens / 1_000_000) * readCentsPerMillion;
     // Single round at the end, at 0.0001¢ precision to preserve tiny
     // totals (sub-cent costs on cheap models like gemini-2.5-flash).
     return Math.round((freshCost + outputCost + writeCost + readCost) * 10_000) / 10_000;
