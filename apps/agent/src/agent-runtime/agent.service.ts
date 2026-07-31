@@ -235,6 +235,11 @@ const OPENAI_COMPAT_BASE_URLS: Record<string, string> = {
   sakana: "https://api.sakana.ai/v1",
 };
 
+/** Reserved modelRoutes label that selects the background-compaction model. */
+export const COMPACTION_ROUTE_LABEL = "compaction";
+/** Used when no `compaction` route is configured — matches historical behaviour. */
+export const DEFAULT_COMPACTION_MODEL = "anthropic:claude-haiku-4-5-20251001";
+
 function resolveModel(modelString: string, apiKey?: string, retryRules?: RetryRule[]) {
   const colonIdx = modelString.indexOf(":");
   const provider = colonIdx > 0 ? modelString.slice(0, colonIdx) : "anthropic";
@@ -967,6 +972,46 @@ export class AgentService {
    * neither source has it — the caller decides whether to throw or proceed
    * anyway (e.g. google-vertex uses GOOGLE_VERTEX_CREDENTIALS instead).
    */
+  /**
+   * COMPACTION MODEL — resolve the model used for background summarisation.
+   *
+   * Compaction used to hardcode `anthropic("claude-haiku-4-5-20251001")` with
+   * NO api key argument, which meant two things nobody chose: the model was
+   * fixed, and the call billed the PLATFORM's ambient ANTHROPIC_API_KEY rather
+   * than the tenant's own key. A tenant's summarisation was quietly on our bill.
+   *
+   * It now reads a reserved `compaction` label from the agent's existing
+   * `modelRoutes`, so the operator picks the model AND the provider key through
+   * the same editor they already use for the main model — no new schema, no new
+   * UI concept. Unset falls back to Haiku, preserving today's behaviour.
+   */
+  async resolveCompactionModel(
+    agentConfig: AgentConfig,
+    scope: RequestScope,
+  ): Promise<{ model: ReturnType<typeof resolveModel>; modelString: string; source: string }> {
+    const routes = (agentConfig.modelRoutes ?? []) as Array<{
+      label?: string; model?: string; providerKeyId?: string | null;
+    }>;
+    const route = Array.isArray(routes)
+      ? routes.find((r) => r && r.label === COMPACTION_ROUTE_LABEL && typeof r.model === "string" && r.model.length > 0)
+      : undefined;
+    const modelString = route?.model ?? DEFAULT_COMPACTION_MODEL;
+    // Fail-open on key resolution: compaction is a background nicety and must
+    // never take down a turn. Undefined key falls back to ambient env, which is
+    // the pre-existing behaviour.
+    let apiKey: string | undefined;
+    try {
+      apiKey = await this.resolveApiKey(modelString, scope, route?.providerKeyId ?? undefined);
+    } catch {
+      apiKey = undefined;
+    }
+    return {
+      model: resolveModel(modelString, apiKey),
+      modelString,
+      source: route ? "route:compaction" : "default",
+    };
+  }
+
   private async resolveApiKey(
     modelString: string,
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,

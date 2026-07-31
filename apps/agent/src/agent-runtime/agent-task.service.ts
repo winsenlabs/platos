@@ -1,4 +1,4 @@
-import { Injectable, Inject, Optional } from "@nestjs/common";
+import { Injectable, Inject, Optional, Logger } from "@nestjs/common";
 import { AgentService, type AgentStreamEvent, type AgentConfig } from "./agent.service";
 import { ConversationService } from "../memory/conversation.service";
 import { SafetyService } from "../monitoring/safety.service";
@@ -53,6 +53,9 @@ import { env } from "../shared/env";
  */
 @Injectable()
 export class AgentTaskService {
+  /** Added with the compaction-model work so the chosen model is visible in logs. */
+  private readonly logger = new Logger(AgentTaskService.name);
+
   constructor(
     private readonly agentService: AgentService,
     private readonly conversationService: ConversationService,
@@ -1626,8 +1629,13 @@ export class AgentTaskService {
         })
         .join("\n\n");
 
-      // Cheap model for compaction
-      const model = anthropic("claude-haiku-4-5-20251001");
+      // COMPACTION MODEL — operator-selected via the reserved `compaction`
+      // label in modelRoutes, with that route's provider key. Previously this
+      // was a hardcoded Haiku with NO key argument, so it ran on the platform's
+      // ambient credentials rather than the tenant's. See
+      // AgentService.resolveCompactionModel.
+      const { model, modelString: compactionModelString, source: compactionModelSource } =
+        await this.agentService.resolveCompactionModel(config, scope);
       // PRELAUNCH-A2-7 — propagate abort signal.
       const summary = await generateText({
         model,
@@ -1635,6 +1643,10 @@ export class AgentTaskService {
         messages: [{ role: "user" as const, content: conversationText }],
         abortSignal,
       });
+
+      this.logger?.log?.(
+        `[compaction] thread=${threadId} summarized ${toCompact.length} messages with ${compactionModelString} (${compactionModelSource})`,
+      );
 
       // Merge with any existing summary (already loaded under scope above).
       const merged = threadRow.compactedSummary

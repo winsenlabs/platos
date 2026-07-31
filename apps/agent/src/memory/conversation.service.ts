@@ -1431,26 +1431,97 @@ export class ConversationService {
     const thread = await this.getThread(threadId, scope);
     if (!thread) return [];
 
-    // Main thread messages — always loaded, excludes sub-thread replies.
-    const mainMessages = await this.prisma.platosAgentMessage.findMany({
-      where: {
-        threadId,
-        role: { in: ["user", "assistant"] },
-        status: "active",
-        threadReplyToId: null,
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      select: { role: true, content: true, encKeyVersion: true },
-    });
+    // ── CURSOR-ANCHORED HISTORY ──────────────────────────────────────────
+    //
+    // The window used to be a pure slide: `orderBy desc, take: limit`. Two
+    // problems with that, and the fix for both is the anchor the compaction
+    // path was ALREADY writing and nothing was reading.
+    //
+    // 1. The summary was ADDITIVE, not substitutive. Messages between the
+    //    compaction cursor and the start of the sliding window appeared in the
+    //    compacted summary AND again in the loaded history, so compaction
+    //    increased token spend instead of reducing it.
+    //
+    // 2. It defeated cross-turn prompt caching. Anthropic matches an exact
+    //    prefix, so when the oldest message slid off, messages[0] changed and
+    //    the whole cached prefix died — every turn, on every thread past
+    //    contextLimit. That is the same full-price-history bug the caching work
+    //    fixed WITHIN a turn, reappearing BETWEEN turns.
+    //
+    // Anchored on `compactedUpToMessageId` the window is STEPPED instead:
+    // between compactions the cursor is fixed, so the array only grows at the
+    // tail and the prefix stays byte-identical. It changes once per compaction
+    // cycle, not once per turn.
+    let cursorAt: Date | null = null;
+    let cursorId: string | null = null;
+    try {
+      const row = await this.prisma.platosAgentThread.findFirst({
+        where: { id: threadId },
+        select: { compactedUpToMessageId: true },
+      });
+      cursorId = (row?.compactedUpToMessageId as string | null) ?? null;
+      if (cursorId) {
+        const anchor = await this.prisma.platosAgentMessage.findFirst({
+          where: { id: cursorId },
+          select: { createdAt: true },
+        });
+        // A cursor pointing at a deleted message must not silently drop the
+        // whole history — fall back to the sliding window instead.
+        cursorAt = (anchor?.createdAt as Date | undefined) ?? null;
+      }
+    } catch {
+      cursorAt = null; // fail-open to the pre-existing behaviour
+    }
+
+    // Safety bound. If compaction stalls, an anchored window would grow without
+    // limit and eventually blow the context. Cap generously (compaction should
+    // land long before this) and log loudly, because hitting it means
+    // compaction is broken rather than merely behind.
+    const anchoredCap = Math.max(limit * 4, limit + 40);
+
+    const mainMessages = cursorAt
+      ? await this.prisma.platosAgentMessage.findMany({
+          where: {
+            threadId,
+            role: { in: ["user", "assistant"] },
+            status: "active",
+            threadReplyToId: null,
+            createdAt: { gt: cursorAt },
+          },
+          // Ascending + take = the OLDEST messages after the cursor, i.e. a
+          // stable prefix. Descending would re-introduce the slide.
+          orderBy: { createdAt: "asc" },
+          take: anchoredCap,
+          select: { role: true, content: true, encKeyVersion: true },
+        })
+      : (
+          await this.prisma.platosAgentMessage.findMany({
+            where: {
+              threadId,
+              role: { in: ["user", "assistant"] },
+              status: "active",
+              threadReplyToId: null,
+            },
+            orderBy: { createdAt: "desc" },
+            take: limit,
+            select: { role: true, content: true, encKeyVersion: true },
+          })
+        ).reverse();
+
+    if (cursorAt && mainMessages.length >= anchoredCap) {
+      this.logger?.warn?.(
+        `[conversation] thread ${threadId} hit the anchored history cap (${anchoredCap}) — compaction is not keeping up`,
+      );
+    }
 
     const decrypt = (m: any): string =>
       this.crypto
         ? (this.crypto.decryptIfNeeded(m.content, m.encKeyVersion) ?? "")
         : (m.content ?? "");
 
+    // NOTE: both branches above already yield ASCENDING order (the sliding
+    // branch reverses its desc result inline), so no reverse here.
     const mainHistory = mainMessages
-      .reverse()
       .map((m: any) => ({ role: m.role as "user" | "assistant", content: decrypt(m) }))
       .filter((m: { content: string }) => m.content);
 
