@@ -990,7 +990,7 @@ export default function AgentDetailPage() {
                 how an operator could pick "Direct" here and still get
                 meta-tools at runtime. */}
             <Fieldset>
-              <Label>Tools</Label>
+              <label className="text-xs text-text-dimmed font-medium">Tools</label>
               <select
                 name="toolExposure"
                 value={toolExposure}
