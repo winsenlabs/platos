@@ -9,6 +9,7 @@ import {
   jsonSchema as aiJsonSchema,
   type ModelMessage,
   type Tool,
+  type LanguageModel,
 } from "ai";
 // AI SDK v6 — `CoreMessage` renamed to `ModelMessage`, `CoreTool` renamed to
 // `Tool`. Aliasing locally to avoid a sweeping rename across the file.
@@ -988,7 +989,7 @@ export class AgentService {
   async resolveCompactionModel(
     agentConfig: AgentConfig,
     scope: RequestScope,
-  ): Promise<{ model: ReturnType<typeof resolveModel>; modelString: string; source: string }> {
+  ): Promise<{ model: LanguageModel; modelString: string; source: string }> {
     const routes = (agentConfig.modelRoutes ?? []) as Array<{
       label?: string; model?: string; providerKeyId?: string | null;
     }>;

@@ -55,7 +55,7 @@ function stubPrisma(messages: Msg[], cursorId: string | null) {
 }
 
 function svc(messages: Msg[], cursorId: string | null) {
-  const s = new ConversationService(stubPrisma(messages, cursorId) as any);
+  const s = new ConversationService(stubPrisma(messages, cursorId) as any, {} as any);
   // getThread does scope/ownership work irrelevant to windowing.
   (s as any).getThread = async () => ({ id: "t1", compactedSummary: null });
   return s;
