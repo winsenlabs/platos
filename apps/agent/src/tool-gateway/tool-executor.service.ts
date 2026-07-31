@@ -1,7 +1,14 @@
-import { Injectable, Inject, Optional } from "@nestjs/common";
+import { Injectable, Inject, Optional, Logger } from "@nestjs/common";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { ToolRegistryService, type OrgToolEntry } from "./tool-registry.service";
 import { ToolSyncWsService } from "./tool-sync-ws.service";
+// Gateway slug re-routing — see dynamic-executor.ts for why the old
+// explicit-marker-only lookup never fired.
+import {
+  findDynamicExecutor,
+  executorParamNames,
+  toolNotFoundMessage,
+} from "./dynamic-executor";
 import { SpansService } from "../monitoring/spans.service";
 import { ToolAuditService } from "../monitoring/tool-audit.service";
 import { SafetyService } from "../monitoring/safety.service";
@@ -128,6 +135,8 @@ export interface ToolCallOrigin {
  */
 @Injectable()
 export class ToolExecutorService {
+  /** Added with the gateway re-routing fix so a re-route is visible in logs. */
+  private readonly logger = new Logger(ToolExecutorService.name);
   private prisma: any;
 
   constructor(
@@ -763,19 +772,33 @@ export class ToolExecutorService {
       // name resolves (or fails) as a normal registered tool. The tool.call
       // span + audit row keep the ORIGINAL slug, which is the truthful record
       // of what the model asked for.
-      const dynamicExecutor = scopedTools.find(
-        (t) =>
-          t.toolName !== call.tool &&
-          (t.paramSchema as Record<string, unknown> | null | undefined)?.[
-            "x-dynamic-executor"
-          ] === true,
-      );
+      //
+      // FIX (2026-07-31) — the explicit-marker-only lookup here was dead code.
+      // NOTHING sets `x-dynamic-executor`: it appears nowhere but the line that
+      // read it — no docs, no validation, no warning for a gateway-shaped tool
+      // that lacks it. Walle's `walle_execute_tool` registers with tool_slug /
+      // slug / arguments / args / toolkit and no marker, so every direct slug
+      // call fell straight through to the error below.
+      //
+      // Measured on the live deployment before this fix: 13 distinct slugs, 28
+      // failed attempts across Slack, Gmail, Google Calendar, Notion and Tavily,
+      // spanning at least three days. `findDynamicExecutor` still prefers the
+      // explicit marker but now also infers the executor from its shape, so a
+      // correctly-shaped gateway works on registration.
+      const dynamicExecutor = findDynamicExecutor(scopedTools, call.tool);
       if (dynamicExecutor) {
+        // Use the executor's OWN parameter names — gateways differ (tool_slug vs
+        // slug, arguments vs args), and hardcoding one pair would silently pass
+        // an unrecognised key to any gateway that named them differently.
+        const { slugKey, argsKey } = executorParamNames(dynamicExecutor);
+        this.logger.log(
+          `[tool-exec] re-routing unregistered slug "${call.tool}" through gateway "${dynamicExecutor.toolName}"`,
+        );
         return this.executeInner(
           {
             ...call,
             tool: dynamicExecutor.toolName,
-            params: { tool_slug: call.tool, arguments: call.params ?? {} },
+            params: { [slugKey]: call.tool, [argsKey]: call.params ?? {} },
           },
           scope,
           startTime,
@@ -786,7 +809,11 @@ export class ToolExecutorService {
         result: {
           tool: call.tool,
           status: "failed",
-          error: `Tool "${call.tool}" not found or not enabled for scope org=${scope.organizationId} project=${scope.projectId} env=${scope.environmentId}`,
+          // The old text described a permissions failure regardless of cause, so
+          // agents relayed it to users as "your integration is disconnected" —
+          // which is what happened with Slack: the connection was fine and the
+          // operator was sent to re-authenticate it anyway.
+          error: toolNotFoundMessage(call.tool, scope, false),
           latencyMs: Date.now() - startTime,
         },
       };
