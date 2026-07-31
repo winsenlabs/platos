@@ -309,7 +309,11 @@ function resolveRates(model: string, catalog: LiteLLMCatalog | null): ResolvedRa
 
   // Verified provider figures outrank the catalog — see verified-prices.ts for
   // why the catalog alone is not trustworthy on a per-row basis.
-  const verified = verifiedPriceFor(keys);
+  // Precedence: human-verified static table > daily-task overlay > catalog.
+  // The static entries carry a verbatim provider quote and a verification date;
+  // a model reading a web page does not outrank that, so the daily task can
+  // only fill gaps, never overwrite a human-checked figure.
+  const verified = verifiedPriceFor(keys) ?? overlayPriceFor(keys);
 
   if (catalog || verified) {
     for (const k of keys) {
@@ -378,6 +382,8 @@ const LITELLM_CATALOG_URL =
   "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
 /** After a failed lazy fetch, don't retry for this long (upstream outage guard). */
 const CATALOG_FETCH_BACKOFF_MS = 300_000; // 5 minutes
+/** Overlay published by the daily price-verify Trigger task. */
+const VERIFIED_OVERLAY_KEY = "cost:verified_prices";
 
 interface LiteLLMCatalogEntry {
   input_cost_per_token?: number;
@@ -413,7 +419,12 @@ import {
 } from "@internal/cost-rates";
 // PRECISION — provider-verified overrides layered on top of the upstream
 // catalog, because LiteLLM is wrong on a per-row basis (see verified-prices.ts).
-import { applyVerifiedPrice, verifiedPriceFor } from "./verified-prices";
+import {
+  applyVerifiedPrice,
+  verifiedPriceFor,
+  overlayPriceFor,
+  setVerifiedOverlay,
+} from "./verified-prices";
 
 /**
  * CostService — tracks LLM token usage and cost per conversation, per scope.
@@ -470,6 +481,10 @@ export class CostService {
     ) {
       return this.catalogMemo.catalog;
     }
+    // Refresh the daily-task overlay alongside the catalog, on the same cadence,
+    // so a price the task verified last night is in force without adding a Redis
+    // round-trip to every turn.
+    await this.refreshVerifiedOverlay();
     try {
       const raw = await this.redis.get(CATALOG_KEY);
       if (raw) {
@@ -496,6 +511,23 @@ export class CostService {
     // mechanism; this is the floor that stops a misconfiguration turning into
     // months of quietly wrong billing.
     return this.lazyLoadCatalog();
+  }
+
+  private overlayLoadedAt = 0;
+
+  /** Pull the price-verify overlay from Redis into the module-level snapshot. */
+  private async refreshVerifiedOverlay(): Promise<void> {
+    if (Date.now() - this.overlayLoadedAt < CATALOG_CACHE_TTL_MS) return;
+    this.overlayLoadedAt = Date.now();
+    try {
+      const raw = await this.redis.get(VERIFIED_OVERLAY_KEY);
+      if (!raw) return;
+      const n = setVerifiedOverlay(JSON.parse(raw));
+      if (n > 0) this.logger.debug(`[cost] verified-price overlay loaded (${n} models)`);
+    } catch {
+      // Overlay is an enhancement, never a dependency — the static table and
+      // catalog still price the turn.
+    }
   }
 
   /** In-flight dedupe so a burst of turns triggers exactly one upstream fetch. */

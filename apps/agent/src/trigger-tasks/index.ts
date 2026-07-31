@@ -23,6 +23,7 @@ export type { AgentSubrunPayload, AgentSubrunOutput } from "./agent-subrun.task"
 export { agentScheduledRun } from "./agent-scheduled-run.task";
 
 export { litellmCostRefresh } from "./litellm-cost-refresh.task";
+export { priceVerify } from "./price-verify.task";
 export type { LiteLLMCatalog, LiteLLMModelEntry } from "./litellm-cost-refresh.task";
 
 export { attachmentRetention } from "./attachment-retention.task";

@@ -126,3 +126,46 @@ export function applyVerifiedPrice<
       : {}),
   };
 }
+
+/**
+ * Overlay published by the daily `price-verify` task — models it read off a
+ * provider page and that passed every guardrail (two agreeing reads, plausible
+ * ratios, no unreviewed >2x move).
+ *
+ * Deliberately RANKED BELOW the static table above. Those entries carry a
+ * verbatim provider quote and a human verification date; an automated page read
+ * fills gaps but never overrides a human-checked figure. Held or unreadable
+ * models never reach this map at all — see price-verification.ts.
+ *
+ * Kept as a module-level snapshot refreshed by the cost service rather than a
+ * per-call Redis read, so pricing never adds latency to a turn.
+ */
+let overlay: ReadonlyMap<string, VerifiedPriceEntry> = new Map();
+
+/** Replace the overlay snapshot. Called by CostService after it loads Redis. */
+export function setVerifiedOverlay(
+  entries: Record<string, { input?: number; output?: number; cacheRead?: number; cacheWrite?: number }>,
+): number {
+  const next = new Map<string, VerifiedPriceEntry>();
+  for (const [model, p] of Object.entries(entries ?? {})) {
+    if (!p || typeof p !== "object") continue;
+    next.set(model, {
+      model,
+      ...p,
+      source: "price-verify task",
+      verifiedOn: new Date().toISOString().slice(0, 10),
+      providerQuote: "read from the provider pricing page by the daily price-verify task",
+    });
+  }
+  overlay = next;
+  return next.size;
+}
+
+/** Overlay lookup, probing the same key variants as the static table. */
+export function overlayPriceFor(lookupKeys: readonly string[]): VerifiedPriceEntry | null {
+  for (const k of lookupKeys) {
+    const hit = overlay.get(k);
+    if (hit) return hit;
+  }
+  return null;
+}
