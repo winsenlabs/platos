@@ -1,4 +1,6 @@
 import { Injectable, Inject } from "@nestjs/common";
+// ONE SOURCE OF TRUTH for cost — see billable-usage.ts.
+import { billableCostCents } from "./billable-usage";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { SpansService, type PlatosSpan } from "./spans.service";
 import type { RequestScope } from "../auth/scope.guard";
@@ -199,7 +201,7 @@ export class TraceService {
     let toolCallCount = 0;
     for (const m of messages) {
       const rj = m.responseJson as { usage?: { inputTokens?: number; outputTokens?: number }; cost_cents?: number } | null;
-      if (rj?.cost_cents) totalCostCents += Number(rj.cost_cents) || 0;
+      totalCostCents += billableCostCents(rj as any);
       if (rj?.usage?.inputTokens) totalInputTokens += rj.usage.inputTokens;
       if (rj?.usage?.outputTokens) totalOutputTokens += rj.usage.outputTokens;
       if (Array.isArray(m.toolCalls)) {
@@ -347,7 +349,7 @@ export class TraceService {
             cost_cents?: number;
           }
         | null;
-      if (rj?.cost_cents) r.totalCostCents += Number(rj.cost_cents) || 0;
+      r.totalCostCents += billableCostCents(rj as any);
       if (rj?.usage?.inputTokens) r.totalInputTokens += rj.usage.inputTokens;
       if (rj?.usage?.outputTokens) r.totalOutputTokens += rj.usage.outputTokens;
       if (Array.isArray(m.toolCalls)) {

@@ -1063,7 +1063,13 @@ export class AgentTaskService {
     //     are fire-and-forget to the budget-alert trigger.dev task so
     //     webhook + email delivery never blocks the turn.
     try {
-      await this.budgetService.recordUserSpend(scopeTuple, scope.userId, costCents);
+      // ONE SOURCE OF TRUTH (see monitoring/billable-usage.ts). This passed
+      // `costCents`, the NAIVE figure that prices only fresh input + output and
+      // ignores cache reads and writes entirely. Budgets were therefore enforced
+      // against a number that understates real spend — measured 2.47c against
+      // 25.70c actual on 2026-07-31, so a cap could not trip. The gap widens as
+      // caching improves, so fixing prompt caching quietly disabled budgets.
+      await this.budgetService.recordUserSpend(scopeTuple, scope.userId, costWithCacheCents);
       const evalAfter = await this.budgetService.evaluate(scopeTuple, {
         agentId,
         userId: scope.userId,

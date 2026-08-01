@@ -1,4 +1,6 @@
 import { Injectable, Inject } from "@nestjs/common";
+// ONE SOURCE OF TRUTH for cost — see billable-usage.ts.
+import { billableCostCents } from "./billable-usage";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 
@@ -127,7 +129,7 @@ export class UtilizationService {
       bucket.threads.add(m.thread.id);
       if (m.role === "assistant" && m.responseJson) {
         const rj = m.responseJson as { cost_cents?: number } | null;
-        bucket.costCents += Number(rj?.cost_cents ?? 0);
+        bucket.costCents += billableCostCents(rj as any);
       }
       if (!bucket.lastActiveAt || m.createdAt > bucket.lastActiveAt) {
         bucket.lastActiveAt = m.createdAt;
