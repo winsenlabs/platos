@@ -12,7 +12,8 @@ import {
   type ErasureReceipt, type StoreOutcome,
 } from "./erasure-receipt";
 import { runErasure, retryErasure, type StoreExecutors } from "./erasure-orchestrator";
-import { planDeletions, subjectKeyPatterns, retainedAggregatePatterns, toWireKey } from "./redis-keys";
+import { planDeletions, subjectKeyPatterns, retainedAggregatePatterns } from "./redis-keys";
+import { ErasureObjectStore } from "./object-store";
 
 /**
  * Hard erasure across Postgres, Redis, ClickHouse and object storage.
@@ -37,7 +38,7 @@ export class ErasureService {
   constructor(
     @Inject(PRISMA_TOKEN) prisma: any,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
-    @Optional() private readonly attachments?: { deleteObject?: (key: string) => Promise<void>; objectExists?: (key: string) => Promise<boolean> },
+    @Optional() private readonly attachments?: ErasureObjectStore,
   ) {
     this.prisma = prisma;
     // Per-deployment salt. Without one, a hash of an email is trivially
@@ -128,7 +129,7 @@ export class ErasureService {
    */
   private minioExecutor = async (subject: SubjectKeys): Promise<StoreOutcome> => {
     const o = pendingStore("minio");
-    if (!this.attachments?.deleteObject) {
+    if (!this.attachments?.available) {
       return { ...o, status: "not_provisioned", note: "no object-store client wired" };
     }
     const rows: any[] = await this.prisma.platosMessageAttachment.findMany({
@@ -138,25 +139,21 @@ export class ErasureService {
     o.discovered = rows.length;
     for (const r of rows) {
       try {
-        await this.attachments.deleteObject!(r.storageKey);
+        await this.attachments.deleteObject(r.storageKey);
         o.deleted++;
       } catch {
         o.failures++;
       }
     }
-    // Verify absence rather than trusting the delete call.
-    if (this.attachments.objectExists) {
-      let survivors = 0;
-      for (const r of rows) {
-        try { if (await this.attachments.objectExists!(r.storageKey)) survivors++; } catch { survivors++; }
-      }
-      o.verificationStatus = survivors === 0 ? "passed" : "failed";
-      o.note = `verified ${rows.length - survivors}/${rows.length} objects absent`;
-    } else {
-      // No existence probe means we cannot prove it. Unknown, never passed.
-      o.verificationStatus = "unknown";
-      o.note = "no objectExists probe available; deletion unverified";
+    // Verify ABSENCE rather than trusting the delete call: S3-compatible delete
+    // is idempotent and succeeds for a key that was never there, so a successful
+    // delete is not evidence the bytes are gone. Only the HEAD probe is.
+    let survivors = 0;
+    for (const r of rows) {
+      try { if (await this.attachments.objectExists(r.storageKey)) survivors++; } catch { survivors++; }
     }
+    o.verificationStatus = survivors === 0 ? "passed" : "failed";
+    o.note = `verified ${rows.length - survivors}/${rows.length} objects absent`;
     o.status = o.failures > 0 ? "failed" : "done";
     return o;
   };

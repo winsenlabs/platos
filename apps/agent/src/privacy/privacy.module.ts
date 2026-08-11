@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { DatabaseModule } from "../shared/database.provider";
 import { RedisModule } from "../shared/redis.provider";
 import { ErasureService } from "./erasure.service";
+import { ErasureObjectStore } from "./object-store";
 import { ErasureController } from "./erasure.controller";
 
 /**
@@ -14,7 +15,7 @@ import { ErasureController } from "./erasure.controller";
 @Module({
   imports: [DatabaseModule, RedisModule],
   controllers: [ErasureController],
-  providers: [ErasureService],
+  providers: [ErasureService, ErasureObjectStore],
   exports: [ErasureService],
 })
 export class PrivacyModule {}
