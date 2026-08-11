@@ -5537,3 +5537,56 @@ model PlatosMcpBearerToken {
   @@index([tokenHash], map: "platos_mcp_bearer_hash_idx")
   @@index([entityPk, revokedAt], map: "platos_mcp_bearer_entity_idx")
 }
+
+/// PRIVACY — durable receipt for a hard-erasure operation.
+///
+/// The receipt IS the deliverable. Deletion counts prove only that statements
+/// were issued; what makes an erasure defensible is a stable operation id,
+/// per-store outcomes, and post-delete verification. It therefore outlives the
+/// data it describes and is deliberately NOT scoped to RuntimeEnvironment with
+/// a cascade: deleting an environment must not destroy the evidence that a
+/// person was erased from it.
+///
+/// Content-free by construction. `subjectKeyHash` is a salted, org-scoped hash,
+/// never the raw external id -- writing the identifier into the audit trail of
+/// its own deletion would recreate the personal data the operation destroyed.
+model PlatosErasureOperation {
+  id String @id @default(cuid())
+
+  /// Idempotency key supplied by the caller. A repeated request returns the
+  /// existing operation rather than starting a competing purge.
+  idempotencyKey String @unique
+
+  /// Salted, organization-scoped hash of the subject's external id.
+  subjectKeyHash String
+
+  /// Organization boundary the request was made within. Kept for authorization
+  /// and operator lookup; the per-scope detail lives in `scopes`.
+  organizationId String
+
+  /// "pending" | "running" | "blocked_legal_hold" | "partial_failure"
+  /// | "completed" | "verification_failed"
+  status String @default("pending")
+
+  /// Array of {organizationId, projectId, environmentId} discovered for the subject.
+  scopes Json
+
+  /// Array of StoreOutcome -- per-store counts and verification status.
+  stores Json
+
+  /// Content-free discovery inventory: counts and scope ids only.
+  inventory Json?
+
+  policyVersion       String
+  legalHoldPolicyId   String?
+  attempts            Int      @default(0)
+
+  requestedAt DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@index([subjectKeyHash])
+  @@index([organizationId, status])
+  @@index([status, requestedAt])
+}
