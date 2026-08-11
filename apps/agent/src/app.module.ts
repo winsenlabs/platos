@@ -3,6 +3,8 @@ import { APP_GUARD } from "@nestjs/core";
 import { HostRouterMiddleware } from "./mcp-platform/host-router.middleware";
 import { ScheduleModule } from "@nestjs/schedule";
 import { DatabaseModule } from "./shared/database.provider";
+// PRIVACY — hard erasure. Narrow by design: changes no agent behaviour.
+import { PrivacyModule } from "./privacy/privacy.module";
 import { RedisModule } from "./shared/redis.provider";
 import { ScopeGuard } from "./auth/scope.guard";
 import { RateLimitGuard } from "./auth/rate-limit.guard";
@@ -34,6 +36,7 @@ const imports = [
   // Shared providers (global — available to all modules)
   DatabaseModule,
   RedisModule,
+  PrivacyModule,
 
   // Feature modules
   HealthModule,
