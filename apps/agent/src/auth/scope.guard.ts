@@ -324,6 +324,22 @@ export class ScopeGuard implements CanActivate {
     // LiteLLM cost-catalog ingest POSTed by the scheduled trigger.dev task).
     // The endpoint itself re-verifies the token — ScopeGuard just lets it
     // through because the caller has no per-scope context.
+    // PRIVACY — hard erasure. Cross-scope BY DESIGN: a subject spans scopes, so
+    // the caller has no single scope context to present, and requiring one would
+    // guarantee an incomplete erasure. The controller re-verifies the admin
+    // token with its own timing-safe compare; this only lets the request reach
+    // it. Without this the routes 401 even with a valid admin token, because the
+    // guard's default path demands session or scope headers.
+    if (url.startsWith("/api/v1/agent/admin/privacy")) {
+      const expectedPriv = env.PLATOS_ADMIN_TOKEN;
+      const providedPriv = request.headers["x-platos-admin-token"];
+      if (expectedPriv && typeof providedPriv === "string" && providedPriv.length === expectedPriv.length) {
+        try {
+          if (crypto.timingSafeEqual(Buffer.from(providedPriv), Buffer.from(expectedPriv))) return true;
+        } catch { /* length mismatch handled above */ }
+      }
+    }
+
     if (url.startsWith("/api/v1/agent/monitoring/cost/catalog")) {
       const expected = env.PLATOS_ADMIN_TOKEN;
       const provided = request.headers["x-platos-admin-token"];
