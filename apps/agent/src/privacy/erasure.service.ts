@@ -12,6 +12,7 @@ import {
   type ErasureReceipt, type StoreOutcome,
 } from "./erasure-receipt";
 import { runErasure, retryErasure, type StoreExecutors } from "./erasure-orchestrator";
+import { findLegalHold, parseLegalHoldList } from "./legal-hold";
 import { planDeletions, subjectKeyPatterns, retainedAggregatePatterns } from "./redis-keys";
 import { ErasureObjectStore } from "./object-store";
 
@@ -317,21 +318,39 @@ export class ErasureService {
     const hash = this.hash(args.externalUserId, args.organizationId);
     const inventory = await this.inventory(subject);
 
+    // Server-side hold check, over every alias the subject resolves to. Runs
+    // before the operation row is created so a held subject leaves no
+    // half-started operation, and before any executor can touch a store.
+    // A caller-supplied legalHoldPolicyId still wins if present; this only adds
+    // the holds the caller did not know about.
+    const heldBy =
+      args.legalHoldPolicyId ??
+      findLegalHold(
+        subject,
+        args.externalUserId,
+        parseLegalHoldList(process.env.PLATOS_LEGAL_HOLD_USER_IDS),
+      );
+
     const row = await this.prisma.platosErasureOperation.create({
       data: {
         id: randomUUID(),
         idempotencyKey: args.idempotencyKey,
         subjectKeyHash: hash,
         organizationId: args.organizationId,
-        status: "pending",
+        status: heldBy ? "blocked_legal_hold" : "pending",
         scopes: subject.scopes as any,
         stores: [] as any,
         inventory: inventory as any,
         policyVersion: ERASURE_POLICY_VERSION,
-        legalHoldPolicyId: args.legalHoldPolicyId ?? null,
+        legalHoldPolicyId: heldBy ?? null,
         attempts: 0,
       },
     });
+
+    // Return the blocked receipt without running any executor. The operation is
+    // recorded rather than dropped: a refused erasure request is itself an event
+    // the operator has to be able to evidence later.
+    if (heldBy) return this.toReceipt(row);
 
     const started = await runErasure(this.toReceipt(row), subject, this.executors(), {
       legalHold: args.legalHoldPolicyId ? { policyId: args.legalHoldPolicyId } : null,

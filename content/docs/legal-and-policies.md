@@ -14,6 +14,7 @@ questions:
   - "How does Platos handle my data?"
   - "Is Platos GDPR compliant?"
 related:
+  - hard-erasure
   - encryption-and-secrets
   - self-hosting
 ---
