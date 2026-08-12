@@ -47,6 +47,20 @@ export class BM25Index {
   private totalDocs = 0;
 
   /**
+   * Drop every document.
+   *
+   * `addDocument` is idempotent per id, so a rebuild could refresh and add, but
+   * never drop a doc that had left the source set — the index could only grow.
+   * A rebuild that cannot shrink is not a rebuild.
+   */
+  clear(): void {
+    this.docs.clear();
+    this.docFreqs.clear();
+    this.avgDocLength = 0;
+    this.totalDocs = 0;
+  }
+
+  /**
    * Add a document to the index.
    * Call this when a tool is registered. The text should be:
    * `${tool.name} ${tool.description} ${paramNames.join(" ")}`

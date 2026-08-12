@@ -5,9 +5,10 @@ import { ProviderHealthService } from "./provider-health.service";
 import { SessionTokenController } from "./session-token.controller";
 import { PublicGuestTokenController } from "./public-guest-token.controller";
 import { ProvidersModule } from "../providers/providers.module";
+import { ToolGatewayModule } from "../tool-gateway/tool-gateway.module";
 
 @Module({
-  imports: [ProvidersModule],
+  imports: [ProvidersModule, ToolGatewayModule],
   controllers: [
     // EOBD.95 — entity-authed mint endpoint.
     SessionTokenController,

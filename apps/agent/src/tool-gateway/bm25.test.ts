@@ -107,6 +107,16 @@ describe("ToolRegistryService — source/entity filter", () => {
       state: { toolDefs, mappings },
       platosToolDefinition: {
         findUnique: async (args: any) => toolDefs.get(args.where.name) ?? null,
+        // Tool definitions are tenant-scoped rows, so `registerTools` looks them
+        // up by (name, org, project) via findFirst. The stub only had findUnique
+        // by name, from before that scoping landed.
+        findFirst: async (args: any) =>
+          Array.from(toolDefs.values()).find(
+            (r) =>
+              r.name === args.where.name &&
+              r.organizationId === args.where.organizationId &&
+              r.projectId === args.where.projectId,
+          ) ?? null,
         findMany: async () => Array.from(toolDefs.values()),
         create: async (args: any) => {
           const row = { id: `tool_${toolDefs.size + 1}`, ...args.data };
@@ -118,6 +128,13 @@ describe("ToolRegistryService — source/entity filter", () => {
           if (row) Object.assign(row, args.data);
           return row;
         },
+      },
+      // `registerTools` reads the entity row for linkedAgentIds / mcpConfig and
+      // is written to tolerate a miss (defaults to unrestricted, no envelope).
+      // The stub omitted the model entirely, so the read threw on `findFirst`
+      // of undefined rather than returning null.
+      platosConnectedEntity: {
+        findFirst: async () => null,
       },
       platosEntityToolMapping: {
         findMany: async () => mappings,

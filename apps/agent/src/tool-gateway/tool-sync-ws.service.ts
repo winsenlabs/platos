@@ -461,6 +461,40 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
             normalized,
             callbackUrl,
           );
+          // `tool_register` is a COMPLETE declaration of what this entity
+          // offers, so registration has to be a replace and not an accumulation.
+          // `registerTools` is additive-upsert, so without this prune an entity
+          // that cut its surface from 22 tools to 9 stayed registered at 22: the
+          // 13 it dropped were never in the fresh frame, so nothing ever removed
+          // them. The model kept being offered tools the backend had retired,
+          // and the operator saw a count that disagreed with their own config.
+          //
+          // The MCP discovery path already did this (`EntityMcpDiscoveryService`
+          // pairs registerTools with reconcileEntityTools); only the WebSocket
+          // path was missing it, which is why the two transports disagreed.
+          //
+          // A client that genuinely needs to register in batches can opt out
+          // with `partial: true` — then the frame is a fragment and pruning
+          // against it would delete the other fragments.
+          // Best-effort: the registration itself already succeeded, so a failed
+          // prune must not turn a good register into an error the client will
+          // retry. The next `tool_register` reconciles against the same fresh
+          // set, so the only cost of a miss is staying stale until then.
+          let pruned = 0;
+          if (msg.partial !== true) {
+            try {
+              const rec = await this.toolRegistry.reconcileEntityTools(
+                conn.entityPk,
+                conn.environmentId,
+                normalized.map((t) => t.name),
+              );
+              pruned = rec.removed;
+            } catch (err: any) {
+              this.logger.warn(
+                `entity ${entityId}/${environmentId}: tool prune failed, retired tools may linger — ${err?.message ?? err}`,
+              );
+            }
+          }
           this.send(ws, {
             type: "tools_registered",
             entity_id: entityId,
@@ -468,9 +502,10 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
             count: result.registered,
             new_tools: result.newTools,
             updated: result.updated,
+            pruned,
           });
           this.logger.log(
-            `entity ${entityId}/env=${environmentId}: registered ${result.registered} tools (+${result.newTools} new, ${result.updated} updated)`,
+            `entity ${entityId}/env=${environmentId}: registered ${result.registered} tools (+${result.newTools} new, ${result.updated} updated, -${pruned} pruned)`,
           );
         } catch (err: any) {
           this.logger.warn(`entity ${entityId}/${environmentId}: tool_register failed — ${err?.message}`);

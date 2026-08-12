@@ -128,11 +128,13 @@ export class ToolRegistryService implements OnModuleInit {
    */
   async rebuildIndex(): Promise<void> {
     try {
-      const tools = await this.prisma.platosToolDefinition.findMany();
-      for (const tool of tools) {
-        const text = `${tool.name} ${tool.description} ${this.extractParamNames(tool.paramSchema)}`;
-        this.bm25.addDocument(tool.id, text);
-      }
+      // A rebuild must REPLACE, not merge. Buckets were only ever created when
+      // absent and written into, so re-running this could add and update
+      // entries but never remove one — leaving a deleted entity's tools live in
+      // memory with no way to clear them short of a process restart. Clearing
+      // first makes this the operational recovery path it always read like.
+      this.scopedToolCache.clear();
+      this.bm25.clear();
 
       // Load entity mappings into cache, joining to entity so we know scope.
       // Include mcpConfig so `injectMcpContext` lands on the cached entry —
@@ -177,6 +179,20 @@ export class ToolRegistryService implements OnModuleInit {
             : [],
           entityMcpInjectContext: entity.mcpConfig?.injectMcpContext === true,
         });
+
+        // Index for find_tools ONLY when a live mapping exists.
+        //
+        // This used to seed from `platosToolDefinition.findMany()` with no
+        // filter, i.e. every definition ever registered in the deployment.
+        // Definition rows are shared and deliberately outlive their mappings,
+        // so the index filled with tools no entity still offers — on this box,
+        // 32 indexed against 9 dispatchable. `find_tools` could then return a
+        // tool with no mapping, and calling it fails at dispatch with "Entity
+        // not registered". It also undid the eviction work: both
+        // `reconcileEntityTools` and `purgeEntity` remove a BM25 doc when its
+        // last mapping goes, and the next restart put every one of them back.
+        const text = `${m.tool.name} ${m.tool.description} ${this.extractParamNames(m.tool.paramSchema)}`;
+        this.bm25.addDocument(m.toolId, text);
       }
 
       const stats = this.bm25.getStats();
@@ -517,6 +533,79 @@ export class ToolRegistryService implements OnModuleInit {
     }
 
     return { removed: stale.length };
+  }
+
+  /**
+   * Drop every trace of an entity from the registry: mappings, the in-memory
+   * scoped-tool buckets across ALL environments, and any BM25 doc nothing else
+   * references.
+   *
+   * THE DEFECT THIS EXISTS TO FIX
+   *
+   * `deleteEntity` was a bare `deleteMany` on PlatosConnectedEntity. The row
+   * vanished; the cache did not. `scopedToolCache` is keyed by
+   * (org, project, env, entityId) and only ever written — the sole delete in
+   * this service lives in `reconcileEntityTools`, which the WebSocket path
+   * never calls. So a deleted entity's tools kept being injected into every
+   * turn, and dispatching one looked up `toolEntry.entityPk` against a row that
+   * no longer existed and failed with "Entity <id> not registered".
+   *
+   * That is a bad failure to leave in place: the tools are advertised to the
+   * model with full schemas, so the model reasonably calls them, and the user
+   * sees a capability the agent claims and cannot perform. It also silently
+   * inflates every prompt with dead schemas until the process restarts, which
+   * is the only thing that ever cleared this.
+   *
+   * Takes the PK because entityId is only unique per (org, project), and the
+   * caller has already resolved the row it is about to delete.
+   */
+  async purgeEntity(entityPk: string): Promise<{ mappingsRemoved: number; bucketsEvicted: number }> {
+    const mappings = await this.prisma.platosEntityToolMapping.findMany({
+      where: { entityId: entityPk },
+      include: { tool: { select: { id: true, name: true } } },
+    });
+
+    // Resolve the cache-key parts before the row is gone. A purge called after
+    // the entity row is deleted can still clean mappings and BM25, but cannot
+    // rebuild the bucket key — so fall back to scanning buckets by entityPk.
+    const entity = await this.prisma.platosConnectedEntity.findFirst({
+      where: { id: entityPk },
+      select: { organizationId: true, projectId: true, entityId: true },
+    });
+
+    if (mappings.length > 0) {
+      await this.prisma.platosEntityToolMapping.deleteMany({
+        where: { entityId: entityPk },
+      });
+    }
+
+    // Evict every bucket owned by this entity. Keyed lookup when the row is
+    // still present; otherwise identify buckets by the entityPk stamped on
+    // their entries, which is what makes this safe to call in either order.
+    let bucketsEvicted = 0;
+    for (const [key, bucket] of this.scopedToolCache.entries()) {
+      const ownedByKey =
+        entity !== null &&
+        key.startsWith(`${entity.organizationId}:${entity.projectId}:`) &&
+        key.endsWith(`:${entity.entityId}`);
+      const ownedByEntry = [...bucket.values()].some((e) => e.entityPk === entityPk);
+      if (ownedByKey || ownedByEntry) {
+        this.scopedToolCache.delete(key);
+        bucketsEvicted++;
+      }
+    }
+
+    // Drop BM25 docs for definitions nothing else points at. The definition row
+    // itself is shared and tenant-scoped, so it stays — same rule as reconcile.
+    for (const m of mappings) {
+      if (!m.tool) continue;
+      const remaining = await this.prisma.platosEntityToolMapping.count({
+        where: { toolId: m.tool.id },
+      });
+      if (remaining === 0) this.bm25.removeDocument(m.tool.id);
+    }
+
+    return { mappingsRemoved: mappings.length, bucketsEvicted };
   }
 
   /**

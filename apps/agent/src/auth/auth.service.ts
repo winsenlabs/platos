@@ -1,9 +1,10 @@
-import { Injectable, Inject, Logger } from "@nestjs/common";
+import { Injectable, Inject, Logger, Optional } from "@nestjs/common";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import * as crypto from "crypto";
 import { env } from "../shared/env";
+import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
 
 /**
  * Session token claims.
@@ -107,6 +108,10 @@ export class AuthService {
   constructor(
     @Inject(PRISMA_TOKEN) prisma: any,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
+    // Optional so focused test modules that never touch entity deletion do not
+    // have to pull the whole tool gateway in. ToolGatewayModule has no edge
+    // back into AuthModule, so this import direction introduces no cycle.
+    @Optional() private readonly toolRegistry?: ToolRegistryService,
   ) {
     this.prisma = prisma;
   }
@@ -584,7 +589,42 @@ export class AuthService {
     });
   }
 
+  /**
+   * Delete an entity and everything the tool registry still believes about it.
+   *
+   * The DB row was previously all that got deleted. The registry's in-memory
+   * scoped-tool cache is keyed by (org, project, env, entityId) and had no
+   * eviction path on this route, so a deleted entity's tools stayed live: they
+   * were still injected into every turn with full schemas, and dispatching one
+   * resolved `entityPk` against a row that no longer existed, failing with
+   * "Entity <id> not registered". Only a process restart cleared it.
+   *
+   * The purge runs BEFORE the row is deleted so the cache key can be rebuilt
+   * from the entity; `purgeEntity` also matches buckets by entityPk so it stays
+   * correct if that order ever changes.
+   */
   async deleteEntity(organizationId: string, projectId: string, entityId: string): Promise<boolean> {
+    const entity = await this.prisma.platosConnectedEntity.findFirst({
+      where: { organizationId, projectId, entityId },
+      select: { id: true },
+    });
+
+    if (entity && this.toolRegistry) {
+      try {
+        const purged = await this.toolRegistry.purgeEntity(entity.id);
+        this.logger.log(
+          `deleteEntity ${entityId}: purged ${purged.mappingsRemoved} tool mappings, ${purged.bucketsEvicted} cache buckets`,
+        );
+      } catch (err: any) {
+        // A failed purge must not block the delete — the operator asked for the
+        // entity to be gone. Loud, because the surviving cache entries are the
+        // exact condition that produces "Entity not registered" at dispatch.
+        this.logger.error(
+          `deleteEntity ${entityId}: registry purge failed, stale tools may persist until restart — ${err?.message ?? err}`,
+        );
+      }
+    }
+
     const result = await this.prisma.platosConnectedEntity.deleteMany({
       where: { organizationId, projectId, entityId },
     });
