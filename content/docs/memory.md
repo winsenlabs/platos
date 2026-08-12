@@ -42,7 +42,7 @@ Memory in Platos is scoped, ratable, and tiered. Every fact the agent learns is 
 Four classes of memory, all in one table:
 
 - **Working memory**: short-lived state for the current turn or run. Owned by `WorkingMemoryService`. Lives in Redis with a TTL.
-- **Conversation memory**: messages and summaries on the active thread. Backed by `ConversationService` and (optionally) compaction.
+- **Conversation memory**: messages and summaries on the active thread. Backed by `ConversationService` and (optionally) compaction — see [Compaction](#compaction) below.
 - **Profile memory**: long-term facts about the user (preferences, identifiers, prior context). Owned by `ProfileCacheService` over a `PlatosMemory` row tagged `kind: "profile"`.
 - **Knowledge memory**: agent-scoped facts and references. Same table, tagged `kind: "knowledge"`. The [Memory graph](/docs/memory-graph) layers entity nodes and edges over this set.
 
@@ -116,6 +116,20 @@ Set per agent:
 ### GDPR delete
 
 `DELETE /agent/v1/memory?userId=...` runs the cascade: working memory, profile, knowledge, and any embedded copies. Returns the count of rows deleted. Per-user delete is also exposed through `messages.rate` with a delete intent and via the dashboard's user detail page.
+
+## Compaction
+
+Long threads eventually exceed what you want to send every turn. Compaction replaces the older stretch of a conversation with a model-written summary and keeps the recent messages verbatim.
+
+Two properties make it safe to leave on:
+
+**It is cursor-anchored, not a sliding window.** The thread stores a `compactedUpToMessageId`; history is assembled as *summary + everything after the cursor*. A sliding window would shift by one message every turn, changing the leading bytes of the prompt and missing the provider's prefix cache on every single turn — the compaction meant to save money would quietly multiply it. Because the cursor only moves when a compaction actually lands, the prefix stays byte-identical between compactions and keeps hitting cache.
+
+**It happens off the turn.** Compaction runs as a background job. The turn that trips the threshold is served from existing history; the new summary is swapped in only once it is complete and written. Summary and cursor move together in one transaction, so a failed compaction leaves the thread exactly as it was rather than truncated against a summary that was never produced.
+
+### Choosing a compaction model
+
+Compaction is summarisation, not reasoning, and it runs on your longest contexts — the one place where paying frontier rates buys the least. Set a `compaction` route in the agent's model routes to point it at a cheaper model, with its own provider key if you want the traffic isolated. Unset, compaction uses the agent's main model.
 
 ## Common pitfalls
 

@@ -41,8 +41,8 @@ A `PlatosAgent` row in Postgres. It owns:
 
 - A `name`, a `slug` (unique within `(projectId, environmentId)`), and a `model` string like `anthropic:claude-opus-4-7`.
 - A `systemPrompt` (free text) or a `promptBlocks` array (composable blocks that the runtime serialises into a system prompt at turn time).
-- A `toolsBlockConfig` describing which tools are visible, the display mode (`full`, `summary`, `meta-tool`, or `hybrid`), and which tool categories are enabled.
-- A `metaTools` map listing which Platos meta-tools are exposed (`spawn_bgo`, `remember`, `recall`, `find_tools`, `execute_tools`, `generate_artifact`, etc.).
+- A `toolsBlockConfig` describing which tools are visible, which tool categories are enabled, and the `toolExposure` — `direct` (every enabled tool injected with its full schema) or `meta` (reached through the `find_tools`/`execute_tools` router). See [Tools](/docs/tools#pick-a-tool-exposure).
+- A `metaTools` map listing which Platos runtime tools are exposed (`spawn_bgo`, `remember`, `recall`, `generate_artifact`, etc.). Despite the field name these are ordinary tools injected by name; the two actual meta-tools, `find_tools` and `execute_tools`, are governed by `toolExposure` rather than by this map.
 - A `subAgentConfig` for sub-agent dispatch, a `memoryConfig` for memory tier policy, and `featureFlags` for opt-in runtime behaviours.
 - An optional `outputSchema` (JSON Schema) that constrains the model's response, an `extractionPolicy` for memory extraction, and a `contextMapping` for the [Context](/docs/context) resolver.
 - Lifecycle pointers: `currentVersionId` (the live config snapshot), `canaryVersionId` and `canaryPercent` for staged rollouts, plus the scope tuple `(organizationId, projectId, environmentId)`.
@@ -75,7 +75,7 @@ const agent = await platos.agents.create({
   promptBlocks: [
     { id: "role", type: "role", name: "Role", content: "You are Wally, a calendar assistant.", enabled: true, editable: true, order: 0 },
   ],
-  toolsBlockConfig: { mode: "direct", enabledTools: ["calendar.create_event"], displayMode: "full" },
+  toolsBlockConfig: { enabledTools: ["calendar.create_event"], toolExposure: "direct" },
 });
 ```
 

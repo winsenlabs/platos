@@ -18,11 +18,11 @@ related:
   - self-hosting
 ---
 
-Platos is open source under Apache 2.0. The runtime ships without legal terms attached — when you self-host, you're on your own infrastructure and there's no contract between you and Winsen Labs. The documents below cover the **public-facing surfaces operated by Winsen Labs** (`platos.dev` and `play.platos.dev`).
+Platos is open source under Apache 2.0. The runtime ships without legal terms attached — when you self-host, you're on your own infrastructure and there's no contract between you and Winsen Labs. The documents below cover the **public-facing surfaces operated by Winsen Labs** (`platos.dev`).
 
 ## Terms of service
 
-Apply when you use the Winsen-Labs-operated playground or marketing site.
+Apply when you use the Winsen-Labs-operated marketing site or documentation.
 
 - **Live at**: [platos.dev/terms](https://platos.dev/terms)
 - **Covers**: acceptable use, account responsibilities, content licensing, disclaimer of warranties, liability cap, governing law
@@ -44,7 +44,7 @@ Report vulnerabilities **privately** — do not open public GitHub issues for se
 
 - **Email**: [hello@winsenlabs.com](mailto:hello@winsenlabs.com) (encrypted reports welcome; PGP key on request)
 - **Live policy**: [platos.dev/security](https://platos.dev/security)
-- **Coverage**: the Platos runtime + agent + webapp + SDK packages, the play.platos.dev hosted demo, the platos.dev marketing site
+- **Coverage**: the Platos runtime + agent + webapp + SDK packages, the platos.dev marketing site
 - **Scope-out**: self-hosted instances run by third parties, findings requiring physical device access, social engineering against employees
 - **What you get**: 48h acknowledgement, 5-business-day triage, public credit in the changelog (opt-in)
 
@@ -60,4 +60,4 @@ Self-hosted: end-to-end you. Your Postgres holds the conversation rows (encrypte
 
 Visitor identity in spans: when an entity signs a `userMeta: { name, email }` claim into the session token (see [Auth modes](/docs/auth-modes)), those values land in the trace's `user_display_name` / `user_email` ClickHouse columns in plaintext, alongside the always-hashed `user_id`. The split lets a deletion request null the PII columns without breaking the canonical id; sign nothing into `userMeta` you wouldn't be willing to keep at rest.
 
-Playground (`play.platos.dev`): Winsen Labs operates the instance. Your data lives on our infra, gets reset periodically, and is not isolated from other playground users. **Do not paste real customer data.**
+Winsen Labs no longer operates a public hosted instance of Platos. Every deployment is self-hosted, which means the data-processing relationship is yours with your own providers — model vendors, object storage, ClickHouse — and not with Winsen Labs. The policies below apply to the `platos.dev` marketing site and documentation only.

@@ -48,7 +48,7 @@ Yes — BYOK ("bring your own keys") is the default. Anthropic, OpenAI, Google, 
 
 ## Where do I run Platos in production?
 
-Self-host. Same compose file the public playground (`play.platos.dev`) runs on. See [self-hosting](/docs/self-hosting). The playground is a public demo — **not for production**, see [play-platos-dev](/docs/play-platos-dev).
+Self-host. Clone [the repo](https://github.com/winsenlabs/platos), bring up the compose stack, and point it at your own Postgres, Redis, and object storage — [self-hosting](/docs/self-hosting) walks through it. There is no hosted Platos to sign up for; the runtime is the product and you run it.
 
 ## Does Platos store my conversations? Are they encrypted?
 

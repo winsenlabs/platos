@@ -1,57 +1,42 @@
 ---
 slug: play-platos-dev
-title: play.platos.dev — public playground (NOT production)
-description: What play.platos.dev is, what it isn't, and where to deploy your real agents.
+title: The hosted playground is retired
+description: play.platos.dev is no longer a public demo. Platos is self-hosted — clone the repo and run it.
 category: dx
 order: 5
 trigger_dev_primitive: false
 trigger_dev_link: ""
 questions:
-  - "Is play.platos.dev for production?"
-  - "Can I run my real agents on play.platos.dev?"
-  - "What's the difference between play.platos.dev and self-hosting?"
-  - "Is play.platos.dev managed?"
+  - "Is there a hosted Platos I can try?"
+  - "What happened to play.platos.dev?"
   - "Where do I deploy a Platos agent?"
+  - "How do I try Platos without signing up for anything?"
 related:
   - self-hosting
   - quickstart
   - architecture
 ---
 
-`play.platos.dev` is a **public playground** — a single shared Platos instance run by Winsen Labs so you can kick the tires without setting up infrastructure. **It is not for production.**
+# The hosted playground is retired
 
-## What play.platos.dev is
+`play.platos.dev` used to be a public demo instance. It is no longer open to the public, and there is no hosted Platos to sign up for.
 
-- A shared Platos runtime with the latest open-source build
-- A free way to experiment with agents, tools, prompts, and the dashboard before committing to your own deployment
-- The instance the "Talk to Platos" widget on `platos.dev` is wired to
-- The fastest route to seeing the runtime end-to-end
+This is not a gap waiting to be filled. Platos is a runtime you operate: it holds your provider keys, brokers your agents' tool calls, and stores your conversations. A shared demo instance is the one deployment shape where none of that can be true, so every meaningful thing you would want to evaluate — your models, your integrations, your data staying yours — is only observable on your own box.
 
-## What play.platos.dev is NOT
-
-- **Not a managed cloud product.** No SLA, no uptime guarantees, no support.
-- **Not isolated.** Your data lives next to other people's data on the same Postgres / Redis / ClickHouse / MinIO. Standard multi-tenant scope checks apply, but nothing stops Winsen Labs from wiping the instance for an upgrade.
-- **Not durable.** The instance gets reset periodically. Threads, agents, and memory may disappear.
-- **Not your data.** Anything you ship to play.platos.dev is visible to the operators of that instance and may be deleted at any time. **Do not paste real customer data, secrets, or PII.**
-- **Not rate-friendly for real workloads.** Aggressive per-user and per-org rate limits keep the playground available for everyone.
-
-## Where to actually deploy
-
-Self-host. The same compose stack that runs `play.platos.dev` runs on your own VPS in one command:
+## Try it by running it
 
 ```bash
 git clone https://github.com/winsenlabs/platos.git
 cd platos
-cp .env.example .env                       # set ANTHROPIC_API_KEY etc.
 docker compose -f docker-compose.platos.yml up -d
 ```
 
-You own the data, the infra, the cost curve, and the upgrade cadence. Full guide: [self-hosting](/docs/self-hosting).
+That brings up the full stack — webapp, agent runtime, Postgres, Redis, and object storage — on your machine. [Self-hosting](/docs/self-hosting) covers the environment variables, the provider keys, and what to change before anything faces the internet. [Quickstart](/docs/quickstart) takes you from a running stack to an agent answering a message.
 
-If you want a managed Platos instance with a contract, talk to us via [hello@winsenlabs.com](mailto:hello@winsenlabs.com).
+You need one model provider key to get a useful agent. Everything else has a working default.
 
-## Quick triage: which one am I on?
+## What this means for the docs
 
-If the URL bar shows `play.platos.dev`, you're on the playground. If it shows `localhost:3030`, your own domain, or anything you control — you're self-hosted.
+Every page in this documentation describes a Platos you run yourself. Where a doc mentions a URL, it is describing *your* deployment, not a Winsen Labs–operated one. Nothing here assumes a hosted tier, a free plan, or a signup.
 
-The dashboard is identical on both surfaces; the only difference is who owns the database underneath.
+The `platos.dev` marketing site and these docs are the only public surfaces Winsen Labs operates — see [Legal and policies](/docs/legal-and-policies).
