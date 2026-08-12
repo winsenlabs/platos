@@ -140,3 +140,31 @@ describe("rebuildIndex — must replace, not merge", () => {
     expect(svc.getIndexStats().cachedScopeEntityPairs).toBe(0);
   });
 });
+
+describe("rebuildIndex — BM25 must only hold dispatchable tools", () => {
+  it("does not index a definition that no mapping references", async () => {
+    const prisma = makePrisma(rowsFor(["a", "b"]), [entity]);
+    // A definition row with no mapping — the shape left behind by a deleted
+    // entity, since definitions are shared and outlive their mappings.
+    const orphan = { id: "t_ghost", name: "ghost", description: "", paramSchema: {}, category: null };
+    const realFindMany = prisma.platosToolDefinition.findMany;
+    prisma.platosToolDefinition.findMany = async () => [...(await realFindMany()), orphan];
+
+    const svc = makeRegistry(prisma);
+    await svc.rebuildIndex();
+
+    // 2 mapped tools indexed, the orphan excluded.
+    expect(svc.getIndexStats().totalDocs).toBe(2);
+  });
+
+  it("shrinks the index when mappings go away", async () => {
+    const prisma = makePrisma(rowsFor(["a", "b", "c"]), [entity]);
+    const svc = makeRegistry(prisma);
+    await svc.rebuildIndex();
+    expect(svc.getIndexStats().totalDocs).toBe(3);
+
+    prisma.state.rows = [];
+    await svc.rebuildIndex();
+    expect(svc.getIndexStats().totalDocs).toBe(0);
+  });
+});

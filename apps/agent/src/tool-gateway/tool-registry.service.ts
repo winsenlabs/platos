@@ -134,12 +134,7 @@ export class ToolRegistryService implements OnModuleInit {
       // memory with no way to clear them short of a process restart. Clearing
       // first makes this the operational recovery path it always read like.
       this.scopedToolCache.clear();
-
-      const tools = await this.prisma.platosToolDefinition.findMany();
-      for (const tool of tools) {
-        const text = `${tool.name} ${tool.description} ${this.extractParamNames(tool.paramSchema)}`;
-        this.bm25.addDocument(tool.id, text);
-      }
+      this.bm25.clear();
 
       // Load entity mappings into cache, joining to entity so we know scope.
       // Include mcpConfig so `injectMcpContext` lands on the cached entry —
@@ -184,6 +179,20 @@ export class ToolRegistryService implements OnModuleInit {
             : [],
           entityMcpInjectContext: entity.mcpConfig?.injectMcpContext === true,
         });
+
+        // Index for find_tools ONLY when a live mapping exists.
+        //
+        // This used to seed from `platosToolDefinition.findMany()` with no
+        // filter, i.e. every definition ever registered in the deployment.
+        // Definition rows are shared and deliberately outlive their mappings,
+        // so the index filled with tools no entity still offers — on this box,
+        // 32 indexed against 9 dispatchable. `find_tools` could then return a
+        // tool with no mapping, and calling it fails at dispatch with "Entity
+        // not registered". It also undid the eviction work: both
+        // `reconcileEntityTools` and `purgeEntity` remove a BM25 doc when its
+        // last mapping goes, and the next restart put every one of them back.
+        const text = `${m.tool.name} ${m.tool.description} ${this.extractParamNames(m.tool.paramSchema)}`;
+        this.bm25.addDocument(m.toolId, text);
       }
 
       const stats = this.bm25.getStats();
