@@ -14,6 +14,7 @@ questions:
   - "Can a safety event auto-pause an agent?"
   - "How do I export safety events for compliance review?"
 related:
+  - hard-erasure
   - approvals-and-hitl
   - audit-log
   - encryption-and-secrets

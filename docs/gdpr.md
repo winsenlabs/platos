@@ -34,42 +34,53 @@ Four stores hold user-identifiable data:
 
 ## Right to erasure — per-user delete
 
+Use the hard-erasure API. It performs the whole cascade across Postgres, Redis, ClickHouse, and object storage in one idempotent operation and returns a durable receipt recording what was deleted and what was verified gone. The full request/response contract, the receipt status model, and the deployment prerequisites live in [Hard erasure — contract and evidence](./gdpr-erasure.md).
+
 <Steps>
-<Step title="Identify the scope">
-A user lives within an `(organizationId, projectId, environmentId)` tuple. A single person may have separate records across multiple scopes — delete in each scope where they have data.
+<Step title="Identify the subject">
+A subject is resolved from an `externalUserId` within an `organizationId`. Platos matches on the external id, any linked external id, and any linked identity handle, so one request covers the same person arriving through several channels.
+
+A single person may still hold data in more than one organization. Erasure is org-scoped by design — a request cannot reach across orgs — so raise one request per organization where they have data.
 </Step>
 
-<Step title="Run the admin delete route">
-`DELETE /api/v1/admin/users/:userId/data?organizationId=…&projectId=…&environmentId=…`
+<Step title="Request the erasure">
+`POST /api/v1/agent/admin/privacy/erasures`
 
-Guarded by `PLATOS_ADMIN_TOKEN` in the `X-Platos-Admin-Token` header. Cascades:
-- Delete `PlatosMemory` + `PlatosMemoryEntity` + `PlatosMemoryRelationship` for the user.
-- Delete `PlatosAgentUserProfile`.
-- Delete `PlatosMessageRating` written by the user.
-- Delete `PlatosAgentMessage` rows in threads owned by the user.
-- Delete `PlatosAgentThread` rows for the user.
-- Delete `PlatosMessageAttachment` rows + schedule a MinIO object delete.
-</Step>
-
-<Step title="Purge attachment bytes">
-The attachment deletion is asynchronous — the scheduled `platos.attachments.retention` task (runs hourly) sweeps the MinIO objects. To force immediate purge:
-`POST /api/v1/agent/attachments/retention?forceUserId={userId}`
-</Step>
-
-<Step title="ClickHouse label scrub">
-ClickHouse stores the `userId` as a label on span + cost rows. Labels are not indexed by user, so scrub via:
-```sql
-ALTER TABLE platos_spans_v1
-  UPDATE platos_user_id = 'deleted'
-  WHERE platos_user_id = '{userId}';
+```json
+{ "externalUserId": "…", "organizationId": "…", "idempotencyKey": "…" }
 ```
-Run in `ON CLUSTER` mode if you're sharded.
+
+Authenticated with `PLATOS_ADMIN_TOKEN` in the `X-Platos-Admin-Token` header, compared in constant time. Ordinary Platos session tokens cannot reach this route. The `idempotencyKey` is required: replaying a request returns the original receipt rather than running a second destructive pass.
 </Step>
 
-<Step title="Verify">
-`GET /api/v1/admin/users/:userId/data?dryRun=1` returns a count per table. After deletion, every count should be zero except audit rows.
+<Step title="Read the receipt">
+`GET /api/v1/agent/admin/privacy/erasures/:operationId`
+
+Each store reports independently. Treat only `deleted` and `nothing_to_delete` as settled. `not_provisioned` means that store is not wired in this deployment — it settles the operation but is **not** evidence of deletion, and if you run ClickHouse or object storage you must wire them before the receipt means anything. `failed` and `unknown` are retryable; `unknown` specifically means a store crashed mid-pass and its true state was never established, which is deliberately not rounded down to success.
+</Step>
+
+<Step title="Retry anything unsettled">
+`POST /api/v1/agent/admin/privacy/erasures/:operationId/retry`
+
+Retries only the stores that are not settled. Safe to call repeatedly — deletion is idempotent, and stores already `deleted` are skipped rather than re-swept.
+</Step>
+
+<Step title="Verify independently">
+The receipt carries its own negative verification: after deleting, each executor re-probes for survivors and records the count. For an external audit, query the stores yourself rather than trusting the receipt — `GET /api/v1/agent/admin/privacy/subjects/:externalUserId/inventory` returns the per-store counts the operation would target, and should return zero across the board once the operation is settled.
 </Step>
 </Steps>
+
+### If you are scrubbing ClickHouse by hand
+
+The API handles this when ClickHouse is provisioned. If you are working on an older deployment, note that spans live in `trigger_dev.platos_spans_v1` and the identity columns are `user_id` (SHA256-hashed, the canonical join key), plus `user_display_name` and `user_email`, which hold plaintext when an entity signed a `userMeta` claim into the session token.
+
+```sql
+ALTER TABLE trigger_dev.platos_spans_v1
+  UPDATE user_display_name = '', user_email = ''
+  WHERE user_id = '{hashedUserId}';
+```
+
+Null the plaintext columns and keep the hashed `user_id`: it carries no personal data on its own and it is what every cost and usage rollup joins on, so blanking it corrupts historical billing to no privacy benefit. ClickHouse mutations are asynchronous — poll `system.mutations` for `is_done` before reporting the erasure complete. Run `ON CLUSTER` if you are sharded.
 
 ### Audit exception
 
@@ -118,7 +129,15 @@ Already has a TTL — `PLATOS_ATTACHMENT_TTL_DAYS` (default 30). Past the TTL, a
 
 ## Legal holds
 
-Before deleting, check whether the user is subject to a legal hold (lit-hold, tax audit, ongoing incident). Platos does not automate hold management; track this in your operator playbook. The `PLATOS_LEGAL_HOLD_USER_IDS` env (comma-separated) is checked by the delete route and rejects the request for any user on the list.
+Before deleting, check whether the user is subject to a legal hold (lit-hold, tax audit, ongoing incident).
+
+Set `PLATOS_LEGAL_HOLD_USER_IDS` to a comma-separated register of held identifiers. The erasure API checks it before creating the operation and before any executor touches a store; a match returns a receipt with status `blocked_legal_hold` naming the register entry that stopped it, and destroys nothing. The refused request is still recorded as an operation, because a refusal is itself an event you may have to evidence.
+
+Matching runs across **every alias the subject resolves to**, not just the identifier in the request. A hold registered against a Slack user id therefore also blocks an erasure requested by that person's email. Registering any one of a subject's identifiers is sufficient; matching is case-insensitive.
+
+The API also accepts a `legalHoldPolicyId` in the request body for a hold the caller already knows about. That is a supplement, not a substitute — it only protects a subject when whoever fires the request is already aware of the hold, which is exactly the knowledge a register exists because people do not reliably have.
+
+Platos does not manage hold lifecycle: adding, reviewing, and releasing holds stays in your operator playbook. Changing the env requires a restart to take effect.
 
 ## Breach notification
 
@@ -127,3 +146,12 @@ If you suspect a breach, rotate every secret in `docs/self-hosting.md#key-rotati
 ## Why this isn't baked into the UI yet
 
 The OSS mode focuses on giving operators the primitives. A polished admin UI for deletion/export is a post-v1 item. If you need it sooner, wire the routes above into your own admin tooling — they're stable.
+
+## Known gaps
+
+Be precise with regulators about what the receipt currently proves:
+
+- **ClickHouse is not swept automatically.** The executor detects the deployment and reports `not_provisioned` where the table is absent, but it does not yet submit and poll a mutation. Where you run ClickHouse, scrub by hand as above and record it alongside the receipt.
+- **`not_provisioned` is not evidence of deletion.** It settles an operation so the receipt is not left hanging, and it means only that a store is not wired here. Confirm every store you actually run reports `deleted` or `nothing_to_delete`.
+- **Late-event resurrection is not prevented.** An in-flight write that lands after the sweep can reintroduce rows for an erased subject. Quiesce or re-run for a subject who was active at the moment of erasure.
+- **Object storage and Redis executors are lightly exercised.** Both are implemented and unit-tested, but have not been run against a large real corpus.
