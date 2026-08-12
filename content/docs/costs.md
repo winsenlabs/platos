@@ -30,6 +30,16 @@ Platos tracks every token spent across four lanes: model inference (the chat tur
 
 `CostService` records per-token cost on every model call. The model price is read from the model catalogue at call time; cached tokens are priced separately at the provider's cache rate.
 
+### Where prices come from
+
+Three layers, most authoritative last:
+
+1. **LiteLLM's public price map**, refreshed daily by a scheduled task into the `cost:model_catalog` Redis key. It has broad coverage and is the baseline for models nobody has hand-checked.
+2. **Verified overrides** in `verified-prices.ts` — rates read off the provider's own pricing page and committed with the date they were checked. LiteLLM lags provider price cuts by weeks and has been wrong by an order of magnitude on newly released models, so any model you actually spend money on belongs here. An override always wins over the fetched map.
+3. **The rate recorded on the row itself.** Every cost row stores the unit rates it was priced with, not just the resulting cents. Prices change; a re-priced history would silently rewrite what you were billed. Historical charts read the rate as it stood at the time.
+
+Cache rates are tracked as their own multipliers because they are not a fixed fraction of the input rate. Reads are typically 0.1× input, but writes are *more expensive than input* — 1.25× on Anthropic, and as much as 2.5× elsewhere. Pricing a cache write at the input rate understates a cache-heavy agent's real spend.
+
 Cost rows are written:
 
 - **At turn time**: per-call rows attribute live spend to a thread + agent.
@@ -38,6 +48,14 @@ Cost rows are written:
 - **Reconcile**: PPR-24 scheduled task pulls provider billing data where available and writes drift rows tagged `lane: reconcile_drift`.
 
 The cost rollups feed [Monitoring](/docs/monitoring), [Budgets](/docs/budgets), and the per-agent cost charts. Per-skill rollups (the `monitoring/cost/skills/daily` and `range` endpoints) attribute spend to specific skills.
+
+### What counts as a task
+
+A **task** is one completed unit of work the agent did for a user — a turn that ran to completion. It is not a model call and not a tool call. An agent that searches, reads three documents, and replies has done *one* task while writing five or six cost rows.
+
+Every surface that reports task counts derives them from `billable-usage.ts`. Counting rows instead inflates the number by whatever factor the agent happens to be tool-heavy that week, which produces the same agent looking several times busier after a prompt change that touched nothing a user would notice.
+
+Cost and task count therefore answer different questions and should not be expected to move together: cost scales with tokens, task count with completed work.
 
 ## Why it matters
 
