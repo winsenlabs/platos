@@ -54,7 +54,7 @@ A self-hosted deployment is the OSS pitch. You own the data, the infra, the cost
 ### First-time install
 
 ```bash
-git clone https://github.com/platos-labs/platos.git
+git clone https://github.com/winsenlabs/platos.git
 cd platos
 cp .env.example .env
 # Edit .env: set ENCRYPTION_KEY, PLATOS_MESSAGE_ENCRYPTION_KEY, MINIO_ROOT_*
