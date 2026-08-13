@@ -297,7 +297,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     cacheRange,
     providerKeys,
     agentProviderKeyId: agentRow?.providerKeyId ?? null,
-    agentModelRoutes: (agentRow?.modelRoutes as any[] | null) ?? null,
+    // `modelRoutes` is the same array-column shape as promptBlocks/dynamicBlocks
+    // and was missed by the PIFSP-19 read-side defense above. A double-encoded
+    // write left a JSON string in the column; `?? []` only guards null, so the
+    // truthy string reached `.map` and took out the whole agent page with
+    // "(h ?? []).map is not a function". Null stays null so the editor's
+    // "no routes configured" state is unchanged.
+    agentModelRoutes:
+      agentRow?.modelRoutes == null ? null : asBlockArray<any>(agentRow.modelRoutes),
     agentRetryRules: ((agentRow as any)?.agentRetryConfig?.rules ?? null) as RetryRule[] | null,
     agentClusteringId: agentRow?.clusteringId ?? null,
     agentEnableThreading: agentRow?.enableThreading ?? false,

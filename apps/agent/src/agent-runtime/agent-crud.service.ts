@@ -461,7 +461,10 @@ export class AgentCrudService {
   private buildSnapshot(agent: any): AgentVersionSnapshot {
     return {
       model: agent.model,
-      modelRoutes: (agent.modelRoutes as ModelRoute[] | null) ?? null,
+      // Coerced like the block lists below — a row already carrying a
+      // double-encoded string must not reach the runtime's route resolver,
+      // which does `(modelRoutes ?? []).map(...)` and would throw on a string.
+      modelRoutes: coerceBlockList(agent.modelRoutes) as ModelRoute[] | null,
       systemPrompt: agent.systemPrompt ?? null,
       promptBlocks: coerceBlockList(agent.promptBlocks) as PromptBlock[] | null,
       dynamicBlocks: coerceBlockList(agent.dynamicBlocks) as DynamicBlockTemplate[] | null,
@@ -780,8 +783,13 @@ export class AgentCrudService {
           providerKeyId: dto.providerKeyId,
         }),
         // Per-request model routing table. Null clears; undefined leaves.
+        // Coerced for the same reason as the block lists (PIFSP-19): this wrote
+        // the DTO value through unchecked, so a client sending
+        // `JSON.stringify(routes)` stored a JSON string in an array column. The
+        // read side then hit `.map` on a string and the agent detail page died
+        // with "(h ?? []).map is not a function".
         ...(dto.modelRoutes !== undefined && {
-          modelRoutes: (dto.modelRoutes as any) ?? null,
+          modelRoutes: coerceBlockList(dto.modelRoutes) as any,
         }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },
