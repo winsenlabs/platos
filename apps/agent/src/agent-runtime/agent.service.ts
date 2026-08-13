@@ -858,6 +858,31 @@ function filterToolsAllowlist(
   return out;
 }
 
+/**
+ * Coerce the `modelRoutes` JSON column to an array.
+ *
+ * Same defect class as PIFSP-19's block lists: a client sending
+ * `JSON.stringify(routes)` lands a JSON string in an array column. The route
+ * resolver guards with `Array.isArray`, so this never crashed the runtime — it
+ * silently resolved to NO routes and fell back to the agent's default model,
+ * leaving every configured route inert with nothing in the logs. Parse-if-string,
+ * require-array, else null (which is the honest "not configured").
+ */
+function coerceRouteList(raw: unknown): any[] | null {
+  let v: unknown = raw;
+  if (v === undefined || v === null) return null;
+  if (typeof v === "string") {
+    const trimmed = v.trim();
+    if (trimmed === "") return null;
+    try {
+      v = JSON.parse(trimmed);
+    } catch {
+      return null;
+    }
+  }
+  return Array.isArray(v) ? v : null;
+}
+
 @Injectable()
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
@@ -1535,7 +1560,12 @@ export class AgentService {
             // PIFSP-14 — pinned provider key id.
             providerKeyId: agent.providerKeyId ?? null,
             // Per-request model routing table (null when not configured).
-            modelRoutes: (agent.modelRoutes as any) ?? null,
+            // Coerced: this reads raw Prisma, so a double-encoded write leaves a
+            // JSON string here. The resolver guards with `Array.isArray`, so it
+            // did not crash — it silently saw NO routes and fell back to the
+            // default model. Every configured route was inert, with nothing in
+            // the logs to say so. Failing quiet is worse than failing loud here.
+            modelRoutes: coerceRouteList(agent.modelRoutes),
             // PRA-AC: cluster membership for cluster-wide memory recall.
             clusteringId: agent.clusteringId ?? null,
             // Per-agent BGO cap — overrides PLATOS_MAX_BGOS_PER_TURN env var.
