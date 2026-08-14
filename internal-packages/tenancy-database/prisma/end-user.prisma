@@ -1,0 +1,69 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/end-user"
+  binaryTargets = ["native", "debian-openssl-1.1.x"]
+}
+
+enum PrincipalTier {
+  OPERATOR
+  END_USER
+}
+
+/// Restricted data-plane projection. Organization and all operator models are
+/// intentionally absent, so generated relation queries cannot traverse them.
+model EndUser {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  displayName    String?
+  disabledAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  identities EndUserIdentity[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, disabledAt])
+}
+
+model EndUserIdentity {
+  id             String    @id @default(uuid()) @db.Uuid
+  endUserId      String    @db.Uuid
+  organizationId String    @db.Uuid
+  issuer         String
+  channel        String
+  subject        String
+  profile        Json?
+  verifiedAt     DateTime?
+  disabledAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  endUser  EndUser          @relation(fields: [endUserId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  sessions EndUserSession[]
+
+  @@unique([organizationId, issuer, channel, subject])
+  @@index([endUserId, disabledAt])
+}
+
+model EndUserSession {
+  id            String        @id @default(uuid()) @db.Uuid
+  identityId    String        @db.Uuid
+  environmentId String        @db.Uuid
+  tokenHash     String        @unique
+  tier          PrincipalTier @default(END_USER)
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  lastSeenAt    DateTime?
+  createdAt     DateTime      @default(now())
+
+  identity EndUserIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade)
+
+  @@index([identityId, expiresAt])
+  @@index([environmentId, expiresAt])
+  @@index([expiresAt])
+}

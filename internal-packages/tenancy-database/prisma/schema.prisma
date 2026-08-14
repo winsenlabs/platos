@@ -1,0 +1,240 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/control"
+  binaryTargets = ["native", "debian-openssl-1.1.x"]
+}
+
+enum PrincipalTier {
+  OPERATOR
+  END_USER
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum ProjectRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+model User {
+  id          String    @id @default(uuid()) @db.Uuid
+  email       String    @unique
+  displayName String?
+  disabledAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  organizationMemberships OrganizationMembership[]
+  invitationsSent         OrganizationInvitation[] @relation("OrganizationInvitationInviter")
+  operatorSessions        OperatorSession[]
+}
+
+model OperatorSession {
+  id         String        @id @default(uuid()) @db.Uuid
+  tokenHash  String        @unique
+  tier       PrincipalTier @default(OPERATOR)
+  userId     String        @db.Uuid
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastSeenAt DateTime?
+  createdAt  DateTime      @default(now())
+
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  environmentSessions EnvironmentSession[]
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model Organization {
+  id         String    @id @default(uuid()) @db.Uuid
+  slug       String    @unique
+  name       String
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  memberships OrganizationMembership[]
+  invitations OrganizationInvitation[]
+  projects    Project[]
+  endUsers    EndUser[]
+
+  @@index([archivedAt])
+}
+
+model OrganizationMembership {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid
+  userId         String           @db.Uuid
+  role           OrganizationRole @default(MEMBER)
+  deactivatedAt  DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectMemberships ProjectMembership[]
+
+  @@unique([organizationId, userId])
+  @@unique([id, organizationId])
+  @@index([userId, deactivatedAt])
+  @@index([organizationId, role, deactivatedAt])
+}
+
+model OrganizationInvitation {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid
+  inviterId      String?          @db.Uuid
+  email          String
+  role           OrganizationRole @default(MEMBER)
+  tokenHash      String           @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inviter      User?        @relation("OrganizationInvitationInviter", fields: [inviterId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, email, expiresAt])
+  @@index([inviterId])
+  @@index([expiresAt])
+}
+
+model Project {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  slug           String
+  name           String
+  archivedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships  ProjectMembership[]
+  environments Environment[]
+
+  @@unique([organizationId, slug])
+  @@unique([id, organizationId])
+  @@index([organizationId, archivedAt])
+}
+
+model ProjectMembership {
+  id                       String      @id @default(uuid()) @db.Uuid
+  projectId                String      @db.Uuid
+  organizationMembershipId String      @db.Uuid
+  /// Integrity key: both composite FKs derive and verify this value.
+  organizationId           String      @db.Uuid
+  role                     ProjectRole @default(VIEWER)
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+
+  project                Project                @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organizationMembership OrganizationMembership @relation(fields: [organizationMembershipId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([projectId, organizationMembershipId])
+  @@index([organizationMembershipId])
+  @@index([projectId, role])
+}
+
+model Environment {
+  id         String    @id @default(uuid()) @db.Uuid
+  projectId  String    @db.Uuid
+  slug       String
+  name       String
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  project             Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  environmentSessions EnvironmentSession[]
+  endUserSessions     EndUserSession[]
+
+  @@unique([projectId, slug])
+  @@index([projectId, archivedAt])
+}
+
+model EnvironmentSession {
+  id                String        @id @default(uuid()) @db.Uuid
+  environmentId     String        @db.Uuid
+  operatorSessionId String        @db.Uuid
+  tier              PrincipalTier @default(OPERATOR)
+  ipAddress         String?
+  userAgent         String?
+  lastSeenAt        DateTime?
+  endedAt           DateTime?
+  createdAt         DateTime      @default(now())
+
+  environment     Environment     @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  operatorSession OperatorSession @relation(fields: [operatorSessionId], references: [id], onDelete: Cascade)
+
+  @@index([environmentId, endedAt])
+  @@index([operatorSessionId, endedAt])
+}
+
+model EndUser {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  displayName    String?
+  disabledAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  identities   EndUserIdentity[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, disabledAt])
+}
+
+model EndUserIdentity {
+  id             String    @id @default(uuid()) @db.Uuid
+  endUserId      String    @db.Uuid
+  /// Integrity key used by the composite FK and organization-scoped identity key.
+  organizationId String    @db.Uuid
+  issuer         String
+  channel        String
+  subject        String
+  profile        Json?
+  verifiedAt     DateTime?
+  disabledAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  endUser  EndUser          @relation(fields: [endUserId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  sessions EndUserSession[]
+
+  @@unique([organizationId, issuer, channel, subject])
+  @@index([endUserId, disabledAt])
+}
+
+model EndUserSession {
+  id            String        @id @default(uuid()) @db.Uuid
+  identityId    String        @db.Uuid
+  environmentId String        @db.Uuid
+  tokenHash     String        @unique
+  tier          PrincipalTier @default(END_USER)
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  lastSeenAt    DateTime?
+  createdAt     DateTime      @default(now())
+
+  /// The initial migration enforces that this identity and environment resolve
+  /// to the same Organization. Scope is derived instead of copied here.
+  identity    EndUserIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade)
+  environment Environment     @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  @@index([identityId, expiresAt])
+  @@index([environmentId, expiresAt])
+  @@index([expiresAt])
+}
