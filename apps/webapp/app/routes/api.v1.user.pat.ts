@@ -7,24 +7,15 @@
  * Revocation lives at `/api/v1/user/pat/:id/revoke` (see
  * `api.v1.user.pat.$id.revoke.ts`).
  *
- * Auth: session cookie or another Platos PAT (the extended middleware in
- * `apiAuth.server.ts#authenticateRequestWithPAT` accepts both). We only
- * ever return the raw token value ONCE — on the mint response — and
- * store sha256(raw) in the DB. Raw values never touch the logger.
+ * Auth: session cookie or a Platos PAT for listing. Minting requires a browser
+ * session; PAT-authenticated child minting is prohibited to prevent role or
+ * scope escalation. We only return the raw value once and store sha256(raw).
  */
 
-import {
-  json,
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-} from "@remix-run/server-runtime";
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/server-runtime";
 import { z } from "zod";
 import { authenticateRequestWithPAT } from "~/services/apiAuth.server";
-import {
-  listPATs,
-  mintPAT,
-  type PATRole,
-} from "~/services/patService.server";
+import { listPATs, mintPAT, type PATRole } from "~/services/patService.server";
 
 const RoleSchema = z.enum(["admin", "write", "read"]).optional();
 
@@ -42,7 +33,14 @@ const MintBodySchema = z.object({
   ttlDays: z.number().int().min(0).max(365).optional(),
 });
 
-function serializeRow<T extends { createdAt: Date; expiresAt: Date | null; lastUsedAt?: Date | null; revokedAt?: Date | null }>(r: T) {
+function serializeRow<
+  T extends {
+    createdAt: Date;
+    expiresAt: Date | null;
+    lastUsedAt?: Date | null;
+    revokedAt?: Date | null;
+  },
+>(r: T) {
   return {
     ...r,
     createdAt: r.createdAt.toISOString(),
@@ -73,6 +71,9 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!auth) {
     return json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (auth.pat) {
+    return json({ error: "PAT-authenticated requests cannot mint child PATs" }, { status: 403 });
+  }
 
   let body: unknown;
   try {
@@ -83,10 +84,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   const parsed = MintBodySchema.safeParse(body);
   if (!parsed.success) {
-    return json(
-      { error: "Invalid request body", issues: parsed.error.issues },
-      { status: 400 },
-    );
+    return json({ error: "Invalid request body", issues: parsed.error.issues }, { status: 400 });
   }
 
   const { name, role, scope, ttlDays } = parsed.data;
@@ -118,6 +116,6 @@ export async function action({ request }: ActionFunctionArgs) {
       expiresAt: minted.expiresAt ? minted.expiresAt.toISOString() : null,
       createdAt: minted.createdAt.toISOString(),
     },
-    { status: 201 },
+    { status: 201 }
   );
 }

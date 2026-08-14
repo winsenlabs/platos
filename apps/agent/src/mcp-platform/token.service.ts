@@ -32,7 +32,7 @@ export interface MintTokenInput {
   scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId" | "userId">;
   name: string;
   permissions: string[];
-  /** Default 90 days. Pass 0 or negative for an admin "never expires" token. */
+  /** Lifetime in seconds. Defaults to 90 days and must be positive. */
   ttlSeconds?: number;
   /** Theme K.18. Defaults to "scope". Admin-tier requires org ADMIN role. */
   tier?: PlatosMCPTokenTier;
@@ -40,7 +40,7 @@ export interface MintTokenInput {
 
 export interface MintedToken {
   id: string;
-  token: string;         // raw — show once, never again
+  token: string; // raw — show once, never again
   name: string;
   permissions: string[];
   tier: PlatosMCPTokenTier;
@@ -68,6 +68,7 @@ export interface VerifiedToken {
 
 const DEFAULT_TTL_SECONDS = 90 * 24 * 3600;
 const TOKEN_PREFIX = "plt_mcp_";
+const CREDENTIAL_FAMILY = "control_plane";
 
 /**
  * Theme K.18 — thrown when a non-admin user attempts to mint an
@@ -77,7 +78,7 @@ const TOKEN_PREFIX = "plt_mcp_";
 export class AdminMintForbiddenError extends Error {
   constructor(userId: string, organizationId: string) {
     super(
-      `user ${userId} is not an ADMIN of organization ${organizationId} — admin-tier MCP tokens are reserved for org admins`,
+      `user ${userId} is not an ADMIN of organization ${organizationId} — admin-tier MCP tokens are reserved for org admins`
     );
     this.name = "AdminMintForbiddenError";
   }
@@ -85,6 +86,15 @@ export class AdminMintForbiddenError extends Error {
 
 function normalizeTier(raw: unknown): PlatosMCPTokenTier {
   return raw === "admin" ? "admin" : "scope";
+}
+
+function constantTimeHexEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
+  } catch {
+    return false;
+  }
 }
 
 @Injectable()
@@ -124,10 +134,7 @@ export class PlatosMCPTokenService {
         select: { role: true },
       });
       if (!membership || membership.role !== "ADMIN") {
-        throw new AdminMintForbiddenError(
-          input.scope.userId,
-          input.scope.organizationId,
-        );
+        throw new AdminMintForbiddenError(input.scope.userId, input.scope.organizationId);
       }
     }
 
@@ -135,7 +142,10 @@ export class PlatosMCPTokenService {
     const tokenHash = this.hashToken(raw);
 
     const ttl = input.ttlSeconds ?? DEFAULT_TTL_SECONDS;
-    const expiresAt = ttl > 0 ? new Date(Date.now() + ttl * 1000) : null;
+    if (!Number.isFinite(ttl) || ttl <= 0) {
+      throw new Error("ttlSeconds must be a positive number");
+    }
+    const expiresAt = new Date(Date.now() + ttl * 1000);
 
     // K.18 fail-safe — when the DB schema pre-dates this migration the
     // `tier` column doesn't exist, so sending it as a field would 500.
@@ -149,26 +159,40 @@ export class PlatosMCPTokenService {
       tier?: string | null;
     };
     try {
-      row = await this.prisma.platosMCPToken.create({
-        data: {
-          organizationId: input.scope.organizationId,
-          projectId: input.scope.projectId,
-          environmentId: input.scope.environmentId,
-          mintedByUserId: input.scope.userId,
-          name: input.name,
-          tokenHash,
-          permissions: input.permissions,
-          tier,
-          expiresAt,
-        },
-        select: {
-          id: true,
-          name: true,
-          permissions: true,
-          tier: true,
-          expiresAt: true,
-          createdAt: true,
-        },
+      row = await this.prisma.$transaction(async (tx: any) => {
+        const created = await tx.platosMCPToken.create({
+          data: {
+            organizationId: input.scope.organizationId,
+            projectId: input.scope.projectId,
+            environmentId: input.scope.environmentId,
+            mintedByUserId: input.scope.userId,
+            name: input.name,
+            tokenHash,
+            permissions: input.permissions,
+            tier,
+            expiresAt,
+          },
+          select: {
+            id: true,
+            name: true,
+            permissions: true,
+            tier: true,
+            expiresAt: true,
+            createdAt: true,
+          },
+        });
+        await tx.platosCredentialAudit.create({
+          data: {
+            family: CREDENTIAL_FAMILY,
+            credentialId: created.id,
+            action: "mint",
+            organizationId: input.scope.organizationId,
+            projectId: input.scope.projectId,
+            environmentId: input.scope.environmentId,
+            actorUserId: input.scope.userId,
+          },
+        });
+        return created;
       });
     } catch (err: any) {
       // PrismaClientValidationError for an unknown field means the
@@ -178,26 +202,40 @@ export class PlatosMCPTokenService {
       if (tier === "admin") throw err;
       if (/Unknown arg|Unknown argument|Unknown field|tier/.test(msg)) {
         this.logger.warn(
-          "PlatosMCPToken.tier column absent; minting without tier (pre-migration).",
+          "PlatosMCPToken.tier column absent; minting without tier (pre-migration)."
         );
-        row = await this.prisma.platosMCPToken.create({
-          data: {
-            organizationId: input.scope.organizationId,
-            projectId: input.scope.projectId,
-            environmentId: input.scope.environmentId,
-            mintedByUserId: input.scope.userId,
-            name: input.name,
-            tokenHash,
-            permissions: input.permissions,
-            expiresAt,
-          },
-          select: {
-            id: true,
-            name: true,
-            permissions: true,
-            expiresAt: true,
-            createdAt: true,
-          },
+        row = await this.prisma.$transaction(async (tx: any) => {
+          const created = await tx.platosMCPToken.create({
+            data: {
+              organizationId: input.scope.organizationId,
+              projectId: input.scope.projectId,
+              environmentId: input.scope.environmentId,
+              mintedByUserId: input.scope.userId,
+              name: input.name,
+              tokenHash,
+              permissions: input.permissions,
+              expiresAt,
+            },
+            select: {
+              id: true,
+              name: true,
+              permissions: true,
+              expiresAt: true,
+              createdAt: true,
+            },
+          });
+          await tx.platosCredentialAudit.create({
+            data: {
+              family: CREDENTIAL_FAMILY,
+              credentialId: created.id,
+              action: "mint",
+              organizationId: input.scope.organizationId,
+              projectId: input.scope.projectId,
+              environmentId: input.scope.environmentId,
+              actorUserId: input.scope.userId,
+            },
+          });
+          return created;
         });
       } else {
         throw err;
@@ -217,7 +255,7 @@ export class PlatosMCPTokenService {
 
   /**
    * Verify a raw bearer. Returns the pinned scope + permissions when
-   * valid, null otherwise. Bumps `lastUsedAt` on success (fire-and-forget).
+   * valid, null otherwise. Atomically records `lastUsedAt` and use evidence.
    */
   async verify(raw: string | undefined | null): Promise<VerifiedToken | null> {
     if (!raw || typeof raw !== "string" || !raw.startsWith(TOKEN_PREFIX)) {
@@ -227,24 +265,24 @@ export class PlatosMCPTokenService {
     // K.18 fail-safe — request `tier`, but tolerate a schema without
     // the column by falling back to the legacy select. This lets a
     // freshly-rebuilt agent boot against an un-migrated DB.
-    let row:
-      | {
-          id: string;
-          organizationId: string;
-          projectId: string;
-          environmentId: string;
-          permissions: string[];
-          mintedByUserId: string;
-          expiresAt: Date | null;
-          revokedAt: Date | null;
-          tier?: string | null;
-        }
-      | null;
+    let row: {
+      id: string;
+      tokenHash: string;
+      organizationId: string;
+      projectId: string;
+      environmentId: string;
+      permissions: string[];
+      mintedByUserId: string;
+      expiresAt: Date | null;
+      revokedAt: Date | null;
+      tier?: string | null;
+    } | null;
     try {
       row = await this.prisma.platosMCPToken.findUnique({
         where: { tokenHash },
         select: {
           id: true,
+          tokenHash: true,
           organizationId: true,
           projectId: true,
           environmentId: true,
@@ -259,12 +297,13 @@ export class PlatosMCPTokenService {
       const msg = String(err?.message ?? "");
       if (/Unknown arg|Unknown argument|Unknown field|tier/.test(msg)) {
         this.logger.warn(
-          "PlatosMCPToken.tier column absent; verifying without tier (pre-migration).",
+          "PlatosMCPToken.tier column absent; verifying without tier (pre-migration)."
         );
         row = await this.prisma.platosMCPToken.findUnique({
           where: { tokenHash },
           select: {
             id: true,
+            tokenHash: true,
             organizationId: true,
             projectId: true,
             environmentId: true,
@@ -278,16 +317,35 @@ export class PlatosMCPTokenService {
         throw err;
       }
     }
-    if (!row || row.revokedAt) return null;
-    if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return null;
+    if (!row || !constantTimeHexEqual(row.tokenHash, tokenHash) || row.revokedAt) return null;
+    if (row.expiresAt && row.expiresAt.getTime() <= Date.now()) return null;
 
-    // Fire-and-forget lastUsedAt bump; failure never fails verification.
-    this.prisma.platosMCPToken
-      .update({
-        where: { tokenHash },
+    // Credential use is auditable by contract. Update + audit atomically;
+    // failure rejects verification rather than authenticating without evidence.
+    const recorded = await this.prisma.$transaction(async (tx: any) => {
+      const updated = await tx.platosMCPToken.updateMany({
+        where: {
+          id: row.id,
+          revokedAt: null,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
         data: { lastUsedAt: new Date() },
-      })
-      .catch(() => undefined);
+      });
+      if (updated.count !== 1) return false;
+      await tx.platosCredentialAudit.create({
+        data: {
+          family: CREDENTIAL_FAMILY,
+          credentialId: row.id,
+          action: "use",
+          organizationId: row.organizationId,
+          projectId: row.projectId,
+          environmentId: row.environmentId,
+          actorUserId: row.mintedByUserId,
+        },
+      });
+      return true;
+    });
+    if (!recorded) return null;
 
     return {
       id: row.id,
@@ -308,9 +366,7 @@ export class PlatosMCPTokenService {
    * metadata. `tokenHash` is also elided because it's a security-
    * sensitive value that could feed brute-force attacks.
    */
-  async list(
-    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
-  ): Promise<
+  async list(scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">): Promise<
     Array<{
       id: string;
       name: string;
@@ -400,7 +456,7 @@ export class PlatosMCPTokenService {
    */
   async revoke(
     id: string,
-    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId" | "userId">,
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId" | "userId">
   ): Promise<boolean> {
     const existing = await this.prisma.platosMCPToken.findFirst({
       where: {
@@ -413,9 +469,23 @@ export class PlatosMCPTokenService {
     });
     if (!existing) return false;
     if (existing.revokedAt) return true;
-    await this.prisma.platosMCPToken.update({
-      where: { id },
-      data: { revokedAt: new Date(), revokedBy: scope.userId },
+    await this.prisma.$transaction(async (tx: any) => {
+      const updated = await tx.platosMCPToken.updateMany({
+        where: { id, revokedAt: null },
+        data: { revokedAt: new Date(), revokedBy: scope.userId },
+      });
+      if (updated.count === 0) return;
+      await tx.platosCredentialAudit.create({
+        data: {
+          family: CREDENTIAL_FAMILY,
+          credentialId: id,
+          action: "revoke",
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          actorUserId: scope.userId,
+        },
+      });
     });
     return true;
   }

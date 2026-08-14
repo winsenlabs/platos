@@ -247,7 +247,7 @@ export class OAuthController {
   /**
    * Called by the webapp consent action once the user has approved +
    * selected the (org, project, env) tuple. Auth: the webapp forwards
-   * the user identity via an HMAC'd body signed with PLATOS_SESSION_SECRET
+   * the user identity via an HMAC'd body signed with SESSION_SECRET
    * (reuses the same shared secret). TODO(K.10.1) switch to a proper
    * inter-service signed JWT with iat/aud claims instead of reusing
    * the session secret directly.
@@ -274,10 +274,10 @@ export class OAuthController {
     if (!signature) {
       throw new HttpException("consent signature required", HttpStatus.UNAUTHORIZED);
     }
-    const secret = env.PLATOS_SESSION_SECRET;
+    const secret = env.SESSION_SECRET;
     if (!secret) {
       throw new HttpException(
-        "PLATOS_SESSION_SECRET not configured",
+        "SESSION_SECRET not configured",
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -1162,7 +1162,7 @@ export class OAuthController {
       ts: Math.floor(Date.now() / 1000),
     };
     const stateJson = Buffer.from(JSON.stringify(statePayload)).toString("base64url");
-    const secret = env.PLATOS_SESSION_SECRET ?? "";
+    const secret = env.SESSION_SECRET ?? "";
     const stateSig = crypto
       .createHmac("sha256", secret)
       .update(stateJson)
@@ -1434,7 +1434,7 @@ export class OAuthController {
     const payload = signedState.slice(0, dot);
     const sig = signedState.slice(dot + 1);
     // BUG-19: use the static top-level crypto import instead of dynamic require().
-    const secret = env.PLATOS_SESSION_SECRET ?? "";
+    const secret = env.SESSION_SECRET ?? "";
     const expectedSig = crypto
       .createHmac("sha256", secret)
       .update(payload)

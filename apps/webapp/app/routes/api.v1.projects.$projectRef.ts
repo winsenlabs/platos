@@ -4,7 +4,7 @@ import { GetProjectResponseBody, GetProjectsResponseBody } from "@platos/core/v3
 import { z } from "zod";
 import { prisma } from "~/db.server";
 import { logger } from "~/services/logger.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 
 const ParamsSchema = z.object({
   projectRef: z.string(),
@@ -13,7 +13,7 @@ const ParamsSchema = z.object({
 export async function loader({ request, params }: LoaderFunctionArgs) {
   logger.info("get project", { url: request.url });
 
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing Access Token" }, { status: 401 });

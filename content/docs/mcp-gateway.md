@@ -70,7 +70,7 @@ Point your MCP client at:
 https://platos.example.com/mcp
 ```
 
-Authenticate with a PAT (`Authorization: Bearer pmt_...`). The client lists tools; you call them.
+Authenticate with a PAT (`Authorization: Bearer plt_ent_...`). The client lists tools; you call them.
 
 ### Per-entity endpoint
 
@@ -84,7 +84,7 @@ Tools list scopes to the entity's pushed tools plus any Platos skills the entity
 
 - **Anonymous**: no auth header. Only tools flagged `public: true` are exposed. Use cases: read-only public data, demo skills.
 - **OIDC**: `Authorization: Bearer <oidc-id-token>`. The gateway federates with your OIDC provider, resolves the user, and applies per-user ACLs.
-- **Bearer PAT**: `Authorization: Bearer pmt_...`. The PAT carries a fixed scope and an explicit ACL.
+- **Bearer PAT**: `Authorization: Bearer plt_ent_...`. The PAT carries a fixed scope and an explicit ACL.
 
 ### Per-tool ACL
 

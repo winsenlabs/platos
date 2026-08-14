@@ -1,124 +1,144 @@
 ---
 slug: auth-modes
-title: Auth modes and session tokens
-description: Three auth modes (direct headers, session-token JWT, service secret on WS) plus user-token passthrough.
+title: Authentication modes and credentials
+description: The shipped Platos request-authentication modes, credential families, and trust boundaries.
 category: dx
 order: 20
 trigger_dev_primitive: false
 trigger_dev_link: ""
 questions:
-  - "What are the three auth modes Platos supports?"
-  - "When does Platos issue a session token?"
-  - "How is a session token different from a PAT?"
-  - "What is X-Platos-User-Token and when is it used?"
-  - "How does an entity backend authenticate on the WebSocket upgrade?"
-  - "Why are external requests forced into Mode 2?"
+  - "Which authentication mode should a Platos client use?"
+  - "How are dashboard session tokens verified?"
+  - "Which credential authorizes hard erasure?"
+  - "How is an entity bearer different from a control-plane token?"
+  - "What is X-Platos-User-Token?"
 related:
+  - credential-inventory
   - scope-and-multi-tenancy
   - mcp-tokens-and-pat
   - public-agents-and-embed
 source_files_referenced:
+  - apps/agent/src/auth/scope.guard.ts
   - apps/agent/src/auth/auth.service.ts
-  - apps/agent/src/auth/auth.service.test.ts
-  - apps/agent/src/auth/session-token.controller.ts
-  - apps/agent/src/auth/public-guest-token.controller.ts
+  - apps/agent/src/mcp-platform/token.service.ts
+  - apps/agent/src/mcp-platform/mcp-bearer-token.service.ts
+  - apps/webapp/app/services/patService.server.ts
+  - apps/webapp/app/services/controlPlaneCredential.server.ts
 ---
 
-# Auth modes and session tokens
+# Authentication modes and credentials
 
-Platos accepts three auth modes. Each one resolves a scope tuple, attaches a user identity if relevant, and gates the request through the scope guard. Mode is picked by the request shape, not by a header; external callers cannot bypass the rules.
+Platos ships several authentication modes because dashboard users, entity backends, MCP clients, API clients, and internal callbacks cross different trust boundaries. They intentionally do not share one universal bearer.
 
-## What it is
+## Request authentication modes
 
-Three modes, ordered from "trusted" to "external":
+### 1. Trusted internal scope headers
 
-- **Mode 1 (direct headers)**: `X-Platos-Organization-Id`, `X-Platos-Project-Id`, `X-Platos-Environment-Id` on every request. Used inside the trusted boundary (webapp -> agent service). Refused if the request carries `X-Forwarded-For`; that header signals an external proxy and forces Mode 2.
-- **Mode 2 (session token JWT)**: a JWT signed by the entity's `serviceSecret`, carrying scope and an optional opaque `user_token` claim. External callers (entity backends acting on a user's behalf) use this. Verified by `AuthService.verifySessionToken`.
-- **Mode 3 (service secret on WS upgrade)**: an entity backend's long-lived WebSocket presents the service secret. Scope is the entity row; user identity is per-call (carried in the session token forwarded over the socket).
+A webapp-to-agent request on the private deployment network can provide the complete scope tuple:
 
-Plus one bridge: `X-Platos-User-Token`. When Mode 2 carries a `user_token` claim, Platos forwards it to entity tools as `X-Platos-User-Token`. The entity verifies the token with its own auth stack. Platos never inspects the token; it is opaque.
+- `X-Platos-Organization-Id`
+- `X-Platos-Project-Id`
+- `X-Platos-Environment-Id`
+- `X-Platos-User-Id`
 
-The webapp also issues platform-issued session tokens (PPR-7 iter2). When a logged-in dashboard user kicks off an agent action, the webapp mints a JWT signed with `PLATOS_SESSION_SECRET` and the agent verifies it. This is the same Mode 2 path, just with a different signing key (the platform key vs. the entity key).
+This mode is a network-bound service path, not a public authentication mechanism. `ScopeGuard` refuses it when `X-Forwarded-For` is present, because that indicates the request crossed the public proxy. Do not publish the agent port directly; the compose configuration binds it to loopback.
 
-## Why it matters
+### 2. Short-lived session JWT
 
-A single header-based mode collapses three different trust boundaries into one. The split lets you run Platos with mixed callers (internal, external, entity-side) without weakening the model:
+External agent requests use a signed, expiring JWT that contains the organization, project, environment, and optional user context.
 
-- Internal calls are header-based because they share a deployment trust boundary; they are not subject to forgery.
-- External calls are JWT-based because the JWT signature proves the entity authorised the call.
-- Entity calls are service-secret based because the WebSocket is long-lived and the secret is a one-time bootstrap.
+There are two issuers:
 
-User-token passthrough is the trick that lets Platos host a multi-user agent without ever holding the user's auth credentials. The agent runs, the entity sees a token its own auth stack recognises; Platos is the dispatcher, not the authoriser.
+- An entity backend signs with that entity's `serviceSecret`. The default entity-session lifetime is five minutes.
+- The Platos webapp signs dashboard bridge tokens with the deployment's single `SESSION_SECRET`. Operator sessions last at most seven days.
 
-## How to use it
+The agent verifies the issuer and signature and then resolves the scope carried by the token. `PLATOS_SESSION_SECRET` is retired; webapp and agent must receive the same `SESSION_SECRET` value.
 
-### Mode 1: internal call
+The optional `user_token` claim is opaque to Platos. When present, Platos forwards it to the entity as `X-Platos-User-Token`; the entity validates it with its own identity system.
 
-```bash
-curl https://platos.example.com/agent/v1/agents \
-  -H "X-Platos-Organization-Id: $ORG" \
-  -H "X-Platos-Project-Id: $PROJECT" \
-  -H "X-Platos-Environment-Id: $ENV" \
-  -H "Authorization: Bearer $INTERNAL_TOKEN"
+### 3. Connected-entity WebSocket bootstrap
+
+A connected entity presents its own `serviceSecret` during the WebSocket upgrade. The secret is bound to the entity row and establishes the long-lived socket. Per-user calls still carry short-lived session context. Rotate the entity secret to invalidate future handshakes and reconnect active clients.
+
+### 4. Long-lived bearer credentials
+
+Long-lived credentials have non-overlapping prefixes and scopes:
+
+| Credential        | Prefix     | Scope                                                  | Default expiry | Use                                   |
+| ----------------- | ---------- | ------------------------------------------------------ | -------------- | ------------------------------------- |
+| Control-plane MCP | `plt_mcp_` | Organization; `scope` or `admin` tier                  | 90 days        | Operator/control-plane MCP operations |
+| Entity MCP bearer | `plt_ent_` | One connected entity and its scope tuple               | 90 days        | Inbound entity MCP gateway            |
+| User API token    | `plt_pat_` | One user; access is still resolved through memberships | 90 days        | Platos API and CLI                    |
+
+`pmt_` and Trigger's inherited `tr_pat_` are retired and are not compatibility aliases. Rejected prefixes are not looked up in the database.
+
+Successful mint, use, and first revocation of these three families write redacted `PlatosCredentialAudit` evidence. Audit persistence is part of successful authentication: if a valid credential cannot record its use, verification fails closed. Raw tokens and token hashes are never copied into audit rows.
+
+See [Credential inventory](/docs/credential-inventory) for revocation and rotation details.
+
+## Privileged and internal operations
+
+### Irreversible hard erasure
+
+Hard erasure requires:
+
+```http
+Authorization: Bearer plt_mcp_...
 ```
 
-This works only on the internal network. Adding `X-Forwarded-For` flips the request to Mode 2 and the agent service rejects it for missing a JWT.
+The credential must have `admin` tier and its `organizationId` must equal the organization being erased. A `scope`-tier token, a token from another organization, `PLATOS_INTERNAL_AUTH_TOKEN`, and the retired `PLATOS_ADMIN_TOKEN` are all rejected.
 
-### Mode 2: external call from an entity
+### Dedicated internal callbacks
+
+Scheduled and durable-execution callbacks authenticate with:
+
+```http
+X-Platos-Internal-Auth: <PLATOS_INTERNAL_AUTH_TOKEN>
+```
+
+This deployment secret is restricted to dedicated service callbacks such as compaction, durable turns, retention, reconciliation, and sweeps. Comparisons are length-checked and use `crypto.timingSafeEqual`. It must never be accepted as operator authorization for hard erasure.
+
+`TRIGGER_INTERNAL_SECRET`, `PLATOS_DOCS_MCP_BRIDGE_SECRET`, and `MANAGED_WORKER_SECRET` remain separate because they protect different service boundaries. `MANAGED_WORKER_SECRET` and mode-C worker behavior are unchanged here and are owned by WIN-132.
+
+## Examples
+
+### Entity-signed request
 
 ```ts
 import { sign } from "jsonwebtoken";
 
-const sessionToken = sign(
+const token = sign(
   {
-    org: scope.organizationId,
-    project: scope.projectId,
-    env: scope.environmentId,
-    user_token: opaqueUserAuth,
-    // Optional. When supplied, ScopeGuard lifts these into
-    // scope.sessionContext.user.{name,email} so they're available to
-    // prompt placeholders ({{user.name}}, {{user.email}}) and dynamic
-    // blocks, and they land in the trace's user_display_name /
-    // user_email columns. Plaintext PII — only sign in what the
-    // entity already knows about its visitor.
+    org: organizationId,
+    project: projectId,
+    env: environmentId,
+    user_token: opaqueEntityUserToken,
     userMeta: { name: visitor.name, email: visitor.email },
   },
-  serviceSecret,
-  { expiresIn: "5m" },
+  entityServiceSecret,
+  { expiresIn: "5m" }
 );
 
-await fetch("https://platos.example.com/agent/v1/threads/...", {
-  headers: { Authorization: `Bearer ${sessionToken}` },
+await fetch("https://platos.example.com/agent/v1/threads/thread_123", {
+  headers: { Authorization: `Bearer ${token}` },
 });
 ```
 
-### Mode 3: entity backend WebSocket
+Only include user metadata the entity collected lawfully. `userMeta` is plaintext PII in the signed claims and observability fields.
 
-Use `@platosdev/platools-sdk`. The SDK reads `PLATOS_SERVICE_SECRET` from env and wires the upgrade. See [Connected entities](/docs/connected-entities).
+### User API request
 
-### Mint a session token from the webapp
+```bash
+curl https://platos.example.com/api/v1/orgs \
+  -H "Authorization: Bearer $PLATOS_PAT"
+```
 
-The webapp helper `mintPlatosSessionToken({ scope, userToken? })` signs with `PLATOS_SESSION_SECRET`. Used by Remix loaders to bridge from a dashboard session to an agent service request.
+Generate a `plt_pat_` token from **Account → API Tokens**. The CLI accepts `--access-token "$PLATOS_PAT"` or its stored credential.
 
-### Visitor identity (`userMeta`)
+## Common mistakes
 
-The optional `userMeta: { name?, email? }` claim is the canonical place to attach a visitor's display name and email. ScopeGuard lifts the claim into `scope.sessionContext.user.{name, email}`, which means:
-
-- `{{user.name}}` and `{{user.email}}` placeholders resolve in system prompts and dynamic blocks (cache-friendly when used in dynamic blocks; cache-busting when substituted into the system prompt directly).
-- ClickHouse spans carry the same values in dedicated `user_display_name` and `user_email` columns alongside the always-present hashed `user_id` (`lead-<sha256-of-email>`). The hashed id stays the canonical identity; `userMeta` is plaintext PII that lives in separate columns so a deletion request can null them without touching the indexed id.
-- The agent's memory system can recall the visitor by name without you having to wire it in by hand.
-
-Sign nothing into `userMeta` your entity didn't already collect lawfully. See [Encryption and secrets](/docs/encryption-and-secrets) and [Legal and policies](/docs/legal-and-policies) for how this lands at rest.
-
-## Common pitfalls
-
-- The `X-Forwarded-For` -> Mode 2 forcing is silent. A test request from outside the trust boundary fails with "missing JWT" even though headers were present; do not chase a Mode 1 bug from an external caller.
-- Session tokens are short-lived (5 minutes default). Long-running streams should refresh proactively; the streaming endpoint accepts a token-refresh ping.
-- `X-Platos-User-Token` is opaque to Platos. If the entity's verification fails, the entity tool returns its own error; Platos just forwards.
-- Mode 3's service secret is presented on the WebSocket upgrade. Once upgraded, the socket is trusted for its lifetime. Rotate the secret to invalidate; the socket re-handshakes on the next reconnect.
-
-## Related
-
-- [Scope tuple and multi-tenancy](/docs/scope-and-multi-tenancy): the tuple every mode resolves.
-- [MCP tokens and PATs](/docs/mcp-tokens-and-pat): the long-lived bearer tokens for MCP and admin access.
-- [Public agents and embed](/docs/public-agents-and-embed): the public-guest-token controller, used for unauthenticated traffic.
+- Do not use `PLATOS_INTERNAL_AUTH_TOKEN` as a general admin bearer.
+- Do not expose trusted direct-header mode through a public proxy.
+- Do not use `plt_ent_` for control-plane tools or `plt_mcp_` as an entity identity.
+- Do not retry a failed audited verification as if it had succeeded; audit-write failure intentionally denies access.
+- Do not configure `PLATOS_SESSION_SECRET`; use one shared `SESSION_SECRET` on webapp, agent, and workers that mint or verify platform session JWTs.

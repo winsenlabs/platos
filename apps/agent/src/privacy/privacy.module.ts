@@ -4,6 +4,7 @@ import { RedisModule } from "../shared/redis.provider";
 import { ErasureService } from "./erasure.service";
 import { ErasureObjectStore } from "./object-store";
 import { ErasureController } from "./erasure.controller";
+import { PlatosMCPTokenService } from "../mcp-platform/token.service";
 
 /**
  * Privacy module — hard erasure only.
@@ -15,7 +16,7 @@ import { ErasureController } from "./erasure.controller";
 @Module({
   imports: [DatabaseModule, RedisModule],
   controllers: [ErasureController],
-  providers: [ErasureService, ErasureObjectStore],
+  providers: [ErasureService, ErasureObjectStore, PlatosMCPTokenService],
   exports: [ErasureService],
 })
 export class PrivacyModule {}

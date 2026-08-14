@@ -2,6 +2,10 @@ import { z } from "zod";
 import { BoolEnv } from "./utils/boolEnv";
 import { isValidDatabaseUrl } from "./utils/db";
 import { isValidRegex } from "./utils/regex";
+import { isAes256KeyInput } from "./utils/encryptionKey.server";
+
+const DEV_SENTINEL_ENCRYPTION_KEY =
+  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 // ─────────────────────────────────────────────────────────────
 // Theme BR — backwards-compat env-var fallback.
@@ -36,7 +40,7 @@ for (const alias of PLATOS_BR_ENV_ALIASES) {
     // Legacy name was set. Leave both in place.
     // eslint-disable-next-line no-console
     console.warn(
-      `[Platos boot] Env var ${alias.old} is deprecated — migrate to ${alias.new} before the next Platos major.`,
+      `[Platos boot] Env var ${alias.old} is deprecated — migrate to ${alias.new} before the next Platos major.`
     );
   }
 }
@@ -106,23 +110,13 @@ const EnvironmentSchema = z
     DATABASE_READ_REPLICA_URL: z.string().optional(),
     SESSION_SECRET: z.string(),
     MAGIC_LINK_SECRET: z.string(),
-    // EOBD.101 — accept both formats that operators naturally reach for:
-    //   - 32 ASCII chars (`openssl rand -hex 16`, the original webapp format).
-    //   - 64 hex chars (`openssl rand -hex 32`, matches agent's PLATOS_ENCRYPTION_KEY).
-    // Either way the downstream AES-256-GCM key is exactly 32 bytes.
-    // Consumers that decrypt legacy rows with the ASCII form continue to
-    // use `Buffer.from(val, "utf8")`; new consumers that want the hex form
-    // can check `val.length === 64` and decode via `Buffer.from(val, "hex")`.
-    // This removes the "32 hex vs 64 hex" footgun that made fresh
-    // compose-up crashes common when operators copied the agent snippet
-    // into the webapp slot.
+    // New deployments use 64 hex chars. Exact historical 32-byte UTF-8 keys
+    // remain valid so existing ciphertext stays decryptable.
     ENCRYPTION_KEY: z
       .string()
       .refine(
-        (val) =>
-          Buffer.from(val, "utf8").length === 32 ||
-          (val.length === 64 && /^[0-9a-f]{64}$/i.test(val)),
-        "ENCRYPTION_KEY must be exactly 32 ASCII chars (`openssl rand -hex 16`) OR 64 hex chars (`openssl rand -hex 32`).",
+        isAes256KeyInput,
+        "ENCRYPTION_KEY must be 64 hex chars or an existing 32-byte UTF-8 key."
       ),
     WHITELISTED_EMAILS: z
       .string()
@@ -450,16 +444,12 @@ const EnvironmentSchema = z
       .default(15 * 60),
     // Shared secret used by trusted admin jobs (e.g. the daily attachment
     // retention task) to call internal admin endpoints.
-    PLATOS_ADMIN_TOKEN: z.string().optional(),
+    PLATOS_INTERNAL_AUTH_TOKEN: z.string().optional(),
     // EOBD.66 — comma-separated userIds that are on legal hold and
     // cannot be deleted via DELETE /api/v1/admin/users/:userId/data.
     PLATOS_LEGAL_HOLD_USER_IDS: z.string().optional(),
-    // Shared secret used to mint platform-issued Platos session tokens
-    // (iss: "platos-platform") for browser Socket.IO connections from the
-    // Platos dashboard to the agent. Must match the agent container's
-    // PLATOS_SESSION_SECRET. Required when Platos dashboards open WS
-    // connections — optional only when the dashboard is disabled.
-    PLATOS_SESSION_SECRET: z.string().optional(),
+    // Platform-issued Platos session tokens use the required SESSION_SECRET
+    // declared above. The same deployment input must be shared with the agent.
     // OSS launch: hard cap on members per organization. The hosted
     // demo enforces 2; self-hosters can bump to whatever fits their
     // team. Counts active members + pending invites against the cap.
@@ -476,7 +466,10 @@ const EnvironmentSchema = z
     // If specified, you must configure the corresponding provider using OBJECT_STORE_{PROTOCOL}_* env vars.
     // Example: OBJECT_STORE_DEFAULT_PROTOCOL=s3 requires OBJECT_STORE_S3_BASE_URL, OBJECT_STORE_S3_ACCESS_KEY_ID, etc.
     // Enables zero-downtime migration between providers (old data keeps working, new data uses new provider).
-    OBJECT_STORE_DEFAULT_PROTOCOL: z.string().regex(/^[a-z0-9]+$/).optional(),
+    OBJECT_STORE_DEFAULT_PROTOCOL: z
+      .string()
+      .regex(/^[a-z0-9]+$/)
+      .optional(),
 
     ARTIFACTS_OBJECT_STORE_BUCKET: z.string().optional(),
     ARTIFACTS_OBJECT_STORE_BASE_URL: z.string().optional(),
@@ -1421,7 +1414,10 @@ const EnvironmentSchema = z
 
     // LLM cost tracking
     LLM_COST_TRACKING_ENABLED: BoolEnv.default(true),
-    LLM_PRICING_RELOAD_INTERVAL_MS: z.coerce.number().int().default(5 * 60 * 1000), // 5 minutes
+    LLM_PRICING_RELOAD_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .default(5 * 60 * 1000), // 5 minutes
     LLM_PRICING_SEED_ON_STARTUP: BoolEnv.default(false),
     LLM_PRICING_READY_TIMEOUT_MS: z.coerce.number().int().default(500),
     LLM_METRICS_BATCH_SIZE: z.coerce.number().int().default(5000),
@@ -1525,7 +1521,7 @@ const EnvironmentSchema = z
   // SECURITY (audit H14) — the webapp MINTS the login cookie (also the API JWT
   // secret) + magic-link tokens; a self-host that copies `.env.example` boots
   // prod with the repo's public placeholder → forgeable session/magic-link for
-  // any user. The agent already guards PLATOS_SESSION_SECRET (.min + prod
+  // any user. The agent already guards SESSION_SECRET (.min + prod
   // sentinel); mirror it here for the actual minter. Prod-gated so local dev
   // (which copies `.env.example`) still boots.
   .superRefine((val, ctx) => {
@@ -1540,6 +1536,14 @@ const EnvironmentSchema = z
           message: `${key} must be a strong random value (≥16 chars, not a placeholder) in production. Generate one with: openssl rand -hex 32`,
         });
       }
+    }
+    if (val.ENCRYPTION_KEY.toLowerCase() === DEV_SENTINEL_ENCRYPTION_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["ENCRYPTION_KEY"],
+        message:
+          "ENCRYPTION_KEY is the .env.example sentinel value — rotate before going to production",
+      });
     }
   });
 
@@ -1570,7 +1574,7 @@ if (env.NODE_ENV === "production") {
     throw new Error(
       `[Platos boot] Refusing to start in production with default MinIO creds (${names}). ` +
         `Override MINIO_ROOT_USER + MINIO_ROOT_PASSWORD in your .env and redeploy. ` +
-        `See docs/env-vars.md#core.`,
+        `See docs/env-vars.md#core.`
     );
   }
 
@@ -1582,7 +1586,7 @@ if (env.NODE_ENV === "production") {
     console.warn(
       `[Platos boot] WARNING: MINIO_PUBLIC_ENDPOINT=${env.MINIO_PUBLIC_ENDPOINT} in production. ` +
         `Browsers reaching this stack externally will get unreachable URLs in presigned responses. ` +
-        `Override to your public MinIO/S3 URL.`,
+        `Override to your public MinIO/S3 URL.`
     );
   }
 
@@ -1592,8 +1596,7 @@ if (env.NODE_ENV === "production") {
   // startup warnings. This converts the worst misconfiguration (public
   // deploy pointing at localhost presigned URLs) into a boot failure.
   const appOriginIsLocal =
-    env.APP_ORIGIN.startsWith("http://localhost") ||
-    env.APP_ORIGIN.startsWith("http://127.0.0.1");
+    env.APP_ORIGIN.startsWith("http://localhost") || env.APP_ORIGIN.startsWith("http://127.0.0.1");
   const minioIsLocal =
     env.MINIO_PUBLIC_ENDPOINT.startsWith("http://localhost") ||
     env.MINIO_PUBLIC_ENDPOINT.startsWith("http://127.0.0.1");
@@ -1603,7 +1606,7 @@ if (env.NODE_ENV === "production") {
         `but MINIO_PUBLIC_ENDPOINT=${env.MINIO_PUBLIC_ENDPOINT}. ` +
         `Browsers hitting the public webapp will be handed presigned URLs pointing ` +
         `at the operator's localhost. Override MINIO_PUBLIC_ENDPOINT to a public URL ` +
-        `(e.g. https://minio.example.com) and redeploy. See docs/self-hosting.md.`,
+        `(e.g. https://minio.example.com) and redeploy. See docs/self-hosting.md.`
     );
   }
 }
@@ -1624,7 +1627,7 @@ if (env.EMAIL_TRANSPORT === "resend" && !env.RESEND_API_KEY) {
   throw new Error(
     `[Platos boot] EMAIL_TRANSPORT=resend requires RESEND_API_KEY. ` +
       `Set RESEND_API_KEY, OR unset EMAIL_TRANSPORT to fall through to the ` +
-      `NullMailTransport (magic-link codes printed to webapp logs).`,
+      `NullMailTransport (magic-link codes printed to webapp logs).`
   );
 }
 if (env.EMAIL_TRANSPORT === "smtp") {
@@ -1636,7 +1639,7 @@ if (env.EMAIL_TRANSPORT === "smtp") {
   if (missing.length > 0) {
     throw new Error(
       `[Platos boot] EMAIL_TRANSPORT=smtp requires: ${missing.join(", ")}. ` +
-        `See docs/env-vars.md#email.`,
+        `See docs/env-vars.md#email.`
     );
   }
 }
@@ -1647,7 +1650,7 @@ if (env.EMAIL_TRANSPORT === "aws-ses") {
   if (!env.FROM_EMAIL) {
     throw new Error(
       `[Platos boot] EMAIL_TRANSPORT=aws-ses requires FROM_EMAIL ` +
-        `(the verified SES sender identity).`,
+        `(the verified SES sender identity).`
     );
   }
 }

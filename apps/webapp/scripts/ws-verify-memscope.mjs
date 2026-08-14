@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 import crypto from "node:crypto";
-const secret = process.env.PLATOS_SESSION_SECRET;
+const secret = process.env.SESSION_SECRET;
 const scope = {
   organizationId: "cmrci93gg0009pb0jjcekjh6o",
   projectId: "cmrci97tt000cpb0jtcwm8h7s",

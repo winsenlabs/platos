@@ -92,7 +92,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos
       REDIS_URL: redis://redis:6379
       PLATOS_ENCRYPTION_KEY: ${PLATOS_ENCRYPTION_KEY}
-      PLATOS_SESSION_SECRET: ${PLATOS_SESSION_SECRET}
+      PLATOS_MESSAGE_ENCRYPTION_KEY: ${PLATOS_MESSAGE_ENCRYPTION_KEY}
+      SESSION_SECRET: ${SESSION_SECRET}
       PLATOS_MAX_CONCURRENT_STREAMS: "100"
       TRIGGER_INTERNAL_SECRET: ${TRIGGER_INTERNAL_SECRET}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
@@ -112,15 +113,12 @@ volumes:
 Env cheat sheet for production:
 
 ```bash
-# Secrets. The two encryption keys have DIFFERENT formats:
-# - Webapp ENCRYPTION_KEY: exactly 32 ASCII chars — `openssl rand -hex 16`.
-# - Agent PLATOS_ENCRYPTION_KEY: exactly 64 hex chars (32 bytes) — `openssl rand -hex 32`.
-# Session secrets can be any non-empty string — `openssl rand -base64 24 | tr -d '\n'`.
+# Secrets. Generate every new encryption-domain key independently as 64 hex chars.
 SESSION_SECRET=...           # openssl rand -base64 24 | tr -d '\n'
 MAGIC_LINK_SECRET=...        # openssl rand -base64 24 | tr -d '\n'
-ENCRYPTION_KEY=...           # openssl rand -hex 16    (32 chars)
-PLATOS_ENCRYPTION_KEY=...    # openssl rand -hex 32    (64 hex chars = 32 bytes)
-PLATOS_SESSION_SECRET=...    # openssl rand -base64 24 | tr -d '\n'
+ENCRYPTION_KEY=...           # openssl rand -hex 32
+PLATOS_ENCRYPTION_KEY=...    # openssl rand -hex 32, distinct value
+PLATOS_MESSAGE_ENCRYPTION_KEY=... # openssl rand -hex 32, distinct value
 TRIGGER_INTERNAL_SECRET=...  # any strong random string
 
 # DB
@@ -158,8 +156,7 @@ Compose refuses to boot if any of these are missing or empty. Generate locally w
 |---|---|---|
 | `SESSION_SECRET` | non-empty | `openssl rand -hex 32` |
 | `MAGIC_LINK_SECRET` | non-empty | `openssl rand -hex 32` |
-| `ENCRYPTION_KEY` | **32 ASCII chars** (32-char hex string) | `openssl rand -hex 16` |
-| `PLATOS_SESSION_SECRET` | non-empty | `openssl rand -hex 32` |
+| `ENCRYPTION_KEY` | New: **64 hex chars** (32 bytes); existing exact 32-byte UTF-8 is supported | `openssl rand -hex 32` |
 | `PLATOS_ENCRYPTION_KEY` | **64 hex chars** (32 bytes) | `openssl rand -hex 32` |
 | `PLATOS_MESSAGE_ENCRYPTION_KEY` | **64 hex chars** (32 bytes) | `openssl rand -hex 32` |
 | `MANAGED_WORKER_SECRET` | non-empty | `openssl rand -hex 32` |
@@ -167,6 +164,8 @@ Compose refuses to boot if any of these are missing or empty. Generate locally w
 | `POSTGRES_PASSWORD` | non-empty | `openssl rand -hex 16` |
 | `CLICKHOUSE_PASSWORD` | non-empty | `openssl rand -hex 16` |
 | `MINIO_ROOT_PASSWORD` | non-empty | `openssl rand -hex 16` |
+
+Do not replace an existing 32-byte UTF-8 `ENCRYPTION_KEY` merely to adopt the new hex representation. Its exact bytes are required to decrypt historical rows; migrate ciphertext before any key replacement.
 
 Plus the application config — most have safe defaults but a production deploy must set:
 
@@ -442,7 +441,7 @@ Weekly base backup + WAL archive for point-in-time recovery (PITR) on managed Po
 **What's encrypted:**
 - All provider API keys + skill secrets live in the trigger.dev `SecretStore` / Environment Variables table, encrypted column-by-column with `ENCRYPTION_KEY` (webapp) and surfaced to the agent via the shared `SecretStore` abstraction.
 - `PlatosConnectedEntity.serviceSecret` — the single encrypted field Platos owns outside the shared secret store. Encrypted with `PLATOS_ENCRYPTION_KEY` (agent).
-- Session tokens signed by `SESSION_SECRET` (webapp) and `PLATOS_SESSION_SECRET` (agent).
+- Platform session tokens are signed by one shared `SESSION_SECRET` on webapp and agent.
 
 A dump without the keys is useless. Back up every secret separately into a secret manager, version them, and never commit.
 
@@ -613,21 +612,15 @@ Rotate: generate new, set as `SESSION_SECRET`, old sessions invalidated. All use
 
 ### `ENCRYPTION_KEY` (webapp column encryption — trigger secrets)
 
-Rotate via the upstream trigger.dev key rotation flow (re-encrypts `EncryptedSecretValue` rows). See their docs.
+Rows in this domain do not all carry a key version. Back up Postgres, run a maintenance re-encryption pass with the old and new keys, verify reads, then cut every consumer over together. Do not replace the environment value before re-encryption.
 
 ### `PLATOS_ENCRYPTION_KEY` (provider credentials, HMAC secrets)
 
-Rotate in three phases:
+Use the same controlled backup → maintenance re-encryption → verification → coordinated cutover procedure. There is no supported `PLATOS_ENCRYPTION_KEY_NEXT` dual-read input.
 
-1. **Dual-read phase.** Set `PLATOS_ENCRYPTION_KEY_NEXT=<new-key>`. Platos decrypts with current, re-encrypts with next on write. Takes effect immediately.
-2. **Re-encrypt phase.** Run `pnpm --filter @platos/agent rotate-keys`. This re-encrypts every row in `OrgProviderCredential` and `OrgToolMapping.hmacSecret` with the new key.
-3. **Cutover.** Swap: `PLATOS_ENCRYPTION_KEY=<new>`. Remove `PLATOS_ENCRYPTION_KEY_NEXT`. Restart.
+### `PLATOS_MESSAGE_ENCRYPTION_KEY`
 
-Do **not** rotate while agent service is handling traffic without `PLATOS_ENCRYPTION_KEY_NEXT` — you'll lose access to encrypted secrets.
-
-### `PLATOS_SESSION_SECRET`
-
-Same as `SESSION_SECRET`: invalidates open WebSocket sessions. Users reconnect automatically.
+Message envelopes are versioned. Keep the old key as `PLATOS_MESSAGE_ENCRYPTION_KEY_V<N>`, place the replacement in the unsuffixed input, increment `PLATOS_MESSAGE_ENCRYPTION_KEY_V`, then re-encrypt historical envelopes before removing the old read key. See [Credential inventory](../content/docs/credential-inventory.md).
 
 ### `TRIGGER_INTERNAL_SECRET`
 

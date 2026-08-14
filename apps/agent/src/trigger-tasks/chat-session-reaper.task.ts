@@ -37,12 +37,12 @@ export const chatSessionReaper = schedules.task({
   run: async () => {
     const AGENT_API_URL =
       env.PLATOS_AGENT_HTTP_URL || env.PLATOS_AGENT_API_URL || "http://localhost:3100";
-    const adminToken = env.PLATOS_ADMIN_TOKEN;
+    const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
 
     if (!adminToken) {
-      logger.warn("chat-session-reaper: PLATOS_ADMIN_TOKEN not set — skipping");
+      logger.warn("chat-session-reaper: PLATOS_INTERNAL_AUTH_TOKEN not set — skipping");
       metadata.set("status", "skipped");
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN unset" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN unset" };
     }
 
     try {
@@ -50,7 +50,7 @@ export const chatSessionReaper = schedules.task({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Platos-Admin-Token": adminToken,
+          "X-Platos-Internal-Auth": adminToken,
         },
         body: JSON.stringify({}),
         signal: AbortSignal.timeout(110_000),

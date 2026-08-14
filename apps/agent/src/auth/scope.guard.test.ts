@@ -247,76 +247,82 @@ describe("ScopeGuard — Path 1 session token", () => {
 });
 
 describe("ScopeGuard — admin token path", () => {
+  it("passes privacy routes to their admin-tier credential verifier without a static secret", async () => {
+    const guard = new ScopeGuard();
+    const ctx = mockExecutionContext({}, "/api/v1/agent/admin/privacy/erasures/op_1");
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+  });
+
   it("lets /api/v1/agent/monitoring/cost/catalog through with correct admin token", async () => {
-    const prevToken = process.env.PLATOS_ADMIN_TOKEN;
-    process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+    const prevToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
     try {
       const guard = new ScopeGuard();
       const ctx = mockExecutionContext(
-        { "x-platos-admin-token": "admin-secret-for-test" },
+        { "x-platos-internal-auth": "admin-secret-for-test" },
         "/api/v1/agent/monitoring/cost/catalog",
       );
       await expect(guard.canActivate(ctx)).resolves.toBe(true);
     } finally {
-      process.env.PLATOS_ADMIN_TOKEN = prevToken;
+      process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
     }
   });
 
   it("rejects /api/v1/agent/monitoring/cost/catalog with wrong admin token", async () => {
-    const prevToken = process.env.PLATOS_ADMIN_TOKEN;
-    process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+    const prevToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
     try {
       const guard = new ScopeGuard();
       const ctx = mockExecutionContext(
-        { "x-platos-admin-token": "WRONG" },
+        { "x-platos-internal-auth": "WRONG" },
         "/api/v1/agent/monitoring/cost/catalog",
       );
       await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
     } finally {
-      process.env.PLATOS_ADMIN_TOKEN = prevToken;
+      process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
     }
   });
 
   // LAUNCH-11 — durable compaction callback.
   it("lets /api/v1/agent/internal/compaction through with correct admin token", async () => {
-    const prevToken = process.env.PLATOS_ADMIN_TOKEN;
-    process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+    const prevToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
     try {
       const guard = new ScopeGuard();
       const ctx = mockExecutionContext(
-        { "x-platos-admin-token": "admin-secret-for-test" },
+        { "x-platos-internal-auth": "admin-secret-for-test" },
         "/api/v1/agent/internal/compaction",
       );
       await expect(guard.canActivate(ctx)).resolves.toBe(true);
     } finally {
-      process.env.PLATOS_ADMIN_TOKEN = prevToken;
+      process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
     }
   });
 
   it("rejects /api/v1/agent/internal/compaction with wrong admin token", async () => {
-    const prevToken = process.env.PLATOS_ADMIN_TOKEN;
-    process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+    const prevToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
     try {
       const guard = new ScopeGuard();
       const ctx = mockExecutionContext(
-        { "x-platos-admin-token": "WRONG" },
+        { "x-platos-internal-auth": "WRONG" },
         "/api/v1/agent/internal/compaction",
       );
       await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
     } finally {
-      process.env.PLATOS_ADMIN_TOKEN = prevToken;
+      process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
     }
   });
 
   it("rejects /api/v1/agent/internal/compaction without admin token entirely", async () => {
-    const prevToken = process.env.PLATOS_ADMIN_TOKEN;
-    process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+    const prevToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
     try {
       const guard = new ScopeGuard();
       const ctx = mockExecutionContext({}, "/api/v1/agent/internal/compaction");
       await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
     } finally {
-      process.env.PLATOS_ADMIN_TOKEN = prevToken;
+      process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
     }
   });
 
@@ -329,41 +335,41 @@ describe("ScopeGuard — admin token path", () => {
     "/api/v1/agent/internal/skill-run",
   ]) {
     it(`lets ${path} through with correct admin token`, async () => {
-      const prevToken = process.env.PLATOS_ADMIN_TOKEN;
-      process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+      const prevToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+      process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
       try {
         const guard = new ScopeGuard();
         const ctx = mockExecutionContext(
-          { "x-platos-admin-token": "admin-secret-for-test" },
+          { "x-platos-internal-auth": "admin-secret-for-test" },
           path,
         );
         await expect(guard.canActivate(ctx)).resolves.toBe(true);
       } finally {
-        process.env.PLATOS_ADMIN_TOKEN = prevToken;
+        process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
       }
     });
 
     it(`rejects ${path} with wrong admin token`, async () => {
-      const prevToken = process.env.PLATOS_ADMIN_TOKEN;
-      process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+      const prevToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+      process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
       try {
         const guard = new ScopeGuard();
-        const ctx = mockExecutionContext({ "x-platos-admin-token": "WRONG" }, path);
+        const ctx = mockExecutionContext({ "x-platos-internal-auth": "WRONG" }, path);
         await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
       } finally {
-        process.env.PLATOS_ADMIN_TOKEN = prevToken;
+        process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
       }
     });
 
     it(`rejects ${path} without admin token entirely`, async () => {
-      const prevToken = process.env.PLATOS_ADMIN_TOKEN;
-      process.env.PLATOS_ADMIN_TOKEN = "admin-secret-for-test";
+      const prevToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+      process.env.PLATOS_INTERNAL_AUTH_TOKEN = "admin-secret-for-test";
       try {
         const guard = new ScopeGuard();
         const ctx = mockExecutionContext({}, path);
         await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
       } finally {
-        process.env.PLATOS_ADMIN_TOKEN = prevToken;
+        process.env.PLATOS_INTERNAL_AUTH_TOKEN = prevToken;
       }
     });
   }

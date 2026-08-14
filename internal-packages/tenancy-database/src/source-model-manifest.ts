@@ -29,7 +29,7 @@ export interface SourceModelDisposition {
 }
 
 /**
- * Mechanical accounting ledger for the 54 legacy Platos-prefixed models.
+ * Mechanical accounting ledger for the 55 legacy Platos-prefixed models.
  * A source occurs exactly once even when several sources merge into Credential
  * or one source splits into Turn, Step, and ToolCall.
  */
@@ -79,6 +79,7 @@ export const sourceModelManifest = [
   { source: "PlatosEvent", targets: ["Event"], owner: "environment", surface: "operator", decision: "rename" },
   { source: "PlatosNotificationRule", targets: ["NotificationRule"], owner: "environment", surface: "operator", decision: "rename" },
   { source: "PlatosPAT", targets: ["PersonalAccessToken"], owner: "user", surface: "operator", decision: "re-home" },
+  { source: "PlatosCredentialAudit", targets: ["AdminAudit"], owner: "global", surface: "operator", decision: "merge" },
   { source: "PlatosOAuthClient", targets: ["OAuthClient"], owner: "organization", surface: "operator", decision: "rename" },
   { source: "PlatosOAuthAuthCode", targets: ["OAuthAuthorizationCode"], owner: "oauthClient", surface: "operator", decision: "re-home" },
   { source: "PlatosOAuthAccessToken", targets: ["OAuthAccessToken"], owner: "oauthClient", surface: "operator", decision: "re-home" },

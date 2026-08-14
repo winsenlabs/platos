@@ -4257,7 +4257,7 @@ Write the summary now:`;
    * Resolves the agent config for the thread + delegates to
    * `AgentTaskService.runCompaction`.
    *
-   * Gated by `X-Platos-Admin-Token` (same gate as other internal callbacks).
+   * Gated by `X-Platos-Internal-Auth` (same gate as other internal callbacks).
    * The task already verified the token at dispatch time but we re-verify
    * here so a leaked URL alone can't trigger compactions.
    */
@@ -4280,11 +4280,11 @@ Write the summary now:`;
       historyMode?: string;
     },
   ) {
-    const expected = env.PLATOS_ADMIN_TOKEN;
+    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!expected) {
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
     }
-    const provided = req.headers["x-platos-admin-token"];
+    const provided = req.headers["x-platos-internal-auth"];
     const isValid =
       typeof provided === "string" &&
       provided.length === expected.length &&
@@ -4344,9 +4344,9 @@ Write the summary now:`;
    * we re-verify so a leaked URL alone can't drive turns.
    */
   private verifyAdminToken(req: Request): boolean {
-    const expected = env.PLATOS_ADMIN_TOKEN;
+    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!expected) return false;
-    const provided = req.headers["x-platos-admin-token"];
+    const provided = req.headers["x-platos-internal-auth"];
     if (typeof provided !== "string" || provided.length !== expected.length) return false;
     try {
       return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
@@ -4363,8 +4363,8 @@ Write the summary now:`;
    */
   @Post("internal/chat/reap-sessions")
   async internalChatReapSessions(@Req() req: Request, @Res() res: Response) {
-    if (!env.PLATOS_ADMIN_TOKEN) {
-      res.status(503).json({ error: "PLATOS_ADMIN_TOKEN not set" });
+    if (!env.PLATOS_INTERNAL_AUTH_TOKEN) {
+      res.status(503).json({ error: "PLATOS_INTERNAL_AUTH_TOKEN not set" });
       return;
     }
     if (!this.verifyAdminToken(req)) {
@@ -4412,7 +4412,7 @@ Write the summary now:`;
       };
     },
   ) {
-    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!env.PLATOS_INTERNAL_AUTH_TOKEN) return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
     if (!this.verifyAdminToken(req)) return { status: "forbidden" };
     if (!body?.message || !body?.scope) return { status: "invalid", reason: "message and scope required" };
     // SECURITY (audit C2) — the body's scope must own its agent/thread.
@@ -4504,8 +4504,8 @@ Write the summary now:`;
       scope: SessionScope & { agentId?: string; threadId?: string };
     },
   ) {
-    if (!env.PLATOS_ADMIN_TOKEN) {
-      res.status(503).json({ error: "PLATOS_ADMIN_TOKEN not set" });
+    if (!env.PLATOS_INTERNAL_AUTH_TOKEN) {
+      res.status(503).json({ error: "PLATOS_INTERNAL_AUTH_TOKEN not set" });
       return;
     }
     if (!this.verifyAdminToken(req)) {
@@ -4565,7 +4565,7 @@ Write the summary now:`;
       };
     },
   ) {
-    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!env.PLATOS_INTERNAL_AUTH_TOKEN) return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
     if (!this.verifyAdminToken(req)) return { status: "forbidden" };
     if (!body?.goal || !body?.scope) return { status: "invalid", reason: "goal and scope required" };
     // SECURITY (audit C2 / Fable BLOCKER B) — the body's scope must own its agent/thread.
@@ -4646,7 +4646,7 @@ Write the summary now:`;
       };
     },
   ) {
-    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!env.PLATOS_INTERNAL_AUTH_TOKEN) return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
     if (!this.verifyAdminToken(req)) return { status: "forbidden" };
     if (!body?.report || !body?.scope || !body?.threadId) {
       return { status: "invalid", reason: "report, threadId and scope required" };
@@ -4742,7 +4742,7 @@ Write the summary now:`;
       };
     },
   ) {
-    if (!env.PLATOS_ADMIN_TOKEN) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+    if (!env.PLATOS_INTERNAL_AUTH_TOKEN) return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
     if (!this.verifyAdminToken(req)) return { status: "forbidden" };
     if (!body?.skillId || !body?.toolName || !body?.scope) {
       return { status: "invalid", reason: "skillId, toolName and scope required" };
@@ -4792,7 +4792,7 @@ Write the summary now:`;
   /**
    * Admin: ingest a refreshed LiteLLM model-price catalog. Called by the
    * scheduled `platos.cost.refresh_model_prices` trigger task once per
-   * day. Gated by `X-Platos-Admin-Token` so external callers can't spoof
+   * day. Gated by `X-Platos-Internal-Auth` so external callers can't spoof
    * prices.
    */
   @Post("monitoring/cost/catalog")
@@ -4800,14 +4800,14 @@ Write the summary now:`;
     @Req() req: Request,
     @Body() body: { catalog: Record<string, Record<string, unknown>> },
   ) {
-    const expected = env.PLATOS_ADMIN_TOKEN;
+    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!expected) {
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
     }
     // PPR-14: timing-safe compare to prevent brute-force token recovery
     // via response-time analysis. `!==` / `===` compares byte-by-byte with
     // early exit, leaking position of first differing byte.
-    const provided = req.headers["x-platos-admin-token"];
+    const provided = req.headers["x-platos-internal-auth"];
     const isValid =
       typeof provided === "string" &&
       provided.length === expected.length &&
@@ -4841,11 +4841,11 @@ Write the summary now:`;
     @Req() req: Request,
     @Body() body: { maxBatch?: number } = {},
   ) {
-    const expected = env.PLATOS_ADMIN_TOKEN;
+    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!expected) {
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
     }
-    const provided = req.headers["x-platos-admin-token"];
+    const provided = req.headers["x-platos-internal-auth"];
     const isValid =
       typeof provided === "string" &&
       provided.length === expected.length &&
@@ -4898,11 +4898,11 @@ Write the summary now:`;
    */
   @Post("monitoring/cost/reconcile")
   async reconcileCost(@Req() req: Request, @Body() body: { daysBack?: number } = {}) {
-    const expected = env.PLATOS_ADMIN_TOKEN;
+    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!expected) {
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
     }
-    const provided = req.headers["x-platos-admin-token"];
+    const provided = req.headers["x-platos-internal-auth"];
     const isValid =
       typeof provided === "string" &&
       provided.length === expected.length &&
@@ -4925,16 +4925,16 @@ Write the summary now:`;
   /**
    * PPR-67 — Admin: expire stuck-pending approvals across every scope.
    * Called every 5 minutes by the `platos.approvals.expiry_sweep` trigger
-   * task. Gated by the same `X-Platos-Admin-Token` the cost catalog
+   * task. Gated by the same `X-Platos-Internal-Auth` the cost catalog
    * endpoint uses.
    */
   @Post("monitoring/approvals/expiry-sweep")
   async expireApprovals(@Req() req: Request) {
-    const expected = env.PLATOS_ADMIN_TOKEN;
+    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!expected) {
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
     }
-    const provided = req.headers["x-platos-admin-token"];
+    const provided = req.headers["x-platos-internal-auth"];
     const isValid =
       typeof provided === "string" &&
       provided.length === expected.length &&
@@ -5366,9 +5366,9 @@ Write the summary now:`;
     @Req() req: Request,
     @Body() body: { recipients: string[]; subject: string; body: string },
   ) {
-    const expected = env.PLATOS_ADMIN_TOKEN;
-    if (!expected) return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
-    const provided = req.headers["x-platos-admin-token"];
+    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
+    if (!expected) return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
+    const provided = req.headers["x-platos-internal-auth"];
     const isValid =
       typeof provided === "string" &&
       provided.length === expected.length &&

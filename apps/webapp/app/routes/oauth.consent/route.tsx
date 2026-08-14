@@ -262,9 +262,9 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: "Invalid scope" }, { status: 400 });
   }
 
-  const secret = env.PLATOS_SESSION_SECRET;
+  const secret = env.SESSION_SECRET;
   if (!secret) {
-    return json({ error: "PLATOS_SESSION_SECRET not configured on webapp" }, { status: 500 });
+    return json({ error: "SESSION_SECRET not configured on webapp" }, { status: 500 });
   }
 
   const ts = Math.floor(Date.now() / 1000);

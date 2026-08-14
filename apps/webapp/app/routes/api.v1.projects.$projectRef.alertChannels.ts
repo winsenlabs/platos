@@ -5,7 +5,7 @@ import {
   ApiAlertChannelPresenter,
   ApiCreateAlertChannel,
 } from "~/presenters/v3/ApiAlertChannelPresenter.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { CreateAlertChannelService } from "~/v3/services/alerts/createAlertChannel.server";
 import { ServiceValidationError } from "~/v3/services/baseService.server";
 
@@ -14,7 +14,7 @@ const ParamsSchema = z.object({
 });
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing Access Token" }, { status: 401 });

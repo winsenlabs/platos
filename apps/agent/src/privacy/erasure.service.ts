@@ -1,5 +1,5 @@
 import { Injectable, Inject, Optional, Logger } from "@nestjs/common";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import type Redis from "ioredis";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
@@ -30,6 +30,13 @@ import { ErasureObjectStore } from "./object-store";
  */
 export const ERASURE_POLICY_VERSION = "2026-08-11.1";
 
+export class ErasureIdempotencyConflictError extends Error {
+  constructor() {
+    super("Idempotency key is already bound to another subject");
+    this.name = "ErasureIdempotencyConflictError";
+  }
+}
+
 @Injectable()
 export class ErasureService {
   private readonly logger = new Logger(ErasureService.name);
@@ -44,12 +51,29 @@ export class ErasureService {
     this.prisma = prisma;
     // Per-deployment salt. Without one, a hash of an email is trivially
     // reversible with a wordlist, which defeats the point of hashing it.
-    this.salt = process.env.PLATOS_ERASURE_HASH_SALT || process.env.PLATOS_ADMIN_TOKEN || "platos-erasure";
+    const configuredSalt = process.env.PLATOS_ERASURE_HASH_SALT;
+    if (!configuredSalt && process.env.NODE_ENV === "production") {
+      throw new Error("PLATOS_ERASURE_HASH_SALT is required in production");
+    }
+    this.salt = configuredSalt || "platos-erasure-development-only";
   }
 
   private hash(externalUserId: string, organizationId: string): string {
     return subjectKeyHash(externalUserId, organizationId, this.salt, (s) =>
       createHash("sha256").update(s).digest("hex"));
+  }
+
+  private hashMatches(left: string, right: string): boolean {
+    const leftBytes = Buffer.from(left, "hex");
+    const rightBytes = Buffer.from(right, "hex");
+    return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
+  }
+
+  private existingReceiptForSubject(row: any, subjectHash: string): ErasureReceipt {
+    if (!this.hashMatches(row.subjectKeyHash, subjectHash)) {
+      throw new ErasureIdempotencyConflictError();
+    }
+    return this.toReceipt(row);
   }
 
   /**
@@ -300,8 +324,8 @@ export class ErasureService {
   // ── public API ─────────────────────────────────────────────────────────
 
   /**
-   * Request an erasure. Idempotent on `idempotencyKey`: a repeated request
-   * returns the existing operation rather than racing a second purge.
+   * Request an erasure. Idempotent on organization + `idempotencyKey`, and
+   * subject-bound so a reused key cannot disclose or target another person.
    */
   async requestErasure(args: {
     externalUserId: string;
@@ -309,13 +333,13 @@ export class ErasureService {
     idempotencyKey: string;
     legalHoldPolicyId?: string | null;
   }): Promise<ErasureReceipt> {
+    const hash = this.hash(args.externalUserId, args.organizationId);
     const existing = await this.prisma.platosErasureOperation.findFirst({
-      where: { idempotencyKey: args.idempotencyKey },
+      where: { organizationId: args.organizationId, idempotencyKey: args.idempotencyKey },
     });
-    if (existing) return this.toReceipt(existing);
+    if (existing) return this.existingReceiptForSubject(existing, hash);
 
     const subject = await this.discoverSubject(args.externalUserId, args.organizationId);
-    const hash = this.hash(args.externalUserId, args.organizationId);
     const inventory = await this.inventory(subject);
 
     // Server-side hold check, over every alias the subject resolves to. Runs
@@ -331,21 +355,31 @@ export class ErasureService {
         parseLegalHoldList(process.env.PLATOS_LEGAL_HOLD_USER_IDS),
       );
 
-    const row = await this.prisma.platosErasureOperation.create({
-      data: {
-        id: randomUUID(),
-        idempotencyKey: args.idempotencyKey,
-        subjectKeyHash: hash,
-        organizationId: args.organizationId,
-        status: heldBy ? "blocked_legal_hold" : "pending",
-        scopes: subject.scopes as any,
-        stores: [] as any,
-        inventory: inventory as any,
-        policyVersion: ERASURE_POLICY_VERSION,
-        legalHoldPolicyId: heldBy ?? null,
-        attempts: 0,
-      },
-    });
+    let row: any;
+    try {
+      row = await this.prisma.platosErasureOperation.create({
+        data: {
+          id: randomUUID(),
+          idempotencyKey: args.idempotencyKey,
+          subjectKeyHash: hash,
+          organizationId: args.organizationId,
+          status: heldBy ? "blocked_legal_hold" : "pending",
+          scopes: subject.scopes as any,
+          stores: [] as any,
+          inventory: inventory as any,
+          policyVersion: ERASURE_POLICY_VERSION,
+          legalHoldPolicyId: heldBy ?? null,
+          attempts: 0,
+        },
+      });
+    } catch (error: any) {
+      if (error?.code !== "P2002") throw error;
+      const raced = await this.prisma.platosErasureOperation.findFirst({
+        where: { organizationId: args.organizationId, idempotencyKey: args.idempotencyKey },
+      });
+      if (!raced) throw error;
+      return this.existingReceiptForSubject(raced, hash);
+    }
 
     // Return the blocked receipt without running any executor. The operation is
     // recorded rather than dropped: a refused erasure request is itself an event
@@ -363,9 +397,19 @@ export class ErasureService {
     return row ? this.toReceipt(row) : null;
   }
 
+  async operationBelongsToOrganization(
+    operationId: string,
+    organizationId: string,
+  ): Promise<boolean> {
+    return (await this.prisma.platosErasureOperation.count({
+      where: { id: operationId, organizationId },
+    })) > 0;
+  }
+
   async retryErasureById(operationId: string, externalUserId: string): Promise<ErasureReceipt | null> {
     const row = await this.prisma.platosErasureOperation.findFirst({ where: { id: operationId } });
     if (!row) return null;
+    if (!this.hashMatches(this.hash(externalUserId, row.organizationId), row.subjectKeyHash)) return null;
     const receipt = this.toReceipt(row);
     const subject = await this.discoverSubject(externalUserId, row.organizationId);
     const next = await retryErasure(receipt, subject, this.executors(), {

@@ -3,7 +3,7 @@ import { PerformanceObserver } from "node:perf_hooks";
 import { runInNewContext } from "node:vm";
 import v8 from "v8";
 import { prisma } from "~/db.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 
 async function waitTillGcFinishes() {
   let resolver: (value: PerformanceEntry) => void;
@@ -36,7 +36,7 @@ async function waitTillGcFinishes() {
 }
 
 export async function loader({ request }: DataFunctionArgs) {
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     throw new Response("You must be an admin to perform this action", { status: 403 });

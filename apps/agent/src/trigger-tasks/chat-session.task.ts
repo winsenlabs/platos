@@ -165,7 +165,7 @@ export const platosChatSession = chat.customAgent({
 
     const AGENT_API_URL =
       process.env.PLATOS_AGENT_HTTP_URL || process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
-    const adminToken = process.env.PLATOS_ADMIN_TOKEN;
+    const adminToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
 
     for await (const turn of session) {
       const cd = turn.clientData as PlatosChatClientData | undefined;
@@ -178,7 +178,7 @@ export const platosChatSession = chat.customAgent({
               yield {
                 type: "error",
                 errorText: !adminToken
-                  ? "PLATOS_ADMIN_TOKEN not set on the Trigger worker"
+                  ? "PLATOS_INTERNAL_AUTH_TOKEN not set on the Trigger worker"
                   : "session clientData missing agentId/scope",
               };
               yield { type: "finish" };
@@ -201,7 +201,7 @@ export const platosChatSession = chat.customAgent({
       turn.signal.addEventListener("abort", onTurnAbort, { once: true });
       const res = await fetch(`${AGENT_API_URL}/api/v1/agent/internal/chat/stream-turn`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Platos-Admin-Token": adminToken },
+        headers: { "Content-Type": "application/json", "X-Platos-Internal-Auth": adminToken },
         body: JSON.stringify({
           threadId: cd.threadId,
           agentId: cd.agentId,

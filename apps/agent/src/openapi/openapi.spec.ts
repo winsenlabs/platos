@@ -33,7 +33,7 @@ export const platosAgentOpenApiSpec = {
         in: "header",
         name: "X-Platos-Session-Token",
         description:
-          "Session-token JWT signed with `PLATOS_SESSION_SECRET` (platform-issued) or the entity's `serviceSecret` (entity-issued).",
+          "Session-token JWT signed with `SESSION_SECRET` (platform-issued) or the entity's `serviceSecret` (entity-issued).",
       },
       directHeaders: {
         type: "apiKey",

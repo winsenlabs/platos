@@ -1,7 +1,7 @@
 ---
 slug: mcp-tokens-and-pat
 title: MCP tokens and PATs
-description: Personal Access Tokens (pmt_*) and OAuth 2.1 DCR flows for MCP clients.
+description: Personal Access Tokens (plt_ent_*) and OAuth 2.1 DCR flows for MCP clients.
 category: dx
 order: 50
 trigger_dev_primitive: false
@@ -24,11 +24,11 @@ source_files_referenced:
 
 # MCP tokens and PATs
 
-Two long-lived bearer formats: PAT (`pmt_*`) for human and machine users, OAuth 2.1 DCR-issued tokens for MCP clients that prefer a delegated handshake. Both reach the same auth path inside Platos and resolve to the same scope tuple plus user.
+Two long-lived bearer formats: PAT (`plt_ent_*`) for human and machine users, OAuth 2.1 DCR-issued tokens for MCP clients that prefer a delegated handshake. Both reach the same auth path inside Platos and resolve to the same scope tuple plus user.
 
 ## What it is
 
-- **PAT** (Personal Access Token): a string starting `pmt_`, issued from the dashboard. Each PAT carries `(userId, scope, scopes[])`. `scopes[]` is an array of permission slugs (e.g. `agents:read`, `threads:write`, `metrics:read`).
+- **PAT** (Personal Access Token): a string starting `plt_ent_`, issued from the dashboard. Each PAT carries `(userId, scope, scopes[])`. `scopes[]` is an array of permission slugs (e.g. `agents:read`, `threads:write`, `metrics:read`).
 - **OAuth 2.1 DCR token**: issued through dynamic client registration. The MCP client registers (no upfront credentials), gets a client id and secret, runs the auth code flow, and ends up with a bearer token tied to a user and scope. Equivalent power to a PAT, different lifecycle.
 
 `TokenService` mints, lists, revokes; `MCPBearerTokenService` is the verifier on the MCP path. The verifier accepts both formats and normalises them into the same `AuthenticatedRequest` shape.
@@ -56,7 +56,7 @@ Both paths land at the same enforcement point, so the auth surface stays simple.
 
 ```bash
 curl https://platos.example.com/mcp \
-  -H "Authorization: Bearer pmt_abc123..." \
+  -H "Authorization: Bearer plt_ent_abc123..." \
   -X POST -d '{"method":"tools/list"}'
 ```
 
@@ -83,7 +83,7 @@ The resulting bearer is what the client uses on `/mcp`.
 
 ## Common pitfalls
 
-- PAT bearer tokens MUST start with `pmt_`. The recent fix (commit `adfe32e6b`) accepts both PAT and OAuth bearer; older deployments may only accept the OAuth shape.
+- PAT bearer tokens MUST start with `plt_ent_`. The recent fix (commit `adfe32e6b`) accepts both PAT and OAuth bearer; older deployments may only accept the OAuth shape.
 - A PAT's `scopes[]` is checked on every call. A token without `agents:write` cannot create an agent even if it has `agents:read`. Audit on `/settings/mcp-tokens` if a permission is failing unexpectedly.
 - OAuth DCR registration is unauthenticated by default; rate limits apply (see [Rate limits](/docs/rate-limits)). A misconfigured client retrying registration can hit the cap.
 - Tokens are scoped at issue time; rotating a project's permissions does not retroactively update existing tokens. Reissue when permissions tighten.

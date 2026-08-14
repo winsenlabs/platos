@@ -353,8 +353,15 @@ services:
       PLATOS_AGENT_API_URL: "http://agent:3100"
       PLATOS_AGENT_HTTP_URL: "http://agent:3100"
       PLATOS_ENCRYPTION_KEY: "${PLATOS_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
-      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 32 ASCII chars from openssl rand -hex 16}"
-      PLATOS_SESSION_SECRET: "${PLATOS_SESSION_SECRET:?required — any non-empty string from openssl rand -base64 24}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 64 hex chars for new deployments}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V:-1}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V1: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V1:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V2: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V2:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V3: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V3:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V4: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V4:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V5: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V5:-}"
+      SESSION_SECRET: "${SESSION_SECRET:?required — any non-empty string from openssl rand -base64 24}"
       MANAGED_WORKER_SECRET: "${MANAGED_WORKER_SECRET:?required — generate with `openssl rand -hex 32`}"
       NODE_ENV: "${NODE_ENV:-production}"
 
@@ -404,9 +411,19 @@ services:
       PLATOS_ENCRYPTION_KEY: "${PLATOS_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
       # ENCRYPTION_KEY must match the webapp value — ScopedEnvService uses it to
       # decrypt provider API keys stored by the webapp in the env-var table.
-      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 32 ASCII chars from openssl rand -hex 16}"
-      # PLATOS_SESSION_SECRET: any non-empty string. `openssl rand -base64 24`.
-      PLATOS_SESSION_SECRET: "${PLATOS_SESSION_SECRET:?required — any non-empty string from openssl rand -base64 24}"
+      # New values use 64 hex chars; existing 32-byte UTF-8 values remain valid.
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 64 hex chars for new deployments}"
+      # Separate message/audit-content encryption domain. Increment the
+      # version during rotation and retain old keys as ..._V<N> inputs.
+      PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V:-1}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V1: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V1:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V2: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V2:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V3: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V3:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V4: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V4:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V5: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V5:-}"
+      # SESSION_SECRET: any non-empty string. `openssl rand -base64 24`.
+      SESSION_SECRET: "${SESSION_SECRET:?required — any non-empty string from openssl rand -base64 24}"
       # PLATOS_CORS_ORIGIN: comma-separated origins. Narrow before exposing externally.
       PLATOS_CORS_ORIGIN: "${PLATOS_CORS_ORIGIN:-http://localhost:3030}"
       # PLATOS_CORS_UNIVERSAL: hosted-demo escape hatch. When `true`, the
@@ -471,7 +488,8 @@ services:
       PLATOS_ATTACHMENT_TTL_DAYS: "${PLATOS_ATTACHMENT_TTL_DAYS:-30}"
       # Admin token — shared with the webapp so the scheduled retention
       # task can POST /api/v1/agent/attachments/retention.
-      PLATOS_ADMIN_TOKEN: "${PLATOS_ADMIN_TOKEN:-}"
+      PLATOS_INTERNAL_AUTH_TOKEN: "${PLATOS_INTERNAL_AUTH_TOKEN:-}"
+      PLATOS_ERASURE_HASH_SALT: "${PLATOS_ERASURE_HASH_SALT:?required — openssl rand -hex 32}"
       PLATOS_WEBAPP_ADMIN_URL: "${PLATOS_WEBAPP_ADMIN_URL:-http://webapp:3000}"
       # EOBD.42 — Sentry optional.
       PLATOS_SENTRY_DSN: "${PLATOS_SENTRY_DSN:-}"
@@ -566,12 +584,10 @@ services:
       # Webapp secrets — required; fail at compose parse instead of Zod boot.
       SESSION_SECRET: "${SESSION_SECRET:?required — see .env.example}"
       MAGIC_LINK_SECRET: "${MAGIC_LINK_SECRET:?required — see .env.example}"
-      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 32 ASCII chars via `openssl rand -hex 16`}"
-      # PLATOS_SESSION_SECRET must match the agent container's value — the
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 64 hex chars for new deployments}"
+      # SESSION_SECRET above must match the agent container's value. The
       # webapp mints platform-issued session tokens (iss: platos-platform)
-      # for browser WS handshakes to the agent (PPR-7). Same signing secret
-      # required on both sides.
-      PLATOS_SESSION_SECRET: "${PLATOS_SESSION_SECRET:?required — shared with agent; any non-empty string}"
+      # for browser WS handshakes to the agent (PPR-7).
       # EOBD.52 — refuse silent dev-secret fallback. Operators must set an
       # explicit value (generate with `openssl rand -hex 32`). Matches the
       # ENCRYPTION_KEY / SESSION_SECRET fail-fast pattern.
@@ -647,7 +663,7 @@ services:
       PLATOS_ATTACHMENT_GRACE_DAYS: "${PLATOS_ATTACHMENT_GRACE_DAYS:-7}"
       PLATOS_ATTACHMENT_TTL_DAYS: "${PLATOS_ATTACHMENT_TTL_DAYS:-30}"
       # Admin token shared with the agent's scheduled retention task.
-      PLATOS_ADMIN_TOKEN: "${PLATOS_ADMIN_TOKEN:-}"
+      PLATOS_INTERNAL_AUTH_TOKEN: "${PLATOS_INTERNAL_AUTH_TOKEN:-}"
     healthcheck:
       test:
         [

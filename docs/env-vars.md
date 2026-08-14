@@ -4,12 +4,9 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 
 > Required variables have no default. They must be set or the service will refuse to boot.
 >
-> **The two encryption keys have DIFFERENT formats. Read both recipes.**
+> New keys use **64 hex chars = 32 bytes** and must be generated independently with `openssl rand -hex 32`; reused key material is rejected. Existing exact 32-byte UTF-8 `ENCRYPTION_KEY` values remain supported and must not be replaced without re-encrypting historical ciphertext.
 >
-> - **Webapp `ENCRYPTION_KEY`:** exactly **32 ASCII chars**. Generate with `openssl rand -hex 16` (32 hex chars). Do NOT use `openssl rand -hex 32` (64 chars → fails `Buffer.from(val, "utf8").length === 32` in `env.server.ts:71-76` → boot refuses).
-> - **Agent `PLATOS_ENCRYPTION_KEY`:** exactly **64 hex chars → 32 bytes**. Generate with `openssl rand -hex 32` (64 hex chars). `keyHex.length === 64` + `Buffer.from(keyHex, "hex")` in `apps/agent/src/auth/secrets.service.ts:31`. Using `openssl rand -hex 16` here falls back to an ephemeral dev key (secrets don't survive restart) and logs a warning.
->
-> **Session/magic-link secrets** (`SESSION_SECRET`, `MAGIC_LINK_SECRET`, `PLATOS_SESSION_SECRET`) have no length requirement. Generate with `openssl rand -base64 24 | tr -d '\n'`.
+> `SESSION_SECRET` is the single platform/session JWT input shared by webapp and agent. `MAGIC_LINK_SECRET` remains a distinct login-link signer. Generate both with `openssl rand -base64 24 | tr -d '\n'`.
 
 ## Core
 
@@ -19,8 +16,8 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 | `DIRECT_URL` | `$DATABASE_URL` | No | Unpooled connection used for Prisma migrations. Set to bypass PgBouncer. |
 | `REDIS_URL` | — | Yes | Redis connection string. Both services. ACL-enabled URIs supported. |
 | `REDIS_TLS_DISABLED` | `false` | No | Set `true` to disable TLS for Redis (e.g. local Docker). |
-| `SESSION_SECRET` | — | Yes | Any non-empty string (recommended: `openssl rand -base64 24`). Signs webapp cookies. Rotating invalidates all sessions. |
-| `ENCRYPTION_KEY` | — | Yes | Exactly 32 ASCII chars. `openssl rand -hex 16`. AES-256-GCM key for encrypted webapp columns and Platos-owned operator TOTP seeds. **Do NOT use `-hex 32`** (64 chars → boot-fail). |
+| `SESSION_SECRET` | — | Yes | Strong random value (minimum 16 chars; recommended: `openssl rand -base64 24`). Signs webapp cookies and platform bridge JWTs; the same value is supplied to the agent. Rotating invalidates all sessions. |
+| `ENCRYPTION_KEY` | — | Yes | AES-256-GCM key for encrypted webapp columns and Platos-owned operator TOTP seeds. New values: 64 hex chars / 32 bytes. Existing exact 32-byte UTF-8 values remain valid. |
 | `APP_ORIGIN` | `http://localhost:3030` | No | Public origin of the webapp. Used for magic links, OAuth callbacks, CORS. |
 | `LOGIN_ORIGIN` | `$APP_ORIGIN` | No | Override if login page is served from a separate origin. |
 | `NODE_ENV` | `development` | No | `development` · `test` · `production`. |
@@ -31,8 +28,9 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 |---|---|---|---|
 | `PLATOS_AGENT_PORT` | `3100` | No | Port the NestJS agent service listens on. |
 | `PLATOS_AGENT_HOST` | `0.0.0.0` | No | Bind host. |
-| `PLATOS_ENCRYPTION_KEY` | — | Yes | Exactly **64 hex chars** (32 bytes decoded). `openssl rand -hex 32`. AES-256-GCM key for encrypted provider credentials (BYOK) and per-tool HMAC secrets. Rotate via key-rotation flow. Different format from `ENCRYPTION_KEY` — see callout at top of page. |
-| `PLATOS_SESSION_SECRET` | — | Yes | Any non-empty string (recommended: `openssl rand -base64 24`). Signs WebSocket session tokens handshaken from the webapp. |
+| `PLATOS_ENCRYPTION_KEY` | — | Yes | Exactly 64 hex chars / 32 bytes. AES-256-GCM key for agent integration and secret-store ciphertext. Must differ from the other encryption domains. |
+| `PLATOS_MESSAGE_ENCRYPTION_KEY` | — | Prod | Exactly 64 hex chars / 32 bytes. Active write key for message, audit, and PII-bearing content. Missing/invalid production configuration fails closed. |
+| `PLATOS_MESSAGE_ENCRYPTION_KEY_V` | `1` | No | Positive integer version recorded on new message ciphertext envelopes. Retain old read keys as `PLATOS_MESSAGE_ENCRYPTION_KEY_V<N>`. |
 | `PLATOS_TEST_MODE` | `false` | No | If `true`, replaces provider calls with deterministic local mocks. Production builds structurally omit token-minting test routes. |
 | `PLATOS_DEFAULT_MODEL` | `anthropic:claude-sonnet-4-6` | No | Fallback model when an agent config omits one. |
 | `PLATOS_TOOL_GATEWAY_PATH` | `/tools/sync` | No | Path prefix for the external tool-server WebSocket endpoint. |
@@ -125,7 +123,7 @@ Upstream trigger.dev plumbing that Platos inherits. Required when the webapp boo
 | `PLATOS_AGENT_API_URL` | `http://agent:3100` | No | Webapp → agent internal base URL (compose-network DNS). |
 | `PLATOS_AGENT_PUBLIC_API_URL` | `$APP_ORIGIN` | No | Public HTTPS URL the browser should call for agent REST endpoints. Set when the agent is proxied at a separate path/subdomain. |
 | `PLATOS_AGENT_PUBLIC_WS_URL` | `wss://test.platos.dev` | No | Public wss:// URL the browser should use for the agent Socket.IO endpoint. Override for every non-test-platos deployment. |
-| `PLATOS_ADMIN_TOKEN` | — | Yes (agent + webapp) | Shared bearer token for privileged agent ↔ webapp calls (scheduled attachment retention, admin endpoints). Generate with `openssl rand -hex 32`. Rotate on both containers simultaneously. |
+| `PLATOS_INTERNAL_AUTH_TOKEN` | — | Yes (agent + callback callers) | Dedicated internal callback secret sent as `X-Platos-Internal-Auth` and compared in constant time. It does not authorize operator hard erasure. |
 | `PLATOS_WEBAPP_ADMIN_URL` | `http://webapp:3000` | No | Agent-side base URL for posting to webapp admin endpoints over the compose network. |
 
 ## Platos agent — attachments / MinIO (Theme D)
@@ -184,9 +182,11 @@ DATABASE_URL=postgresql://platos:platos@localhost:5432/platos
 REDIS_URL=redis://localhost:6379
 SESSION_SECRET=$(openssl rand -base64 24 | tr -d '\n')
 MAGIC_LINK_SECRET=$(openssl rand -base64 24 | tr -d '\n')
-ENCRYPTION_KEY=$(openssl rand -hex 16)              # 32 chars for webapp
-PLATOS_ENCRYPTION_KEY=$(openssl rand -hex 32)       # 64 hex chars (32 bytes) for agent
-PLATOS_SESSION_SECRET=$(openssl rand -base64 24 | tr -d '\n')
+ENCRYPTION_KEY=$(openssl rand -hex 32)
+PLATOS_ENCRYPTION_KEY=$(openssl rand -hex 32)
+PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)
+PLATOS_MESSAGE_ENCRYPTION_KEY_V=1
+PLATOS_INTERNAL_AUTH_TOKEN=$(openssl rand -hex 32)
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 

@@ -493,12 +493,12 @@ function ApprovalCard({
   const resolve = async (approved: boolean) => {
     setStatus(approved ? "approving" : "rejecting");
     // External requests through Caddy must carry a session token. If the page
-    // was rendered before PLATOS_SESSION_SECRET was configured, sessionToken
+    // was rendered before SESSION_SECRET was configured, sessionToken
     // is null and the agent will reject raw scope headers with 401 — surface
     // that explicitly instead of silently 401'ing.
     if (!sessionToken) {
       setErrorMsg(
-        "Session token missing. Reload the page; if this persists, ensure PLATOS_SESSION_SECRET is set on the webapp.",
+        "Session token missing. Reload the page; if this persists, ensure SESSION_SECRET is set on the webapp.",
       );
       setStatus("error");
       return;

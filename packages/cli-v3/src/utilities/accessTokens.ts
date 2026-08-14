@@ -1,4 +1,4 @@
-const personalTokenPrefix = "tr_pat_";
+const personalTokenPrefix = "plt_pat_";
 const organizationTokenPrefix = "tr_oat_";
 
 function isPersonalAccessToken(token: string) {
@@ -21,13 +21,6 @@ export function validateAccessToken(
   }
 
   return { success: false };
-}
-
-export class NotPersonalAccessTokenError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "NotPersonalAccessTokenError";
-  }
 }
 
 export class NotAccessTokenError extends Error {

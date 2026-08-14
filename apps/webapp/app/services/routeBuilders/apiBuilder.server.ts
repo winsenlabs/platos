@@ -13,9 +13,10 @@ import {
 } from "../authorization.server";
 import { logger } from "../logger.server";
 import {
-  authenticateApiRequestWithPersonalAccessToken,
-  PersonalAccessTokenAuthenticationResult,
-} from "../personalAccessToken.server";
+  authenticateApiRequestWithPAT,
+  PATCapability,
+  PATAuthenticationResult,
+} from "../patService.server";
 import { safeJsonParse } from "~/utils/json";
 import {
   AuthenticatedWorkerInstance,
@@ -32,7 +33,7 @@ type ApiKeyRouteBuilderOptions<
   TParamsSchema extends AnyZodSchema | undefined = undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
   THeadersSchema extends AnyZodSchema | undefined = undefined,
-  TResource = never
+  TResource = never,
 > = {
   params?: TParamsSchema;
   searchParams?: TSearchParamsSchema;
@@ -75,7 +76,7 @@ type ApiKeyHandlerFunction<
   TParamsSchema extends AnyZodSchema | undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined,
   THeadersSchema extends AnyZodSchema | undefined = undefined,
-  TResource = never
+  TResource = never,
 > = (args: {
   params: TParamsSchema extends z.ZodFirstPartySchemaTypes | z.ZodDiscriminatedUnion<any, any>
     ? z.infer<TParamsSchema>
@@ -98,7 +99,7 @@ export function createLoaderApiRoute<
   TParamsSchema extends AnyZodSchema | undefined = undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
   THeadersSchema extends AnyZodSchema | undefined = undefined,
-  TResource = never
+  TResource = never,
 >(
   options: ApiKeyRouteBuilderOptions<TParamsSchema, TSearchParamsSchema, THeadersSchema, TResource>,
   handler: ApiKeyHandlerFunction<TParamsSchema, TSearchParamsSchema, THeadersSchema, TResource>
@@ -289,18 +290,19 @@ export function createLoaderApiRoute<
 type PATRouteBuilderOptions<
   TParamsSchema extends AnyZodSchema | undefined = undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
-  THeadersSchema extends AnyZodSchema | undefined = undefined
+  THeadersSchema extends AnyZodSchema | undefined = undefined,
 > = {
   params?: TParamsSchema;
   searchParams?: TSearchParamsSchema;
   headers?: THeadersSchema;
   corsStrategy?: "all" | "none";
+  capability?: PATCapability;
 };
 
 type PATHandlerFunction<
   TParamsSchema extends AnyZodSchema | undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined,
-  THeadersSchema extends AnyZodSchema | undefined = undefined
+  THeadersSchema extends AnyZodSchema | undefined = undefined,
 > = (args: {
   params: TParamsSchema extends z.ZodFirstPartySchemaTypes | z.ZodDiscriminatedUnion<any, any>
     ? z.infer<TParamsSchema>
@@ -313,7 +315,7 @@ type PATHandlerFunction<
   headers: THeadersSchema extends z.ZodFirstPartySchemaTypes | z.ZodDiscriminatedUnion<any, any>
     ? z.infer<THeadersSchema>
     : undefined;
-  authentication: PersonalAccessTokenAuthenticationResult;
+  authentication: PATAuthenticationResult;
   request: Request;
   apiVersion: API_VERSIONS;
 }) => Promise<Response>;
@@ -321,7 +323,7 @@ type PATHandlerFunction<
 export function createLoaderPATApiRoute<
   TParamsSchema extends AnyZodSchema | undefined = undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
-  THeadersSchema extends AnyZodSchema | undefined = undefined
+  THeadersSchema extends AnyZodSchema | undefined = undefined,
 >(
   options: PATRouteBuilderOptions<TParamsSchema, TSearchParamsSchema, THeadersSchema>,
   handler: PATHandlerFunction<TParamsSchema, TSearchParamsSchema, THeadersSchema>
@@ -332,6 +334,7 @@ export function createLoaderPATApiRoute<
       searchParams: searchParamsSchema,
       headers: headersSchema,
       corsStrategy = "none",
+      capability = "read",
     } = options;
 
     if (corsStrategy !== "none" && request.method.toUpperCase() === "OPTIONS") {
@@ -339,7 +342,7 @@ export function createLoaderPATApiRoute<
     }
 
     try {
-      const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+      const authenticationResult = await authenticateApiRequestWithPAT(request, capability);
 
       if (!authenticationResult) {
         return await wrapResponse(
@@ -434,7 +437,7 @@ type ApiKeyActionRouteBuilderOptions<
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
   THeadersSchema extends AnyZodSchema | undefined = undefined,
   TBodySchema extends AnyZodSchema | undefined = undefined,
-  TResource = never
+  TResource = never,
 > = {
   params?: TParamsSchema;
   searchParams?: TSearchParamsSchema;
@@ -482,7 +485,7 @@ type ApiKeyActionHandlerFunction<
   TSearchParamsSchema extends AnyZodSchema | undefined,
   THeadersSchema extends AnyZodSchema | undefined = undefined,
   TBodySchema extends AnyZodSchema | undefined = undefined,
-  TResource = never
+  TResource = never,
 > = (args: {
   params: TParamsSchema extends z.ZodFirstPartySchemaTypes | z.ZodDiscriminatedUnion<any, any>
     ? z.infer<TParamsSchema>
@@ -508,7 +511,7 @@ export function createActionApiRoute<
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
   THeadersSchema extends AnyZodSchema | undefined = undefined,
   TBodySchema extends AnyZodSchema | undefined = undefined,
-  TResource = never
+  TResource = never,
 >(
   options: ApiKeyActionRouteBuilderOptions<
     TParamsSchema,
@@ -787,7 +790,7 @@ type MethodConfig<TParamsSchema, TSearchParamsSchema, THeadersSchema> = {
 type MultiMethodApiRouteOptions<
   TParamsSchema extends AnyZodSchema | undefined = undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
-  THeadersSchema extends AnyZodSchema | undefined = undefined
+  THeadersSchema extends AnyZodSchema | undefined = undefined,
 > = {
   params?: TParamsSchema;
   searchParams?: TSearchParamsSchema;
@@ -813,7 +816,7 @@ type MultiMethodApiRouteOptions<
 export function createMultiMethodApiRoute<
   TParamsSchema extends AnyZodSchema | undefined = undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
-  THeadersSchema extends AnyZodSchema | undefined = undefined
+  THeadersSchema extends AnyZodSchema | undefined = undefined,
 >(options: MultiMethodApiRouteOptions<TParamsSchema, TSearchParamsSchema, THeadersSchema>) {
   const {
     params: paramsSchema,
@@ -842,10 +845,7 @@ export function createMultiMethodApiRoute<
     if (!methodConfig) {
       return await wrapResponse(
         request,
-        json(
-          { error: "Method not allowed" },
-          { status: 405, headers: { Allow: allowedMethods } }
-        ),
+        json({ error: "Method not allowed" }, { status: 405, headers: { Allow: allowedMethods } }),
         corsStrategy !== "none"
       );
     }
@@ -1056,7 +1056,7 @@ async function wrapResponse(
 type WorkerLoaderRouteBuilderOptions<
   TParamsSchema extends AnyZodSchema | undefined = undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
-  THeadersSchema extends AnyZodSchema | undefined = undefined
+  THeadersSchema extends AnyZodSchema | undefined = undefined,
 > = {
   params?: TParamsSchema;
   searchParams?: TSearchParamsSchema;
@@ -1066,7 +1066,7 @@ type WorkerLoaderRouteBuilderOptions<
 type WorkerLoaderHandlerFunction<
   TParamsSchema extends AnyZodSchema | undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined,
-  THeadersSchema extends AnyZodSchema | undefined = undefined
+  THeadersSchema extends AnyZodSchema | undefined = undefined,
 > = (args: {
   params: TParamsSchema extends z.ZodFirstPartySchemaTypes | z.ZodDiscriminatedUnion<any, any>
     ? z.infer<TParamsSchema>
@@ -1087,7 +1087,7 @@ type WorkerLoaderHandlerFunction<
 export function createLoaderWorkerApiRoute<
   TParamsSchema extends AnyZodSchema | undefined = undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
-  THeadersSchema extends AnyZodSchema | undefined = undefined
+  THeadersSchema extends AnyZodSchema | undefined = undefined,
 >(
   options: WorkerLoaderRouteBuilderOptions<TParamsSchema, TSearchParamsSchema, THeadersSchema>,
   handler: WorkerLoaderHandlerFunction<TParamsSchema, TSearchParamsSchema, THeadersSchema>
@@ -1183,7 +1183,7 @@ type WorkerActionRouteBuilderOptions<
   TParamsSchema extends AnyZodSchema | undefined = undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
   THeadersSchema extends AnyZodSchema | undefined = undefined,
-  TBodySchema extends AnyZodSchema | undefined = undefined
+  TBodySchema extends AnyZodSchema | undefined = undefined,
 > = {
   params?: TParamsSchema;
   searchParams?: TSearchParamsSchema;
@@ -1196,7 +1196,7 @@ type WorkerActionHandlerFunction<
   TParamsSchema extends AnyZodSchema | undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined,
   THeadersSchema extends AnyZodSchema | undefined = undefined,
-  TBodySchema extends AnyZodSchema | undefined = undefined
+  TBodySchema extends AnyZodSchema | undefined = undefined,
 > = (args: {
   params: TParamsSchema extends z.ZodFirstPartySchemaTypes | z.ZodDiscriminatedUnion<any, any>
     ? z.infer<TParamsSchema>
@@ -1221,7 +1221,7 @@ export function createActionWorkerApiRoute<
   TParamsSchema extends AnyZodSchema | undefined = undefined,
   TSearchParamsSchema extends AnyZodSchema | undefined = undefined,
   THeadersSchema extends AnyZodSchema | undefined = undefined,
-  TBodySchema extends AnyZodSchema | undefined = undefined
+  TBodySchema extends AnyZodSchema | undefined = undefined,
 >(
   options: WorkerActionRouteBuilderOptions<
     TParamsSchema,

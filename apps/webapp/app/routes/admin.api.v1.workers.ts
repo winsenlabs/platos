@@ -3,7 +3,7 @@ import { tryCatch } from "@platos/core";
 import { type Project } from "@platos/database";
 import { z } from "zod";
 import { prisma } from "~/db.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { WorkerGroupService } from "~/v3/services/worker/workerGroupService.server";
 
 const RequestBodySchema = z.object({
@@ -16,7 +16,7 @@ const RequestBodySchema = z.object({
 
 export async function action({ request }: ActionFunctionArgs) {
   // Next authenticate the request
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing API key" }, { status: 401 });

@@ -44,7 +44,7 @@ Four routes under `/api/v1/agent/admin/privacy`:
 | `GET /erasures/:operationId` | Fetch the receipt |
 | `POST /erasures/:operationId/retry` | Re-run the stores that did not settle |
 
-Authenticated with `PLATOS_ADMIN_TOKEN` in the `X-Platos-Admin-Token` header, compared in constant time. **Ordinary Platos session tokens cannot reach these routes** — erasure is an operator capability, not something an end user's token can trigger.
+Authenticated with `Authorization: Bearer plt_mcp_...`. The control-plane credential must have `admin` tier and must be bound to the requested organization. **Ordinary Platos session tokens, scope-tier credentials, credentials from another organization, and static internal-callback secrets cannot reach these routes** — erasure is an operator capability, not something an end user's token can trigger.
 
 ```json
 POST /api/v1/agent/admin/privacy/erasures

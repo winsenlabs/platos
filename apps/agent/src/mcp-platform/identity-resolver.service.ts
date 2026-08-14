@@ -20,7 +20,7 @@ export interface McpIdentityRejectReason {
  * correct identity validator based on token type and entity config.
  *
  * Resolution order:
- *   1. Authorization: Bearer pmt_... → Bearer PAT path
+ *   1. Authorization: Bearer plt_ent_... → Bearer PAT path
  *   2. Authorization: Bearer <oauth-token> → OAuth access token path
  *   3. No auth header → Anonymous path (if entity allows anonymous)
  */
@@ -48,8 +48,8 @@ export class McpIdentityResolverService {
     const identityMode = (entityConfig.identityMode as string) ?? "anonymous";
     const allowedModes = identityMode.split("+");
 
-    // 1. Bearer PAT (pmt_ prefix)
-    if (authHeader?.startsWith("Bearer pmt_")) {
+    // 1. Bearer PAT (plt_ent_ prefix)
+    if (authHeader?.startsWith("Bearer plt_ent_")) {
       if (!allowedModes.some((m) => m === "bearer")) {
         return { error: "Bearer tokens not enabled for this entity", status: 403 };
       }

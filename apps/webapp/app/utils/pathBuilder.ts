@@ -65,8 +65,8 @@ export function accountPath() {
   return `/account`;
 }
 
-export function personalAccessTokensPath() {
-  return `/account/tokens`;
+export function apiTokensPath() {
+  return `/account/api-tokens`;
 }
 
 export function accountSecurityPath() {

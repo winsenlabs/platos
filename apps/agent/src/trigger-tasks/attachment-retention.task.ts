@@ -32,12 +32,12 @@ export const attachmentRetention = schedules.task({
       env.PLATOS_WEBAPP_ADMIN_URL ||
       env.APP_ORIGIN ||
       "http://webapp:3000";
-    const adminToken = env.PLATOS_ADMIN_TOKEN;
+    const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
 
     if (!adminToken) {
-      logger.warn("attachment-retention: PLATOS_ADMIN_TOKEN not set — skipping");
+      logger.warn("attachment-retention: PLATOS_INTERNAL_AUTH_TOKEN not set — skipping");
       metadata.set("status", "skipped");
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN unset" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN unset" };
     }
 
     try {
@@ -47,7 +47,7 @@ export const attachmentRetention = schedules.task({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Platos-Admin-Token": adminToken,
+            "X-Platos-Internal-Auth": adminToken,
           },
           body: JSON.stringify({ limit: 1000 }),
           signal: AbortSignal.timeout(60000),

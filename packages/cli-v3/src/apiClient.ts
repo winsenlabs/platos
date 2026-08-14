@@ -1,5 +1,4 @@
 import {
-  CreateAuthorizationCodeResponseSchema,
   CreateArtifactRequestBody,
   CreateArtifactResponseBody,
   CreateBackgroundWorkerRequestBody,
@@ -16,7 +15,6 @@ import {
   GetDeploymentResponseBody,
   GetEnvironmentVariablesResponseBody,
   GetLatestDeploymentResponseBody,
-  GetPersonalAccessTokenResponseSchema,
   GetProjectEnvResponse,
   GetProjectResponseBody,
   GetProjectsResponseBody,
@@ -100,25 +98,6 @@ export class CliApiClient {
     this.engineURL = this.apiURL;
     this.branch = branch;
     this.source = options?.source ?? "cli";
-  }
-
-  async createAuthorizationCode() {
-    return wrapZodFetch(
-      CreateAuthorizationCodeResponseSchema,
-      `${this.apiURL}/api/v1/authorization-code`,
-      {
-        method: "POST",
-      }
-    );
-  }
-
-  async getPersonalAccessToken(authorizationCode: string) {
-    return wrapZodFetch(GetPersonalAccessTokenResponseSchema, `${this.apiURL}/api/v1/token`, {
-      method: "POST",
-      body: JSON.stringify({
-        authorizationCode,
-      }),
-    });
   }
 
   async whoAmI(projectRef?: string) {

@@ -17,7 +17,8 @@ const DEV_SENTINEL_ENCRYPTION_KEY =
 const DEV_SENTINEL_MESSAGE_ENCRYPTION_KEY =
   "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe";
 const DEV_SENTINEL_SESSION_SECRET = "dev-session-secret-rotate-before-prod";
-const DEV_SENTINEL_WEBAPP_ENCRYPTION_KEY = "REPLACE_WITH_32_CHAR_WEBAPP_KEY";
+const DEV_SENTINEL_WEBAPP_ENCRYPTION_KEY =
+  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 // Helpers
 const boolLike = z
@@ -36,10 +37,9 @@ const intString = (name: string, opts?: { min?: number; max?: number }) =>
   z
     .string()
     .optional()
-    .refine(
-      (v) => v === undefined || v === "" || /^\d+$/.test(v),
-      { message: `${name} must be a non-negative integer` },
-    )
+    .refine((v) => v === undefined || v === "" || /^\d+$/.test(v), {
+      message: `${name} must be a non-negative integer`,
+    })
     .transform((v) => (v === undefined || v === "" ? undefined : Number(v)))
     .refine((v) => v === undefined || opts?.min === undefined || v >= opts.min, {
       message: `${name} must be >= ${opts?.min}`,
@@ -52,10 +52,9 @@ const floatString = (name: string, opts?: { min?: number; max?: number }) =>
   z
     .string()
     .optional()
-    .refine(
-      (v) => v === undefined || v === "" || /^-?\d+(\.\d+)?$/.test(v),
-      { message: `${name} must be a number` },
-    )
+    .refine((v) => v === undefined || v === "" || /^-?\d+(\.\d+)?$/.test(v), {
+      message: `${name} must be a number`,
+    })
     .transform((v) => (v === undefined || v === "" ? undefined : Number(v)))
     .refine((v) => v === undefined || opts?.min === undefined || v >= opts.min, {
       message: `${name} must be >= ${opts?.min}`,
@@ -65,11 +64,21 @@ const floatString = (name: string, opts?: { min?: number; max?: number }) =>
     });
 
 const hex64 = (name: string) =>
-  z
-    .string()
-    .regex(/^[0-9a-fA-F]{64}$/, {
-      message: `${name} must be 64 hex chars (32 bytes)`,
-    });
+  z.string().regex(/^[0-9a-fA-F]{64}$/, {
+    message: `${name} must be 64 hex chars (32 bytes)`,
+  });
+
+const webappEncryptionKey = z
+  .string()
+  .refine((value) => /^[0-9a-fA-F]{64}$/.test(value) || Buffer.byteLength(value, "utf8") === 32, {
+    message: "ENCRYPTION_KEY must be 64 hex chars or an existing 32-byte UTF-8 key",
+  });
+
+function normalizedEncryptionKey(value: string): string {
+  return (
+    /^[0-9a-fA-F]{64}$/.test(value) ? Buffer.from(value, "hex") : Buffer.from(value, "utf8")
+  ).toString("hex");
+}
 
 // ─────────────────────────────────────────────────────────────
 // Schema
@@ -77,9 +86,7 @@ const hex64 = (name: string) =>
 
 export const AgentEnvSchema = z
   .object({
-    NODE_ENV: z
-      .enum(["development", "test", "production"])
-      .default("development"),
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
     // Core infra — required in every environment
     DATABASE_URL: z.string().url(),
@@ -87,33 +94,22 @@ export const AgentEnvSchema = z
 
     // Secrets
     PLATOS_ENCRYPTION_KEY: hex64("PLATOS_ENCRYPTION_KEY"),
-    PLATOS_SESSION_SECRET: z.string().min(16, {
-      message: "PLATOS_SESSION_SECRET must be at least 16 chars",
+    SESSION_SECRET: z.string().min(16, {
+      message: "SESSION_SECRET must be at least 16 chars",
     }),
-    // Webapp-shared AES key. Webapp validates as 32 ASCII chars OR 64
-    // hex chars (EOBD.101 — both formats accepted to close the footgun).
+    // Webapp/operator-TOTP AES key. New values use canonical 64-hex transport;
+    // exact historical 32-byte UTF-8 values remain valid for ciphertext reads.
     // Optional on the agent so existing deployments boot without forcing
     // an env change; downstream consumers handle absence by disabling
     // scoped env-var decryption.
-    ENCRYPTION_KEY: z
-      .string()
-      .refine(
-        (v) =>
-          Buffer.from(v, "utf8").length === 32 ||
-          (v.length === 64 && /^[0-9a-f]{64}$/i.test(v)),
-        {
-          message:
-            "ENCRYPTION_KEY must be 32 ASCII chars (openssl rand -hex 16) OR 64 hex chars (openssl rand -hex 32).",
-        },
-      )
-      .optional(),
+    ENCRYPTION_KEY: webappEncryptionKey.optional(),
 
-    // Message encryption — THEME H.4 + EOBD.18–22 wave 8. Optional —
-    // when absent, messages persist unencrypted (matches pre-EOBD
-    // behaviour + what existing deployments expect until they rotate
-    // in a dedicated message-encryption key).
+    // Message encryption. Development may omit it for legacy plaintext
+    // fixtures; production requires it and fails closed below.
     PLATOS_MESSAGE_ENCRYPTION_KEY: hex64("PLATOS_MESSAGE_ENCRYPTION_KEY").optional(),
-    PLATOS_MESSAGE_ENCRYPTION_KEY_V: z.string().optional(),
+    PLATOS_MESSAGE_ENCRYPTION_KEY_V: intString("PLATOS_MESSAGE_ENCRYPTION_KEY_V", {
+      min: 1,
+    }),
 
     // CORS — required in production unless PLATOS_CORS_UNIVERSAL=true
     // (see EOBD.11 + the universal-CORS hosted-demo escape hatch in main.ts).
@@ -174,7 +170,8 @@ export const AgentEnvSchema = z
     PLATOS_AGENT_WS_URL: z.string().url().optional(),
     APP_ORIGIN: z.string().url().optional(),
     PLATOS_WEBAPP_ADMIN_URL: z.string().url().optional(),
-    PLATOS_ADMIN_TOKEN: optTrimmedString,
+    PLATOS_INTERNAL_AUTH_TOKEN: optTrimmedString,
+    PLATOS_ERASURE_HASH_SALT: z.string().min(32).optional(),
 
     // Worker mode — set to "true" to run the trigger.dev task worker
     // instead of the NestJS HTTP server. See entrypoint.sh.
@@ -192,15 +189,9 @@ export const AgentEnvSchema = z
     // `voyage-large-2` because it returns 1536-dim vectors that fit the
     // existing `PlatosMemory.embedding vector(1536)` column without a
     // schema migration.
-    PLATOS_EMBEDDING_PROVIDER: z
-      .enum(["openai", "voyage"])
-      .optional()
-      .default("openai"),
+    PLATOS_EMBEDDING_PROVIDER: z.enum(["openai", "voyage"]).optional().default("openai"),
     PLATOS_MEMORY_EXTRACTION_MODEL: optTrimmedString,
-    PLATOS_MEMORY_INJECT_BUDGET_TOKENS: intString(
-      "PLATOS_MEMORY_INJECT_BUDGET_TOKENS",
-      { min: 0 },
-    ),
+    PLATOS_MEMORY_INJECT_BUDGET_TOKENS: intString("PLATOS_MEMORY_INJECT_BUDGET_TOKENS", { min: 0 }),
     // Hard ceiling on the embedding-provider HTTP call (ms). A bare
     // `await fetch` to Voyage/OpenAI with no timeout will hang a whole
     // turn if the provider is slow/rate-limited (observed: 64s pre-LLM
@@ -212,10 +203,7 @@ export const AgentEnvSchema = z
     // Memory enrichment is best-effort; it must never block the response.
     // If it doesn't return in time we skip the block and call the LLM.
     // Default 5s. Consumed in AgentService.stream.
-    PLATOS_MEMORY_INJECT_TIMEOUT_MS: intString(
-      "PLATOS_MEMORY_INJECT_TIMEOUT_MS",
-      { min: 250 },
-    ),
+    PLATOS_MEMORY_INJECT_TIMEOUT_MS: intString("PLATOS_MEMORY_INJECT_TIMEOUT_MS", { min: 250 }),
     PLATOS_WORKING_MEMORY_TTL: intString("PLATOS_WORKING_MEMORY_TTL", {
       min: 0,
     }),
@@ -231,10 +219,9 @@ export const AgentEnvSchema = z
     PLATOS_MAX_ATTACHMENT_BYTES: intString("PLATOS_MAX_ATTACHMENT_BYTES", {
       min: 1,
     }),
-    PLATOS_MAX_TURN_ATTACHMENT_TOTAL_BYTES: intString(
-      "PLATOS_MAX_TURN_ATTACHMENT_TOTAL_BYTES",
-      { min: 1 },
-    ),
+    PLATOS_MAX_TURN_ATTACHMENT_TOTAL_BYTES: intString("PLATOS_MAX_TURN_ATTACHMENT_TOTAL_BYTES", {
+      min: 1,
+    }),
     PLATOS_WS_MAX_PAYLOAD_BYTES: intString("PLATOS_WS_MAX_PAYLOAD_BYTES", {
       min: 1,
     }),
@@ -254,14 +241,10 @@ export const AgentEnvSchema = z
     PLATOS_PUBLIC_GUEST_IP_LIMIT: intString("PLATOS_PUBLIC_GUEST_IP_LIMIT", {
       min: 0,
     }),
-    PLATOS_PUBLIC_GUEST_AGENT_LIMIT: intString(
-      "PLATOS_PUBLIC_GUEST_AGENT_LIMIT",
-      { min: 0 },
-    ),
-    PLATOS_PUBLIC_GUEST_TOKEN_TTL_SECONDS: intString(
-      "PLATOS_PUBLIC_GUEST_TOKEN_TTL_SECONDS",
-      { min: 60 },
-    ),
+    PLATOS_PUBLIC_GUEST_AGENT_LIMIT: intString("PLATOS_PUBLIC_GUEST_AGENT_LIMIT", { min: 0 }),
+    PLATOS_PUBLIC_GUEST_TOKEN_TTL_SECONDS: intString("PLATOS_PUBLIC_GUEST_TOKEN_TTL_SECONDS", {
+      min: 60,
+    }),
     PLATOS_STREAM_HEARTBEAT_MS: intString("PLATOS_STREAM_HEARTBEAT_MS", {
       min: 1000,
     }),
@@ -269,17 +252,13 @@ export const AgentEnvSchema = z
     // Rate limits
     PLATOS_RATE_LIMIT_PER_MIN: intString("PLATOS_RATE_LIMIT_PER_MIN", { min: 0 }),
     PLATOS_RATE_LIMIT_PER_DAY: intString("PLATOS_RATE_LIMIT_PER_DAY", { min: 0 }),
-    PLATOS_RATE_LIMIT_USER_PER_MIN: intString(
-      "PLATOS_RATE_LIMIT_USER_PER_MIN",
-      { min: 0 },
-    ),
+    PLATOS_RATE_LIMIT_USER_PER_MIN: intString("PLATOS_RATE_LIMIT_USER_PER_MIN", { min: 0 }),
     PLATOS_USER_RATE_PER_MIN: intString("PLATOS_USER_RATE_PER_MIN", { min: 0 }),
     PLATOS_USER_RATE_PER_HOUR: intString("PLATOS_USER_RATE_PER_HOUR", { min: 0 }),
     PLATOS_USER_RATE_PER_DAY: intString("PLATOS_USER_RATE_PER_DAY", { min: 0 }),
-    PLATOS_AGENT_USER_TOOL_RATE_PER_MIN: intString(
-      "PLATOS_AGENT_USER_TOOL_RATE_PER_MIN",
-      { min: 0 },
-    ),
+    PLATOS_AGENT_USER_TOOL_RATE_PER_MIN: intString("PLATOS_AGENT_USER_TOOL_RATE_PER_MIN", {
+      min: 0,
+    }),
     /**
      * PRELAUNCH-A3-10 — when true, rate-limit guard rejects requests with no
      * scope.userId (401). Default false preserves single-tenant + early-OSS
@@ -293,10 +272,9 @@ export const AgentEnvSchema = z
      * hour. Defaults to 20. Prevents a misbehaving agent from firing
      * unlimited approval modals at a single user.
      */
-    PLATOS_AGENT_USER_APPROVAL_PER_HOUR: intString(
-      "PLATOS_AGENT_USER_APPROVAL_PER_HOUR",
-      { min: 0 },
-    ),
+    PLATOS_AGENT_USER_APPROVAL_PER_HOUR: intString("PLATOS_AGENT_USER_APPROVAL_PER_HOUR", {
+      min: 0,
+    }),
 
     // Observability
     // Optional; compose passes empty-string when unset so treat "" as
@@ -304,13 +282,13 @@ export const AgentEnvSchema = z
     // only when the operator actually supplied one.
     PLATOS_SENTRY_DSN: z.preprocess(
       (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
-      z.string().url().optional(),
+      z.string().url().optional()
     ),
     SENTRY_DSN: z.string().url().optional(),
-    PLATOS_SENTRY_TRACES_SAMPLE_RATE: floatString(
-      "PLATOS_SENTRY_TRACES_SAMPLE_RATE",
-      { min: 0, max: 1 },
-    ),
+    PLATOS_SENTRY_TRACES_SAMPLE_RATE: floatString("PLATOS_SENTRY_TRACES_SAMPLE_RATE", {
+      min: 0,
+      max: 1,
+    }),
     PLATOS_OTEL_CLICKHOUSE_URL: z.string().url().optional(),
     PLATOS_OTEL_SAMPLE_RATE: floatString("PLATOS_OTEL_SAMPLE_RATE", {
       min: 0,
@@ -353,16 +331,20 @@ export const AgentEnvSchema = z
     // than this window (design Commit 5 / §5). Default 300 (5 min). Consumed in
     // EntityMcpDiscoverySchedulerService (used as the staleness threshold; the
     // cron cadence itself is fixed at 1-min ticks).
-    PLATOS_MCP_DISCOVERY_INTERVAL_SEC: intString(
-      "PLATOS_MCP_DISCOVERY_INTERVAL_SEC",
-      { min: 30 },
-    ),
+    PLATOS_MCP_DISCOVERY_INTERVAL_SEC: intString("PLATOS_MCP_DISCOVERY_INTERVAL_SEC", { min: 30 }),
   })
   .passthrough() // Don't choke on unrelated env vars (PATH, HOME, etc.)
   .superRefine((data, ctx) => {
     // EOBD.3 — sentinel check. Never boot with known-public dev values
     // under NODE_ENV=production.
     if (data.NODE_ENV === "production") {
+      if (!data.PLATOS_ERASURE_HASH_SALT) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["PLATOS_ERASURE_HASH_SALT"],
+          message: "PLATOS_ERASURE_HASH_SALT is required in production",
+        });
+      }
       if (data.PLATOS_ENCRYPTION_KEY === DEV_SENTINEL_ENCRYPTION_KEY) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -371,10 +353,7 @@ export const AgentEnvSchema = z
             "PLATOS_ENCRYPTION_KEY is the .env.example sentinel value — rotate before going to production",
         });
       }
-      if (
-        data.PLATOS_MESSAGE_ENCRYPTION_KEY ===
-        DEV_SENTINEL_MESSAGE_ENCRYPTION_KEY
-      ) {
+      if (data.PLATOS_MESSAGE_ENCRYPTION_KEY === DEV_SENTINEL_MESSAGE_ENCRYPTION_KEY) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["PLATOS_MESSAGE_ENCRYPTION_KEY"],
@@ -382,12 +361,19 @@ export const AgentEnvSchema = z
             "PLATOS_MESSAGE_ENCRYPTION_KEY is the .env.example sentinel value — rotate before going to production",
         });
       }
-      if (data.PLATOS_SESSION_SECRET === DEV_SENTINEL_SESSION_SECRET) {
+      if (!data.PLATOS_MESSAGE_ENCRYPTION_KEY) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["PLATOS_SESSION_SECRET"],
+          path: ["PLATOS_MESSAGE_ENCRYPTION_KEY"],
+          message: "PLATOS_MESSAGE_ENCRYPTION_KEY is required in production",
+        });
+      }
+      if (data.SESSION_SECRET === DEV_SENTINEL_SESSION_SECRET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["SESSION_SECRET"],
           message:
-            "PLATOS_SESSION_SECRET is the .env.example sentinel value — rotate before going to production",
+            "SESSION_SECRET is the .env.example sentinel value — rotate before going to production",
         });
       }
       if (data.ENCRYPTION_KEY === DEV_SENTINEL_WEBAPP_ENCRYPTION_KEY) {
@@ -395,25 +381,38 @@ export const AgentEnvSchema = z
           code: z.ZodIssueCode.custom,
           path: ["ENCRYPTION_KEY"],
           message:
-            "ENCRYPTION_KEY is the .env.example placeholder — generate a real 32-char key",
+            "ENCRYPTION_KEY is the .env.example sentinel value — rotate before going to production",
         });
       }
+    }
 
-      // Encryption keys must be distinct — using the same value for at-rest
-      // AES and message-level AES defeats key separation.
-      if (
-        data.PLATOS_ENCRYPTION_KEY &&
-        data.PLATOS_MESSAGE_ENCRYPTION_KEY &&
-        data.PLATOS_ENCRYPTION_KEY === data.PLATOS_MESSAGE_ENCRYPTION_KEY
-      ) {
+    // Compare normalized key bytes in every environment
+    // so a copied key cannot collapse the three intentional trust domains.
+    const encryptionDomains = [
+      ["ENCRYPTION_KEY", data.ENCRYPTION_KEY],
+      ["PLATOS_ENCRYPTION_KEY", data.PLATOS_ENCRYPTION_KEY],
+      ["PLATOS_MESSAGE_ENCRYPTION_KEY", data.PLATOS_MESSAGE_ENCRYPTION_KEY],
+    ] as const;
+    for (let i = 0; i < encryptionDomains.length; i += 1) {
+      for (let j = i + 1; j < encryptionDomains.length; j += 1) {
+        const [leftName, leftValue] = encryptionDomains[i];
+        const [rightName, rightValue] = encryptionDomains[j];
+        if (
+          !leftValue ||
+          !rightValue ||
+          normalizedEncryptionKey(leftValue) !== normalizedEncryptionKey(rightValue)
+        ) {
+          continue;
+        }
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["PLATOS_MESSAGE_ENCRYPTION_KEY"],
-          message:
-            "PLATOS_MESSAGE_ENCRYPTION_KEY must differ from PLATOS_ENCRYPTION_KEY — use separate keys for secret-store vs. message encryption",
+          path: [rightName],
+          message: `${rightName} must differ from ${leftName} — use separate keys for each encryption domain`,
         });
       }
+    }
 
+    if (data.NODE_ENV === "production") {
       // EOBD.11 — CORS must be explicit in production unless the
       // operator opted into universal CORS via PLATOS_CORS_UNIVERSAL=true
       // (typically the hosted-demo case where third-party integrators
@@ -449,16 +448,16 @@ export const AgentEnvSchema = z
       "MINIO_BUCKET",
       "MINIO_REGION",
     ] as const;
-    const set = minioKeys.filter(
-      (k) => data[k] !== undefined && data[k] !== "",
-    );
+    const set = minioKeys.filter((k) => data[k] !== undefined && data[k] !== "");
     if (set.length > 0 && set.length < minioKeys.length) {
       const missing = minioKeys.filter((k) => !set.includes(k));
       for (const k of missing) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: [k],
-          message: `${k} is required when any other MINIO_* var is set (missing: ${missing.join(", ")})`,
+          message: `${k} is required when any other MINIO_* var is set (missing: ${missing.join(
+            ", "
+          )})`,
         });
       }
     }
@@ -473,7 +472,7 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): AgentEnv {
 
 /** Non-throwing variant for main.ts. Returns structured errors. */
 export function validateAgentEnv(
-  source: NodeJS.ProcessEnv = process.env,
+  source: NodeJS.ProcessEnv = process.env
 ): { ok: true; env: AgentEnv } | { ok: false; errors: string[] } {
   const result = AgentEnvSchema.safeParse(source);
   if (result.success) {

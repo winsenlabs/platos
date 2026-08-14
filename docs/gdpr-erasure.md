@@ -16,8 +16,9 @@ All under `/api/v1/agent/admin/privacy`, on the agent service (port 3100).
 
 ## Authentication
 
-`X-Platos-Admin-Token: <PLATOS_ADMIN_TOKEN>`, compared timing-safely with a
-length guard. Ordinary Platos session tokens **cannot** reach these routes: the
+`Authorization: Bearer plt_mcp_...`, verified against the hashed control-plane
+credential row. The token must be `admin` tier and organization-bound. Ordinary
+Platos sessions and static callback secrets **cannot** reach these routes: the
 API destroys data irreversibly across four stores, and a session token is the
 credential most likely to be sitting in a browser.
 
@@ -128,8 +129,8 @@ persist a receipt containing a subject identifier.
 
 1. **Migration required.** `PlatosErasureOperation` exists in `schema.prisma`;
    generate and apply before use, or every request 500s.
-2. **`PLATOS_ADMIN_TOKEN`** must be set.
-3. **`PLATOS_ERASURE_HASH_SALT`** should be set (falls back to the admin token).
+2. Mint an organization-bound, admin-tier `plt_mcp_` control-plane credential.
+3. **`PLATOS_ERASURE_HASH_SALT`** must be set in production and must be independent from authentication credentials.
 4. **ClickHouse is unprovisioned** on test.platos — zero user tables. Its
    executor returns `not_provisioned`. Do **not** integrate expecting verified
    ClickHouse erasure until the table exists and the mutation path is written.

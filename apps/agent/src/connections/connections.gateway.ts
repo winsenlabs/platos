@@ -510,7 +510,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
 
     try {
       // BUG-11 (revised): gate postmanUserId on the caller being an org admin.
-      // Original BUG-11 fix used the system PLATOS_ADMIN_TOKEN, but that's only
+      // Original BUG-11 fix used the system PLATOS_INTERNAL_AUTH_TOKEN, but that's only
       // available to infra operators — broke the legitimate Postman mode flow
       // where org admins simulate user IDs while testing their own agents.
       // Now we check OrgMember.role within scope.organizationId.

@@ -1091,7 +1091,7 @@ function MintTokenButton() {
           </span>
           <p className="mt-1 text-xs text-text-dimmed">
             Returns a 5-minute session token signed with{" "}
-            <code className="rounded bg-charcoal-700 px-1">PLATOS_SESSION_SECRET</code>. Paste it
+            <code className="rounded bg-charcoal-700 px-1">SESSION_SECRET</code>. Paste it
             into <code className="rounded bg-charcoal-700 px-1">X-Platos-Session-Token</code> to poke
             the agent directly. Enabled only when{" "}
             <code className="rounded bg-charcoal-700 px-1">PLATOS_TEST_MODE=true</code>.

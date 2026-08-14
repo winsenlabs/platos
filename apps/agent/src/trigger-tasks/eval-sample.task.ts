@@ -9,7 +9,7 @@ const env = process.env;
  * endpoint. Keeping this off the hot request path means the judge LLM call
  * latency + cost is absorbed durably by trigger.dev, not a user session.
  *
- * Gated by `PLATOS_ADMIN_TOKEN` on the agent side (eventually) — v1 keeps
+ * Gated by `PLATOS_INTERNAL_AUTH_TOKEN` on the agent side (eventually) — v1 keeps
  * this conservative by sampling at most 5 pairs per tick so a misconfigured
  * criterion can't run up the bill before it's caught.
  *
@@ -33,12 +33,12 @@ export const evalSample = schedules.task({
       env.PLATOS_AGENT_HTTP_URL ||
       env.PLATOS_AGENT_API_URL ||
       "http://localhost:3100";
-    const adminToken = env.PLATOS_ADMIN_TOKEN;
+    const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
 
     if (!adminToken) {
-      logger.warn("eval-sample: PLATOS_ADMIN_TOKEN not set — skipping");
+      logger.warn("eval-sample: PLATOS_INTERNAL_AUTH_TOKEN not set — skipping");
       metadata.set("status", "skipped");
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN unset" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN unset" };
     }
 
     // The cross-scope sampling endpoint isn't wired yet — Theme H will add

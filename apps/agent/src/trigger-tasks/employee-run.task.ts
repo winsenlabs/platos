@@ -59,16 +59,16 @@ export const employeeRun = task({
 
     const AGENT_API_URL =
       process.env.PLATOS_AGENT_HTTP_URL || process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
-    const adminToken = process.env.PLATOS_ADMIN_TOKEN;
+    const adminToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!adminToken) {
-      logger.warn("employee-run: PLATOS_ADMIN_TOKEN not set — skipping");
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN unset", agentId: payload.agentId };
+      logger.warn("employee-run: PLATOS_INTERNAL_AUTH_TOKEN not set — skipping");
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN unset", agentId: payload.agentId };
     }
 
     try {
       const res = await fetch(`${AGENT_API_URL}/api/v1/agent/internal/employee-run`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Platos-Admin-Token": adminToken },
+        headers: { "Content-Type": "application/json", "X-Platos-Internal-Auth": adminToken },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(3_590_000),
       });

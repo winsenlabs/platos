@@ -32,7 +32,7 @@ An MCP client connected to your Platos instance. The client's tool catalogue fed
 
 1. **Mint a PAT.**
 
-   Settings -> MCP tokens -> "New token". Name it (`claude-desktop-pat`), pick scope, pick permission scopes (`tools:execute`, `agents:read` is a good starter set). Copy the `pmt_...` string.
+   Settings -> MCP tokens -> "New token". Name it (`claude-desktop-pat`), pick scope, pick permission scopes (`tools:execute`, `agents:read` is a good starter set). Copy the `plt_ent_...` string.
 
 2. **Configure your MCP client.**
 
@@ -44,7 +44,7 @@ An MCP client connected to your Platos instance. The client's tool catalogue fed
        "platos": {
          "url": "https://platos.example.com/mcp",
          "headers": {
-           "Authorization": "Bearer pmt_abc123..."
+           "Authorization": "Bearer plt_ent_abc123..."
          }
        }
      }
@@ -75,7 +75,7 @@ An MCP client connected to your Platos instance. The client's tool catalogue fed
 
 ## Why the bearer is rejected
 
-- Token must start with `pmt_`. The recent fix (commit `adfe32e6b`) accepts both PAT and OAuth bearers; older deployments may only accept the OAuth shape.
+- Token must start with `plt_ent_`. The recent fix (commit `adfe32e6b`) accepts both PAT and OAuth bearers; older deployments may only accept the OAuth shape.
 - Token must have the right `scopes`. A PAT scoped only `agents:read` cannot execute tools.
 - Token must be in the right scope (org/project/env). MCP gateway picks the scope from the PAT.
 

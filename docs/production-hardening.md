@@ -31,11 +31,11 @@ Compose defaults to `false`; verify your `.env` isn't overriding it.
 | `clickhouse` user `default`, no password | `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD` | 32+ random chars. Compose fails-fast if `CLICKHOUSE_PASSWORD` is unset. |
 | `minio` root `platos-minio-admin` / `platos-minio-password` | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | 24+ random chars. These also become `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` for presigning. |
 | `SESSION_SECRET`, `MAGIC_LINK_SECRET` | — | `openssl rand -base64 24 \| tr -d '\n'`. Compose fails-fast if unset. |
-| `PLATOS_SESSION_SECRET` | — | Same. Must match on webapp + agent containers. Compose fails-fast if unset. |
-| `ENCRYPTION_KEY` (webapp, 32 ASCII chars) | — | `openssl rand -hex 16`. Compose fails-fast if unset. |
+| `ENCRYPTION_KEY` (webapp/operator TOTP) | — | New values: `openssl rand -hex 32`. Existing exact 32-byte UTF-8 values remain supported and must not be replaced without re-encryption. |
 | `PLATOS_ENCRYPTION_KEY` (agent, 64 hex chars) | — | `openssl rand -hex 32`. Compose fails-fast if unset. |
+| `PLATOS_MESSAGE_ENCRYPTION_KEY` (message/audit content, 64 hex chars) | — | `openssl rand -hex 32`. Must differ from the other encryption keys; missing production configuration fails closed. |
 | `MANAGED_WORKER_SECRET` — (no default since EOBD.52) | `MANAGED_WORKER_SECRET` | `openssl rand -hex 32` (≥16 chars). Compose + webapp both fail-fast if unset. |
-| `PLATOS_ADMIN_TOKEN` empty | `PLATOS_ADMIN_TOKEN` | `openssl rand -hex 32`. Shared webapp ↔ agent; set on both. |
+| `PLATOS_INTERNAL_AUTH_TOKEN` empty | `PLATOS_INTERNAL_AUTH_TOKEN` | `openssl rand -hex 32`. Dedicated callback secret; set on every caller and receiver. |
 
 Minimum generation recipe:
 
@@ -48,11 +48,11 @@ MINIO_ROOT_USER=platos-$(openssl rand -hex 4)
 MINIO_ROOT_PASSWORD=$(openssl rand -base64 24 | tr -d '\n' | tr '/+' '_-')
 SESSION_SECRET=$(openssl rand -base64 24 | tr -d '\n')
 MAGIC_LINK_SECRET=$(openssl rand -base64 24 | tr -d '\n')
-PLATOS_SESSION_SECRET=$(openssl rand -base64 24 | tr -d '\n')
-ENCRYPTION_KEY=$(openssl rand -hex 16)
+ENCRYPTION_KEY=$(openssl rand -hex 32)
 PLATOS_ENCRYPTION_KEY=$(openssl rand -hex 32)
+PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)
 MANAGED_WORKER_SECRET=$(openssl rand -hex 32)
-PLATOS_ADMIN_TOKEN=$(openssl rand -hex 32)
+PLATOS_INTERNAL_AUTH_TOKEN=$(openssl rand -hex 32)
 EOF
 ```
 
@@ -88,15 +88,15 @@ PLATOS_CORS_ORIGIN=https://platos.example.com,https://admin.platos.example.com
 
 Do **not** use `*` in production. The agent treats each entry as an exact-match origin.
 
-## 5. Rotate `PLATOS_ADMIN_TOKEN`
+## 5. Rotate `PLATOS_INTERNAL_AUTH_TOKEN`
 
-The admin token authenticates the webapp's calls into the agent's admin endpoints (scheduled attachment retention, internal health sweeps). Both services read it; they must match.
+The internal token authenticates dedicated scheduled and durable callbacks. It does not authorize operator-facing hard erasure; that route requires an organization-bound, admin-tier `plt_mcp_` credential.
 
 Rotation steps:
 
 1. Generate new: `openssl rand -hex 32`.
-2. Set `PLATOS_ADMIN_TOKEN=<new>` in the webapp container's env.
-3. Set `PLATOS_ADMIN_TOKEN=<new>` in the agent container's env.
+2. Set `PLATOS_INTERNAL_AUTH_TOKEN=<new>` in every callback caller.
+3. Set `PLATOS_INTERNAL_AUTH_TOKEN=<new>` in the agent and any webapp callback receiver.
 4. Restart both (zero-downtime if you roll one at a time behind a load balancer — the old token stays valid on the not-yet-rolled container until it restarts).
 
 No data loss on rotation. Scheduled retention tasks will resume on the next tick.
@@ -219,7 +219,7 @@ docker compose -f docker-compose.platos.yml logs --tail=200 webapp agent
 
 Common regressions to watch for after hardening:
 
-- `ENCRYPTION_KEY` length trap — the webapp's Zod does `Buffer.from(val, "utf8").length === 32`. `openssl rand -hex 32` produces 64 chars and fails boot; use `openssl rand -hex 16`.
+- Encryption-domain reuse or malformed key input — all three keys must be independent 64-character hex values generated with `openssl rand -hex 32`.
 - `PLATOS_CORS_ORIGIN` set too tightly — any browser origin not in the list gets a silent 401 on Socket.IO connect.
 - `MINIO_PUBLIC_ENDPOINT` pointing at the wrong scheme (`http://` when the proxy terminates TLS) — presigned URLs will fail signature validation.
 - `X-Forwarded-For` not passed through — the agent's scope guard rejects raw scope headers from what it thinks is an internal call (but isn't).

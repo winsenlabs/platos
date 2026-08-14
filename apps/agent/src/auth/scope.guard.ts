@@ -81,7 +81,7 @@ export interface RequestScope {
   /**
    * SECURITY (2026-07-16 audit C1/H1) — trust tier of the caller.
    *   "operator"  — the webapp/control-plane: a platform-signed session token
-   *                 (iss:"platos-platform", verified against PLATOS_SESSION_SECRET
+   *                 (iss:"platos-platform", verified against SESSION_SECRET
    *                 which only the webapp holds) OR the trusted internal
    *                 direct-header path (webapp→agent over the Docker network,
    *                 never through Caddy).
@@ -320,29 +320,19 @@ export class ScopeGuard implements CanActivate {
     // verifies the HMAC before running the turn.
     if (url.startsWith("/internal/subagent-turn")) return true;
 
-    // Admin endpoints authenticated by PLATOS_ADMIN_TOKEN header (e.g. the
+    // Internal callbacks authenticated by PLATOS_INTERNAL_AUTH_TOKEN (e.g. the
     // LiteLLM cost-catalog ingest POSTed by the scheduled trigger.dev task).
     // The endpoint itself re-verifies the token — ScopeGuard just lets it
     // through because the caller has no per-scope context.
-    // PRIVACY — hard erasure. Cross-scope BY DESIGN: a subject spans scopes, so
-    // the caller has no single scope context to present, and requiring one would
-    // guarantee an incomplete erasure. The controller re-verifies the admin
-    // token with its own timing-safe compare; this only lets the request reach
-    // it. Without this the routes 401 even with a valid admin token, because the
-    // guard's default path demands session or scope headers.
-    if (url.startsWith("/api/v1/agent/admin/privacy")) {
-      const expectedPriv = env.PLATOS_ADMIN_TOKEN;
-      const providedPriv = request.headers["x-platos-admin-token"];
-      if (expectedPriv && typeof providedPriv === "string" && providedPriv.length === expectedPriv.length) {
-        try {
-          if (crypto.timingSafeEqual(Buffer.from(providedPriv), Buffer.from(expectedPriv))) return true;
-        } catch { /* length mismatch handled above */ }
-      }
-    }
+    // PRIVACY — hard erasure self-authenticates with an organization-bound,
+    // admin-tier `plt_mcp_` credential in ErasureController. ScopeGuard must let
+    // the request reach that controller, but it must not accept any deployment
+    // secret as authorization for irreversible erasure.
+    if (url.startsWith("/api/v1/agent/admin/privacy")) return true;
 
     if (url.startsWith("/api/v1/agent/monitoring/cost/catalog")) {
-      const expected = env.PLATOS_ADMIN_TOKEN;
-      const provided = request.headers["x-platos-admin-token"];
+      const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
+      const provided = request.headers["x-platos-internal-auth"];
       // BUG-6: timing-safe comparison to prevent timing oracle attacks.
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
@@ -357,8 +347,8 @@ export class ScopeGuard implements CanActivate {
       url.startsWith("/api/v1/memory/admin/extraction-sweep") ||
       url.startsWith("/api/v1/platos/memory/admin/extraction-sweep")
     ) {
-      const expected = env.PLATOS_ADMIN_TOKEN;
-      const provided = request.headers["x-platos-admin-token"];
+      const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
+      const provided = request.headers["x-platos-internal-auth"];
       // BUG-6: timing-safe comparison to prevent timing oracle attacks.
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
@@ -404,8 +394,8 @@ export class ScopeGuard implements CanActivate {
       // the webapp and 401s with the trigger-style problem+json.
       url.startsWith("/api/v1/memory/admin/extraction-sweep")
     ) {
-      const expected = env.PLATOS_ADMIN_TOKEN;
-      const provided = request.headers["x-platos-admin-token"];
+      const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
+      const provided = request.headers["x-platos-internal-auth"];
       if (expected && typeof provided === "string" && provided.length === expected.length) {
         try {
           if (crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected))) return true;
@@ -475,7 +465,7 @@ export class ScopeGuard implements CanActivate {
           entityId: payload.entityId,
           userToken: payload.userToken,
           // Operator ONLY when platform-signed (verified against
-          // PLATOS_SESSION_SECRET) AND not a public guest. The guest-token flow
+          // SESSION_SECRET) AND not a public guest. The guest-token flow
           // (EOBD.89) mints platform-signed tokens with isGuest:true for
           // anonymous visitors — those are end-users, NOT operators. (Fable
           // verify BLOCKER A: iss-alone classification let an anonymous guest

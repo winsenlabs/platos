@@ -18,7 +18,7 @@ import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
  *    integrators use this path.
  *
  * 2. **Platform-signed** (`iss: "platos-platform"`) — signed by the Platos
- *    webapp using the shared `PLATOS_SESSION_SECRET`. Used to auth browser
+ *    webapp using the shared `SESSION_SECRET`. Used to auth browser
  *    WS connections from the Platos dashboard to the agent. `entityId` is
  *    absent. No DB lookup — verified against the platform secret directly.
  *
@@ -119,7 +119,7 @@ export class AuthService {
   /**
    * EOBD.5 — read the platform signing secret on every call instead of
    * capturing once in the constructor. Allows hot rotation: operator
-   * updates PLATOS_SESSION_SECRET + restarts nothing, and the next
+   * updates SESSION_SECRET + restarts nothing, and the next
    * validate / mint call picks up the new value.
    *
    * Live WS sessions authed under the old secret stay connected until
@@ -132,9 +132,9 @@ export class AuthService {
    * fallback for entity-signed tokens when PLATOS_TEST_MODE=true.
    * Must be set in production.
    */
-  private get platformSigningSecret(): string {
-    if (!env.PLATOS_SESSION_SECRET) throw new Error("PLATOS_SESSION_SECRET is required");
-    return env.PLATOS_SESSION_SECRET;
+  private get platformSigningSecret(): string | undefined {
+    const secret = process.env.SESSION_SECRET?.trim();
+    return secret && secret.length >= 16 ? secret : undefined;
   }
 
   // ═══════════════════════════════════════════════════════
@@ -209,11 +209,11 @@ export class AuthService {
       let serviceSecret: string | undefined;
       if (claims.iss === "platos-platform") {
         // Platform-signed token — minted by the Platos webapp for browser WS
-        // connections to the agent. Verified against PLATOS_SESSION_SECRET.
+        // connections to the agent. Verified against SESSION_SECRET.
         // entityId is absent; no DB lookup.
         if (!this.platformSigningSecret) {
           this.logger.warn(
-            "validateSessionToken: platform token received but PLATOS_SESSION_SECRET not set — rejecting.",
+            "validateSessionToken: platform token received but SESSION_SECRET not set — rejecting.",
           );
           return null;
         }
@@ -280,14 +280,14 @@ export class AuthService {
 
   /**
    * Mint a platform-issued session token (iss: "platos-platform"). Signed
-   * with PLATOS_SESSION_SECRET — NOT an entity's serviceSecret. Used by the
+   * with SESSION_SECRET — NOT an entity's serviceSecret. Used by the
    * Platos webapp to auth browser Socket.IO connections to the agent.
    *
    * The webapp is expected to mint in its Remix loader (authenticated via
    * the existing user session cookie) and pass to the browser as the `token`
    * in the Socket.IO handshake auth.
    *
-   * Returns null if PLATOS_SESSION_SECRET is not set.
+   * Returns null if SESSION_SECRET is not set.
    */
   async createPlatformSessionToken(
     claims: {
@@ -310,7 +310,7 @@ export class AuthService {
   ): Promise<string | null> {
     if (!this.platformSigningSecret) {
       this.logger.warn(
-        "createPlatformSessionToken: PLATOS_SESSION_SECRET not set — cannot mint.",
+        "createPlatformSessionToken: SESSION_SECRET not set — cannot mint.",
       );
       return null;
     }

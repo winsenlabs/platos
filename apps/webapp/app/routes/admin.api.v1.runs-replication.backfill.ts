@@ -3,7 +3,7 @@ import { type TaskRun } from "@platos/database";
 import { z } from "zod";
 import { prisma } from "~/db.server";
 import { logger } from "~/services/logger.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { runsReplicationInstance } from "~/services/runsReplicationInstance.server";
 import { FINAL_RUN_STATUSES } from "~/v3/taskStatus";
 
@@ -15,7 +15,7 @@ const MAX_BATCH_SIZE = 50;
 
 export async function action({ request }: ActionFunctionArgs) {
   // Next authenticate the request
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing API key" }, { status: 401 });

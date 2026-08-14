@@ -47,8 +47,8 @@ A self-hosted Platos at your own domain (e.g. `platos.example.com`), backed by P
    Set required vars:
 
    ```bash
-   ENCRYPTION_KEY=$(openssl rand -hex 16)
-   PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 16)
+   ENCRYPTION_KEY=$(openssl rand -hex 32)
+   PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)
    POSTGRES_PASSWORD=...        # any strong password
    MINIO_ROOT_USER=platos
    MINIO_ROOT_PASSWORD=...      # any strong password

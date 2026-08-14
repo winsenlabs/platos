@@ -6,6 +6,7 @@ import {
   ApiRunListSearchParams,
 } from "~/presenters/v3/ApiRunListPresenter.server";
 import { createLoaderPATApiRoute } from "~/services/routeBuilders/apiBuilder.server";
+import { patAllowsScope } from "~/services/patService.server";
 
 const ParamsSchema = z.object({
   projectRef: z.string(),
@@ -22,6 +23,17 @@ export const loader = createLoaderPATApiRoute(
 
     if (!project) {
       return json({ error: "Project not found" }, { status: 404 });
+    }
+    if (
+      !patAllowsScope(authentication, {
+        organizationId: project.organizationId,
+        projectId: project.id,
+      })
+    ) {
+      return json(
+        { error: "Personal access token scope does not permit this project" },
+        { status: 403 }
+      );
     }
 
     const presenter = new ApiRunListPresenter();

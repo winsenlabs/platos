@@ -72,7 +72,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
       PLATOS_ENCRYPTION_KEY: ${PLATOS_ENCRYPTION_KEY}
-      PLATOS_SESSION_SECRET: ${PLATOS_SESSION_SECRET}
+      PLATOS_MESSAGE_ENCRYPTION_KEY: ${PLATOS_MESSAGE_ENCRYPTION_KEY}
+      SESSION_SECRET: ${SESSION_SECRET}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
 ```
 
@@ -86,11 +87,11 @@ Add the three required Platos env vars:
 
 ```bash
 PLATOS_ENCRYPTION_KEY=$(openssl rand -hex 32)              # 64 hex chars = 32 bytes
-PLATOS_SESSION_SECRET=$(openssl rand -base64 24 | tr -d '\n')
+PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)      # distinct 64-hex value
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-> `PLATOS_ENCRYPTION_KEY` is validated as exactly 64 hex chars (32 bytes decoded) in `apps/agent/src/auth/secrets.service.ts:31`. Note: this is DIFFERENT from the webapp's `ENCRYPTION_KEY` which is 32 ASCII chars (`openssl rand -hex 16`). See [env-vars.md](./env-vars.md#core) for the full breakdown.
+> Generate new encryption-domain keys as 64 hex chars (32 bytes decoded), with a different value for every domain. Existing exact 32-byte UTF-8 `ENCRYPTION_KEY` values continue working verbatim and must not be replaced without re-encryption. See [env-vars.md](./env-vars.md#core).
 
 Nothing else changes. Your existing `SESSION_SECRET`, `ENCRYPTION_KEY`, `DATABASE_URL`, `REDIS_URL`, `TRIGGER_SECRET_KEY` keep working verbatim.
 

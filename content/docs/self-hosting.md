@@ -10,7 +10,7 @@ questions:
   - "What does it take to self-host Platos?"
   - "Which services run in the compose file?"
   - "How do I run database migrations against the deployed Postgres?"
-  - "Why is ENCRYPTION_KEY 32 ASCII characters and not 32 bytes hex?"
+  - "What format do the three encryption keys use?"
   - "How do I back up Postgres, ClickHouse, and MinIO?"
   - "How do I put Caddy or another TLS terminator in front?"
   - "What env vars are required vs optional?"
@@ -75,11 +75,11 @@ Migrations are idempotent; re-running is safe.
 
 **Boot-required (compose refuses to start without these):**
 
-- `ENCRYPTION_KEY`: 32 ASCII chars (use `openssl rand -hex 16`).
+- `ENCRYPTION_KEY`: new values use 64 hex chars / 32 bytes (`openssl rand -hex 32`); existing exact 32-byte UTF-8 values remain valid and must not be replaced without re-encryption.
 - `PLATOS_ENCRYPTION_KEY`: 64 hex chars / 32 bytes (`openssl rand -hex 32`).
 - `PLATOS_MESSAGE_ENCRYPTION_KEY`: 64 hex chars / 32 bytes.
-- `PLATOS_SESSION_SECRET`: any non-empty string.
-- `SESSION_SECRET` + `MAGIC_LINK_SECRET`: any non-empty strings.
+- `SESSION_SECRET`: one shared platform/session JWT secret for webapp and agent.
+- `MAGIC_LINK_SECRET`: a distinct login-link signing secret.
 - `MANAGED_WORKER_SECRET`: 64 hex chars (`openssl rand -hex 32`).
 - `TRIGGER_INTERNAL_SECRET`: 64 hex chars.
 - `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`: MinIO admin credentials.
@@ -124,7 +124,7 @@ See [Backup and restore](/guides/backup-and-restore).
 ## Common pitfalls
 
 - Do NOT run `pnpm run docker`; that brings up the legacy dev stack and collides with `docker-compose.platos.yml`. The platos compose is the only source of truth.
-- The `ENCRYPTION_KEY` is 32 ASCII chars (16 bytes hex). The Zod validator rejects 64-char hex strings; the comment "32-byte hex" elsewhere in old docs is misleading.
+- Generate new encryption-domain keys independently as 64-hex-character (32-byte) values. Existing 32-byte UTF-8 `ENCRYPTION_KEY` values remain supported; reusing key material is rejected.
 - ClickHouse 25.3 broke JSON-column VIEWs; the `tmp_eric_*` views were dropped in Theme R.3. If you import older migrations, re-drop.
 - `pnpm-workspace.yaml` includes `docs` which is `.dockerignore`d, so Dockerfiles run `RUN sed -i '/docs/d' pnpm-workspace.yaml` before `pnpm install`. If you fork the build, mirror that pattern.
 - A `references/entity-hello-world/` standalone example exists outside the workspace (drift D-010). The quickstart guide tells you to install it with its own `package.json`; do not try to make pnpm pick it up from the root.

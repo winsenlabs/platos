@@ -1,8 +1,6 @@
 import { intro, log, outro, select } from "@clack/prompts";
 import { recordSpanException } from "@platos/core/v3/workers";
 import { Command } from "commander";
-import open from "open";
-import pRetry, { AbortError } from "p-retry";
 import { z } from "zod";
 import { CliApiClient } from "../apiClient.js";
 import {
@@ -13,34 +11,28 @@ import {
   tracer,
   wrapCommandAction,
 } from "../cli/common.js";
-import { chalkLink, prettyError } from "../utilities/cliOutput.js";
+import { prettyError } from "../utilities/cliOutput.js";
 import {
   readAuthConfigProfile,
   writeAuthConfigProfile,
   writeAuthConfigCurrentProfileName,
 } from "../utilities/configFiles.js";
 import { printInitialBanner } from "../utilities/initialBanner.js";
-import {
-  awaitAndDisplayPlatformNotification,
-  fetchPlatformNotification,
-} from "../utilities/platformNotifications.js";
 import { LoginResult } from "../utilities/session.js";
 import { whoAmI } from "./whoami.js";
 import { logger } from "../utilities/logger.js";
-import { spinner } from "../utilities/windows.js";
-import { isLinuxServer } from "../utilities/linux.js";
 import { VERSION } from "../version.js";
 import { env, isCI } from "std-env";
 import { CLOUD_API_URL } from "../consts.js";
 import {
   validateAccessToken,
-  NotPersonalAccessTokenError,
   NotAccessTokenError,
 } from "../utilities/accessTokens.js";
 import { links } from "@platos/core/v3";
 
 export const LoginCommandOptions = CommonCommandOptions.extend({
   apiUrl: z.string(),
+  accessToken: z.string().optional(),
 });
 
 export type LoginCommandOptions = z.infer<typeof LoginCommandOptions>;
@@ -49,7 +41,8 @@ export function configureLoginCommand(program: Command) {
   return commonOptions(
     program
       .command("login")
-      .description("Login with Trigger.dev so you can perform authenticated actions")
+      .description("Login with a Platos API token so you can perform authenticated actions")
+      .option("--access-token <token>", "A Platos API token starting with plt_pat_")
   )
     .version(VERSION, "-v, --version", "Display the version number")
     .action(async (options) => {
@@ -67,7 +60,12 @@ export async function loginCommand(options: unknown) {
 }
 
 async function _loginCommand(options: LoginCommandOptions) {
-  return login({ defaultApiUrl: options.apiUrl, embedded: false, profile: options.profile });
+  return login({
+    defaultApiUrl: options.apiUrl,
+    embedded: false,
+    profile: options.profile,
+    accessToken: options.accessToken,
+  });
 }
 
 export type LoginOptions = {
@@ -75,6 +73,7 @@ export type LoginOptions = {
   embedded?: boolean;
   profile?: string;
   silent?: boolean;
+  accessToken?: string;
 };
 
 export async function login(options?: LoginOptions): Promise<LoginResult> {
@@ -96,7 +95,7 @@ export async function login(options?: LoginOptions): Promise<LoginResult> {
         intro("Logging in to Trigger.dev");
       }
 
-      const accessTokenFromEnv = env.TRIGGER_ACCESS_TOKEN;
+      const accessTokenFromEnv = opts.accessToken ?? env.TRIGGER_ACCESS_TOKEN;
 
       if (accessTokenFromEnv) {
         const validationResult = validateAccessToken(accessTokenFromEnv);
@@ -105,7 +104,7 @@ export async function login(options?: LoginOptions): Promise<LoginResult> {
           // We deliberately don't surface the existence of organization access tokens to the user for now, as they're only used internally.
           // Once we expose them in the application, we should also communicate that option here.
           throw new NotAccessTokenError(
-            "Your TRIGGER_ACCESS_TOKEN is not a Personal Access Token, they start with 'tr_pat_'. You can generate one here: https://cloud.trigger.dev/account/tokens"
+            "The access token must be a Platos API token starting with 'plt_pat_'. Generate one at /account/api-tokens."
           );
         }
 
@@ -118,6 +117,12 @@ export async function login(options?: LoginOptions): Promise<LoginResult> {
 
         if (!userData.success) {
           throw new Error(userData.error);
+        }
+
+        if (opts.accessToken) {
+          const profileName = options?.profile ?? "default";
+          writeAuthConfigProfile(auth, options?.profile);
+          writeAuthConfigCurrentProfileName(profileName);
         }
 
         return {
@@ -237,9 +242,9 @@ export async function login(options?: LoginOptions): Promise<LoginResult> {
         const dashboardUrl = isSelfHosted ? apiUrl : "https://cloud.trigger.dev";
 
         throw new Error(
-          `Authentication required in CI environment. Please set the TRIGGER_ACCESS_TOKEN environment variable with a Personal Access Token.
+          `Authentication required in CI environment. Set TRIGGER_ACCESS_TOKEN to a Platos API token beginning with plt_pat_.
 
-- You can generate one here: ${dashboardUrl}/account/tokens
+- You can generate one here: ${dashboardUrl}/account/api-tokens
 
 - For more information, see: ${links.docs.gitHubActions.personalAccessToken}`
         );
@@ -249,190 +254,21 @@ export async function login(options?: LoginOptions): Promise<LoginResult> {
         log.step("You must login to continue.");
       }
 
-      const apiClient = new CliApiClient(authConfig?.apiUrl ?? opts.defaultApiUrl);
-
-      //generate authorization code
-      const authorizationCodeResult = await createAuthorizationCode(apiClient);
-
-      //Link the user to the authorization code
-      log.step(
-        `Please visit the following URL to login:\n${chalkLink(authorizationCodeResult.url)}`
+      const apiUrl = authConfig?.apiUrl ?? opts.defaultApiUrl ?? CLOUD_API_URL;
+      const dashboardUrl = apiUrl === CLOUD_API_URL ? "https://cloud.trigger.dev" : apiUrl;
+      throw new SkipLoggingError(
+        `Authentication requires a Platos API token. Generate one at ${dashboardUrl}/account/api-tokens, then run \`trigger.dev login --access-token plt_pat_...\` or set TRIGGER_ACCESS_TOKEN.`
       );
-
-      if (await isLinuxServer()) {
-        log.message("Please install `xdg-utils` to automatically open the login URL.");
-      } else {
-        await open(authorizationCodeResult.url);
-      }
-
-      //poll for personal access token (we need to poll for it)
-      const getPersonalAccessTokenSpinner = spinner();
-      getPersonalAccessTokenSpinner.start("Waiting for you to login");
-      try {
-        const indexResult = await pRetry(
-          () => getPersonalAccessToken(apiClient, authorizationCodeResult.authorizationCode),
-          {
-            //this means we're polling, same distance between each attempt
-            factor: 1,
-            retries: 60,
-            minTimeout: 1000,
-          }
-        );
-
-        getPersonalAccessTokenSpinner.stop(`Logged in with token ${indexResult.obfuscatedToken}`);
-
-        writeAuthConfigProfile(
-          {
-            accessToken: indexResult.token,
-            apiUrl: opts.defaultApiUrl,
-          },
-          options?.profile
-        );
-
-        // Only fetch notifications for standalone login, not when embedded in dev
-        // (dev.ts handles its own notification fetch to avoid double counting)
-        const notificationPromise = opts.embedded
-          ? undefined
-          : fetchPlatformNotification({
-              apiClient: new CliApiClient(
-                authConfig?.apiUrl ?? opts.defaultApiUrl,
-                indexResult.token
-              ),
-            });
-
-        const whoAmIResult = await whoAmI(
-          {
-            profile: options?.profile ?? "default",
-            skipTelemetry: !span.isRecording(),
-            logLevel: logger.loggerLevel,
-          },
-          opts.embedded
-        );
-
-        if (!whoAmIResult.success) {
-          throw new Error(whoAmIResult.error);
-        }
-
-        const profileName = options?.profile ?? "default";
-
-        // Set this profile as the current default
-        writeAuthConfigCurrentProfileName(profileName);
-
-        if (opts.embedded) {
-          log.step("Logged in successfully");
-        } else {
-          outro("Logged in successfully");
-        }
-
-        await awaitAndDisplayPlatformNotification(notificationPromise);
-
-        span.end();
-
-        return {
-          ok: true as const,
-          profile: profileName,
-          userId: whoAmIResult.data.userId,
-          email: whoAmIResult.data.email,
-          dashboardUrl: whoAmIResult.data.dashboardUrl,
-          auth: {
-            accessToken: indexResult.token,
-            apiUrl: authConfig?.apiUrl ?? opts.defaultApiUrl,
-            tokenType: "personal" as const,
-          },
-        };
-      } catch (e) {
-        getPersonalAccessTokenSpinner.stop(`Failed to get access token`);
-
-        if (e instanceof AbortError) {
-          log.error(e.message);
-        }
-
-        recordSpanException(span, e);
-        span.end();
-
-        return {
-          ok: false as const,
-          error: e instanceof Error ? e.message : String(e),
-        };
-      }
     } catch (e) {
       recordSpanException(span, e);
       span.end();
 
       if (options?.embedded) {
-        if (e instanceof NotPersonalAccessTokenError) {
-          throw e;
-        }
-
         return {
           ok: false as const,
           error: e instanceof Error ? e.message : String(e),
         };
       }
-
-      throw e;
-    }
-  });
-}
-
-export async function getPersonalAccessToken(apiClient: CliApiClient, authorizationCode: string) {
-  return await tracer.startActiveSpan("getPersonalAccessToken", async (span) => {
-    try {
-      const token = await apiClient.getPersonalAccessToken(authorizationCode);
-
-      if (!token.success) {
-        throw new AbortError(token.error);
-      }
-
-      if (!token.data.token) {
-        throw new Error("No token found yet");
-      }
-
-      span.end();
-
-      return {
-        token: token.data.token.token,
-        obfuscatedToken: token.data.token.obfuscatedToken,
-      };
-    } catch (e) {
-      if (e instanceof AbortError) {
-        recordSpanException(span, e);
-      }
-
-      span.end();
-
-      throw e;
-    }
-  });
-}
-
-async function createAuthorizationCode(apiClient: CliApiClient) {
-  return await tracer.startActiveSpan("createAuthorizationCode", async (span) => {
-    try {
-      //generate authorization code
-      const createAuthCodeSpinner = spinner();
-      createAuthCodeSpinner.start("Creating authorization code");
-      const authorizationCodeResult = await apiClient.createAuthorizationCode();
-
-      if (!authorizationCodeResult.success) {
-        createAuthCodeSpinner.stop(
-          `Failed to create authorization code\n${authorizationCodeResult.error}`
-        );
-
-        throw new SkipLoggingError(
-          `Failed to create authorization code\n${authorizationCodeResult.error}`
-        );
-      }
-
-      createAuthCodeSpinner.stop("Created authorization code");
-
-      span.end();
-
-      return authorizationCodeResult.data;
-    } catch (e) {
-      recordSpanException(span, e);
-
-      span.end();
 
       throw e;
     }

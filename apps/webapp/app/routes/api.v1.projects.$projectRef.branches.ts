@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "~/db.server";
 import { authenticateRequest } from "~/services/apiAuth.server";
 import { logger } from "~/services/logger.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT, patAllowsScope } from "~/services/patService.server";
 import { UpsertBranchService } from "~/services/upsertBranch.server";
 
 const ParamsSchema = z.object({
@@ -40,6 +40,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const project = await prisma.project.findFirst({
     select: {
       id: true,
+      organizationId: true,
     },
     where: {
       externalRef: projectRef,
@@ -58,6 +59,18 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (!project) {
     return json({ error: "Project not found" }, { status: 404 });
   }
+  if (
+    authenticationResult.type === "personalAccessToken" &&
+    !patAllowsScope(authenticationResult.result, {
+      organizationId: project.organizationId,
+      projectId: project.id,
+    })
+  ) {
+    return json(
+      { error: "Personal access token scope does not permit this project" },
+      { status: 403 }
+    );
+  }
 
   const [error, body] = await tryCatch(request.json());
   if (error) {
@@ -72,6 +85,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const previewEnvironment = await prisma.runtimeEnvironment.findFirst({
     select: {
       id: true,
+      organizationId: true,
     },
     where: {
       projectId: project.id,
@@ -108,7 +122,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing Access Token" }, { status: 401 });
   }
@@ -139,6 +153,17 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   if (!project) {
     return json({ error: "Project not found" }, { status: 404 });
+  }
+  if (
+    !patAllowsScope(authenticationResult, {
+      organizationId: project.organizationId,
+      projectId: project.id,
+    })
+  ) {
+    return json(
+      { error: "Personal access token scope does not permit this project" },
+      { status: 403 }
+    );
   }
 
   const previewEnvironment = await prisma.runtimeEnvironment.findFirst({

@@ -1,7 +1,7 @@
 /**
  * Theme MCPF-W3 — MCP-specific token + client management tools.
  *
- *   • `mcp.list_tokens`  — list per-entity bearer PATs (`pmt_*`) used for
+ *   • `mcp.list_tokens`  — list per-entity bearer PATs (`plt_ent_*`) used for
  *                          service-to-service MCP access. Aggregated across
  *                          every entity in scope.
  *   • `mcp.list_clients` — list MCP-issuing OAuth clients (PIFSP-21 entity-
@@ -39,7 +39,7 @@ export function buildMcpToolHandlers(deps: {
     {
       name: "mcp.list_tokens",
       description:
-        "List MCP bearer PATs (`pmt_*`) across every entity in scope. " +
+        "List MCP bearer PATs (`plt_ent_*`) across every entity in scope. " +
         "Aggregates `entities.list` → `bearerTokens.list(entityPk)` for " +
         "each entity that has an `mcpConfig` row. Metadata only — token " +
         "hashes are never returned. To mint a new token, use " +
