@@ -20,8 +20,12 @@ describe("Platos auth primitives", () => {
 
     expect(encrypted).not.toContain("JBSWY3DPEHPK3PXP");
     expect(decryptSecret(encrypted, key)).toBe("JBSWY3DPEHPK3PXP");
-    const replacement = encrypted.endsWith("A") ? "B" : "A";
-    expect(() => decryptSecret(`${encrypted.slice(0, -1)}${replacement}`, key)).toThrow();
+    const [iv, encodedTag, ciphertext] = encrypted.split(".");
+    const tag = Buffer.from(encodedTag, "base64url");
+    tag[0] ^= 1;
+    expect(() =>
+      decryptSecret(`${iv}.${tag.toString("base64url")}.${ciphertext}`, key)
+    ).toThrow();
   });
 
   test("implements the RFC 6238 SHA-1 six-digit TOTP semantics", () => {

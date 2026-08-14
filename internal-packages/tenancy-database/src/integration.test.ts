@@ -390,7 +390,7 @@ describe("domain schema integration", () => {
       data: {
         identityId: seeded.endUserIdentity.id,
         environmentId: seeded.environment.id,
-        tokenHash: "wrong-end-user-tier",
+        tokenHash: "f".repeat(64),
         tier: PrincipalTier.OPERATOR,
         expiresAt: future(),
       },
@@ -398,7 +398,7 @@ describe("domain schema integration", () => {
     await expect(control.operatorSession.create({
       data: {
         userId: seeded.user.id,
-        tokenHash: "wrong-operator-tier",
+        tokenHash: "0".repeat(64),
         tier: PrincipalTier.END_USER,
         expiresAt: future(),
       },
