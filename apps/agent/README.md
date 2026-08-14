@@ -64,16 +64,10 @@ The service runs on port 3100 by default.
 - `ws://localhost:3100/agent` — agent chat (token streaming)
 - `ws://localhost:3100/tools/sync` — tool registration sync
 
-### Test Endpoints (PLATOS_TEST_MODE=true)
-- `GET /test/ping` — test mode verification
-- `POST /test/tools/register` — register tools for testing
-- `GET /test/tools/find` — BM25 search test
-- `GET /test/tools/stats` — index stats
-- `POST /test/auth/create-session` — create test session token
-- `POST /test/auth/validate-session` — validate token
-- `GET /test/redis/ping` — Redis connectivity
-- `GET /test/schemas` — API response schema documentation
-- `GET /test/healthcheck/full` — comprehensive health check
+### Test mode
+`PLATOS_TEST_MODE=true` selects deterministic providers for local tests. The
+main application no longer registers unauthenticated `/test/*` token-minting
+controllers, and strict production builds remove their compiled files.
 
 ## Environment Variables
 
@@ -82,7 +76,7 @@ The service runs on port 3100 by default.
 | `DATABASE_URL` | Yes | — | PostgreSQL connection string |
 | `REDIS_URL` | Yes | `redis://localhost:6379` | Redis connection string |
 | `PLATOS_AGENT_PORT` | No | `3100` | HTTP port |
-| `PLATOS_TEST_MODE` | No | `false` | Enable test endpoints |
+| `PLATOS_TEST_MODE` | No | `false` | Enable deterministic local test providers |
 | `PLATOS_DEFAULT_MODEL` | No | `anthropic:claude-sonnet-4-20250514` | Default LLM model |
 | `PLATOS_ENCRYPTION_KEY` | Prod | — | 32-byte hex for secrets encryption |
 | `PLATOS_SESSION_SECRET` | Prod | — | Session token signing secret |

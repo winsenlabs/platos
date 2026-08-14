@@ -214,7 +214,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     ? `${appOrigin}/embed/${encodeURIComponent(selectedAgentId)}`
     : "";
 
-  const devMintEnabled = process.env.PLATOS_TEST_MODE === "true";
+  const devMintEnabled =
+    process.env.NODE_ENV !== "production" && process.env.PLATOS_TEST_MODE === "true";
 
   // Origin for provider-facing inbound webhook URLs. /connect's rest.baseUrl
   // is the *service* URL, which defaults to http://localhost:3100 (or is empty

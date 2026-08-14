@@ -1415,6 +1415,9 @@ importers:
       '@testcontainers/postgresql':
         specifier: ^10.28.0
         version: 10.28.0
+      '@types/node':
+        specifier: 20.14.14
+        version: 20.14.14
       prisma:
         specifier: 6.14.0
         version: 6.14.0(magicast@0.3.5)(typescript@5.5.4)

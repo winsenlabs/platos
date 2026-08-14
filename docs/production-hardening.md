@@ -6,12 +6,18 @@ If you're just kicking the tires locally, skip to [quickstart.md](./quickstart.m
 
 ## 1. Disable `PLATOS_TEST_MODE`
 
-`PLATOS_TEST_MODE=true` exposes the test endpoints under `/test/*` on the agent and unlocks a dev-fallback session secret path. Both are fatal if exposed publicly.
+`PLATOS_TEST_MODE=true` selects deterministic providers and a development-only
+session fallback. The production build does not register `/test/*`, removes the
+compiled test controller directory, and excludes the webapp's development
+token-mint route from the Remix route manifest. Keep test mode disabled anyway:
 
 ```bash
 # .env — production
 PLATOS_TEST_MODE=false
 ```
+
+The dashboard has no shared passcode or environment-variable backdoor. Login is
+limited to magic link and configured GitHub/Google OAuth providers.
 
 Compose defaults to `false`; verify your `.env` isn't overriding it.
 

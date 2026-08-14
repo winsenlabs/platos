@@ -8,6 +8,15 @@ CREATE TYPE "public"."PrincipalTier" AS ENUM ('OPERATOR', 'END_USER');
 CREATE TYPE "public"."OrganizationRole" AS ENUM ('OWNER', 'ADMIN', 'MEMBER');
 
 -- CreateEnum
+CREATE TYPE "public"."OperatorIdentityProvider" AS ENUM ('MAGIC_LINK', 'GITHUB', 'GOOGLE');
+
+-- CreateEnum
+CREATE TYPE "public"."AuthRateLimitAction" AS ENUM ('LOGIN', 'INVITE_ACCEPT', 'MFA_VERIFY');
+
+-- CreateEnum
+CREATE TYPE "public"."ImpersonationAction" AS ENUM ('START', 'STOP');
+
+-- CreateEnum
 CREATE TYPE "public"."ProjectRole" AS ENUM ('ADMIN', 'EDITOR', 'VIEWER');
 
 -- CreateEnum
@@ -36,6 +45,7 @@ CREATE TABLE "public"."User" (
     "id" UUID NOT NULL,
     "email" TEXT NOT NULL,
     "displayName" TEXT,
+    "platformOperator" BOOLEAN NOT NULL DEFAULT false,
     "disabledAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -49,12 +59,94 @@ CREATE TABLE "public"."OperatorSession" (
     "tokenHash" TEXT NOT NULL,
     "tier" "public"."PrincipalTier" NOT NULL DEFAULT 'OPERATOR',
     "userId" UUID NOT NULL,
+    "impersonatedUserId" UUID,
+    "parentSessionId" UUID,
+    "mfaVerifiedAt" TIMESTAMP(3),
     "expiresAt" TIMESTAMP(3) NOT NULL,
     "revokedAt" TIMESTAMP(3),
     "lastSeenAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "OperatorSession_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."OperatorIdentity" (
+    "id" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "provider" "public"."OperatorIdentityProvider" NOT NULL,
+    "subject" TEXT NOT NULL,
+    "providerEmail" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "OperatorIdentity_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."MagicLinkToken" (
+    "id" UUID NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "consumedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "MagicLinkToken_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."OperatorMfaTotp" (
+    "id" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "encryptedSecret" TEXT,
+    "enabledAt" TIMESTAMP(3),
+    "lastUsedCounter" BIGINT,
+    "pendingEncryptedSecret" TEXT,
+    "pendingExpiresAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "OperatorMfaTotp_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."OperatorMfaRecoveryCode" (
+    "id" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "codeHash" TEXT NOT NULL,
+    "consumedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "OperatorMfaRecoveryCode_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."AuthRateLimitBucket" (
+    "id" UUID NOT NULL,
+    "action" "public"."AuthRateLimitAction" NOT NULL,
+    "identifierHash" TEXT NOT NULL,
+    "windowStart" TIMESTAMP(3) NOT NULL,
+    "attempts" INTEGER NOT NULL DEFAULT 1,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AuthRateLimitBucket_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."ImpersonationAudit" (
+    "id" UUID NOT NULL,
+    "action" "public"."ImpersonationAction" NOT NULL,
+    "actorUserId" UUID NOT NULL,
+    "targetUserId" UUID NOT NULL,
+    "impersonationSessionId" UUID NOT NULL,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ImpersonationAudit_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -87,6 +179,7 @@ CREATE TABLE "public"."OrganizationInvitation" (
     "id" UUID NOT NULL,
     "organizationId" UUID NOT NULL,
     "inviterId" UUID,
+    "acceptedByUserId" UUID,
     "email" TEXT NOT NULL,
     "role" "public"."OrganizationRole" NOT NULL DEFAULT 'MEMBER',
     "tokenHash" TEXT NOT NULL,
@@ -1239,7 +1332,55 @@ CREATE UNIQUE INDEX "OperatorSession_tokenHash_key" ON "public"."OperatorSession
 CREATE INDEX "OperatorSession_userId_expiresAt_idx" ON "public"."OperatorSession"("userId", "expiresAt");
 
 -- CreateIndex
+CREATE INDEX "OperatorSession_impersonatedUserId_expiresAt_idx" ON "public"."OperatorSession"("impersonatedUserId", "expiresAt");
+
+-- CreateIndex
+CREATE INDEX "OperatorSession_parentSessionId_idx" ON "public"."OperatorSession"("parentSessionId");
+
+-- CreateIndex
 CREATE INDEX "OperatorSession_expiresAt_idx" ON "public"."OperatorSession"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "OperatorIdentity_providerEmail_idx" ON "public"."OperatorIdentity"("providerEmail");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OperatorIdentity_provider_subject_key" ON "public"."OperatorIdentity"("provider", "subject");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OperatorIdentity_userId_provider_key" ON "public"."OperatorIdentity"("userId", "provider");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "MagicLinkToken_tokenHash_key" ON "public"."MagicLinkToken"("tokenHash");
+
+-- CreateIndex
+CREATE INDEX "MagicLinkToken_email_expiresAt_idx" ON "public"."MagicLinkToken"("email", "expiresAt");
+
+-- CreateIndex
+CREATE INDEX "MagicLinkToken_expiresAt_idx" ON "public"."MagicLinkToken"("expiresAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OperatorMfaTotp_userId_key" ON "public"."OperatorMfaTotp"("userId");
+
+-- CreateIndex
+CREATE INDEX "OperatorMfaRecoveryCode_userId_consumedAt_idx" ON "public"."OperatorMfaRecoveryCode"("userId", "consumedAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OperatorMfaRecoveryCode_userId_codeHash_key" ON "public"."OperatorMfaRecoveryCode"("userId", "codeHash");
+
+-- CreateIndex
+CREATE INDEX "AuthRateLimitBucket_expiresAt_idx" ON "public"."AuthRateLimitBucket"("expiresAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AuthRateLimitBucket_action_identifierHash_windowStart_key" ON "public"."AuthRateLimitBucket"("action", "identifierHash", "windowStart");
+
+-- CreateIndex
+CREATE INDEX "ImpersonationAudit_actorUserId_createdAt_idx" ON "public"."ImpersonationAudit"("actorUserId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "ImpersonationAudit_targetUserId_createdAt_idx" ON "public"."ImpersonationAudit"("targetUserId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "ImpersonationAudit_impersonationSessionId_createdAt_idx" ON "public"."ImpersonationAudit"("impersonationSessionId", "createdAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Organization_slug_key" ON "public"."Organization"("slug");
@@ -1267,6 +1408,9 @@ CREATE INDEX "OrganizationInvitation_organizationId_email_expiresAt_idx" ON "pub
 
 -- CreateIndex
 CREATE INDEX "OrganizationInvitation_inviterId_idx" ON "public"."OrganizationInvitation"("inviterId");
+
+-- CreateIndex
+CREATE INDEX "OrganizationInvitation_acceptedByUserId_idx" ON "public"."OrganizationInvitation"("acceptedByUserId");
 
 -- CreateIndex
 CREATE INDEX "OrganizationInvitation_expiresAt_idx" ON "public"."OrganizationInvitation"("expiresAt");
@@ -1710,6 +1854,30 @@ CREATE UNIQUE INDEX "ErasureOperation_organizationId_idempotencyKey_key" ON "pub
 ALTER TABLE "public"."OperatorSession" ADD CONSTRAINT "OperatorSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."OperatorSession" ADD CONSTRAINT "OperatorSession_impersonatedUserId_fkey" FOREIGN KEY ("impersonatedUserId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."OperatorSession" ADD CONSTRAINT "OperatorSession_parentSessionId_fkey" FOREIGN KEY ("parentSessionId") REFERENCES "public"."OperatorSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."OperatorIdentity" ADD CONSTRAINT "OperatorIdentity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."OperatorMfaTotp" ADD CONSTRAINT "OperatorMfaTotp_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."OperatorMfaRecoveryCode" ADD CONSTRAINT "OperatorMfaRecoveryCode_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."ImpersonationAudit" ADD CONSTRAINT "ImpersonationAudit_actorUserId_fkey" FOREIGN KEY ("actorUserId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."ImpersonationAudit" ADD CONSTRAINT "ImpersonationAudit_targetUserId_fkey" FOREIGN KEY ("targetUserId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."ImpersonationAudit" ADD CONSTRAINT "ImpersonationAudit_impersonationSessionId_fkey" FOREIGN KEY ("impersonationSessionId") REFERENCES "public"."OperatorSession"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."OrganizationMembership" ADD CONSTRAINT "OrganizationMembership_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1720,6 +1888,9 @@ ALTER TABLE "public"."OrganizationInvitation" ADD CONSTRAINT "OrganizationInvita
 
 -- AddForeignKey
 ALTER TABLE "public"."OrganizationInvitation" ADD CONSTRAINT "OrganizationInvitation_inviterId_fkey" FOREIGN KEY ("inviterId") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."OrganizationInvitation" ADD CONSTRAINT "OrganizationInvitation_acceptedByUserId_fkey" FOREIGN KEY ("acceptedByUserId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Project" ADD CONSTRAINT "Project_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2183,7 +2354,6 @@ ALTER TABLE "public"."EntityToolPolicy" ADD CONSTRAINT "EntityToolPolicy_toolId_
 -- AddForeignKey
 ALTER TABLE "public"."ErasureOperation" ADD CONSTRAINT "ErasureOperation_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
-
 -- Prisma-inexpressible value constraints.
 ALTER TABLE "public"."OperatorSession"
   ADD CONSTRAINT "OperatorSession_tier_check" CHECK ("tier" = 'OPERATOR');
@@ -2642,3 +2812,122 @@ CREATE TRIGGER "PersonalAccessToken_ancestry" BEFORE INSERT OR UPDATE ON "public
 CREATE TRIGGER "OAuthAccessToken_ancestry" BEFORE INSERT OR UPDATE ON "public"."OAuthAccessToken" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "OAuthRefreshToken_ancestry" BEFORE INSERT OR UPDATE ON "public"."OAuthRefreshToken" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "McpBearerToken_ancestry" BEFORE INSERT OR UPDATE ON "public"."McpBearerToken" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
+
+-- Platos-native authentication invariants.
+ALTER TABLE "public"."User"
+  ADD CONSTRAINT "User_email_normalized_check" CHECK ("email" = lower(btrim("email")));
+ALTER TABLE "public"."MagicLinkToken"
+  ADD CONSTRAINT "MagicLinkToken_email_normalized_check" CHECK ("email" = lower(btrim("email")));
+ALTER TABLE "public"."OrganizationInvitation"
+  ADD CONSTRAINT "OrganizationInvitation_email_normalized_check" CHECK ("email" = lower(btrim("email")));
+ALTER TABLE "public"."OperatorSession"
+  ADD CONSTRAINT "OperatorSession_tokenHash_check" CHECK ("tokenHash" ~ '^[0-9a-f]{64}$');
+ALTER TABLE "public"."MagicLinkToken"
+  ADD CONSTRAINT "MagicLinkToken_tokenHash_check" CHECK ("tokenHash" ~ '^[0-9a-f]{64}$');
+ALTER TABLE "public"."OrganizationInvitation"
+  ADD CONSTRAINT "OrganizationInvitation_tokenHash_check" CHECK ("tokenHash" ~ '^[0-9a-f]{64}$');
+ALTER TABLE "public"."OperatorMfaRecoveryCode"
+  ADD CONSTRAINT "OperatorMfaRecoveryCode_codeHash_check" CHECK ("codeHash" ~ '^[0-9a-f]{64}$');
+ALTER TABLE "public"."AuthRateLimitBucket"
+  ADD CONSTRAINT "AuthRateLimitBucket_identifierHash_check" CHECK ("identifierHash" ~ '^[0-9a-f]{64}$');
+ALTER TABLE "public"."OperatorMfaTotp"
+  ADD CONSTRAINT "OperatorMfaTotp_active_pending_shape_check" CHECK (
+    (("enabledAt" IS NULL AND "encryptedSecret" IS NULL AND "lastUsedCounter" IS NULL) OR
+     ("enabledAt" IS NOT NULL AND "encryptedSecret" IS NOT NULL)) AND
+    (("pendingEncryptedSecret" IS NULL AND "pendingExpiresAt" IS NULL) OR
+     ("pendingEncryptedSecret" IS NOT NULL AND "pendingExpiresAt" IS NOT NULL))
+  );
+
+-- Exactly one unconsumed, unrevoked invitation may exist for an organization
+-- and normalized email. issueInvitation also takes an advisory transaction
+-- lock so concurrent replacements serialize instead of leaking a unique error.
+CREATE UNIQUE INDEX "OrganizationInvitation_one_active_per_email"
+  ON "public"."OrganizationInvitation" ("organizationId", "email")
+  WHERE "acceptedAt" IS NULL AND "revokedAt" IS NULL;
+
+-- Impersonation sessions are subordinate to the actor's parent session. A
+-- child cannot outlive or survive revocation of that parent.
+CREATE FUNCTION "public"."enforce_operator_session_parent"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW."parentSessionId" IS NOT NULL AND NOT EXISTS (
+    SELECT 1
+    FROM "public"."OperatorSession" parent
+    WHERE parent.id = NEW."parentSessionId"
+      AND parent."userId" = NEW."userId"
+      AND parent."impersonatedUserId" IS NULL
+      AND parent."revokedAt" IS NULL
+      AND parent."expiresAt" >= NEW."expiresAt"
+  ) THEN
+    RAISE EXCEPTION 'OperatorSession parent must be active and cannot expire before its child'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "OperatorSession_parent_active"
+  BEFORE INSERT OR UPDATE OF "parentSessionId", "userId", "expiresAt" ON "public"."OperatorSession"
+  FOR EACH ROW EXECUTE FUNCTION "public"."enforce_operator_session_parent"();
+
+CREATE FUNCTION "public"."cascade_operator_session_revocation"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD."revokedAt" IS NULL AND NEW."revokedAt" IS NOT NULL THEN
+    UPDATE "public"."OperatorSession"
+      SET "revokedAt" = COALESCE("revokedAt", NEW."revokedAt")
+      WHERE "parentSessionId" = NEW.id AND "revokedAt" IS NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "OperatorSession_cascade_revocation"
+  AFTER UPDATE OF "revokedAt" ON "public"."OperatorSession"
+  FOR EACH ROW EXECUTE FUNCTION "public"."cascade_operator_session_revocation"();
+
+-- Membership privilege changes invalidate every active dashboard session even
+-- when a caller bypasses the TypeScript auth service.
+CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()
+RETURNS TRIGGER AS $$
+DECLARE
+  affected_user_id UUID;
+BEGIN
+  affected_user_id := COALESCE(NEW."userId", OLD."userId");
+  IF TG_OP = 'DELETE'
+     OR OLD."role" IS DISTINCT FROM NEW."role"
+     OR OLD."deactivatedAt" IS DISTINCT FROM NEW."deactivatedAt" THEN
+    UPDATE "public"."OperatorSession"
+      SET "revokedAt" = COALESCE("revokedAt", CURRENT_TIMESTAMP)
+      WHERE ("userId" = affected_user_id OR "impersonatedUserId" = affected_user_id)
+        AND "revokedAt" IS NULL;
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "OrganizationMembership_revoke_sessions_update"
+  AFTER UPDATE OF "role", "deactivatedAt" ON "public"."OrganizationMembership"
+  FOR EACH ROW EXECUTE FUNCTION "public"."revoke_operator_sessions_for_membership_change"();
+CREATE TRIGGER "OrganizationMembership_revoke_sessions_delete"
+  AFTER DELETE ON "public"."OrganizationMembership"
+  FOR EACH ROW EXECUTE FUNCTION "public"."revoke_operator_sessions_for_membership_change"();
+
+-- Impersonation audit is append-only. Corrections are represented by a new
+-- STOP/START row; existing evidence cannot be edited, deleted, or truncated.
+CREATE FUNCTION "public"."reject_impersonation_audit_mutation"()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'ImpersonationAudit is immutable' USING ERRCODE = '23514';
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "ImpersonationAudit_immutable_update"
+  BEFORE UPDATE ON "public"."ImpersonationAudit"
+  FOR EACH ROW EXECUTE FUNCTION "public"."reject_impersonation_audit_mutation"();
+CREATE TRIGGER "ImpersonationAudit_immutable_delete"
+  BEFORE DELETE ON "public"."ImpersonationAudit"
+  FOR EACH ROW EXECUTE FUNCTION "public"."reject_impersonation_audit_mutation"();
+CREATE TRIGGER "ImpersonationAudit_immutable_truncate"
+  BEFORE TRUNCATE ON "public"."ImpersonationAudit"
+  FOR EACH STATEMENT EXECUTE FUNCTION "public"."reject_impersonation_audit_mutation"();
+
+-- Runtime roles should receive SELECT/INSERT only. Remove mutation privileges
+-- inherited through PUBLIC as defense in depth; the triggers also bind owners.
+REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."ImpersonationAudit" FROM PUBLIC;

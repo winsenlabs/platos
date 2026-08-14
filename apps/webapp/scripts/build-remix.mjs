@@ -18,7 +18,10 @@ async function run() {
   console.log(
     `[webapp-build] production source maps ${args.includes("--sourcemap") ? "enabled" : "disabled"}`,
   );
-  const child = spawn(binary, args, { stdio: ["inherit", "pipe", "pipe"], env: process.env });
+  const child = spawn(binary, args, {
+    stdio: ["inherit", "pipe", "pipe"],
+    env: { ...process.env, PLATOS_PRODUCTION_BUILD: "true" },
+  });
   let diagnostics = "";
   child.stdout.on("data", (chunk) => {
     diagnostics += chunk.toString();

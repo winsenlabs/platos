@@ -20,7 +20,7 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 | `REDIS_URL` | — | Yes | Redis connection string. Both services. ACL-enabled URIs supported. |
 | `REDIS_TLS_DISABLED` | `false` | No | Set `true` to disable TLS for Redis (e.g. local Docker). |
 | `SESSION_SECRET` | — | Yes | Any non-empty string (recommended: `openssl rand -base64 24`). Signs webapp cookies. Rotating invalidates all sessions. |
-| `ENCRYPTION_KEY` | — | Yes | Exactly 32 ASCII chars. `openssl rand -hex 16`. AES-256-GCM key for encrypted webapp columns (trigger.dev secrets). **Do NOT use `-hex 32`** (64 chars → boot-fail). |
+| `ENCRYPTION_KEY` | — | Yes | Exactly 32 ASCII chars. `openssl rand -hex 16`. AES-256-GCM key for encrypted webapp columns and Platos-owned operator TOTP seeds. **Do NOT use `-hex 32`** (64 chars → boot-fail). |
 | `APP_ORIGIN` | `http://localhost:3030` | No | Public origin of the webapp. Used for magic links, OAuth callbacks, CORS. |
 | `LOGIN_ORIGIN` | `$APP_ORIGIN` | No | Override if login page is served from a separate origin. |
 | `NODE_ENV` | `development` | No | `development` · `test` · `production`. |
@@ -33,7 +33,7 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 | `PLATOS_AGENT_HOST` | `0.0.0.0` | No | Bind host. |
 | `PLATOS_ENCRYPTION_KEY` | — | Yes | Exactly **64 hex chars** (32 bytes decoded). `openssl rand -hex 32`. AES-256-GCM key for encrypted provider credentials (BYOK) and per-tool HMAC secrets. Rotate via key-rotation flow. Different format from `ENCRYPTION_KEY` — see callout at top of page. |
 | `PLATOS_SESSION_SECRET` | — | Yes | Any non-empty string (recommended: `openssl rand -base64 24`). Signs WebSocket session tokens handshaken from the webapp. |
-| `PLATOS_TEST_MODE` | `false` | No | If `true`, replaces all provider calls with a deterministic mock. Used in CI. |
+| `PLATOS_TEST_MODE` | `false` | No | If `true`, replaces provider calls with deterministic local mocks. Production builds structurally omit token-minting test routes. |
 | `PLATOS_DEFAULT_MODEL` | `anthropic:claude-sonnet-4-6` | No | Fallback model when an agent config omits one. |
 | `PLATOS_TOOL_GATEWAY_PATH` | `/tools/sync` | No | Path prefix for the external tool-server WebSocket endpoint. |
 | `PLATOS_TOOL_HMAC_MAX_SKEW_SECONDS` | `300` | No | Allowable clock skew for `X-Platos-Timestamp` replay protection. |

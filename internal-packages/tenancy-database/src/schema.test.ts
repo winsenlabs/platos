@@ -26,6 +26,12 @@ const customMigrationMarker = "-- Prisma-inexpressible value constraints.";
 const tenancyOnlyModels = [
   "User",
   "OperatorSession",
+  "OperatorIdentity",
+  "MagicLinkToken",
+  "OperatorMfaTotp",
+  "OperatorMfaRecoveryCode",
+  "AuthRateLimitBucket",
+  "ImpersonationAudit",
   "Organization",
   "OrganizationMembership",
   "OrganizationInvitation",
@@ -56,7 +62,7 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(71);
+    expect(models).toHaveLength(77);
     expect(domainModelNames).toHaveLength(61);
     expect(new Set(domainModelNames).size).toBe(61);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
@@ -179,6 +185,10 @@ describe("clean-slate domain schema", () => {
     expect(migration.split(customMigrationMarker)[0].trim()).toBe(generated.trim());
     expect(migration).toContain('CREATE FUNCTION "public"."enforce_domain_ancestry"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_canonical_owner_change"()');
+    expect(migration).toContain('CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()');
+    expect(migration).toContain('CREATE FUNCTION "public"."reject_impersonation_audit_mutation"()');
+    expect(migration).toContain('CONSTRAINT "OperatorSession_tokenHash_check"');
+    expect(migration).toContain('OR "impersonatedUserId" = affected_user_id');
     for (const trigger of [
       "EndUserIdentity_owner_immutable",
       "Thread_subject_immutable",

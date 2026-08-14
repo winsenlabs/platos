@@ -9,6 +9,7 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "skipLibCheck": true,
+    "types": ["node"],
     "noEmit": true,
     "strict": true
   },
