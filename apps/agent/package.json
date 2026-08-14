@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "build:strict": "tsc --outDir dist --declaration",
+    "build:strict": "tsc --outDir dist --declaration && node scripts/enforce-production-auth-boundary.mjs",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",

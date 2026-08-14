@@ -8,11 +8,15 @@ data. It does not import, migrate, or modify the inherited database schema.
   no operator or shared-tenancy relation paths.
 - `src/end-user.ts` further removes raw SQL and transaction escape hatches from
   the data-plane client surface.
+- `src/auth.ts` is the Platos-owned dashboard-auth boundary: opaque hashed
+  operator sessions, magic-link and GitHub/Google identities, encrypted TOTP
+  secrets, hashed single-use recovery and invitation codes, database-backed
+  rate limits, membership-driven revocation, and audited impersonation.
 - `src/source-model-manifest.ts` accounts exactly once for all 54 legacy
   `Platos*` sources. Those sources map to 59 distinct normalized targets;
   `Credential` and `AgentToolPolicy` are independent support models. The final
-  schema therefore has 61 domain/capability models plus 10 tenancy-only models,
-  for 71 generated control-plane models.
+  schema therefore has 61 domain/capability models plus 16 tenancy/auth models,
+  for 77 generated control-plane models.
 - `src/json.ts` documents and validates every retained Json field. Values are
   persisted with native object/array roots; only `promptBlocks`,
   `dynamicBlocks`, `modelRoutes`, and `toolsBlockConfig` accept one legacy

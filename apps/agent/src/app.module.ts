@@ -20,14 +20,12 @@ import { MonitoringModule } from "./monitoring/monitoring.module";
 import { TriggerBridgeModule } from "./trigger-bridge/trigger-bridge.module";
 import { SkillsModule } from "./skills/skills.module";
 import { EvalsModule } from "./evals/evals.module";
-import { TestModule } from "./test/test.module";
 import { OpenApiModule } from "./openapi/openapi.module";
 import { McpPlatformModule } from "./mcp-platform/mcp-platform.module";
 import { DocsMcpModule } from "./mcp-docs/docs-mcp.module";
 import { OAuthModule } from "./oauth/oauth.module";
 import { FilesModule } from "./files/files.module";
 import { ChannelsModule } from "./channels/channels.module";
-import { env } from "./shared/env";
 
 const imports = [
   // NestJS built-in task scheduler (powers @Cron in MemorySchedulerService etc.)
@@ -74,11 +72,6 @@ const imports = [
   // side that receives provider posts and routes them to a Platos turn.
   ChannelsModule,
 ];
-
-// Test endpoints only available when PLATOS_TEST_MODE=true
-if (env.PLATOS_TEST_MODE === true) {
-  imports.push(TestModule);
-}
 
 @Module({
   imports,

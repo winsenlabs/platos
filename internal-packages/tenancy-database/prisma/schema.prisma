@@ -20,6 +20,23 @@ enum OrganizationRole {
   MEMBER
 }
 
+enum OperatorIdentityProvider {
+  MAGIC_LINK
+  GITHUB
+  GOOGLE
+}
+
+enum AuthRateLimitAction {
+  LOGIN
+  INVITE_ACCEPT
+  MFA_VERIFY
+}
+
+enum ImpersonationAction {
+  START
+  STOP
+}
+
 enum ProjectRole {
   ADMIN
   EDITOR
@@ -72,16 +89,24 @@ enum AgentToolDefaultPolicy {
 }
 
 model User {
-  id          String    @id @default(uuid()) @db.Uuid
-  email       String    @unique
-  displayName String?
-  disabledAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  displayName      String?
+  platformOperator Boolean   @default(false)
+  disabledAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   organizationMemberships OrganizationMembership[]
-  invitationsSent         OrganizationInvitation[] @relation("OrganizationInvitationInviter")
-  operatorSessions        OperatorSession[]
+  invitationsSent         OrganizationInvitation[]  @relation("OrganizationInvitationInviter")
+  invitationsAccepted     OrganizationInvitation[]  @relation("OrganizationInvitationAcceptor")
+  identities              OperatorIdentity[]
+  operatorSessions        OperatorSession[]         @relation("OperatorSessionActor")
+  impersonatedSessions    OperatorSession[]         @relation("OperatorSessionTarget")
+  mfaTotp                 OperatorMfaTotp?
+  mfaRecoveryCodes        OperatorMfaRecoveryCode[]
+  impersonationsStarted   ImpersonationAudit[]      @relation("ImpersonationActor")
+  impersonationsReceived  ImpersonationAudit[]      @relation("ImpersonationTarget")
   oauthAuthorizationCodes OAuthAuthorizationCode[]
   oauthClientsRegistered  OAuthClient[]
   mcpTokensMinted         McpToken[]
@@ -92,20 +117,117 @@ model User {
 }
 
 model OperatorSession {
-  id         String        @id @default(uuid()) @db.Uuid
-  tokenHash  String        @unique
-  tier       PrincipalTier @default(OPERATOR)
-  userId     String        @db.Uuid
-  expiresAt  DateTime
-  revokedAt  DateTime?
-  lastSeenAt DateTime?
-  createdAt  DateTime      @default(now())
+  id                 String        @id @default(uuid()) @db.Uuid
+  tokenHash          String        @unique
+  tier               PrincipalTier @default(OPERATOR)
+  userId             String        @db.Uuid
+  impersonatedUserId String?       @db.Uuid
+  parentSessionId    String?       @db.Uuid
+  mfaVerifiedAt      DateTime?
+  expiresAt          DateTime
+  revokedAt          DateTime?
+  lastSeenAt         DateTime?
+  createdAt          DateTime      @default(now())
 
-  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  environmentSessions EnvironmentSession[]
+  user                  User                 @relation("OperatorSessionActor", fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedUser      User?                @relation("OperatorSessionTarget", fields: [impersonatedUserId], references: [id], onDelete: Cascade)
+  parentSession         OperatorSession?     @relation("OperatorSessionParent", fields: [parentSessionId], references: [id], onDelete: Cascade)
+  childSessions         OperatorSession[]    @relation("OperatorSessionParent")
+  environmentSessions   EnvironmentSession[]
+  impersonationAuditLog ImpersonationAudit[]
 
   @@index([userId, expiresAt])
+  @@index([impersonatedUserId, expiresAt])
+  @@index([parentSessionId])
   @@index([expiresAt])
+}
+
+model OperatorIdentity {
+  id            String                   @id @default(uuid()) @db.Uuid
+  userId        String                   @db.Uuid
+  provider      OperatorIdentityProvider
+  subject       String
+  providerEmail String
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@unique([userId, provider])
+  @@index([providerEmail])
+}
+
+model MagicLinkToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  tokenHash  String    @unique
+  email      String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email, expiresAt])
+  @@index([expiresAt])
+}
+
+model OperatorMfaTotp {
+  id                     String    @id @default(uuid()) @db.Uuid
+  userId                 String    @unique @db.Uuid
+  encryptedSecret        String?
+  enabledAt              DateTime?
+  lastUsedCounter        BigInt?
+  pendingEncryptedSecret String?
+  pendingExpiresAt       DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OperatorMfaRecoveryCode {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  codeHash   String
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, codeHash])
+  @@index([userId, consumedAt])
+}
+
+model AuthRateLimitBucket {
+  id             String              @id @default(uuid()) @db.Uuid
+  action         AuthRateLimitAction
+  identifierHash String
+  windowStart    DateTime
+  attempts       Int                 @default(1)
+  expiresAt      DateTime
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([action, identifierHash, windowStart])
+  @@index([expiresAt])
+}
+
+model ImpersonationAudit {
+  id                     String              @id @default(uuid()) @db.Uuid
+  action                 ImpersonationAction
+  actorUserId            String              @db.Uuid
+  targetUserId           String              @db.Uuid
+  impersonationSessionId String              @db.Uuid
+  ipAddress              String?
+  userAgent              String?
+  createdAt              DateTime            @default(now())
+
+  actor                User            @relation("ImpersonationActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  target               User            @relation("ImpersonationTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+  impersonationSession OperatorSession @relation(fields: [impersonationSessionId], references: [id], onDelete: Restrict)
+
+  @@index([actorUserId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([impersonationSessionId, createdAt])
 }
 
 model Organization {
@@ -152,22 +274,25 @@ model OrganizationMembership {
 }
 
 model OrganizationInvitation {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String           @db.Uuid
-  inviterId      String?          @db.Uuid
-  email          String
-  role           OrganizationRole @default(MEMBER)
-  tokenHash      String           @unique
-  expiresAt      DateTime
-  acceptedAt     DateTime?
-  revokedAt      DateTime?
-  createdAt      DateTime         @default(now())
+  id               String           @id @default(uuid()) @db.Uuid
+  organizationId   String           @db.Uuid
+  inviterId        String?          @db.Uuid
+  acceptedByUserId String?          @db.Uuid
+  email            String
+  role             OrganizationRole @default(MEMBER)
+  tokenHash        String           @unique
+  expiresAt        DateTime
+  acceptedAt       DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime         @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   inviter      User?        @relation("OrganizationInvitationInviter", fields: [inviterId], references: [id], onDelete: SetNull)
+  acceptedBy   User?        @relation("OrganizationInvitationAcceptor", fields: [acceptedByUserId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, email, expiresAt])
   @@index([inviterId])
+  @@index([acceptedByUserId])
   @@index([expiresAt])
 }
 

@@ -397,8 +397,8 @@ services:
       PLATOS_AGENT_PORT: "3100"
       DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&connection_limit=30&pool_timeout=20"
       REDIS_URL: "redis://redis:6379"
-      # PLATOS_TEST_MODE exposes /test/* endpoints + a dev-fallback session
-      # secret path. Default is `false` — set to `true` ONLY for local dev.
+      # Test mode selects deterministic local providers. Token-minting test
+      # controllers are not registered and are removed from production builds.
       PLATOS_TEST_MODE: "${PLATOS_TEST_MODE:-false}"
       # PLATOS_ENCRYPTION_KEY: 64 hex chars (32 bytes). `openssl rand -hex 32`.
       PLATOS_ENCRYPTION_KEY: "${PLATOS_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
@@ -567,10 +567,6 @@ services:
       SESSION_SECRET: "${SESSION_SECRET:?required — see .env.example}"
       MAGIC_LINK_SECRET: "${MAGIC_LINK_SECRET:?required — see .env.example}"
       ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 32 ASCII chars via `openssl rand -hex 16`}"
-      # Operator passcode login. Both must be set for the backdoor to
-      # render on the login page. Either unset = backdoor disabled.
-      BACKDOOR_PLATOS_DEV: "${BACKDOOR_PLATOS_DEV:-}"
-      BACKDOOR_PLATOS_DEV_EMAIL: "${BACKDOOR_PLATOS_DEV_EMAIL:-}"
       # PLATOS_SESSION_SECRET must match the agent container's value — the
       # webapp mints platform-issued session tokens (iss: platos-platform)
       # for browser WS handshakes to the agent (PPR-7). Same signing secret

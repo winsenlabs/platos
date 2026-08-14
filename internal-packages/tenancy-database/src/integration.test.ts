@@ -13,6 +13,9 @@ import {
   ProjectRole,
   ToolKind,
   WorkStatus,
+  AuthRateLimitAction,
+  ImpersonationAction,
+  OperatorIdentityProvider,
 } from "../generated/control";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
@@ -57,7 +60,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(71);
+    expect(modelNames).toHaveLength(77);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -411,10 +414,46 @@ async function seedEveryModel(control: PrismaClient) {
   };
 
   const user = track("User", await control.user.create({
-    data: { email: "owner@example.test", displayName: "Owner" },
+    data: { email: "owner@example.test", displayName: "Owner", platformOperator: true },
   }));
   const operatorSession = track("OperatorSession", await control.operatorSession.create({
-    data: { userId: user.id, tokenHash: "operator-session", expiresAt: future() },
+    data: { userId: user.id, tokenHash: "a".repeat(64), expiresAt: future() },
+  }));
+  track("OperatorIdentity", await control.operatorIdentity.create({
+    data: {
+      userId: user.id,
+      provider: OperatorIdentityProvider.GITHUB,
+      subject: "github-owner",
+      providerEmail: user.email,
+    },
+  }));
+  track("MagicLinkToken", await control.magicLinkToken.create({
+    data: { email: user.email, tokenHash: "b".repeat(64), expiresAt: future() },
+  }));
+  track("OperatorMfaTotp", await control.operatorMfaTotp.create({
+    data: { userId: user.id, encryptedSecret: "encrypted-totp", enabledAt: new Date() },
+  }));
+  track("OperatorMfaRecoveryCode", await control.operatorMfaRecoveryCode.create({
+    data: { userId: user.id, codeHash: "c".repeat(64) },
+  }));
+  track("AuthRateLimitBucket", await control.authRateLimitBucket.create({
+    data: {
+      action: AuthRateLimitAction.LOGIN,
+      identifierHash: "d".repeat(64),
+      windowStart: new Date(0),
+      expiresAt: new Date(60_000),
+    },
+  }));
+  const impersonationTarget = await control.user.create({
+    data: { email: "impersonation-target@example.test" },
+  });
+  track("ImpersonationAudit", await control.impersonationAudit.create({
+    data: {
+      action: ImpersonationAction.START,
+      actorUserId: user.id,
+      targetUserId: impersonationTarget.id,
+      impersonationSessionId: operatorSession.id,
+    },
   }));
   const organization = track("Organization", await control.organization.create({
     data: { slug: "round-trip-organization", name: "Round-trip organization" },
@@ -427,7 +466,7 @@ async function seedEveryModel(control: PrismaClient) {
       organizationId: organization.id,
       inviterId: user.id,
       email: "invitee@example.test",
-      tokenHash: "organization-invitation",
+      tokenHash: "e".repeat(64),
       expiresAt: future(),
     },
   }));
