@@ -64,6 +64,12 @@ jobs:
       - name: External Trigger configuration and direct-dispatch tests
         run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
 
+      - name: Platos tenancy and operator-auth tests
+        # Runs the complete clean-slate schema/service suite, including its real
+        # Postgres testcontainer boundaries. This protects the operator/end-user
+        # tier separation added in WIN-121 rather than relying on sandbox-only runs.
+        run: pnpm --filter @platos/tenancy-database test
+
       - name: Webapp memory-policy tests
         run: pnpm --filter webapp exec vitest run test/memoryPolicy.test.ts
 
