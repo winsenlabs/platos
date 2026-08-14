@@ -25,7 +25,7 @@
 #
 # ─── Log rotation + mem limits (EOBD.54) ──────────────────────────────────
 # Every service ships with a json-file log driver capped at 50MB × 5 files
-# and a soft mem_limit defaulting to 2G (4G for webapp + agent). Tune with
+# and a soft mem_limit defaulting to 2G for the app services. Tune with
 # the *_MEM_LIMIT env vars documented in .env.example.
 #
 # ─── Image pinning (EOBD.53) ──────────────────────────────────────────────
@@ -418,7 +418,10 @@ services:
       # domains. Self-hosters keep it off.
       PLATOS_CORS_UNIVERSAL: "${PLATOS_CORS_UNIVERSAL:-false}"
       PLATOS_DEFAULT_MODEL: "${PLATOS_DEFAULT_MODEL:-anthropic:claude-haiku-4-5-20251001}"
-      TRIGGER_API_URL: "https://api.trigger.dev"
+      # Optional external durable execution. No Cloud, localhost, or webapp
+      # fallback is inferred: set both values explicitly, or turns dispatch
+      # direct. Self-hosted Trigger.dev URLs are supported.
+      TRIGGER_API_URL: "${TRIGGER_API_URL:-}"
       TRIGGER_SECRET_KEY: "${TRIGGER_SECRET_KEY:-}"
       TRIGGER_INTERNAL_SECRET: "${TRIGGER_INTERNAL_SECRET:?required — openssl rand -hex 32}"
       # Trigger Sessions durable chat (Option 1 — Platos proxies). When true,
@@ -530,6 +533,9 @@ services:
       clickhouse-migrate:
         condition: service_completed_successfully
     environment:
+      # 1536 MiB leaves 512 MiB / 25% outside V8 old-space under the default
+      # 2 GiB container limit. The entrypoint rejects unsafe overrides.
+      WEBAPP_NODE_MAX_OLD_SPACE_SIZE_MB: "${WEBAPP_NODE_MAX_OLD_SPACE_SIZE_MB:-1536}"
       NODE_ENV: production
       PORT: "3000"
       APP_ORIGIN: "${APP_ORIGIN:-http://localhost:3030}"
@@ -583,7 +589,6 @@ services:
       TRIGGER_BOOTSTRAP_ENABLED: "1"
       TRIGGER_BOOTSTRAP_WORKER_GROUP_NAME: bootstrap
       APP_LOG_LEVEL: info
-      NODE_MAX_OLD_SPACE_SIZE: "${NODE_MAX_OLD_SPACE_SIZE:-8192}"
       # EOBD.55 — migrations-init runs before webapp boot, but the
       # prod webapp image still doesn't carry Prisma, so keep these
       # flags. The init container handles the DDL.

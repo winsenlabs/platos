@@ -7,6 +7,10 @@ import { ConversationService } from "../memory/conversation.service";
 import type { AgentStreamEvent, AgentConfig } from "./agent.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { buildSessionScope } from "./session-scope";
+import {
+  configureExternalTriggerSdk,
+  type ExternalTriggerConfig,
+} from "../shared/external-trigger-config";
 
 /**
  * Trigger.dev SDK — same lazy-require + configure pattern as
@@ -16,18 +20,11 @@ import { buildSessionScope } from "./session-scope";
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let triggerSdk: any = null;
+let externalTriggerConfig: ExternalTriggerConfig = { status: "disabled" };
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   triggerSdk = require("@trigger.dev/sdk");
-  // TODO(env.ts) consider migration — runs at module-import time, before
-  // main.ts's validateAgentEnv() surfaces structured errors. Direct
-  // process.env keeps boot quiet when the SDK isn't configured (local dev).
-  if (process.env.TRIGGER_SECRET_KEY && triggerSdk?.configure) {
-    triggerSdk.configure({
-      accessToken: process.env.TRIGGER_SECRET_KEY,
-      baseURL: process.env.TRIGGER_API_URL || "http://localhost:3030",
-    });
-  }
+  externalTriggerConfig = configureExternalTriggerSdk(triggerSdk);
 } catch {
   triggerSdk = null;
 }
@@ -216,7 +213,7 @@ export class TurnDispatchService {
    *  entrypoint is loadable. When false, durable is unreachable ⇒ every turn is
    *  "direct" (zero behavior change on deployments without managed trigger). */
   private triggerReady(): boolean {
-    return !!process.env.TRIGGER_SECRET_KEY && !!triggerSdk?.tasks?.trigger;
+    return externalTriggerConfig.status === "configured" && !!triggerSdk?.tasks?.trigger;
   }
 
   /**
@@ -516,7 +513,7 @@ export class TurnDispatchService {
     // These are the SESSION sub-strategy's own gates (rollout flag, trigger
     // secret, chat SDK present), lifted from the gateway.
     if (process.env.PLATOS_CHAT_SESSIONS !== "true") return null;
-    if (!process.env.TRIGGER_SECRET_KEY) return null;
+    if (externalTriggerConfig.status !== "configured") return null;
     const AgentChat = this.loadAgentChat();
     if (!AgentChat) return null;
 

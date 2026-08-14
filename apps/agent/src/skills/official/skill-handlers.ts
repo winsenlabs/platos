@@ -10,6 +10,7 @@ import {
 } from "../../shared/url-validator";
 import { MemoryService, RAG_MEMORY_SOURCE } from "../../memory/memory.service";
 import { VercelSandboxService } from "../vercel-sandbox.service";
+import { configureExternalTriggerSdk } from "../../shared/external-trigger-config";
 
 /**
  * Theme S.7–S.10 — Runtime handlers for the 4 official skills.
@@ -492,9 +493,9 @@ export class OfficialSkillHandlers {
         // Lazy require — keeps this file free of top-level trigger-bridge imports.
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const triggerSdk = require("@trigger.dev/sdk");
-        const triggerReady = !!(
-          process.env.TRIGGER_SECRET_KEY && triggerSdk?.tasks?.trigger
-        );
+        const triggerReady =
+          configureExternalTriggerSdk(triggerSdk).status === "configured" &&
+          !!triggerSdk?.tasks?.trigger;
         if (triggerReady) {
           const items = sources.map((s) => ({ source: s, tags, chunkSize, overlap }));
           const perItemInstructions = [

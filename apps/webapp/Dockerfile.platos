@@ -68,9 +68,13 @@ RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 ARG SENTRY_RELEASE
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
+ARG WEBAPP_BUILD_MAX_OLD_SPACE_SIZE_MB=1536
+ARG WEBAPP_BUILD_SOURCEMAPS=false
 ENV SENTRY_RELEASE=${SENTRY_RELEASE} \
     SENTRY_ORG=${SENTRY_ORG} \
-    SENTRY_PROJECT=${SENTRY_PROJECT}
+    SENTRY_PROJECT=${SENTRY_PROJECT} \
+    WEBAPP_BUILD_MAX_OLD_SPACE_SIZE_MB=${WEBAPP_BUILD_MAX_OLD_SPACE_SIZE_MB} \
+    WEBAPP_BUILD_SOURCEMAPS=${WEBAPP_BUILD_SOURCEMAPS}
 
 # Goose and schemas
 COPY --from=goose_builder /go/bin/goose /usr/local/bin/goose
@@ -85,15 +89,16 @@ RUN chmod +x ./scripts/wait-for-it.sh
 RUN chmod +x ./scripts/entrypoint.sh
 COPY --chown=node:node .configs/tsconfig.base.json .configs/tsconfig.base.json
 COPY --chown=node:node scripts/updateVersion.ts scripts/updateVersion.ts
-RUN pnpm run generate
-# NODE_OPTIONS — tshy's commonjs tsc pass on @platos/core runs a fresh
-# TypeScript program and can hit the default 2-GB V8 old-space heap on
-# 8 GB VPS hosts. Bumping to 6 GB lets tsc compile the full dep graph
-# without the "build failed" (OOM-swallowed) trap.
+# The explicit webapp graph intentionally includes its current deferred engine
+# dependencies. The memory wrapper serializes that graph, caps V8 old-space at
+# 1.5 GiB by default, and refuses to build unless another 2 GiB is available.
+# A ~7.9 GiB host with only ~3 GiB available therefore fails safely instead of
+# threatening the running services. Source maps are opt-in because Remix's map
+# generation has materially higher peak memory. Production images should be
+# built off-box.
 RUN --mount=type=secret,id=sentry_auth_token \
-    SENTRY_AUTH_TOKEN=$(cat /run/secrets/sentry_auth_token) \
-    NODE_OPTIONS="--max-old-space-size=6144" \
-    pnpm run build --filter=webapp...
+    SENTRY_AUTH_TOKEN=$(cat /run/secrets/sentry_auth_token 2>/dev/null || true) \
+    pnpm run build:platos:webapp
 
 # Runner
 FROM ${NODE_IMAGE} AS runner

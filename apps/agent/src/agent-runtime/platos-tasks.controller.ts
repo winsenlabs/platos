@@ -14,6 +14,7 @@ import {
 import { type Request } from "express";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
+import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 
 /**
  * PIFSP-12 — Operator-authored custom tasks (PlatosTask CRUD + dispatch).
@@ -232,19 +233,18 @@ export class PlatosTasksController {
     if (!task) throw new HttpException("Task not found or inactive", HttpStatus.NOT_FOUND);
 
     // Dispatch via trigger.dev if available; fall back to a no-op + warn.
-    const triggerSecretKey = process.env.TRIGGER_SECRET_KEY;
-    if (!triggerSecretKey) {
+    const triggerSdk = await import("@trigger.dev/sdk");
+    if (configureExternalTriggerSdk(triggerSdk).status !== "configured") {
       return {
         queued: false,
-        message: "TRIGGER_SECRET_KEY not configured — task execution unavailable. Set it in the docker-compose env to enable durable task dispatch.",
+        message: "External Trigger endpoint and credentials are not configured — task execution unavailable.",
         taskId: task.taskId,
       };
     }
 
     try {
       // Lazy import trigger SDK — avoids top-level import that would fail if SDK not available.
-      const { tasks } = await import("@trigger.dev/sdk");
-      const run = await tasks.trigger("platos-custom-task", {
+      const run = await triggerSdk.tasks.trigger("platos-custom-task", {
         taskRowId: id,
         payload: body.payload ?? {},
         scope: {

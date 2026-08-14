@@ -47,12 +47,9 @@ cp node_modules/@prisma/engines/*.node apps/webapp/prisma/ 2>/dev/null || true
 
 cd /triggerdotdev/apps/webapp
 
-
-# Decide how much old-space memory Node should get.
-# Use $NODE_MAX_OLD_SPACE_SIZE if it’s set; otherwise fall back to 8192.
-MAX_OLD_SPACE_SIZE="${NODE_MAX_OLD_SPACE_SIZE:-8192}"
-
-echo "Setting max old space size to ${MAX_OLD_SPACE_SIZE}"
-
-NODE_PATH='/triggerdotdev/node_modules/.pnpm/node_modules' exec dumb-init node --max-old-space-size=${MAX_OLD_SPACE_SIZE} ./build/server.js
+# The policy wrapper applies WEBAPP_NODE_MAX_OLD_SPACE_SIZE_MB (1536 MiB by
+# default) and refuses values that would leave less than 25% / 512 MiB of the
+# effective cgroup limit for native memory, buffers, and request handling.
+NODE_PATH='/triggerdotdev/node_modules/.pnpm/node_modules' \
+  exec dumb-init node /triggerdotdev/scripts/memory-policy.mjs runtime -- node ./build/server.js
 

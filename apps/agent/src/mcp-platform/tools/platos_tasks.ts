@@ -1,3 +1,5 @@
+import { configureExternalTriggerSdk } from "../../shared/external-trigger-config";
+
 /**
  * Theme MCPF-W4 — PlatosTask management MCP tools (10 tools).
  *
@@ -599,11 +601,10 @@ export function buildPlatosTaskToolHandlers(deps: {
           return { error: "not_found_or_inactive", id };
         }
 
-        const triggerSecretKey = process.env["TRIGGER_SECRET_KEY"];
-        if (!triggerSecretKey) {
+        const triggerSdk = await import("@trigger.dev/sdk");
+        if (configureExternalTriggerSdk(triggerSdk).status !== "configured") {
           const message =
-            "TRIGGER_SECRET_KEY not configured — task execution unavailable. " +
-            "Set it in the docker-compose env to enable durable task dispatch.";
+            "External Trigger endpoint and credentials are not configured — task execution unavailable.";
           auditMutation(
             reqScope,
             "platos_tasks.run",
@@ -618,8 +619,7 @@ export function buildPlatosTaskToolHandlers(deps: {
 
         try {
           // Lazy import — same pattern as PlatosTasksController.run().
-          const { tasks } = await import("@trigger.dev/sdk");
-          const run = await tasks.trigger("platos-custom-task", {
+          const run = await triggerSdk.tasks.trigger("platos-custom-task", {
             taskRowId: id,
             payload,
             scope: {
