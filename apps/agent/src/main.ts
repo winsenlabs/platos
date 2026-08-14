@@ -4,6 +4,7 @@ import type { CorsOptions } from "@nestjs/common/interfaces/external/cors-option
 import { AppModule } from "./app.module";
 import { AuthService } from "./auth/auth.service";
 import { validateAgentEnv } from "./shared/env";
+import { resolveExternalTriggerConfig } from "./shared/external-trigger-config";
 
 // EOBD.4 — PLATOS_TEST_MODE=true unlocks test-only endpoints that mint
 // session tokens with no auth + unlocks a dev-mode fallback branch in
@@ -129,6 +130,11 @@ async function bootstrap() {
       process.stderr.write(`  - ${err}\n`);
     }
     process.exit(1);
+  }
+
+  const externalTrigger = resolveExternalTriggerConfig();
+  if (externalTrigger.status === "incomplete") {
+    process.stderr.write(`[Platos agent] ${externalTrigger.message}\n`);
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {

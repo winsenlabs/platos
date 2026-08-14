@@ -1,23 +1,20 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConnectionsGateway } from "../connections/connections.gateway";
 import type { RequestScope } from "../auth/scope.guard";
+import {
+  configureExternalTriggerSdk,
+  type ExternalTriggerConfig,
+} from "../shared/external-trigger-config";
 
 // Trigger.dev SDK — same lazy-require pattern as `agent.service.ts` so the
 // agent process boots even when the SDK isn't configured (local dev without
 // TRIGGER_SECRET_KEY).
 let triggerSdk: any = null;
+let externalTriggerConfig: ExternalTriggerConfig = { status: "disabled" };
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   triggerSdk = require("@trigger.dev/sdk");
-  // TODO(env.ts) consider migration — this runs at module-import time,
-  // before main.ts's validateAgentEnv() surfaces structured errors. Direct
-  // process.env keeps boot quiet when SDK isn't configured (local dev).
-  if (process.env.TRIGGER_SECRET_KEY && triggerSdk?.configure) {
-    triggerSdk.configure({
-      accessToken: process.env.TRIGGER_SECRET_KEY,
-      baseURL: process.env.TRIGGER_API_URL || "http://localhost:3030",
-    });
-  }
+  externalTriggerConfig = configureExternalTriggerSdk(triggerSdk);
 } catch {
   triggerSdk = null;
 }
@@ -71,7 +68,7 @@ export class RunsBridgeService {
    * the inner loop runs in the background.
    */
   subscribe(runId: string, scope: RequestScope, threadId: string): () => void {
-    if (!triggerSdk?.runs?.subscribeToRun) {
+    if (externalTriggerConfig.status !== "configured" || !triggerSdk?.runs?.subscribeToRun) {
       this.logger.warn(`runs.subscribeToRun unavailable — trigger.dev SDK not configured. runId=${runId}`);
       return () => undefined;
     }
@@ -166,7 +163,7 @@ export class RunsBridgeService {
       void handle.iter?.return?.().catch(() => undefined);
       this.active.delete(runId);
     }
-    if (triggerSdk?.runs?.cancel) {
+    if (externalTriggerConfig.status === "configured" && triggerSdk?.runs?.cancel) {
       try {
         await triggerSdk.runs.cancel(runId);
       } catch (err: any) {

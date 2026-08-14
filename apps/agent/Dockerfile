@@ -36,28 +36,11 @@ RUN sed -i '/docs/d' pnpm-workspace.yaml
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --no-frozen-lockfile
 
-# Prisma client first — @platos/database's tsc build re-exports from
-# ../generated/prisma, so the client must exist before any workspace
-# package that depends on @platos/database compiles.
-RUN pnpm --filter @platos/database generate
-
-# Build the workspace packages the agent imports at runtime. @platos/sdk
-# depends on @platos/core transitively — turbo handles the order.
-RUN pnpm run build --filter @platos/sdk
-
-# Build the @internal/cost-rates package — its `main` points at ./dist/index.js
-# so the runtime can require() it without TS source. Without this build step,
-# pnpm deploy ships the .ts source and the agent crashes on require().
-RUN pnpm --filter @internal/cost-rates build
-
-# Phase 3 — build the @internal/docs package for the same reason: the agent's
-# DocsMcpService imports from `@internal/docs` whose `main` points at
-# ./dist/index.js. Without this step the runtime tries to require() raw .ts
-# and the agent crashes at boot.
-RUN pnpm --filter @internal/docs build
-
-# Compile the agent's TypeScript to ./apps/agent/dist
-RUN cd apps/agent && npx tsc --outDir dist --declaration
+# Explicit Platos agent graph: generated database client, SDK/core/database,
+# runtime-only internal packages, then the agent's strict declaration build.
+# This intentionally does not claim the deferred webapp/run-engine closure is
+# gone; WIN-132 owns that destructive extraction.
+RUN pnpm run build:platos:agent
 
 # Produce a self-contained prod deploy at /deploy — symlinks flattened,
 # only prod deps, with all workspace packages resolved to real copies.

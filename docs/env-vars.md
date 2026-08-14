@@ -48,8 +48,8 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 
 | Variable | Default | Required | Purpose |
 |---|---|---|---|
-| `TRIGGER_SECRET_KEY` | — | No | Project key (`tr_dev_...` or `tr_prod_...`) used by `@trigger.dev/sdk` to call `tasks.trigger()`. If unset, Platos uses a Redis-backed stub and logs a notice. |
-| `TRIGGER_API_URL` | `http://localhost:3030` | No | Origin of the run engine. Point at your self-hosted webapp. |
+| `TRIGGER_SECRET_KEY` | — | No | Project key (`tr_dev_...` or `tr_prod_...`) used by `@trigger.dev/sdk` to call an external Trigger service. Durable agent dispatch requires this and `TRIGGER_API_URL`; with neither set, turns dispatch direct and BGOs use their existing Redis fallback. |
+| `TRIGGER_API_URL` | — | No | Explicit origin of an external Trigger Cloud or separately deployed self-hosted Trigger.dev service. There is intentionally no Cloud, localhost, or Platos-webapp default. Setting only this variable (or only the secret) logs an incomplete-config warning and disables durable dispatch. |
 | `TRIGGER_PROJECT_REF` | — | No | `proj_...` project ref, required if `TRIGGER_SECRET_KEY` is set and you have multiple projects. |
 | `TRIGGER_INTERNAL_SECRET` | — | No | Shared secret for privileged agent↔webapp calls (run metadata, realtime subscribe). Required if you split agent and webapp across processes/hosts. |
 | `TRIGGER_INTERNAL_BASE_URL` | `$TRIGGER_API_URL` | No | Agent-side base URL for privileged calls; can point to an internal DNS name. |
@@ -97,7 +97,9 @@ These are read by the webapp image and set as defaults in `docker-compose.platos
 | `RUN_REPLICATION_LOG_LEVEL` | `info` | No | Log level for the replication worker. |
 | `SKIP_POSTGRES_MIGRATIONS` | `0` | No | `1` = webapp container does NOT run Prisma migrations at boot. Compose sets `1` — prod images don't ship Prisma CLI, so run `pnpm run db:migrate` from the host. |
 | `SKIP_CLICKHOUSE_MIGRATIONS` | `0` | No | `1` = webapp container does NOT run ClickHouse goose migrations at boot. Compose sets `1` — run the one-shot goose container from the host. |
-| `NODE_MAX_OLD_SPACE_SIZE` | `8192` | No | V8 `--max-old-space-size` (MiB) for the webapp. Bump on memory-heavy deployments. |
+| `WEBAPP_NODE_MAX_OLD_SPACE_SIZE_MB` | `1536` | No | Runtime V8 old-space ceiling in MiB. Startup enforces that it remains at or below 75% of the effective container limit and leaves at least 512 MiB outside old-space. With compose's default `WEBAPP_MEM_LIMIT=2g`, 1536 is the maximum accepted value. |
+| `WEBAPP_BUILD_MAX_OLD_SPACE_SIZE_MB` | `1536` | No | Build-only V8 old-space ceiling in MiB. The guarded build also requires another 2048 MiB of currently available memory and refuses to run otherwise. Build production images off-box. |
+| `WEBAPP_BUILD_SOURCEMAPS` | `false` | No | Enables Remix production source maps and Sentry upload. Map generation materially increases peak memory; enable only on an off-box builder with additional measured headroom. |
 
 ## Webapp — trigger.dev run engine internals
 

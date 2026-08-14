@@ -28,6 +28,22 @@ Minimum node sizing (steady-state for ~100 concurrent agent streams):
 
 `docker-compose.prod.yml`:
 
+Durable Trigger execution is optional and external to Platos. With both
+`TRIGGER_API_URL` and `TRIGGER_SECRET_KEY` unset, the agent boots and serves
+turns using direct dispatch. To enable durable dispatch, set both values to
+Trigger Cloud or to a separately deployed self-hosted Trigger.dev instance:
+
+```yaml
+agent:
+  environment:
+    TRIGGER_API_URL: https://trigger.example.com
+    TRIGGER_SECRET_KEY: ${TRIGGER_SECRET_KEY}
+```
+
+There is no implicit Cloud, localhost, or `webapp` endpoint. Supplying only one
+of the two values logs an incomplete-configuration warning and leaves durable
+dispatch disabled.
+
 ```yaml
 version: "3.9"
 
@@ -78,7 +94,6 @@ services:
       PLATOS_ENCRYPTION_KEY: ${PLATOS_ENCRYPTION_KEY}
       PLATOS_SESSION_SECRET: ${PLATOS_SESSION_SECRET}
       PLATOS_MAX_CONCURRENT_STREAMS: "100"
-      TRIGGER_API_URL: http://webapp:3030
       TRIGGER_INTERNAL_SECRET: ${TRIGGER_INTERNAL_SECRET}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318

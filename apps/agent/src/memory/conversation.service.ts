@@ -6,6 +6,7 @@ import type Redis from "ioredis";
 import type { RequestScope } from "../auth/scope.guard";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { env } from "../shared/env";
+import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 
 export interface StoredMessage {
   id: string;
@@ -809,6 +810,7 @@ export class ConversationService {
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const sdk = require("@trigger.dev/sdk");
+      if (configureExternalTriggerSdk(sdk).status !== "configured") return null;
       // Validate every method the reaper depends on. If `runs.retrieve` were
       // missing the live-run guard would silently vanish, so require it too.
       if (

@@ -144,41 +144,49 @@ import {
   renderMemoryGuidanceBlock,
 } from "./prompt-builder.service";
 import type { PromptBuilderService } from "./prompt-builder.service";
+import {
+  configureExternalTriggerSdk,
+  resolveExternalTriggerConfig,
+} from "../shared/external-trigger-config";
 
 // Trigger.dev SDK — used by `spawn_bgo` and related meta-tools.
-// The API key is resolved per-scope from RuntimeEnvironment.apiKey so
-// no TRIGGER_SECRET_KEY env var is needed. Platos IS trigger.dev —
-// the webapp is the trigger.dev API; the agent talks to it directly
-// using the environment's own key looked up from the shared DB.
+// Global SDK calls require an explicitly configured external Trigger endpoint
+// and token. Embedded RuntimeEnvironment API keys belong to the retired
+// Platos-hosted engine and must never be sent to an external Trigger service.
 const moduleLogger = new Logger("AgentService");
 let triggerSdk: any = null;
-// triggerConfigured is now always true — clients are built on demand.
-const triggerConfigured = true;
+let triggerConfigured = false;
 try {
   triggerSdk = require("@trigger.dev/sdk");
-  moduleLogger.log("[trigger.sdk] loaded — API keys resolved per-scope from DB");
+  triggerConfigured = configureExternalTriggerSdk(triggerSdk).status === "configured";
+  moduleLogger.log(
+    triggerConfigured
+      ? "[trigger.sdk] configured for the explicit external endpoint"
+      : "[trigger.sdk] external durable dispatch disabled; direct dispatch remains available",
+  );
 } catch (err: any) {
   moduleLogger.warn("[trigger.sdk] not available:", err?.message);
 }
 
-// Cache of per-environment ApiClient instances (keyed by environmentId).
-// Avoids a DB round-trip on every spawn_bgo call while still respecting
-// per-environment key isolation.
+// Cache the external client by environment so existing call sites retain their
+// lifecycle boundary. Authentication always uses the explicitly configured
+// external Trigger token, never the embedded RuntimeEnvironment.apiKey.
 const _triggerClientCache = new Map<string, any>();
 
-async function getScopedTriggerClient(prisma: any, environmentId: string): Promise<any | null> {
+async function getScopedTriggerClient(_prisma: any, environmentId: string): Promise<any | null> {
   if (_triggerClientCache.has(environmentId)) {
     return _triggerClientCache.get(environmentId)!;
   }
   try {
-    const env = await prisma.runtimeEnvironment.findFirst({
-      where: { id: environmentId },
-      select: { apiKey: true },
-    });
-    if (!env?.apiKey) return null;
-    const baseURL = process.env.TRIGGER_API_URL || "http://webapp:3030";
+    const config = resolveExternalTriggerConfig();
+    if (config.status !== "configured") {
+      moduleLogger.warn(
+        "[trigger.sdk] scoped durable dispatch unavailable: external Trigger endpoint and credentials are required",
+      );
+      return null;
+    }
     const { ApiClient } = require("@trigger.dev/core");
-    const client = new ApiClient(baseURL, env.apiKey);
+    const client = new ApiClient(config.endpoint, config.accessToken);
     _triggerClientCache.set(environmentId, client);
     moduleLogger.log(`[trigger.sdk] resolved API key for env ${environmentId.slice(0, 12)}…`);
     return client;
@@ -2635,7 +2643,7 @@ export class AgentService {
       // only correct path.
       const endUserId = await this.resolveOriginEndUserId(scope);
 
-      // Resolve API key from DB for this environment — no TRIGGER_SECRET_KEY needed.
+      // Resolve the explicitly configured external Trigger client.
       const _bgoClient = await getScopedTriggerClient(this.prisma, scope.environmentId);
       if (_bgoClient?.triggerTask) {
         try {
@@ -3921,7 +3929,7 @@ export class AgentService {
         timezone: z.string().optional().describe("IANA tz (e.g. 'America/Los_Angeles'). Default UTC."),
       }),
       execute: async ({ taskId, cron, payload, timezone }) => {
-        if (!triggerSdk?.schedules?.create) {
+        if (!triggerReady() || !triggerSdk?.schedules?.create) {
           return { status: "skipped", reason: "trigger.dev schedules API not available" };
         }
         try {
@@ -4171,7 +4179,7 @@ export class AgentService {
         scheduleId: z.string().describe("Schedule id (returned by create_schedule or list_schedules)"),
       }),
       execute: async ({ scheduleId }) => {
-        if (!triggerSdk?.schedules?.deactivate) {
+        if (!triggerReady() || !triggerSdk?.schedules?.deactivate) {
           return { status: "skipped", reason: "trigger.dev schedules API not available" };
         }
         try {
@@ -4194,7 +4202,7 @@ export class AgentService {
         limit: z.number().int().min(1).max(200).optional(),
       }),
       execute: async ({ filter, limit }) => {
-        if (!triggerSdk?.schedules?.list) {
+        if (!triggerReady() || !triggerSdk?.schedules?.list) {
           return { status: "skipped", reason: "trigger.dev schedules API not available" };
         }
         try {

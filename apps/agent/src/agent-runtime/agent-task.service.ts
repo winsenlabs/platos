@@ -18,6 +18,7 @@ import type { RequestScope } from "../auth/scope.guard";
 import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { env } from "../shared/env";
+import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 
 /**
  * AgentTaskService — orchestrates a complete agent conversation turn.
@@ -1097,7 +1098,10 @@ export class AgentTaskService {
         } catch {
           triggerSdk = null;
         }
-        if (!triggerSdk?.tasks?.trigger) continue;
+        if (
+          configureExternalTriggerSdk(triggerSdk).status !== "configured" ||
+          !triggerSdk?.tasks?.trigger
+        ) continue;
         for (const threshold of crossed) {
           const subjectLabel =
             status.cap.scopeType === "agent"
@@ -1292,7 +1296,7 @@ export class AgentTaskService {
         try { return require("@trigger.dev/sdk"); } catch { return null; }
       })();
       const triggerReady =
-        !!process.env.TRIGGER_SECRET_KEY &&
+        configureExternalTriggerSdk(triggerSdk).status === "configured" &&
         !!triggerSdk?.tasks?.trigger;
       if (triggerReady) {
         // Idempotency: minute-resolution dedup on (threadId). If two turns

@@ -30,6 +30,40 @@ to GHCR:
 
 The VPS never compiles. It only ever **pulls** a finished, immutable image.
 
+### Enforced build headroom
+
+The webapp build is guarded even outside the production deploy path:
+
+- V8 old-space defaults to **1536 MiB** (`WEBAPP_BUILD_MAX_OLD_SPACE_SIZE_MB`).
+- The build requires another **2048 MiB** of currently available memory for
+  pnpm/Turbo, native allocations, bundlers, and the kernel.
+- Dependency builds are serialized. If less than **3584 MiB** is available, the
+  build exits before compilation with a message to build off-box.
+
+This means a ~7.9 GB host with only ~3 GB available cannot start the risky
+webapp compile. Increasing the heap also increases the required available
+memory by the same amount; it does not bypass the guard. Use
+`pnpm build:platos:webapp` locally and the image workflow for production.
+Production source maps are disabled by default because Remix map generation
+has a materially higher peak. Set `WEBAPP_BUILD_SOURCEMAPS=true` only on an
+off-box builder with additional measured headroom and complete Sentry config.
+
+At runtime, compose defaults the webapp container to 2 GiB and V8 old-space to
+1536 MiB (`WEBAPP_NODE_MAX_OLD_SPACE_SIZE_MB`). The entrypoint reads the
+effective cgroup limit and refuses an override above 75% of that limit or one
+that leaves less than 512 MiB for native memory and request buffers.
+
+### WIN-132 deferred boundary
+
+This build graph remains intentionally honest about the embedded mode-C
+closure. Until WIN-132 lands, the webapp graph still includes
+`@internal/run-engine`, `@internal/schedule-engine`, and their dependencies;
+the `/engine/v1/*` routes, agent `trigger-worker.ts`, `WORKER_MODE`, and compose
+`worker` service also remain. WIN-120 does not claim the repository-wide
+no-engine-reference/no-engine-route acceptance criteria. `pnpm
+audit:platos-build` asserts that these deferred surfaces still exist so an
+unrelated build change cannot partially delete them and leave a broken release.
+
 ## Deploying
 
 `docker-compose.deploy.yml` is an override that swaps the `build:` blocks for

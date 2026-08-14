@@ -58,8 +58,20 @@ jobs:
         # typecheck fails without it. Cheap, deterministic, no DB needed.
         run: pnpm --filter @platos/database generate
 
-      - name: Typecheck platos-agent (the per-turn runtime)
-        run: pnpm run typecheck --filter platos-agent
+      - name: Audit Platos build and external-Trigger invariants
+        run: pnpm audit:platos-build
+
+      - name: External Trigger configuration and direct-dispatch tests
+        run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
+
+      - name: Webapp memory-policy tests
+        run: pnpm --filter webapp exec vitest run test/memoryPolicy.test.ts
+
+      - name: Strict declaration build for the explicit Platos agent graph
+        # Builds only the agent's real runtime graph and emits declarations.
+        # The separate image workflow builds the webapp's still-deferred engine
+        # closure under the guarded, serialized memory policy.
+        run: pnpm run build:platos:agent
 
   cross-scope-isolation:
     # Security enforcement gate: the top remaining item of the 2026-07-16
