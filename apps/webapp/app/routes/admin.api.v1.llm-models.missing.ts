@@ -1,10 +1,10 @@
 import { type LoaderFunctionArgs, json } from "@remix-run/server-runtime";
 import { prisma } from "~/db.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { getMissingLlmModels } from "~/services/admin/missingLlmModels.server";
 
 async function requireAdmin(request: Request) {
-  const authResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authResult = await authenticateApiRequestWithPAT(request);
   if (!authResult) {
     throw json({ error: "Invalid or Missing API key" }, { status: 401 });
   }

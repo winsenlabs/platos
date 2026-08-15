@@ -25,7 +25,7 @@ const env = process.env;
  * extractor returns fast with `reason: "extraction-disabled"`, so we
  * never spam the judge LLM.
  *
- * Gated by `PLATOS_ADMIN_TOKEN`. Manual kicks still go through
+ * Gated by `PLATOS_INTERNAL_AUTH_TOKEN`. Manual kicks still go through
  * `POST /api/v1/memory/extract` with a `threadId` payload.
  */
 export const memoryExtraction = schedules.task({
@@ -44,11 +44,11 @@ export const memoryExtraction = schedules.task({
       env.PLATOS_AGENT_HTTP_URL ||
       env.PLATOS_AGENT_API_URL ||
       "http://localhost:3100";
-    const adminToken = env.PLATOS_ADMIN_TOKEN;
+    const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!adminToken) {
-      logger.warn("memory-extraction: PLATOS_ADMIN_TOKEN not set — skipping");
+      logger.warn("memory-extraction: PLATOS_INTERNAL_AUTH_TOKEN not set — skipping");
       metadata.set("status", "skipped");
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN unset" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN unset" };
     }
 
     try {
@@ -58,7 +58,7 @@ export const memoryExtraction = schedules.task({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Platos-Admin-Token": adminToken,
+            "X-Platos-Internal-Auth": adminToken,
           },
           // No body; the admin endpoint discovers threads itself via Prisma.
           body: JSON.stringify({}),

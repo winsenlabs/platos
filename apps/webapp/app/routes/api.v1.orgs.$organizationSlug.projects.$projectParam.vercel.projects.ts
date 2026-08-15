@@ -5,7 +5,7 @@ import { z } from "zod";
 import { prisma } from "~/db.server";
 import { apiCors } from "~/utils/apiCors";
 import { logger } from "~/services/logger.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { VercelIntegrationService } from "~/services/vercelIntegration.server";
 
 const ParamsSchema = z.object({
@@ -29,7 +29,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     return apiCors(request, json({}));
   }
 
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return apiCors(

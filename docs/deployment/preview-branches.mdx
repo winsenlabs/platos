@@ -103,7 +103,7 @@ jobs:
 
 For this workflow to work, you need to set the following secrets in your GitHub repository:
 
-- `TRIGGER_ACCESS_TOKEN`: A Trigger.dev personal access token (they start with `tr_pat_`). [Learn how to create one and set it in GitHub](/github-actions#creating-a-personal-access-token).
+- `TRIGGER_ACCESS_TOKEN`: A Platos user API token (it starts with `plt_pat_`). [Learn how to create one and set it in GitHub](/github-actions#creating-a-personal-access-token).
 
 Notice that the deploy command has `--env preview` at the end. We automatically detect the preview branch from the GitHub actions env var.
 

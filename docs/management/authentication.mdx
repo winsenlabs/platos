@@ -31,7 +31,7 @@ function secretKeyExample() {
 
 // Using personalAccessToken authentication
 configure({
-  secretKey: process.env["TRIGGER_ACCESS_TOKEN"], // starts with tr_pat_
+  secretKey: process.env["TRIGGER_ACCESS_TOKEN"], // Platos user tokens start with plt_pat_
 });
 
 function personalAccessTokenExample() {
@@ -77,7 +77,7 @@ Secret key authentication scopes the API access to a specific environment in a p
 
 ### Personal Access Token (PAT)
 
-A PAT is a token associated with a specific user, and gives access to all the orgs, projects, and environments that the user has access to. You can identify a PAT by the `tr_pat_` prefix. Because a PAT does not scope access to a specific environment, you must provide the `projectRef` argument when using a PAT (and sometimes the environment as well).
+A PAT is a token associated with a specific user, and gives access to all the orgs, projects, and environments that the user has access to. You can identify a Platos PAT by the `plt_pat_` prefix. Because a PAT does not scope access to a specific environment, you must provide the `projectRef` argument when using a PAT (and sometimes the environment as well).
 
 For example, when uploading environment variables using a PAT, you must provide the `projectRef` and `environment` arguments:
 
@@ -85,7 +85,7 @@ For example, when uploading environment variables using a PAT, you must provide 
 import { configure, envvars } from "@trigger.dev/sdk";
 
 configure({
-  secretKey: process.env["TRIGGER_ACCESS_TOKEN"], // starts with tr_pat_
+  secretKey: process.env["TRIGGER_ACCESS_TOKEN"], // starts with plt_pat_
 });
 
 await envvars.upload("proj_1234", "dev", {
@@ -108,7 +108,7 @@ When working with preview branches, you may need to target a specific branch whe
 import { configure, envvars } from "@trigger.dev/sdk";
 
 configure({
-  secretKey: process.env["TRIGGER_ACCESS_TOKEN"], // starts with tr_pat_
+  secretKey: process.env["TRIGGER_ACCESS_TOKEN"], // starts with plt_pat_
   previewBranch: "feature-xyz",
 });
 
@@ -150,7 +150,7 @@ When using the SDK to manage preview branch environment variables, the branch ta
 import { configure, envvars } from "@trigger.dev/sdk";
 
 configure({
-  secretKey: process.env["TRIGGER_ACCESS_TOKEN"], // starts with tr_pat_
+  secretKey: process.env["TRIGGER_ACCESS_TOKEN"], // starts with plt_pat_
   previewBranch: "feature-xyz", // Optional: specify the branch
 });
 

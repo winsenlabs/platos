@@ -24,7 +24,7 @@ describe("the operator/subject boundary", () => {
   });
 
   it("named operator tables are explicitly excluded", () => {
-    for (const t of ["OrgMember", "MfaBackupCode", "PersonalAccessToken", "PlatosOAuthAccessToken"]) {
+    for (const t of ["OrgMember", "MfaBackupCode", "PlatosPAT", "PlatosOAuthAccessToken"]) {
       expect(isSubjectUserIdTable(t)).toBe(false);
     }
   });

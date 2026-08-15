@@ -163,7 +163,7 @@ export const agentSubrun = task({
       logger.warn("TRIGGER_INTERNAL_SECRET is using the insecure default — set it before production deploy");
     }
     const resolvedInternalSecret = internalSecret || "dev-internal-secret-change-me";
-    const adminToken = env.PLATOS_ADMIN_TOKEN;
+    const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
 
     const scopeExtras = {
       sessionId: scope.sessionId,
@@ -326,7 +326,7 @@ export const agentSubrun = task({
     let reportDelivered = false;
     if (mode !== "wait") {
       if (!adminToken) {
-        logger.warn("agent-subrun: PLATOS_ADMIN_TOKEN unset — cannot report back to parent");
+        logger.warn("agent-subrun: PLATOS_INTERNAL_AUTH_TOKEN unset — cannot report back to parent");
       } else {
         const reportBody = {
           agentId: parentAgentId,
@@ -362,7 +362,7 @@ export const agentSubrun = task({
         try {
           const res = await fetch(`${agentUrl}/api/v1/agent/internal/subagent-report`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "X-Platos-Admin-Token": adminToken },
+            headers: { "Content-Type": "application/json", "X-Platos-Internal-Auth": adminToken },
             body: JSON.stringify(reportBody),
             signal: AbortSignal.timeout(590_000),
           });

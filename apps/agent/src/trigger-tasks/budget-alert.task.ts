@@ -152,7 +152,7 @@ export const budgetAlert = task({
             env.PLATOS_AGENT_HTTP_URL ||
             env.PLATOS_AGENT_API_URL ||
             "http://localhost:3100";
-          const adminToken = env.PLATOS_ADMIN_TOKEN;
+          const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
           if (adminToken) {
             const res = await fetch(
               `${AGENT_API_URL}/api/v1/agent/monitoring/budget/email`,
@@ -160,7 +160,7 @@ export const budgetAlert = task({
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  "X-Platos-Admin-Token": adminToken,
+                  "X-Platos-Internal-Auth": adminToken,
                 },
                 body: JSON.stringify({ recipients, subject, body: lines }),
                 signal: AbortSignal.timeout(15_000),
@@ -172,7 +172,7 @@ export const budgetAlert = task({
               summary.emailError = `email endpoint ${res.status}`;
             }
           } else {
-            summary.emailError = "PLATOS_ADMIN_TOKEN unset";
+            summary.emailError = "PLATOS_INTERNAL_AUTH_TOKEN unset";
           }
         } catch (err: any) {
           summary.emailError = err?.message ?? String(err);

@@ -24,23 +24,21 @@ cp .env.example .env
 Open `.env` and set at minimum:
 
 ```bash
-# Webapp secrets — ENCRYPTION_KEY is 32 ASCII chars (NOT 32 bytes of hex)
+# Session and login-link signing
 SESSION_SECRET=$(openssl rand -base64 24 | tr -d '\n')
 MAGIC_LINK_SECRET=$(openssl rand -base64 24 | tr -d '\n')
-ENCRYPTION_KEY=$(openssl rand -hex 16)                 # 32 chars for webapp's length check
 
-# Agent secrets — PLATOS_ENCRYPTION_KEY is 32 bytes of hex (64 chars)
-PLATOS_ENCRYPTION_KEY=$(openssl rand -hex 32)          # 64 hex chars → 32 bytes (agent decodes as hex)
-PLATOS_SESSION_SECRET=$(openssl rand -base64 24 | tr -d '\n')
+# Three independent AES-256-GCM domains; new values are 64 hex chars / 32 bytes
+ENCRYPTION_KEY=$(openssl rand -hex 32)
+PLATOS_ENCRYPTION_KEY=$(openssl rand -hex 32)
+PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)
+PLATOS_MESSAGE_ENCRYPTION_KEY_V=1
 
 # At least one provider
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-> **The two encryption keys have different formats — read carefully.**
->
-> - **Webapp** `ENCRYPTION_KEY` is validated as exactly **32 ASCII chars** (`apps/webapp/app/env.server.ts:71` — `Buffer.from(val, "utf8").length === 32`). `openssl rand -hex 16` produces 32 chars. `openssl rand -hex 32` produces 64 chars → fails → boot refuses.
-> - **Agent** `PLATOS_ENCRYPTION_KEY` is validated as exactly **64 hex chars → 32 bytes** (`apps/agent/src/auth/secrets.service.ts:31` — `keyHex.length === 64` + `Buffer.from(keyHex, "hex")`). `openssl rand -hex 32` produces 64 hex chars. `openssl rand -hex 16` produces 32 chars → agent falls back to an ephemeral key and warns; secrets don't survive restart.
+> Generate each encryption key separately. Existing exact 32-byte UTF-8 `ENCRYPTION_KEY` deployments remain valid; do not replace that value without re-encrypting historical ciphertext. Platos rejects malformed keys and configured domains that reuse the same bytes.
 
 `.env.example` documents everything. See [env-vars.md](./env-vars.md) for the full list.
 
@@ -199,7 +197,7 @@ This is the trigger.dev run engine — you get the same observability you'd get 
 
 ## Troubleshooting
 
-**Agent container crash-loops on boot.** Check `docker compose logs agent`. Most common cause: `PLATOS_ENCRYPTION_KEY` not set to exactly 32 ASCII chars (use `openssl rand -hex 16`). Note: `openssl rand -hex 32` produces 64 chars and fails the length check — see [env-vars.md](./env-vars.md#core).
+**Agent container crash-loops on boot.** Check `docker compose logs agent`. Confirm all three encryption inputs are independently generated 64-character hex values (`openssl rand -hex 32`) and that `PLATOS_MESSAGE_ENCRYPTION_KEY` is present in production. See [env-vars.md](./env-vars.md#core).
 
 **Magic link never arrives.** In dev mode, check `docker compose logs webapp`. For production SMTP, set `FROM_EMAIL`, `RESEND_API_KEY`, or configure `SMTP_*` vars (see [env-vars.md](./env-vars.md)).
 

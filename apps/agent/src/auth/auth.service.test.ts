@@ -141,9 +141,9 @@ describe("AuthService — entity-signed session tokens round-trip", () => {
 });
 
 describe("AuthService — platform-signed session tokens", () => {
-  const prevSecret = process.env.PLATOS_SESSION_SECRET;
+  const prevSecret = process.env.SESSION_SECRET;
   beforeEach(() => {
-    process.env.PLATOS_SESSION_SECRET = "platform-shared-secret-32-chars-xx";
+    process.env.SESSION_SECRET = "platform-shared-secret-32-chars-xx";
   });
 
   it("mint + validate round-trip", async () => {
@@ -161,8 +161,8 @@ describe("AuthService — platform-signed session tokens", () => {
     expect(payload!.entityId).toBeUndefined();
   });
 
-  it("createPlatformSessionToken returns null when PLATOS_SESSION_SECRET unset", async () => {
-    delete process.env.PLATOS_SESSION_SECRET;
+  it("createPlatformSessionToken returns null when SESSION_SECRET unset", async () => {
+    delete process.env.SESSION_SECRET;
     const auth = new AuthService(makeStubPrisma(), {} as any);
     const token = await auth.createPlatformSessionToken({
       organizationId: SCOPE.organizationId,
@@ -171,7 +171,7 @@ describe("AuthService — platform-signed session tokens", () => {
       userId: SCOPE.userId,
     });
     expect(token).toBeNull();
-    process.env.PLATOS_SESSION_SECRET = prevSecret;
+    process.env.SESSION_SECRET = prevSecret;
   });
 });
 

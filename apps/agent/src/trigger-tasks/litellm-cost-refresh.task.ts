@@ -84,9 +84,9 @@ export const litellmCostRefresh = schedules.task({
     // downloading ~1 MB of JSON if we can't push it to the agent. Previously
     // we would silently 403 on push and the operator only noticed via a
     // stale-catalog dashboard alert.
-    const adminToken = env.PLATOS_ADMIN_TOKEN;
+    const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!adminToken) {
-      const error = "PLATOS_ADMIN_TOKEN not set — refuse to refresh (would 403 on push)";
+      const error = "PLATOS_INTERNAL_AUTH_TOKEN not set — refuse to refresh (would 403 on push)";
       logger.error("litellm-cost-refresh: missing admin token");
       metadata.set("status", "misconfigured");
       metadata.set("error", error);
@@ -122,7 +122,7 @@ export const litellmCostRefresh = schedules.task({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Platos-Admin-Token": adminToken,
+          "X-Platos-Internal-Auth": adminToken,
         },
         body: JSON.stringify({ catalog }),
         signal: AbortSignal.timeout(15000),

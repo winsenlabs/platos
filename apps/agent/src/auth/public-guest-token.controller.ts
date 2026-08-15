@@ -136,7 +136,7 @@ export class PublicGuestTokenController {
     );
     if (!token) {
       throw new HttpException(
-        "Guest tokens require PLATOS_SESSION_SECRET to be configured.",
+        "Guest tokens require SESSION_SECRET to be configured.",
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }

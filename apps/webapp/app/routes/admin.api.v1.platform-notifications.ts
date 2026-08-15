@@ -1,7 +1,7 @@
 import { type ActionFunctionArgs, json } from "@remix-run/server-runtime";
 import { err, ok, type Result } from "neverthrow";
 import { prisma } from "~/db.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import {
   createPlatformNotification,
   type CreatePlatformNotificationInput,
@@ -11,7 +11,7 @@ type AdminUser = { id: string; admin: boolean };
 type AuthError = { status: number; message: string };
 
 async function authenticateAdmin(request: Request): Promise<Result<AdminUser, AuthError>> {
-  const authResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authResult = await authenticateApiRequestWithPAT(request);
   if (!authResult) {
     return err({ status: 401, message: "Invalid or Missing API key" });
   }

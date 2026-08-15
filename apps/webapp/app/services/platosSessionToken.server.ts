@@ -6,14 +6,14 @@ import { logger } from "~/services/logger.server";
  * Mint a platform-issued Platos session token for a browser Socket.IO
  * connection to the agent service.
  *
- * Must use the same `PLATOS_SESSION_SECRET` the agent container has
+ * Must use the same `SESSION_SECRET` the agent container has
  * (`apps/agent/src/auth/auth.service.ts` checks for `iss: "platos-platform"`
- * and verifies against `process.env.PLATOS_SESSION_SECRET`).
+ * and verifies against `process.env.SESSION_SECRET`).
  *
  * Browser handshake shape:
  *   io(`${wsUrl}/agent`, { auth: { token } })
  *
- * Returns null if PLATOS_SESSION_SECRET is not configured — caller must
+ * Returns null if SESSION_SECRET is not configured — caller must
  * fail closed (block the WS connection, surface a clear error to the user).
  * Tokens are short-lived (1 hour default); callers are responsible for
  * re-minting if long-lived sessions are needed.
@@ -31,10 +31,10 @@ export function mintPlatosSessionToken(
   claims: PlatosSessionClaims,
   ttlSeconds: number = 3600,
 ): { token: string; exp: number } | null {
-  const secret = env.PLATOS_SESSION_SECRET;
+  const secret = env.SESSION_SECRET;
   if (!secret) {
     logger.warn(
-      "mintPlatosSessionToken: PLATOS_SESSION_SECRET not configured — cannot mint. Browser WS connections to the agent will be rejected on proxied requests.",
+      "mintPlatosSessionToken: SESSION_SECRET not configured — cannot mint. Browser WS connections to the agent will be rejected on proxied requests.",
     );
     return null;
   }

@@ -4,7 +4,7 @@
  * POST /orgs/:org/projects/:proj/env/:env/agent-connect/mint-token
  *
  * Returns a 5-minute Platos session token signed with
- * `PLATOS_SESSION_SECRET`. Hard-gated on `PLATOS_TEST_MODE === "true"`
+ * `SESSION_SECRET`. Hard-gated on `PLATOS_TEST_MODE === "true"`
  * so it can never accidentally mint tokens in production.
  */
 
@@ -42,7 +42,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   );
   if (!minted) {
     return json(
-      { error: "not_configured", message: "PLATOS_SESSION_SECRET is not set on the webapp." },
+      { error: "not_configured", message: "SESSION_SECRET is not set on the webapp." },
       { status: 500 },
     );
   }

@@ -5,7 +5,7 @@ import { cn } from "~/utils/cn";
 import {
   accountPath,
   accountSecurityPath,
-  personalAccessTokensPath,
+  apiTokensPath,
   rootPath,
 } from "~/utils/pathBuilder";
 import { AskAI } from "../AskAI";
@@ -41,10 +41,10 @@ export function AccountSideMenu({ user }: { user: User }) {
           data-action="account"
         />
         <SideMenuItem
-          name="Personal Access Tokens"
+          name="API Tokens"
           icon={ShieldCheckIcon}
           activeIconColor="text-emerald-500"
-          to={personalAccessTokensPath()}
+          to={apiTokensPath()}
           data-action="tokens"
         />
         <SideMenuItem

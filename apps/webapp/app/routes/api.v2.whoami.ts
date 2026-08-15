@@ -4,6 +4,7 @@ import { prisma } from "~/db.server";
 import { env } from "~/env.server";
 import { v3ProjectPath } from "~/utils/pathBuilder";
 import { authenticateRequest } from "~/services/apiAuth.server";
+import { patAllowsScope, type VerifiedPAT } from "~/services/patService.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const authenticationResult = await authenticateRequest(request, {
@@ -21,7 +22,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   switch (authenticationResult.type) {
     case "personalAccessToken": {
-      const result = await getIdentityFromPAT(authenticationResult.result.userId, projectRef);
+      const result = await getIdentityFromPAT(authenticationResult.result, projectRef);
       if (!result.success) {
         if (result.error === "user_not_found") {
           return json({ error: "User not found" }, { status: 404 });
@@ -46,11 +47,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 async function getIdentityFromPAT(
-  userId: string,
+  pat: VerifiedPAT,
   projectRef: string | undefined
 ): Promise<
   { success: true; result: WhoAmIResponse } | { success: false; error: "user_not_found" }
 > {
+  const userId = pat.userId;
   const user = await prisma.user.findFirst({
     select: {
       email: true,
@@ -99,6 +101,8 @@ async function getIdentityFromPAT(
 
   const project = await prisma.project.findFirst({
     select: {
+      id: true,
+      organizationId: true,
       externalRef: true,
       name: true,
       slug: true,
@@ -122,6 +126,9 @@ async function getIdentityFromPAT(
       success: true,
       result: userDetails,
     };
+  }
+  if (!patAllowsScope(pat, { organizationId: project.organizationId, projectId: project.id })) {
+    return { success: true, result: userDetails };
   }
 
   const projectPath = v3ProjectPath({ slug: project.organization.slug }, { slug: project.slug });

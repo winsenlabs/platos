@@ -17,6 +17,7 @@ Platos OSS does not offer a managed "DELETE MY DATA" button for end users. Every
 Four stores hold user-identifiable data:
 
 1. **Postgres** (`@platos/database` schema):
+
    - `User` (auth record)
    - `PlatosAgentThread` (conversation containers, FK `userId`)
    - `PlatosAgentMessage` (messages, FK via `threadId`)
@@ -50,7 +51,7 @@ A single person may still hold data in more than one organization. Erasure is or
 { "externalUserId": "…", "organizationId": "…", "idempotencyKey": "…" }
 ```
 
-Authenticated with `PLATOS_ADMIN_TOKEN` in the `X-Platos-Admin-Token` header, compared in constant time. Ordinary Platos session tokens cannot reach this route. The `idempotencyKey` is required: replaying a request returns the original receipt rather than running a second destructive pass.
+Authenticated with `Authorization: Bearer plt_mcp_...`. The credential must have `admin` tier and belong to the requested organization. Ordinary Platos session tokens, scope-tier credentials, cross-organization credentials, and static callback secrets cannot reach this route. The `idempotencyKey` is required: replaying a request returns the original receipt rather than running a second destructive pass.
 </Step>
 
 <Step title="Read the receipt">
@@ -97,6 +98,7 @@ GET /api/v1/admin/users/:userId/data/export?organizationId=…&projectId=…&env
 ```
 
 Returns a zip containing:
+
 - `messages.jsonl` (one message per line)
 - `memories.jsonl`
 - `threads.jsonl`

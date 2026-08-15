@@ -13,12 +13,13 @@ import {
 import { type RuntimeEnvironmentForEnvRepo } from "~/v3/environmentVariables/environmentVariablesRepository.server";
 import { logger } from "./logger.server";
 import {
-  type PersonalAccessTokenAuthenticationResult,
-  authenticateApiRequestWithPersonalAccessToken,
-  isPersonalAccessToken,
-} from "./personalAccessToken.server";
-import {
+  type PATAuthenticationResult,
+  authenticateApiRequestWithPAT,
   isPlatosPAT,
+  patAllowsScope,
+  patCapabilityForMethod,
+  patHasCapability,
+  type PATCapability,
   verifyPAT,
   type VerifiedPAT,
 } from "./patService.server";
@@ -324,7 +325,7 @@ function getApiKeyResult(apiKey: string): {
 export type AuthenticationResult =
   | {
       type: "personalAccessToken";
-      result: PersonalAccessTokenAuthenticationResult;
+      result: PATAuthenticationResult;
     }
   | {
       type: "organizationAccessToken";
@@ -347,7 +348,7 @@ const defaultAllowedAuthenticationMethods: AllowedAuthenticationMethods = {
 };
 
 type FilteredAuthenticationResult<
-  T extends AllowedAuthenticationMethods = AllowedAuthenticationMethods
+  T extends AllowedAuthenticationMethods = AllowedAuthenticationMethods,
 > =
   | (T["personalAccessToken"] extends true
       ? Extract<AuthenticationResult, { type: "personalAccessToken" }>
@@ -379,14 +380,15 @@ type FilteredAuthenticationResult<
  *   organizationAccessToken: false,
  *   apiKey: false,
  * });
- * // result type: { type: "personalAccessToken"; result: PersonalAccessTokenAuthenticationResult } | undefined
+ * // result type: { type: "personalAccessToken"; result: PATAuthenticationResult } | undefined
  * ```
  */
 export async function authenticateRequest<
-  T extends AllowedAuthenticationMethods = AllowedAuthenticationMethods
+  T extends AllowedAuthenticationMethods = AllowedAuthenticationMethods,
 >(
   request: Request,
-  allowedAuthenticationMethods?: T
+  allowedAuthenticationMethods?: T,
+  requiredPATCapability: PATCapability = patCapabilityForMethod(request.method)
 ): Promise<FilteredAuthenticationResult<T> | undefined> {
   const allowedMethods = allowedAuthenticationMethods ?? defaultAllowedAuthenticationMethods;
 
@@ -395,8 +397,8 @@ export async function authenticateRequest<
     return;
   }
 
-  if (allowedMethods.personalAccessToken && isPersonalAccessToken(apiKey)) {
-    const result = await authenticateApiRequestWithPersonalAccessToken(request);
+  if (allowedMethods.personalAccessToken && isPlatosPAT(apiKey)) {
+    const result = await authenticateApiRequestWithPAT(request, requiredPATCapability);
 
     if (!result) {
       return;
@@ -526,6 +528,19 @@ export async function authenticatedEnvironmentForAuthentication(
           throw json({ error: "Environment not found" }, { status: 404 });
         }
 
+        if (
+          !patAllowsScope(auth.result, {
+            organizationId: environment.organizationId,
+            projectId: environment.projectId,
+            environmentId: environment.id,
+          })
+        ) {
+          throw json(
+            { error: "Personal access token scope does not permit this environment" },
+            { status: 403 }
+          );
+        }
+
         return environment;
       }
 
@@ -549,6 +564,19 @@ export async function authenticatedEnvironmentForAuthentication(
 
       if (!environment.parentEnvironment) {
         throw json({ error: "Branch not associated with a preview environment" }, { status: 400 });
+      }
+
+      if (
+        !patAllowsScope(auth.result, {
+          organizationId: environment.organizationId,
+          projectId: environment.projectId,
+          environmentId: environment.id,
+        })
+      ) {
+        throw json(
+          { error: "Personal access token scope does not permit this environment" },
+          { status: 403 }
+        );
       }
 
       return {
@@ -798,8 +826,8 @@ export async function getOneTimeUseToken(
  * a session cookie carried the auth. Routes that need to behave the
  * same regardless of auth source can just read `userId`.
  *
- * This is additive — existing endpoints that call `authenticateRequest`
- * (for `tr_*` / org tokens / `tr_pat_`) are unaffected.
+ * Existing endpoints that call `authenticateRequest` use the same retained
+ * `plt_pat_` verifier alongside organization tokens and environment API keys.
  */
 export type WebappUserAuth = {
   userId: string;
@@ -808,6 +836,7 @@ export type WebappUserAuth = {
 
 export async function authenticateRequestWithPAT(
   request: Request,
+  requiredPATCapability: PATCapability = patCapabilityForMethod(request.method)
 ): Promise<WebappUserAuth | undefined> {
   const rawAuth = request.headers.get("Authorization");
   if (rawAuth && rawAuth.startsWith("Bearer ")) {
@@ -817,6 +846,7 @@ export async function authenticateRequestWithPAT(
       if (!verified) {
         return;
       }
+      if (!patHasCapability(verified.role, requiredPATCapability)) return;
       return { userId: verified.userId, pat: verified };
     }
   }

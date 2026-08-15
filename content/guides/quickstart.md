@@ -42,8 +42,8 @@ A running Platos instance, a linked provider key, an agent named "Hello", and a 
    Generate two keys:
 
    ```bash
-   echo "ENCRYPTION_KEY=$(openssl rand -hex 16)" >> .env
-   echo "PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 16)" >> .env
+   echo "ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
+   echo "PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
    ```
 
 2. **Start the stack.**
@@ -79,6 +79,7 @@ A running Platos instance, a linked provider key, an agent named "Hello", and a 
 5. **Create the agent.**
 
    Sidebar -> Agents -> "New agent".
+
    - Name: `Hello`.
    - Model: pick any model from your provider.
    - System prompt: `You are a friendly assistant. Reply concisely.`

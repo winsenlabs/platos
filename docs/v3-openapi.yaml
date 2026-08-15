@@ -1733,7 +1733,7 @@ paths:
             import { runs, configure } from "@trigger.dev/sdk";
 
             configure({
-              accessToken: "tr_pat_1234" // always use an environment variable for this
+              accessToken: "plt_pat_1234" // always use an environment variable for this
             });
 
             // Get the first page of runs
@@ -1761,7 +1761,7 @@ paths:
             import { runs, configure } from "@trigger.dev/sdk";
 
             configure({
-              accessToken: "tr_pat_1234" // always use an environment variable for this
+              accessToken: "plt_pat_1234" // always use an environment variable for this
             });
 
             const response = await runs.list("proj_1234", {
@@ -3382,14 +3382,14 @@ components:
       type: http
       scheme: bearer
       description: |
-        Use your user-specific Personal Access Token, which you can generate from the Trigger.dev dashboard in your account settings. (It will start with `tr_pat_`.)
+        Use your user-specific Personal Access Token, which you can generate from the Trigger.dev dashboard in your account settings. (It will start with `plt_pat_`.)
 
         Our TypeScript SDK will default to using the value of the `TRIGGER_ACCESS_TOKEN` environment variable if it is set. If you are using the SDK in a different environment, you can set the key using the `configure` function.
 
         ```typescript
         import { configure } from "@trigger.dev/sdk";
 
-        configure({ accessToken: "tr_pat_1234" });
+        configure({ accessToken: "plt_pat_1234" });
         ```
 
     publicAccessToken:

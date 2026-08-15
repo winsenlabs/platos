@@ -1,7 +1,7 @@
 import { ActionFunctionArgs, json, LoaderFunctionArgs } from "@remix-run/server-runtime";
 import { z } from "zod";
 import { prisma } from "~/db.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { engine } from "~/v3/runEngine.server";
 import { updateEnvConcurrencyLimits } from "~/v3/runQueue.server";
 
@@ -16,7 +16,7 @@ const RequestBodySchema = z.object({
 
 export async function action({ request, params }: ActionFunctionArgs) {
   // Next authenticate the request
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing API key" }, { status: 401 });
@@ -72,7 +72,7 @@ const SearchParamsSchema = z.object({
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   // Next authenticate the request
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing API key" }, { status: 401 });

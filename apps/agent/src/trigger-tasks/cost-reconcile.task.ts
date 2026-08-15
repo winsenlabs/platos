@@ -14,7 +14,7 @@ const env = process.env;
  *
  * Design mirror of the LiteLLM cost-refresh + attachments-retention
  * tasks: scheduled inside trigger.dev's worker, talks HTTP to the agent
- * admin endpoint (same `X-Platos-Admin-Token` gate).
+ * admin endpoint (same `X-Platos-Internal-Auth` gate).
  *
  * Failure policy: never hard-fail. A missed night still reconciles on
  * the next run because Postgres is durable; a failed reconcile only
@@ -37,12 +37,12 @@ export const costReconcile = schedules.task({
       env.PLATOS_AGENT_HTTP_URL ||
       env.PLATOS_AGENT_API_URL ||
       "http://localhost:3100";
-    const adminToken = env.PLATOS_ADMIN_TOKEN;
+    const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
 
     if (!adminToken) {
-      logger.warn("cost-reconcile: PLATOS_ADMIN_TOKEN not set — skipping");
+      logger.warn("cost-reconcile: PLATOS_INTERNAL_AUTH_TOKEN not set — skipping");
       metadata.set("status", "skipped");
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN unset" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN unset" };
     }
 
     try {
@@ -52,7 +52,7 @@ export const costReconcile = schedules.task({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Platos-Admin-Token": adminToken,
+            "X-Platos-Internal-Auth": adminToken,
           },
           // 2-day smoothing covers yesterday's tail.
           body: JSON.stringify({ daysBack: 2 }),

@@ -3,13 +3,13 @@
 // namespace), sends one message to a durable agent with NO threadId, and
 // expects: meta {durable:true, session:true} → token stream → done.
 //
-// Usage: PLATOS_SESSION_SECRET=... node scripts/ws-smoke-session.mjs
+// Usage: SESSION_SECRET=... node scripts/ws-smoke-session.mjs
 import { io } from "socket.io-client";
 import crypto from "node:crypto";
 
-const secret = process.env.PLATOS_SESSION_SECRET;
+const secret = process.env.SESSION_SECRET;
 if (!secret) {
-  console.error("PLATOS_SESSION_SECRET required");
+  console.error("SESSION_SECRET required");
   process.exit(1);
 }
 

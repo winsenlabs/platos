@@ -1,6 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import * as crypto from "crypto";
-import { env } from "../shared/env";
 
 /**
  * Theme H.4 — Message-at-rest encryption (AES-256-GCM).
@@ -16,55 +15,36 @@ import { env } from "../shared/env";
  *
  * Invariants:
  *   - Never log key material (only the version int may be logged).
- *   - If a key is missing at boot, we DO NOT silently generate an ephemeral
- *     one — that would split historical rows across ephemeral keys and
- *     render them permanently unreadable after a restart. Instead, the
- *     service reports `available === false` and callers fall back to
- *     plaintext writes (encKeyVersion stays NULL). This is the
- *     explicit "rotate-safe" choice in the PRD.
+ *   - Production fails closed when the active key is missing or invalid.
+ *     Development/test may run without a key for legacy plaintext fixtures.
  *   - Rows without encKeyVersion (legacy / unconfigured) pass through
  *     untouched by `decryptIfNeeded`.
  *
- * Format: base64(iv[16] || authTag[16] || ciphertext). Same shape as
- * `SecretsService.encrypt` so operators who reuse ENCRYPTION_KEY for both
- * paths get consistent on-disk envelopes (the wrapper is identical; only
- * the KEY environment variable differs).
+ * Format: base64(iv[16] || authTag[16] || ciphertext). Keys must stay
+ * distinct from the other encryption domains even though the envelope is
+ * structurally identical.
  */
 
 const ALGO = "aes-256-gcm";
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 
-const CURRENT_VERSION = 1;
+const DEFAULT_VERSION = 1;
+
+function decodeKey(keyHex: string | undefined): Buffer | null {
+  if (!keyHex || !/^[0-9a-f]{64}$/i.test(keyHex)) return null;
+  return Buffer.from(keyHex, "hex");
+}
 
 function resolveKey(version: number): Buffer | null {
-  // Each version may live under an explicit `_V<N>` env; version 1 also
-  // honours the unsuffixed `PLATOS_MESSAGE_ENCRYPTION_KEY` so single-key
-  // deployments don't need the _V1 suffix. During rotation, operators
-  // set both the primary slot (new key) and every _V<N> slot for older
-  // keys; reads pick the right version per-row.
-  const candidates = [
-    `PLATOS_MESSAGE_ENCRYPTION_KEY_V${version}`,
-    ...(version === 1 ? ["PLATOS_MESSAGE_ENCRYPTION_KEY"] : []),
-  ];
-  for (const envName of candidates) {
-    const hex = process.env[envName];
-    if (!hex) continue;
-    if (hex.length === 64) {
-      try {
-        return Buffer.from(hex, "hex");
-      } catch {
-        continue;
-      }
-    }
-    // Accept 32-byte utf8 keys as a dev-only convenience (secrets.service
-    // is strict hex-only; message crypto is the durable path — operators
-    // should use hex in prod).
-    if (Buffer.byteLength(hex, "utf8") === 32) {
-      return Buffer.from(hex, "utf8");
-    }
-  }
-  return null;
+  return decodeKey(process.env[`PLATOS_MESSAGE_ENCRYPTION_KEY_V${version}`]);
+}
+
+function activeVersion(): number {
+  const configured = process.env.PLATOS_MESSAGE_ENCRYPTION_KEY_V;
+  if (!configured) return DEFAULT_VERSION;
+  const parsed = Number(configured);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : DEFAULT_VERSION;
 }
 
 @Injectable()
@@ -74,20 +54,16 @@ export class MessageCryptoService {
   private readonly activeVersion: number | null;
 
   constructor() {
-    const primary = resolveKey(CURRENT_VERSION);
+    const configuredVersion = activeVersion();
+    const primary = decodeKey(process.env.PLATOS_MESSAGE_ENCRYPTION_KEY);
     if (primary) {
-      this.keyCache.set(CURRENT_VERSION, primary);
-      this.activeVersion = CURRENT_VERSION;
+      this.keyCache.set(configuredVersion, primary);
+      this.activeVersion = configuredVersion;
     } else {
       this.activeVersion = null;
-      if (env.NODE_ENV === "production") {
-        // Warn loudly in prod — at-rest encryption is a SPEC §5.13
-        // invariant. We don't throw because fresh deploys legitimately
-        // boot without the key and still need to serve plaintext history
-        // until the operator provisions a key.
-        this.logger.warn(
-          "PLATOS_MESSAGE_ENCRYPTION_KEY not set — message content is stored in plaintext. " +
-            "Set a 32-byte hex key to enable at-rest AES-256-GCM (THEME_H.4).",
+      if (process.env.NODE_ENV === "production") {
+        throw new Error(
+          "PLATOS_MESSAGE_ENCRYPTION_KEY is required in production and must be 64 hex characters (32 bytes)"
         );
       }
     }
@@ -136,7 +112,9 @@ export class MessageCryptoService {
       key = resolveKey(keyVersion) ?? undefined;
       if (!key) {
         throw new Error(
-          `PlatosMessageCrypto: no key available for version ${keyVersion} — set PLATOS_MESSAGE_ENCRYPTION_KEY${keyVersion === 1 ? "" : `_V${keyVersion}`}`,
+          `PlatosMessageCrypto: no key available for version ${keyVersion} — set PLATOS_MESSAGE_ENCRYPTION_KEY${
+            keyVersion === 1 ? "" : `_V${keyVersion}`
+          }`
         );
       }
       this.keyCache.set(keyVersion, key);
@@ -159,7 +137,7 @@ export class MessageCryptoService {
    */
   decryptIfNeeded(
     content: string | null | undefined,
-    keyVersion: number | null | undefined,
+    keyVersion: number | null | undefined
   ): string | null {
     if (content === null || content === undefined) return null;
     if (!keyVersion) return content;
@@ -167,7 +145,7 @@ export class MessageCryptoService {
       return this.decrypt(content, keyVersion);
     } catch (err: any) {
       this.logger.error(
-        `MessageCrypto decrypt failed for keyVersion=${keyVersion}: ${err?.message || err}`,
+        `MessageCrypto decrypt failed for keyVersion=${keyVersion}: ${err?.message || err}`
       );
       // Fail-closed on decrypt: surface a sentinel so downstream code
       // doesn't leak the ciphertext as "text" to the LLM.
@@ -219,18 +197,14 @@ export class MessageCryptoService {
    * rows from before encryption was configured keep working).
    */
   decryptJsonField(value: unknown): unknown {
-    if (
-      value !== null &&
-      typeof value === "object" &&
-      (value as any).__platos_enc === 1
-    ) {
+    if (value !== null && typeof value === "object" && (value as any).__platos_enc === 1) {
       const env = value as { v: number; ct: string };
       try {
         const plain = this.decrypt(env.ct, env.v);
         return JSON.parse(plain);
       } catch (err: any) {
         this.logger.error(
-          `MessageCrypto decryptJsonField failed (v=${env.v}): ${err?.message || err}`,
+          `MessageCrypto decryptJsonField failed (v=${env.v}): ${err?.message || err}`
         );
         return { __platos_enc: 1, error: "decryption_key_missing", v: env.v };
       }

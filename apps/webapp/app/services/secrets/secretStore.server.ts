@@ -3,6 +3,7 @@ import { z } from "zod";
 import { env } from "~/env.server";
 import nodeCrypto from "node:crypto";
 import { safeJsonParse } from "~/utils/json";
+import { normalizeAes256Key } from "~/utils/encryptionKey.server";
 import { logger } from "../logger.server";
 import type { SecretStoreOptions } from "./secretStoreOptionsSchema.server";
 
@@ -222,7 +223,7 @@ export async function decryptSecret(
 ): Promise<string> {
   const decipher = nodeCrypto.createDecipheriv(
     "aes-256-gcm",
-    encryptionKey,
+    normalizeAes256Key(encryptionKey, "ENCRYPTION_KEY"),
     Buffer.from(secret.nonce, "hex")
   );
 
@@ -239,7 +240,11 @@ export async function encryptSecret(
   value: string
 ): Promise<EncryptedSecretValue> {
   const nonce = nodeCrypto.randomBytes(12);
-  const cipher = nodeCrypto.createCipheriv("aes-256-gcm", encryptionKey, nonce);
+  const cipher = nodeCrypto.createCipheriv(
+    "aes-256-gcm",
+    normalizeAes256Key(encryptionKey, "ENCRYPTION_KEY"),
+    nonce
+  );
 
   let encrypted = cipher.update(value, "utf8", "hex");
   encrypted += cipher.final("hex");

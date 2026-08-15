@@ -10,7 +10,7 @@ import { z } from "zod";
 import { prisma } from "~/db.server";
 import { createProject } from "~/models/project.server";
 import { logger } from "~/services/logger.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { isCuid } from "cuid";
 
 const ParamsSchema = z.object({
@@ -20,7 +20,7 @@ const ParamsSchema = z.object({
 export async function loader({ request, params }: LoaderFunctionArgs) {
   logger.info("get projects", { url: request.url });
 
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing Access Token" }, { status: 401 });
@@ -69,7 +69,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing Access Token" }, { status: 401 });

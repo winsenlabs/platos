@@ -79,7 +79,9 @@ controllers, and strict production builds remove their compiled files.
 | `PLATOS_TEST_MODE` | No | `false` | Enable deterministic local test providers |
 | `PLATOS_DEFAULT_MODEL` | No | `anthropic:claude-sonnet-4-20250514` | Default LLM model |
 | `PLATOS_ENCRYPTION_KEY` | Prod | — | 32-byte hex for secrets encryption |
-| `PLATOS_SESSION_SECRET` | Prod | — | Session token signing secret |
+| `SESSION_SECRET` | Prod | — | Session token signing secret |
+| `PLATOS_MESSAGE_ENCRYPTION_KEY` | Prod | — | 32-byte hex for versioned message/audit-content encryption |
+| `PLATOS_INTERNAL_AUTH_TOKEN` | Prod | — | Dedicated scheduled/internal callback authentication only |
 | `PLATOS_CORS_ORIGIN` | No | `*` | CORS allowed origins |
 | `PLATOS_RATE_LIMIT_PER_MIN` | No | `60` | Per-org requests/minute |
 | `PLATOS_RATE_LIMIT_PER_DAY` | No | `1000` | Per-org requests/day |

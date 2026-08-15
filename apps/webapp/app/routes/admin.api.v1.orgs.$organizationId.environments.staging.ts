@@ -8,7 +8,7 @@ import {
 import { z } from "zod";
 import { prisma } from "~/db.server";
 import { createEnvironment } from "~/models/organization.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { updateEnvConcurrencyLimits } from "~/v3/runQueue.server";
 
 const ParamsSchema = z.object({
@@ -20,7 +20,7 @@ const ParamsSchema = z.object({
  */
 export async function action({ request, params }: ActionFunctionArgs) {
   // Next authenticate the request
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing API key" }, { status: 401 });

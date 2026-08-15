@@ -1,7 +1,7 @@
 import { ActionFunctionArgs, LoaderFunctionArgs, json } from "@remix-run/server-runtime";
 import { z } from "zod";
 import { prisma } from "~/db.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { validatePartialFeatureFlags } from "~/v3/featureFlags";
 
 const ParamsSchema = z.object({
@@ -9,7 +9,7 @@ const ParamsSchema = z.object({
 });
 
 async function authenticateAdmin(request: Request) {
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return { error: json({ error: "Invalid or Missing API key" }, { status: 401 }) };

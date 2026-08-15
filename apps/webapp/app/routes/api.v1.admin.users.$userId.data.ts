@@ -2,7 +2,8 @@
  * EOBD.66 — user-data admin surface for GDPR erasure + export.
  *
  * DELETE /api/v1/admin/users/:userId/data?organizationId=…&projectId=…&environmentId=…
- *   Cascades Platos rows for the user in the given scope. Admin-token gated.
+ *   Cascades Platos rows for the user in the given scope. Admin-tier
+ *   control-plane credential gated.
  *   Returns per-table delete counts. Audit rows (`PlatosAdminAudit`,
  *   `PlatosToolCallAudit`) are retained for forensics unless `purgeAudit=1`
  *   is passed explicitly.
@@ -10,10 +11,9 @@
  * GET /api/v1/admin/users/:userId/data?organizationId=…&projectId=…&environmentId=…&dryRun=1
  *   Returns per-table row counts without deleting.
  *
- * Both call paths are gated by `X-Platos-Admin-Token` (same pattern as
- * `api.v1.agent.attachments.retention.ts`).
+ * Both call paths require `Authorization: Bearer plt_mcp_...` where the
+ * credential is admin-tier and belongs to the requested organization.
  */
-import * as crypto from "node:crypto";
 import {
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
@@ -22,40 +22,13 @@ import {
 import { env } from "~/env.server";
 import { prisma } from "~/db.server";
 import { logger } from "~/services/logger.server";
+import { verifyAdminControlPlaneCredential } from "~/services/controlPlaneCredential.server";
 
 type Scope = {
   organizationId: string;
   projectId: string;
   environmentId: string;
 };
-
-function verifyAdminToken(request: Request): Response | null {
-  const expected = env.PLATOS_ADMIN_TOKEN;
-  if (!expected) {
-    return json(
-      {
-        status: "error",
-        code: "admin_token_unset",
-        message:
-          "PLATOS_ADMIN_TOKEN not configured on webapp. Admin routes disabled until set.",
-      },
-      { status: 412 },
-    );
-  }
-  const provided = request.headers.get("x-platos-admin-token");
-  const isValid =
-    typeof provided === "string" &&
-    provided.length === expected.length &&
-    (() => {
-      try {
-        return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
-      } catch {
-        return false;
-      }
-    })();
-  if (!isValid) return json({ error: "forbidden" }, { status: 401 });
-  return null;
-}
 
 function parseScope(url: URL): Scope | Response {
   const organizationId = url.searchParams.get("organizationId");
@@ -87,9 +60,6 @@ function parseUserId(userId: string | undefined): string | Response {
 
 // ── Loader (GET) — dry-run count ─────────────────────────────────────
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const tokenCheck = verifyAdminToken(request);
-  if (tokenCheck) return tokenCheck;
-
   const userIdOrErr = parseUserId(params.userId);
   if (userIdOrErr instanceof Response) return userIdOrErr;
   const userId = userIdOrErr;
@@ -97,6 +67,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const scopeOrErr = parseScope(new URL(request.url));
   if (scopeOrErr instanceof Response) return scopeOrErr;
   const scope = scopeOrErr;
+  if (!(await verifyAdminControlPlaneCredential(request, scope.organizationId))) {
+    return json({ error: "forbidden" }, { status: 401 });
+  }
 
   const counts = await gatherCounts(prisma, scope, userId);
   return json({ userId, scope, counts, dryRun: true });
@@ -107,9 +80,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (request.method !== "DELETE") {
     return json({ error: "Method not allowed" }, { status: 405 });
   }
-  const tokenCheck = verifyAdminToken(request);
-  if (tokenCheck) return tokenCheck;
-
   const userIdOrErr = parseUserId(params.userId);
   if (userIdOrErr instanceof Response) return userIdOrErr;
   const userId = userIdOrErr;
@@ -118,6 +88,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const scopeOrErr = parseScope(url);
   if (scopeOrErr instanceof Response) return scopeOrErr;
   const scope = scopeOrErr;
+  if (!(await verifyAdminControlPlaneCredential(request, scope.organizationId))) {
+    return json({ error: "forbidden" }, { status: 401 });
+  }
 
   const purgeAudit = url.searchParams.get("purgeAudit") === "1";
 

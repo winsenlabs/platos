@@ -377,7 +377,7 @@ export class MemoryController {
    * double-fire of the cron can only produce duplicate work, never duplicate
    * memories.
    *
-   * Gated by `X-Platos-Admin-Token` (timing-safe). The endpoint
+   * Gated by `X-Platos-Internal-Auth` (timing-safe). The endpoint
    * acquires a Redis SET-NX lock (`lock:memory-extraction-cron`,
    * 5-min TTL) and exits early on contention — two trigger.dev
    * workers tick the same cron minute + we don't want both running
@@ -393,11 +393,11 @@ export class MemoryController {
    */
   @Post("admin/extraction-sweep")
   async adminExtractionSweep(@Req() req: Request) {
-    const expected = env.PLATOS_ADMIN_TOKEN;
+    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!expected) {
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN not set" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
     }
-    const provided = req.headers["x-platos-admin-token"];
+    const provided = req.headers["x-platos-internal-auth"];
     const isValid =
       typeof provided === "string" &&
       provided.length === expected.length &&

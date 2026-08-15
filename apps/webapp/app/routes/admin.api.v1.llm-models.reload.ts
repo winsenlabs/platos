@@ -1,10 +1,10 @@
 import { type ActionFunctionArgs, json } from "@remix-run/server-runtime";
 import { prisma } from "~/db.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { llmPricingRegistry } from "~/v3/llmPricingRegistry.server";
 
 export async function action({ request }: ActionFunctionArgs) {
-  const authResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authResult = await authenticateApiRequestWithPAT(request);
   if (!authResult) {
     return json({ error: "Invalid or Missing API key" }, { status: 401 });
   }

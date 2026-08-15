@@ -170,7 +170,7 @@ export class McpEntityController {
     if (!entity.config.enabled) return { error: "entity MCP not enabled", status: 403 };
 
     // Two token systems are valid here:
-    //   1. Bearer PATs (`pmt_*`) — minted via the webapp UI / the
+    //   1. Bearer PATs (`plt_ent_*`) — minted via the webapp UI / the
     //      `entities.generate_mcp_token` MCP tool. Stored as
     //      PlatosMcpBearerToken rows with sha256 hashes; entity-scoped only
     //      (no environmentId). The intended use case is CI/CD or a single
@@ -196,7 +196,7 @@ export class McpEntityController {
       scopes: string[];
     } | null = null;
 
-    if (bearer.startsWith("pmt_")) {
+    if (bearer.startsWith("plt_ent_")) {
       const patRow = await this.bearerTokenService.validate(bearer);
       if (patRow) {
         // PATs have no environmentId — they are entity-scoped only. Resolve
@@ -558,7 +558,7 @@ export class McpEntityController {
     // hash. The raw bearer is not stored (would defeat the at-rest
     // hashing); we reconstruct the token metadata via the DB. Try the
     // OAuth access-token table first, then fall back to PlatosMcpBearerToken
-    // (PAT path) so SSE clients using `pmt_*` tokens also work.
+    // (PAT path) so SSE clients using `plt_ent_*` tokens also work.
     const oauthRow = await this.prisma.platosOAuthAccessToken.findUnique({
       where: { tokenHash: parsed.tokenHash },
     });
@@ -1125,7 +1125,7 @@ export class McpEntityController {
     if (entity.organizationId !== scope.organizationId) {
       throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
     }
-    const ok = await this.bearerTokenService.revoke(tokenId, entity.entityPk);
+    const ok = await this.bearerTokenService.revoke(tokenId, entity.entityPk, scope.userId);
     return { revoked: ok };
   }
 
@@ -1385,4 +1385,3 @@ export class McpEntityController {
     return { ok: true, injectMcpContext: inject };
   }
 }
-

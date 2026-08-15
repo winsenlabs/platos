@@ -63,10 +63,10 @@ export const platosCompaction = task({
       env.PLATOS_AGENT_HTTP_URL ||
       env.PLATOS_AGENT_API_URL ||
       "http://localhost:3100";
-    const adminToken = env.PLATOS_ADMIN_TOKEN;
+    const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!adminToken) {
-      logger.warn("compaction: PLATOS_ADMIN_TOKEN not set — skipping");
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN unset", threadId: payload.threadId };
+      logger.warn("compaction: PLATOS_INTERNAL_AUTH_TOKEN not set — skipping");
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN unset", threadId: payload.threadId };
     }
 
     try {
@@ -74,7 +74,7 @@ export const platosCompaction = task({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Platos-Admin-Token": adminToken,
+          "X-Platos-Internal-Auth": adminToken,
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(110_000),

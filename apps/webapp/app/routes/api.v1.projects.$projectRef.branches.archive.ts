@@ -5,6 +5,7 @@ import { prisma } from "~/db.server";
 import { authenticateRequest } from "~/services/apiAuth.server";
 import { ArchiveBranchService } from "~/services/archiveBranch.server";
 import { logger } from "~/services/logger.server";
+import { patAllowsScope } from "~/services/patService.server";
 
 const ParamsSchema = z.object({
   projectRef: z.string(),
@@ -53,6 +54,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     select: {
       id: true,
       archivedAt: true,
+      organizationId: true,
+      projectId: true,
     },
     where: {
       organization:
@@ -79,6 +82,19 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const environment = environments.find((env) => env.archivedAt === null);
   if (!environment) {
     return json({ error: "Branch already archived" }, { status: 400 });
+  }
+  if (
+    authenticationResult.type === "personalAccessToken" &&
+    !patAllowsScope(authenticationResult.result, {
+      organizationId: environment.organizationId,
+      projectId: environment.projectId,
+      environmentId: environment.id,
+    })
+  ) {
+    return json(
+      { error: "Personal access token scope does not permit this environment" },
+      { status: 403 }
+    );
   }
 
   const service = new ArchiveBranchService();

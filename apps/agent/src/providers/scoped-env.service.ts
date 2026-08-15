@@ -6,6 +6,15 @@ import { env } from "../shared/env";
 
 export type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
+export function decodeScopedEnvEncryptionKey(raw: string): Buffer {
+  if (raw.length === 64 && /^[0-9a-f]{64}$/i.test(raw)) {
+    return Buffer.from(raw, "hex");
+  }
+  const legacy = Buffer.from(raw, "utf8");
+  if (legacy.length === 32) return legacy;
+  throw new Error("ENCRYPTION_KEY must be 64 hex chars or an existing 32-byte UTF-8 key");
+}
+
 /**
  * Reads env vars that the webapp UI stores in the trigger.dev `SecretStore`
  * Postgres table (AES-256-GCM encrypted). Key format matches what the webapp
@@ -14,7 +23,8 @@ export type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "en
  *   environmentvariable:{projectId}:{environmentId}:{VAR_NAME}
  *
  * The encryption key is shared between webapp + agent via the `ENCRYPTION_KEY`
- * docker-compose env var. Same 32-character ASCII value on both sides.
+ * docker-compose env var. New values are 64 hex characters; exact historical
+ * 32-byte UTF-8 values retain their original bytes for backwards compatibility.
  *
  * This is the bridge that makes "link API key in dashboard → agent uses it"
  * actually work. Before this, the agent read `process.env` which never got
@@ -24,13 +34,7 @@ export type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "en
 export class ScopedEnvService {
   private readonly logger = new Logger(ScopedEnvService.name);
   // MCPF-W6 followup — must be a Buffer because Node's createDecipheriv
-  // requires a 32-byte key. Two formats are accepted to match
-  // `EnvironmentService.encryptValue`:
-  //   • 32-character ASCII (legacy) — `Buffer.from(raw, "utf8")`
-  //   • 64-character hex (newer)    — `Buffer.from(raw, "hex")`
-  // Previously this stored the raw string and passed it directly to
-  // createDecipheriv, which threw "Invalid key length" on the 64-hex form
-  // even though `EncryptedSecretValue` (used elsewhere) accepted both.
+  // requires a 32-byte key.
   private readonly key: Buffer | null;
   // EOBD.39 — cache only positive lookups. Negative results (missing var)
   // are not cached because the UI writes a key and then expects the agent
@@ -44,36 +48,21 @@ export class ScopedEnvService {
     const raw = env.ENCRYPTION_KEY;
     if (!raw) {
       this.logger.warn(
-        "ENCRYPTION_KEY not set — scoped env-var resolution will always return undefined. Set it in docker-compose to match the webapp.",
+        "ENCRYPTION_KEY not set — scoped env-var resolution will always return undefined. Set it in docker-compose to match the webapp."
       );
       this.key = null;
     } else {
       try {
-        this.key = ScopedEnvService.parseKey(raw);
+        this.key = decodeScopedEnvEncryptionKey(raw);
       } catch (err: any) {
         this.logger.error(
-          `ENCRYPTION_KEY invalid format (${err?.message ?? String(err)}) — scoped env-var resolution disabled. Must be 32 ASCII chars OR 64 hex chars.`,
+          `ENCRYPTION_KEY invalid format (${
+            err?.message ?? String(err)
+          }) — scoped env-var resolution disabled. Must be 64 hex chars or an existing 32-byte UTF-8 key.`
         );
         this.key = null;
       }
     }
-  }
-
-  /**
-   * Mirror of `EnvironmentService.encryptValue`'s key parser. ENCRYPTION_KEY
-   * may be supplied as 32 ASCII chars (legacy compose default) OR 64 hex
-   * chars (newer self-hosters using `openssl rand -hex 32`). Both decrypt
-   * the same SecretStore rows because both yield the same 32-byte buffer
-   * the webapp uses to encrypt.
-   */
-  private static parseKey(raw: string): Buffer {
-    if (raw.length === 64 && /^[0-9a-f]{64}$/i.test(raw)) {
-      return Buffer.from(raw, "hex");
-    }
-    if (Buffer.from(raw, "utf8").length === 32) {
-      return Buffer.from(raw, "utf8");
-    }
-    throw new Error("ENCRYPTION_KEY must be 32 ASCII chars OR 64 hex chars");
   }
 
   /**
@@ -129,7 +118,7 @@ export class ScopedEnvService {
    */
   async test(
     scope: ScopeTuple,
-    envVarName: string,
+    envVarName: string
   ): Promise<{ ok: boolean; exists: boolean; decryptable: boolean; error?: string }> {
     if (!envVarName || typeof envVarName !== "string") {
       return { ok: false, exists: false, decryptable: false, error: "envVarName_required" };
@@ -207,7 +196,7 @@ export class ScopedEnvService {
     scope: ScopeTuple,
     provider: string,
     legacyEnvVar: string,
-    preferredKeyId?: string | null,
+    preferredKeyId?: string | null
   ): Promise<string | undefined> {
     // Step 1 — pinned key
     if (preferredKeyId) {
@@ -257,10 +246,12 @@ export class ScopedEnvService {
   }
 
   private bumpLastUsedAt(id: string): void {
-    this.prisma.platosProviderKey.update({
-      where: { id },
-      data: { lastUsedAt: new Date() },
-    }).catch(() => {});
+    this.prisma.platosProviderKey
+      .update({
+        where: { id },
+        data: { lastUsedAt: new Date() },
+      })
+      .catch(() => {});
   }
 
   private async fetchFresh(scope: ScopeTuple, name: string): Promise<string | undefined> {

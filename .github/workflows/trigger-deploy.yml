@@ -5,7 +5,7 @@ name: Deploy Trigger.dev tasks
 #
 # SETUP (one-time):
 #   1. GitHub → repo Settings → Secrets and variables → Actions → New secret:
-#        TRIGGER_ACCESS_TOKEN = <your tr_pat_… personal access token>
+#        TRIGGER_ACCESS_TOKEN = <your external Trigger deployment access token>
 #   2. Set the project ref in apps/agent/trigger.config.ts (or the
 #        TRIGGER_PROJECT_REF repo variable) to your project's proj_… id.
 

@@ -28,12 +28,12 @@ export const observabilityDlqDrain = schedules.task({
       env.PLATOS_AGENT_HTTP_URL ||
       env.PLATOS_AGENT_API_URL ||
       "http://localhost:3100";
-    const adminToken = env.PLATOS_ADMIN_TOKEN;
+    const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
 
     if (!adminToken) {
-      logger.warn("observability-dlq-drain: PLATOS_ADMIN_TOKEN not set — skipping");
+      logger.warn("observability-dlq-drain: PLATOS_INTERNAL_AUTH_TOKEN not set — skipping");
       metadata.set("status", "skipped");
-      return { status: "skipped", reason: "PLATOS_ADMIN_TOKEN unset" };
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN unset" };
     }
 
     try {
@@ -43,7 +43,7 @@ export const observabilityDlqDrain = schedules.task({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Platos-Admin-Token": adminToken,
+            "X-Platos-Internal-Auth": adminToken,
           },
           body: JSON.stringify({ maxBatch: 500 }),
           signal: AbortSignal.timeout(60_000),

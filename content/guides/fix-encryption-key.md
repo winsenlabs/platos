@@ -1,88 +1,55 @@
 ---
 slug: fix-encryption-key
-title: Fix an ENCRYPTION_KEY length error
-description: The webapp refuses to boot because ENCRYPTION_KEY isn't 32 ASCII characters. Fix it.
+title: Fix an ENCRYPTION_KEY format error
+description: Generate canonical 64-hex-character Platos encryption keys while preserving historical ciphertext.
 category: troubleshooting
 order: 40
 trigger_dev_primitive: false
 trigger_dev_link: ""
 questions:
-  - "Why does the webapp say ENCRYPTION_KEY must be 32 bytes?"
-  - "How do I generate a valid 32-character ASCII key?"
-  - "I rotated the key and now messages can't be decrypted, what now?"
-  - "What is the difference between ENCRYPTION_KEY and PLATOS_MESSAGE_ENCRYPTION_KEY?"
+  - "Why does the webapp say ENCRYPTION_KEY must be 64 hex chars?"
+  - "How do I generate a valid AES-256-GCM key?"
+  - "I rotated a key and ciphertext no longer decrypts, what now?"
 related:
   - install-self-host
   - backup-and-restore
+  - encryption-and-secrets
 source_files_referenced:
-  - apps/webapp/app/env.server.ts
-  - apps/agent/src/monitoring/message-crypto.service.ts
+  - apps/webapp/app/utils/encryptionKey.server.ts
+  - apps/agent/src/shared/env.ts
 ---
 
-# Fix an ENCRYPTION_KEY length error
+# Fix an ENCRYPTION_KEY format error
 
-The webapp refuses to boot. The Zod validator says `ENCRYPTION_KEY must be 32 bytes`. Fix it.
+New Platos encryption inputs use 64 hexadecimal characters, decoded to 32 bytes for AES-256-GCM. Existing exact 32-byte UTF-8 `ENCRYPTION_KEY` values remain valid and retain their original bytes.
 
-## The goal
+## Generate independent keys
 
-A boot-clean webapp with a valid `ENCRYPTION_KEY` of exactly 32 ASCII characters.
+```bash
+ENCRYPTION_KEY=$(openssl rand -hex 32)
+PLATOS_ENCRYPTION_KEY=$(openssl rand -hex 32)
+PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)
+```
 
-## The trap
+Run each command separately. Do not reuse one value across variables; the agent rejects duplicate key material. A 32-character hex string from `openssl rand -hex 16` is accepted only when it is the exact historical UTF-8 `ENCRYPTION_KEY`; it is not a valid format for a newly generated key.
 
-Old comments and tutorials say "32-byte hex" which is 64 ASCII characters. The actual check is `Buffer.from(value, "utf8").length === 32`. A 64-char hex string fails the check.
+Restart webapp, agent, and workers after updating the secret manager or `.env`:
 
-The right way is `openssl rand -hex 16`: 16 hex bytes equals 32 ASCII characters.
-
-## Steps
-
-1. **Generate the key.**
-
-   ```bash
-   openssl rand -hex 16
-   ```
-
-   Sample output: `3a8b2f5c1e4d6a7b8c9d0e1f2a3b4c5d` (32 chars).
-
-2. **Set in `.env`.**
-
-   ```bash
-   ENCRYPTION_KEY=3a8b2f5c1e4d6a7b8c9d0e1f2a3b4c5d
-   ```
-
-3. **Do the same for `PLATOS_MESSAGE_ENCRYPTION_KEY`.**
-
-   ```bash
-   echo "PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 16)" >> .env
-   ```
-
-4. **Restart.**
-
-   ```bash
-   docker compose -f docker-compose.platos.yml restart webapp agent
-   ```
-
-   Boot logs should show no env validator errors.
+```bash
+docker compose -f docker-compose.platos.yml restart webapp agent trigger-worker
+```
 
 ## Verify
 
-- `docker compose ps` shows webapp and agent `healthy`.
-- Sign in works.
-- Existing chats decrypt and show their messages.
+- `docker compose ps` reports healthy services.
+- Boot logs have no environment-validator errors.
+- Existing encrypted secrets and chats decrypt successfully.
+- New message envelopes have the configured `PLATOS_MESSAGE_ENCRYPTION_KEY_V`.
 
-## Rotation gotcha
+## If data was already encrypted
 
-If you regenerated `ENCRYPTION_KEY` after data was already written, entity service secrets encrypted with the old key are now unreadable. Every entity row needs its `serviceSecret` re-rotated. There is no automatic recovery.
+Do not generate a replacement merely to fix formatting unless you have retained the old key and a re-encryption plan. Ciphertext cannot be recovered without the exact key bytes that wrote it.
 
-For `PLATOS_MESSAGE_ENCRYPTION_KEY`: see [Encryption and secrets](/docs/encryption-and-secrets) for the dual-key rotation flow that re-encrypts messages without losing data.
+`ENCRYPTION_KEY` and `PLATOS_ENCRYPTION_KEY` domains require a maintenance re-encryption pass before cutover. Message encryption supports versioned reads: retain the old key as `PLATOS_MESSAGE_ENCRYPTION_KEY_V<N>`, increment the active version, and re-encrypt old envelopes before removing it.
 
-## Two keys
-
-- `ENCRYPTION_KEY`: encrypts entity service secrets and other small admin secrets.
-- `PLATOS_MESSAGE_ENCRYPTION_KEY`: encrypts message content and safety events.
-
-Both must be set; both follow the same 32-char rule.
-
-## Next steps
-
-- [Self-host with docker compose](/guides/install-self-host) for the full env list.
-- [Backup and restore](/guides/backup-and-restore) so you can recover even if a key is lost.
+See [Encryption and secrets](/docs/encryption-and-secrets) and [Credential inventory](/docs/credential-inventory) for the complete rotation procedures.

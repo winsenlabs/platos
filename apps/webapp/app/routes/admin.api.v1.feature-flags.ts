@@ -1,12 +1,12 @@
-import { ActionFunctionArgs, json } from "@remix-run/server-runtime";
+import { json, type ActionFunctionArgs } from "@remix-run/server-runtime";
 import { prisma } from "~/db.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { makeSetMultipleFlags } from "~/v3/featureFlags.server";
 import { validatePartialFeatureFlags } from "~/v3/featureFlags";
 
 export async function action({ request }: ActionFunctionArgs) {
   // Next authenticate the request
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request, "admin");
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing API key" }, { status: 401 });

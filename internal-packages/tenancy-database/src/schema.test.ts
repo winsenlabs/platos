@@ -83,14 +83,14 @@ describe("clean-slate domain schema", () => {
     expect(sqlDeletePolicies).toHaveLength(sqlForeignKeys.length);
   });
 
-  test("accounts for all 54 source models exactly once", () => {
+  test("accounts for all 55 source models exactly once", () => {
     const sourceModels = [...sourceSchema.matchAll(/^model (Platos\w+) \{/gm)].map((match) => match[1]);
     const manifestSources = sourceModelManifest.map((entry) => entry.source);
     const controlModels = new Set(ControlPrisma.dmmf.datamodel.models.map((model) => model.name));
 
-    expect(sourceModels).toHaveLength(54);
-    expect(manifestSources).toHaveLength(54);
-    expect(new Set(manifestSources).size).toBe(54);
+    expect(sourceModels).toHaveLength(55);
+    expect(manifestSources).toHaveLength(55);
+    expect(new Set(manifestSources).size).toBe(55);
     expect([...manifestSources].sort()).toEqual([...sourceModels].sort());
     for (const entry of sourceModelManifest) {
       expect(entry.targets.length).toBeGreaterThan(0);

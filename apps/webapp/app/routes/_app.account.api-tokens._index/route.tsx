@@ -9,9 +9,8 @@
  *   - raw token is shown ONCE, right after mint, then gone forever
  *   - revoke per row
  *
- * Distinct from `/account/tokens`, which manages the legacy `tr_pat_`
- * family for the engine / CLI surface. Platos PATs (`plt_pat_...`)
- * authenticate against the full webapp REST API as the minting user.
+ * Platos PATs (`plt_pat_...`) authenticate the webapp REST API and CLI as
+ * the minting user.
  */
 
 import {
@@ -99,8 +98,7 @@ export async function action({ request }: ActionFunctionArgs) {
   if (intent === "mint") {
     const name = String(fd.get("name") || "").trim();
     const roleRaw = String(fd.get("role") || "write");
-    const role: PATRole =
-      roleRaw === "admin" || roleRaw === "read" ? (roleRaw as PATRole) : "write";
+    const role: PATRole = roleRaw === "read" ? "read" : "write";
     const ttlDaysRaw = parseInt(String(fd.get("ttlDays") || "0"), 10);
     const ttlSeconds =
       Number.isFinite(ttlDaysRaw) && ttlDaysRaw > 0 ? ttlDaysRaw * 86400 : 0;
@@ -190,9 +188,9 @@ export default function PlatosApiTokensPage() {
         <Paragraph>
           Platos API tokens authenticate scripts, CI pipelines, and
           non-interactive callers against the Platos webapp REST API. Each
-          token grants the same access as your login session — treat them
-          like passwords. Tokens are SHA-256 hashed at rest; the raw value
-          is returned once at mint and is not recoverable.
+          token grants only its selected role and scope, within your own
+          account access — treat it like a password. Tokens are SHA-256 hashed
+          at rest; the raw value is returned once at mint and is not recoverable.
         </Paragraph>
 
         {newlyMinted && (
@@ -283,7 +281,6 @@ export default function PlatosApiTokensPage() {
             >
               <option value="read">read</option>
               <option value="write">write</option>
-              <option value="admin">admin</option>
             </select>
           </label>
           <label>

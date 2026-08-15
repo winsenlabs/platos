@@ -1148,7 +1148,7 @@ export function buildEntityToolHandlers(deps: {
     {
       name: "entities.generate_mcp_token",
       description:
-        "Mint a bearer PAT (`pmt_*`) for the entity's MCP gateway. " +
+        "Mint a bearer PAT (`plt_ent_*`) for the entity's MCP gateway. " +
         "Returns the plaintext token ONCE — store it before responding. " +
         "Destructive at the trust-boundary level — defaults to " +
         "require_approval at platform tier. NOT a platform PAT — scoped " +
@@ -1190,15 +1190,13 @@ export function buildEntityToolHandlers(deps: {
           return { error: "not_found", entityId };
         }
         const entityPk = (entity as { id: string }).id;
-        const expiresAt = expiresInDays
-          ? new Date(Date.now() + expiresInDays * 86400_000)
-          : null;
+        const expiresAt = new Date(Date.now() + (expiresInDays ?? 90) * 86400_000);
         const minted = await bearerTokens.generate(
           entityPk,
           label,
           scope.userId ?? "mcp:platform",
           {
-            ...(expiresAt ? { expiresAt } : {}),
+            expiresAt,
           },
         );
         const result = {
@@ -1206,7 +1204,7 @@ export function buildEntityToolHandlers(deps: {
           token: minted.raw,
           label,
           mcpUserId: minted.mcpUserId,
-          expiresAt: expiresAt?.toISOString() ?? null,
+          expiresAt: expiresAt.toISOString(),
         };
         // Redacted audit: never log the plaintext token, only its prefix +
         // metadata. Caller has the full value in the response.
@@ -1218,7 +1216,7 @@ export function buildEntityToolHandlers(deps: {
             id: minted.id,
             tokenPrefix: minted.raw.slice(0, 8),
             mcpUserId: minted.mcpUserId,
-            expiresAt: expiresAt?.toISOString() ?? null,
+            expiresAt: expiresAt.toISOString(),
           },
           "success",
           startedAt,

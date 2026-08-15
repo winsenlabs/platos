@@ -1,6 +1,6 @@
 import { ActionFunctionArgs, json } from "@remix-run/server-runtime";
 import { prisma } from "~/db.server";
-import { authenticateApiRequestWithPersonalAccessToken } from "~/services/personalAccessToken.server";
+import { authenticateApiRequestWithPAT } from "~/services/patService.server";
 import { z } from "zod";
 import { ClickHouse } from "@internal/clickhouse";
 import { env } from "~/env.server";
@@ -30,7 +30,7 @@ type CreateRunReplicationServiceParams = z.infer<typeof CreateRunReplicationServ
 
 export async function action({ request }: ActionFunctionArgs) {
   // Next authenticate the request
-  const authenticationResult = await authenticateApiRequestWithPersonalAccessToken(request);
+  const authenticationResult = await authenticateApiRequestWithPAT(request);
 
   if (!authenticationResult) {
     return json({ error: "Invalid or Missing API key" }, { status: 401 });
