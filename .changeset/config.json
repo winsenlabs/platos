@@ -7,7 +7,7 @@
     }
   ],
   "commit": false,
-  "fixed": [["@trigger.dev/*", "trigger.dev"]],
+  "fixed": [["@platos/*"]],
   "linked": [],
   "access": "public",
   "baseBranch": "main",

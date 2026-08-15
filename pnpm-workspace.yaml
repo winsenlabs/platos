@@ -3,7 +3,6 @@ packages:
   - "internal-packages/*"
   - "apps/**"
   - "docs"
-  - "!packages/cli-v3/e2e/**"
 
 minimumReleaseAge: 4320
 minimumReleaseAgeExclude:

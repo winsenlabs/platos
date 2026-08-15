@@ -3,12 +3,8 @@ import { defineConfig } from "@trigger.dev/sdk";
 /**
  * Trigger.dev config for the Platos agent tasks.
  *
- * To run these tasks durably, start a trigger dev worker from this directory:
- *   pnpm --filter trigger.dev build && \
- *     node ../../packages/cli-v3/dist/esm/index.js dev
- *
- * Or once the CLI is installed globally:
- *   trigger.dev dev
+ * To run these tasks durably, use Trigger's published CLI from this directory:
+ *   npx trigger.dev@latest dev
  *
  * The worker will register the tasks in `src/trigger-tasks/` with the
  * webapp's run engine, and future `tasks.trigger("platos-agent-tool-block", ...)`

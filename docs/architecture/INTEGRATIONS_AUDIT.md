@@ -15,7 +15,7 @@ The upstream trigger.dev project shipped a `references/` and an `integrations/` 
 
 - **`@platos/sdk`** (`packages/trigger-sdk`) — this is the published SDK that Platos users install to write durable tasks. Retained, renamed from `@trigger.dev/sdk`.
 - **`@platos/core`** (`packages/core`) — shared primitives. Retained, renamed from `@trigger.dev/core`.
-- **`packages/cli-v3`** — trigger.dev CLI, kept as-is per Theme R.6 decision (will be renamed to `platos-cli` in a future iteration, not v1.0).
+- **Trigger CLI** — use Trigger's published `trigger.dev` package; Platos does not vendor or maintain a fork.
 - **Webhooks / OAuth infrastructure** (not in `integrations/`, lives in `apps/webapp/app/services/`) — retained because it's actively wired into the dashboard (e.g. Slack alerts, Resend email delivery).
 
 ## Future integrations path

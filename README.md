@@ -52,14 +52,14 @@ Chat-ready in ~2 minutes. Full walkthrough: [platos.dev/guides/quickstart](https
 
 ### What you get
 
-| Service | Port | Purpose |
-|---|---|---|
-| **webapp** | `3030` | Dashboard + REST API + auth |
-| **agent** | `3100` | Streaming runtime, MCP gateway, tool dispatch |
-| **postgres** | `5432` | State |
-| **clickhouse** | `8123` | Telemetry + cost ledger |
-| **redis** | `6379` | Cache, queues, pub/sub |
-| **minio** | `9000` | Attachments, artifacts |
+| Service        | Port   | Purpose                                       |
+| -------------- | ------ | --------------------------------------------- |
+| **webapp**     | `3030` | Dashboard + REST API + auth                   |
+| **agent**      | `3100` | Streaming runtime, MCP gateway, tool dispatch |
+| **postgres**   | `5432` | State                                         |
+| **clickhouse** | `8123` | Telemetry + cost ledger                       |
+| **redis**      | `6379` | Cache, queues, pub/sub                        |
+| **minio**      | `9000` | Attachments, artifacts                        |
 
 One compose file. All on your hardware.
 
@@ -97,7 +97,6 @@ packages/
   platools-js/     SDK for building external tool entities (TypeScript)
   platools-py/     Same, for Python
   trigger-sdk/     Run-engine SDK
-  cli-v3/          Local dev + deploy CLI
   core/            Shared core types + utilities
 
 internal-packages/
