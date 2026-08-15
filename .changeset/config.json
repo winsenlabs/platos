@@ -7,7 +7,7 @@
     }
   ],
   "commit": false,
-  "fixed": [["@platos/*"]],
+  "fixed": [],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
