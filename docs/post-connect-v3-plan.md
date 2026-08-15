@@ -1,8 +1,8 @@
 # Post-Connect-v3 execution plan — MCP consumption + subagent spawning + authz fixes
 
-_2026-07-22. Connect v3 A–D is merged + live on test.platos. Three work streams
+*2026-07-22. Connect v3 A–D is merged + live on test.platos. Three work streams
 remain. Per decision: execute them on ONE branch (`platform-mcp-subagent-authz`),
-logical commit per unit, no branch-per-phase fragmentation._
+logical commit per unit, no branch-per-phase fragmentation.*
 
 ## Order (as directed)
 
@@ -20,18 +20,18 @@ Method for all three: Opus builds → Fable adversarially verifies → fix → V
 sequential build (local tsc OOMs) → deploy to test.platos → one commit per unit.
 No new branches; everything lands on `platform-mcp-subagent-authz`.
 
-⚠️ **Severity note:** stream ③ contains a _critical_ cross-user conversation-read
+⚠️ **Severity note:** stream ③ contains a *critical* cross-user conversation-read
 finding. It is sequenced last per direction, but it is the highest-severity item
 on this list — pull it forward on request.
 
 ---
 
-## ① Native external-MCP consumption (`apps/agent/src/mcp-agent/`)
+## ① Native external-MCP consumption  (`apps/agent/src/mcp-agent/`)
 
 Source spec: `winsen-1-walle/docs/01-platos-native-mcp-spec.md` (verified against
 current source 2026-07-22; line numbers drifted ~+150). Goal: a Platos agent
 consumes an external MCP server (Composio first) from the turn loop, with
-per-end-user credentials. **Do NOT touch `mcp-platform/`** (Platos _serving_ MCP).
+per-end-user credentials. **Do NOT touch `mcp-platform/`** (Platos *serving* MCP).
 ~60% scaffolded (models, registry, executor gate/audit, REST, SSRF guards, tool
 cache all exist). Four phases, one commit each:
 
@@ -70,7 +70,7 @@ cache all exist). Four phases, one commit each:
    find_tools/execute_tools as string args → dots fine). **Approval decision:**
    the gateway executor ALREADY opens a `PlatosAgentApproval` waitpoint before
    dispatch; the MCP executor has its OWN 4-tier gate → route MCP through the
-   gateway applying the _MCP_ policy (`PlatosOrgMcpPolicy`) into the gateway's
+   gateway applying the *MCP* policy (`PlatosOrgMcpPolicy`) into the gateway's
    waitpoint, and make the MCP internal call a pure transport dispatch (one gate,
    right policy, real waitpoint) — do NOT double-gate.
 4. **Ops.** Discovery-refresh Trigger task (**Surprise: none exists** despite two
@@ -81,12 +81,11 @@ cache all exist). Four phases, one commit each:
    refresh). Secret redaction pass over logs + audit rows.
 
 **Acceptance (§3):** #1,2,3,5 need a live Composio server + API key in SecretStore
-
-- a linked user (external dep — Tejas provides, like the Slack app tokens).
-  Verifiable without Composio: #4 (no-user structural failure), #6 (delete removes
-  tools within a refresh), #7 (existing tests + no secrets in logs/audit) + the
-  two-users isolation unit test. **`@modelcontextprotocol/sdk` must be added to
-  `apps/agent/package.json`**; store 1.26.0 exports the needed transports.
++ a linked user (external dep — Tejas provides, like the Slack app tokens).
+Verifiable without Composio: #4 (no-user structural failure), #6 (delete removes
+tools within a refresh), #7 (existing tests + no secrets in logs/audit) + the
+two-users isolation unit test. **`@modelcontextprotocol/sdk` must be added to
+`apps/agent/package.json`** (store 1.26.0 exports the needed transports).
 
 ## ② Subagent spawning
 
@@ -101,18 +100,18 @@ Existing `delegate_to_sub_agent` / `spawn_bgo` / `agent_batch` stay.
 ## ③ Authz security fixes
 
 Findings: `docs/security-audit-authz-2026-07-22.md` — 7 CONFIRMED
-(1 critical, 5 high, 1 medium). Cross-_tenant_ boundary holds; the end-user↔
+(1 critical, 5 high, 1 medium). Cross-*tenant* boundary holds; the end-user↔
 operator boundary is broken where handlers omit `requireOperator()`, and
 public-guest tokens are `principal='end-user'` with a full scope. Fixes:
 
-| Sev     | Fix                                                                                                                                                                                                                        |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sev | Fix |
+|---|---|
 | 🔴 Crit | Gate the client-trusted `allUsers` flag on `principal==='operator'` (thread list/get/messages; mirror the WS gateway at `connections.gateway.ts:1073`) — gate the FLAG not the endpoint (end-users read their OWN threads) |
-| 🟠 High | `requireOperator` on agent-config CRUD (`agent.controller.ts:~1199`)                                                                                                                                                       |
-| 🟠 High | `requireOperator` on tool toggle + arbitrary tool execute (`~1613`)                                                                                                                                                        |
-| 🟠 High | ownership/operator gate on `monitoring/trace/:threadId` (`trace.service.ts:84`)                                                                                                                                            |
-| 🟠 High | `requireOperator` on `POST /mcp/platform/tokens` (`mcp-platform.controller.ts:654`) — blocks self-mint of an all-perms platform token                                                                                      |
-| 🟡 Med  | `requireOperator` on provider BYOK-key CRUD (`providers.controller.ts:94`)                                                                                                                                                 |
+| 🟠 High | `requireOperator` on agent-config CRUD (`agent.controller.ts:~1199`) |
+| 🟠 High | `requireOperator` on tool toggle + arbitrary tool execute (`~1613`) |
+| 🟠 High | ownership/operator gate on `monitoring/trace/:threadId` (`trace.service.ts:84`) |
+| 🟠 High | `requireOperator` on `POST /mcp/platform/tokens` (`mcp-platform.controller.ts:654`) — blocks self-mint of an all-perms platform token |
+| 🟡 Med | `requireOperator` on provider BYOK-key CRUD (`providers.controller.ts:94`) |
 
 Fable-verify precise gating (over-gating breaks legit webapp-operator + SDK-
 own-thread flows). Same thesis as `docs/security-audit-2026-07-16.md` (scope
