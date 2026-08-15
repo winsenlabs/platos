@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.agent-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.agent-tabs a{font-size:13px;padding:8px 14px;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.agent-tabs a:hover{color:var(--ink)}
+.agent-tabs a.active{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+.vrow{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center}
+.vrow:last-child{border-bottom:none}
+.vrow:hover{background:var(--surface-2)}
+.vrow.sel{background:var(--accent-soft)}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E7 Versions">
+  <dc-import name="PlatosNav" active="agents" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="10-agents.dc.html">Agents</a><span class="sep">/</span><a href="12-agent-config.dc.html">walle</a><span class="sep">/</span><span class="here">Versions</span></div>
+    <div class="page-head-row" style="margin-bottom:0">
+      <div class="page-head" style="margin-bottom:14px">
+        <div class="row" style="gap:10px">
+          <span class="avatar walle">WA</span>
+          <div>
+            <h1 style="font-size:20px;margin:0">walle</h1>
+            <p class="page-sub" style="margin:2px 0 0">Config history — every change reviewed like code</p>
+          </div>
+        </div>
+      </div>
+      <div class="page-head-actions"><a class="btn" href="36-evals.dc.html">Compare on evals</a><button class="btn accent">Promote canary</button></div>
+    </div>
+    <div class="agent-tabs">
+      <a href="12-agent-config.dc.html">Config</a>
+      <a href="13-agent-context.dc.html">Context</a>
+      <a href="14-agent-tools.dc.html">Tools</a>
+      <a href="28-skills.dc.html">Skills</a>
+      <a href="16-threads.dc.html">Threads</a>
+      <a class="active" href="15-agent-versions.dc.html">Versions</a>
+      <a href="09-agent-share.dc.html">Share</a>
+      <a href="44-debug.dc.html">Debug</a>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert warn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>Canary v42 is degrading.</b> Escalation rate 3.1× the stable version over the last 200 canary turns. Consider rolling back before promotion. <a href="36-evals.dc.html" style="text-decoration:underline;text-underline-offset:2px">See eval detail</a></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9M6.5 8.5 10 12l3.5-3.5"></path><circle cx="10" cy="16" r="1.4"></circle></svg></div>
+        <h3>One version, no history</h3>
+        <p>Every save creates an immutable version. Once there are two, you’ll get a readable diff of exactly what changed — prompts, tools, routes, flags.</p>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showBody }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:340px minmax(0,1fr);gap:20px;align-items:start" class="rcol">
+        <div class="dtable" style="max-height:560px;overflow-y:auto">
+          <sc-for list="{{ versions }}" as="ver" hint-placeholder-count="6">
+            <div class="vrow {{ ver.selCls }}">
+              <span class="mono" style="font-size:12px;font-weight:600;color:var(--ink)">{{ ver.v }}</span>
+              <span style="min-width:0">
+                <span style="display:block;font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ver.note }}</span>
+                <span class="mono-sm">{{ ver.who }} · {{ ver.when }}</span>
+              </span>
+              <span class="schip {{ ver.chipCls }}">{{ ver.chip }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div>
+          <div class="row" style="margin-bottom:10px;gap:10px">
+            <span style="font-size:13px;font-weight:600">v41 → v42</span>
+            <span class="mono-sm">3 changes · saved by tejas · 2h ago</span>
+            <span class="spacer" style="flex:1"></span>
+            <button class="btn tiny">Set as canary</button>
+            <button class="btn tiny danger">Roll back</button>
+          </div>
+          <div class="diffv" style="margin-bottom:12px">
+            <div class="dv-file"><span class="mono">prompt-blocks / escalation-rules</span><span class="schip muted">edited</span></div>
+            <div class="dl ctx"><span class="ln">12</span><span class="tx">If the user asks for a human, escalate immediately.</span></div>
+            <div class="dl del"><span class="ln">13</span><span class="tx">Escalate any billing dispute over $500.</span></div>
+            <div class="dl add"><span class="ln">13</span><span class="tx">Escalate any billing dispute over $200, and always for enterprise accounts.</span></div>
+            <div class="dl ctx"><span class="ln">14</span><span class="tx">Log every escalation with a one-line reason.</span></div>
+          </div>
+          <div class="diffv" style="margin-bottom:12px">
+            <div class="dv-file"><span class="mono">tools / exposure</span><span class="schip muted">edited</span></div>
+            <div class="dl add"><span class="ln">·</span><span class="tx">expose crm.update (via hubspot-mcp) — search tier, approval required</span></div>
+          </div>
+          <div class="diffv">
+            <div class="dv-file"><span class="mono">routes</span><span class="schip muted">edited</span></div>
+            <div class="dl del"><span class="ln">·</span><span class="tx">overflow: disabled</span></div>
+            <div class="dl add"><span class="ln">·</span><span class="tx">overflow: gpt-5.2 via openai-byok when queue &gt; 30s</span></div>
+          </div>
+          <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Semantic diff of the stored config objects — not a JSON dump. Raw JSON in <a href="44-debug.dc.html" style="text-decoration:underline">Debug</a>.</div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  baseVersions(fail) {
+    return [
+      {v:'v42', note:'Tighter escalation threshold + crm.update', who:'tejas', when:'2h ago', chip: fail ? 'canary ⚠' : 'canary 10%', chipCls: fail ? 'warn' : 'accent', selCls:'sel'},
+      {v:'v41', note:'Add finance-glossary block', who:'tejas', when:'1d ago', chip:'stable', chipCls:'good', selCls:''},
+      {v:'v40', note:'Notes skill upgraded to 2.3', who:'maya', when:'3d ago', chip:'', chipCls:'muted', selCls:''},
+      {v:'v39', note:'Route overflow experiments', who:'tejas', when:'6d ago', chip:'', chipCls:'muted', selCls:''},
+      {v:'v38', note:'Rollback of v37 (bad tone change)', who:'maya', when:'8d ago', chip:'rollback', chipCls:'warn', selCls:''},
+      {v:'v37', note:'Tone rewrite — reverted', who:'jon', when:'8d ago', chip:'', chipCls:'muted', selCls:''}
+    ];
+  }
+  denseVersions() {
+    return Array.from({length: 42}, (_, i) => ({
+      v: 'v' + (42 - i),
+      note: ['Escalation threshold','Prompt block edit','Skill upgrade','Route change','Flag toggle','Memory policy','Tool exposure','Rollback'][i % 8] + ' — change #' + (42 - i),
+      who: ['tejas','maya','jon'][i % 3], when: i < 2 ? (2 + i * 20) + 'h ago' : Math.ceil(i / 2) + 'd ago',
+      chip: i === 0 ? 'canary 10%' : i === 1 ? 'stable' : (i % 9 === 5 ? 'rollback' : ''),
+      chipCls: i === 0 ? 'accent' : i === 1 ? 'good' : (i % 9 === 5 ? 'warn' : 'muted'),
+      selCls: i === 0 ? 'sel' : ''
+    }));
+  }
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showBody: v !== 'empty', showEmpty: v === 'empty', showAlert: v === 'failure',
+      versions: v === 'dense' ? this.denseVersions() : this.baseVersions(v === 'failure')
+    };
+  }
+}
+</script>
+</body>
+</html>

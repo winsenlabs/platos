@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E1 Agent list">
+  <dc-import name="PlatosNav" active="agents" hint-size="240px,900px" style="grid-row:1"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Agents</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Agents<span class="count-badge">{{ countLabel }}</span></h1>
+        <p class="page-sub">Configured AI workers in this environment</p>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn">Import config</button>
+        <a class="btn accent" href="11-agent-new.dc.html">New agent</a>
+      </div>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>walle-tools is disconnected.</b> 2 agents depend on it — their next tool call will fail with a dispatch error. <a href="21-entity.dc.html" style="text-decoration:underline;text-underline-offset:2px">Open entity</a> · last heartbeat 41 min ago (observed by gateway, checked 12s ago)</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="filter-bar">
+        <span class="fchip active">All <span class="fchip-count">{{ total }}</span></span>
+        <span class="fchip">Healthy <span class="fchip-count">{{ nHealthy }}</span></span>
+        <span class="fchip">Broken <span class="fchip-count">{{ nBroken }}</span></span>
+        <span class="fchip">Paused <span class="fchip-count">{{ nPaused }}</span></span>
+        <span class="spacer"></span>
+        <div class="seg"><span class="seg-opt active">Table</span><span class="seg-opt">Cards</span></div>
+      </div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:minmax(200px,1.4fr) 110px minmax(150px,1fr) 90px 110px 120px 90px">
+          <span>Agent</span><span>Status</span><span>Tools</span><span>Threads 24h</span><span>Cost 7d</span><span>Trend</span><span>Last active</span>
+        </div>
+        <sc-for list="{{ agents }}" as="a" hint-placeholder-count="6">
+          <a class="dt-row" href="12-agent-config.dc.html" style="grid-template-columns:minmax(200px,1.4fr) 110px minmax(150px,1fr) 90px 110px 120px 90px;border-left:3px solid {{ a.edge }};padding-left:13px">
+            <span class="row" style="gap:10px;min-width:0">
+              <span class="avatar sm {{ a.tone }}">{{ a.mono }}</span>
+              <span style="min-width:0">
+                <span style="display:block;font-weight:600;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.name }}</span>
+                <span class="mono-sm" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.model }}</span>
+              </span>
+            </span>
+            <span><span class="presence {{ a.presence }}"><span class="dot"></span>{{ a.presenceLabel }}</span></span>
+            <span style="min-width:0">
+              <sc-if value="{{ a.broken }}" hint-placeholder-val="{{ false }}">
+                <span class="echip broken" title="Entity disconnected — next tool call fails"><span class="dot down"></span>{{ a.toolNote }}</span>
+              </sc-if>
+              <sc-if value="{{ a.ok }}" hint-placeholder-val="{{ true }}">
+                <span class="row" style="gap:8px"><span class="health {{ a.health }}"><i style="height:5px"></i><i style="height:8px"></i><i style="height:11px"></i><i style="height:7px"></i></span><span style="font-size:12px;color:var(--ink-2)">{{ a.toolNote }}</span></span>
+              </sc-if>
+            </span>
+            <span class="mono tnum" style="font-size:12.5px;color:var(--ink)">{{ a.threads }}</span>
+            <span class="mono tnum" style="font-size:12.5px;color:var(--ink);font-weight:600">{{ a.cost }}</span>
+            <span>{{ a.sparkEl }}</span>
+            <span class="mono-sm">{{ a.last }}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Costs from turn ledger, aggregated hourly · last rollup 09:41:22 UTC · tool health from dispatch log, 24h window</div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="12" height="10" rx="2"></rect><path d="M10 6V3M7 3h6"></path><path d="M7.5 13.5h5"></path></svg></div>
+        <h3>No agents yet</h3>
+        <p>An agent is a configured AI worker — a prompt, a model, and the tools it may call. Create one and it can answer its first message in under a minute.</p>
+        <a class="btn accent" href="11-agent-new.dc.html">Create your first agent</a>
+        <div class="e-hint">or `platos agent create` with the CLI</div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  spark(points, cls) {
+    const pts = points.map((p, i) => `${i * (72 / (points.length - 1))},${18 - p * 15}`).join(' ');
+    return React.createElement('svg', {className: 'spark ' + (cls||''), width: 72, height: 18, viewBox: '0 0 72 18'},
+      React.createElement('polyline', {points: pts}));
+  }
+  agentRow(a) {
+    const presenceLabels = {working:'working', idle:'idle', error:'error', paused:'paused', waiting:'waiting'};
+    return Object.assign({}, a, {
+      presenceLabel: presenceLabels[a.presence] || a.presence,
+      mono: a.name.slice(0,2).toUpperCase(),
+      broken: !!a.brokenNote, ok: !a.brokenNote,
+      toolNote: a.brokenNote || a.tools,
+      edge: a.brokenNote ? 'var(--danger)' : 'transparent',
+      sparkEl: this.spark(a.trend, a.trendCls)
+    });
+  }
+  baseAgents() {
+    return [
+      {name:'support-triage', model:'claude-sonnet-4-5 · route: default', presence:'working', tools:'14 tools · 3 entities', health:'', threads:'128', cost:'$41.22', trend:[0.3,0.4,0.35,0.5,0.45,0.6,0.55], trendCls:'', last:'12s ago'},
+      {name:'walle', model:'claude-opus-4-6 · route: quality', presence:'error', brokenNote:'walle-tools down · 9 tools unreachable', threads:'64', cost:'$88.90', trend:[0.4,0.5,0.6,0.8,0.9,0.7,1.0], trendCls:'up', last:'41m ago'},
+      {name:'billing-answers', model:'claude-sonnet-4-5 · route: default', presence:'idle', tools:'6 tools · 1 entity', health:'', threads:'22', cost:'$7.14', trend:[0.5,0.45,0.4,0.42,0.38,0.35,0.3], trendCls:'down', last:'2h ago'},
+      {name:'docs-writer', model:'claude-haiku-4 · route: cheap', presence:'idle', tools:'3 tools · 1 entity', health:'degraded', threads:'9', cost:'$0.88', trend:[0.2,0.25,0.2,0.3,0.28,0.26,0.24], trendCls:'', last:'1d ago'},
+      {name:'onboarding-guide', model:'claude-sonnet-4-5 · route: default', presence:'waiting', tools:'8 tools · 2 entities', health:'', threads:'31', cost:'$12.60', trend:[0.3,0.32,0.3,0.36,0.4,0.38,0.42], trendCls:'', last:'6m ago'},
+      {name:'internal-qa', model:'claude-haiku-4 · route: cheap', presence:'paused', tools:'0 tools', health:'', threads:'0', cost:'$0.00', trend:[0.1,0.1,0.1,0.1,0.1,0.1,0.1], trendCls:'', last:'9d ago'}
+    ];
+  }
+  denseAgents() {
+    const models = ['claude-sonnet-4-5 · route: default','claude-haiku-4 · route: cheap','claude-opus-4-6 · route: quality','gpt-5.2 · route: overflow'];
+    const pres = ['working','idle','idle','waiting','idle','working','paused'];
+    const names = ['support-triage','walle','billing-answers','docs-writer','onboarding-guide','internal-qa','refund-desk','kyc-checker','sales-notes','pr-review','ticket-tagger','escalation-watch','churn-radar','invoice-reader','slack-concierge','meeting-scribe','lead-scorer','bug-triager','api-helper','policy-answers','vendor-vet','expense-audit','contract-scan','release-notes','status-writer','oncall-brief','crm-hygiene','forecast-notes','data-qa','trial-nudge','win-loss','seo-drafts','ad-copy','comp-watch','pricing-faq','sec-review','gdpr-desk','it-helpdesk','hr-answers','payroll-faq'];
+    return names.map((n, i) => ({
+      name:n, model:models[i%4], presence:pres[i%7],
+      tools:`${2+(i*7)%16} tools · ${1+(i%3)} entities`, health: i%9===4?'degraded':'',
+      brokenNote: (i===1||i===23) ? 'entity down · tools unreachable' : null,
+      threads:String((i*37)%140), cost:'$'+((i*13.7)%90+0.4).toFixed(2),
+      trend:[0.3,0.5,0.4,0.6,0.5,0.7,0.6].map(x=>Math.min(1,x+((i%5)-2)*0.08)),
+      trendCls: i%6===0?'up':(i%6===3?'down':''), last:['12s','4m','18m','1h','3h','1d','4d'][i%7]+' ago'
+    }));
+  }
+  renderVals() {
+    const v = this.state.view, dense = v === 'dense';
+    const agents = (v === 'empty') ? [] : (dense ? this.denseAgents() : this.baseAgents()).map(a => this.agentRow(a));
+    const nBroken = agents.filter(a => a.broken).length;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showAlert: v === 'failure',
+      agents, total: agents.length, countLabel: v==='empty' ? '0' : String(agents.length),
+      nHealthy: agents.length - nBroken - agents.filter(a=>a.presence==='paused').length,
+      nBroken, nPaused: agents.filter(a=>a.presence==='paused').length
+    };
+  }
+}
+</script>
+</body>
+</html>

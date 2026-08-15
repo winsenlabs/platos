@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="F2 Entity detail">
+  <dc-import name="PlatosNav" active="entities" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Connected</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Down</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Secret</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="20-entities.dc.html">Entities</a><span class="sep">/</span><span class="here mono" style="font-size:11.5px">walle-tools</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <div class="row" style="gap:10px">
+          <h1 style="font-size:20px;margin:0" class="mono">walle-tools</h1>
+          <span class="connstate {{ connCls }}"><span class="dot"></span>{{ connLabel }}</span>
+          <span class="schip muted">wire</span>
+        </div>
+        <p class="page-sub" style="margin-top:4px">Notes, sheets, calendar for the ops copilot · registered 4 months ago by tejas</p>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn">Refresh discovery</button>
+        <button class="btn">Wire test</button>
+        <button class="btn danger">Rotate secret</button>
+      </div>
+    </div>
+
+    <sc-if value="{{ showSecret }}" hint-placeholder-val="{{ false }}">
+      <div class="set-card" style="border-color:color-mix(in oklab,var(--warn) 50%,var(--border));max-width:660px">
+        <h3>Initial secret — shown exactly once</h3>
+        <p class="set-desc">Platos stores only a hash. Copy it now; closing this panel discards it forever.</p>
+        <div class="secretbox once"><span class="grow">pk_wire_8Kf2mQv9…J4tXbA71LpZ3</span><button class="btn tiny">Copy</button></div>
+        <div class="row" style="gap:8px;margin-top:14px">
+          <button class="btn accent" onClick="{{ goDefault }}">I’ve stored it — continue</button>
+          <span class="mono-sm" style="color:var(--warn)">not retrievable after this screen</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showMain }}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{ showDownAlert }}" hint-placeholder-val="{{ false }}">
+        <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+          <div class="a-body"><b>Connection lost 41 min ago</b> (close code 1006, no close frame). 9 tools are still cached in the registry and being offered to agents. <button class="btn tiny" style="vertical-align:1px">Purge stale registry entry</button></div>
+        </div>
+      </sc-if>
+      <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+        <div class="tile"><div class="v">{{ hbVal }}</div><div class="k">last heartbeat</div></div>
+        <div class="tile {{ toolTileCls }}"><div class="v">{{ toolCount }}</div><div class="k">tools · live discovery</div></div>
+        <div class="tile"><div class="v">2</div><div class="k">linked agents</div></div>
+        <div class="tile"><div class="v">1,104</div><div class="k">calls · 24h</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);gap:20px;align-items:start" class="rcol">
+        <div>
+          <div class="sec-head"><h2>Discovered tools</h2><span class="count">{{ toolCount }} · probed {{ probeAge }}</span></div>
+          <div class="dtable" style="margin-bottom:18px">
+            <sc-for list="{{ tools }}" as="t" hint-placeholder-count="9">
+              <div class="dt-row" style="grid-template-columns:minmax(160px,1fr) 120px 110px 90px;padding:8px 16px">
+                <span class="mono" style="font-size:12px;color:var(--ink)">{{ t.name }}</span>
+                <span><span class="dispatch {{ t.dCls }}"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.dIcon }}"></path></svg>{{ t.d }}</span></span>
+                <span class="mono-sm">{{ t.calls }}</span>
+                <span><button class="btn tiny">Test</button></span>
+              </div>
+            </sc-for>
+          </div>
+          <div class="sec-head"><h2>Wire test</h2></div>
+          <div class="codeblk">
+            <div class="cb-head"><span>last test · {{ testWhen }}</span><span class="cb-copy">re-run</span></div>
+            <pre>{{ testLog }}</pre>
+          </div>
+        </div>
+        <div class="drawer" style="position:static">
+          <h3>Access</h3>
+          <div class="d-label">tool ACL</div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">walle → all tools<br />support-triage → notes.*, calendar.find</div>
+          <div class="d-label">linked agents</div>
+          <div class="sc-chips"><a class="echip" href="12-agent-config.dc.html"><span class="dot {{ agentDot }}"></span>walle</a><a class="echip" href="12-agent-config.dc.html"><span class="dot {{ agentDot }}"></span>support-triage</a></div>
+          <div class="d-label">connection history</div>
+          <div class="vstep">
+            <div class="vs-dot {{ vs1 }}">●</div><div class="vs-body"><div class="vs-title" style="font-size:12px">{{ ev1 }}</div><div class="vs-ts">{{ ev1t }}</div></div>
+            <div class="vs-line"></div><div></div>
+            <div class="vs-dot">✓</div><div class="vs-body"><div class="vs-title" style="font-size:12px">connected · protocol v3</div><div class="vs-ts">08:12:04 UTC</div></div>
+            <div class="vs-line"></div><div></div>
+            <div class="vs-dot">✓</div><div class="vs-body"><div class="vs-title" style="font-size:12px">discovery: 9 tools</div><div class="vs-ts">08:12:05 UTC</div></div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view, down = v === 'failure';
+    const names = ['notes.search','notes.get','notes.create','notes.archive','sheets.query','sheets.export','calendar.find','calendar.hold','files.fetch'];
+    const tools = names.map((n, i) => ({
+      name: n, d: down ? 'no' : 'yes', dCls: down ? 'no' : 'yes',
+      dIcon: down ? 'M5 5l10 10M15 5L5 15' : 'M4 11l4 4 8-9',
+      calls: ((i * 97) % 400) + ' · 24h'
+    }));
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goFailure: () => this.setState({view:'failure'}),
+      goDense: () => this.setState({view:'dense'}),
+      showSecret: v === 'dense', showMain: v !== 'dense', showDownAlert: down,
+      connCls: down ? 'disconnected' : 'connected', connLabel: down ? 'disconnected' : 'connected',
+      hbVal: down ? '41m ago' : '2s ago',
+      toolCount: down ? '0' : '9', toolTileCls: down ? 'warn' : '',
+      probeAge: down ? 'failed — connection down' : '8s ago',
+      agentDot: down ? 'down' : 'ok',
+      vs1: down ? 'fail' : 'active', ev1: down ? 'connection lost · code 1006' : 'heartbeat ok · 10s interval',
+      ev1t: down ? '09:02:11 UTC' : 'now',
+      testWhen: down ? '09:44 — failed' : '08:12 — ok',
+      testLog: down
+        ? '→ ping over wire…\n✕ no route: connection closed (1006)\n✕ cannot test tools while disconnected\nhint: check the provider process; it must redial wss://platos.acme.co/wire'
+        : '→ ping 41ms ✓\n→ discovery: 9 tools ✓ (matches registry)\n→ notes.search {"query":"__wiretest__"} → 200 in 318ms ✓\nall checks passed',
+      tools
+    };
+  }
+}
+</script>
+</body>
+</html>

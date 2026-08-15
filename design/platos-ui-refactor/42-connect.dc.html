@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="L4 Channels">
+  <dc-import name="PlatosNav" active="channels" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Token mint</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Channels</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Channels</h1>
+        <p class="page-sub">Where agents are reachable — each channel shows who owns the credential</p>
+      </div>
+      <div class="page-head-actions"><button class="btn accent">Add channel</button></div>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h4l2-5 2 10 2-5h4"></path></svg></div>
+        <h3>No channels wired</h3>
+        <p>Agents currently answer only in the playground. Wire Slack, embed the widget, or mint session tokens for your own frontend.</p>
+        <button class="btn accent">Add channel</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showMint }}" hint-placeholder-val="{{ false }}">
+      <div class="set-card" style="max-width:640px">
+        <h3>Session token mint</h3>
+        <p class="set-desc">For integrators embedding chat in their own product: your backend mints short-lived session tokens; the browser talks to Platos with the token, never with your API key.</p>
+        <div class="codeblk" style="margin-bottom:12px">
+          <div class="cb-head"><span>POST /api/v1/session-tokens</span><span class="cb-copy">copy</span></div>
+          <pre>→ { <span class="jk">"agent"</span>: <span class="js">"walle"</span>, <span class="jk">"user_ref"</span>: <span class="js">"crm-4471"</span>, <span class="jk">"ttl"</span>: <span class="jn">3600</span> }
+← { <span class="jk">"token"</span>: <span class="js">"st_9m…"</span>, <span class="jk">"expires_at"</span>: <span class="js">"2026-08-14T10:41Z"</span> }</pre>
+        </div>
+        <div class="field-row"><label>user_ref identity</label><div style="font-size:12.5px;color:var(--ink-2)">treated as <b>operator-asserted</b> — stronger than guest, weaker than SSO. Shown on threads as <span class="mono">ref:crm-4471</span></div></div>
+        <div class="field-row" style="border-bottom:none"><label>Minted · 24h</label><div class="mono" style="font-size:12.5px">1,208 tokens · p95 ttl 1h · 0 rejected</div></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+        <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+          <div class="a-body"><b>Slack tokens revoked upstream</b> (workspace admin rotated credentials at 07:20). walle is silent in 4 channels; mentions are queued, not lost. Re-install to resume.</div>
+        </div>
+      </sc-if>
+      <div class="conn-grid">
+        <div class="conn-card" style="border-color:{{ slackBorder }}">
+          <div class="conn-head"><div class="conn-logo">S</div><div><div class="conn-name">Slack · acme.slack.com</div><div class="mono-sm">operator-owned install</div></div><span class="schip {{ slackChipCls }}" style="margin-left:auto">{{ slackChip }}</span></div>
+          <div class="conn-stats"><span>agents: walle, support-triage</span><span>channels: #support, #ops + 6</span><span>{{ slackStat }}</span></div>
+          <div class="conn-actions"><button class="btn tiny">{{ slackCta }}</button><button class="btn tiny ghost">Mapping</button></div>
+        </div>
+        <div class="conn-card">
+          <div class="conn-head"><div class="conn-logo">W</div><div><div class="conn-name">Embedded widget</div><div class="mono-sm">acme.co/help</div></div><span class="schip good" style="margin-left:auto">live</span></div>
+          <div class="conn-stats"><span>agent: walle (guest mode)</span><span>214 sessions · 7d</span><span>p50 first-token 800ms</span></div>
+          <div class="conn-actions"><a class="btn tiny" href="41-widget.dc.html">Preview</a><button class="btn tiny ghost">Theme</button></div>
+        </div>
+        <div class="conn-card">
+          <div class="conn-head"><div class="conn-logo">C</div><div><div class="conn-name">Hosted chat</div><div class="mono-sm">platos.acme.co/chat</div></div><span class="schip good" style="margin-left:auto">live</span></div>
+          <div class="conn-stats"><span>agents: all · SSO required</span><span>1,822 threads · 30d</span><span>default channel for members</span></div>
+          <div class="conn-actions"><button class="btn tiny">Open</button></div>
+        </div>
+        <div class="conn-card">
+          <div class="conn-head"><div class="conn-logo">API</div><div><div class="conn-name">Session tokens</div><div class="mono-sm">integrator API</div></div><span class="schip good" style="margin-left:auto">active</span></div>
+          <div class="conn-stats"><span>1,208 minted · 24h</span><span>used by: acme-portal</span></div>
+          <div class="conn-actions"><button class="btn tiny" onClick="{{ goDense }}">Detail</button></div>
+        </div>
+      </div>
+      <div class="alert info" style="margin-top:16px;max-width:760px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1"></path></svg>
+        <div class="a-body"><b>Two Slack ownership models:</b> hosted OAuth (Winsen’s app, quickest) or operator-owned install (your app id, your tokens, survives Winsen outages). This workspace uses operator-owned.</div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view, fail = v === 'failure';
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v === 'default' || v === 'failure', showEmpty: v === 'empty',
+      showMint: v === 'dense', showAlert: fail,
+      slackBorder: fail ? 'color-mix(in oklab,var(--danger) 45%,var(--border))' : 'var(--border)',
+      slackChip: fail ? 'tokens revoked' : 'live', slackChipCls: fail ? 'danger' : 'good',
+      slackStat: fail ? 'silent since 07:20 · mentions queued' : '1,022 messages · 7d',
+      slackCta: fail ? 'Re-install' : 'Settings'
+    };
+  }
+}
+</script>
+</body>
+</html>

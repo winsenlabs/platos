@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.host-page{background:#e9e4da;border-radius:var(--radius);padding:26px;position:relative;min-height:520px;overflow:hidden}
+[data-theme="dark"] .host-page{background:oklch(30% 0.02 80)}
+.host-line{height:10px;border-radius:5px;background:rgba(0,0,0,0.08);margin-bottom:12px}
+[data-theme="dark"] .host-line{background:rgba(255,255,255,0.08)}
+.widget{position:absolute;right:22px;bottom:22px;width:330px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 12px 32px oklch(0% 0 0 / 0.18);overflow:hidden;display:flex;flex-direction:column}
+.widget-head{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--border);background:linear-gradient(to bottom right,var(--accent-soft),var(--surface) 80%)}
+.widget-msgs{padding:13px;display:flex;flex-direction:column;gap:10px;max-height:290px;overflow-y:auto}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="L1 Embedded widget">
+  <dc-import name="PlatosNav" active="channels" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Widget</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Guest page</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Offline</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="42-connect.dc.html">Channels</a><span class="sep">/</span><span class="here">Embedded widget</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>{{ pageTitle }}</h1>
+        <p class="page-sub">{{ pageSub }}</p>
+      </div>
+      <div class="page-head-actions"><button class="btn">Copy embed snippet</button><a class="btn" href="09-agent-share.dc.html">Guest limits</a></div>
+    </div>
+
+    <sc-if value="{{ showWidget }}" hint-placeholder-val="{{ true }}">
+      <div class="host-page">
+        <div style="opacity:0.6;max-width:520px">
+          <div class="host-line" style="width:38%;height:16px"></div>
+          <div class="host-line" style="width:82%"></div>
+          <div class="host-line" style="width:74%"></div>
+          <div class="host-line" style="width:78%"></div>
+          <div class="host-line" style="width:40%"></div>
+        </div>
+        <div class="mono-sm" style="position:absolute;top:10px;right:14px">customer’s page (acme.co/help)</div>
+        <div class="widget">
+          <div class="widget-head">
+            <span class="avatar sm walle" style="border-radius:50%">WA</span>
+            <div class="grow"><div style="font-size:12.5px;font-weight:600">Acme Assistant</div><div class="mono-sm" style="font-size:9.5px;display:flex;align-items:center;gap:4px"><span style="width:5px;height:5px;border-radius:50%;background:{{ dotColor }}"></span>{{ statusLabel }}</div></div>
+            <button class="icon-btn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7.5 10 12.5 15 7.5"></path></svg></button>
+          </div>
+          <div class="widget-msgs">
+            <div class="bubble walle"><span class="b-orb"></span><div class="b-body" style="font-size:12.5px">Hi! I can help with orders, billing, and product questions. What do you need?</div></div>
+            <div class="bubble user" style="font-size:12.5px">where is order #88213?</div>
+            <sc-if value="{{ showOffline }}" hint-placeholder-val="{{ false }}">
+              <div class="tool-row" style="border-color:color-mix(in oklab,var(--danger) 40%,var(--border));color:var(--danger);background:var(--danger-soft)">connection lost — retrying in 3s · your message is kept</div>
+            </sc-if>
+            <sc-if value="{{ showStream }}" hint-placeholder-val="{{ true }}">
+              <div class="tool-row"><span class="spin"></span>checking order status…</div>
+              <div class="bubble walle"><span class="b-orb"></span><div class="b-body" style="font-size:12.5px">Order #88213 shipped yesterday via DHL — arriving Mon<span style="display:inline-block;width:6px;height:12px;background:var(--accent);vertical-align:-2px;animation:pulse 0.9s ease-in-out infinite"></span></div></div>
+            </sc-if>
+          </div>
+          <div class="walle-input" style="padding:10px 12px">
+            <div class="walle-input-row">
+              <textarea placeholder="Type a message…" rows="1" style="min-height:32px;font-size:12.5px"></textarea>
+              <button class="send-btn" style="width:28px;height:28px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h13M11 5l5 5-5 5"></path></svg></button>
+            </div>
+            <div class="mono-sm" style="font-size:9px;text-align:center">powered by Platos · guest session · no login</div>
+          </div>
+        </div>
+      </div>
+      <div class="prov-note" style="margin-top:12px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Themeable via CSS variables on the embed tag · streams over SSE · reconnects with full message replay</div>
+    </sc-if>
+
+    <sc-if value="{{ showGuest }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:560px;margin:0 auto;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface)">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+          <span class="avatar walle" style="border-radius:50%">WA</span>
+          <div class="grow"><div style="font-size:14px;font-weight:600">walle</div><div class="mono-sm">shared by Winsen Labs · guest chat</div></div>
+          <span class="schip muted">no login</span>
+        </div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:12px;min-height:280px">
+          <div class="alert warn" style="margin:0"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+            <div class="a-body">You’re chatting as a <b>guest</b>. Nothing you say is tied to a verified identity, and this conversation may be reviewed by the workspace’s operators.</div>
+          </div>
+          <div class="bubble walle" style="max-width:100%"><span class="b-orb"></span><div class="b-body">Hello! I’m walle. I can answer questions about Acme’s products and policies. I can’t access account-specific data in guest mode.</div></div>
+        </div>
+        <div class="walle-input">
+          <div class="walle-input-row">
+            <textarea placeholder="Ask something…" rows="1"></textarea>
+            <button class="send-btn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h13M11 5l5 5-5 5"></path></svg></button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view, off = v === 'failure';
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showWidget: v !== 'empty', showGuest: v === 'empty',
+      showOffline: off, showStream: !off,
+      dotColor: off ? 'var(--danger)' : 'var(--good)',
+      statusLabel: off ? 'reconnecting…' : 'online · streaming',
+      pageTitle: v === 'empty' ? 'Public guest chat' : 'Embedded widget',
+      pageSub: v === 'empty' ? 'What an unauthenticated visitor sees at a share link' : 'Rendered inside a third-party page — compact, themeable, streaming'
+    };
+  }
+}
+</script>
+</body>
+</html>

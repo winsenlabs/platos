@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="C1–C4 Organization">
+  <dc-import name="PlatosNav" active="settings" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Members</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Org list</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Role change</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Org settings</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><span class="mono" style="font-size:11.5px">winsen-labs</span><span class="sep">/</span><span class="here">Organization</span></div>
+
+    <sc-if value="{{ showOrgList }}" hint-placeholder-val="{{ false }}">
+      <div class="page-head"><h1>Your organizations</h1><p class="page-sub">You belong to 3</p></div>
+      <div class="map-grid" style="max-width:860px">
+        <a class="map-card" href="03-home.dc.html">
+          <div class="map-cat">winsen-labs</div>
+          <div class="map-title">Winsen Labs</div>
+          <div class="map-desc">2 projects · 6 agents · you are an admin</div>
+          <div class="row" style="gap:6px"><span class="schip accent">current</span><span class="mono-sm">$456 · 7d</span></div>
+        </a>
+        <a class="map-card" href="03-home.dc.html">
+          <div class="map-cat">acme-inc</div>
+          <div class="map-title">Acme Inc</div>
+          <div class="map-desc">1 project · 3 agents · you are a member</div>
+          <div class="row" style="gap:6px"><span class="mono-sm">$122 · 7d</span></div>
+        </a>
+        <a class="map-card" href="02-onboarding.dc.html" style="border-style:dashed">
+          <div class="map-cat">new</div>
+          <div class="map-title" style="color:var(--ink-3)">+ Create organization</div>
+          <div class="map-desc">A separate tenancy with its own members and billing</div>
+        </a>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showOrgSettings }}" hint-placeholder-val="{{ false }}">
+      <div class="page-head"><h1>Organization settings</h1><p class="page-sub">Winsen Labs</p></div>
+      <div style="max-width:620px">
+        <div class="set-card">
+          <h3>Identity</h3>
+          <div class="field-row"><label>Name</label><input type="text" value="Winsen Labs" /></div>
+          <div class="field-row"><label>Slug</label><div class="row"><input type="text" value="winsen-labs" style="max-width:220px" /><span class="mono-sm">changing breaks CLI configs pointing at the old slug</span></div></div>
+        </div>
+        <div class="set-card" style="border-color:color-mix(in oklab,var(--danger) 35%,var(--border))">
+          <h3 style="color:var(--danger)">Danger zone</h3>
+          <p class="set-desc">Deletion erases every project, agent, thread, memory and ledger row. There is no soft-delete.</p>
+          <button class="btn danger">Delete organization…</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showMembers }}" hint-placeholder-val="{{ true }}">
+      <div class="page-head-row">
+        <div class="page-head"><h1>Members<span class="count-badge">5</span></h1><p class="page-sub">Roles apply org-wide; tool-approval rights are set per environment</p></div>
+        <div class="page-head-actions"><button class="btn accent">Invite</button></div>
+      </div>
+      <div class="dtable" style="max-width:900px;margin-bottom:22px">
+        <div class="dt-head" style="grid-template-columns:minmax(200px,1fr) 120px 140px 130px 90px">
+          <span>Member</span><span>Role</span><span>MFA</span><span>Last active</span><span></span>
+        </div>
+        <sc-for list="{{ members }}" as="m" hint-placeholder-count="5">
+          <div class="dt-row" style="grid-template-columns:minmax(200px,1fr) 120px 140px 130px 90px">
+            <span class="row" style="gap:9px"><span class="sb-foot-avatar" style="width:24px;height:24px;font-size:9px">{{ m.mono }}</span><span><span style="display:block;font-size:12.5px;font-weight:500;color:var(--ink)">{{ m.name }}</span><span class="mono-sm">{{ m.email }}</span></span></span>
+            <span><span class="schip {{ m.roleCls }}">{{ m.role }}</span></span>
+            <span><span class="schip {{ m.mfaCls }}">{{ m.mfa }}</span></span>
+            <span class="mono-sm">{{ m.last }}</span>
+            <span><button class="btn tiny ghost" onClick="{{ goFailure }}">Edit</button></span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="sec-head"><h2>Pending invites</h2><span class="count">2</span></div>
+      <div class="dtable" style="max-width:900px">
+        <div class="dt-row" style="grid-template-columns:minmax(200px,1fr) 120px 140px auto">
+          <span class="mono-sm" style="color:var(--ink-2)">lena@acme.co</span><span><span class="schip muted">member</span></span><span class="mono-sm">sent 2d ago · opens in 4d</span>
+          <span class="row" style="gap:4px;justify-content:flex-end"><button class="btn tiny">Resend</button><button class="btn tiny danger">Revoke</button></span>
+        </div>
+        <div class="dt-row" style="grid-template-columns:minmax(200px,1fr) 120px 140px auto">
+          <span class="mono-sm" style="color:var(--ink-2)">phil@acme.co</span><span><span class="schip muted">viewer</span></span><span class="mono-sm">sent 6d ago · <span style="color:var(--warn)">expires tomorrow</span></span>
+          <span class="row" style="gap:4px;justify-content:flex-end"><button class="btn tiny">Resend</button><button class="btn tiny danger">Revoke</button></span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showRoleModal }}" hint-placeholder-val="{{ false }}">
+      <div class="overlay" onClick="{{ goDefault }}">
+        <div class="palette" style="width:460px;padding:22px">
+          <h3 style="margin:0 0 4px;font-size:15px">Change Jon Silva’s role</h3>
+          <p style="font-size:12.5px;color:var(--ink-3);margin:0 0 14px">member → admin</p>
+          <div class="alert warn" style="margin-bottom:14px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+            <div class="a-body"><b>All of Jon’s active sessions end immediately</b> — including the browser tab he may be working in. He’ll re-authenticate with the new role. This is deliberate: role changes must not wait for a token to expire.</div>
+          </div>
+          <div class="row" style="justify-content:flex-end;gap:8px">
+            <button class="btn" onClick="{{ goDefault }}">Cancel</button>
+            <button class="btn accent" onClick="{{ goDefault }}">Change role &amp; end sessions</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showMembers: v === 'default' || v === 'failure', showOrgList: v === 'empty',
+      showOrgSettings: v === 'dense', showRoleModal: v === 'failure',
+      members: [
+        {mono:'TJ', name:'Tejas', email:'tejas@winsen.dev', role:'owner', roleCls:'accent', mfa:'TOTP ✓', mfaCls:'good', last:'now'},
+        {mono:'MK', name:'Maya Kapoor', email:'maya@acme.co', role:'admin', roleCls:'accent', mfa:'TOTP ✓', mfaCls:'good', last:'12m ago'},
+        {mono:'JS', name:'Jon Silva', email:'jon@acme.co', role:'member', roleCls:'muted', mfa:'TOTP ✓', mfaCls:'good', last:'1h ago'},
+        {mono:'SR', name:'Sam Rees', email:'sam@acme.co', role:'member', roleCls:'muted', mfa:'not enrolled', mfaCls:'warn', last:'3h ago'},
+        {mono:'AL', name:'Ana Lima', email:'ana@acme.co', role:'viewer', roleCls:'muted', mfa:'TOTP ✓', mfaCls:'good', last:'2d ago'}
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

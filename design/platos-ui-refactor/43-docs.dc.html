@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.doc-nav a{display:block;padding:5px 10px;border-radius:var(--radius-sm);font-size:12.5px;color:var(--ink-2)}
+.doc-nav a:hover{background:var(--bg-3);color:var(--ink)}
+.doc-nav a.active{background:var(--surface);box-shadow:inset 0 0 0 1px var(--border);color:var(--ink);font-weight:500}
+.doc-body{font-size:14px;line-height:1.7;color:var(--ink-2);max-width:680px}
+.doc-body h2{font-size:19px;letter-spacing:-0.015em;color:var(--ink);margin:0 0 12px}
+.doc-body h3{font-size:14.5px;color:var(--ink);margin:24px 0 8px}
+.doc-body p{margin:0 0 12px;text-wrap:pretty}
+.doc-body code{font-family:var(--font-mono);font-size:12px;background:var(--bg-3);padding:1px 5px;border-radius:4px}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="L3 Docs reader">
+  <dc-import name="PlatosNav" active="home" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><span class="here">Docs</span></div>
+    <div class="page-head-row">
+      <div class="page-head"><h1>Docs</h1><p class="page-sub">51 pages · text-only · ⌘K searches these too</p></div>
+      <div class="page-head-actions"><span class="topbar-search" style="max-width:260px"><svg style="width:13px;height:13px" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"></circle><path d="M13.5 13.5 17 17"></path></svg>Search docs…</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:210px minmax(0,1fr);gap:32px;align-items:start" class="rcol">
+      <div class="doc-nav">
+        <div class="sb-group-label" style="padding-left:10px">Start</div>
+        <a class="active" href="#">Five-minute agent</a>
+        <a href="#">Concepts &amp; vocabulary</a>
+        <a href="#">Self-hosting</a>
+        <div class="sb-group-label" style="padding-left:10px;padding-top:12px">Build</div>
+        <a href="#">Prompt blocks</a>
+        <a href="#">Wire protocol</a>
+        <a href="#">MCP entities</a>
+        <a href="#">Skills</a>
+        <a href="#">Memory tiers</a>
+        <div class="sb-group-label" style="padding-left:10px;padding-top:12px">Operate</div>
+        <a href="#">Cost &amp; the turn ledger</a>
+        <a href="#">Budgets</a>
+        <a href="#">Approvals &amp; governance</a>
+        <a href="#">Channels</a>
+        <div class="mono-sm" style="padding:12px 10px 0">+ 39 more pages</div>
+      </div>
+      <div class="doc-body">
+        <h2>Five-minute agent</h2>
+        <p>Platos is where you build an agent, and where you find out why it did what it did. This page gets you from an empty environment to a working agent that answers a real message.</p>
+        <h3>1 · Add a model key</h3>
+        <p>Go to <code>Providers</code> and add one BYOK credential. Platos verifies it immediately with a live call — a key that lists as “ok” has actually worked, not just parsed.</p>
+        <h3>2 · Create the agent</h3>
+        <p>Three fields: a name, a model, a prompt. Everything else — tools, memory, budgets — has a working default and can wait until the agent needs it.</p>
+        <h3>3 · Say something</h3>
+        <p>Open the playground. The right pane shows the exact assembly the model receives: every prompt block, tool schema, and recalled memory, with token counts. Inspection is not a debug mode — it is the default view.</p>
+        <h3>4 · Give it hands</h3>
+        <p>Connect an <code>entity</code> — a wire service that dials in, or an MCP server Platos dials out to. Discovered tools appear in the registry with live dispatchability, and you expose them to agents explicitly.</p>
+        <p style="margin-top:20px"><span class="schip muted">next</span> <a href="#" style="text-decoration:underline;text-underline-offset:2px">Concepts &amp; vocabulary →</a></p>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light' };
+  renderVals() {
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'})
+    };
+  }
+}
+</script>
+</body>
+</html>

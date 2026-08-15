@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.pg-shell{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,0.85fr);gap:0;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface);height:calc(100vh - 190px);min-height:520px}
+.pg-chat{display:flex;flex-direction:column;border-right:1px solid var(--border);min-width:0}
+.pg-msgs{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.pg-inspect{display:flex;flex-direction:column;min-width:0;background:var(--bg-2)}
+.pg-inspect-head{display:flex;gap:2px;padding:10px 14px 0;border-bottom:1px solid var(--border)}
+.pg-inspect-head span{font-size:12px;padding:7px 12px;color:var(--ink-3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.pg-inspect-head span.active{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+.pg-inspect-body{flex:1;overflow-y:auto;padding:14px}
+.asm-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:11px;color:var(--ink-2)}
+.asm-row:hover{background:var(--bg-3)}
+.asm-row .tok{margin-left:auto;color:var(--ink-4)}
+.asm-row .tag{font-size:9px;text-transform:uppercase;letter-spacing:0.05em;padding:1px 5px;border-radius:3px;background:var(--bg-3);color:var(--ink-3)}
+.asm-row .tag.cached{background:var(--good-soft);color:var(--good)}
+.asm-row .tag.new{background:var(--accent-soft);color:var(--accent)}
+.asm-row .tag.bad{background:var(--danger-soft);color:var(--danger)}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E15 Chat playground">
+  <dc-import name="PlatosNav" active="playground" hint-size="240px,900px"></dc-import>
+  <main class="main" style="padding-bottom:28px">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Streaming</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><span class="here">Playground</span></div>
+    <div class="page-head-row" style="margin-bottom:16px">
+      <div class="page-head" style="margin-bottom:0">
+        <h1 style="font-size:20px">Playground</h1>
+        <p class="page-sub">A real turn against the live agent — inspection is the point</p>
+      </div>
+      <div class="page-head-actions">
+        <div class="seg"><span class="seg-opt active">walle</span><span class="seg-opt">support-triage</span><span class="seg-opt">▾</span></div>
+        <span class="schip accent">config v41 + canary</span>
+        <button class="btn">Reset thread</button>
+      </div>
+    </div>
+
+    <div class="pg-shell">
+      <div class="pg-chat">
+        <div class="pg-msgs">
+          <sc-if value="{{ showEmptyMsg }}" hint-placeholder-val="{{ false }}">
+            <div class="empty" style="border:none;margin:auto;background:transparent">
+              <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5 15 10 5 15.5z"></path></svg></div>
+              <h3>Say something to walle</h3>
+              <p>Every prompt block, variable, tool schema and memory recall for the turn will appear on the right — before the model sees it.</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{ showMsgs }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div class="m-label">you · playground</div>
+              <div class="m-user">Pull the revenue figures from the last board meeting.</div>
+            </div>
+            <div class="reason"><span class="r-tag">reasoning · streamed</span>Need the note first, then the finance sheet…</div>
+            <div class="tcall">
+              <div class="tcall-head"><span class="tc-status ok"></span><span class="tc-name">notes.get</span><span class="tc-entity">via walle-tools</span><span class="tc-ms">412ms</span></div>
+            </div>
+            <sc-if value="{{ showFail }}" hint-placeholder-val="{{ false }}">
+              <div class="tcall failed">
+                <div class="tcall-head"><span class="tc-status fail"></span><span class="tc-name">sheets.query</span><span class="tc-entity">via walle-tools</span><span class="tc-ms">7ms</span></div>
+                <div class="tcall-body">
+                  <div class="tcall-err">
+                    <div class="who">Platos dispatch failure</div>
+                    <div class="mono" style="font-size:11.5px;color:var(--ink)">EntityNotRegistered: Entity walle-tools not registered</div>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ showStream }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <div class="m-label">walle · streaming</div>
+                <div class="m-agent"><p>Q1 revenue closed at $2.41M, which is 7% above plan. The board asked for weekly reporting going forwa<span style="display:inline-block;width:7px;height:14px;background:var(--accent);vertical-align:-2px;animation:pulse 0.9s ease-in-out infinite"></span></p></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ showDone }}" hint-placeholder-val="{{ true }}">
+              <div>
+                <div class="m-label">walle · 6.4s</div>
+                <div class="m-agent"><p>{{ doneAnswer }}</p></div>
+                <div class="row" style="gap:10px;margin-top:6px;font-family:var(--font-mono);font-size:10.5px;color:var(--ink-4)">
+                  <span class="prov" title="provider usage block, verified rates v182">$0.4188 · 44,518 in / 1,208 out</span>
+                  <span>2 tools</span>
+                  <span style="margin-left:auto"></span>
+                  <button class="icon-btn" title="Good"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9v8M6 9l3.4-5.4c.4-.6 1.3-.7 1.8-.1.3.3.4.7.3 1.1L10.7 9h4.1c.9 0 1.6.9 1.4 1.8l-1.2 4.8c-.2.8-.9 1.4-1.7 1.4H6"></path></svg></button>
+                  <button class="icon-btn" title="Bad"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><path d="M6 9v8M6 9l3.4-5.4c.4-.6 1.3-.7 1.8-.1.3.3.4.7.3 1.1L10.7 9h4.1c.9 0 1.6.9 1.4 1.8l-1.2 4.8c-.2.8-.9 1.4-1.7 1.4H6"></path></svg></button>
+                </div>
+              </div>
+            </sc-if>
+          </sc-if>
+        </div>
+        <div class="walle-input">
+          <div class="walle-input-row">
+            <textarea placeholder="Message walle…" rows="1"></textarea>
+            <button class="send-btn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h13M11 5l5 5-5 5"></path></svg></button>
+          </div>
+          <div class="suggested"><span class="sugg-chip">as user: maya@acme.co</span><span class="sugg-chip">channel: slack</span><span class="sugg-chip">memory: on</span></div>
+        </div>
+      </div>
+      <div class="pg-inspect">
+        <div class="pg-inspect-head"><span class="active">Assembly</span><span>Tools</span><span>Memory</span><span>Raw</span></div>
+        <div class="pg-inspect-body">
+          <div class="d-label" style="margin-top:0">system prompt · next turn</div>
+          <div class="asm-row"><span>identity</span><span class="tag cached">cached</span><span class="tok">1,204</span></div>
+          <div class="asm-row"><span>tone-and-format</span><span class="tag cached">cached</span><span class="tok">842</span></div>
+          <div class="asm-row"><span>escalation-rules</span><span class="tag cached">cached</span><span class="tok">1,610</span></div>
+          <div class="asm-row"><span>notes-integration-guide</span><span class="tag cached">cached</span><span class="tok">12,388</span></div>
+          <div class="asm-row"><span>finance-glossary</span><span class="tag cached">cached</span><span class="tok">17,168</span></div>
+          <sc-if value="{{ showBadVar }}" hint-placeholder-val="{{ false }}">
+            <div class="asm-row" style="background:var(--danger-soft)"><span style="color:var(--danger)">{{ badVarLit }}</span><span class="tag bad">unresolved</span><span class="tok" style="color:var(--danger)">sent as literal</span></div>
+          </sc-if>
+          <div class="asm-row"><span>current-date</span><span class="tag new">volatile</span><span class="tok">14</span></div>
+          <div class="d-label">tool schemas · 9 injected</div>
+          <div class="asm-row"><span>notes.* (4)</span><span class="tag cached">cached</span><span class="tok">5,204</span></div>
+          <div class="asm-row"><span>sheets.* (2)</span><span class="tag cached">cached</span><span class="tok">3,318</span></div>
+          <div class="asm-row"><span>runtime (3)</span><span class="tag cached">cached</span><span class="tok">3,350</span></div>
+          <div class="d-label">memory recall · top 6</div>
+          <div class="asm-row"><span>“prefers concise summaries”</span><span class="tag">profile</span><span class="tok">31</span></div>
+          <div class="asm-row"><span>“board = Q1 review Feb 6”</span><span class="tag">conv</span><span class="tok">44</span></div>
+          <div class="d-label">history</div>
+          <div class="asm-row"><span>7 turns · 1 compaction</span><span class="tok">11,297</span></div>
+          <div class="divider" style="margin:14px 0"></div>
+          <div class="row" style="font-size:12px;justify-content:space-between"><span class="muted">total input if sent now</span><span class="mono" style="font-weight:600">≈ 44.5k tokens · $0.13–0.42</span></div>
+          <div class="prov-note" style="margin-top:8px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>assembled live from config v41 + this thread</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showEmptyMsg: v === 'empty', showMsgs: v !== 'empty',
+      showFail: v === 'failure', showStream: v === 'dense',
+      showDone: v === 'default' || v === 'failure',
+      showBadVar: v === 'failure', badVarLit: '{{user.role}}',
+      doneAnswer: v === 'failure'
+        ? 'I couldn’t reach the finance sheet — the tool call failed on Platos’s side before it reached the provider (entity not registered). The note summary is ready; reconnect walle-tools and I can retry.'
+        : 'Q1 revenue closed at $2.41M, 7% above plan. The board asked for weekly revenue reporting going forward — I can set that up as a scheduled job if you want.'
+    };
+  }
+}
+</script>
+</body>
+</html>

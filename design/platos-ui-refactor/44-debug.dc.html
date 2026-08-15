@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.agent-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.agent-tabs a{font-size:13px;padding:8px 14px;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.agent-tabs a:hover{color:var(--ink)}
+.agent-tabs a.active{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E11 Debug mode">
+  <dc-import name="PlatosNav" active="agents" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="10-agents.dc.html">Agents</a><span class="sep">/</span><a href="12-agent-config.dc.html">walle</a><span class="sep">/</span><span class="here">Debug</span></div>
+    <div class="page-head-row" style="margin-bottom:0">
+      <div class="page-head" style="margin-bottom:14px">
+        <div class="row" style="gap:10px">
+          <span class="avatar walle">WA</span>
+          <div>
+            <h1 style="font-size:20px;margin:0">walle · debug</h1>
+            <p class="page-sub" style="margin:2px 0 0">Everything the model would receive, laid bare — assembled 12s ago for thread <span class="mono">th_9f3kq2</span></p>
+          </div>
+        </div>
+      </div>
+      <div class="page-head-actions"><button class="btn">Re-assemble</button><button class="btn">Copy as JSON</button><button class="btn accent">Send test turn</button></div>
+    </div>
+    <div class="agent-tabs">
+      <a href="12-agent-config.dc.html">Config</a>
+      <a href="13-agent-context.dc.html">Context</a>
+      <a href="14-agent-tools.dc.html">Tools</a>
+      <a href="28-skills.dc.html">Skills</a>
+      <a href="16-threads.dc.html">Threads</a>
+      <a href="15-agent-versions.dc.html">Versions</a>
+      <a href="09-agent-share.dc.html">Share</a>
+      <a class="active" href="44-debug.dc.html">Debug</a>
+    </div>
+
+    <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+      <div class="tile"><div class="v">44,518</div><div class="k">total input tokens</div></div>
+      <div class="tile"><div class="v">33,212</div><div class="k">in cached prefix</div></div>
+      <div class="tile"><div class="v">9</div><div class="k">tool schemas injected</div></div>
+      <div class="tile"><div class="v">6</div><div class="k">memories recalled</div></div>
+    </div>
+
+    <div class="set-card" style="padding:0;overflow:hidden;margin-bottom:14px">
+      <div class="codeblk" style="border:none;border-radius:0">
+        <div class="cb-head"><span>system prompt · assembled · 33,212 tokens · blocks marked</span><span class="cb-copy">copy</span></div>
+        <pre><span class="jk">┌─ identity (1,204 tok · cached)</span>
+You are walle, the internal operations copilot for Acme. You are precise,
+cite sources, and never invent figures. When a tool fails, say exactly
+what failed and whose side the failure was on.
+<span class="jk">┌─ tone-and-format (842 tok · cached)</span>
+Answer in short paragraphs. Lead with the answer, then the caveats…
+<span class="jk">┌─ escalation-rules (1,610 tok · cached)</span>
+If the user asks for a human, escalate immediately. Escalate any billing
+dispute over $200, and always for enterprise accounts…
+<span class="jk">┌─ notes-integration-guide (12,388 tok · cached · from skill notes@2.3)</span>
+The Notes tool family: notes.search accepts query, tags[], since…
+<span class="jk">┌─ finance-glossary (17,168 tok · cached)</span>
+ARR: annual recurring revenue as booked, not billed…
+<span class="jn">┄┄ cache boundary ┄┄</span>
+<span class="jk">┌─ current-date (14 tok · volatile)</span>
+Today is 2026-08-14 (America/New_York).</pre>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" class="rcol">
+      <div class="set-card" style="margin-bottom:0">
+        <h3>Tool round-trip · last call</h3>
+        <div class="codeblk" style="margin-top:10px">
+          <div class="cb-head"><span>sheets.query · entity walle-tools · 688ms</span><span class="cb-copy">copy</span></div>
+          <pre>→ {<span class="jk">"sheet"</span>: <span class="js">"fin-q1"</span>, <span class="jk">"q"</span>: <span class="js">"revenue by month"</span>}
+← 200 · 1,412 bytes · 3 rows
+  {<span class="jk">"jan"</span>: <span class="jn">712000</span>, <span class="jk">"feb"</span>: <span class="jn">799000</span>, <span class="jk">"mar"</span>: <span class="jn">901000</span>}</pre>
+        </div>
+      </div>
+      <div class="set-card" style="margin-bottom:0">
+        <h3>Recalled memories · 6</h3>
+        <div style="display:grid;gap:6px;margin-top:10px;font-size:12px">
+          <div class="row"><span class="chip">profile</span><span class="grow">“prefers concise summaries”</span><span class="mono-sm">0.91</span></div>
+          <div class="row"><span class="chip">conv</span><span class="grow">“board = Q1 review, Feb 6”</span><span class="mono-sm">0.88</span></div>
+          <div class="row"><span class="chip">conv</span><span class="grow">“maya owns the revenue report”</span><span class="mono-sm">0.79</span></div>
+          <div class="row"><span class="chip">knowledge</span><span class="grow">“fiscal year starts Feb”</span><span class="mono-sm">0.71</span></div>
+          <div class="row"><span class="chip">profile</span><span class="grow">“timezone America/New_York”</span><span class="mono-sm">0.68</span></div>
+          <div class="row"><span class="chip">conv</span><span class="grow">“Northwind renewal in flight”</span><span class="mono-sm">0.61</span></div>
+        </div>
+        <a class="btn tiny ghost" style="margin-top:10px;display:inline-block" href="25-memory.dc.html">Open in memory browser</a>
+      </div>
+    </div>
+    <div class="prov-note" style="margin-top:12px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>This is the exact assembly the runtime produced — not a reconstruction. Token counts from the tokenizer, not estimates.</div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light' };
+  renderVals() {
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'})
+    };
+  }
+}
+</script>
+</body>
+</html>

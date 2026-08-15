@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.agent-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.agent-tabs a{font-size:13px;padding:8px 14px;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.agent-tabs a:hover{color:var(--ink)}
+.agent-tabs a.active{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E4 Context tab">
+  <dc-import name="PlatosNav" active="agents" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="10-agents.dc.html">Agents</a><span class="sep">/</span><a href="12-agent-config.dc.html">walle</a><span class="sep">/</span><span class="here">Context</span></div>
+    <div class="page-head-row" style="margin-bottom:0">
+      <div class="page-head" style="margin-bottom:14px">
+        <div class="row" style="gap:10px">
+          <span class="avatar walle">WA</span>
+          <div>
+            <h1 style="font-size:20px;margin:0">walle</h1>
+            <p class="page-sub" style="margin:2px 0 0">Prompt variables and their resolution status</p>
+          </div>
+        </div>
+      </div>
+      <div class="page-head-actions"><button class="btn">Re-resolve all</button><button class="btn accent">Add variable</button></div>
+    </div>
+    <div class="agent-tabs">
+      <a href="12-agent-config.dc.html">Config</a>
+      <a class="active" href="13-agent-context.dc.html">Context</a>
+      <a href="14-agent-tools.dc.html">Tools</a>
+      <a href="28-skills.dc.html">Skills</a>
+      <a href="16-threads.dc.html">Threads</a>
+      <a href="15-agent-versions.dc.html">Versions</a>
+      <a href="09-agent-share.dc.html">Share</a>
+      <a href="44-debug.dc.html">Debug</a>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>2 variables are reaching the model unresolved.</b> The literal text <span class="mono">{{ litExample }}</span> was sent in 214 turns since Aug 9. Bind them or remove the references.</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="filter-bar">
+        <span class="fchip active">All <span class="fchip-count">{{ total }}</span></span>
+        <span class="fchip" style="color:var(--danger)">Unresolved <span class="fchip-count">{{ nBad }}</span></span>
+        <span class="fchip" style="color:var(--warn)">Volatile <span class="fchip-count">{{ nVol }}</span></span>
+      </div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:180px minmax(180px,1fr) 130px 140px minmax(140px,1fr)">
+          <span>Variable</span><span>Resolves to</span><span>Status</span><span>Cache position</span><span>Used in</span>
+        </div>
+        <sc-for list="{{ vars }}" as="x" hint-placeholder-count="6">
+          <div class="dt-row" style="grid-template-columns:180px minmax(180px,1fr) 130px 140px minmax(140px,1fr);border-left:3px solid {{ x.edge }};padding-left:13px">
+            <span class="mono" style="font-size:12px;color:var(--ink)">{{ x.name }}</span>
+            <span class="mono-sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{ x.value }}">{{ x.value }}</span>
+            <span><span class="varchip {{ x.statusCls }}">{{ x.status }}</span></span>
+            <span style="font-size:11.5px;color:{{ x.cacheColor }}">{{ x.cache }}</span>
+            <span class="mono-sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.usedIn }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Resolution tested against the live sources 40s ago · a volatile variable inside the cached prefix breaks the cache every turn</div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4c-1.5 1.8-2 3.6-2 6s.5 4.2 2 6M15 4c1.5 1.8 2 3.6 2 6s-.5 4.2-2 6M7.5 8l5 4M12.5 8l-5 4"></path></svg></div>
+        <h3>No variables</h3>
+        <p>Prompt blocks can reference variables like <span class="mono">user.name</span> or <span class="mono">env.region</span>. They resolve at assembly time — and you’ll see exactly what each one resolved to, every turn.</p>
+        <button class="btn accent">Add variable</button>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  baseVars(fail) {
+    return [
+      {name:'{{user.name}}', value:'Maya Kapoor (from session identity)', status:'resolved', statusCls:'resolved', cache:'below boundary', cacheColor:'var(--ink-3)', usedIn:'identity, tone-and-format', edge:'transparent'},
+      {name:'{{user.role}}', value: fail ? '— no binding since Aug 9' : 'ops-lead (from directory sync)', status: fail ? 'unresolved' : 'resolved', statusCls: fail ? 'unresolved' : 'resolved', cache:'below boundary', cacheColor:'var(--ink-3)', usedIn:'escalation-rules', edge: fail ? 'var(--danger)' : 'transparent'},
+      {name:'{{env.region}}', value:'us-east-1 (from environment)', status:'resolved', statusCls:'resolved', cache:'cached prefix', cacheColor:'var(--ink-3)', usedIn:'notes-integration-guide', edge:'transparent'},
+      {name:'{{company.fiscal_quarter}}', value: fail ? '— source sheet deleted' : 'Q3-FY26 (from finance sheet)', status: fail ? 'unresolved' : 'resolved', statusCls: fail ? 'unresolved' : 'resolved', cache:'cached prefix', cacheColor: fail ? 'var(--danger)' : 'var(--ink-3)', usedIn:'finance-glossary', edge: fail ? 'var(--danger)' : 'transparent'},
+      {name:'{{now.date}}', value:'2026-08-14 (runtime clock)', status:'volatile', statusCls:'volatile', cache:'⚠ inside cached prefix', cacheColor:'var(--warn)', usedIn:'identity', edge:'transparent'},
+      {name:'{{thread.channel}}', value:'slack | chat | widget (per thread)', status:'volatile', statusCls:'volatile', cache:'below boundary ✓', cacheColor:'var(--ink-3)', usedIn:'tone-and-format', edge:'transparent'}
+    ];
+  }
+  denseVars() {
+    const src = ['session identity','directory sync','environment','finance sheet','runtime clock','CRM field','feature flag','secrets store'];
+    return Array.from({length: 32}, (_, i) => {
+      const bad = i === 5 || i === 17, vol = i % 7 === 4;
+      return {
+        name: '{{' + ['user.name','user.role','env.region','company.fiscal_quarter','now.date','account.tier','flags.beta','keys.notion','user.tz','org.name','plan.limit','sla.tier','region.locale','user.email','deal.stage','case.id','doc.style','kb.version','user.title','env.stage','quota.left','cluster.id','model.route','tool.budget','mem.tier','lang.pref','brand.name','legal.rev','fy.start','support.tier','geo.dc','notify.pref'][i] + '}}',
+        value: bad ? '— binding removed' : 'resolved from ' + src[i % 8],
+        status: bad ? 'unresolved' : vol ? 'volatile' : 'resolved',
+        statusCls: bad ? 'unresolved' : vol ? 'volatile' : 'resolved',
+        cache: vol ? (i % 2 ? 'below boundary ✓' : '⚠ inside cached prefix') : (i % 3 ? 'below boundary' : 'cached prefix'),
+        cacheColor: vol && i % 2 === 0 ? 'var(--warn)' : 'var(--ink-3)',
+        usedIn: ['identity','escalation-rules','finance-glossary','tone-and-format'][i % 4],
+        edge: bad ? 'var(--danger)' : 'transparent'
+      };
+    });
+  }
+  renderVals() {
+    const v = this.state.view;
+    const vars = v === 'empty' ? [] : v === 'dense' ? this.denseVars() : this.baseVars(v === 'failure');
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showAlert: v === 'failure',
+      vars, total: vars.length,
+      nBad: vars.filter(x=>x.status==='unresolved').length,
+      nVol: vars.filter(x=>x.status==='volatile').length,
+      litExample: '{{user.role}}'
+    };
+  }
+}
+</script>
+</body>
+</html>

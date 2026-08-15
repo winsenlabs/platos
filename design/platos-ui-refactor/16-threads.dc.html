@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E12 Thread list">
+  <dc-import name="PlatosNav" active="threads" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="10-agents.dc.html">Agents</a><span class="sep">/</span><a href="12-agent-config.dc.html">walle</a><span class="sep">/</span><span class="here">Threads</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Threads<span class="count-badge">{{ countLabel }}</span></h1>
+        <p class="page-sub">Conversations between people and <b>walle</b></p>
+      </div>
+      <div class="page-head-actions"><button class="btn">Export CSV</button></div>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>4 threads carry unresolved tool failures</b> from the walle-tools disconnect (09:02–09:43 UTC). Users were given wrong error attributions. <a href="17-thread.dc.html" style="text-decoration:underline;text-underline-offset:2px">Review the first</a></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="filter-bar">
+        <span class="fchip active">All <span class="fchip-count">{{ total }}</span></span>
+        <span class="fchip">Live <span class="fchip-count">{{ nLive }}</span></span>
+        <span class="fchip" style="color:var(--danger)">Failures <span class="fchip-count">{{ nFail }}</span></span>
+        <span class="fchip">Guest <span class="fchip-count">{{ nGuest }}</span></span>
+        <span class="spacer"></span>
+        <span class="topbar-search" style="max-width:260px;flex:none"><svg style="width:13px;height:13px" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"></circle><path d="M13.5 13.5 17 17"></path></svg>Search threads…</span>
+      </div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:minmax(220px,1.6fr) 130px 110px 64px 80px 90px 90px">
+          <span>Thread</span><span>User</span><span>Channel</span><span>Turns</span><span>Cost</span><span>Status</span><span>Last turn</span>
+        </div>
+        <sc-for list="{{ threads }}" as="t" hint-placeholder-count="8">
+          <a class="dt-row" href="17-thread.dc.html" style="grid-template-columns:minmax(220px,1.6fr) 130px 110px 64px 80px 90px 90px;border-left:3px solid {{ t.edge }};padding-left:13px">
+            <span style="min-width:0">
+              <span style="display:block;font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.title }}</span>
+              <span class="mono-sm">{{ t.id }}</span>
+            </span>
+            <span style="font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.user }}</span>
+            <span class="mono-sm">{{ t.channel }}</span>
+            <span class="mono tnum" style="font-size:12.5px">{{ t.turns }}</span>
+            <span class="mono tnum" style="font-size:12.5px;font-weight:600">{{ t.cost }}</span>
+            <span><span class="schip {{ t.chipCls }}">{{ t.chip }}</span></span>
+            <span class="mono-sm">{{ t.last }}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Turn counts and costs from the turn ledger (source of truth) · never estimated</div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9.5c0 3-3.1 5.5-7 5.5-1 0-2-.16-2.9-.46L3 16l1.2-3.1C3.4 11.9 3 10.75 3 9.5 3 6.5 6.1 4 10 4s7 2.5 7 5.5z"></path></svg></div>
+        <h3>No conversations yet</h3>
+        <p>walle hasn’t spoken to anyone. Try it in the playground, or wire it to Slack, chat, or the embedded widget.</p>
+        <div class="row" style="justify-content:center;gap:8px"><a class="btn accent" href="19-playground.dc.html">Open playground</a><a class="btn" href="42-connect.dc.html">Connect a channel</a></div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  baseThreads(fail) {
+    const rows = [
+      {title:'“Where are the notes from my last board meeting?”', id:'th_9f3kq2', user:'maya@acme.co', channel:'slack', turns:8, cost:'$0.52', chip: fail?'failure':'live', chipCls: fail?'danger':'accent', last:'2m ago', edge: fail?'var(--danger)':'transparent'},
+      {title:'“Can you draft the renewal email for Northwind?”', id:'th_8b1mz7', user:'jon@acme.co', channel:'chat', turns:14, cost:'$1.02', chip:'live', chipCls:'accent', last:'6m ago', edge:'transparent'},
+      {title:'“What did we agree on pricing exceptions?”', id:'th_7ttv04', user:'guest', channel:'share link', turns:3, cost:'$0.09', chip:'guest', chipCls:'muted', last:'18m ago', edge:'transparent', guest:true},
+      {title:'“Summarize the incident channel since midnight”', id:'th_6qp9s1', user:'sam@acme.co', channel:'slack', turns:22, cost:'$2.63', chip: fail?'failure':'done', chipCls: fail?'danger':'good', last:'1h ago', edge: fail?'var(--danger)':'transparent'},
+      {title:'“Book travel for the offsite” (escalated)', id:'th_5nd3x8', user:'ana@acme.co', channel:'widget', turns:11, cost:'$0.71', chip:'escalated', chipCls:'warn', last:'2h ago', edge:'transparent'},
+      {title:'“Compare our SLA with the new vendor’s”', id:'th_4hw2c5', user:'maya@acme.co', channel:'chat', turns:6, cost:'$0.44', chip:'done', chipCls:'good', last:'4h ago', edge:'transparent'},
+      {title:'“Why did checkout error spike at 3am?”', id:'th_3rk8f2', user:'dev@acme.co', channel:'slack', turns:17, cost:'$1.88', chip:'done', chipCls:'good', last:'8h ago', edge:'transparent'},
+      {title:'“Draft release notes for v2.14”', id:'th_2jm5b9', user:'guest', channel:'share link', turns:4, cost:'$0.12', chip:'guest', chipCls:'muted', last:'1d ago', edge:'transparent', guest:true}
+    ];
+    return rows;
+  }
+  denseThreads() {
+    const users = ['maya@acme.co','jon@acme.co','sam@acme.co','ana@acme.co','dev@acme.co','guest','ops@acme.co','kim@acme.co'];
+    const chans = ['slack','chat','widget','share link'];
+    const titles = ['Invoice status for #4471','Renewal terms question','Weekly metrics summary','Access request follow-up','Refund policy edge case','Draft outreach sequence','Debug webhook retries','Board notes lookup','Escalation to human','Pricing exception check'];
+    return Array.from({length: 48}, (_, i) => {
+      const failed = i === 3 || i === 19 || i === 31 || i === 40;
+      return {
+        title: '“' + titles[i % 10] + '”', id: 'th_' + (900 - i).toString(36) + 'x' + (i * 7 % 100),
+        user: users[i % 8], channel: chans[i % 4], turns: 1 + (i * 5) % 60,
+        cost: '$' + ((i * 17.3) % 300 / 100 + 0.02).toFixed(2),
+        chip: failed ? 'failure' : ['live','done','done','guest','done','escalated'][i % 6],
+        chipCls: failed ? 'danger' : ['accent','good','good','muted','good','warn'][i % 6],
+        last: ['2m','9m','31m','1h','3h','7h','1d','2d'][i % 8] + ' ago',
+        edge: failed ? 'var(--danger)' : 'transparent', guest: users[i % 8] === 'guest'
+      };
+    });
+  }
+  renderVals() {
+    const v = this.state.view;
+    const threads = v === 'empty' ? [] : v === 'dense' ? this.denseThreads() : this.baseThreads(v === 'failure');
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showAlert: v === 'failure',
+      threads, total: threads.length, countLabel: String(threads.length),
+      nLive: threads.filter(t=>t.chip==='live').length,
+      nFail: threads.filter(t=>t.chip==='failure').length,
+      nGuest: threads.filter(t=>t.guest).length
+    };
+  }
+}
+</script>
+</body>
+</html>

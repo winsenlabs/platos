@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.err-card{max-width:440px;margin:0 auto;text-align:center}
+.err-code{font-family:var(--font-mono);font-size:11px;letter-spacing:0.1em;color:var(--ink-4);text-transform:uppercase;margin-bottom:10px}
+.err-title{font-size:19px;font-weight:600;letter-spacing:-0.015em;margin:0 0 8px;color:var(--ink)}
+.err-body{font-size:13px;color:var(--ink-3);line-height:1.6;margin:0 0 18px;text-wrap:pretty}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="display:block;background:var(--bg);min-height:100vh" data-screen-label="N System &amp; error states">
+  <div class="state-sw" style="right:120px">
+    <button class="{{ s404 }}" onClick="{{ g404 }}">404</button>
+    <button class="{{ s500 }}" onClick="{{ g500 }}">500</button>
+    <button class="{{ s403 }}" onClick="{{ g403 }}">403</button>
+    <button class="{{ sExp }}" onClick="{{ gExp }}">Expired</button>
+    <button class="{{ sMaint }}" onClick="{{ gMaint }}">Degraded</button>
+    <button class="{{ sOff }}" onClick="{{ gOff }}">Offline</button>
+    <button class="{{ sRate }}" onClick="{{ gRate }}">429</button>
+  </div>
+  <div class="theme-toggle">
+    <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+    <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+  </div>
+  <div class="grid-bg"></div>
+  <div class="auth-wrap">
+    <div class="err-card">
+      <img src="assets/platos-icon.svg" alt="" style="width:34px;height:34px;border-radius:8px;margin-bottom:18px;opacity:0.9" />
+      <div class="err-code">{{ code }}</div>
+      <h1 class="err-title">{{ title }}</h1>
+      <p class="err-body">{{ body }}</p>
+      <sc-if value="{{ showErrId }}" hint-placeholder-val="{{ false }}">
+        <div class="codeblk" style="text-align:left;margin-bottom:16px">
+          <div class="cb-head"><span>error id — include this in a report</span><span class="cb-copy">copy</span></div>
+          <pre>err_2026-08-14_09:52:11_8kf2mq · v2.14.0 · trace attached</pre>
+        </div>
+      </sc-if>
+      <sc-if value="{{ showRetryBar }}" hint-placeholder-val="{{ false }}">
+        <div class="pbar" style="margin-bottom:16px"><div style="width:64%"></div></div>
+        <div class="mono-sm" style="margin-bottom:16px">{{ retryNote }}</div>
+      </sc-if>
+      <div class="row" style="justify-content:center;gap:8px">
+        <a class="btn accent" href="03-home.dc.html">{{ cta }}</a>
+        <sc-if value="{{ showSecondary }}" hint-placeholder-val="{{ true }}"><button class="btn">{{ cta2 }}</button></sc-if>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'v404' };
+  renderVals() {
+    const m = {
+      v404: {code:'404 · not found', title:'This page doesn’t exist', body:'The URL may be from the old app — the redesign retired the /orgs/…/env/… paths. Search can probably find what you were after.', cta:'Go home', cta2:'Search ⌘K', sec:true},
+      v500: {code:'500 · unexpected error', title:'Something broke on our side', body:'The page crashed, your data didn’t. Agents keep running; threads and ledger writes are unaffected by UI errors.', cta:'Reload', cta2:'Report with error id', sec:true, errId:true},
+      v403: {code:'403 · no access', title:'You’re not in this organization', body:'Your account has no role in winsen-labs. If someone meant to invite you, ask them to resend — invites bind to your exact email.', cta:'Switch organization', cta2:'Sign out', sec:true},
+      vExp: {code:'session expired', title:'Signed out for inactivity', body:'Your session hit its 14-day limit. Sign back in and you’ll land exactly where you left off — this page is remembered.', cta:'Sign in again', sec:false},
+      vMaint: {code:'degraded service', title:'Running with reduced capability', body:'The embedding service is down for maintenance until ~10:30 UTC. Chat works; similarity search and memory recall fall back to keyword matching, marked as such in traces.', cta:'Status page', cta2:'Continue anyway', sec:true},
+      vOff: {code:'connection lost', title:'You’re offline', body:'Streaming paused. Nothing is lost — turns in flight complete server-side and replay in full when the connection returns.', cta:'Retry now', sec:false, retry:true, retryNote:'auto-reconnecting · attempt 3 · next in 4s'},
+      vRate: {code:'429 · rate limited', title:'Too many requests', body:'You hit the 12 turns/min limit for your account. This protects the shared model quota — the limit and your usage are shown in environment settings.', cta:'Back', cta2:'View limits', sec:true, retry:true, retryNote:'retry allowed in 0:41'}
+    };
+    const v = this.state.view, d = m[v];
+    const sw = (k) => v === k ? 'active' : '';
+    const go = (k) => () => this.setState({view: k});
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      s404: sw('v404'), s500: sw('v500'), s403: sw('v403'), sExp: sw('vExp'), sMaint: sw('vMaint'), sOff: sw('vOff'), sRate: sw('vRate'),
+      g404: go('v404'), g500: go('v500'), g403: go('v403'), gExp: go('vExp'), gMaint: go('vMaint'), gOff: go('vOff'), gRate: go('vRate'),
+      code: d.code, title: d.title, body: d.body, cta: d.cta, cta2: d.cta2 || '',
+      showSecondary: !!d.sec, showErrId: !!d.errId, showRetryBar: !!d.retry, retryNote: d.retryNote || ''
+    };
+  }
+}
+</script>
+</body>
+</html>

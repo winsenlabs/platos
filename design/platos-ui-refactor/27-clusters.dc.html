@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="G4 Clusters">
+  <dc-import name="PlatosNav" active="clusters" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Adding agent</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="25-memory.dc.html">Memories</a><span class="sep">/</span><span class="here">Clusters</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Clusters</h1>
+        <p class="page-sub">The unit across which memory is shared. Membership is a data boundary — treat it like one.</p>
+      </div>
+      <div class="page-head-actions"><button class="btn accent">New cluster</button></div>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="3.5"></circle><circle cx="13" cy="13" r="3.5"></circle></svg></div>
+        <h3>No clusters</h3>
+        <p>Without a cluster, each agent’s memory is private to itself. Create one only when agents genuinely need to share what they learn about users.</p>
+        <button class="btn accent">New cluster</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">
+        <div class="set-card" style="margin-bottom:0">
+          <div class="row" style="justify-content:space-between">
+            <h3 class="mono" style="font-size:13px">support-core</h3>
+            <span class="mono-sm">8,912 shared memories</span>
+          </div>
+          <p class="set-desc" style="margin-bottom:12px">Customer-facing support agents</p>
+          <div class="sc-chips" style="margin-bottom:12px">
+            <span class="echip"><span class="dot ok"></span>walle</span>
+            <span class="echip"><span class="dot ok"></span>support-triage</span>
+            <span class="echip"><span class="dot ok"></span>billing-answers</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-3);line-height:1.5;border-top:1px dashed var(--border);padding-top:10px">Any member can recall any member’s profile and conversation memories — including everything extracted <b>before</b> it joined.</div>
+          <div class="row" style="gap:6px;margin-top:12px"><button class="btn tiny" onClick="{{ goFailure }}">Add agent</button><button class="btn tiny ghost">Audit recalls</button></div>
+        </div>
+        <div class="set-card" style="margin-bottom:0">
+          <div class="row" style="justify-content:space-between">
+            <h3 class="mono" style="font-size:13px">internal-ops</h3>
+            <span class="mono-sm">1,204 shared memories</span>
+          </div>
+          <p class="set-desc" style="margin-bottom:12px">Internal-only agents · never guest-reachable</p>
+          <div class="sc-chips" style="margin-bottom:12px">
+            <span class="echip"><span class="dot ok"></span>docs-writer</span>
+            <span class="echip"><span class="dot ok"></span>internal-qa</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-3);line-height:1.5;border-top:1px dashed var(--border);padding-top:10px">Isolated from support-core. onboarding-guide was removed Jun 30 after the guest-leak incident.</div>
+          <div class="row" style="gap:6px;margin-top:12px"><button class="btn tiny">Add agent</button><button class="btn tiny ghost">Audit recalls</button></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showModal }}" hint-placeholder-val="{{ false }}">
+      <div class="overlay" onClick="{{ goDefault }}">
+        <div class="palette" style="width:480px;padding:0">
+          <div style="padding:20px 22px 0">
+            <h3 style="margin:0 0 4px;font-size:15px">Add onboarding-guide to support-core?</h3>
+            <p style="font-size:12.5px;color:var(--ink-3);margin:0 0 14px">This is a data boundary change, not a convenience toggle.</p>
+            <div class="alert warn" style="margin-bottom:14px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+              <div class="a-body">onboarding-guide will immediately be able to recall <b>all 8,912 existing memories</b> in this cluster — including profile facts about users it has never spoken to. onboarding-guide is <b>guest-reachable</b> via a share link. A misconfigured prompt could surface these memories to anonymous visitors. This exact combination caused the Jun 28 leak.</div>
+            </div>
+            <label class="row" style="gap:8px;font-size:12.5px;color:var(--ink-2);margin-bottom:16px;cursor:pointer"><input type="checkbox" style="accent-color:var(--accent);margin:0" />I understand this widens what onboarding-guide can recall</label>
+          </div>
+          <div class="pal-foot" style="justify-content:flex-end;gap:8px;padding:12px 22px">
+            <button class="btn" onClick="{{ goDefault }}">Cancel</button>
+            <button class="btn accent" style="opacity:0.5;cursor:not-allowed">Add to cluster</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showModal: v === 'failure'
+    };
+  }
+}
+</script>
+</body>
+</html>

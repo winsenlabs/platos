@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.agent-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.agent-tabs a{font-size:13px;padding:8px 14px;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.agent-tabs a:hover{color:var(--ink)}
+.agent-tabs a.active{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E6 Tools tab">
+  <dc-import name="PlatosNav" active="agents" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="10-agents.dc.html">Agents</a><span class="sep">/</span><a href="12-agent-config.dc.html">walle</a><span class="sep">/</span><span class="here">Tools</span></div>
+    <div class="page-head-row" style="margin-bottom:0">
+      <div class="page-head" style="margin-bottom:14px">
+        <div class="row" style="gap:10px">
+          <span class="avatar walle">WA</span>
+          <div>
+            <h1 style="font-size:20px;margin:0">walle</h1>
+            <p class="page-sub" style="margin:2px 0 0">What this agent can call <b>right now</b> — not what config says it should</p>
+          </div>
+        </div>
+      </div>
+      <div class="page-head-actions"><button class="btn">Refresh reachability</button><button class="btn accent">Expose tool</button></div>
+    </div>
+    <div class="agent-tabs">
+      <a href="12-agent-config.dc.html">Config</a>
+      <a href="13-agent-context.dc.html">Context</a>
+      <a class="active" href="14-agent-tools.dc.html">Tools</a>
+      <a href="28-skills.dc.html">Skills</a>
+      <a href="16-threads.dc.html">Threads</a>
+      <a href="15-agent-versions.dc.html">Versions</a>
+      <a href="09-agent-share.dc.html">Share</a>
+      <a href="44-debug.dc.html">Debug</a>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>9 tools are offered to the model but cannot be dispatched.</b> Their entity <span class="mono">walle-tools</span> is disconnected. The agent will confidently call them and fail. <a href="21-entity.dc.html" style="text-decoration:underline;text-underline-offset:2px">Reconnect entity</a> or <button class="btn tiny" style="vertical-align:1px">Withhold from model</button></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+        <div class="tile"><div class="v">{{ nInjected }}</div><div class="k">injected this turn</div></div>
+        <div class="tile"><div class="v">{{ nSearch }}</div><div class="k">reachable via search</div></div>
+        <div class="tile"><div class="v">{{ nRuntime }}</div><div class="k">runtime tools</div></div>
+        <div class="tile {{ tileWarnCls }}"><div class="v">{{ nUndispatchable }}</div><div class="k">undispatchable</div></div>
+      </div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:minmax(180px,1.2fr) 110px minmax(140px,1fr) 120px 110px 80px">
+          <span>Tool</span><span>Exposure</span><span>Entity</span><span>Dispatchable</span><span>24h health</span><span></span>
+        </div>
+        <sc-for list="{{ tools }}" as="t" hint-placeholder-count="9">
+          <div class="dt-row" style="grid-template-columns:minmax(180px,1.2fr) 110px minmax(140px,1fr) 120px 110px 80px;border-left:3px solid {{ t.edge }};padding-left:13px">
+            <span style="min-width:0">
+              <span class="mono" style="display:block;font-size:12px;font-weight:600;color:var(--ink)">{{ t.name }}</span>
+              <span style="display:block;font-size:11.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.desc }}</span>
+            </span>
+            <span><span class="schip {{ t.expCls }}">{{ t.exposure }}</span></span>
+            <span><span class="echip" style="border-color:{{ t.entBorder }}"><span class="dot {{ t.entDot }}"></span>{{ t.entity }}<span class="kind">{{ t.kind }}</span></span></span>
+            <span><span class="dispatch {{ t.dispCls }}"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.dispIcon }}"></path></svg>{{ t.disp }}</span></span>
+            <span class="mono-sm">{{ t.health }}</span>
+            <span><button class="btn tiny">Test</button></span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Dispatchability probed live 8s ago against each entity connection — not the registry cache</div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 6.5 17 3M11 9l-6.6 6.6a1.4 1.4 0 0 0 2 2L13 11M11 9a4 4 0 0 1 5.2-5.2L13.5 6.5l.8 3.2 3.2-.8A4 4 0 0 1 11 9z"></path></svg></div>
+        <h3>No tools exposed</h3>
+        <p>walle can talk, but it can’t do anything. Expose tools from a connected entity, or install a skill that brings its own.</p>
+        <div class="row" style="justify-content:center;gap:8px"><a class="btn accent" href="20-entities.dc.html">Connect an entity</a><a class="btn" href="28-skills.dc.html">Browse skills</a></div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  mk(name, desc, exposure, entity, kind, down, health) {
+    const expCls = exposure === 'injected' ? 'accent' : exposure === 'search' ? 'muted' : 'good';
+    return {
+      name, desc, exposure, expCls, entity, kind,
+      entDot: down ? 'down' : 'ok', entBorder: down ? 'color-mix(in oklab,var(--danger) 40%,var(--border))' : 'var(--border)',
+      disp: down ? 'no' : 'yes', dispCls: down ? 'no' : 'yes',
+      dispIcon: down ? 'M5 5l10 10M15 5L5 15' : 'M4 11l4 4 8-9',
+      health, edge: down ? 'var(--danger)' : 'transparent'
+    };
+  }
+  baseTools(fail) {
+    const d = fail;
+    return [
+      this.mk('notes.search','Search Notes documents by query and tag','injected','walle-tools','wire', d, '412 calls · 0 fail'),
+      this.mk('notes.get','Fetch a note body by id','injected','walle-tools','wire', d, '388 calls · 0 fail'),
+      this.mk('sheets.query','Run a query against a finance sheet','injected','walle-tools','wire', d, '96 calls · 2 fail'),
+      this.mk('calendar.find','Find events for a person or room','injected','walle-tools','wire', d, '204 calls · 1 fail'),
+      this.mk('slack.post','Post a message to a channel','injected','slack-bridge','wire', false, '1,022 calls · 0 fail'),
+      this.mk('crm.lookup','Look up an account or contact','search','hubspot-mcp','mcp', false, '77 calls · 0 fail'),
+      this.mk('crm.update','Update a CRM field (requires approval)','search','hubspot-mcp','mcp', false, '12 calls · 0 fail'),
+      this.mk('memory.recall','Query agent memory tiers','runtime','platos runtime','sys', false, '2,614 calls · 0 fail'),
+      this.mk('thread.escalate','Hand the thread to a human','runtime','platos runtime','sys', false, '31 calls · 0 fail')
+    ];
+  }
+  denseTools() {
+    const ents = [['walle-tools','wire'],['slack-bridge','wire'],['hubspot-mcp','mcp'],['notion-mcp','mcp'],['stripe-mcp','mcp'],['platos runtime','sys']];
+    const verbs = ['search','get','list','create','update','archive','export','query','post','find'];
+    const doms = ['notes','sheets','calendar','crm','tickets','billing','docs','mail','tasks','kb'];
+    return Array.from({length: 64}, (_, i) => {
+      const e = ents[i % 6];
+      const down = e[0] === 'walle-tools' && i % 4 === 1;
+      return this.mk(doms[i % 10] + '.' + verbs[(i * 3) % 10], 'Tool #' + (i + 1) + ' contributed by ' + e[0], i % 5 === 0 ? 'injected' : i % 5 === 4 ? 'runtime' : 'search', e[0], e[1], down, ((i * 41) % 900) + ' calls · ' + (i % 11 === 3 ? 4 : 0) + ' fail');
+    });
+  }
+  renderVals() {
+    const v = this.state.view;
+    const tools = v === 'empty' ? [] : v === 'dense' ? this.denseTools() : this.baseTools(v === 'failure');
+    const nU = tools.filter(t => t.disp === 'no').length;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showAlert: v === 'failure',
+      tools,
+      nInjected: tools.filter(t=>t.exposure==='injected').length,
+      nSearch: tools.filter(t=>t.exposure==='search').length,
+      nRuntime: tools.filter(t=>t.exposure==='runtime').length,
+      nUndispatchable: nU, tileWarnCls: nU ? 'warn' : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

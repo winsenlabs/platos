@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E2 Create agent">
+  <dc-import name="PlatosNav" active="agents" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Validation</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="10-agents.dc.html">Agents</a><span class="sep">/</span><span class="here">New agent</span></div>
+    <div style="max-width:660px">
+      <div class="page-head">
+        <h1>New agent</h1>
+        <p class="page-sub">Three fields make it answer. Everything else has a sane default you can change later.</p>
+      </div>
+
+      <sc-if value="{{ showErrors }}" hint-placeholder-val="{{ false }}">
+        <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+          <div class="a-body"><b>2 problems.</b> Name is taken by an archived agent, and the selected route has no working credential.</div>
+        </div>
+      </sc-if>
+
+      <div class="set-card">
+        <h3>Identity</h3>
+        <div class="auth-field" style="margin-top:12px">
+          <label>Name</label>
+          <input type="text" value="refund-desk" style="{{ nameStyle }}" />
+          <sc-if value="{{ showErrors }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px;color:var(--danger);margin-top:4px">Taken by an archived agent — restore it or pick another name.</div></sc-if>
+          <div style="font-size:11.5px;color:var(--ink-4);margin-top:4px;font-family:var(--font-mono)">will be callable as @refund-desk in Slack and chat</div>
+        </div>
+      </div>
+
+      <div class="set-card">
+        <h3>Model</h3>
+        <p class="set-desc">Consequence shown inline — this is the biggest cost decision you’ll make.</p>
+        <div style="display:grid;gap:8px">
+          <label class="row" style="gap:10px;padding:10px 12px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-soft);cursor:pointer">
+            <input type="radio" name="model" checked="checked" style="accent-color:var(--accent);margin:0" />
+            <span class="grow"><span style="display:block;font-size:13px;font-weight:600">claude-sonnet-4-5</span><span style="font-size:11.5px;color:var(--ink-3)">balanced · a typical support turn ≈ $0.02–0.05</span></span>
+            <span class="schip good">credential ok</span>
+          </label>
+          <label class="row" style="gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer">
+            <input type="radio" name="model" style="accent-color:var(--accent);margin:0" />
+            <span class="grow"><span style="display:block;font-size:13px;font-weight:600">claude-opus-4-6</span><span style="font-size:11.5px;color:var(--ink-3)">strongest reasoning · a typical turn ≈ $0.15–0.45</span></span>
+            <span class="schip good">credential ok</span>
+          </label>
+          <label class="row" style="gap:10px;padding:10px 12px;border:1px solid {{ gptBorder }};border-radius:var(--radius-sm);cursor:pointer">
+            <input type="radio" name="model" style="accent-color:var(--accent);margin:0" />
+            <span class="grow"><span style="display:block;font-size:13px;font-weight:600">gpt-5.2</span><span style="font-size:11.5px;color:var(--ink-3)">via openai-byok · a typical turn ≈ $0.03–0.08</span></span>
+            <span class="schip {{ gptChipCls }}">{{ gptChip }}</span>
+          </label>
+        </div>
+        <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>estimates from your environment’s median turn shape (last 30d) × verified rates v182</div>
+      </div>
+
+      <div class="set-card">
+        <h3>Prompt</h3>
+        <p class="set-desc">One block to start. Split into ordered blocks later when it grows.</p>
+        <textarea style="width:100%;box-sizing:border-box;min-height:120px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-family:var(--font-mono);font-size:12px;color:var(--ink);line-height:1.6;resize:vertical" placeholder="You are refund-desk, Acme’s refund policy specialist…">You are refund-desk, Acme’s refund policy specialist. Follow the refund matrix strictly; escalate anything ambiguous.</textarea>
+      </div>
+
+      <div class="set-card" style="border-style:dashed">
+        <h3 class="muted">Deferred until you need them</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+          <span class="chip">tools: none</span><span class="chip">memory: conversation only</span><span class="chip">cluster: none</span><span class="chip">skills: none</span><span class="chip">budget: env default</span><span class="chip">approvals: env policy</span>
+        </div>
+      </div>
+
+      <div class="row" style="gap:8px;margin:18px 0 40px">
+        <a class="btn accent" href="19-playground.dc.html">Create &amp; open playground</a>
+        <a class="btn" href="10-agents.dc.html">Cancel</a>
+        <span class="mono-sm" style="margin-left:auto">creates config v1 · nothing is billed until a turn runs</span>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view, err = v === 'failure';
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goFailure: () => this.setState({view:'failure'}),
+      showErrors: err,
+      nameStyle: err ? 'border-color:var(--danger)' : '',
+      gptBorder: err ? 'color-mix(in oklab,var(--danger) 45%,var(--border))' : 'var(--border)',
+      gptChip: err ? 'credential failed' : 'credential ok',
+      gptChipCls: err ? 'danger' : 'good'
+    };
+  }
+}
+</script>
+</body>
+</html>

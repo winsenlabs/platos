@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="J5 Evals">
+  <dc-import name="PlatosNav" active="evals" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">A/B result</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Criteria</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Evals</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Evals</h1>
+        <p class="page-sub">Judge-scored comparisons — and what the judging itself cost</p>
+      </div>
+      <div class="page-head-actions"><button class="btn" onClick="{{ goFailure }}">Criteria</button><button class="btn accent">New eval run</button></div>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l4 4 8-9"></path></svg></div>
+        <h3>No eval runs</h3>
+        <p>Define criteria once, then compare any two config versions on real thread samples before promoting a canary.</p>
+        <button class="btn accent" onClick="{{ goFailure }}">Define first criterion</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showCriteria }}" hint-placeholder-val="{{ false }}">
+      <div class="sec-head"><h2>Criteria</h2><span class="count">5</span></div>
+      <div class="dtable" style="max-width:860px">
+        <div class="dt-head" style="grid-template-columns:minmax(150px,1fr) minmax(240px,1.6fr) 110px 110px">
+          <span>Criterion</span><span>Judge instruction (excerpt)</span><span>Judge model</span><span>Cost / 100</span>
+        </div>
+        <sc-for list="{{ criteria }}" as="c" hint-placeholder-count="5">
+          <div class="dt-row" style="grid-template-columns:minmax(150px,1fr) minmax(240px,1.6fr) 110px 110px">
+            <span class="mono" style="font-size:12px;font-weight:600;color:var(--ink)">{{ c.name }}</span>
+            <span style="font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.desc }}</span>
+            <span class="mono-sm">{{ c.model }}</span>
+            <span class="mono tnum" style="font-size:12px">{{ c.cost }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showAB }}" hint-placeholder-val="{{ true }}">
+      <div class="set-card" style="max-width:920px">
+        <div class="row" style="gap:12px;margin-bottom:4px">
+          <h3 style="margin:0">walle · v41 (stable) vs v42 (canary)</h3>
+          <span class="schip warn">v42 worse on 2 of 5</span>
+        </div>
+        <p class="set-desc">200 sampled threads re-run per side · judged by haiku-4 · run cost $3.84 (judge lane) · finished 22m ago</p>
+        <div class="dtable">
+          <div class="dt-head" style="grid-template-columns:minmax(150px,1fr) 120px 120px 130px 110px">
+            <span>Criterion</span><span>v41</span><span>v42</span><span>Δ</span><span>Judge cost</span>
+          </div>
+          <sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+            <div class="dt-row" style="grid-template-columns:minmax(150px,1fr) 120px 120px 130px 110px;border-left:3px solid {{ r.edge }};padding-left:13px">
+              <span class="mono" style="font-size:12px;font-weight:600;color:var(--ink)">{{ r.name }}</span>
+              <span class="mono tnum" style="font-size:12.5px">{{ r.a }}</span>
+              <span class="mono tnum" style="font-size:12.5px">{{ r.b }}</span>
+              <span class="mono tnum" style="font-size:12.5px;font-weight:600;color:{{ r.dColor }}">{{ r.d }}</span>
+              <span class="mono-sm">{{ r.cost }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="row" style="gap:8px;margin-top:14px">
+          <button class="btn danger">Roll canary back</button>
+          <button class="btn">Promote anyway…</button>
+          <a class="btn ghost" href="15-agent-versions.dc.html">See the diff behind this</a>
+          <span class="mono-sm" style="margin-left:auto">escalation regression traced to the new $200 threshold</span>
+        </div>
+      </div>
+      <div class="prov-note"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Scores are judge-model opinions, not ground truth — spot-check the per-thread verdicts before acting</div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showAB: v === 'default', showEmpty: v === 'empty', showCriteria: v === 'failure',
+      rows: [
+        {name:'answer-accuracy', a:'92.5%', b:'93.0%', d:'+0.5', dColor:'var(--good)', cost:'$0.88', edge:'transparent'},
+        {name:'citation-present', a:'88.0%', b:'89.5%', d:'+1.5', dColor:'var(--good)', cost:'$0.61', edge:'transparent'},
+        {name:'escalated-when-needed', a:'96.5%', b:'84.0%', d:'−12.5', dColor:'var(--danger)', cost:'$0.92', edge:'var(--danger)'},
+        {name:'tone-adherence', a:'94.0%', b:'90.5%', d:'−3.5', dColor:'var(--danger)', cost:'$0.71', edge:'var(--danger)'},
+        {name:'no-invented-figures', a:'99.0%', b:'99.0%', d:'0.0', dColor:'var(--ink-3)', cost:'$0.72', edge:'transparent'}
+      ],
+      criteria: [
+        {name:'answer-accuracy', desc:'“Does the answer match the tool results it cites?”', model:'haiku-4', cost:'$0.44'},
+        {name:'citation-present', desc:'“Are figures attributed to a source the user can open?”', model:'haiku-4', cost:'$0.31'},
+        {name:'escalated-when-needed', desc:'“Given the policy, should this have gone to a human?”', model:'sonnet-4-5', cost:'$1.85'},
+        {name:'tone-adherence', desc:'“Short paragraphs, answer first, no filler?”', model:'haiku-4', cost:'$0.36'},
+        {name:'no-invented-figures', desc:'“Any number not present in tools/memory/prompt?”', model:'sonnet-4-5', cost:'$1.72'}
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

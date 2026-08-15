@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="I5 Traces list">
+  <dc-import name="PlatosNav" active="traces" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Traces</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Traces<span class="count-badge">{{ countLabel }}</span></h1>
+        <p class="page-sub">One trace per turn · filter by failure, latency, cost</p>
+      </div>
+      <div class="page-head-actions"><button class="btn">Export OTLP</button></div>
+    </div>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="filter-bar">
+        <span class="fchip active">All <span class="fchip-count">{{ total }}</span></span>
+        <span class="fchip" style="color:var(--danger)">Failed <span class="fchip-count">{{ nFail }}</span></span>
+        <span class="fchip">p95+ latency</span>
+        <span class="fchip">&gt; $0.10</span>
+        <span class="fchip">Agent ▾</span>
+        <span class="spacer"></span>
+        <span class="topbar-search" style="max-width:260px;flex:none"><svg style="width:13px;height:13px" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"></circle><path d="M13.5 13.5 17 17"></path></svg>trace id, tool, error…</span>
+      </div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:120px minmax(200px,1.3fr) 110px 140px 70px 80px 90px">
+          <span>Trace</span><span>Turn</span><span>Agent</span><span>Latency profile</span><span>Spans</span><span>Cost</span><span>When</span>
+        </div>
+        <sc-for list="{{ traces }}" as="t" hint-placeholder-count="10">
+          <a class="dt-row" href="18-trace.dc.html" style="grid-template-columns:120px minmax(200px,1.3fr) 110px 140px 70px 80px 90px;border-left:3px solid {{ t.edge }};padding-left:13px">
+            <span class="mono-sm" style="color:var(--ink-2)">{{ t.id }}</span>
+            <span style="font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.turn }}</span>
+            <span class="mono-sm">{{ t.agent }}</span>
+            <span class="row" style="gap:1px;height:14px;align-items:flex-end">
+              <span style="width:26%;height:{{ t.b1 }}px;background:var(--accent-2);border-radius:1px" title="model"></span>
+              <span style="width:18%;height:{{ t.b2 }}px;background:var(--tone-sky);border-radius:1px" title="tools"></span>
+              <span style="width:42%;height:{{ t.b3 }}px;background:{{ t.b3c }};border-radius:1px" title="answer"></span>
+              <span style="width:8%;height:4px;background:var(--tone-teal);border-radius:1px" title="memory"></span>
+            </span>
+            <span class="mono tnum" style="font-size:12px">{{ t.spans }}</span>
+            <span class="mono tnum" style="font-size:12px;font-weight:600">{{ t.cost }}</span>
+            <span class="mono-sm">{{ t.when }}</span>
+          </a>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h9M6 10h11M4 15h8"></path></svg></div>
+        <h3>No traces</h3>
+        <p>Every turn produces a trace automatically. Nothing has run in this window.</p>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  mkTraces(n, failHeavy) {
+    const turns = ['full summary + revenue','invoice status #4471','weekly metrics rollup','escalation to human','renewal draft','refund edge case','webhook retry debug','SLA comparison'];
+    return Array.from({length: n}, (_, i) => {
+      const failed = failHeavy ? (i % 4 === 0) : (i === 5);
+      return {
+        id: 'tr_' + (44 + i) + 'aa' + (90 - i),
+        turn: '“' + turns[i % 8] + '”' + (failed ? ' · dispatch failed' : ''),
+        agent: ['walle','support-triage','billing-answers'][i % 3],
+        b1: 6 + (i % 5), b2: failed ? 2 : 4 + (i % 4), b3: failed ? 3 : 8 + (i % 6),
+        b3c: failed ? 'var(--danger)' : 'var(--accent-2)',
+        spans: String(5 + (i * 3) % 22), cost: '$' + ((i * 7.9) % 42 / 100 + 0.008).toFixed(3),
+        when: ['12s','2m','9m','18m','41m','1h','2h','4h'][i % 8] + ' ago',
+        edge: failed ? 'var(--danger)' : 'transparent', failed
+      };
+    });
+  }
+  renderVals() {
+    const v = this.state.view;
+    const traces = v === 'empty' ? [] : this.mkTraces(v === 'dense' ? 60 : 12, v === 'failure');
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v !== 'empty', showEmpty: v === 'empty',
+      traces, total: traces.length, countLabel: String(traces.length),
+      nFail: traces.filter(t=>t.failed).length
+    };
+  }
+}
+</script>
+</body>
+</html>

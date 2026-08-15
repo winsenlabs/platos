@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.kg-node{cursor:pointer}
+.kg-node circle{fill:var(--surface);stroke:var(--border-2);stroke-width:1.5}
+.kg-node.focus circle{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+.kg-node.person circle{stroke:var(--tone-sky)}
+.kg-node.org circle{stroke:var(--tone-emerald)}
+.kg-node text{font-family:var(--font-sans);font-size:10.5px;fill:var(--ink);text-anchor:middle}
+.kg-node .sub{font-family:var(--font-mono);font-size:8px;fill:var(--ink-4)}
+.kg-edge{stroke:var(--border-2);stroke-width:1.2}
+.kg-edge.strong{stroke:var(--accent-2);stroke-width:1.8}
+.kg-elabel{font-family:var(--font-mono);font-size:8.5px;fill:var(--ink-3)}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="G2 Knowledge graph">
+  <dc-import name="PlatosNav" active="graph" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="25-memory.dc.html">Memories</a><span class="sep">/</span><span class="here">Knowledge graph</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Knowledge graph</h1>
+        <p class="page-sub">One entity at a time, with the evidence behind every edge — never the whole hairball</p>
+      </div>
+      <div class="page-head-actions"><button class="btn">Re-run extraction</button></div>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert warn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>Extraction stalled 3h ago</b> — the extraction lane hit its budget cap. Edges created since then: 0. Graph is complete up to 06:41 UTC. <a href="31-budgets.dc.html" style="text-decoration:underline;text-underline-offset:2px">Raise the cap</a></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="4.5" r="2"></circle><circle cx="4.5" cy="14" r="2"></circle><circle cx="15.5" cy="14" r="2"></circle><path d="M9 6.3 5.5 12.2M11 6.3l3.5 5.9M6.5 14h7"></path></svg></div>
+        <h3>Nothing extracted yet</h3>
+        <p>The graph builds itself from conversations: people, accounts, deadlines, and how they relate. It needs the knowledge memory tier enabled on at least one agent.</p>
+        <a class="btn" href="12-agent-config.dc.html">Enable on walle</a>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showGraph }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:220px minmax(0,1fr) 300px;gap:16px;align-items:start" class="rcol">
+        <div class="dtable" style="max-height:520px;overflow-y:auto">
+          <div class="dt-head" style="grid-template-columns:1fr auto;padding:8px 12px"><span>Entities</span><span>{{ entCount }}</span></div>
+          <sc-for list="{{ ents }}" as="e" hint-placeholder-count="8">
+            <div class="dt-row {{ e.selCls }}" style="grid-template-columns:1fr auto;padding:7px 12px;cursor:pointer">
+              <span style="min-width:0"><span style="display:block;font-size:12.5px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.name }}</span><span class="mono-sm" style="font-size:10px">{{ e.kind }}</span></span>
+              <span class="mono-sm">{{ e.deg }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="set-card" style="padding:10px;margin-bottom:0">
+          <svg viewBox="0 0 560 480" style="width:100%;display:block">
+            <line class="kg-edge strong" x1="280" y1="240" x2="150" y2="120"></line>
+            <line class="kg-edge strong" x1="280" y1="240" x2="430" y2="130"></line>
+            <line class="kg-edge" x1="280" y1="240" x2="120" y2="330"></line>
+            <line class="kg-edge" x1="280" y1="240" x2="300" y2="80"></line>
+            <line class="kg-edge strong" x1="280" y1="240" x2="440" y2="330"></line>
+            <line class="kg-edge" x1="280" y1="240" x2="280" y2="410"></line>
+            <line class="kg-edge" x1="150" y1="120" x2="300" y2="80"></line>
+            <line class="kg-edge" x1="440" y1="330" x2="430" y2="130"></line>
+            <text class="kg-elabel" x="205" y="172">owns renewal</text>
+            <text class="kg-elabel" x="368" y="178">customer of</text>
+            <text class="kg-elabel" x="185" y="296">discussed in</text>
+            <text class="kg-elabel" x="300" y="156">works with</text>
+            <text class="kg-elabel" x="372" y="292">closes Aug 30</text>
+            <text class="kg-elabel" x="292" y="336">priced under</text>
+            <g class="kg-node focus"><circle cx="280" cy="240" r="34"></circle><text x="280" y="238">Northwind</text><text class="sub" x="280" y="252">account</text></g>
+            <g class="kg-node person"><circle cx="150" cy="120" r="26"></circle><text x="150" y="118">Jon</text><text class="sub" x="150" y="131">person</text></g>
+            <g class="kg-node org"><circle cx="430" cy="130" r="26"></circle><text x="430" y="128">Acme</text><text class="sub" x="430" y="141">org</text></g>
+            <g class="kg-node"><circle cx="120" cy="330" r="26"></circle><text x="120" y="328">th_8b1mz7</text><text class="sub" x="120" y="341">thread</text></g>
+            <g class="kg-node person"><circle cx="300" cy="80" r="26"></circle><text x="300" y="78">Maya</text><text class="sub" x="300" y="91">person</text></g>
+            <g class="kg-node"><circle cx="440" cy="330" r="28"></circle><text x="440" y="328">Renewal</text><text class="sub" x="440" y="342">deadline</text></g>
+            <g class="kg-node"><circle cx="280" cy="410" r="26"></circle><text x="280" y="408">Tier-3</text><text class="sub" x="280" y="421">plan</text></g>
+          </svg>
+          <div class="row" style="justify-content:space-between;padding:4px 6px 0">
+            <span class="mono-sm">ego view · depth 1 · 7 of {{ entCount }} entities shown</span>
+            <span class="row" style="gap:10px;font-size:10.5px;color:var(--ink-3)"><span class="row" style="gap:4px"><span style="width:8px;height:8px;border-radius:50%;border:1.5px solid var(--tone-sky)"></span>person</span><span class="row" style="gap:4px"><span style="width:8px;height:8px;border-radius:50%;border:1.5px solid var(--tone-emerald)"></span>org</span><span class="row" style="gap:4px"><span style="width:8px;height:8px;border-radius:50%;border:1.5px solid var(--border-2)"></span>other</span></span>
+          </div>
+        </div>
+        <div class="drawer" style="position:static">
+          <h3>Northwind</h3>
+          <p class="d-sub">account · 14 edges · first seen Jun 2</p>
+          <div class="d-label">edge evidence</div>
+          <div style="display:grid;gap:8px;font-size:12px">
+            <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px">
+              <div style="font-weight:500;color:var(--ink)">Jon → owns renewal</div>
+              <div class="mono-sm" style="margin-top:2px">from <a href="17-thread.dc.html" style="text-decoration:underline">th_8b1mz7</a> #4 · conf 0.94 · Aug 11</div>
+            </div>
+            <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px">
+              <div style="font-weight:500;color:var(--ink)">Renewal → closes Aug 30</div>
+              <div class="mono-sm" style="margin-top:2px">from th_8b1mz7 #9 · conf 0.88 · Aug 11</div>
+            </div>
+            <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;border-color:color-mix(in oklab,var(--warn) 40%,var(--border))">
+              <div style="font-weight:500;color:var(--ink)">priced under Tier-3</div>
+              <div class="mono-sm" style="margin-top:2px;color:var(--warn)">single source · conf 0.61 · consider confirming</div>
+            </div>
+          </div>
+          <div class="row" style="gap:6px;margin-top:12px"><button class="btn tiny">Merge entity</button><button class="btn tiny danger">Delete entity</button></div>
+        </div>
+      </div>
+      <sc-if value="{{ showDenseNote }}" hint-placeholder-val="{{ false }}">
+        <div class="alert info" style="margin-top:14px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1"></path></svg>
+          <div class="a-body">4,281 entities. The canvas never renders more than one ego network — use the entity list, search, or the hub ranking to navigate. Top hubs: <b>Acme</b> (312 edges), <b>Q3 planning</b> (88), <b>Northwind</b> (14).</div>
+        </div>
+      </sc-if>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  baseEnts() {
+    return [
+      {name:'Northwind', kind:'account', deg:'14', selCls:'selected'},
+      {name:'Maya Kapoor', kind:'person', deg:'22', selCls:''},
+      {name:'Jon Silva', kind:'person', deg:'17', selCls:''},
+      {name:'Acme', kind:'org', deg:'31', selCls:''},
+      {name:'Q1 Board Review', kind:'event', deg:'9', selCls:''},
+      {name:'Renewal Aug 30', kind:'deadline', deg:'4', selCls:''},
+      {name:'Tier-3 plan', kind:'plan', deg:'6', selCls:''},
+      {name:'refund matrix v3', kind:'doc', deg:'8', selCls:''}
+    ];
+  }
+  denseEnts() {
+    return Array.from({length: 60}, (_, i) => ({
+      name: ['Acme','Q3 planning','Northwind','Maya Kapoor','Jon Silva','Contoso','Fabrikam','billing-oncall','SLA v4','offsite Sept'][i % 10] + (i > 9 ? ' · ' + i : ''),
+      kind: ['org','topic','account','person','person','account','account','channel','doc','event'][i % 10],
+      deg: String(Math.max(1, 312 - i * 6)), selCls: i === 2 ? 'selected' : ''
+    }));
+  }
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showGraph: v !== 'empty', showEmpty: v === 'empty', showAlert: v === 'failure',
+      showDenseNote: v === 'dense',
+      ents: v === 'empty' ? [] : v === 'dense' ? this.denseEnts() : this.baseEnts(),
+      entCount: v === 'dense' ? '4,281' : '48'
+    };
+  }
+}
+</script>
+</body>
+</html>

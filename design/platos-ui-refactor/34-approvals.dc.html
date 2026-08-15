@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="J1 Approvals queue">
+  <dc-import name="PlatosNav" active="approvals" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Approvals</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Approvals<span class="count-badge">{{ countLabel }}</span></h1>
+        <p class="page-sub">Agents blocked mid-turn, waiting on a human. The user is watching a spinner — act.</p>
+      </div>
+      <div class="page-head-actions"><a class="btn" href="35-governance.dc.html">Policies</a></div>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l4 4 8-9"></path></svg></div>
+        <h3>Queue is clear</h3>
+        <p>No agent is waiting on a human. Approval rules are set per tool in Governance.</p>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="approval-list">
+        <div class="approval-row blocking">
+          <div class="ap-actor"><span class="avatar walle">WA</span></div>
+          <div class="ap-body">
+            <div class="ap-head">
+              <span class="ap-actor-name">walle</span>
+              <span class="ap-tool">crm.update</span>
+              <span class="ap-risk high">writes CRM</span>
+              <span class="ap-wait" style="color:var(--danger)">blocking 4m 12s · user waiting</span>
+            </div>
+            <div class="ap-title">Update Northwind’s renewal amount to $84,000</div>
+            <div class="ap-summary">maya asked walle to “fix the renewal number”. Current CRM value: $48,000. The new figure comes from the Q1 board notes (cited). This is a 75% increase — outside walle’s auto-approve band (±10%).</div>
+            <div class="ap-target"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle></svg>hubspot-mcp · deal 88213 · field amount</div>
+            <div class="ap-preview">
+              <div class="ap-preview-head"><span>change preview</span><span>amount: 48,000 → 84,000</span></div>
+              <div class="ap-preview-body">Reason given: “Q1 Board Review notes state the renewal was repriced at $84k after the tier change.” Source: notes doc <span class="mono">nt_5521</span>, cited in thread <a href="17-thread.dc.html" class="mono" style="text-decoration:underline">th_9f3kq2</a>.</div>
+            </div>
+          </div>
+          <div class="ap-actions">
+            <button class="btn accent">Approve</button>
+            <button class="btn">Approve with edit</button>
+            <button class="btn danger">Reject</button>
+            <a class="btn ghost" href="17-thread.dc.html">Open thread</a>
+          </div>
+        </div>
+        <div class="approval-row blocking">
+          <div class="ap-actor"><span class="avatar indigo">SU</span></div>
+          <div class="ap-body">
+            <div class="ap-head">
+              <span class="ap-actor-name">support-triage</span>
+              <span class="ap-tool">mail.send</span>
+              <span class="ap-risk medium">external email</span>
+              <span class="ap-wait">blocking 48s</span>
+            </div>
+            <div class="ap-title">Send apology + credit note to customer@contoso.com</div>
+            <div class="ap-summary">Drafted after a verified SLA breach. Credit: $150 (within policy). External sends always require approval.</div>
+          </div>
+          <div class="ap-actions">
+            <button class="btn accent">Approve</button>
+            <button class="btn danger">Reject</button>
+            <a class="btn ghost" href="17-thread.dc.html">Open thread</a>
+          </div>
+        </div>
+        <div class="approval-row post-hoc">
+          <div class="ap-actor"><span class="avatar emerald">BI</span></div>
+          <div class="ap-body">
+            <div class="ap-head">
+              <span class="ap-actor-name">billing-answers</span>
+              <span class="ap-tool">billing.refund</span>
+              <span class="ap-risk low">post-hoc review</span>
+              <span class="ap-wait">executed 2h ago</span>
+            </div>
+            <div class="ap-title">Refunded $12.40 duplicate charge — review only</div>
+            <div class="ap-summary">Auto-approved under the ≤$25 rule. Flagged for weekly human review, not blocking anything.</div>
+          </div>
+          <div class="ap-actions">
+            <button class="btn">Mark reviewed</button>
+            <button class="btn ghost">Flag pattern</button>
+          </div>
+        </div>
+      </div>
+      <sc-if value="{{ showDense }}" hint-placeholder-val="{{ false }}">
+        <div class="alert warn" style="margin-top:14px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+          <div class="a-body"><b>+37 more waiting</b> (oldest 22m). At this rate the queue needs a second reviewer or looser auto-approve bands for <span class="mono">crm.update</span> (94% approval rate over 30d). <a href="35-governance.dc.html" style="text-decoration:underline;text-underline-offset:2px">Tune policy</a></div>
+        </div>
+      </sc-if>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goDense: () => this.setState({view:'dense'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showDense: v === 'dense',
+      countLabel: v === 'empty' ? '0' : v === 'dense' ? '40' : '3'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="F3 Create entity">
+  <dc-import name="PlatosNav" active="entities" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Wire</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">MCP</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">MCP · failed</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="20-entities.dc.html">Entities</a><span class="sep">/</span><span class="here">New entity</span></div>
+    <div style="max-width:660px">
+      <div class="page-head">
+        <h1>New entity</h1>
+        <p class="page-sub">Two kinds. Pick by who opens the connection.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+        <div onClick="{{ goDefault }}" style="border:1px solid {{ wireBorder }};background:{{ wireBg }};border-radius:var(--radius);padding:14px;cursor:pointer">
+          <div style="font-size:13px;font-weight:600;margin-bottom:3px">Wire</div>
+          <div style="font-size:12px;color:var(--ink-3);line-height:1.5">Your service dials in over WebSocket with a secret. Best for internal tools.</div>
+        </div>
+        <div onClick="{{ goDense }}" style="border:1px solid {{ mcpBorder }};background:{{ mcpBg }};border-radius:var(--radius);padding:14px;cursor:pointer">
+          <div style="font-size:13px;font-weight:600;margin-bottom:3px">MCP</div>
+          <div style="font-size:12px;color:var(--ink-3);line-height:1.5">Platos connects out to an MCP server. Best for third-party providers.</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ showWire }}" hint-placeholder-val="{{ true }}">
+        <div class="set-card">
+          <h3>Wire entity</h3>
+          <div class="auth-field" style="margin-top:12px"><label>Name</label><input type="text" placeholder="e.g. billing-tools" value="warehouse-tools" /></div>
+          <div class="auth-field"><label>Description</label><input type="text" placeholder="What tools does it provide?" /></div>
+          <div class="field-row" style="border-bottom:none"><label>Tool ACL default</label>
+            <div class="seg"><span class="seg-opt active">No agents</span><span class="seg-opt">All agents</span></div>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-4)">Safer default: expose tools to agents explicitly after discovery.</div>
+        </div>
+        <div class="row" style="gap:8px;margin-bottom:40px">
+          <a class="btn accent" href="21-entity.dc.html">Create — secret shown once, next screen</a>
+          <a class="btn" href="20-entities.dc.html">Cancel</a>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showMcp }}" hint-placeholder-val="{{ false }}">
+        <div class="set-card">
+          <h3>MCP server</h3>
+          <div class="auth-field" style="margin-top:12px"><label>Name</label><input type="text" value="linear-mcp" /></div>
+          <div class="auth-field"><label>Server URL</label><input type="text" value="https://mcp.linear.app/sse" style="{{ urlStyle }}" />
+            <sc-if value="{{ showFailNote }}" hint-placeholder-val="{{ false }}"><div style="font-size:11.5px;color:var(--danger);margin-top:4px">Handshake failed — see result below.</div></sc-if>
+          </div>
+          <div class="auth-field"><label>Credential</label>
+            <div class="seg" style="margin-bottom:8px"><span class="seg-opt active">OAuth</span><span class="seg-opt">Bearer token</span><span class="seg-opt">None</span></div>
+            <div style="font-size:11.5px;color:var(--ink-4)">Stored in the environment secret store · never echoed back</div>
+          </div>
+          <div class="row" style="gap:8px"><button class="btn">Test connection</button><span class="mono-sm">{{ testNote }}</span></div>
+          <sc-if value="{{ showFailNote }}" hint-placeholder-val="{{ false }}">
+            <div class="codeblk" style="margin-top:10px">
+              <div class="cb-head"><span>connection test · just now</span><span class="cb-copy">copy</span></div>
+              <pre>→ GET https://mcp.linear.app/sse
+✕ 401 Unauthorized after OAuth exchange
+  provider says: token audience mismatch
+hint: the OAuth app’s audience must be the MCP URL exactly —
+including the /sse path. Yours is registered without it.</pre>
+            </div>
+          </sc-if>
+          <sc-if value="{{ showOkNote }}" hint-placeholder-val="{{ false }}">
+            <div class="codeblk" style="margin-top:10px">
+              <div class="cb-head"><span>connection test · just now</span><span class="cb-copy">copy</span></div>
+              <pre>→ handshake ok · protocol 2025-06 · server "Linear MCP"
+→ discovery: 14 tools, 2 resources
+ready to create</pre>
+            </div>
+          </sc-if>
+        </div>
+        <div class="row" style="gap:8px;margin-bottom:40px">
+          <a class="btn accent" href="21-entity.dc.html">Create entity</a>
+          <a class="btn" href="20-entities.dc.html">Cancel</a>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    const mcp = v === 'dense' || v === 'failure';
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swDense: v==='dense'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goDense: () => this.setState({view:'dense'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showWire: !mcp, showMcp: mcp,
+      showFailNote: v === 'failure', showOkNote: v === 'dense',
+      wireBorder: !mcp ? 'var(--accent)' : 'var(--border)', wireBg: !mcp ? 'var(--accent-soft)' : 'var(--surface)',
+      mcpBorder: mcp ? 'var(--accent)' : 'var(--border)', mcpBg: mcp ? 'var(--accent-soft)' : 'var(--surface)',
+      urlStyle: v === 'failure' ? 'border-color:var(--danger)' : '',
+      testNote: v === 'failure' ? 'failed 4s ago' : v === 'dense' ? 'passed 4s ago' : 'not tested yet'
+    };
+  }
+}
+</script>
+</body>
+</html>

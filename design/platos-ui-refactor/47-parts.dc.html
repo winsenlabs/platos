@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)}a{color:inherit}a:hover{color:var(--accent)}
+.pt-col{padding:28px;background:var(--bg);min-width:0}
+.pt-sec{margin-bottom:22px}
+.pt-label{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-4);margin-bottom:8px}
+.pt-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+</style>
+</helmet>
+<div style="min-height:100vh" data-screen-label="Parts inventory">
+  <div style="display:grid;grid-template-columns:1fr 1fr;min-height:100vh">
+    <div class="pt-col" data-theme="light">
+      <div class="row" style="gap:10px;margin-bottom:22px"><img src="assets/platos-icon.svg" style="width:26px;height:26px;border-radius:6px" alt="" /><b style="font-size:15px">Parts · light</b><span class="mono-sm">every screen composes these</span></div>
+      <div class="pt-sec"><div class="pt-label">status chips · presence · connection</div>
+        <div class="pt-row" style="margin-bottom:8px">
+          <span class="schip good">good</span><span class="schip warn">warn</span><span class="schip danger">danger</span><span class="schip accent">accent</span><span class="schip muted">muted</span>
+          <span class="presence working"><span class="dot"></span>working</span><span class="presence waiting"><span class="dot"></span>waiting</span><span class="presence idle"><span class="dot"></span>idle</span><span class="presence error"><span class="dot"></span>error</span>
+        </div>
+        <div class="pt-row">
+          <span class="connstate connected"><span class="dot"></span>connected</span><span class="connstate stale"><span class="dot"></span>stale</span><span class="connstate disconnected"><span class="dot"></span>disconnected</span>
+          <span class="dispatch yes"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px"><path d="M4 11l4 4 8-9"></path></svg>dispatchable</span>
+          <span class="dispatch no"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:11px;height:11px"><path d="M5 5l10 10M15 5L5 15"></path></svg>undispatchable</span>
+        </div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">identity · chips</div>
+        <div class="pt-row">
+          <span class="avatar walle">WA</span><span class="avatar indigo">SU</span><span class="avatar emerald">BI</span><span class="avatar sm rose">RD</span>
+          <span class="echip"><span class="dot ok"></span>walle-tools<span class="kind">wire</span></span>
+          <span class="echip broken"><span class="dot down"></span>walle-tools down</span>
+          <span class="env-badge prod">prod</span><span class="env-badge stg">stg</span><span class="env-badge dev">dev</span>
+          <span class="varchip resolved">{{ litResolved }}</span><span class="varchip volatile">{{ litVolatile }}</span><span class="varchip unresolved">{{ litUnresolved }}</span>
+        </div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">buttons · form</div>
+        <div class="pt-row" style="margin-bottom:8px"><button class="btn accent">Primary</button><button class="btn primary">Ink</button><button class="btn">Default</button><button class="btn ghost">Ghost</button><button class="btn danger">Danger</button><button class="btn tiny">Tiny</button><span class="kbd">⌘K</span></div>
+        <div class="pt-row"><span class="toggle on"><span class="toggle-track"></span>on</span><span class="toggle"><span class="toggle-track"></span>off</span><span class="seg"><span class="seg-opt active">Table</span><span class="seg-opt">Cards</span></span><span class="fchip active">filter <span class="fchip-count">9</span></span><span class="fchip">chip</span></div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">token / cost bar · progress · stat tile</div>
+        <div class="tokbar" style="margin-bottom:6px"><i class="cr" style="width:84%"></i><i class="cw" style="width:9%"></i><i class="fp" style="width:2%"></i><i class="out" style="width:5%"></i></div>
+        <div class="toklegend" style="margin-bottom:10px"><span><span class="sw" style="background:var(--good)"></span>cache read</span><span><span class="sw" style="background:var(--accent-2)"></span>cache write</span><span><span class="sw" style="background:var(--danger)"></span>full price</span><span><span class="sw" style="background:var(--warn)"></span>output</span></div>
+        <div class="row" style="gap:10px"><div class="tile" style="flex:1"><div class="v">44,518 <span class="delta">+9%</span></div><div class="k">input tokens</div></div><div class="tile warn" style="flex:1"><div class="v">$120.00</div><div class="k">budget breached</div></div><div style="flex:1"><div class="pbar"><div style="width:64%"></div></div><div class="mono-sm" style="margin-top:4px">progress 64%</div></div></div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">tool-call card · reasoning · compaction</div>
+        <div class="tcall" style="margin-bottom:8px"><div class="tcall-head"><span class="tc-status ok"></span><span class="tc-name">notes.get</span><span class="tc-entity">via walle-tools</span><span class="tc-ms">412ms</span></div></div>
+        <div class="tcall failed" style="margin-bottom:8px">
+          <div class="tcall-head"><span class="tc-status fail"></span><span class="tc-name">sheets.query</span><span class="tc-entity">via walle-tools</span><span class="tc-ms">7ms</span></div>
+          <div class="tcall-body"><div class="tcall-err"><div class="who">Platos dispatch failure</div><div class="mono" style="font-size:11.5px">EntityNotRegistered: Entity walle-tools not registered</div></div></div>
+        </div>
+        <div class="reason" style="margin-bottom:8px"><span class="r-tag">reasoning · 96 tokens</span>Search Notes for documents tagged “board”…</div>
+        <div class="compact-line"><span>history compacted · 5 turns → 412-token summary</span><button>show original</button></div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">alerts</div>
+        <div class="alert error" style="margin-bottom:8px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg><div class="a-body"><b>Failure.</b> Broken things look broken.</div></div>
+        <div class="alert warn" style="margin-bottom:8px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg><div class="a-body"><b>Warning.</b> Needs attention soon.</div></div>
+        <div class="alert info" style="margin-bottom:0"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1"></path></svg><div class="a-body"><b>Info.</b> Context, not noise.</div></div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">diff · code · secret · waterfall</div>
+        <div class="diffv" style="margin-bottom:8px">
+          <div class="dv-file"><span class="mono">escalation-rules</span><span class="schip muted">edited</span></div>
+          <div class="dl del"><span class="ln">13</span><span class="tx">Escalate disputes over $500.</span></div>
+          <div class="dl add"><span class="ln">13</span><span class="tx">Escalate disputes over $200.</span></div>
+        </div>
+        <div class="secretbox once" style="margin-bottom:8px"><span class="grow">pk_wire_8Kf2…Z3</span><button class="btn tiny">Copy</button><span class="mono-sm" style="color:var(--warn)">shown once</span></div>
+        <div class="wfall">
+          <div class="wf-row"><span class="wf-name"><span class="ico model"></span>model · plan</span><span class="wf-track"><span class="wf-bar" style="left:0;width:24%"></span></span><span class="wf-ms">1.4s</span></div>
+          <div class="wf-row"><span class="wf-name"><span class="wf-indent"></span><span class="ico fail"></span>sheets.query</span><span class="wf-track"><span class="wf-bar fail" style="left:24%;width:2%"></span></span><span class="wf-ms">7ms</span></div>
+        </div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">provenance</div>
+        <div style="font-size:13px">spend today <b class="prov" title="turn ledger · 09:41 UTC">$70.11</b></div>
+        <div class="prov-note" style="margin-top:4px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>turn ledger · rollup 09:41 UTC · rates v182</div>
+      </div>
+    </div>
+    <div class="pt-col" data-theme="dark" style="border-left:1px solid oklch(30% 0.01 250)">
+      <div class="row" style="gap:10px;margin-bottom:22px"><img src="assets/platos-icon.svg" style="width:26px;height:26px;border-radius:6px" alt="" /><b style="font-size:15px">Parts · dark</b><span class="mono-sm">first-class, not derived</span></div>
+      <div class="pt-sec"><div class="pt-label">status chips · presence · connection</div>
+        <div class="pt-row" style="margin-bottom:8px">
+          <span class="schip good">good</span><span class="schip warn">warn</span><span class="schip danger">danger</span><span class="schip accent">accent</span><span class="schip muted">muted</span>
+          <span class="presence working"><span class="dot"></span>working</span><span class="presence waiting"><span class="dot"></span>waiting</span><span class="presence idle"><span class="dot"></span>idle</span><span class="presence error"><span class="dot"></span>error</span>
+        </div>
+        <div class="pt-row">
+          <span class="connstate connected"><span class="dot"></span>connected</span><span class="connstate stale"><span class="dot"></span>stale</span><span class="connstate disconnected"><span class="dot"></span>disconnected</span>
+          <span class="dispatch yes"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px"><path d="M4 11l4 4 8-9"></path></svg>dispatchable</span>
+          <span class="dispatch no"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:11px;height:11px"><path d="M5 5l10 10M15 5L5 15"></path></svg>undispatchable</span>
+        </div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">identity · chips</div>
+        <div class="pt-row">
+          <span class="avatar walle">WA</span><span class="avatar indigo">SU</span><span class="avatar emerald">BI</span><span class="avatar sm rose">RD</span>
+          <span class="echip"><span class="dot ok"></span>walle-tools<span class="kind">wire</span></span>
+          <span class="echip broken"><span class="dot down"></span>walle-tools down</span>
+          <span class="env-badge prod">prod</span><span class="env-badge stg">stg</span><span class="env-badge dev">dev</span>
+          <span class="varchip resolved">{{ litResolved }}</span><span class="varchip volatile">{{ litVolatile }}</span><span class="varchip unresolved">{{ litUnresolved }}</span>
+        </div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">buttons · form</div>
+        <div class="pt-row" style="margin-bottom:8px"><button class="btn accent">Primary</button><button class="btn primary">Ink</button><button class="btn">Default</button><button class="btn ghost">Ghost</button><button class="btn danger">Danger</button><button class="btn tiny">Tiny</button><span class="kbd">⌘K</span></div>
+        <div class="pt-row"><span class="toggle on"><span class="toggle-track"></span>on</span><span class="toggle"><span class="toggle-track"></span>off</span><span class="seg"><span class="seg-opt active">Table</span><span class="seg-opt">Cards</span></span><span class="fchip active">filter <span class="fchip-count">9</span></span><span class="fchip">chip</span></div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">token / cost bar · progress · stat tile</div>
+        <div class="tokbar" style="margin-bottom:6px"><i class="cr" style="width:84%"></i><i class="cw" style="width:9%"></i><i class="fp" style="width:2%"></i><i class="out" style="width:5%"></i></div>
+        <div class="toklegend" style="margin-bottom:10px"><span><span class="sw" style="background:var(--good)"></span>cache read</span><span><span class="sw" style="background:var(--accent-2)"></span>cache write</span><span><span class="sw" style="background:var(--danger)"></span>full price</span><span><span class="sw" style="background:var(--warn)"></span>output</span></div>
+        <div class="row" style="gap:10px"><div class="tile" style="flex:1"><div class="v">44,518 <span class="delta">+9%</span></div><div class="k">input tokens</div></div><div class="tile warn" style="flex:1"><div class="v">$120.00</div><div class="k">budget breached</div></div><div style="flex:1"><div class="pbar"><div style="width:64%"></div></div><div class="mono-sm" style="margin-top:4px">progress 64%</div></div></div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">tool-call card · reasoning · compaction</div>
+        <div class="tcall" style="margin-bottom:8px"><div class="tcall-head"><span class="tc-status ok"></span><span class="tc-name">notes.get</span><span class="tc-entity">via walle-tools</span><span class="tc-ms">412ms</span></div></div>
+        <div class="tcall failed" style="margin-bottom:8px">
+          <div class="tcall-head"><span class="tc-status fail"></span><span class="tc-name">sheets.query</span><span class="tc-entity">via walle-tools</span><span class="tc-ms">7ms</span></div>
+          <div class="tcall-body"><div class="tcall-err"><div class="who">Platos dispatch failure</div><div class="mono" style="font-size:11.5px">EntityNotRegistered: Entity walle-tools not registered</div></div></div>
+        </div>
+        <div class="reason" style="margin-bottom:8px"><span class="r-tag">reasoning · 96 tokens</span>Search Notes for documents tagged “board”…</div>
+        <div class="compact-line"><span>history compacted · 5 turns → 412-token summary</span><button>show original</button></div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">alerts</div>
+        <div class="alert error" style="margin-bottom:8px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg><div class="a-body"><b>Failure.</b> Broken things look broken.</div></div>
+        <div class="alert warn" style="margin-bottom:8px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg><div class="a-body"><b>Warning.</b> Needs attention soon.</div></div>
+        <div class="alert info" style="margin-bottom:0"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1"></path></svg><div class="a-body"><b>Info.</b> Context, not noise.</div></div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">diff · code · secret · waterfall</div>
+        <div class="diffv" style="margin-bottom:8px">
+          <div class="dv-file"><span class="mono">escalation-rules</span><span class="schip muted">edited</span></div>
+          <div class="dl del"><span class="ln">13</span><span class="tx">Escalate disputes over $500.</span></div>
+          <div class="dl add"><span class="ln">13</span><span class="tx">Escalate disputes over $200.</span></div>
+        </div>
+        <div class="secretbox once" style="margin-bottom:8px"><span class="grow">pk_wire_8Kf2…Z3</span><button class="btn tiny">Copy</button><span class="mono-sm" style="color:var(--warn)">shown once</span></div>
+        <div class="wfall">
+          <div class="wf-row"><span class="wf-name"><span class="ico model"></span>model · plan</span><span class="wf-track"><span class="wf-bar" style="left:0;width:24%"></span></span><span class="wf-ms">1.4s</span></div>
+          <div class="wf-row"><span class="wf-name"><span class="wf-indent"></span><span class="ico fail"></span>sheets.query</span><span class="wf-track"><span class="wf-bar fail" style="left:24%;width:2%"></span></span><span class="wf-ms">7ms</span></div>
+        </div>
+      </div>
+      <div class="pt-sec"><div class="pt-label">provenance</div>
+        <div style="font-size:13px">spend today <b class="prov" title="turn ledger · 09:41 UTC">$70.11</b></div>
+        <div class="prov-note" style="margin-top:4px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>turn ledger · rollup 09:41 UTC · rates v182</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      litResolved: '{{user.name}}',
+      litVolatile: '{{now.date}}',
+      litUnresolved: '{{user.role}}'
+    };
+  }
+}
+</script>
+</body>
+</html>

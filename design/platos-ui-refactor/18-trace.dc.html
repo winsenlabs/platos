@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E14 Trace view">
+  <dc-import name="PlatosNav" active="traces" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="16-threads.dc.html">Threads</a><span class="sep">/</span><a href="17-thread.dc.html" class="mono" style="font-size:11.5px">th_9f3kq2</a><span class="sep">/</span><span class="here">Trace · turn #7</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1 style="font-size:20px">Turn #7 trace</h1>
+        <p class="page-sub">walle · claude-opus-4-6 · {{ subLabel }}</p>
+      </div>
+      <div class="page-head-actions"><a class="btn" href="17-thread.dc.html">Back to thread</a><button class="btn">Copy trace id</button></div>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h9M6 10h11M4 15h8"></path></svg></div>
+        <h3>No spans recorded</h3>
+        <p>This turn predates span collection, or tracing is disabled for the environment. Costs and tokens are still in the turn ledger.</p>
+        <a class="btn" href="40-settings.dc.html">Tracing settings</a>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showBody }}" hint-placeholder-val="{{ true }}">
+      <div class="tiles" style="grid-template-columns:repeat(5,1fr)">
+        <div class="tile"><div class="v">6.4s</div><div class="k">wall time</div></div>
+        <div class="tile"><div class="v">{{ nSpans }}</div><div class="k">spans</div></div>
+        <div class="tile"><div class="v">44,518</div><div class="k">input tokens</div></div>
+        <div class="tile"><div class="v">$0.4188</div><div class="k">turn cost</div></div>
+        <div class="tile {{ failTileCls }}"><div class="v">{{ nFails }}</div><div class="k">failed spans</div></div>
+      </div>
+      <div class="set-card" style="padding:16px">
+        <div class="row" style="margin-bottom:8px;font-family:var(--font-mono);font-size:10px;color:var(--ink-4);justify-content:space-between"><span>0ms</span><span>1.6s</span><span>3.2s</span><span>4.8s</span><span>6.4s</span></div>
+        <div class="wfall">
+          <sc-for list="{{ spans }}" as="s" hint-placeholder-count="8">
+            <div class="wf-row" style="grid-template-columns:minmax(180px,240px) 1fr 110px">
+              <span class="wf-name" style="padding-left:{{ s.pad }}px"><span class="ico {{ s.ico }}"></span>{{ s.name }}</span>
+              <span class="wf-track"><span class="wf-bar {{ s.cls }}" style="left:{{ s.left }}%;width:{{ s.w }}%"></span></span>
+              <span class="wf-ms">{{ s.ms }}<span style="color:var(--ink-4)"> · {{ s.cost }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ showFailDetail }}" hint-placeholder-val="{{ false }}">
+        <div class="set-card" style="border-color:color-mix(in oklab,var(--danger) 40%,var(--border))">
+          <h3 style="color:var(--danger)">Failed span · sheets.query</h3>
+          <div class="codeblk" style="margin-top:8px">
+            <div class="cb-head"><span>dispatch.log · span sp_88fe12</span><span class="cb-copy">copy</span></div>
+            <pre>09:39:47.310  dispatch  tool=sheets.query entity=walle-tools
+09:39:47.311  <span class="jn">ERROR</span>     EntityNotRegistered: Entity walle-tools not registered
+09:39:47.312  surfaced  to=model as=tool_error attribution=<span class="jn">provider (wrong)</span></pre>
+          </div>
+          <div style="font-size:12.5px;color:var(--ink-2);margin-top:10px">The registry cache offered a tool whose entity had been gone for 41 minutes. Ground truth: <b>Platos dispatch failure</b>, not a provider error.</div>
+        </div>
+      </sc-if>
+      <div class="prov-note" style="margin-top:4px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Span times from runtime clock · costs from provider usage blocks joined by span id · trace tr_44aa90</div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  baseSpans(fail) {
+    return [
+      {name:'turn #7', ico:'model', cls:'', left:0, w:100, ms:'6.4s', cost:'$0.4188', pad:0},
+      {name:'assemble context', ico:'mem', cls:'mem', left:0, w:4, ms:'256ms', cost:'—', pad:14},
+      {name:'memory.recall', ico:'mem', cls:'mem', left:1, w:3, ms:'190ms', cost:'$0.0009', pad:28},
+      {name:'model · plan', ico:'model', cls:'', left:4, w:22, ms:'1.4s', cost:'$0.101', pad:14},
+      {name:'notes.get', ico:'tool', cls:'tool', left:26, w:7, ms:'412ms', cost:'—', pad:28},
+      fail
+        ? {name:'sheets.query ✕', ico:'fail', cls:'fail', left:33, w:1, ms:'7ms', cost:'—', pad:28}
+        : {name:'sheets.query', ico:'tool', cls:'tool', left:33, w:11, ms:'688ms', cost:'—', pad:28},
+      {name:'model · answer', ico:'model', cls:'', left:44, w:56, ms:'3.8s', cost:'$0.316', pad:14},
+      {name:'memory.extract', ico:'mem', cls:'mem', left:97, w:3, ms:'201ms', cost:'$0.0008', pad:14}
+    ];
+  }
+  denseSpans() {
+    const out = [{name:'turn #22 · long research', ico:'model', cls:'', left:0, w:100, ms:'48s', cost:'$1.21', pad:0}];
+    for (let i = 0; i < 26; i++) {
+      const kind = i % 3;
+      out.push({
+        name: kind === 0 ? 'model · step ' + (Math.floor(i/3)+1) : kind === 1 ? ['kb.search','docs.get','crm.lookup','sheets.query','notes.search'][i%5] : 'memory.recall',
+        ico: kind === 0 ? 'model' : kind === 1 ? 'tool' : 'mem',
+        cls: kind === 0 ? '' : kind === 1 ? 'tool' : 'mem',
+        left: Math.min(96, i * 3.7), w: kind === 0 ? 9 : 3, ms: kind === 0 ? '4.1s' : '380ms',
+        cost: kind === 0 ? '$0.04' : '—', pad: kind === 0 ? 14 : 28
+      });
+    }
+    return out;
+  }
+  renderVals() {
+    const v = this.state.view;
+    const spans = v === 'empty' ? [] : v === 'dense' ? this.denseSpans() : this.baseSpans(v === 'failure');
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showBody: v !== 'empty', showEmpty: v === 'empty', showFailDetail: v === 'failure',
+      spans, nSpans: String(spans.length), nFails: v === 'failure' ? '1' : '0',
+      failTileCls: v === 'failure' ? 'warn' : '',
+      subLabel: v === 'dense' ? '27 spans · research turn' : '8 spans · “full summary + revenue”'
+    };
+  }
+}
+</script>
+</body>
+</html>
