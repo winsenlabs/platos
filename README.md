@@ -97,7 +97,6 @@ packages/
   platools-js/     SDK for building external tool entities (TypeScript)
   platools-py/     Same, for Python
   trigger-sdk/     Run-engine SDK
-  cli-v3/          Local dev + deploy CLI
   core/            Shared core types + utilities
 
 internal-packages/

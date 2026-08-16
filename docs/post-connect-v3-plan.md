@@ -85,8 +85,7 @@ cache all exist). Four phases, one commit each:
 Verifiable without Composio: #4 (no-user structural failure), #6 (delete removes
 tools within a refresh), #7 (existing tests + no secrets in logs/audit) + the
 two-users isolation unit test. **`@modelcontextprotocol/sdk` must be added to
-`apps/agent/package.json`** (only `packages/cli-v3` has it today; store 1.26.0
-exports the needed transports).
+`apps/agent/package.json`** (store 1.26.0 exports the needed transports).
 
 ## ② Subagent spawning
 

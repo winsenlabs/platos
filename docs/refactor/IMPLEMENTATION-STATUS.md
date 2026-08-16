@@ -45,7 +45,7 @@ The zero-regression foundation is landed and typecheck-green on `shrink`: `execu
 | Item | Why staged |
 |---|---|
 | 🔒 Delete `internal-packages/{run-engine,run-queue,schedule-engine}` | `apps/webapp` imports run-engine; deleting breaks webapp typecheck until webapp track (P5) lands. |
-| 🔒 Delete `packages/{trigger-sdk,cli-v3,core,redis-worker,react-hooks}` | Same — cascade through webapp + build graph. |
+| 🔒 Delete `packages/{trigger-sdk,core,redis-worker,react-hooks}` | Same — cascade through webapp + build graph. |
 | 🔒 Drop 68 trigger runtime Prisma models | Destructive migration; needs review + data plan (play.platos.dev resettable, real deploys not). |
 | 🔒 Retire/repoint `apps/webapp` run-engine role + `worker` compose service | The webapp *is* the forked platform; needs the standalone-console decision (§13). |
 

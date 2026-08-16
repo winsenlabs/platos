@@ -145,7 +145,6 @@ function getPublishedPackages() {
       "@trigger.dev/core",
       "@trigger.dev/react-hooks",
       "@trigger.dev/sdk",
-      "trigger.dev",
     ];
   }
 }

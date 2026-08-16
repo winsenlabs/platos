@@ -1,7 +1,0 @@
-{
-  "include": ["src/**/*.ts", "trigger.config.ts"],
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "emitDecoratorMetadata": true
-  }
-}

@@ -79,7 +79,6 @@
 | **Run queue** | `internal-packages/run-queue` | Forked queue | trigger queues |
 | **Schedule engine** | `internal-packages/schedule-engine` | Forked cron | trigger `schedules.task` |
 | **Vendored SDK** | `packages/trigger-sdk` (`@platos/sdk`) | Fork of `@trigger.dev/sdk`; can't upstream | **`@trigger.dev/sdk`** (real) |
-| **Vendored CLI** | `packages/cli-v3` | Fork of trigger CLI | `trigger.dev` CLI (`npx trigger.dev deploy`) |
 | **Vendored core** | `packages/core` | Only used for `ApiClient` (`agent.service.ts:158`) | provided by real SDK |
 | **Redis worker** | `packages/redis-worker` | Platos job queue; durable jobs move to trigger | trigger tasks (keep only if a lightweight in-process need survives — **decision**) |
 | **Realtime hooks** | `packages/react-hooks` | Trigger realtime react hooks (fork) | `@trigger.dev/react-hooks` (if used) |
@@ -274,7 +273,7 @@ The only thing anchoring Platos to the fork is the **shared Postgres identity sp
 | Phase | Scope | Regression | Proves |
 |---|---|---|---|
 | **P0 — Substrate seam + tenant isolation** | Stand up managed trigger project. `@platos/sdk`→`@trigger.dev/sdk`. Deploy existing tasks. Repoint `TRIGGER_API_URL`/keys (`shared/env.ts:133-140`). Bake in Model-A isolation from the start: `concurrencyKey: org-<id>` + meter trigger compute into the cost ledger. Verify compaction/memory/budget/cost run on managed. | **Zero** (trigger already an optional external client) | Track A + tenant isolation |
-| **P1 — Cut execution baggage** | Delete `internal-packages/{run-engine,run-queue,schedule-engine}`, `packages/{trigger-sdk,cli-v3,core}`, the `worker` compose service. Evaluate `redis-worker`. | Zero (agent hot path imports none) | the "lighter" payoff |
+| **P1 — Cut execution baggage** | Delete `internal-packages/{run-engine,run-queue,schedule-engine}`, `packages/{trigger-sdk,core}`, the `worker` compose service. Evaluate `redis-worker`. | Zero (agent hot path imports none) | the "lighter" payoff |
 | **P2 — `executionMode` + direct scaling + MCP write surface** | Add the field (+version). Branch dispatch (§5). `direct` = unchanged. Horizontally scale the agent tier (Socket.io Redis adapter; already stateless-per-turn). Add platform-MCP `tasks_trigger`/`trigger_runs_create/cancel` (§6a). Fix inline-embedding latency + `stop` key bugs. | **Zero** for existing agents | 10k *conversations* at unchanged latency; "create tasks via MCP" |
 | **P3 — Durable path (A) + skills-as-tasks + custom tasks** | `durable` via thin-shell task + Session mapping + `request_approval`→`wait.forToken` + meta-tool callback. Skill runner + per-skill flag (§9). Config-interpreter custom task (§10). Flip **pilot** AI-employee agents. | Opt-in per agent; direct untouched | durability where it matters; offload heavy skills |
 | **P4 — Durable compute offload (B)** | Move the loop into the trigger worker; entity tools via callback. Autoscale. | Per-agent | true 10k-durable scale |
@@ -304,7 +303,7 @@ The only thing anchoring Platos to the fork is the **shared Postgres identity sp
 - **Skills:** `apps/agent/src/skills/` + `skills/official/skill-handlers.ts` (per-skill task-offload flag); `parallel-web`, `code_execution`.
 - **SDK/config:** `apps/agent/package.json` (`@platos/sdk`→`@trigger.dev/sdk`), `agent.service.ts:158` (`@platos/core` ApiClient), `trigger.config.ts:23`, `shared/env.ts:133-140`.
 - **Crypto:** `monitoring/message-crypto.service.ts` (encrypt-before-send boundary).
-- **Baggage:** `internal-packages/{run-engine,run-queue,schedule-engine}`, `packages/{trigger-sdk,cli-v3,core,redis-worker,react-hooks}`, `apps/webapp/app/runEngine/*`, `docker-compose.platos.yml` `worker:`.
+- **Baggage:** `internal-packages/{run-engine,run-queue,schedule-engine}`, `packages/{trigger-sdk,core,redis-worker,react-hooks}`, `apps/webapp/app/runEngine/*`, `docker-compose.platos.yml` `worker:`.
 - **Schema slim:** drop the 68 runtime models; keep `Organization`/`Project`/`RuntimeEnvironment` (+enum).
 
 **Two CLAUDE.md corrections to make alongside:** `enableThreading` is Slack-style message replies, *not* a per-thread stream multiplex; memory extraction is an hourly cron sweep (`updatedAt`/`turnCount`), *not* a per-turn post-completion job.

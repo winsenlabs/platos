@@ -41,11 +41,11 @@ fi
 
 read -e -p "Pausing for manual changes, press Enter when ready to continue..."
 
-echo "Running: pnpm run clean --filter \"@trigger.dev/*\" --filter \"trigger.dev\""
-pnpm run clean --filter "@trigger.dev/*" --filter "trigger.dev"
+echo "Running: pnpm run clean --filter \"@trigger.dev/*\""
+pnpm run clean --filter "@trigger.dev/*"
 
-echo "Running: pnpm run build --filter \"@trigger.dev/*\" --filter \"trigger.dev\""
-pnpm run build --filter "@trigger.dev/*" --filter "trigger.dev"
+echo "Running: pnpm run build --filter \"@trigger.dev/*\""
+pnpm run build --filter "@trigger.dev/*"
 
 echo "Going to run: pnpm exec changeset publish --no-git-tag --snapshot --tag $version"
 read -p "Do you wish to continue? (y/N): " prompt
