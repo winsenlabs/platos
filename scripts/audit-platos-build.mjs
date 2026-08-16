@@ -18,6 +18,7 @@ function read(path) {
 
 const packageJson = JSON.parse(read("package.json"));
 const agentPackage = JSON.parse(read("apps/agent/package.json"));
+const tenancyDatabasePackage = JSON.parse(read("internal-packages/tenancy-database/package.json"));
 const webappPackage = JSON.parse(read("apps/webapp/package.json"));
 const agentDockerfile = read("apps/agent/Dockerfile");
 const webappDockerfile = read("apps/webapp/Dockerfile.platos");
@@ -26,6 +27,14 @@ const compose = read("docker-compose.platos.yml");
 check("root exposes build:platos", Boolean(packageJson.scripts?.["build:platos"]));
 check("root exposes build:platos:agent", Boolean(packageJson.scripts?.["build:platos:agent"]));
 check("root exposes build:platos:webapp", Boolean(packageJson.scripts?.["build:platos:webapp"]));
+check(
+  "agent build compiles the clean tenancy database dependency",
+  /--filter @platos\/tenancy-database build/.test(packageJson.scripts?.["build:platos:agent"] ?? "")
+);
+check(
+  "tenancy database deploy includes compiled and generated runtime entries",
+  ["dist", "generated"].every((path) => tenancyDatabasePackage.files?.includes(path))
+);
 check("agent exposes strict declaration build", /--declaration/.test(agentPackage.scripts?.["build:strict"] ?? ""));
 check("webapp build is guarded by memory policy", /memory-policy\.mjs build/.test(webappPackage.scripts?.build ?? ""));
 check("agent image uses explicit Platos build graph", /build:platos:agent/.test(agentDockerfile));

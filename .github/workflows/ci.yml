@@ -53,10 +53,14 @@ jobs:
         # The agent Docker build (which DOES need re2) builds it separately.
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Generate Prisma client
-        # @platos/database re-exports the generated client; several packages'
-        # typecheck fails without it. Cheap, deterministic, no DB needed.
-        run: pnpm --filter @platos/database generate
+      - name: Generate and build database clients
+        # The inherited database package re-exports its generated client. The
+        # clean tenancy package is a compiled workspace dependency of the agent,
+        # so focused Vitest runs also need its package entry emitted from a fresh
+        # checkout before they import the agent graph.
+        run: |
+          pnpm --filter @platos/database generate
+          pnpm --filter @platos/tenancy-database build
 
       - name: Audit Platos build and external-Trigger invariants
         run: pnpm audit:platos-build
