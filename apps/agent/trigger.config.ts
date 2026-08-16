@@ -3,6 +3,10 @@ import { defineConfig } from "@trigger.dev/sdk";
 /**
  * Trigger.dev config for the Platos agent tasks.
  *
+ * Trigger is a separate external application, not part of the Platos substrate.
+ * For local development, start it from this directory with:
+ *   npx trigger.dev@latest dev
+ *
  * The worker will register the tasks in `src/trigger-tasks/` with the
  * webapp's run engine, and future `tasks.trigger("platos-agent-tool-block", ...)`
  * calls will actually dispatch runs.
