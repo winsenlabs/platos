@@ -3,13 +3,13 @@ import { defineConfig } from "@trigger.dev/sdk";
 /**
  * Trigger.dev config for the Platos agent tasks.
  *
- * The worker will register the tasks in `src/trigger-tasks/` with the
- * webapp's run engine, and future `tasks.trigger("platos-agent-tool-block", ...)`
- * calls will actually dispatch runs.
- *
  * Trigger is a separate external application used by Platos. For local
  * development, run its supported CLI from this directory:
  *   npx trigger.dev@latest dev
+ *
+ * The worker registers the tasks in `src/trigger-tasks/` with external
+ * Trigger/Trigger Cloud, and `tasks.trigger("platos-agent-tool-block", ...)`
+ * dispatches runs through that external service.
  *
  * Without a running dev worker, `spawn_bgo` (alias: `spawn_task`) gracefully
  * falls back to the Redis stub (the meta-tool still returns a sensible
