@@ -21,14 +21,18 @@ function scopeKey(scope: ScopeTuple): string {
   return `${scope.organizationId}:${scope.projectId}:${scope.environmentId}`;
 }
 
+class ProviderProbeError extends Error {
+  constructor(readonly authFailure: boolean) {
+    super(authFailure ? "provider_auth_failed" : "provider_request_failed");
+  }
+}
+
 /**
  * ProviderHealthService — probes each LLM provider's API with a 1-token call
  * to verify the configured env var actually works.
  *
- * Credentials are never stored by Platos. All provider API keys live in
- * trigger.dev's Environment Variables table and are injected into the
- * agent container's `process.env` by the deploy pipeline. This service
- * only reads `process.env` for the probe — there is no decrypt path.
+ * Credentials resolve only through Environment-owned ProviderKey/Credential
+ * rows. Deployment environment variables are not a tenant credential source.
  *
  * Results cached in Redis for 5 minutes (1 minute on error).
  */
@@ -39,18 +43,20 @@ export class ProviderHealthService {
     private readonly scopedEnv: ScopedEnvService,
   ) {}
 
-  /**
-   * Resolve an env var with the SecretStore (per-scope, what the webapp
-   * env-var UI writes) taking priority over the agent container's ambient
-   * process.env.
-   */
   private async resolveEnv(
     scope: ScopeTuple,
     name: string,
   ): Promise<string | undefined> {
-    const fromStore = await this.scopedEnv.get(scope, name);
-    if (fromStore) return fromStore;
-    return process.env[name];
+    return this.scopedEnv.get(scope, name);
+  }
+
+  private resolveApiKey(scope: ScopeTuple, manifest: ProviderManifest): Promise<string> {
+    return this.scopedEnv.getProviderApiKey(
+      scope,
+      manifest.id,
+      manifest.requiredEnv[0] ?? "",
+      null,
+    );
   }
 
   /** Test a single provider's configured env. */
@@ -66,11 +72,12 @@ export class ProviderHealthService {
       };
     }
 
-    const setMap = await this.scopedEnv.setMap(scope, manifest.requiredEnv);
-    const requiredEnv = manifest.requiredEnv.map((name) => ({
+    const requiredEnv = await Promise.all(manifest.requiredEnv.map(async (name, index) => ({
       name,
-      set: setMap[name] || !!process.env[name],
-    }));
+      set: index === 0
+        ? await this.scopedEnv.hasProviderCredential(scope, manifest.id)
+        : !!(await this.resolveEnv(scope, name)),
+    })));
     const allSet = requiredEnv.every((e) => e.set);
     if (!allSet) {
       return {
@@ -104,17 +111,12 @@ export class ProviderHealthService {
       await this.redis.set(cacheKey, JSON.stringify(result), "EX", 300);
       return result;
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Unknown error";
-      const isAuthError =
-        msg.includes("401") ||
-        msg.includes("403") ||
-        /invalid[_\s-]?api[_\s-]?key/i.test(msg) ||
-        msg.includes("Unauthorized");
+      const isAuthError = error instanceof ProviderProbeError && error.authFailure;
       const result: ProviderHealthResult = {
         provider: providerId,
         status: isAuthError ? "invalid_key" : "error",
         latencyMs: Date.now() - start,
-        error: msg.slice(0, 200),
+        error: isAuthError ? "provider_auth_failed" : "provider_request_failed",
         requiredEnv,
       };
       await this.redis.set(cacheKey, JSON.stringify(result), "EX", 60);
@@ -141,7 +143,7 @@ export class ProviderHealthService {
   private async probe(manifest: ProviderManifest, scope: ScopeTuple): Promise<{ model: string }> {
     switch (manifest.healthCheck.kind) {
       case "anthropic": {
-        const key = (await this.resolveEnv(scope, "ANTHROPIC_API_KEY"))!;
+        const key = await this.resolveApiKey(scope, manifest);
         const res = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
@@ -157,14 +159,13 @@ export class ProviderHealthService {
           signal: AbortSignal.timeout(10000),
         });
         if (!res.ok) {
-          const body = await res.text().catch(() => "");
-          throw new Error(`Anthropic API ${res.status}: ${body.slice(0, 100)}`);
+          throw new ProviderProbeError(res.status === 401 || res.status === 403);
         }
         return { model: manifest.healthCheck.probeModel };
       }
 
       case "openai": {
-        const key = (await this.resolveEnv(scope, "OPENAI_API_KEY"))!;
+        const key = await this.resolveApiKey(scope, manifest);
         const base = (await this.resolveEnv(scope, "OPENAI_BASE_URL")) || "https://api.openai.com";
         const res = await fetch(`${base}/v1/chat/completions`, {
           method: "POST",
@@ -180,14 +181,13 @@ export class ProviderHealthService {
           signal: AbortSignal.timeout(10000),
         });
         if (!res.ok) {
-          const body = await res.text().catch(() => "");
-          throw new Error(`OpenAI API ${res.status}: ${body.slice(0, 100)}`);
+          throw new ProviderProbeError(res.status === 401 || res.status === 403);
         }
         return { model: manifest.healthCheck.probeModel };
       }
 
       case "google": {
-        const key = (await this.resolveEnv(scope, "GOOGLE_GENERATIVE_AI_API_KEY"))!;
+        const key = await this.resolveApiKey(scope, manifest);
         const res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${manifest.healthCheck.probeModel}:generateContent?key=${key}`,
           {
@@ -201,21 +201,21 @@ export class ProviderHealthService {
           },
         );
         if (!res.ok) {
-          const body = await res.text().catch(() => "");
-          throw new Error(`Google AI API ${res.status}: ${body.slice(0, 100)}`);
+          throw new ProviderProbeError(res.status === 401 || res.status === 403);
         }
         return { model: manifest.healthCheck.probeModel };
       }
 
       case "vertex-file": {
-        const saPath = (await this.resolveEnv(scope, "GOOGLE_APPLICATION_CREDENTIALS"))!;
-        const fs = require("fs");
-        if (!fs.existsSync(saPath)) {
-          throw new Error(`Service account file not found: ${saPath}`);
+        const serialized = await this.resolveApiKey(scope, manifest);
+        let content: { project_id?: string };
+        try {
+          content = JSON.parse(serialized);
+        } catch {
+          throw new ProviderProbeError(false);
         }
-        const content = JSON.parse(fs.readFileSync(saPath, "utf-8"));
         if (!content.project_id) {
-          throw new Error("Invalid service account file: missing project_id");
+          throw new ProviderProbeError(false);
         }
         return { model: `${manifest.healthCheck.probeModel} (project: ${content.project_id})` };
       }
@@ -225,14 +225,13 @@ export class ProviderHealthService {
         // xAI, DeepSeek, Cerebras, Perplexity, Together, Fireworks, Azure).
         // The manifest carries the `baseURL`; for Azure the deployment URL
         // is supplied via AZURE_OPENAI_BASE_URL since it's per-resource.
-        const keyEnv = manifest.requiredEnv[0];
-        const key = (await this.resolveEnv(scope, keyEnv))!;
+        const key = await this.resolveApiKey(scope, manifest);
         let baseURL = manifest.healthCheck.baseURL;
         if (manifest.id === "azure") {
           baseURL = (await this.resolveEnv(scope, "AZURE_OPENAI_BASE_URL")) || baseURL;
         }
         if (!baseURL) {
-          throw new Error(`${manifest.id}: healthCheck.baseURL missing`);
+          throw new ProviderProbeError(false);
         }
         const url = `${baseURL.replace(/\/$/, "")}/chat/completions`;
         const headers: Record<string, string> = {
@@ -253,8 +252,7 @@ export class ProviderHealthService {
           signal: AbortSignal.timeout(10000),
         });
         if (!res.ok) {
-          const body = await res.text().catch(() => "");
-          throw new Error(`${manifest.displayName} ${res.status}: ${body.slice(0, 100)}`);
+          throw new ProviderProbeError(res.status === 401 || res.status === 403);
         }
         return { model: manifest.healthCheck.probeModel };
       }

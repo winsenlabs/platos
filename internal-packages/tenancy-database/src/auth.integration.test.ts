@@ -36,7 +36,7 @@ describe("Platos-native auth integration", () => {
   let auth: PlatosAuthService;
 
   beforeAll(async () => {
-    container = await new PostgreSqlContainer("postgres:16-alpine").start();
+    container = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
     const databaseUrl = container.getConnectionUri();
     execFileSync(
       resolve(process.cwd(), "node_modules/.bin/prisma"),

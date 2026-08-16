@@ -7,8 +7,8 @@ import {
   ChannelLinkService,
 } from "./channel-link.controller";
 import { ChannelRuntimeService } from "./channel-runtime.service";
+import { ChannelPersistenceService } from "./channel-persistence.service";
 import { AgentRuntimeModule } from "../agent-runtime/agent-runtime.module";
-import { MemoryModule } from "../memory/memory.module";
 import { MonitoringModule } from "../monitoring/monitoring.module";
 
 /**
@@ -30,8 +30,8 @@ import { MonitoringModule } from "../monitoring/monitoring.module";
  * Dependencies (all via already-exporting feature modules — nothing new
  * provided here except the channel components):
  *   - AgentTaskService     ← AgentRuntimeModule (runs the Platos turn)
- *   - ConversationService  ← MemoryModule (getOrCreateThread / resolveEndUser)
- *   - MessageCryptoService ← MonitoringModule (decrypt connection/app secrets)
+ *   - ChannelPersistenceService (clean channel, thread, identity, credential graph)
+ *   - MessageCryptoService ← MonitoringModule (Credential envelope boundary)
  *   - PRISMA_TOKEN         ← DatabaseModule (@Global — no import needed)
  *   - REDIS_TOKEN          ← RedisModule (@Global — no import needed)
  *
@@ -42,14 +42,14 @@ import { MonitoringModule } from "../monitoring/monitoring.module";
  * `invalidate(connectionId)`. The 10-min TTL is only the backstop.
  */
 @Module({
-  imports: [AgentRuntimeModule, MemoryModule, MonitoringModule],
+  imports: [AgentRuntimeModule, MonitoringModule],
   controllers: [
     ChannelsInboundController,
     ChannelAppOAuthController,
     ChannelAppEventsController,
     ChannelLinkController,
   ],
-  providers: [ChannelRuntimeService, ChannelLinkService],
-  exports: [ChannelRuntimeService, ChannelLinkService],
+  providers: [ChannelPersistenceService, ChannelRuntimeService, ChannelLinkService],
+  exports: [ChannelPersistenceService, ChannelRuntimeService, ChannelLinkService],
 })
 export class ChannelsModule {}

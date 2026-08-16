@@ -1,6 +1,9 @@
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
+-- CreateExtension
+CREATE EXTENSION IF NOT EXISTS "vector";
+
 -- CreateEnum
 CREATE TYPE "public"."PrincipalTier" AS ENUM ('OPERATOR', 'END_USER');
 
@@ -39,6 +42,12 @@ CREATE TYPE "public"."AuthorizationScopeKind" AS ENUM ('GLOBAL', 'ORGANIZATION',
 
 -- CreateEnum
 CREATE TYPE "public"."AgentToolDefaultPolicy" AS ENUM ('NONE', 'ALL');
+
+-- CreateEnum
+CREATE TYPE "public"."AgentVersionBucket" AS ENUM ('CURRENT', 'CANARY');
+
+-- CreateEnum
+CREATE TYPE "public"."ThreadCompactionState" AS ENUM ('IDLE', 'IN_PROGRESS');
 
 -- CreateTable
 CREATE TABLE "public"."User" (
@@ -530,9 +539,12 @@ CREATE TABLE "public"."Thread" (
     "endUserId" UUID NOT NULL,
     "clusterId" UUID,
     "parentThreadId" UUID,
+    "compactedUpToTurnId" UUID,
     "title" TEXT,
     "status" "public"."WorkStatus" NOT NULL DEFAULT 'ACTIVE',
     "summary" TEXT,
+    "compactionState" "public"."ThreadCompactionState" NOT NULL DEFAULT 'IDLE',
+    "compactedAt" TIMESTAMP(3),
     "sessionContext" JSONB,
     "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "pinnedAt" TIMESTAMP(3),
@@ -548,6 +560,8 @@ CREATE TABLE "public"."Turn" (
     "id" UUID NOT NULL,
     "threadId" UUID NOT NULL,
     "parentTurnId" UUID,
+    "agentVersionId" UUID NOT NULL,
+    "versionBucket" "public"."AgentVersionBucket" NOT NULL,
     "sequence" INTEGER NOT NULL,
     "inputText" TEXT,
     "outputText" TEXT,
@@ -556,6 +570,8 @@ CREATE TABLE "public"."Turn" (
     "thinkingContent" TEXT,
     "status" "public"."WorkStatus" NOT NULL DEFAULT 'PENDING',
     "externalRuntimeId" TEXT,
+    "costCents" DECIMAL(18,6),
+    "latencyMs" INTEGER,
     "startedAt" TIMESTAMP(3),
     "completedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -573,6 +589,11 @@ CREATE TABLE "public"."Step" (
     "retryCount" INTEGER NOT NULL DEFAULT 0,
     "inputTokens" INTEGER,
     "outputTokens" INTEGER,
+    "cacheCreationInputTokens" INTEGER,
+    "cacheReadInputTokens" INTEGER,
+    "reasoningTokens" INTEGER,
+    "costCents" DECIMAL(18,6),
+    "latencyMs" INTEGER,
     "error" TEXT,
     "startedAt" TIMESTAMP(3),
     "completedAt" TIMESTAMP(3),
@@ -1105,15 +1126,18 @@ CREATE TABLE "public"."Memory" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
     "endUserId" UUID NOT NULL,
-    "agentId" UUID,
+    "agentId" UUID NOT NULL,
+    "clusterId" UUID,
     "kind" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "metadata" JSONB,
     "agentVisible" BOOLEAN NOT NULL DEFAULT true,
     "visibility" TEXT NOT NULL,
     "source" TEXT NOT NULL,
-    "sourceThreadId" TEXT,
-    "sourceTurnIds" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "embedding" vector(1536),
+    "sourceThreadId" UUID,
+    "sourceTurnIds" UUID[] DEFAULT ARRAY[]::UUID[],
+    "extractorVersion" TEXT,
     "contentHash" TEXT,
     "confidence" DOUBLE PRECISION,
     "lastAccessedAt" TIMESTAMP(3),
@@ -1129,11 +1153,14 @@ CREATE TABLE "public"."MemoryEntity" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
     "endUserId" UUID NOT NULL,
+    "agentId" UUID NOT NULL,
+    "clusterId" UUID,
     "entityKey" TEXT NOT NULL,
     "entityType" TEXT NOT NULL,
     "label" TEXT NOT NULL,
     "aliases" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "metadata" JSONB,
+    "embedding" vector(1536),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -1145,12 +1172,14 @@ CREATE TABLE "public"."MemoryRelationship" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
     "endUserId" UUID NOT NULL,
+    "agentId" UUID NOT NULL,
+    "clusterId" UUID,
     "fromEntityId" UUID NOT NULL,
     "toEntityId" UUID NOT NULL,
     "relationshipType" TEXT NOT NULL,
     "weight" DOUBLE PRECISION,
     "metadata" JSONB,
-    "sourceMemoryId" TEXT,
+    "sourceMemoryId" UUID,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "MemoryRelationship_pkey" PRIMARY KEY ("id")
@@ -1599,7 +1628,13 @@ CREATE INDEX "Thread_clusterId_idx" ON "public"."Thread"("clusterId");
 CREATE INDEX "Thread_parentThreadId_idx" ON "public"."Thread"("parentThreadId");
 
 -- CreateIndex
+CREATE INDEX "Thread_compactionState_compactedAt_idx" ON "public"."Thread"("compactionState", "compactedAt");
+
+-- CreateIndex
 CREATE INDEX "Turn_parentTurnId_idx" ON "public"."Turn"("parentTurnId");
+
+-- CreateIndex
+CREATE INDEX "Turn_agentVersionId_versionBucket_idx" ON "public"."Turn"("agentVersionId", "versionBucket");
 
 -- CreateIndex
 CREATE INDEX "Turn_threadId_status_idx" ON "public"."Turn"("threadId", "status");
@@ -1782,13 +1817,25 @@ CREATE UNIQUE INDEX "AgentToolPolicy_agentVersionId_toolId_key" ON "public"."Age
 CREATE INDEX "Memory_environmentId_endUserId_archivedAt_idx" ON "public"."Memory"("environmentId", "endUserId", "archivedAt");
 
 -- CreateIndex
-CREATE INDEX "Memory_agentId_idx" ON "public"."Memory"("agentId");
+CREATE INDEX "Memory_environmentId_endUserId_agentId_archivedAt_idx" ON "public"."Memory"("environmentId", "endUserId", "agentId", "archivedAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "MemoryEntity_environmentId_endUserId_entityKey_key" ON "public"."MemoryEntity"("environmentId", "endUserId", "entityKey");
+CREATE INDEX "Memory_environmentId_endUserId_clusterId_archivedAt_idx" ON "public"."Memory"("environmentId", "endUserId", "clusterId", "archivedAt");
 
 -- CreateIndex
-CREATE INDEX "MemoryRelationship_environmentId_endUserId_idx" ON "public"."MemoryRelationship"("environmentId", "endUserId");
+CREATE UNIQUE INDEX "Memory_environmentId_endUserId_sourceThreadId_contentHash_key" ON "public"."Memory"("environmentId", "endUserId", "sourceThreadId", "contentHash");
+
+-- CreateIndex
+CREATE INDEX "MemoryEntity_environmentId_endUserId_clusterId_idx" ON "public"."MemoryEntity"("environmentId", "endUserId", "clusterId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "MemoryEntity_environmentId_endUserId_agentId_entityKey_key" ON "public"."MemoryEntity"("environmentId", "endUserId", "agentId", "entityKey");
+
+-- CreateIndex
+CREATE INDEX "MemoryRelationship_environmentId_endUserId_agentId_idx" ON "public"."MemoryRelationship"("environmentId", "endUserId", "agentId");
+
+-- CreateIndex
+CREATE INDEX "MemoryRelationship_environmentId_endUserId_clusterId_idx" ON "public"."MemoryRelationship"("environmentId", "endUserId", "clusterId");
 
 -- CreateIndex
 CREATE INDEX "MemoryRelationship_toEntityId_idx" ON "public"."MemoryRelationship"("toEntityId");
@@ -2037,10 +2084,16 @@ ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_clusterId_fkey" FOREIGN KEY
 ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_parentThreadId_fkey" FOREIGN KEY ("parentThreadId") REFERENCES "public"."Thread"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_compactedUpToTurnId_fkey" FOREIGN KEY ("compactedUpToTurnId") REFERENCES "public"."Turn"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."Turn" ADD CONSTRAINT "Turn_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "public"."Thread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Turn" ADD CONSTRAINT "Turn_parentTurnId_fkey" FOREIGN KEY ("parentTurnId") REFERENCES "public"."Turn"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Turn" ADD CONSTRAINT "Turn_agentVersionId_fkey" FOREIGN KEY ("agentVersionId") REFERENCES "public"."AgentVersion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Step" ADD CONSTRAINT "Step_turnId_fkey" FOREIGN KEY ("turnId") REFERENCES "public"."Turn"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2274,7 +2327,13 @@ ALTER TABLE "public"."Memory" ADD CONSTRAINT "Memory_environmentId_fkey" FOREIGN
 ALTER TABLE "public"."Memory" ADD CONSTRAINT "Memory_endUserId_fkey" FOREIGN KEY ("endUserId") REFERENCES "public"."EndUser"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Memory" ADD CONSTRAINT "Memory_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "public"."Memory" ADD CONSTRAINT "Memory_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Memory" ADD CONSTRAINT "Memory_clusterId_fkey" FOREIGN KEY ("clusterId") REFERENCES "public"."AgentCluster"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Memory" ADD CONSTRAINT "Memory_sourceThreadId_fkey" FOREIGN KEY ("sourceThreadId") REFERENCES "public"."Thread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."MemoryEntity" ADD CONSTRAINT "MemoryEntity_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2283,16 +2342,31 @@ ALTER TABLE "public"."MemoryEntity" ADD CONSTRAINT "MemoryEntity_environmentId_f
 ALTER TABLE "public"."MemoryEntity" ADD CONSTRAINT "MemoryEntity_endUserId_fkey" FOREIGN KEY ("endUserId") REFERENCES "public"."EndUser"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."MemoryEntity" ADD CONSTRAINT "MemoryEntity_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."MemoryEntity" ADD CONSTRAINT "MemoryEntity_clusterId_fkey" FOREIGN KEY ("clusterId") REFERENCES "public"."AgentCluster"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."MemoryRelationship" ADD CONSTRAINT "MemoryRelationship_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."MemoryRelationship" ADD CONSTRAINT "MemoryRelationship_endUserId_fkey" FOREIGN KEY ("endUserId") REFERENCES "public"."EndUser"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."MemoryRelationship" ADD CONSTRAINT "MemoryRelationship_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."MemoryRelationship" ADD CONSTRAINT "MemoryRelationship_clusterId_fkey" FOREIGN KEY ("clusterId") REFERENCES "public"."AgentCluster"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."MemoryRelationship" ADD CONSTRAINT "MemoryRelationship_fromEntityId_fkey" FOREIGN KEY ("fromEntityId") REFERENCES "public"."MemoryEntity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."MemoryRelationship" ADD CONSTRAINT "MemoryRelationship_toEntityId_fkey" FOREIGN KEY ("toEntityId") REFERENCES "public"."MemoryEntity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."MemoryRelationship" ADD CONSTRAINT "MemoryRelationship_sourceMemoryId_fkey" FOREIGN KEY ("sourceMemoryId") REFERENCES "public"."Memory"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."OrganizationMcpPolicy" ADD CONSTRAINT "OrganizationMcpPolicy_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2368,6 +2442,56 @@ ALTER TABLE "public"."MessageRating"
 ALTER TABLE "public"."AgentVersion"
   ADD CONSTRAINT "AgentVersion_toolsBlockConfig_enabledTools_check"
   CHECK (NOT ("toolsBlockConfig" ? 'enabledTools'));
+ALTER TABLE "public"."Turn"
+  ADD CONSTRAINT "Turn_usage_check" CHECK (
+    "sequence" > 0 AND
+    ("costCents" IS NULL OR "costCents" >= 0) AND
+    ("latencyMs" IS NULL OR "latencyMs" >= 0) AND
+    ("startedAt" IS NULL OR "completedAt" IS NULL OR "completedAt" >= "startedAt")
+  );
+ALTER TABLE "public"."Step"
+  ADD CONSTRAINT "Step_usage_check" CHECK (
+    "sequence" > 0 AND "retryCount" >= 0 AND
+    ("inputTokens" IS NULL OR "inputTokens" >= 0) AND
+    ("outputTokens" IS NULL OR "outputTokens" >= 0) AND
+    ("cacheCreationInputTokens" IS NULL OR "cacheCreationInputTokens" >= 0) AND
+    ("cacheReadInputTokens" IS NULL OR "cacheReadInputTokens" >= 0) AND
+    ("reasoningTokens" IS NULL OR "reasoningTokens" >= 0) AND
+    ("inputTokens" IS NULL OR
+      COALESCE("cacheCreationInputTokens", 0) + COALESCE("cacheReadInputTokens", 0) <= "inputTokens") AND
+    ("costCents" IS NULL OR "costCents" >= 0) AND
+    ("latencyMs" IS NULL OR "latencyMs" >= 0) AND
+    ("startedAt" IS NULL OR "completedAt" IS NULL OR "completedAt" >= "startedAt")
+  );
+ALTER TABLE "public"."Memory"
+  ADD CONSTRAINT "Memory_extraction_provenance_check" CHECK (
+    (
+      "sourceThreadId" IS NULL AND cardinality("sourceTurnIds") = 0 AND
+      "extractorVersion" IS NULL AND "contentHash" IS NULL
+    ) OR (
+      "sourceThreadId" IS NOT NULL AND cardinality("sourceTurnIds") > 0 AND
+      NULLIF(btrim("extractorVersion"), '') IS NOT NULL AND
+      "contentHash" ~ '^[0-9a-f]{64}$'
+    )
+  );
+ALTER TABLE "public"."Memory"
+  ADD CONSTRAINT "Memory_confidence_check" CHECK (
+    "confidence" IS NULL OR "confidence" BETWEEN 0 AND 1
+  );
+
+-- Prisma cannot express pgvector operator classes or partial ownership keys.
+CREATE INDEX "Memory_embedding_hnsw_cosine_idx"
+  ON "public"."Memory" USING hnsw ("embedding" vector_cosine_ops)
+  WHERE "embedding" IS NOT NULL;
+CREATE INDEX "MemoryEntity_embedding_hnsw_cosine_idx"
+  ON "public"."MemoryEntity" USING hnsw ("embedding" vector_cosine_ops)
+  WHERE "embedding" IS NOT NULL;
+CREATE UNIQUE INDEX "MemoryEntity_shared_cluster_entityKey_key"
+  ON "public"."MemoryEntity"("environmentId", "endUserId", "clusterId", "entityKey")
+  WHERE "clusterId" IS NOT NULL;
+CREATE UNIQUE INDEX "ProviderKey_one_default_per_environment_provider"
+  ON "public"."ProviderKey"("environmentId", "provider")
+  WHERE "isDefault" = TRUE;
 
 -- Json columns store their native documented root. This blocks encoded strings
 -- even when a caller bypasses the TypeScript write-boundary helpers.
@@ -2444,14 +2568,17 @@ CREATE TRIGGER "AgentVersion_owner_immutable" BEFORE UPDATE ON "public"."AgentVe
 CREATE TRIGGER "AgentCluster_owner_immutable" BEFORE UPDATE ON "public"."AgentCluster" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
 CREATE TRIGGER "Credential_owner_immutable" BEFORE UPDATE ON "public"."Credential" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
 CREATE TRIGGER "Thread_owner_immutable" BEFORE UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
-CREATE TRIGGER "Turn_owner_immutable" BEFORE UPDATE ON "public"."Turn" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('threadId');
+CREATE TRIGGER "Turn_owner_immutable" BEFORE UPDATE ON "public"."Turn" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('threadId', 'agentVersionId', 'versionBucket');
+CREATE TRIGGER "Step_owner_immutable" BEFORE UPDATE ON "public"."Step" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('turnId');
 CREATE TRIGGER "Entity_owner_immutable" BEFORE UPDATE ON "public"."Entity" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('projectId');
 CREATE TRIGGER "ChannelConnection_owner_immutable" BEFORE UPDATE ON "public"."ChannelConnection" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
 CREATE TRIGGER "ChannelApp_owner_immutable" BEFORE UPDATE ON "public"."ChannelApp" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
 CREATE TRIGGER "Skill_owner_immutable" BEFORE UPDATE ON "public"."Skill" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('organizationId');
 CREATE TRIGGER "ProjectSkill_owner_immutable" BEFORE UPDATE ON "public"."ProjectSkill" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('projectId');
 CREATE TRIGGER "EnvironmentSkill_owner_immutable" BEFORE UPDATE ON "public"."EnvironmentSkill" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
-CREATE TRIGGER "MemoryEntity_owner_immutable" BEFORE UPDATE ON "public"."MemoryEntity" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
+CREATE TRIGGER "Memory_owner_immutable" BEFORE UPDATE ON "public"."Memory" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'endUserId', 'agentId', 'clusterId', 'sourceThreadId', 'extractorVersion');
+CREATE TRIGGER "MemoryEntity_owner_immutable" BEFORE UPDATE ON "public"."MemoryEntity" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'agentId', 'clusterId');
+CREATE TRIGGER "MemoryRelationship_owner_immutable" BEFORE UPDATE ON "public"."MemoryRelationship" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'endUserId', 'agentId', 'clusterId', 'fromEntityId', 'toEntityId');
 CREATE TRIGGER "EndUserIdentity_owner_immutable" BEFORE UPDATE ON "public"."EndUserIdentity" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('endUserId', 'organizationId');
 CREATE TRIGGER "Thread_subject_immutable" BEFORE UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('endUserId');
 CREATE TRIGGER "MessageAttachment_owner_immutable" BEFORE UPDATE ON "public"."MessageAttachment" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'endUserId');
@@ -2466,6 +2593,48 @@ CREATE TRIGGER "OAuthAuthorizationCode_scope_immutable" BEFORE UPDATE ON "public
 CREATE TRIGGER "OAuthAccessToken_scope_immutable" BEFORE UPDATE ON "public"."OAuthAccessToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('clientId', 'userId', 'scopeKind', 'organizationId', 'projectId', 'environmentId');
 CREATE TRIGGER "OAuthRefreshToken_scope_immutable" BEFORE UPDATE ON "public"."OAuthRefreshToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('clientId', 'userId', 'scopeKind', 'organizationId', 'projectId', 'environmentId', 'rotationFamilyId', 'parentRefreshTokenId');
 CREATE TRIGGER "McpBearerToken_owner_immutable" BEFORE UPDATE ON "public"."McpBearerToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('entityId', 'createdByUserId');
+
+-- A Redis thread lock may select any historical version of an Environment-bound
+-- agent. All of those versions are therefore executable, including their
+-- primary, request-selected, retry-fallback, and compaction routes. Inspect only
+-- provider-key identifiers and model provider metadata; credential contents are
+-- neither selected nor traversed.
+CREATE FUNCTION "public"."reject_executable_provider_key_delete"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM "public"."Environment" environment
+      JOIN "public"."Project" project ON project.id = environment."projectId"
+      JOIN "public"."AgentBinding" binding ON binding."environmentId" = environment.id
+      JOIN "public"."Agent" agent ON agent.id = binding."agentId" AND agent."projectId" = project.id
+      JOIN "public"."AgentVersion" version ON version."agentId" = agent.id
+     WHERE environment.id = OLD."environmentId"
+       AND (
+         (
+           version."memoryConfig" #>> '{__runtime,providerKeyId}' = OLD.id::text
+           AND split_part(version.model, ':', 1) = OLD.provider
+         )
+         OR EXISTS (
+           SELECT 1
+             FROM jsonb_array_elements(version."modelRoutes") route
+            WHERE split_part(COALESCE(route ->> 'model', ''), ':', 1) = OLD.provider
+              AND (
+                route ->> 'providerCredentialId' = OLD.id::text
+                OR route ->> 'providerKeyId' = OLD.id::text
+              )
+         )
+       )
+  ) THEN
+    RAISE EXCEPTION 'ProviderKey is referenced by an executable AgentVersion'
+      USING ERRCODE = '23503';
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "ProviderKey_executable_reference"
+  BEFORE DELETE ON "public"."ProviderKey"
+  FOR EACH ROW EXECUTE FUNCTION "public"."reject_executable_provider_key_delete"();
 
 -- Typed authorization scope records use exactly one target at the selected
 -- level. GLOBAL is valid only for operator PATs and has no tenant target.
@@ -2535,9 +2704,19 @@ BEGIN
         JOIN "EndUser" u ON u.id = NEW."endUserId" AND u."organizationId" = p."organizationId"
         LEFT JOIN "AgentCluster" c ON c.id = NEW."clusterId" AND c."environmentId" = e.id
         LEFT JOIN "Thread" parent ON parent.id = NEW."parentThreadId" AND parent."environmentId" = e.id AND parent."endUserId" = u.id
+        LEFT JOIN "Turn" cursor ON cursor.id = NEW."compactedUpToTurnId" AND cursor."threadId" = NEW.id
         WHERE e.id = NEW."environmentId"
           AND (NEW."clusterId" IS NULL OR c.id IS NOT NULL)
           AND (NEW."parentThreadId" IS NULL OR parent.id IS NOT NULL)
+          AND (NEW."compactedUpToTurnId" IS NULL OR cursor.id IS NOT NULL)
+      ) INTO valid;
+    WHEN 'Turn' THEN
+      SELECT EXISTS (
+        SELECT 1 FROM "Thread" t
+        JOIN "AgentVersion" version ON version.id = NEW."agentVersionId" AND version."agentId" = t."agentId"
+        LEFT JOIN "Turn" parent ON parent.id = NEW."parentTurnId" AND parent."threadId" = t.id
+        WHERE t.id = NEW."threadId"
+          AND (NEW."parentTurnId" IS NULL OR parent.id IS NOT NULL)
       ) INTO valid;
     WHEN 'Artifact' THEN
       SELECT EXISTS (
@@ -2668,17 +2847,69 @@ BEGIN
       ) INTO valid;
     WHEN 'Memory' THEN
       SELECT EXISTS (
-        SELECT 1 FROM "Environment" e JOIN "Project" p ON p.id = e."projectId" JOIN "EndUser" u ON u.id = NEW."endUserId" AND u."organizationId" = p."organizationId"
-        LEFT JOIN "Agent" a ON a.id = NEW."agentId" AND a."projectId" = p.id
-        WHERE e.id = NEW."environmentId" AND (NEW."agentId" IS NULL OR a.id IS NOT NULL)
+        SELECT 1 FROM "Environment" e
+        JOIN "Project" p ON p.id = e."projectId"
+        JOIN "EndUser" u ON u.id = NEW."endUserId" AND u."organizationId" = p."organizationId"
+        JOIN "Agent" a ON a.id = NEW."agentId" AND a."projectId" = p.id
+        LEFT JOIN "AgentCluster" cluster ON cluster.id = NEW."clusterId" AND cluster."environmentId" = e.id
+        LEFT JOIN "AgentBinding" binding ON binding."environmentId" = e.id
+          AND binding."agentId" = a.id AND binding."clusterId" = cluster.id
+        LEFT JOIN "Thread" source_thread ON source_thread.id = NEW."sourceThreadId"
+          AND source_thread."environmentId" = e.id AND source_thread."endUserId" = u.id
+          AND source_thread."agentId" = a.id
+          AND (NEW."clusterId" IS NULL OR source_thread."clusterId" = NEW."clusterId")
+        WHERE e.id = NEW."environmentId"
+          AND (NEW."clusterId" IS NULL OR (cluster.id IS NOT NULL AND binding.id IS NOT NULL))
+          AND (NEW."sourceThreadId" IS NULL OR source_thread.id IS NOT NULL)
+          AND NOT EXISTS (
+            SELECT 1 FROM unnest(NEW."sourceTurnIds") source_turn_id
+            WHERE NOT EXISTS (
+              SELECT 1 FROM "Turn" source_turn
+              WHERE source_turn.id = source_turn_id AND source_turn."threadId" = NEW."sourceThreadId"
+            )
+          )
       ) INTO valid;
     WHEN 'MemoryEntity' THEN
-      SELECT EXISTS (SELECT 1 FROM "Environment" e JOIN "Project" p ON p.id = e."projectId" JOIN "EndUser" u ON u."organizationId" = p."organizationId" WHERE e.id = NEW."environmentId" AND u.id = NEW."endUserId") INTO valid;
+      SELECT EXISTS (
+        SELECT 1 FROM "Environment" e
+        JOIN "Project" p ON p.id = e."projectId"
+        JOIN "EndUser" u ON u.id = NEW."endUserId" AND u."organizationId" = p."organizationId"
+        JOIN "Agent" a ON a.id = NEW."agentId" AND a."projectId" = p.id
+        LEFT JOIN "AgentCluster" cluster ON cluster.id = NEW."clusterId" AND cluster."environmentId" = e.id
+        LEFT JOIN "AgentBinding" binding ON binding."environmentId" = e.id
+          AND binding."agentId" = a.id AND binding."clusterId" = cluster.id
+        WHERE e.id = NEW."environmentId"
+          AND (NEW."clusterId" IS NULL OR (cluster.id IS NOT NULL AND binding.id IS NOT NULL))
+      ) INTO valid;
     WHEN 'MemoryRelationship' THEN
       SELECT EXISTS (
-        SELECT 1 FROM "MemoryEntity" source JOIN "MemoryEntity" target ON target.id = NEW."toEntityId"
-        WHERE source.id = NEW."fromEntityId" AND source."environmentId" = NEW."environmentId" AND source."endUserId" = NEW."endUserId"
-          AND target."environmentId" = NEW."environmentId" AND target."endUserId" = NEW."endUserId"
+        SELECT 1 FROM "Environment" e
+        JOIN "Project" p ON p.id = e."projectId"
+        JOIN "EndUser" u ON u.id = NEW."endUserId" AND u."organizationId" = p."organizationId"
+        JOIN "Agent" a ON a.id = NEW."agentId" AND a."projectId" = p.id
+        LEFT JOIN "AgentCluster" cluster ON cluster.id = NEW."clusterId" AND cluster."environmentId" = e.id
+        LEFT JOIN "AgentBinding" binding ON binding."environmentId" = e.id
+          AND binding."agentId" = a.id AND binding."clusterId" = cluster.id
+        JOIN "MemoryEntity" source ON source.id = NEW."fromEntityId"
+          AND source."environmentId" = e.id AND source."endUserId" = u.id
+        JOIN "MemoryEntity" target ON target.id = NEW."toEntityId"
+          AND target."environmentId" = e.id AND target."endUserId" = u.id
+        LEFT JOIN "Memory" source_memory ON source_memory.id = NEW."sourceMemoryId"
+          AND source_memory."environmentId" = e.id AND source_memory."endUserId" = u.id
+        WHERE e.id = NEW."environmentId"
+          AND (NEW."clusterId" IS NULL OR (cluster.id IS NOT NULL AND binding.id IS NOT NULL))
+          AND (
+            (NEW."clusterId" IS NULL AND
+              source."clusterId" IS NULL AND target."clusterId" IS NULL AND
+              source."agentId" = a.id AND target."agentId" = a.id) OR
+            (NEW."clusterId" IS NOT NULL AND
+              source."clusterId" = NEW."clusterId" AND target."clusterId" = NEW."clusterId")
+          )
+          AND (
+            NEW."sourceMemoryId" IS NULL OR
+            (NEW."clusterId" IS NULL AND source_memory."clusterId" IS NULL AND source_memory."agentId" = a.id) OR
+            (NEW."clusterId" IS NOT NULL AND source_memory."clusterId" = NEW."clusterId")
+          )
       ) INTO valid;
     WHEN 'OAuthClient' THEN
       SELECT EXISTS (
@@ -2780,6 +3011,7 @@ CREATE TRIGGER "EndUserSession_ancestry" BEFORE INSERT OR UPDATE ON "public"."En
 CREATE TRIGGER "AgentBinding_ancestry" BEFORE INSERT OR UPDATE ON "public"."AgentBinding" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "PostmanTemplate_ancestry" BEFORE INSERT OR UPDATE ON "public"."PostmanTemplate" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "Thread_ancestry" BEFORE INSERT OR UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
+CREATE TRIGGER "Turn_ancestry" BEFORE INSERT OR UPDATE ON "public"."Turn" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "Artifact_ancestry" BEFORE INSERT OR UPDATE ON "public"."Artifact" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "MessageAttachment_ancestry" BEFORE INSERT OR UPDATE ON "public"."MessageAttachment" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "ChannelConnection_ancestry" BEFORE INSERT OR UPDATE ON "public"."ChannelConnection" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();

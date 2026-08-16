@@ -52,12 +52,6 @@ const PUBLIC_MCP_HOST_SUFFIXES = [
  *
  * `/api/health` is allowed so uptime monitors and Caddy health probes work.
  */
-const PUBLIC_MCP_ALLOWED_PATH_PREFIXES = [
-  "/mcp/docs",
-  "/mcp",
-  "/api/health",
-];
-
 /**
  * Strip the optional port suffix and lowercase the host header for a stable
  * comparison. Caddy passes `Host: mcp.platos.dev` (no port) but tests / curl
@@ -90,7 +84,18 @@ export function isPublicMcpHost(host: string | undefined): boolean {
 export function isAllowedPublicMcpPath(url: string): boolean {
   // strip query string for matching
   const path = url.split("?")[0] ?? "";
-  return PUBLIC_MCP_ALLOWED_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
+  // `/mcp` is an ergonomic alias for the docs controller, but it must not be
+  // treated as a blanket prefix: `/mcp/platform` and `/mcp/entity/*` are
+  // scoped surfaces and must remain unreachable from the public-docs host.
+  return (
+    path === "/mcp" ||
+    path === "/mcp/sse" ||
+    path === "/mcp/messages" ||
+    path === "/mcp/docs" ||
+    path.startsWith("/mcp/docs/") ||
+    path === "/api/health" ||
+    path.startsWith("/api/health/")
+  );
 }
 
 /**

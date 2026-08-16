@@ -1,26 +1,12 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+import { AuthorizationScopeKind } from "@platos/tenancy-database";
 import * as crypto from "node:crypto";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import {
+  type ControlDatabaseClient,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 
-/**
- * Theme K.10 — OAuth 2.1 authorization-server service.
- *
- * Implements the protocol primitives:
- *
- *   • RFC 7591 — Dynamic Client Registration
- *   • RFC 6749 + OAuth 2.1 — Authorization Code Grant (PKCE required,
- *                            `plain` rejected)
- *   • RFC 7636 — Proof Key for Code Exchange (S256 only)
- *   • RFC 7662 — Token Introspection
- *   • RFC 7009 — Token Revocation
- *   • RFC 8414 — Authorization Server Metadata
- *
- * All token material is sha256-stored at rest. Raw values are returned
- * exactly once from their respective mint endpoint.
- *
- * Access tokens use the `plt_oa_` prefix so the MCP controller can
- * route them to this verifier alongside `plt_mcp_` (PlatosMCPToken).
- */
+/** Theme K.10 — OAuth 2.1 authorization-server primitives. */
 
 export interface ScopeTuple {
   organizationId: string;
@@ -39,7 +25,6 @@ export interface OAuthClientRecord {
   organizationId: string;
   registeredByUserId: string;
   createdAt: Date;
-  /** PIFSP-21 — non-null when the client was registered via entity-scoped DCR. */
   entityPk?: string | null;
 }
 
@@ -49,15 +34,8 @@ export interface DCRInput {
   tokenEndpointAuthMethod?: "client_secret_basic" | "client_secret_post" | "none";
   grantTypes?: string[];
   scope?: string;
-  /** The user id performing registration, or "anonymous" for open DCR. */
   registeredByUserId?: string;
-  /** The org the client is pinned to for registration bookkeeping. */
   organizationId?: string;
-  /**
-   * PIFSP-21 — optional per-entity pinning. When set, the client can only
-   * authorize against this entity's `/oauth/entity/:entityId/*` routes.
-   * Legacy platform DCR (`POST /oauth/register`) leaves this null.
-   */
   entityPk?: string;
 }
 
@@ -77,12 +55,28 @@ export interface VerifiedOAuthAccessToken {
   tokenHash: string;
   clientId: string;
   userId: string;
+  mcpUserId: string;
+  identityMode: "anonymous" | "oidc" | "bearer";
   scope: ScopeTuple;
   scopes: string[];
   expiresAt: Date;
-  /** PIFSP-21 — non-null when the token was issued via the entity-scoped
-   *  OAuth flow. Routes the request to `/mcp/entity/:entityId/*` only. */
   entityPk?: string | null;
+}
+
+interface McpIdentityMarker {
+  kind: "anonymous" | "oidc";
+  sessionId: string;
+}
+
+interface TokenPairInput {
+  clientDbId: string;
+  clientPublicId: string;
+  userId: string;
+  scopeTuple: ScopeTuple;
+  scopes: string[];
+  rotationFamilyId?: string;
+  parentRefreshTokenId?: string;
+  entityPk?: string;
 }
 
 const ACCESS_TOKEN_PREFIX = "plt_oa_";
@@ -90,21 +84,18 @@ const REFRESH_TOKEN_PREFIX = "plt_or_";
 const CLIENT_ID_PREFIX = "plt_oac_";
 const CLIENT_SECRET_PREFIX = "plt_ocs_";
 const AUTH_CODE_PREFIX = "plt_ocd_";
+const MCP_IDENTITY_SCOPE_PREFIX = "platos:mcp-identity:";
 
-export const OAUTH_ACCESS_TOKEN_TTL_SEC = 3600; // 1h
-export const OAUTH_REFRESH_TOKEN_TTL_SEC = 90 * 24 * 3600; // 90d
-export const OAUTH_AUTH_CODE_TTL_SEC = 60; // 60s
+export const OAUTH_ACCESS_TOKEN_TTL_SEC = 3600;
+export const OAUTH_REFRESH_TOKEN_TTL_SEC = 90 * 24 * 3600;
+export const OAUTH_AUTH_CODE_TTL_SEC = 60;
 
 const ALLOWED_AUTH_METHODS = new Set([
   "client_secret_basic",
   "client_secret_post",
   "none",
 ]);
-
-const ALLOWED_GRANT_TYPES = new Set([
-  "authorization_code",
-  "refresh_token",
-]);
+const ALLOWED_GRANT_TYPES = new Set(["authorization_code", "refresh_token"]);
 
 export class OAuthError extends Error {
   constructor(
@@ -119,9 +110,9 @@ export class OAuthError extends Error {
 
 @Injectable()
 export class OAuthService {
-  private readonly logger = new Logger(OAuthService.name);
-
-  constructor(@Inject(PRISMA_TOKEN) private readonly prisma: any) {}
+  constructor(
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+  ) {}
 
   private sha256(raw: string): string {
     return crypto.createHash("sha256").update(raw).digest("hex");
@@ -140,9 +131,88 @@ export class OAuthService {
     return `${prefix}${crypto.randomBytes(bytes).toString("base64url")}`;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // RFC 7591 — Dynamic Client Registration
-  // ─────────────────────────────────────────────────────────────
+  private parseRegisteredScopes(scope: string | null | undefined): string[] {
+    return (scope ?? "").split(/\s+/).filter(Boolean);
+  }
+
+  private publicScopes(scopes: string[]): string[] {
+    return scopes.filter((scope) => !scope.startsWith(MCP_IDENTITY_SCOPE_PREFIX));
+  }
+
+  private identityMarker(scopes: string[]): McpIdentityMarker | null {
+    const encoded = scopes.find((scope) => scope.startsWith(MCP_IDENTITY_SCOPE_PREFIX));
+    if (!encoded) return null;
+    const [kind, sessionId] = encoded.slice(MCP_IDENTITY_SCOPE_PREFIX.length).split(":", 2);
+    if ((kind !== "anonymous" && kind !== "oidc") || !sessionId) return null;
+    return { kind, sessionId };
+  }
+
+  private encodeIdentityMarker(marker: McpIdentityMarker): string {
+    return `${MCP_IDENTITY_SCOPE_PREFIX}${marker.kind}:${marker.sessionId}`;
+  }
+
+  private async canonicalScope(
+    scope: ScopeTuple,
+    db: Pick<ControlDatabaseClient, "environment"> = this.prisma,
+  ): Promise<ScopeTuple> {
+    const environment = await db.environment.findFirst({
+      where: {
+        id: scope.environmentId,
+        projectId: scope.projectId,
+        archivedAt: null,
+        project: {
+          organizationId: scope.organizationId,
+          archivedAt: null,
+          organization: { archivedAt: null },
+        },
+      },
+      select: {
+        id: true,
+        project: { select: { id: true, organizationId: true } },
+      },
+    });
+    if (!environment) {
+      throw new OAuthError("invalid_scope", "environment is not in the authorized scope");
+    }
+    return {
+      organizationId: environment.project.organizationId,
+      projectId: environment.project.id,
+      environmentId: environment.id,
+    };
+  }
+
+  private scopeData(scope: ScopeTuple) {
+    return {
+      scopeKind: AuthorizationScopeKind.ENVIRONMENT,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
+      environmentId: scope.environmentId,
+    } as const;
+  }
+
+  private async registrationUser(
+    organizationId: string,
+    requestedUserId?: string,
+  ): Promise<string> {
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: {
+        organizationId,
+        deactivatedAt: null,
+        ...(requestedUserId ? { userId: requestedUserId } : {}),
+        user: { disabledAt: null },
+      },
+      select: { userId: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (!membership) {
+      throw new OAuthError(
+        "invalid_client_metadata",
+        "registration requires an active organization operator",
+        403,
+      );
+    }
+    return membership.userId;
+  }
 
   async register(input: DCRInput): Promise<DCRResult> {
     if (!input.clientName || typeof input.clientName !== "string") {
@@ -151,12 +221,13 @@ export class OAuthService {
     if (
       !Array.isArray(input.redirectUris) ||
       input.redirectUris.length === 0 ||
-      input.redirectUris.some((u) => typeof u !== "string" || u.length === 0)
+      input.redirectUris.some((uri) => typeof uri !== "string" || uri.length === 0)
     ) {
-      throw new OAuthError("invalid_redirect_uri", "redirect_uris must be a non-empty string[]");
+      throw new OAuthError(
+        "invalid_redirect_uri",
+        "redirect_uris must be a non-empty string[]",
+      );
     }
-    // OAuth 2.1 §3.1.2.1 — absolute URI, no fragment. Allow http:// only for
-    // loopback (localhost, 127.0.0.1, ::1); require https:// otherwise.
     for (const uri of input.redirectUris) {
       let parsed: URL;
       try {
@@ -190,42 +261,53 @@ export class OAuthService {
       );
     }
     const grantTypes = input.grantTypes ?? ["authorization_code", "refresh_token"];
-    for (const gt of grantTypes) {
-      if (!ALLOWED_GRANT_TYPES.has(gt)) {
-        throw new OAuthError("invalid_client_metadata", `unsupported grant_type: ${gt}`);
+    for (const grantType of grantTypes) {
+      if (!ALLOWED_GRANT_TYPES.has(grantType)) {
+        throw new OAuthError(
+          "invalid_client_metadata",
+          `unsupported grant_type: ${grantType}`,
+        );
       }
     }
 
-    const clientId = this.randomId(CLIENT_ID_PREFIX, 16);
-    const isPublic = authMethod === "none";
-    const rawSecret = isPublic ? undefined : this.randomId(CLIENT_SECRET_PREFIX, 32);
-    const clientSecretHash = rawSecret ? this.sha256(rawSecret) : null;
+    let organizationId = input.organizationId;
+    if (input.entityPk) {
+      const entity = await this.prisma.entity.findUnique({
+        where: { id: input.entityPk },
+        select: { project: { select: { organizationId: true } } },
+      });
+      if (!entity || (organizationId && entity.project.organizationId !== organizationId)) {
+        throw new OAuthError("invalid_client_metadata", "entity is not in registration scope", 403);
+      }
+      organizationId = entity.project.organizationId;
+    }
+    if (!organizationId) {
+      throw new OAuthError(
+        "invalid_client_metadata",
+        "organization scope is required for client registration",
+        403,
+      );
+    }
+    const registeredByUserId = await this.registrationUser(
+      organizationId,
+      input.registeredByUserId,
+    );
 
-    const row = await this.prisma.platosOAuthClient.create({
+    const clientId = this.randomId(CLIENT_ID_PREFIX, 16);
+    const rawSecret =
+      authMethod === "none" ? undefined : this.randomId(CLIENT_SECRET_PREFIX, 32);
+    const row = await this.prisma.oAuthClient.create({
       data: {
+        organizationId,
         clientId,
-        clientSecretHash,
+        clientSecretHash: rawSecret ? this.sha256(rawSecret) : null,
         clientName: input.clientName.slice(0, 200),
         redirectUris: input.redirectUris,
         tokenEndpointAuthMethod: authMethod,
         grantTypes,
-        scope: input.scope ?? null,
-        registeredByUserId: input.registeredByUserId ?? "anonymous",
-        // K.10 — for open DCR, pin to "public" until a consent flow stamps
-        // the real org. Every client MUST belong to some org at consent time.
-        organizationId: input.organizationId ?? "public",
-        // PIFSP-21 — pin entity for entity-scoped DCR.
-        ...(input.entityPk ? { entityPk: input.entityPk } : {}),
-      },
-      select: {
-        id: true,
-        clientId: true,
-        clientName: true,
-        redirectUris: true,
-        tokenEndpointAuthMethod: true,
-        grantTypes: true,
-        scope: true,
-        createdAt: true,
+        scopes: this.parseRegisteredScopes(input.scope),
+        registeredByUserId,
+        entityId: input.entityPk ?? null,
       },
     });
 
@@ -233,52 +315,59 @@ export class OAuthService {
       client_id: row.clientId,
       ...(rawSecret ? { client_secret: rawSecret } : {}),
       client_id_issued_at: Math.floor(row.createdAt.getTime() / 1000),
-      client_secret_expires_at: 0, // 0 = does not expire
+      client_secret_expires_at: 0,
       client_name: row.clientName,
       redirect_uris: row.redirectUris,
       grant_types: row.grantTypes,
       token_endpoint_auth_method: row.tokenEndpointAuthMethod,
-      ...(row.scope ? { scope: row.scope } : {}),
+      ...(row.scopes.length > 0 ? { scope: row.scopes.join(" ") } : {}),
+    };
+  }
+
+  private projectClient(row: {
+    id: string;
+    clientId: string;
+    clientName: string;
+    redirectUris: string[];
+    tokenEndpointAuthMethod: string;
+    grantTypes: string[];
+    scopes: string[];
+    organizationId: string;
+    registeredByUserId: string;
+    entityId: string | null;
+    createdAt: Date;
+  }): OAuthClientRecord {
+    return {
+      id: row.id,
+      clientId: row.clientId,
+      clientName: row.clientName,
+      redirectUris: row.redirectUris,
+      tokenEndpointAuthMethod: row.tokenEndpointAuthMethod,
+      grantTypes: row.grantTypes,
+      scope: row.scopes.length > 0 ? row.scopes.join(" ") : null,
+      organizationId: row.organizationId,
+      registeredByUserId: row.registeredByUserId,
+      entityPk: row.entityId,
+      createdAt: row.createdAt,
     };
   }
 
   async findClient(clientId: string): Promise<OAuthClientRecord | null> {
     if (!clientId || typeof clientId !== "string") return null;
-    const row = await this.prisma.platosOAuthClient.findUnique({
-      where: { clientId },
-    });
-    if (!row) return null;
-    // MCPF-W3 — soft-deleted clients cannot mint or refresh tokens. The row
-    // stays in place for audit reconstruction; protocol-layer callers see
-    // it as missing.
-    if (row.deletedAt) return null;
-    return row;
+    const row = await this.prisma.oAuthClient.findUnique({ where: { clientId } });
+    if (!row || row.deletedAt) return null;
+    return this.projectClient(row);
   }
 
   async verifyClientSecret(clientId: string, clientSecret: string): Promise<boolean> {
-    const row = await this.prisma.platosOAuthClient.findUnique({
+    const row = await this.prisma.oAuthClient.findUnique({
       where: { clientId },
       select: { clientSecretHash: true, deletedAt: true },
     });
-    if (!row || !row.clientSecretHash) return false;
-    // MCPF-W3 — soft-deleted clients can't authenticate.
-    if (row.deletedAt) return false;
-    const provided = this.sha256(clientSecret);
-    return this.timingSafeEqualHex(row.clientSecretHash, provided);
+    if (!row?.clientSecretHash || row.deletedAt) return false;
+    return this.timingSafeEqualHex(row.clientSecretHash, this.sha256(clientSecret));
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // MCPF-W3 — operator-facing client + token management
-  // ─────────────────────────────────────────────────────────────
-
-  /**
-   * MCPF-W3 — list OAuth clients in (organizationId, [entityPk?]). Returns
-   * safe metadata only; `clientSecretHash` is NEVER returned (it's still a
-   * secret — an attacker with the hash can grind it offline).
-   *
-   * Soft-deleted clients are excluded by default; pass
-   * `includeDeleted: true` to include them (audit/compliance views).
-   */
   async listClients(
     organizationId: string,
     options: { entityPk?: string | null; includeDeleted?: boolean } = {},
@@ -296,59 +385,30 @@ export class OAuthService {
     createdAt: string;
     deletedAt: string | null;
   }>> {
-    const where: Record<string, unknown> = { organizationId };
-    if (options.entityPk !== undefined) {
-      where["entityPk"] = options.entityPk;
-    }
-    if (!options.includeDeleted) {
-      where["deletedAt"] = null;
-    }
-    const rows = await this.prisma.platosOAuthClient.findMany({
-      where,
-      select: {
-        id: true,
-        clientId: true,
-        clientName: true,
-        redirectUris: true,
-        tokenEndpointAuthMethod: true,
-        grantTypes: true,
-        scope: true,
-        organizationId: true,
-        entityPk: true,
-        registeredByUserId: true,
-        createdAt: true,
-        deletedAt: true,
+    const rows = await this.prisma.oAuthClient.findMany({
+      where: {
+        organizationId,
+        ...(options.entityPk !== undefined ? { entityId: options.entityPk } : {}),
+        ...(!options.includeDeleted ? { deletedAt: null } : {}),
       },
       orderBy: { createdAt: "desc" },
     });
-    return rows.map((r: any) => ({
-      id: r.id,
-      clientId: r.clientId,
-      clientName: r.clientName,
-      redirectUris: r.redirectUris,
-      tokenEndpointAuthMethod: r.tokenEndpointAuthMethod,
-      grantTypes: r.grantTypes,
-      scope: r.scope ?? null,
-      organizationId: r.organizationId,
-      entityPk: r.entityPk ?? null,
-      registeredByUserId: r.registeredByUserId,
-      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
-      deletedAt: r.deletedAt
-        ? r.deletedAt instanceof Date
-          ? r.deletedAt.toISOString()
-          : String(r.deletedAt)
-        : null,
+    return rows.map((row) => ({
+      id: row.id,
+      clientId: row.clientId,
+      clientName: row.clientName,
+      redirectUris: row.redirectUris,
+      tokenEndpointAuthMethod: row.tokenEndpointAuthMethod,
+      grantTypes: row.grantTypes,
+      scope: row.scopes.length > 0 ? row.scopes.join(" ") : null,
+      organizationId: row.organizationId,
+      entityPk: row.entityId,
+      registeredByUserId: row.registeredByUserId,
+      createdAt: row.createdAt.toISOString(),
+      deletedAt: row.deletedAt?.toISOString() ?? null,
     }));
   }
 
-  /**
-   * MCPF-W3 — soft-delete a client + cascade-revoke every outstanding
-   * access + refresh token for the client. Scope-pinned via
-   * `organizationId` — cross-tenant ids return `{ deleted: false }`.
-   *
-   * Idempotent: re-deleting an already-soft-deleted client is a no-op
-   * (returns `{ deleted: true, alreadyDeleted: true }`).
-   */
   async deleteClient(
     clientId: string,
     organizationId: string,
@@ -358,7 +418,7 @@ export class OAuthService {
     accessTokensRevoked: number;
     refreshTokensRevoked: number;
   }> {
-    const existing = await this.prisma.platosOAuthClient.findUnique({
+    const existing = await this.prisma.oAuthClient.findUnique({
       where: { clientId },
       select: { id: true, organizationId: true, deletedAt: true },
     });
@@ -374,35 +434,27 @@ export class OAuthService {
       };
     }
     const now = new Date();
-    const [, accessRes, refreshRes] = await this.prisma.$transaction([
-      this.prisma.platosOAuthClient.update({
-        where: { clientId },
+    const [, accessTokens, refreshTokens] = await this.prisma.$transaction([
+      this.prisma.oAuthClient.update({
+        where: { id: existing.id },
         data: { deletedAt: now },
       }),
-      this.prisma.platosOAuthAccessToken.updateMany({
-        where: { clientId, revokedAt: null },
+      this.prisma.oAuthAccessToken.updateMany({
+        where: { clientId: existing.id, revokedAt: null },
         data: { revokedAt: now },
       }),
-      this.prisma.platosOAuthRefreshToken.updateMany({
-        where: { clientId, revokedAt: null },
+      this.prisma.oAuthRefreshToken.updateMany({
+        where: { clientId: existing.id, revokedAt: null },
         data: { revokedAt: now },
       }),
     ]);
     return {
       deleted: true,
-      accessTokensRevoked: accessRes?.count ?? 0,
-      refreshTokensRevoked: refreshRes?.count ?? 0,
+      accessTokensRevoked: accessTokens.count,
+      refreshTokensRevoked: refreshTokens.count,
     };
   }
 
-  /**
-   * MCPF-W3 — list outstanding access tokens for an org (or for one
-   * specific client within the org). Metadata only — `tokenHash` is also
-   * a secret (sha256 of the bearer; an attacker with hash + a guessing
-   * oracle can compromise) and is NEVER returned. Same redaction
-   * discipline as `entities.set_test_credentials` — secrets bleed through
-   * once at mint, never on subsequent reads.
-   */
   async listAccessTokens(
     organizationId: string,
     options: {
@@ -423,93 +475,60 @@ export class OAuthService {
     expired: boolean;
     entityPk: string | null;
   }>> {
-    const where: Record<string, unknown> = {
-      // Scope-narrow via the JSON column path. The Prisma JSON filter
-      // matches the canonical shape we always write.
-      scopeTuple: { path: ["organizationId"], equals: organizationId },
-    };
-    if (options.clientId) where["clientId"] = options.clientId;
-    if (options.entityPk !== undefined) where["entityPk"] = options.entityPk;
-    if (!options.includeRevoked) where["revokedAt"] = null;
-    if (!options.includeExpired) where["expiresAt"] = { gt: new Date() };
-    const limit = Math.min(Math.max(options.limit ?? 100, 1), 500);
-    const rows = await this.prisma.platosOAuthAccessToken.findMany({
-      where,
+    const rows = await this.prisma.oAuthAccessToken.findMany({
+      where: {
+        organizationId,
+        ...(options.clientId || options.entityPk !== undefined
+          ? {
+              client: {
+                ...(options.clientId ? { clientId: options.clientId } : {}),
+                ...(options.entityPk !== undefined
+                  ? { entityId: options.entityPk }
+                  : {}),
+              },
+            }
+          : {}),
+        ...(!options.includeRevoked ? { revokedAt: null } : {}),
+        ...(!options.includeExpired ? { expiresAt: { gt: new Date() } } : {}),
+      },
       select: {
-        tokenHash: true,
-        clientId: true,
+        id: true,
         userId: true,
         scopes: true,
         issuedAt: true,
         expiresAt: true,
         revokedAt: true,
-        entityPk: true,
+        client: { select: { clientId: true, entityId: true } },
       },
       orderBy: { issuedAt: "desc" },
-      take: limit,
+      take: Math.min(Math.max(options.limit ?? 100, 1), 500),
     });
     const now = Date.now();
-    return rows.map((r: any) => ({
-      // We expose a stable opaque id — the first 16 chars of the hash —
-      // so the operator can reference the row for revocation without us
-      // ever returning the full hash.
-      id: String(r.tokenHash).slice(0, 16),
-      clientId: r.clientId,
-      userId: r.userId,
-      scopes: r.scopes ?? [],
-      issuedAt: r.issuedAt instanceof Date ? r.issuedAt.toISOString() : String(r.issuedAt),
-      expiresAt: r.expiresAt instanceof Date ? r.expiresAt.toISOString() : String(r.expiresAt),
-      revokedAt: r.revokedAt
-        ? r.revokedAt instanceof Date
-          ? r.revokedAt.toISOString()
-          : String(r.revokedAt)
-        : null,
-      expired:
-        r.expiresAt instanceof Date ? r.expiresAt.getTime() < now : new Date(r.expiresAt).getTime() < now,
-      entityPk: r.entityPk ?? null,
+    return rows.map((row) => ({
+      id: row.id,
+      clientId: row.client.clientId,
+      userId: row.userId,
+      scopes: this.publicScopes(row.scopes),
+      issuedAt: row.issuedAt.toISOString(),
+      expiresAt: row.expiresAt.toISOString(),
+      revokedAt: row.revokedAt?.toISOString() ?? null,
+      expired: row.expiresAt.getTime() < now,
+      entityPk: row.client.entityId,
     }));
   }
 
-  /**
-   * MCPF-W3 — revoke a single access token by its `id` (= first 16 chars of
-   * the sha256 token hash). Scope-pinned via `organizationId`. Returns
-   * `{ revoked: false }` for cross-tenant or unknown ids — never throws,
-   * RFC 7009 §2.2 requires unknown-token revocation to succeed silently.
-   */
   async revokeAccessTokenById(
     id: string,
     organizationId: string,
   ): Promise<{ revoked: boolean }> {
-    if (!id || typeof id !== "string" || id.length < 8) return { revoked: false };
-    // The `id` is the prefix of the token hash. Find it within scope.
-    const candidates = await this.prisma.platosOAuthAccessToken.findMany({
-      where: {
-        scopeTuple: { path: ["organizationId"], equals: organizationId },
-        revokedAt: null,
-      },
-      select: { tokenHash: true },
-    });
-    const match = (candidates as Array<{ tokenHash: string }>).find(
-      (c) => c.tokenHash.startsWith(id),
-    );
-    if (!match) return { revoked: false };
-    const result = await this.prisma.platosOAuthAccessToken.updateMany({
-      where: { tokenHash: match.tokenHash, revokedAt: null },
+    if (!id || typeof id !== "string") return { revoked: false };
+    const result = await this.prisma.oAuthAccessToken.updateMany({
+      where: { id, organizationId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
-    return { revoked: (result?.count ?? 0) > 0 };
+    return { revoked: result.count > 0 };
   }
 
-  /**
-   * MCPF-W3 — rotate the client_secret for a confidential OAuth client.
-   * Returns the NEW plaintext secret ONCE — caller must capture it now.
-   * The old secret stops authenticating immediately (the new hash overwrites
-   * the old). Public clients (`tokenEndpointAuthMethod: "none"`) cannot be
-   * rotated — their input shape doesn't have a secret.
-   *
-   * Scope-pinned via `organizationId`. Soft-deleted clients return
-   * `{ rotated: false, reason: "deleted" }`.
-   */
   async rotateClientSecret(
     clientId: string,
     organizationId: string,
@@ -517,9 +536,10 @@ export class OAuthService {
     | { rotated: true; clientId: string; clientSecret: string; issuedAt: string }
     | { rotated: false; reason: "not_found" | "deleted" | "public_client" }
   > {
-    const existing = await this.prisma.platosOAuthClient.findUnique({
+    const existing = await this.prisma.oAuthClient.findUnique({
       where: { clientId },
       select: {
+        id: true,
         organizationId: true,
         deletedAt: true,
         tokenEndpointAuthMethod: true,
@@ -528,30 +548,23 @@ export class OAuthService {
     if (!existing || existing.organizationId !== organizationId) {
       return { rotated: false, reason: "not_found" };
     }
-    if (existing.deletedAt) {
-      return { rotated: false, reason: "deleted" };
-    }
+    if (existing.deletedAt) return { rotated: false, reason: "deleted" };
     if (existing.tokenEndpointAuthMethod === "none") {
       return { rotated: false, reason: "public_client" };
     }
-    const newSecret = this.randomId(CLIENT_SECRET_PREFIX, 32);
-    const newHash = this.sha256(newSecret);
-    const now = new Date();
-    await this.prisma.platosOAuthClient.update({
-      where: { clientId },
-      data: { clientSecretHash: newHash },
+    const clientSecret = this.randomId(CLIENT_SECRET_PREFIX, 32);
+    const issuedAt = new Date();
+    await this.prisma.oAuthClient.update({
+      where: { id: existing.id },
+      data: { clientSecretHash: this.sha256(clientSecret) },
     });
     return {
       rotated: true,
       clientId,
-      clientSecret: newSecret,
-      issuedAt: now.toISOString(),
+      clientSecret,
+      issuedAt: issuedAt.toISOString(),
     };
   }
-
-  // ─────────────────────────────────────────────────────────────
-  // Authorization codes
-  // ─────────────────────────────────────────────────────────────
 
   async issueAuthCode(input: {
     clientId: string;
@@ -561,8 +574,8 @@ export class OAuthService {
     codeChallengeMethod: "S256";
     redirectUri: string;
     scopes: string[];
-    /** PIFSP-21 — pinned entity, forwarded to issued tokens. */
     entityPk?: string;
+    mcpIdentity?: McpIdentityMarker;
   }): Promise<{ code: string; expiresAt: Date }> {
     if (!input.codeChallenge || input.codeChallengeMethod !== "S256") {
       throw new OAuthError(
@@ -570,29 +583,64 @@ export class OAuthService {
         "PKCE required — code_challenge + code_challenge_method=S256 must be provided",
       );
     }
+    const scope = await this.canonicalScope(input.scopeTuple);
+    const client = await this.prisma.oAuthClient.findUnique({
+      where: { clientId: input.clientId },
+      select: {
+        id: true,
+        organizationId: true,
+        entityId: true,
+        deletedAt: true,
+        redirectUris: true,
+        scopes: true,
+      },
+    });
+    if (
+      !client ||
+      client.deletedAt ||
+      client.organizationId !== scope.organizationId ||
+      (input.entityPk !== undefined && client.entityId !== input.entityPk) ||
+      !client.redirectUris.includes(input.redirectUri)
+    ) {
+      throw new OAuthError("invalid_grant", "client is not valid for the authorized scope");
+    }
+    const requestedScopes = this.publicScopes(input.scopes);
+    if (requestedScopes.some((scopeLabel) => !client.scopes.includes(scopeLabel))) {
+      throw new OAuthError("invalid_scope", "requested scope was not registered for this client");
+    }
+    const user = await this.prisma.organizationMembership.findFirst({
+      where: {
+        organizationId: scope.organizationId,
+        userId: input.userId,
+        deactivatedAt: null,
+        user: { disabledAt: null },
+      },
+      select: { userId: true },
+    });
+    if (!user) {
+      throw new OAuthError("access_denied", "user is not active in the organization", 403);
+    }
+
     const code = this.randomId(AUTH_CODE_PREFIX, 32);
     const expiresAt = new Date(Date.now() + OAUTH_AUTH_CODE_TTL_SEC * 1000);
-    await this.prisma.platosOAuthAuthCode.create({
+    const scopes = requestedScopes;
+    if (input.mcpIdentity) scopes.push(this.encodeIdentityMarker(input.mcpIdentity));
+    await this.prisma.oAuthAuthorizationCode.create({
       data: {
-        code,
-        clientId: input.clientId,
-        userId: input.userId,
-        scopeTuple: input.scopeTuple,
+        codeHash: this.sha256(code),
+        clientId: client.id,
+        userId: user.userId,
+        ...this.scopeData(scope),
         codeChallenge: input.codeChallenge,
         codeChallengeMethod: input.codeChallengeMethod,
         redirectUri: input.redirectUri,
-        scopes: input.scopes,
+        scopes,
         expiresAt,
-        ...(input.entityPk ? { entityPk: input.entityPk } : {}),
       },
     });
     return { code, expiresAt };
   }
 
-  /**
-   * Exchange an auth code + PKCE verifier for an access+refresh token pair.
-   * Consumes the code (one-shot).
-   */
   async exchangeAuthCode(input: {
     clientId: string;
     code: string;
@@ -607,28 +655,22 @@ export class OAuthService {
     scope: ScopeTuple;
     userId: string;
   }> {
-    const row = await this.prisma.platosOAuthAuthCode.findUnique({
-      where: { code: input.code },
+    const codeHash = this.sha256(input.code);
+    const row = await this.prisma.oAuthAuthorizationCode.findUnique({
+      where: { codeHash },
+      include: { client: { select: { clientId: true, entityId: true } } },
     });
-    if (!row) {
-      throw new OAuthError("invalid_grant", "code not found");
-    }
-    if (row.usedAt) {
-      // OAuth 2.1 — replay detection. Revoke any tokens downstream of this
-      // code's previous exchange. We don't track the linkage here so the
-      // minimum is to fail closed; TODO(K.10.1) cascade-revoke downstream.
-      throw new OAuthError("invalid_grant", "code already used");
-    }
+    if (!row) throw new OAuthError("invalid_grant", "code not found");
+    if (row.usedAt) throw new OAuthError("invalid_grant", "code already used");
     if (row.expiresAt.getTime() < Date.now()) {
       throw new OAuthError("invalid_grant", "code expired");
     }
-    if (row.clientId !== input.clientId) {
+    if (row.client.clientId !== input.clientId) {
       throw new OAuthError("invalid_grant", "code was issued to a different client");
     }
     if (row.redirectUri !== input.redirectUri) {
       throw new OAuthError("invalid_grant", "redirect_uri mismatch");
     }
-    // RFC 7636 — recompute S256(verifier) and compare to the stored challenge.
     const expectedChallenge = crypto
       .createHash("sha256")
       .update(input.codeVerifier)
@@ -636,18 +678,31 @@ export class OAuthService {
     if (expectedChallenge !== row.codeChallenge) {
       throw new OAuthError("invalid_grant", "PKCE verification failed");
     }
-    await this.prisma.platosOAuthAuthCode.update({
-      where: { code: input.code },
-      data: { usedAt: new Date() },
-    });
+    if (!row.organizationId || !row.projectId || !row.environmentId) {
+      throw new OAuthError("invalid_grant", "authorization code has no canonical scope");
+    }
 
-    return this.mintTokenPair({
-      clientId: row.clientId,
-      userId: row.userId,
-      scopeTuple: row.scopeTuple as ScopeTuple,
-      scopes: row.scopes,
-      ...(row.entityPk ? { entityPk: row.entityPk as string } : {}),
+    const result = await this.prisma.$transaction(async (tx) => {
+      const consumed = await tx.oAuthAuthorizationCode.updateMany({
+        where: { id: row.id, usedAt: null, expiresAt: { gt: new Date() } },
+        data: { usedAt: new Date() },
+      });
+      if (consumed.count !== 1) return null;
+      return this.mintTokenPairInTransaction(tx, {
+        clientDbId: row.clientId,
+        clientPublicId: row.client.clientId,
+        userId: row.userId,
+        scopeTuple: {
+          organizationId: row.organizationId!,
+          projectId: row.projectId!,
+          environmentId: row.environmentId!,
+        },
+        scopes: row.scopes,
+        entityPk: row.client.entityId ?? undefined,
+      });
     });
+    if (!result) throw new OAuthError("invalid_grant", "code already used");
+    return result;
   }
 
   async mintTokenPair(input: {
@@ -655,7 +710,6 @@ export class OAuthService {
     userId: string;
     scopeTuple: ScopeTuple;
     scopes: string[];
-    /** PIFSP-21 — when present both tokens are stamped with this pin. */
     entityPk?: string;
   }): Promise<{
     accessToken: string;
@@ -667,57 +721,70 @@ export class OAuthService {
     userId: string;
     entityPk?: string;
   }> {
+    const scope = await this.canonicalScope(input.scopeTuple);
+    const client = await this.prisma.oAuthClient.findUnique({
+      where: { clientId: input.clientId },
+      select: { id: true, entityId: true, organizationId: true, deletedAt: true },
+    });
+    if (!client || client.deletedAt || client.organizationId !== scope.organizationId) {
+      throw new OAuthError("invalid_client", "unknown client_id", 401);
+    }
+    return this.prisma.$transaction((tx) =>
+      this.mintTokenPairInTransaction(tx, {
+        clientDbId: client.id,
+        clientPublicId: input.clientId,
+        userId: input.userId,
+        scopeTuple: scope,
+        scopes: input.scopes,
+        entityPk: client.entityId ?? undefined,
+      }),
+    );
+  }
+
+  private async mintTokenPairInTransaction(
+    tx: Parameters<Parameters<ControlDatabaseClient["$transaction"]>[0]>[0],
+    input: TokenPairInput,
+  ) {
     const accessToken = this.randomId(ACCESS_TOKEN_PREFIX, 32);
     const refreshToken = this.randomId(REFRESH_TOKEN_PREFIX, 32);
     const accessTokenHash = this.sha256(accessToken);
-    const refreshTokenHash = this.sha256(refreshToken);
     const now = Date.now();
-    const accessExpiresAt = new Date(now + OAUTH_ACCESS_TOKEN_TTL_SEC * 1000);
-    const refreshExpiresAt = new Date(now + OAUTH_REFRESH_TOKEN_TTL_SEC * 1000);
-    const entityPk = input.entityPk;
-
-    await this.prisma.$transaction([
-      this.prisma.platosOAuthAccessToken.create({
-        data: {
-          tokenHash: accessTokenHash,
-          clientId: input.clientId,
-          userId: input.userId,
-          scopeTuple: input.scopeTuple,
-          scopes: input.scopes,
-          expiresAt: accessExpiresAt,
-          ...(entityPk ? { entityPk } : {}),
-        },
-      }),
-      this.prisma.platosOAuthRefreshToken.create({
-        data: {
-          tokenHash: refreshTokenHash,
-          accessTokenHash,
-          clientId: input.clientId,
-          userId: input.userId,
-          scopeTuple: input.scopeTuple,
-          scopes: input.scopes,
-          expiresAt: refreshExpiresAt,
-          ...(entityPk ? { entityPk } : {}),
-        },
-      }),
-    ]);
-
+    const access = await tx.oAuthAccessToken.create({
+      data: {
+        tokenHash: accessTokenHash,
+        clientId: input.clientDbId,
+        userId: input.userId,
+        ...this.scopeData(input.scopeTuple),
+        scopes: input.scopes,
+        expiresAt: new Date(now + OAUTH_ACCESS_TOKEN_TTL_SEC * 1000),
+      },
+      select: { id: true },
+    });
+    await tx.oAuthRefreshToken.create({
+      data: {
+        tokenHash: this.sha256(refreshToken),
+        accessTokenId: access.id,
+        clientId: input.clientDbId,
+        userId: input.userId,
+        ...this.scopeData(input.scopeTuple),
+        scopes: input.scopes,
+        rotationFamilyId: input.rotationFamilyId ?? crypto.randomUUID(),
+        parentRefreshTokenId: input.parentRefreshTokenId,
+        expiresAt: new Date(now + OAUTH_REFRESH_TOKEN_TTL_SEC * 1000),
+      },
+    });
     return {
       accessToken,
       refreshToken,
       accessTokenHash,
       expiresIn: OAUTH_ACCESS_TOKEN_TTL_SEC,
-      scopes: input.scopes,
+      scopes: this.publicScopes(input.scopes),
       scope: input.scopeTuple,
       userId: input.userId,
-      ...(entityPk ? { entityPk } : {}),
+      ...(input.entityPk ? { entityPk: input.entityPk } : {}),
     };
   }
 
-  /**
-   * Swap a refresh token for a fresh access+refresh pair. The old refresh
-   * is revoked (rotation) per OAuth 2.1.
-   */
   async exchangeRefreshToken(input: {
     clientId: string;
     refreshToken: string;
@@ -730,81 +797,171 @@ export class OAuthService {
     scope: ScopeTuple;
     userId: string;
   }> {
-    const refreshTokenHash = this.sha256(input.refreshToken);
-    const row = await this.prisma.platosOAuthRefreshToken.findUnique({
-      where: { tokenHash: refreshTokenHash },
+    const tokenHash = this.sha256(input.refreshToken);
+    const row = await this.prisma.oAuthRefreshToken.findUnique({
+      where: { tokenHash },
+      include: { client: { select: { clientId: true, entityId: true } } },
     });
-    if (!row) {
-      throw new OAuthError("invalid_grant", "refresh_token not found");
+    if (!row) throw new OAuthError("invalid_grant", "refresh_token not found");
+    if (row.client.clientId !== input.clientId) {
+      throw new OAuthError(
+        "invalid_grant",
+        "refresh_token was issued to a different client",
+      );
     }
-    if (row.revokedAt) {
-      throw new OAuthError("invalid_grant", "refresh_token revoked");
+    if (row.consumedAt || row.revokedAt) {
+      const now = new Date();
+      await this.prisma.$transaction([
+        this.prisma.oAuthRefreshToken.updateMany({
+          where: { rotationFamilyId: row.rotationFamilyId },
+          data: { replayDetectedAt: now, revokedAt: now },
+        }),
+        this.prisma.oAuthAccessToken.updateMany({
+          where: {
+            refreshTokens: { some: { rotationFamilyId: row.rotationFamilyId } },
+            revokedAt: null,
+          },
+          data: { revokedAt: now },
+        }),
+      ]);
+      throw new OAuthError("invalid_grant", "refresh_token replay detected");
     }
     if (row.expiresAt.getTime() < Date.now()) {
       throw new OAuthError("invalid_grant", "refresh_token expired");
     }
-    if (row.clientId !== input.clientId) {
-      throw new OAuthError("invalid_grant", "refresh_token was issued to a different client");
+    if (!row.organizationId || !row.projectId || !row.environmentId) {
+      throw new OAuthError("invalid_grant", "refresh_token has no canonical scope");
     }
 
-    // Rotate — revoke old refresh, mint fresh pair.
-    await this.prisma.platosOAuthRefreshToken.update({
-      where: { tokenHash: refreshTokenHash },
-      data: { revokedAt: new Date() },
+    const result = await this.prisma.$transaction(async (tx) => {
+      const consumed = await tx.oAuthRefreshToken.updateMany({
+        where: {
+          id: row.id,
+          consumedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        data: { consumedAt: new Date() },
+      });
+      if (consumed.count !== 1) return null;
+      return this.mintTokenPairInTransaction(tx, {
+        clientDbId: row.clientId,
+        clientPublicId: row.client.clientId,
+        userId: row.userId,
+        scopeTuple: {
+          organizationId: row.organizationId!,
+          projectId: row.projectId!,
+          environmentId: row.environmentId!,
+        },
+        scopes: row.scopes,
+        rotationFamilyId: row.rotationFamilyId,
+        parentRefreshTokenId: row.id,
+        entityPk: row.client.entityId ?? undefined,
+      });
     });
-
-    return this.mintTokenPair({
-      clientId: row.clientId,
-      userId: row.userId,
-      scopeTuple: row.scopeTuple as ScopeTuple,
-      scopes: row.scopes,
-      ...(row.entityPk ? { entityPk: row.entityPk as string } : {}),
-    });
+    if (!result) {
+      throw new OAuthError("invalid_grant", "refresh_token replay detected");
+    }
+    return result;
   }
 
-  /**
-   * RFC 7662 — introspect. Returns the active token's claims, or
-   * `{ active: false }` on any failure mode.
-   */
-  async verifyAccessToken(raw: string | undefined | null): Promise<VerifiedOAuthAccessToken | null> {
-    if (!raw || typeof raw !== "string" || !raw.startsWith(ACCESS_TOKEN_PREFIX)) return null;
+  async verifyAccessToken(
+    raw: string | undefined | null,
+  ): Promise<VerifiedOAuthAccessToken | null> {
+    if (!raw || typeof raw !== "string" || !raw.startsWith(ACCESS_TOKEN_PREFIX)) {
+      return null;
+    }
     const tokenHash = this.sha256(raw);
-    const row = await this.prisma.platosOAuthAccessToken.findUnique({
+    const row = await this.prisma.oAuthAccessToken.findUnique({
       where: { tokenHash },
+      include: { client: { select: { clientId: true, entityId: true, deletedAt: true } } },
     });
-    if (!row) return null;
-    if (row.revokedAt) return null;
-    if (row.expiresAt.getTime() < Date.now()) return null;
+    if (
+      !row ||
+      row.revokedAt ||
+      row.client.deletedAt ||
+      row.expiresAt.getTime() < Date.now() ||
+      !row.organizationId ||
+      !row.projectId ||
+      !row.environmentId
+    ) {
+      return null;
+    }
+
+    let mcpUserId = row.userId;
+    let identityMode: VerifiedOAuthAccessToken["identityMode"] = "oidc";
+    const marker = this.identityMarker(row.scopes);
+    if (marker?.kind === "anonymous") {
+      const session = await this.prisma.mcpAnonymousSession.findFirst({
+        where: {
+          id: marker.sessionId,
+          entityId: row.client.entityId ?? "",
+          environmentId: row.environmentId,
+          revokedAt: null,
+        },
+        select: { mcpUserId: true },
+      });
+      if (!session) return null;
+      mcpUserId = session.mcpUserId;
+      identityMode = "anonymous";
+    } else if (marker?.kind === "oidc") {
+      const session = await this.prisma.mcpOidcSession.findFirst({
+        where: {
+          id: marker.sessionId,
+          entityId: row.client.entityId ?? "",
+          environmentId: row.environmentId,
+          revokedAt: null,
+        },
+        select: { mcpUserId: true },
+      });
+      if (!session) return null;
+      mcpUserId = session.mcpUserId;
+      identityMode = "oidc";
+    }
 
     return {
       tokenHash,
-      clientId: row.clientId,
+      clientId: row.client.clientId,
       userId: row.userId,
-      scope: row.scopeTuple as ScopeTuple,
-      scopes: row.scopes,
+      mcpUserId,
+      identityMode,
+      scope: {
+        organizationId: row.organizationId,
+        projectId: row.projectId,
+        environmentId: row.environmentId,
+      },
+      scopes: this.publicScopes(row.scopes),
       expiresAt: row.expiresAt,
-      entityPk: (row.entityPk as string | null | undefined) ?? null,
+      entityPk: row.client.entityId,
     };
   }
 
-  async revokeToken(raw: string): Promise<boolean> {
+  async revokeToken(raw: string, clientId?: string): Promise<boolean> {
     if (!raw || typeof raw !== "string") return false;
     const tokenHash = this.sha256(raw);
-    let ok = false;
+    const now = new Date();
     if (raw.startsWith(ACCESS_TOKEN_PREFIX)) {
-      const r = await this.prisma.platosOAuthAccessToken.updateMany({
-        where: { tokenHash, revokedAt: null },
-        data: { revokedAt: new Date() },
+      const result = await this.prisma.oAuthAccessToken.updateMany({
+        where: {
+          tokenHash,
+          revokedAt: null,
+          ...(clientId ? { client: { clientId } } : {}),
+        },
+        data: { revokedAt: now },
       });
-      ok = r.count > 0;
-    } else if (raw.startsWith(REFRESH_TOKEN_PREFIX)) {
-      const r = await this.prisma.platosOAuthRefreshToken.updateMany({
-        where: { tokenHash, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
-      ok = r.count > 0;
+      return result.count > 0;
     }
-    // RFC 7009 §2.2 — unknown tokens MUST NOT cause an error.
-    return ok;
+    if (raw.startsWith(REFRESH_TOKEN_PREFIX)) {
+      const result = await this.prisma.oAuthRefreshToken.updateMany({
+        where: {
+          tokenHash,
+          revokedAt: null,
+          ...(clientId ? { client: { clientId } } : {}),
+        },
+        data: { revokedAt: now },
+      });
+      return result.count > 0;
+    }
+    return false;
   }
 }

@@ -81,12 +81,12 @@ export interface RequestScope {
   /**
    * SECURITY (2026-07-16 audit C1/H1) — trust tier of the caller.
    *   "operator"  — the webapp/control-plane: a platform-signed session token
-   *                 (iss:"platos-platform", verified against SESSION_SECRET
-   *                 which only the webapp holds) OR the trusted internal
+   *                 without an entity bearer authorization (and not a guest),
+   *                 OR the trusted internal
    *                 direct-header path (webapp→agent over the Docker network,
    *                 never through Caddy).
-   *   "end-user"  — an entity-signed session token (a widget/SDK end-user or
-   *                 anonymous public guest). MUST NOT reach operator surfaces
+   *   "end-user"  — a platform-signed token bound to an active entity
+   *                 McpBearerToken, or an anonymous public guest. MUST NOT reach operator surfaces
    *                 (other users' data, secrets, budgets, monitoring).
    * `requireOperator(scope)` enforces this. Undefined is treated as end-user
    * (fail closed).
@@ -169,10 +169,8 @@ export class ScopeGuard implements CanActivate {
     // used by the rate-limit guard which also exempts /metrics.
     if (url.startsWith("/metrics")) return true;
 
-    // EOBD.95 — session-token mint endpoint. Authed by the entity's
-    // serviceSecret in the Authorization header (Bearer scheme) — not
-    // by a ScopeGuard auth mode. The controller verifies the secret
-    // itself. Bypass ScopeGuard for this path.
+    // Entity session-token mint endpoint. The controller validates the clean
+    // `plt_ent_` McpBearerToken and canonical Entity ancestry itself.
     if (url.startsWith("/api/v1/entities/") && url.includes("/session-tokens")) return true;
 
     // EOBD.89 — public guest-token mint. Unauthenticated by design;
@@ -409,7 +407,8 @@ export class ScopeGuard implements CanActivate {
     // the webapp's request span be the parent of the agent's turn span.
     const traceCtx = parseTraceparent(request.headers["traceparent"]);
 
-    // Path 1: Session token JWT (signed by entity's serviceSecret)
+    // Path 1: platform-signed scoped JWT. Entity end-user tokens carry a
+    // persisted McpBearerToken authorization ID that AuthService revalidates.
     const sessionToken = request.headers["x-platos-session-token"] as string | undefined;
     if (sessionToken && this.authService) {
       const payload = await this.authService.validateSessionToken(sessionToken);
@@ -448,8 +447,8 @@ export class ScopeGuard implements CanActivate {
         // PlatosEndUser across channels. NON-GUEST only: the guest-token flow
         // (EOBD.89) mints tokens for anonymous visitors who must never assert
         // an identity — the same isGuest gate that decides operator tier.
-        // Entity-signed end-user tokens ARE the primary source. Copied verbatim
-        // from the validated (HMAC-verified) payload.
+        // Entity-authorized end-user tokens ARE the primary source. Copied
+        // verbatim from the validated platform-signed payload.
         const tokenUserIdentities =
           (payload as any).isGuest !== true &&
           Array.isArray(payload.userIdentities) &&
@@ -464,14 +463,11 @@ export class ScopeGuard implements CanActivate {
           userId: payload.userId,
           entityId: payload.entityId,
           userToken: payload.userToken,
-          // Operator ONLY when platform-signed (verified against
-          // SESSION_SECRET) AND not a public guest. The guest-token flow
-          // (EOBD.89) mints platform-signed tokens with isGuest:true for
-          // anonymous visitors — those are end-users, NOT operators. (Fable
-          // verify BLOCKER A: iss-alone classification let an anonymous guest
-          // reach regenerate-secret + budget mutators.)
+          // Operator ONLY when the platform token is neither guest nor backed
+          // by an entity McpBearerToken. `iss` alone cannot distinguish the
+          // control plane now that every scoped token uses platform signing.
           principal:
-            payload.iss === "platos-platform" && (payload as any).isGuest !== true
+            payload.authorizationId === undefined && (payload as any).isGuest !== true
               ? "operator"
               : "end-user",
           ...(tokenAgentId ? { agentId: tokenAgentId } : {}),
@@ -553,7 +549,7 @@ export class ScopeGuard implements CanActivate {
 
     throw new UnauthorizedException(
       viaProxy
-        ? "External requests must use X-Platos-Session-Token (minted by your entity backend). Raw scope headers are rejected when the request arrives through the public proxy."
+        ? "External requests must use X-Platos-Session-Token (minted from an active entity bearer). Raw scope headers are rejected when the request arrives through the public proxy."
         : "Authentication required. Provide either X-Platos-Session-Token or all four headers: X-Platos-Organization-Id, X-Platos-Project-Id, X-Platos-Environment-Id, X-Platos-User-Id."
     );
   }

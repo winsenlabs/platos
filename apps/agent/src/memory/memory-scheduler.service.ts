@@ -37,7 +37,7 @@ export class MemorySchedulerService {
       return;
     }
     if (!acquired) {
-      this.logger.debug("Memory extraction cron: already running — skipping tick");
+      this.logger.log("Memory extraction cron: already running — skipping tick");
       return;
     }
 
@@ -56,19 +56,18 @@ export class MemorySchedulerService {
       const since = new Date(Date.now() - 90 * 60_000);
       const threads: Array<{
         id: string;
-        organizationId: string;
-        projectId: string;
         environmentId: string;
-      }> = await this.prisma.platosAgentThread.findMany({
+        environment: { project: { id: string; organizationId: string } };
+      }> = await this.prisma.thread.findMany({
         where: {
-          updatedAt: { gte: since },
-          turnCount: { gte: 2 },
+          turns: { some: { status: "SUCCEEDED", completedAt: { gte: since } } },
         },
         select: {
           id: true,
-          organizationId: true,
-          projectId: true,
           environmentId: true,
+          environment: {
+            select: { project: { select: { id: true, organizationId: true } } },
+          },
         },
         orderBy: { updatedAt: "desc" },
         take: 500,
@@ -79,8 +78,8 @@ export class MemorySchedulerService {
         try {
           const out = await this.extraction.extractFromThread(
             {
-              organizationId: t.organizationId,
-              projectId: t.projectId,
+              organizationId: t.environment.project.organizationId,
+              projectId: t.environment.project.id,
               environmentId: t.environmentId,
             },
             { threadId: t.id },
@@ -92,8 +91,11 @@ export class MemorySchedulerService {
           stats.entitiesCreated += out.entitiesCreated;
           stats.relationshipsCreated += out.relationshipsCreated;
           stats.skipped += out.skipped;
-        } catch {
+        } catch (error: any) {
           stats.errors += 1;
+          this.logger.error(
+            `Memory extraction failed for thread ${t.id}: ${error?.message ?? error}`,
+          );
         }
       }
     } finally {

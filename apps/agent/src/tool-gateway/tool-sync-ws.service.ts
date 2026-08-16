@@ -1,7 +1,7 @@
 import { Injectable, Inject, OnApplicationBootstrap, OnApplicationShutdown, Logger, Optional } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
 import { WebSocketServer, WebSocket, type RawData } from "ws";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import { URL } from "node:url";
 import { PRISMA_TOKEN } from "../shared/database.provider";
@@ -56,7 +56,7 @@ type Conn = {
   projectId: string;
   environmentId: string;
   entityId: string;    // human-readable slug (was "source"/"orgId")
-  entityPk: string;    // PlatosConnectedEntity.id
+  entityPk: string;    // Entity.id
   connectionId: string;
   connectedAt: Date;
 };
@@ -199,13 +199,72 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
       return;
     }
 
-    // Resolve entity row from the secret. Secrets are globally unique, so a
-    // secret is sufficient to pin down (organizationId, projectId, entityId).
+    // Resolve the clean Environment + Entity first, then verify the
+    // Environment-owned ENTITY_SECRET credential by hash. Raw secret material
+    // is never persisted on Entity.
     let entityRow: any = null;
+    let environmentId = "";
     try {
-      entityRow = await this.prisma.platosConnectedEntity.findFirst({
-        where: { serviceSecret: secret, ...(entityIdFromUrl ? { entityId: entityIdFromUrl } : {}) },
+      if (!entityIdFromUrl) throw new Error("entity id is required");
+      const digest = createHash("sha256").update(secret).digest("hex");
+      const credentials = await this.prisma.credential.findMany({
+        where: {
+          kind: "ENTITY_SECRET",
+          name: entityIdFromUrl,
+          secretHash: { in: [digest, `sha256:${digest}`] },
+          revokedAt: null,
+        },
+        include: {
+          environment: {
+            select: {
+              id: true,
+              slug: true,
+              project: {
+                select: {
+                  id: true,
+                  organizationId: true,
+                  entities: {
+                    where: {
+                      externalId: entityIdFromUrl,
+                      connectionKind: "wire",
+                    },
+                    select: {
+                      id: true,
+                      externalId: true,
+                      projectId: true,
+                      connectionKind: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { id: "asc" },
       });
+      const candidates = credentials.flatMap((credential: any) =>
+        this.matchesEnvironment(credential.environment, envQuery)
+          ? credential.environment.project.entities.map((entity: any) => ({
+              entity: {
+                ...entity,
+                project: {
+                  organizationId:
+                    credential.environment.project.organizationId,
+                },
+              },
+              environment: credential.environment,
+            }))
+          : [],
+      );
+      if (candidates.length !== 1) {
+        throw new Error(
+          candidates.length === 0
+            ? "entity/environment not found"
+            : "entity/environment is ambiguous; pass an environment id",
+        );
+      }
+      entityRow = candidates[0]!.entity;
+      environmentId = candidates[0]!.environment.id;
     } catch (err: any) {
       this.logger.warn(`entity secret lookup failed: ${err?.message}`);
     }
@@ -217,44 +276,15 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
       return;
     }
 
-    // Resolve environment. Strategy:
-    //   1. If envQuery is an exact RuntimeEnvironment.id owned by this project, use it.
-    //   2. Else if envQuery normalizes to a type (dev/staging/preview/prod), find that env in the project.
-    //   3. Else fall back to the DEVELOPMENT env of the project.
-    let environmentId = "";
-    try {
-      if (envQuery) {
-        // Try exact id match first (scoped to project)
-        const byId = await this.prisma.runtimeEnvironment.findFirst({
-          where: { id: envQuery, projectId: entityRow.projectId },
-          select: { id: true },
-        });
-        if (byId) environmentId = byId.id;
-      }
-      if (!environmentId) {
-        const typeHint = this.normalizeEnvType(envQuery);
-        const envRow = await this.prisma.runtimeEnvironment.findFirst({
-          where: {
-            projectId: entityRow.projectId,
-            type: typeHint,
-          },
-          select: { id: true },
-        });
-        if (envRow) environmentId = envRow.id;
-      }
-    } catch (err: any) {
-      this.logger.warn(`env lookup failed: ${err?.message}`);
-    }
-
     if (!environmentId) {
-      this.logger.warn(`reject: could not resolve env for entity ${entityRow.entityId} (env hint="${envQuery}")`);
+      this.logger.warn(`reject: could not resolve env for entity ${entityRow.externalId} (env hint="${envQuery}")`);
       ws.off("message", earlyListener);
       ws.send(JSON.stringify({ type: "error", error: "Could not resolve environment for this entity/project" }));
       ws.close(1008, "unresolvable env");
       return;
     }
 
-    const key = this.connKey(entityRow.entityId, environmentId);
+    const key = this.connKey(entityRow.externalId, environmentId);
     const prev = this.connections.get(key);
     if (prev) {
       try { prev.ws.close(1000, "superseded by new connection"); } catch {}
@@ -263,10 +293,10 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
     const connectionId = randomUUID();
     const conn: Conn = {
       ws,
-      organizationId: entityRow.organizationId,
+      organizationId: entityRow.project.organizationId,
       projectId: entityRow.projectId,
       environmentId,
-      entityId: entityRow.entityId,
+      entityId: entityRow.externalId,
       entityPk: entityRow.id,
       connectionId,
       connectedAt: new Date(),
@@ -278,30 +308,31 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
     this.send(ws, {
       type: "welcome",
       sdk_connection_id: connectionId,
-      entity_id: entityRow.entityId,
+      entity_id: entityRow.externalId,
       environment_id: environmentId,
-      organization_id: entityRow.organizationId,
+      organization_id: entityRow.project.organizationId,
       project_id: entityRow.projectId,
     });
 
     // Mark connected in DB
     try {
-      await this.prisma.platosConnectedEntity.update({
+      await this.prisma.entity.update({
         where: { id: entityRow.id },
-        data: { connectionStatus: "connected", lastConnectedAt: new Date(), disconnectAlertSent: false },
+        data: { connectionStatus: "connected", lastConnectedAt: new Date() },
       });
     } catch {
       // best-effort
     }
+    this.toolRegistry.setEntityDispatchable(entityRow.id, true, environmentId);
 
     this.logger.log(
-      `entity ${entityRow.entityId} / env=${environmentId} connected (conn=${connectionId.slice(0, 8)}, buffered=${earlyBuffer.length})`,
+      `entity ${entityRow.externalId} / env=${environmentId} connected (conn=${connectionId.slice(0, 8)}, buffered=${earlyBuffer.length})`,
     );
 
     const realMessageHandler = async (raw: RawData) => {
-      this.logger.log(`[raw ${entityRow.entityId}/${environmentId}] bytes=${raw.toString().length}`);
+      this.logger.log(`[raw ${entityRow.externalId}/${environmentId}] bytes=${raw.toString().length}`);
       await this.handleMessage(conn, raw).catch((err) => {
-        this.logger.warn(`handleMessage error (${entityRow.entityId}/${environmentId}): ${err?.message}`);
+        this.logger.warn(`handleMessage error (${entityRow.externalId}/${environmentId}): ${err?.message}`);
       });
     };
 
@@ -329,19 +360,20 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
       );
       if (!anyLeft) {
         try {
-          await this.prisma.platosConnectedEntity.update({
+          await this.prisma.entity.update({
             where: { id: entityRow.id },
             data: { connectionStatus: "disconnected" },
           });
         } catch {}
       }
+      this.toolRegistry.setEntityDispatchable(entityRow.id, false, environmentId);
       this.logger.log(
-        `entity ${entityRow.entityId} / env=${environmentId} disconnected code=${code} reason=${reason?.toString() || ""}`,
+        `entity ${entityRow.externalId} / env=${environmentId} disconnected code=${code} reason=${reason?.toString() || ""}`,
       );
     });
 
     ws.on("error", (err) => {
-      this.logger.warn(`ws error for entity ${entityRow.entityId}/${environmentId}: ${err?.message}`);
+      this.logger.warn(`ws error for entity ${entityRow.externalId}/${environmentId}: ${err?.message}`);
     });
   }
 
@@ -461,40 +493,10 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
             normalized,
             callbackUrl,
           );
-          // `tool_register` is a COMPLETE declaration of what this entity
-          // offers, so registration has to be a replace and not an accumulation.
-          // `registerTools` is additive-upsert, so without this prune an entity
-          // that cut its surface from 22 tools to 9 stayed registered at 22: the
-          // 13 it dropped were never in the fresh frame, so nothing ever removed
-          // them. The model kept being offered tools the backend had retired,
-          // and the operator saw a count that disagreed with their own config.
-          //
-          // The MCP discovery path already did this (`EntityMcpDiscoveryService`
-          // pairs registerTools with reconcileEntityTools); only the WebSocket
-          // path was missing it, which is why the two transports disagreed.
-          //
-          // A client that genuinely needs to register in batches can opt out
-          // with `partial: true` — then the frame is a fragment and pruning
-          // against it would delete the other fragments.
-          // Best-effort: the registration itself already succeeded, so a failed
-          // prune must not turn a good register into an error the client will
-          // retry. The next `tool_register` reconciles against the same fresh
-          // set, so the only cost of a miss is staying stale until then.
-          let pruned = 0;
-          if (msg.partial !== true) {
-            try {
-              const rec = await this.toolRegistry.reconcileEntityTools(
-                conn.entityPk,
-                conn.environmentId,
-                normalized.map((t) => t.name),
-              );
-              pruned = rec.removed;
-            } catch (err: any) {
-              this.logger.warn(
-                `entity ${entityId}/${environmentId}: tool prune failed, retired tools may linger — ${err?.message ?? err}`,
-              );
-            }
-          }
+          // tool_register is a complete declaration. registerTools commits the
+          // replacement (including shrink cleanup) atomically before touching
+          // cache/index state; there is no additive/partial registration mode.
+          const pruned = result.removed;
           this.send(ws, {
             type: "tools_registered",
             entity_id: entityId,
@@ -613,27 +615,25 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
           try {
             const entry = scopedTools.find((t) => t.toolName === toolName);
             if (entry) {
-              await this.prisma.platosToolHealth
+              await this.prisma.toolHealth
                 .upsert({
                   where: {
-                    toolId_entityId_environmentId: {
-                      toolId: entry.toolId,
-                      entityId: conn.entityPk,
+                    environmentId_toolId_entityExternalId: {
                       environmentId: conn.environmentId,
+                      toolId: entry.toolId,
+                      entityExternalId: conn.entityId,
                     },
                   },
                   update: {
                     lastStatus: healthEntry.status,
                     avgLatencyMs: healthEntry.avg_latency_ms ?? 0,
-                    lastError: healthEntry.last_error ?? null,
                   },
                   create: {
                     toolId: entry.toolId,
-                    entityId: conn.entityPk,
+                    entityExternalId: conn.entityId,
                     environmentId: conn.environmentId,
                     lastStatus: healthEntry.status,
                     avgLatencyMs: healthEntry.avg_latency_ms ?? 0,
-                    lastError: healthEntry.last_error ?? null,
                     failCount: 0,
                     totalCalls: 0,
                   },
@@ -737,7 +737,7 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
     for (const c of this.connections.values()) {
       if (c.ws.readyState === WebSocket.OPEN) set.add(c.entityId);
     }
-    return Array.from(set);
+    return Array.from(set).sort();
   }
 
   getConnectedEntitiesInEnv(environmentId: string): string[] {
@@ -747,7 +747,7 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
         set.add(c.entityId);
       }
     }
-    return Array.from(set);
+    return Array.from(set).sort();
   }
 
   /** List all (entityId, environmentId) pairs currently connected. */
@@ -775,30 +775,27 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
   // Helpers
   // ──────────────────────────────────────────
 
-  /**
-   * Normalize a user-supplied env hint (`dev`, `prod`, `DEVELOPMENT`, etc.)
-   * to the RuntimeEnvironmentType enum value used by trigger.dev.
-   */
-  private normalizeEnvType(hint: string): string {
-    const h = (hint || "").trim().toLowerCase();
-    switch (h) {
-      case "":
-      case "dev":
-      case "development":
-        return "DEVELOPMENT";
-      case "staging":
-      case "stage":
-        return "STAGING";
-      case "preview":
-        return "PREVIEW";
-      case "prod":
-      case "production":
-        return "PRODUCTION";
-      default:
-        // If the caller passed something like "PRODUCTION" we still want to
-        // honour it (RuntimeEnvironment.type stores the upper-case value).
-        return hint.toUpperCase();
+  private matchesEnvironment(
+    environment: { id: string; slug: string },
+    hint: string,
+  ): boolean {
+    const normalized = hint.trim().toLowerCase();
+    if (!normalized) {
+      return ["dev", "development"].includes(environment.slug.toLowerCase());
     }
+    if (environment.id === hint) return true;
+    const aliases: Record<string, string[]> = {
+      dev: ["dev", "development"],
+      development: ["dev", "development"],
+      stage: ["stage", "staging"],
+      staging: ["stage", "staging"],
+      prod: ["prod", "production"],
+      production: ["prod", "production"],
+      preview: ["preview"],
+    };
+    return (aliases[normalized] ?? [normalized]).includes(
+      environment.slug.toLowerCase(),
+    );
   }
 
   private send(ws: WebSocket, msg: Record<string, unknown>): void {

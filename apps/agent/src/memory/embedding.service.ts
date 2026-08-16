@@ -24,7 +24,7 @@ type EmbeddingProvider = "openai" | "voyage";
 
 /**
  * Default model per provider. Must return 1536-dim vectors to fit the
- * existing `PlatosMemory.embedding vector(1536)` column without a schema
+ * existing `Memory.embedding vector(1536)` column without a schema
  * migration. Voyage's `voyage-large-2` is 1536-native; its newer
  * `voyage-3` / `voyage-3-large` families default to 1024 (with an
  * `output_dimension` override) so we avoid those as defaults.
@@ -39,10 +39,9 @@ const DEFAULT_MODEL: Record<EmbeddingProvider, string> = {
  *
  * Computes 1536-dim vectors for memory content via the OpenAI embeddings
  * API. Default model is `text-embedding-3-small`; override with the
- * `PLATOS_EMBEDDING_MODEL` env var. The OpenAI API key is resolved
- * through the same `ScopedEnvService` the LLM providers use — first the
- * per-scope SecretStore (what the webapp writes through the providers
- * UI), then `process.env.OPENAI_API_KEY` as a last-resort fallback.
+ * `PLATOS_EMBEDDING_MODEL` env var. Scoped runtime requests resolve the
+ * OpenAI API key through the same Environment credential service used by
+ * LLM providers. Unscoped maintenance scripts may use the container key.
  *
  * Requests are deduped via an LRU cache keyed on `sha256(model + text)`.
  * The model is part of the cache key so switching
@@ -128,9 +127,10 @@ export class EmbeddingService {
     scope?: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
   ): Promise<string | undefined> {
     const keyName = this.provider === "voyage" ? "VOYAGE_API_KEY" : "OPENAI_API_KEY";
-    if (scope && this.scopedEnv) {
-      const fromStore = await this.scopedEnv.get(scope, keyName);
-      if (fromStore) return fromStore;
+    if (scope) {
+      // A request scope must never fall back to deployment configuration:
+      // that would allow one Environment to use a container-wide credential.
+      return this.scopedEnv?.get(scope, keyName);
     }
     return this.provider === "voyage" ? env.VOYAGE_API_KEY : env.OPENAI_API_KEY;
   }
@@ -146,9 +146,8 @@ export class EmbeddingService {
    * Single-shot embed. Returns a 1536-dim float vector.
    *
    * `scope` is optional so callers that don't have a scope (e.g. dev
-   * scripts) still work via `process.env.OPENAI_API_KEY`. In request
-   * paths (meta-tools, REST endpoints) always pass the scope so
-   * per-scope API keys resolve correctly.
+   * scripts) still work via the container key. Request paths always pass
+   * scope and resolve only their Environment credential.
    */
   async embed(
     text: string,

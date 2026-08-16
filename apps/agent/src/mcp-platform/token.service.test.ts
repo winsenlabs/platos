@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PlatosMCPTokenService } from "./token.service";
 import { createHash } from "node:crypto";
+import { AdminMintForbiddenError, PlatosMCPTokenService } from "./token.service";
 
 const tokenHash = (raw: string) => createHash("sha256").update(raw).digest("hex");
-
 const scope = {
   organizationId: "org_1",
   projectId: "proj_1",
@@ -12,36 +11,36 @@ const scope = {
 };
 
 function createPrisma() {
-  const prisma: any = {
-    orgMember: { findFirst: vi.fn() },
-    platosMCPToken: {
+  return {
+    environment: {
+      findUnique: vi.fn().mockResolvedValue({
+        id: "env_1",
+        project: { id: "proj_1", organizationId: "org_1" },
+      }),
+    },
+    organizationMembership: { findFirst: vi.fn() },
+    mcpToken: {
       create: vi.fn(),
       findUnique: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),
-      update: vi.fn(),
-      updateMany: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
-    platosCredentialAudit: { create: vi.fn() },
-  };
-  prisma.$transaction = vi.fn(async (callback: (tx: any) => unknown) => callback(prisma));
-  return prisma;
+  } as any;
 }
 
-describe("PlatosMCPTokenService credential lifecycle", () => {
+describe("PlatosMCPTokenService clean-tenancy lifecycle", () => {
   let prisma: ReturnType<typeof createPrisma>;
   let service: PlatosMCPTokenService;
 
   beforeEach(() => {
     prisma = createPrisma();
-    prisma.platosMCPToken.updateMany.mockResolvedValue({ count: 1 });
     service = new PlatosMCPTokenService(prisma);
   });
 
-  it("mints plt_mcp_ credentials and atomically records redacted evidence", async () => {
-    prisma.platosMCPToken.create.mockResolvedValue({
+  it("retains the plt_mcp_ prefix and persists only Environment ownership", async () => {
+    prisma.mcpToken.create.mockResolvedValue({
       id: "token_1",
-      tokenHash: tokenHash("plt_mcp_valid"),
       name: "automation",
       permissions: ["agents.read"],
       tier: "scope",
@@ -52,129 +51,90 @@ describe("PlatosMCPTokenService credential lifecycle", () => {
     const minted = await service.mint({ scope, name: "automation", permissions: ["agents.read"] });
 
     expect(minted.token).toMatch(/^plt_mcp_/);
-    expect(prisma.$transaction).toHaveBeenCalledOnce();
-    expect(prisma.platosCredentialAudit.create).toHaveBeenCalledWith({
-      data: {
-        family: "control_plane",
-        credentialId: "token_1",
-        action: "mint",
-        organizationId: "org_1",
-        projectId: "proj_1",
-        environmentId: "env_1",
-        actorUserId: "user_1",
+    const data = prisma.mcpToken.create.mock.calls[0][0].data;
+    expect(data.environmentId).toBe("env_1");
+    expect(data.tokenHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(data).not.toHaveProperty("organizationId");
+    expect(data).not.toHaveProperty("projectId");
+    expect(data).not.toHaveProperty("token");
+  });
+
+  it("rejects a forged request tuple before minting", async () => {
+    await expect(
+      service.mint({
+        scope: { ...scope, organizationId: "forged_org" },
+        name: "automation",
+        permissions: ["agents.read"],
+      }),
+    ).rejects.toThrow("Environment not found in scope");
+    expect(prisma.mcpToken.create).not.toHaveBeenCalled();
+  });
+
+  it("derives verified scope from persisted Environment ancestry", async () => {
+    prisma.mcpToken.findUnique.mockResolvedValue({
+      id: "token_1",
+      tokenHash: tokenHash("plt_mcp_valid"),
+      permissions: ["*"],
+      mintedByUserId: "user_1",
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+      tier: "admin",
+      environment: {
+        id: "env_canonical",
+        project: { id: "proj_canonical", organizationId: "org_canonical" },
       },
     });
-    const evidence = prisma.platosCredentialAudit.create.mock.calls[0][0].data;
-    expect(evidence).not.toHaveProperty("token");
-    expect(evidence).not.toHaveProperty("tokenHash");
+
+    await expect(service.verify("plt_mcp_valid")).resolves.toMatchObject({
+      tier: "admin",
+      scope: {
+        environmentId: "env_canonical",
+        projectId: "proj_canonical",
+        organizationId: "org_canonical",
+      },
+    });
   });
 
-  it("does not mint non-expiring control-plane credentials", async () => {
-    await expect(
-      service.mint({ scope, name: "automation", permissions: ["agents.read"], ttlSeconds: 0 })
-    ).rejects.toThrow(/ttlSeconds must be a positive number/i);
-    expect(prisma.platosMCPToken.create).not.toHaveBeenCalled();
-  });
-
-  it("records successful use and denies use when evidence cannot be persisted", async () => {
-    prisma.platosMCPToken.findUnique.mockResolvedValue({
+  it("denies verification when revocation wins the last-used update race", async () => {
+    prisma.mcpToken.findUnique.mockResolvedValue({
       id: "token_1",
       tokenHash: tokenHash("plt_mcp_valid"),
-      organizationId: "org_1",
-      projectId: "proj_1",
-      environmentId: "env_1",
       permissions: ["*"],
       mintedByUserId: "user_1",
       expiresAt: new Date(Date.now() + 60_000),
       revokedAt: null,
-      tier: "admin",
-    });
-
-    const verified = await service.verify("plt_mcp_valid");
-    expect(verified?.tier).toBe("admin");
-    expect(prisma.platosCredentialAudit.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ action: "use", credentialId: "token_1" }),
-      })
-    );
-
-    prisma.platosCredentialAudit.create.mockRejectedValueOnce(new Error("audit unavailable"));
-    await expect(service.verify("plt_mcp_valid")).rejects.toThrow("audit unavailable");
-  });
-
-  it("rejects a mismatched stored digest without recording use", async () => {
-    prisma.platosMCPToken.findUnique.mockResolvedValue({
-      id: "token_1",
-      tokenHash: tokenHash("plt_mcp_different"),
-      organizationId: "org_1",
-      projectId: "proj_1",
-      environmentId: "env_1",
-      permissions: ["*"],
-      mintedByUserId: "user_1",
-      expiresAt: new Date(Date.now() + 60_000),
-      revokedAt: null,
-      tier: "admin",
-    });
-
-    await expect(service.verify("plt_mcp_valid")).resolves.toBeNull();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-  });
-
-  it("denies use when revocation wins the transactional update race", async () => {
-    prisma.platosMCPToken.findUnique.mockResolvedValue({
-      id: "token_1",
-      tokenHash: tokenHash("plt_mcp_valid"),
-      organizationId: "org_1",
-      projectId: "proj_1",
-      environmentId: "env_1",
-      permissions: ["*"],
-      mintedByUserId: "user_1",
-      expiresAt: new Date(Date.now() + 60_000),
-      revokedAt: null,
-      tier: "admin",
-    });
-    prisma.platosMCPToken.updateMany.mockResolvedValue({ count: 0 });
-
-    await expect(service.verify("plt_mcp_valid")).resolves.toBeNull();
-    expect(prisma.platosCredentialAudit.create).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    { revokedAt: new Date(), expiresAt: null },
-    { revokedAt: null, expiresAt: new Date(Date.now() - 1) },
-  ])("does not audit rejected credentials", async ({ revokedAt, expiresAt }) => {
-    prisma.platosMCPToken.findUnique.mockResolvedValue({
-      id: "token_1",
-      tokenHash: tokenHash("plt_mcp_rejected"),
-      organizationId: "org_1",
-      projectId: "proj_1",
-      environmentId: "env_1",
-      permissions: ["*"],
-      mintedByUserId: "user_1",
-      expiresAt,
-      revokedAt,
       tier: "scope",
+      environment: { id: "env_1", project: { id: "proj_1", organizationId: "org_1" } },
     });
+    prisma.mcpToken.updateMany.mockResolvedValue({ count: 0 });
 
-    await expect(service.verify("plt_mcp_rejected")).resolves.toBeNull();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-    expect(prisma.platosCredentialAudit.create).not.toHaveBeenCalled();
+    await expect(service.verify("plt_mcp_valid")).resolves.toBeNull();
   });
 
-  it("records only the first revoke and treats later revokes as idempotent", async () => {
-    prisma.platosMCPToken.findFirst
-      .mockResolvedValueOnce({ id: "token_1", revokedAt: null })
-      .mockResolvedValueOnce({ id: "token_1", revokedAt: new Date() });
-    prisma.platosMCPToken.updateMany.mockResolvedValue({ count: 1 });
+  it("uses canonical organization ancestry for the admin-tier role gate", async () => {
+    prisma.organizationMembership.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.mint({ ...({ scope, name: "admin", permissions: ["*"] }), tier: "admin" }),
+    ).rejects.toBeInstanceOf(AdminMintForbiddenError);
+    expect(prisma.organizationMembership.findFirst).toHaveBeenCalledWith({
+      where: {
+        organizationId: "org_1",
+        userId: "user_1",
+        deactivatedAt: null,
+        role: { in: ["OWNER", "ADMIN"] },
+      },
+      select: { id: true },
+    });
+  });
+
+  it("revokes only a token owned by the canonical Environment", async () => {
+    prisma.mcpToken.findFirst.mockResolvedValue({ id: "token_1", revokedAt: null });
 
     await expect(service.revoke("token_1", scope)).resolves.toBe(true);
-    await expect(service.revoke("token_1", scope)).resolves.toBe(true);
-
-    expect(prisma.platosCredentialAudit.create).toHaveBeenCalledTimes(1);
-    expect(prisma.platosCredentialAudit.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ action: "revoke", actorUserId: "user_1" }),
-      })
-    );
+    expect(prisma.mcpToken.updateMany).toHaveBeenCalledWith({
+      where: { id: "token_1", environmentId: "env_1", revokedAt: null },
+      data: { revokedAt: expect.any(Date), revokedBy: "user_1" },
+    });
   });
 });

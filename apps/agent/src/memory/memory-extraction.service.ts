@@ -9,7 +9,6 @@ import { ScopedEnvService } from "../providers/scoped-env.service";
 import { MemoryService, type ScopeTuple, type MemoryKind } from "./memory.service";
 import { KnowledgeGraphService } from "./knowledge-graph.service";
 import { validateMemoryPayload } from "./memory-kind.validator";
-import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { CostService } from "../monitoring/cost.service";
 import { ProfileCacheService } from "./profile-cache.service";
 import { env } from "../shared/env";
@@ -30,10 +29,9 @@ import { env } from "../shared/env";
  *   is recorded on `memory.metadata.entities` so the trace back to the
  *   graph is O(1).
  *
- * The extractor is idempotent-ish: the source threadId + message ids are
- * stamped on every row, so re-runs append duplicates rather than
- * mutating existing ones. The scheduled task keeps a per-thread "last run"
- * cursor in working memory so repeated runs only ingest new messages.
+ * Extraction provenance is stamped with clean Thread/Turn IDs. A database
+ * uniqueness constraint plus content hash is authoritative for dedupe; the
+ * Redis watermark is only a scheduler optimization.
  */
 
 const DEFAULT_EXTRACTION_MODEL = "anthropic:claude-haiku-4-5-20251001";
@@ -134,7 +132,6 @@ export class MemoryExtractionService {
     private readonly memoryService: MemoryService,
     private readonly graph: KnowledgeGraphService,
     @Optional() private readonly scopedEnv?: ScopedEnvService,
-    @Optional() private readonly crypto?: MessageCryptoService,
     @Optional() private readonly costService?: CostService,
     @Optional() private readonly profileCache?: ProfileCacheService,
     @Optional() @Inject(REDIS_TOKEN) private readonly redis?: any,
@@ -146,37 +143,59 @@ export class MemoryExtractionService {
   ): Promise<ExtractFromThreadOutput> {
     if (!input.threadId) throw new Error("extractFromThread: `threadId` is required");
 
-    const thread = await this.prisma.platosAgentThread.findFirst({
+    const thread = await this.prisma.thread.findFirst({
       where: {
         id: input.threadId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
+        environment: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
       },
-      select: { id: true, agentId: true, userId: true, platosEndUserId: true, updatedAt: true },
+      select: {
+        id: true,
+        agentId: true,
+        endUserId: true,
+        endUser: {
+          select: {
+            identities: {
+              where: { disabledAt: null },
+              orderBy: { createdAt: "asc" },
+              take: 1,
+              select: { subject: true },
+            },
+          },
+        },
+      },
     });
     if (!thread) {
       return { memoriesCreated: 0, entitiesCreated: 0, relationshipsCreated: 0, skipped: 0, reason: "thread-not-found" };
     }
-    const userId: string | null = thread.userId ?? null;
+    const userId: string = thread.endUser.identities[0]?.subject ?? thread.endUserId;
     if (!userId) {
       return { memoriesCreated: 0, entitiesCreated: 0, relationshipsCreated: 0, skipped: 0, reason: "thread-has-no-user" };
     }
 
     // Resolve the agent's extraction policy (O.2).
-    let storedPolicy: unknown = null;
-    if (thread.agentId) {
-      const agent = await this.prisma.platosAgent.findFirst({
-        where: {
-          id: thread.agentId,
-          organizationId: scope.organizationId,
+    const binding = await this.prisma.agentBinding.findFirst({
+      where: {
+        environmentId: scope.environmentId,
+        agentId: thread.agentId,
+        environment: {
           projectId: scope.projectId,
-          environmentId: scope.environmentId,
+          project: { organizationId: scope.organizationId },
         },
-        select: { extractionPolicy: true },
-      });
-      storedPolicy = agent?.extractionPolicy ?? null;
-    }
+      },
+      select: { activeAgentVersion: { select: { memoryConfig: true } } },
+    });
+    if (!binding) throw new Error("Memory extraction AgentBinding not found or access denied");
+    const memoryConfig = binding.activeAgentVersion.memoryConfig;
+    const runtime = memoryConfig && typeof memoryConfig === "object" && !Array.isArray(memoryConfig)
+      ? (memoryConfig as Record<string, unknown>).__runtime
+      : null;
+    const storedPolicy = runtime && typeof runtime === "object" && !Array.isArray(runtime)
+      ? (runtime as Record<string, unknown>).extractionPolicy
+      : null;
     const basePolicy = resolveExtractionPolicy(storedPolicy);
     const policy: ExtractionPolicy = input.policyOverride
       ? resolveExtractionPolicy({ ...basePolicy, ...input.policyOverride })
@@ -185,58 +204,47 @@ export class MemoryExtractionService {
       return { memoriesCreated: 0, entitiesCreated: 0, relationshipsCreated: 0, skipped: 0, reason: "extraction-disabled" };
     }
 
-    // Watermark — skip threads with no activity since the last extraction.
-    // Without this, every hourly sweep re-judged the same window and wrote
-    // near-duplicate memories (observed live: identical facts at 10:00,
-    // 11:00, and 12:00 from one thread). Keyed on thread.updatedAt (bumps
-    // on new messages); manual kicks pass `force` to bypass.
-    const wmKey = `memx:wm:${input.threadId}`;
-    const threadStamp = (thread as any).updatedAt ? new Date((thread as any).updatedAt).toISOString() : null;
-    if (!input.force && this.redis && threadStamp) {
-      try {
-        const wm = await this.redis.get(wmKey);
-        if (wm && wm >= threadStamp) {
-          return { memoriesCreated: 0, entitiesCreated: 0, relationshipsCreated: 0, skipped: 0, reason: "no-new-activity" };
-        }
-      } catch {
-        // Redis hiccup — proceed without the watermark.
-      }
-    }
-    const setWatermark = () => {
-      if (this.redis && threadStamp) {
-        this.redis.set(wmKey, threadStamp, "EX", 60 * 60 * 24 * 14).catch(() => undefined);
-      }
-    };
-
+    // Redis stores only a scheduler optimization keyed to the latest durable
+    // Turn. Correctness does not depend on it: the clean Memory unique key is
+    // the authoritative extraction-dedupe boundary.
     // Pull the last N messages (N = max(minMessagesBeforeRun * 2, 40) up to 80
     // to give the judge enough context without runaway token cost).
     const windowSize = Math.max(Math.min(policy.minMessagesBeforeRun * 2, 80), 20);
-    const messages: Array<{
+    const turns: Array<{
       id: string;
-      role: string;
-      content: string | null;
-      createdAt: Date;
-      encKeyVersion: number | null;
-    }> = await this.prisma.platosAgentMessage.findMany({
+      sequence: number;
+      inputText: string | null;
+      outputText: string | null;
+    }> = await this.prisma.turn.findMany({
       where: {
         threadId: input.threadId,
-        status: "active",
+        status: "SUCCEEDED",
       },
-      // EOBD.19 review follow-up — include encKeyVersion so the
-      // transcript we feed the judge LLM is plaintext, not ciphertext.
       select: {
         id: true,
-        role: true,
-        content: true,
-        createdAt: true,
-        encKeyVersion: true,
+        sequence: true,
+        inputText: true,
+        outputText: true,
       },
-      orderBy: { createdAt: "desc" },
-      take: windowSize,
+      orderBy: { sequence: "desc" },
+      take: Math.ceil(windowSize / 2),
     });
-    if (messages.length < policy.minMessagesBeforeRun) {
-      // Mark covered — new messages bump thread.updatedAt past the watermark.
-      setWatermark();
+    const latestTurnId = turns[0]?.id ?? null;
+    const wmKey = `memx:wm:${input.threadId}`;
+    if (!input.force && this.redis && latestTurnId) {
+      try {
+        if (await this.redis.get(wmKey) === latestTurnId) {
+          return { memoriesCreated: 0, entitiesCreated: 0, relationshipsCreated: 0, skipped: 0, reason: "no-new-activity" };
+        }
+      } catch (error: any) {
+        this.logger.warn(`Memory extraction watermark read failed: ${error?.message ?? error}`);
+      }
+    }
+    const messageCount = turns.reduce(
+      (count, turn) => count + (turn.inputText ? 1 : 0) + (turn.outputText ? 1 : 0),
+      0,
+    );
+    if (messageCount < policy.minMessagesBeforeRun) {
       return {
         memoriesCreated: 0,
         entitiesCreated: 0,
@@ -246,15 +254,12 @@ export class MemoryExtractionService {
       };
     }
 
-    const ordered = [...messages].reverse();
+    const ordered = [...turns].reverse();
     const transcript = ordered
-      .filter((m) => m.content)
-      .map((m) => {
-        const plain = this.crypto
-          ? this.crypto.decryptIfNeeded(m.content, m.encKeyVersion ?? null)
-          : m.content;
-        return `${m.role.toUpperCase()}: ${plain}`;
-      })
+      .flatMap((turn) => [
+        ...(turn.inputText ? [`USER: ${turn.inputText}`] : []),
+        ...(turn.outputText ? [`ASSISTANT: ${turn.outputText}`] : []),
+      ])
       .join("\n\n");
 
     // Run the judge.
@@ -269,27 +274,24 @@ export class MemoryExtractionService {
     for (const e of judge.entities ?? []) {
       const key = stableSlug(e.entityKey || e.name || "");
       if (!key) continue;
-      try {
-        const ent = await this.graph.upsertEntity(scope, {
-          userId,
-          entityKey: key,
-          entityType: e.type || "other",
-          label: e.name || key,
-          aliases: Array.isArray(e.aliases) ? e.aliases : [],
-        });
-        if (!entityKeyToId.has(key)) {
-          entityKeyToId.set(key, ent.id);
-          entitiesCreated += 1;
-        }
-      } catch (err: any) {
-        this.logger.warn(`entity upsert failed for "${key}": ${err?.message || err}`);
+      const ent = await this.graph.upsertEntity(scope, {
+        userId,
+        agentId: thread.agentId,
+        entityKey: key,
+        entityType: e.type || "other",
+        label: e.name || key,
+        aliases: Array.isArray(e.aliases) ? e.aliases : [],
+      });
+      if (!entityKeyToId.has(key)) {
+        entityKeyToId.set(key, ent.id);
+        entitiesCreated += 1;
       }
     }
 
     // 2) Write memories. Validator-pass, kind-filter, threshold-filter, cap at maxPerSession.
     let memoriesCreated = 0;
     let skipped = 0;
-    const sourceMessageIds = ordered.map((m) => m.id);
+    const sourceTurnIds = ordered.map((turn) => turn.id);
     const candidatesSorted = (judge.memories ?? [])
       .slice()
       .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
@@ -332,24 +334,19 @@ export class MemoryExtractionService {
         ...(entityKeys.length > 0 ? { entities: entityKeys } : {}),
       };
 
-      try {
-        await this.memoryService.add(scope, {
-          userId,
-          agentId: thread.agentId ?? null,
-          platosEndUserId: (thread as any).platosEndUserId ?? null,
-          kind: checked.kind,
-          content: checked.content,
-          metadata,
-          source: "extracted",
-          sourceThreadId: input.threadId,
-          sourceMessageIds,
-          extractorVersion: EXTRACTOR_VERSION,
-        });
-        memoriesCreated += 1;
-      } catch (err: any) {
-        skipped += 1;
-        this.logger.warn(`memory add failed: ${err?.message || err}`);
-      }
+      await this.memoryService.add(scope, {
+        userId,
+        agentId: thread.agentId,
+        kind: checked.kind,
+        content: checked.content,
+        metadata,
+        source: "extracted",
+        sourceThreadId: input.threadId,
+        sourceTurnIds,
+        extractorVersion: EXTRACTOR_VERSION,
+        confidence,
+      });
+      memoriesCreated += 1;
     }
 
     // 3) Relationships — only create when both endpoints exist in entityKeyToId.
@@ -361,34 +358,32 @@ export class MemoryExtractionService {
       const fromId = entityKeyToId.get(fromKey);
       const toId = entityKeyToId.get(toKey);
       if (!fromId || !toId) continue;
-      try {
-        await this.graph.createRelationship(scope, {
-          userId,
-          fromEntityId: fromId,
-          toEntityId: toId,
-          relationshipType: rel.type,
-          weight: typeof rel.weight === "number" ? rel.weight : null,
-        });
-        relationshipsCreated += 1;
-      } catch (err: any) {
-        this.logger.warn(
-          `relationship create failed (${fromKey} -${rel.type}-> ${toKey}): ${err?.message || err}`,
-        );
-      }
+      await this.graph.createRelationship(scope, {
+        userId,
+        agentId: thread.agentId,
+        fromEntityId: fromId,
+        toEntityId: toId,
+        relationshipType: rel.type,
+        weight: typeof rel.weight === "number" ? rel.weight : null,
+      });
+      relationshipsCreated += 1;
     }
 
     // Transcript fully evaluated — stamp the watermark so unchanged threads
     // are skipped by subsequent sweeps.
-    setWatermark();
+    if (this.redis && latestTurnId) {
+      this.redis.set(wmKey, latestTurnId, "EX", 60 * 60 * 24 * 14).catch((error: any) =>
+        this.logger.warn(`Memory extraction watermark write failed: ${error?.message ?? error}`),
+      );
+    }
 
     // PROFILE SYNTHESIS — roll the user's atoms into the maintained narrative
     // profile (throttled per user+agent; best-effort, never fails extraction).
     // Awaited so it finishes within this async sweep, catch-guarded so a
     // synthesis failure can't undo the extraction that already committed.
-    if (thread.userId) {
-      await this.synthesizeProfile(scope, thread.userId, thread.agentId ?? "default").catch(
-        () => undefined,
-      );
+    const synthesis = await this.synthesizeProfile(scope, userId, thread.agentId);
+    if (!synthesis.ok && synthesis.reason && !["throttled", "too-few-atoms"].includes(synthesis.reason)) {
+      this.logger.error(`Profile synthesis failed for thread ${thread.id}: ${synthesis.reason}`);
     }
 
     return {
@@ -421,17 +416,17 @@ export class MemoryExtractionService {
     if (!userId) return { ok: false, reason: "no-user" };
     const throttleMs = opts?.throttleMs ?? 60 * 60 * 1000; // once/hour by default
     try {
-      const prior = await this.prisma.platosMemory.findFirst({
-        where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          userId,
-          agentId,
-          kind: "profile",
-          metadata: { path: ["profileKey"], equals: "_synthesized" },
-        },
-        select: { id: true, metadata: true },
+      const profiles = await this.memoryService.list(scope, {
+        userId,
+        agentId,
+        kind: "profile",
+        limit: 100,
+        includeArchived: false,
+      });
+      const prior = profiles.find((memory) => {
+        const metadata = memory.metadata;
+        return metadata && typeof metadata === "object" && !Array.isArray(metadata)
+          && (metadata as Record<string, unknown>).profileKey === "_synthesized";
       });
       if (!opts?.force && prior) {
         const synAt = (prior.metadata as { synthesizedAt?: string } | null)?.synthesizedAt;
@@ -463,29 +458,39 @@ export class MemoryExtractionService {
       const narrative = (text || "").trim();
       if (!narrative) return { ok: false, reason: "empty" };
 
-      // Supersede the prior synthesized row, then write the fresh one.
-      if (prior) await this.memoryService.delete(scope, prior.id).catch(() => undefined);
-      await this.memoryService.add(scope, {
-        userId,
-        agentId,
-        kind: "profile",
-        content: narrative,
-        metadata: {
-          profileKey: "_synthesized",
-          synthesizedAt: new Date().toISOString(),
-          atomCount: atoms.length,
-        },
-        source: "manual",
-        visibility: "private",
-        agentVisible: true,
-      });
-      await this.profileCache?.invalidate(scope, agentId, userId).catch(() => undefined);
+      const metadata = {
+        profileKey: "_synthesized",
+        synthesizedAt: new Date().toISOString(),
+        atomCount: atoms.length,
+      };
+      if (prior) {
+        const updated = await this.memoryService.update(scope, prior.id, {
+          kind: "profile",
+          content: narrative,
+          metadata,
+          visibility: "private",
+          agentVisible: true,
+        }, userId);
+        if (!updated) throw new Error("Synthesized profile disappeared during atomic update");
+      } else {
+        await this.memoryService.add(scope, {
+          userId,
+          agentId,
+          kind: "profile",
+          content: narrative,
+          metadata,
+          source: "manual",
+          visibility: "private",
+          agentVisible: true,
+        });
+      }
+      await this.profileCache?.invalidate(scope, agentId, userId);
       this.logger.log(
         `[profile-synth] ${scope.organizationId}/${userId}/${agentId}: ${atoms.length} atoms -> ${narrative.length} chars`,
       );
       return { ok: true };
     } catch (err: any) {
-      this.logger.warn(`[profile-synth] failed for ${userId}/${agentId}: ${err?.message ?? err}`);
+      this.logger.error(`[profile-synth] failed for ${userId}/${agentId}: ${err?.message ?? err}`);
       return { ok: false, reason: err?.message || "error" };
     }
   }

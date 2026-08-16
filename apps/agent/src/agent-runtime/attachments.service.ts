@@ -2,7 +2,11 @@ import { Injectable, Inject, Logger } from "@nestjs/common";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { FilePart, ImagePart } from "ai";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import {
+  type ControlDatabaseClient,
+  environmentScopeWhere,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 import { env } from "../shared/env";
 
@@ -23,6 +27,12 @@ export interface ResolvedAttachment {
   originalName: string | null;
 }
 
+type AttachmentAccessScope = Pick<
+  RequestScope,
+  "organizationId" | "projectId" | "environmentId"
+> &
+  Partial<Pick<RequestScope, "userId" | "sessionId">>;
+
 /**
  * AttachmentsService — agent-side resolver for multimodal attachments.
  *
@@ -31,18 +41,18 @@ export interface ResolvedAttachment {
  *   2. Browser calls POST /threads/:threadId/messages or WS `message`
  *      with `attachmentIds`.
  *   3. On the receive side (agent), this service:
- *      - validates that each id is in the caller's scope (findFirst filters
- *        by organizationId+projectId+environmentId — fail-closed on mismatch)
+ *      - resolves the authenticated thread to its canonical clean EndUser
+ *      - validates that each id belongs to that EndUser in the caller's Environment
  *      - pulls bytes from MinIO via the in-container endpoint
  *      - bumps the row's `messageId` + `expiresAt` (attaches it)
  *      - returns ai-SDK ImagePart / FilePart objects
  *   4. AgentService merges those parts with the user message string and
  *      passes a multimodal content array to streamText.
  *
- * Cross-scope isolation: every DB lookup is scoped by the full four-axis
- * tuple. If the caller's scope doesn't match the attachment's row, the
- * lookup returns null and we throw — the user's original message still
- * flows so the LLM sees the error.
+ * Cross-scope isolation: every DB lookup is scoped through canonical
+ * Environment ancestry and the authenticated thread's EndUser. If either
+ * boundary doesn't match, the lookup returns null and we throw before any
+ * object bytes are fetched.
  */
 /**
  * EOBD.37 — per-attachment and per-turn size caps. Reject pre-fetch so a
@@ -78,7 +88,9 @@ export class AttachmentsService {
   private readonly maxAttachmentBytes: number;
   private readonly maxTurnTotalBytes: number;
 
-  constructor(@Inject(PRISMA_TOKEN) private readonly prisma: any) {
+  constructor(
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+  ) {
     const endpoint = env.MINIO_ENDPOINT || "http://minio:9000";
     // PIFSP-15: Log the effective endpoint at boot so misconfigurations
     // (e.g. public https endpoint accidentally set as internal endpoint)
@@ -136,23 +148,24 @@ export class AttachmentsService {
    */
   async resolveAttachments(
     attachmentIds: string[],
-    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+    scope: AttachmentAccessScope,
   ): Promise<ResolvedAttachment[]> {
     if (!attachmentIds || attachmentIds.length === 0) return [];
 
-    const rows = await this.prisma.platosMessageAttachment.findMany({
+    const endUserId = await this.resolveCanonicalEndUserId(scope);
+
+    const rows = await this.prisma.messageAttachment.findMany({
       where: {
         id: { in: attachmentIds },
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        endUserId,
+        ...environmentScopeWhere(scope),
       },
     });
 
     // Any id the caller passed that didn't come back is out-of-scope; refuse
     // quietly (log) rather than silently drop — the agent needs to know.
     if (rows.length !== attachmentIds.length) {
-      const foundIds = new Set(rows.map((r: any) => r.id));
+      const foundIds = new Set(rows.map((row) => row.id));
       const missing = attachmentIds.filter((id) => !foundIds.has(id));
       throw new Error(
         `Attachment(s) not accessible in scope: ${missing.join(", ")}`,
@@ -215,22 +228,63 @@ export class AttachmentsService {
    */
   async markAttachedToMessage(
     attachmentIds: string[],
-    messageId: string,
-    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+    turnId: string,
+    scope: AttachmentAccessScope,
   ): Promise<void> {
     if (!attachmentIds || attachmentIds.length === 0) return;
+    const endUserId = await this.resolveCanonicalEndUserId(scope);
+    const uniqueAttachmentIds = [...new Set(attachmentIds)];
+
+    const [targetTurn, accessibleAttachments] = await Promise.all([
+      this.prisma.turn.findFirst({
+        where: {
+          id: turnId,
+          thread: {
+            endUserId,
+            environmentId: scope.environmentId,
+            environment: {
+              projectId: scope.projectId,
+              project: { organizationId: scope.organizationId },
+            },
+          },
+        },
+        select: { id: true },
+      }),
+      this.prisma.messageAttachment.findMany({
+        where: {
+          id: { in: uniqueAttachmentIds },
+          endUserId,
+          ...environmentScopeWhere(scope),
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!targetTurn) {
+      throw new Error("Target turn is not accessible to the attachment owner");
+    }
+    if (accessibleAttachments.length !== uniqueAttachmentIds.length) {
+      const foundIds = new Set(accessibleAttachments.map((row) => row.id));
+      const missing = uniqueAttachmentIds.filter((id) => !foundIds.has(id));
+      throw new Error(
+        `Attachment(s) not accessible in scope: ${missing.join(", ")}`,
+      );
+    }
+
     const newExpiresAt = new Date(
       Date.now() + this.ttlDays * 24 * 60 * 60 * 1000,
     );
-    await this.prisma.platosMessageAttachment.updateMany({
+    const updated = await this.prisma.messageAttachment.updateMany({
       where: {
-        id: { in: attachmentIds },
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        id: { in: uniqueAttachmentIds },
+        endUserId,
+        ...environmentScopeWhere(scope),
       },
-      data: { messageId, expiresAt: newExpiresAt },
+      data: { turnId, expiresAt: newExpiresAt },
     });
+    if (updated.count !== uniqueAttachmentIds.length) {
+      throw new Error("Attachment ownership changed before binding completed");
+    }
   }
 
   /**
@@ -279,6 +333,26 @@ export class AttachmentsService {
       new GetObjectCommand({ Bucket: this.bucket, Key: storageKey }),
       { expiresIn: 300 },
     );
+  }
+
+  private async resolveCanonicalEndUserId(
+    scope: AttachmentAccessScope,
+  ): Promise<string> {
+    if (!scope.userId || !scope.sessionId) {
+      throw new Error("Attachment access requires an authenticated thread");
+    }
+    const thread = await this.prisma.thread.findFirst({
+      where: {
+        id: scope.sessionId,
+        endUser: { disabledAt: null },
+        ...environmentScopeWhere(scope),
+      },
+      select: { endUserId: true },
+    });
+    if (!thread) {
+      throw new Error("Authenticated thread is not accessible in scope");
+    }
+    return thread.endUserId;
   }
 
   private async fetchObjectBytes(storageKey: string): Promise<Uint8Array> {

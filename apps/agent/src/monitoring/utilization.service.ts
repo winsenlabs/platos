@@ -1,8 +1,7 @@
-import { Injectable, Inject } from "@nestjs/common";
-// ONE SOURCE OF TRUTH for cost — see billable-usage.ts.
-import { billableCostCents } from "./billable-usage";
+import { Injectable, Inject, Logger, Optional } from "@nestjs/common";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
+import { CostService } from "./cost.service";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -34,9 +33,13 @@ export interface UtilizationPayload {
  */
 @Injectable()
 export class UtilizationService {
+  private readonly logger = new Logger(UtilizationService.name);
   private prisma: any;
 
-  constructor(@Inject(PRISMA_TOKEN) prisma: any) {
+  constructor(
+    @Inject(PRISMA_TOKEN) prisma: any,
+    @Optional() private readonly costService?: CostService,
+  ) {
     this.prisma = prisma;
   }
 
@@ -48,50 +51,58 @@ export class UtilizationService {
     const topUserLimit = options.topUserLimit ?? 10;
     const since = new Date(Date.now() - days * 86400_000);
 
-    const [activeThreads, totalThreads, totalMessages, messagesInRange] = await Promise.all([
-      // Active = thread updated within the window.
-      this.prisma.platosAgentThread.count({
-        where: {
+    const threadScope = {
+      environmentId: scope.environmentId,
+      environment: {
+        project: {
+          id: scope.projectId,
           organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          status: "active",
+        },
+      },
+    };
+
+    const [activeThreads, totalThreads, allTurns, turnsInRange] = await Promise.all([
+      // Active = thread updated within the window.
+      this.prisma.thread.count({
+        where: {
+          ...threadScope,
+          status: "ACTIVE",
           updatedAt: { gte: since },
         },
       }),
-      this.prisma.platosAgentThread.count({
-        where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        },
+      this.prisma.thread.count({
+        where: threadScope,
       }),
-      this.prisma.platosAgentMessage.count({
-        where: {
-          thread: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-          },
-        },
+      this.prisma.turn.findMany({
+        where: { thread: threadScope },
+        select: { inputText: true, outputText: true, steps: { select: { id: true } } },
       }),
-      this.prisma.platosAgentMessage.findMany({
+      this.prisma.turn.findMany({
         where: {
           createdAt: { gte: since },
-          thread: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-          },
+          thread: threadScope,
         },
         select: {
           createdAt: true,
-          role: true,
-          responseJson: true,
-          thread: { select: { userId: true, id: true, updatedAt: true } },
+          inputText: true,
+          outputText: true,
+          steps: { select: { id: true } },
+          thread: { select: { endUserId: true, id: true, updatedAt: true } },
         },
       }),
     ]);
+
+    const messageCountForTurn = (turn: {
+      inputText: string | null;
+      outputText: string | null;
+      steps: Array<unknown>;
+    }): number =>
+      (turn.inputText !== null ? 1 : 0) +
+      (turn.outputText !== null || turn.steps.length > 0 ? 1 : 0);
+    const totalMessages = (allTurns as Array<any>).reduce(
+      (count, turn) => count + messageCountForTurn(turn),
+      0,
+    );
 
     // Build day buckets (oldest → newest)
     const dayBuckets = new Map<string, number>();
@@ -99,10 +110,13 @@ export class UtilizationService {
       const d = new Date(Date.now() - i * 86400_000).toISOString().slice(0, 10);
       dayBuckets.set(d, 0);
     }
-    for (const m of messagesInRange as Array<{ createdAt: Date }>) {
-      const d = m.createdAt.toISOString().slice(0, 10);
+    for (const turn of turnsInRange as Array<any>) {
+      const d = turn.createdAt.toISOString().slice(0, 10);
       if (dayBuckets.has(d)) {
-        dayBuckets.set(d, (dayBuckets.get(d) ?? 0) + 1);
+        dayBuckets.set(
+          d,
+          (dayBuckets.get(d) ?? 0) + messageCountForTurn(turn),
+        );
       }
     }
     const messagesByDay = Array.from(dayBuckets.entries()).map(([date, messages]) => ({
@@ -112,29 +126,47 @@ export class UtilizationService {
 
     // Top users — aggregate from messagesInRange
     const byUser = new Map<string, { messages: number; threads: Set<string>; costCents: number; lastActiveAt: Date | null }>();
-    for (const m of messagesInRange as Array<{
+    for (const turn of turnsInRange as Array<{
       createdAt: Date;
-      role: string;
-      responseJson: any;
-      thread: { userId: string; id: string; updatedAt: Date } | null;
+      inputText: string | null;
+      outputText: string | null;
+      steps: Array<unknown>;
+      thread: { endUserId: string; id: string; updatedAt: Date } | null;
     }>) {
-      if (!m.thread) continue;
-      const bucket = byUser.get(m.thread.userId) ?? {
+      if (!turn.thread) continue;
+      const bucket = byUser.get(turn.thread.endUserId) ?? {
         messages: 0,
         threads: new Set<string>(),
         costCents: 0,
         lastActiveAt: null as Date | null,
       };
-      bucket.messages += 1;
-      bucket.threads.add(m.thread.id);
-      if (m.role === "assistant" && m.responseJson) {
-        const rj = m.responseJson as { cost_cents?: number } | null;
-        bucket.costCents += billableCostCents(rj as any);
+      bucket.messages += messageCountForTurn(turn);
+      bucket.threads.add(turn.thread.id);
+      if (!bucket.lastActiveAt || turn.createdAt > bucket.lastActiveAt) {
+        bucket.lastActiveAt = turn.createdAt;
       }
-      if (!bucket.lastActiveAt || m.createdAt > bucket.lastActiveAt) {
-        bucket.lastActiveAt = m.createdAt;
+      byUser.set(turn.thread.endUserId, bucket);
+    }
+
+    if (this.costService && byUser.size > 0) {
+      try {
+        const costRows = await this.costService.getCostByUser(scope, {
+          days,
+          limit: Math.max(topUserLimit, byUser.size),
+        });
+        for (const cost of costRows) {
+          const bucket = byUser.get(cost.userId);
+          if (bucket) bucket.costCents = cost.costCents;
+        }
+      } catch (err: any) {
+        this.logger.warn(
+          `[utilization] user cost attribution unavailable: ${err?.message ?? err}`,
+        );
       }
-      byUser.set(m.thread.userId, bucket);
+    } else if (!this.costService && byUser.size > 0) {
+      this.logger.warn(
+        "[utilization] CostService is not wired; top-user cost attribution is unavailable",
+      );
     }
 
     const topUsers = Array.from(byUser.entries())
@@ -154,19 +186,17 @@ export class UtilizationService {
     let newUsers = 0;
     let returningUsers = 0;
     if (usersInWindow.length > 0) {
-      const earliestPerUser: Array<{ userId: string; createdAt: Date }> = await this.prisma.platosAgentThread.findMany({
+      const earliestPerUser: Array<{ endUserId: string; createdAt: Date }> = await this.prisma.thread.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          userId: { in: usersInWindow },
+          ...threadScope,
+          endUserId: { in: usersInWindow },
         },
-        select: { userId: true, createdAt: true },
+        select: { endUserId: true, createdAt: true },
         orderBy: { createdAt: "asc" },
       });
       const firstSeen = new Map<string, Date>();
       for (const t of earliestPerUser) {
-        if (!firstSeen.has(t.userId)) firstSeen.set(t.userId, t.createdAt);
+        if (!firstSeen.has(t.endUserId)) firstSeen.set(t.endUserId, t.createdAt);
       }
       for (const uid of usersInWindow) {
         const first = firstSeen.get(uid);

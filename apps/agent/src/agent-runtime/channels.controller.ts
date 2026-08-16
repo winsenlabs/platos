@@ -18,6 +18,7 @@ import * as crypto from "node:crypto";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { ChannelRuntimeService } from "../channels/channel-runtime.service";
+import { ChannelPersistenceService } from "../channels/channel-persistence.service";
 import { requireOperator, type RequestScope } from "../auth/scope.guard";
 import { validateAgentRouting } from "./channel-routing";
 
@@ -36,8 +37,8 @@ import { validateAgentRouting } from "./channel-routing";
  *
  * Every handler is OPERATOR-ONLY (requireOperator) and ScopeGuard-scoped —
  * the same posture as the operator-only entity-management endpoints on
- * AgentController. `credentials` is stored ENCRYPTED via MessageCryptoService
- * (the same envelope entity test-credentials use) and is NEVER returned;
+ * AgentController. `credentials` is stored only in a referenced Credential
+ * envelope and is NEVER returned;
  * `webhookSecret` is redacted on every read. The full secret-bearing
  * `webhookPath` is returned ONLY on create + rotate (one-time reveal).
  */
@@ -75,7 +76,7 @@ const SLACK_APP_NAME_MAX = 35;
  * inbound URL — known only AFTER the row is created (the create-row-first
  * ordering resolves that chicken-and-egg). The BYO bot token arrives later
  * (OAuth-install or manual paste), so `token_rotation_enabled` stays false here
- * (rotation is a marketplace-tier property: PlatosChannelApp.tokenRotation).
+ * (rotation is a marketplace-tier ChannelApp property).
  */
 function buildSlackAppManifest(appName: string, requestUrl: string) {
   const name = appName.slice(0, SLACK_APP_NAME_MAX);
@@ -123,12 +124,15 @@ function buildSlackAppManifest(appName: string, requestUrl: string) {
 @Controller("api/v1/agent/channels")
 export class ChannelsController {
   private readonly logger = new Logger(ChannelsController.name);
+  private readonly persistence: ChannelPersistenceService;
 
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
-    private readonly messageCrypto: MessageCryptoService,
-    private readonly moduleRef: ModuleRef,
-  ) {}
+    messageCrypto: MessageCryptoService,
+    private readonly moduleRef: ModuleRef
+  ) {
+    this.persistence = new ChannelPersistenceService(prisma, messageCrypto);
+  }
 
   /**
    * Evict the runtime's cached Chat instance after a mutation so the next
@@ -141,9 +145,7 @@ export class ChannelsController {
    */
   private invalidateRuntime(connectionId: string): void {
     try {
-      this.moduleRef
-        .get(ChannelRuntimeService, { strict: false })
-        ?.invalidate(connectionId);
+      this.moduleRef.get(ChannelRuntimeService, { strict: false })?.invalidate(connectionId);
     } catch {
       // Runtime not registered (e.g. focused test module) — TTL is the backstop.
     }
@@ -160,19 +162,28 @@ export class ChannelsController {
     );
   }
 
-  private scopeWhere(scope: RequestScope) {
-    return {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
-    };
-  }
-
-  /** Redact the two secret columns; expose only whether credentials are set. */
+  /** Redact Credential payloads; expose only whether provider credentials are set. */
   private projectRow(row: any) {
-    const { credentials, webhookSecret, ...rest } = row;
+    const {
+      credentials,
+      webhookSecret,
+      hasCredentials,
+      credential,
+      environment,
+      entity,
+      credentialRevision,
+      ...rest
+    } = row;
+    void credentials;
     void webhookSecret;
-    return { ...rest, hasCredentials: credentials != null };
+    void credential;
+    void environment;
+    void entity;
+    void credentialRevision;
+    return {
+      ...rest,
+      hasCredentials: hasCredentials === true,
+    };
   }
 
   private webhookPathFull(id: string, webhookSecret: string): string {
@@ -204,29 +215,27 @@ export class ChannelsController {
     return !!v && typeof v === "object" && !Array.isArray(v);
   }
 
-  /** Encrypt a credentials object into the stored envelope, or null to clear. */
-  private encryptCredentials(raw: unknown): string | null {
-    if (!this.isPlainObject(raw)) return null;
-    return JSON.stringify(this.messageCrypto.encryptJsonField(raw));
-  }
-
   /** Forged-id guard — the agent must belong to this exact scope. */
   private async agentInScope(scope: RequestScope, agentId: string): Promise<boolean> {
-    const agent = await this.prisma.platosAgent.findFirst({
-      where: { id: agentId, ...this.scopeWhere(scope) },
+    const binding = await this.prisma.agentBinding.findFirst({
+      where: {
+        agentId,
+        environmentId: scope.environmentId,
+        agent: { projectId: scope.projectId },
+        environment: {
+          project: { id: scope.projectId, organizationId: scope.organizationId },
+        },
+      },
       select: { id: true },
     });
-    return !!agent;
+    return !!binding;
   }
 
   @Get()
   async list(@Req() req: Request) {
     const scope = this.getScope(req);
     requireOperator(scope); // operator-only — same posture as entity management
-    const rows = await this.prisma.platosChannelConnection.findMany({
-      where: this.scopeWhere(scope),
-      orderBy: { createdAt: "desc" },
-    });
+    const rows = await this.persistence.listConnections(scope);
     return { channels: (rows as any[]).map((r) => this.projectRow(r)) };
   }
 
@@ -241,12 +250,14 @@ export class ChannelsController {
       agentRouting?: unknown;
       credentials?: Record<string, unknown> | null;
       config?: Record<string, unknown> | null;
-    },
+    }
   ) {
     const scope = this.getScope(req);
     requireOperator(scope);
 
-    const provider = String(body?.provider ?? "").trim().toLowerCase();
+    const provider = String(body?.provider ?? "")
+      .trim()
+      .toLowerCase();
     const agentId = String(body?.agentId ?? "").trim();
     if (!CHANNEL_PROVIDERS.has(provider)) {
       throw new HttpException(
@@ -254,26 +265,25 @@ export class ChannelsController {
           error: "invalid_provider",
           message: "provider must be one of slack | telegram | whatsapp | discord",
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
     if (!agentId) {
       throw new HttpException(
         { error: "invalid_params", message: "agentId is required" },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
     if (!(await this.agentInScope(scope, agentId))) {
       throw new HttpException(
         { error: "unknown_agent_id", message: `agent ${agentId} not found in scope`, agentId },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
-    const displayName =
-      typeof body?.displayName === "string" ? body.displayName.trim() : undefined;
+    const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : undefined;
     const configJson = this.isPlainObject(body?.config) ? body.config : undefined;
-    const encryptedCreds = this.encryptCredentials(body?.credentials);
+    const credentials = this.isPlainObject(body?.credentials) ? body.credentials : undefined;
 
     // Validate + normalize the optional routing table (each rule's agentId is
     // checked in-scope, same forged-id guard as the default agentId above).
@@ -283,7 +293,7 @@ export class ChannelsController {
       if (!routing.ok) {
         throw new HttpException(
           { error: routing.error, message: routing.message },
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
       agentRoutingData = routing.rules;
@@ -291,17 +301,14 @@ export class ChannelsController {
 
     const webhookSecret = crypto.randomBytes(32).toString("hex");
 
-    const row = await this.prisma.platosChannelConnection.create({
-      data: {
-        ...this.scopeWhere(scope),
-        provider,
-        agentId,
-        ...(displayName !== undefined ? { displayName } : {}),
-        ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
-        ...(encryptedCreds !== null ? { credentials: encryptedCreds } : {}),
-        ...(configJson !== undefined ? { config: configJson } : {}),
-        webhookSecret,
-      },
+    const row = await this.persistence.createConnection(scope, {
+      provider,
+      defaultAgentId: agentId,
+      webhookSecret,
+      ...(displayName !== undefined ? { displayName } : {}),
+      ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
+      ...(credentials !== undefined ? { credentials } : {}),
+      ...(configJson !== undefined ? { config: configJson } : {}),
     });
 
     // One-time reveal: full inbound path + plaintext secret (create only).
@@ -316,12 +323,12 @@ export class ChannelsController {
   /**
    * Connect v3 (Phase D) — BYO app MINT. Upgrade the manual multi-screen Slack
    * walkthrough to "paste one config token, Platos builds your Slack app". This
-   * operates on the CONNECTION tier (PlatosChannelConnection — the customer-owned
-   * BYO app), NOT the marketplace PlatosChannelApp tier.
+   * operates on the ChannelConnection tier (the customer-owned BYO app), NOT the
+   * marketplace ChannelApp tier.
    *
    * CHICKEN-AND-EGG: the manifest's `event_subscriptions.request_url` must embed
    * the connection's id + webhookSecret, which only exist AFTER the row is
-   * created. ORDER: (1) create the PlatosChannelConnection row (mints its
+   * created. ORDER: (1) create the ChannelConnection row (mints its
    * webhookSecret → its inbound URL is now known), (2) call apps.manifest.create
    * with that URL baked into the manifest, (3) store the returned
    * client_id/client_secret/signing_secret ENCRYPTED onto the row. On a Slack
@@ -343,17 +350,17 @@ export class ChannelsController {
       displayName?: string;
       configToken?: string;
       configRefreshToken?: string;
-    },
+    }
   ) {
     const scope = this.getScope(req);
     requireOperator(scope);
 
-    const provider = String(body?.provider ?? "slack").trim().toLowerCase();
+    const provider = String(body?.provider ?? "slack")
+      .trim()
+      .toLowerCase();
     const agentId = String(body?.agentId ?? "").trim();
-    const configToken =
-      typeof body?.configToken === "string" ? body.configToken.trim() : "";
-    const displayName =
-      typeof body?.displayName === "string" ? body.displayName.trim() : "";
+    const configToken = typeof body?.configToken === "string" ? body.configToken.trim() : "";
+    const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : "";
 
     // Only Slack exposes the App Manifest API.
     if (provider !== "slack") {
@@ -362,31 +369,38 @@ export class ChannelsController {
           error: "unsupported_provider",
           message: "manifest mint supports provider 'slack' only",
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
     if (!agentId) {
       throw new HttpException(
         { error: "invalid_params", message: "agentId is required" },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
     if (!configToken) {
       throw new HttpException(
         { error: "invalid_params", message: "configToken is required" },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
     // In-scope guard (forged ids rejected) + name fallback for the manifest.
-    const agent = await this.prisma.platosAgent.findFirst({
-      where: { id: agentId, ...this.scopeWhere(scope) },
-      select: { id: true, name: true },
+    const binding = await this.prisma.agentBinding.findFirst({
+      where: {
+        agentId,
+        environmentId: scope.environmentId,
+        agent: { projectId: scope.projectId },
+        environment: {
+          project: { id: scope.projectId, organizationId: scope.organizationId },
+        },
+      },
+      select: { agent: { select: { id: true, name: true } } },
     });
-    if (!agent) {
+    if (!binding) {
       throw new HttpException(
         { error: "unknown_agent_id", message: `agent ${agentId} not found in scope`, agentId },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -400,22 +414,19 @@ export class ChannelsController {
           message:
             "PLATOS_PUBLIC_BASE_URL (or PLATOS_AGENT_PUBLIC_WS_URL) must be set so the app's event request URL can be built.",
         },
-        HttpStatus.SERVICE_UNAVAILABLE,
+        HttpStatus.SERVICE_UNAVAILABLE
       );
     }
 
-    const appName = (displayName || agent.name || "Platos Agent").trim() || "Platos Agent";
+    const appName = (displayName || binding.agent.name || "Platos Agent").trim() || "Platos Agent";
 
     // (1) CREATE the connection row FIRST so its inbound URL (id + secret) exists.
     const webhookSecret = crypto.randomBytes(32).toString("hex");
-    const row = await this.prisma.platosChannelConnection.create({
-      data: {
-        ...this.scopeWhere(scope),
-        provider,
-        agentId,
-        ...(displayName ? { displayName } : {}),
-        webhookSecret,
-      },
+    const row = await this.persistence.createConnection(scope, {
+      provider,
+      defaultAgentId: agentId,
+      ...(displayName ? { displayName } : {}),
+      webhookSecret,
     });
 
     const requestUrl = `${origin}${this.webhookPathFull(row.id, webhookSecret)}`;
@@ -437,25 +448,23 @@ export class ChannelsController {
       });
       json = await resp.json();
     } catch {
-      await this.rollbackMint(row.id);
-      this.logger.error(
-        `[channels] apps.manifest.create request failed connection=${row.id}`,
-      );
+      await this.rollbackMint(scope, row.id);
+      this.logger.error(`[channels] apps.manifest.create request failed connection=${row.id}`);
       throw new HttpException(
         {
           error: "slack_unreachable",
           message: "Could not reach Slack to create the app. Please try again.",
         },
-        HttpStatus.BAD_GATEWAY,
+        HttpStatus.BAD_GATEWAY
       );
     }
 
     if (!json?.ok) {
-      await this.rollbackMint(row.id);
+      await this.rollbackMint(scope, row.id);
       // Surface ONLY the Slack error code — never the config token / manifest.
       const slackError = typeof json?.error === "string" ? json.error : "unknown_error";
       this.logger.warn(
-        `[channels] apps.manifest.create rejected connection=${row.id} error=${slackError}`,
+        `[channels] apps.manifest.create rejected connection=${row.id} error=${slackError}`
       );
       throw new HttpException(
         {
@@ -463,7 +472,7 @@ export class ChannelsController {
           slackError,
           message: `Slack rejected the manifest (code: ${slackError}).`,
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -483,11 +492,11 @@ export class ChannelsController {
     const oauthAuthorizeUrl =
       typeof json.oauth_authorize_url === "string" ? json.oauth_authorize_url : null;
 
-    const encryptedCreds = this.encryptCredentials({
+    const credentials = {
       ...(clientId ? { clientId } : {}),
       ...(clientSecret ? { clientSecret } : {}),
       ...(signingSecret ? { signingSecret } : {}),
-    });
+    };
     const config: Record<string, unknown> = {
       ...(appId ? { slackAppId: appId } : {}),
       // clientId is PUBLIC (rides the OAuth authorize URL) — surface it in the
@@ -497,13 +506,8 @@ export class ChannelsController {
 
     let updated: any;
     try {
-      updated = await this.prisma.platosChannelConnection.update({
-        where: { id: row.id },
-        data: {
-          ...(encryptedCreds !== null ? { credentials: encryptedCreds } : {}),
-          config,
-        },
-      });
+      updated = await this.persistence.updateConnection(scope, row.id, {}, { credentials, config });
+      if (!updated) throw new Error("channel connection unavailable");
     } catch {
       // The app WAS created at Slack but we couldn't persist its secrets. Do NOT
       // roll back the row (that would orphan a live Slack app whose request URL
@@ -517,14 +521,12 @@ export class ChannelsController {
           appId,
           message: "The Slack app was created but its credentials could not be saved.",
         },
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
     this.invalidateRuntime(row.id);
 
-    this.logger.log(
-      `[channels] minted BYO slack app connection=${row.id} appId=${appId ?? "?"}`,
-    );
+    this.logger.log(`[channels] minted BYO slack app connection=${row.id} appId=${appId ?? "?"}`);
 
     // One-time reveal: the secret-bearing inbound URL (already registered at
     // Slack as the request URL) + the authorize URL to finish the install.
@@ -543,9 +545,9 @@ export class ChannelsController {
    * manifest (or is unreachable) — a credential-less row would verify nothing
    * and post nothing, but keeping the mint all-or-nothing avoids clutter.
    */
-  private async rollbackMint(connectionId: string): Promise<void> {
+  private async rollbackMint(scope: RequestScope, connectionId: string): Promise<void> {
     try {
-      await this.prisma.platosChannelConnection.delete({ where: { id: connectionId } });
+      await this.persistence.deleteConnection(scope, connectionId);
     } catch {
       // Already gone / raced — nothing to undo.
     }
@@ -555,9 +557,7 @@ export class ChannelsController {
   async getOne(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
     requireOperator(scope);
-    const row = await this.prisma.platosChannelConnection.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-    });
+    const row = await this.persistence.loadScopedConnection(scope, id);
     if (!row) throw new HttpException("Channel not found", HttpStatus.NOT_FOUND);
     return { channel: this.projectRow(row) };
   }
@@ -574,18 +574,16 @@ export class ChannelsController {
       agentRouting?: unknown;
       config?: Record<string, unknown> | null;
       credentials?: Record<string, unknown> | null;
-    },
+    }
   ) {
     const scope = this.getScope(req);
     requireOperator(scope);
 
-    const existing = await this.prisma.platosChannelConnection.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-      select: { id: true },
-    });
+    const existing = await this.persistence.loadScopedConnection(scope, id);
     if (!existing) throw new HttpException("Channel not found", HttpStatus.NOT_FOUND);
 
     const data: Record<string, unknown> = {};
+    const credentialData: Record<string, unknown> = {};
     if (Object.prototype.hasOwnProperty.call(body, "displayName")) {
       data.displayName = typeof body.displayName === "string" ? body.displayName.trim() : null;
     }
@@ -595,21 +593,21 @@ export class ChannelsController {
       if (!agentId) {
         throw new HttpException(
           { error: "invalid_params", message: "agentId must be non-empty" },
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
       if (!(await this.agentInScope(scope, agentId))) {
         throw new HttpException(
           { error: "unknown_agent_id", message: `agent ${agentId} not found in scope`, agentId },
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
-      data.agentId = agentId;
+      data.defaultAgentId = agentId;
     }
     if (Object.prototype.hasOwnProperty.call(body, "agentRouting")) {
       const ar = body.agentRouting;
       if (ar === null) {
-        data.agentRouting = null; // explicit clear → default agent only
+        data.agentRouting = []; // explicit clear → default agent only
       } else {
         // array → validate + normalize (rule agentIds checked in-scope, same
         // guard as the default agentId); anything else → 400.
@@ -617,34 +615,25 @@ export class ChannelsController {
         if (!routing.ok) {
           throw new HttpException(
             { error: routing.error, message: routing.message },
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.BAD_REQUEST
           );
         }
         data.agentRouting = routing.rules;
       }
     }
     if (Object.prototype.hasOwnProperty.call(body, "config")) {
-      data.config = this.isPlainObject(body.config) ? body.config : null;
+      credentialData.config = this.isPlainObject(body.config) ? body.config : null;
     }
     if (Object.prototype.hasOwnProperty.call(body, "credentials")) {
-      // object → re-encrypt; null (or anything non-object) → clear.
-      data.credentials = this.encryptCredentials(body.credentials);
+      credentialData.credentials = this.isPlainObject(body.credentials) ? body.credentials : null;
     }
 
-    if (Object.keys(data).length === 0) {
-      const row = await this.prisma.platosChannelConnection.findFirst({
-        where: { id, ...this.scopeWhere(scope) },
-      });
-      // Raced a concurrent delete between the existence check and this
-      // refetch — 404 instead of throwing on the null destructure.
-      if (!row) throw new HttpException("channel connection not found", HttpStatus.NOT_FOUND);
-      return { channel: this.projectRow(row) };
+    if (Object.keys(data).length === 0 && Object.keys(credentialData).length === 0) {
+      return { channel: this.projectRow(existing) };
     }
 
-    const updated = await this.prisma.platosChannelConnection.update({
-      where: { id },
-      data,
-    });
+    const updated = await this.persistence.updateConnection(scope, id, data, credentialData);
+    if (!updated) throw new HttpException("channel connection not found", HttpStatus.NOT_FOUND);
     this.invalidateRuntime(id);
     return { channel: this.projectRow(updated) };
   }
@@ -653,12 +642,9 @@ export class ChannelsController {
   async remove(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
     requireOperator(scope);
-    const existing = await this.prisma.platosChannelConnection.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-      select: { id: true },
-    });
+    const existing = await this.persistence.loadScopedConnection(scope, id);
     if (!existing) throw new HttpException("Channel not found", HttpStatus.NOT_FOUND);
-    await this.prisma.platosChannelConnection.delete({ where: { id } });
+    await this.persistence.deleteConnection(scope, id);
     this.invalidateRuntime(id);
     return { deleted: true, id };
   }
@@ -667,17 +653,12 @@ export class ChannelsController {
   async rotateSecret(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
     requireOperator(scope);
-    const existing = await this.prisma.platosChannelConnection.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-      select: { id: true },
-    });
+    const existing = await this.persistence.loadScopedConnection(scope, id);
     if (!existing) throw new HttpException("Channel not found", HttpStatus.NOT_FOUND);
 
     const webhookSecret = crypto.randomBytes(32).toString("hex");
-    const updated = await this.prisma.platosChannelConnection.update({
-      where: { id },
-      data: { webhookSecret },
-    });
+    const updated = await this.persistence.updateConnection(scope, id, {}, { webhookSecret });
+    if (!updated) throw new HttpException("Channel not found", HttpStatus.NOT_FOUND);
     this.invalidateRuntime(id);
     // One-time reveal: full inbound path + plaintext secret (rotate only).
     return {

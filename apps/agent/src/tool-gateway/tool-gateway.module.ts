@@ -22,7 +22,7 @@ import { EntityMcpDiscoveryService } from "./mcp-transport/entity-mcp-discovery.
 import { EntityMcpDiscoverySchedulerService } from "./mcp-transport/entity-mcp-discovery-scheduler.service";
 import { MonitoringModule } from "../monitoring/monitoring.module";
 // ProvidersModule exports ScopedEnvService, which McpCredentialService injects
-// to resolve `{{secret}}` credsSecretKey values. ProvidersModule imports
+// to resolve linked Credential references used by `{{secret}}`. ProvidersModule imports
 // nothing back into tool-gateway, so no circular module graph.
 import { ProvidersModule } from "../providers/providers.module";
 // Issue #1 — `MCPPermissionGatewayService` is also exported by

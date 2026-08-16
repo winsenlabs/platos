@@ -22,7 +22,11 @@ import {
 } from "@nestjs/common";
 import { type Request, type Response } from "express";
 import * as crypto from "node:crypto";
-import { ConversationService } from "../memory/conversation.service";
+import {
+  CONVERSATION_REVISION_NOT_SUPPORTED,
+  ConversationRevisionNotSupportedError,
+  ConversationService,
+} from "../memory/conversation.service";
 import { AgentTaskService } from "./agent-task.service";
 import { TurnDispatchService } from "./turn-dispatch.service";
 import { withHeartbeat } from "../shared/async-heartbeat";
@@ -308,6 +312,13 @@ export class AgentController {
     // prompt's auto-resolved sessionContext (which reads from the EndUser
     // row) has nothing to inject for `{{user.name}}` / `{{user.email}}`.
     const userMeta = (scope.sessionContext as { user?: { name?: string; email?: string } } | null | undefined)?.user;
+    // Preserve the not-found contract at the HTTP boundary. The clean
+    // ConversationService also checks the AgentBinding, but its generic error
+    // would otherwise be rendered as a 500 for a cross-scope agent id.
+    const agent = await this.agentCrud.findById(agentId, scope);
+    if (!agent) {
+      throw new NotFoundException({ error: "Agent not found", agentId });
+    }
     const thread = await this.conversationService.createThread(
       scope,
       agentId,
@@ -645,10 +656,8 @@ export class AgentController {
   /**
    * Edit a user message + rerun the agent from there.
    *
-   * Soft-deletes N+ messages (status="edited_out") so the immutable audit
-   * trail is preserved — never mutates history (Theme F invariant §5.2).
-   * Returns the new user message row; the caller then initiates a fresh
-   * streaming turn to regenerate the assistant response.
+   * Disabled on the clean normalized schema until distinct revision and
+   * branch-head relations can preserve the original Turn evidence.
    */
   @Post("threads/:threadId/messages/:messageId/edit-and-rerun")
   async editAndRerun(
@@ -670,6 +679,9 @@ export class AgentController {
       );
       return { message: updated };
     } catch (err: any) {
+      if (err instanceof ConversationRevisionNotSupportedError) {
+        throw new HttpException(CONVERSATION_REVISION_NOT_SUPPORTED, HttpStatus.CONFLICT);
+      }
       return { error: err?.message || "Edit failed", status: 400 };
     }
   }
@@ -677,10 +689,8 @@ export class AgentController {
   /**
    * Retry an assistant turn with (optionally) different model or temperature.
    *
-   * Soft-deletes the target + any subsequent messages and returns the
-   * preceding user message so the caller can re-stream. Per Theme F §1, the
-   * callers that pass `model` or `temperature` hints should include them in
-   * the subsequent send-message call; this endpoint itself only rewinds.
+   * Disabled on the clean normalized schema until retries can create a new
+   * branch without overwriting the original Turn, Step, or ToolCall evidence.
    */
   @Post("threads/:threadId/messages/:messageId/retry")
   async retryAssistant(
@@ -697,6 +707,9 @@ export class AgentController {
       );
       return res;
     } catch (err: any) {
+      if (err instanceof ConversationRevisionNotSupportedError) {
+        throw new HttpException(CONVERSATION_REVISION_NOT_SUPPORTED, HttpStatus.CONFLICT);
+      }
       return { error: err?.message || "Retry failed", status: 400 };
     }
   }
@@ -1052,7 +1065,7 @@ export class AgentController {
     // authenticates WHICH agent a runtime token may drive, not config access.
     requireOperator(scope);
     const agent = await this.agentCrud.findById(agentId, scope);
-    if (!agent) return { error: "Agent not found", status: 404 };
+    if (!agent) throw new NotFoundException({ error: "Agent not found", agentId });
     return agent;
   }
 
@@ -1178,15 +1191,15 @@ export class AgentController {
     });
     const healthRows: Array<{
       toolId: string;
-      entityId: string;
+      entityExternalId: string | null;
       environmentId: string;
       lastStatus: string | null;
-    }> = await (this.agentService as any).prisma.platosToolHealth.findMany({
+    }> = await (this.agentService as any).prisma.toolHealth.findMany({
       where: { environmentId: scope.environmentId },
     });
     const healthByKey = new Map<string, string | null>();
     for (const h of healthRows) {
-      healthByKey.set(`${h.toolId}:${h.entityId}`, h.lastStatus);
+      healthByKey.set(`${h.toolId}:${h.entityExternalId ?? ""}`, h.lastStatus);
     }
 
     const rows = tools.map((t) => {
@@ -1208,7 +1221,7 @@ export class AgentController {
         toolName: t.toolName,
         sourceEntity: t.sourceEntityId,
         enabled: t.enabled,
-        health: healthByKey.get(`${t.toolId}:${t.entityPk}`) ?? "unknown",
+        health: healthByKey.get(`${t.toolId}:${t.sourceEntityId}`) ?? "unknown",
         params: resolved.params,
         mapped,
         total: resolved.params.length,
@@ -1645,13 +1658,13 @@ export class AgentController {
       enabledOnly: false,
     });
 
-    const healthRows = await (this.agentService as any).prisma.platosToolHealth.findMany({
+    const healthRows = await (this.agentService as any).prisma.toolHealth.findMany({
       where: { environmentId: scope.environmentId },
     });
     const healthByKey = new Map<string, any>();
     for (const h of healthRows as Array<{
       toolId: string;
-      entityId: string;
+      entityExternalId: string | null;
       environmentId: string;
       lastStatus: string | null;
       failCount: number;
@@ -1662,13 +1675,13 @@ export class AgentController {
       lastCalledAt: Date | null;
       updatedAt: Date;
     }>) {
-      healthByKey.set(`${h.toolId}:${h.entityId}`, h);
+      healthByKey.set(`${h.toolId}:${h.entityExternalId ?? ""}`, h);
     }
 
     return {
       environmentId: scope.environmentId,
       rows: tools.map((t) => {
-        const health = healthByKey.get(`${t.toolId}:${t.entityPk}`);
+        const health = healthByKey.get(`${t.toolId}:${t.sourceEntityId}`);
         return {
           toolId: t.toolId,
           toolName: t.toolName,
@@ -2117,16 +2130,16 @@ export class AgentController {
     const prisma = (this.agentService as any).prisma;
     const taken = new Set<string>();
     try {
-      const rows = await prisma.platosConnectedEntity.findMany({
+      const rows = await prisma.entity.findMany({
         where: {
-          organizationId: scope.organizationId,
           projectId: scope.projectId,
-          entityId: { in: candidates },
+          project: { organizationId: scope.organizationId },
+          externalId: { in: candidates },
         },
-        select: { entityId: true },
+        select: { externalId: true },
       });
-      for (const r of rows as Array<{ entityId: string }>) {
-        taken.add(r.entityId);
+      for (const r of rows as Array<{ externalId: string }>) {
+        taken.add(r.externalId);
       }
     } catch {
       // DB hiccup → return candidates unfiltered rather than fail the whole
@@ -2222,6 +2235,7 @@ export class AgentController {
       entity = await this.authService.registerEntity({
         organizationId: scope.organizationId,
         projectId: scope.projectId,
+        environmentId: scope.environmentId,
         entityId: body.entityId,
         displayName: body.displayName,
         mcpUrls,
@@ -2519,16 +2533,18 @@ export class AgentController {
       // another org can't be persisted into the allow-list.
       if (cleaned.length > 0) {
         const prisma = (this.agentService as any).prisma;
-        const known = await prisma.platosAgent.findMany({
+        const known = await prisma.agentBinding.findMany({
           where: {
-            id: { in: cleaned },
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
             environmentId: scope.environmentId,
+            agentId: { in: cleaned },
+            environment: {
+              projectId: scope.projectId,
+              project: { organizationId: scope.organizationId },
+            },
           },
-          select: { id: true },
+          select: { agentId: true },
         });
-        const knownIds = new Set(known.map((a: { id: string }) => a.id));
+        const knownIds = new Set(known.map((binding: { agentId: string }) => binding.agentId));
         const bogus = cleaned.filter((id) => !knownIds.has(id));
         if (bogus.length > 0) {
           throw new HttpException(
@@ -2540,11 +2556,9 @@ export class AgentController {
           );
         }
       }
-      const prisma = (this.agentService as any).prisma;
-      await prisma.platosConnectedEntity.update({
-        where: { id: (entity as { id: string }).id },
-        data: { linkedAgentIds: cleaned },
-      });
+      // The retired Entity-linked allowlist has no clean persistence column.
+      // Canonical visibility is AgentToolPolicy-owned; retain this boundary as
+      // a compatibility no-op until the route moves to policy mutations.
       this.toolRegistry.syncEntityLinkedAgents(
         (entity as { id: string }).id,
         cleaned,
@@ -2806,19 +2820,23 @@ export class AgentController {
       throw new NotFoundException({ error: "Entity not found", entityId });
     }
     const prisma = (this.agentService as any).prisma;
-    const config = await prisma.platosEntityMcpConfig.findUnique({
-      where: { entityPk: (entity as { id: string }).id },
-    });
+    const entityPk = (entity as { id: string }).id;
+    const [config, bearerTokenCount] = await Promise.all([
+      prisma.entityMcpConfig.findUnique({ where: { entityId: entityPk } }),
+      prisma.mcpBearerToken.count({
+        where: { entityId: entityPk, revokedAt: null },
+      }),
+    ]);
     if (!config) {
       // Default: MCP is disabled by default per PIFSP-21 decisions.
       return {
-        entityPk: (entity as { id: string }).id,
+        entityPk,
         entityId,
         enabled: false,
         identityMode: "bearer",
-        identityProviders: null,
-        bearerTokenCount: 0,
-        branding: null,
+        identityProviders: [],
+        bearerTokenCount,
+        branding: {},
         toolAllowlist: [],
         consentCopy: null,
         redirectUriAllowlist: [],
@@ -2827,15 +2845,15 @@ export class AgentController {
       };
     }
     return {
-      entityPk: config.entityPk,
+      entityPk: config.entityId,
       entityId,
       enabled: config.enabled,
       identityMode: config.identityMode,
       identityProviders: config.identityProviders,
-      bearerTokenCount: config.bearerTokenCount,
+      bearerTokenCount,
       branding: config.branding,
       toolAllowlist: config.toolAllowlist,
-      consentCopy: config.consentCopy,
+      consentCopy: null,
       redirectUriAllowlist: config.redirectUriAllowlist,
       rateLimitPerMinute: config.rateLimitPerMinute,
       exists: true,
@@ -2880,16 +2898,13 @@ export class AgentController {
       update.identityMode = body.identityMode;
     }
     if (body.identityProviders !== undefined) {
-      update.identityProviders = body.identityProviders;
+      update.identityProviders = body.identityProviders ?? [];
     }
-    if (body.branding !== undefined) update.branding = body.branding;
+    if (body.branding !== undefined) update.branding = body.branding ?? {};
     if (Array.isArray(body.toolAllowlist)) {
       update.toolAllowlist = body.toolAllowlist
         .filter((x) => typeof x === "string" && x.length > 0)
         .slice(0, 500);
-    }
-    if (body.consentCopy !== undefined) {
-      update.consentCopy = body.consentCopy === null ? null : String(body.consentCopy).slice(0, 5000);
     }
     if (Array.isArray(body.redirectUriAllowlist)) {
       update.redirectUriAllowlist = body.redirectUriAllowlist
@@ -2901,18 +2916,15 @@ export class AgentController {
     }
 
     // Upsert so the first PATCH auto-creates the row.
-    await prisma.platosEntityMcpConfig.upsert({
-      where: { entityPk },
+    await prisma.entityMcpConfig.upsert({
+      where: { entityId: entityPk },
       create: {
-        entityPk,
+        entityId: entityPk,
         enabled: update.enabled ?? false,
         identityMode: update.identityMode ?? "bearer",
-        ...(update.identityProviders !== undefined
-          ? { identityProviders: update.identityProviders }
-          : {}),
-        ...(update.branding !== undefined ? { branding: update.branding } : {}),
+        identityProviders: update.identityProviders ?? [],
+        branding: update.branding ?? {},
         toolAllowlist: (update.toolAllowlist as string[] | undefined) ?? [],
-        ...(update.consentCopy !== undefined ? { consentCopy: update.consentCopy } : {}),
         redirectUriAllowlist:
           (update.redirectUriAllowlist as string[] | undefined) ?? [],
         rateLimitPerMinute: (update.rateLimitPerMinute as number | undefined) ?? 60,
@@ -2920,19 +2932,22 @@ export class AgentController {
       update,
     });
 
-    const fresh = await prisma.platosEntityMcpConfig.findUnique({
-      where: { entityPk },
-    });
+    const [fresh, bearerTokenCount] = await Promise.all([
+      prisma.entityMcpConfig.findUnique({ where: { entityId: entityPk } }),
+      prisma.mcpBearerToken.count({
+        where: { entityId: entityPk, revokedAt: null },
+      }),
+    ]);
     return {
       entityPk,
       entityId,
       enabled: fresh.enabled,
       identityMode: fresh.identityMode,
       identityProviders: fresh.identityProviders,
-      bearerTokenCount: fresh.bearerTokenCount,
+      bearerTokenCount,
       branding: fresh.branding,
       toolAllowlist: fresh.toolAllowlist,
-      consentCopy: fresh.consentCopy,
+      consentCopy: null,
       redirectUriAllowlist: fresh.redirectUriAllowlist,
       rateLimitPerMinute: fresh.rateLimitPerMinute,
       exists: true,
@@ -4969,40 +4984,35 @@ Write the summary now:`;
     const scopeTuple = this.scopeTuple(scope);
 
     const [threadCountAll, threadCountDay, cost7d] = await Promise.all([
-      (this.agentService as any).prisma.platosAgentThread.count({
+      (this.agentService as any).prisma.thread.count({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
         },
       }),
-      (this.agentService as any).prisma.platosAgentThread.count({
+      (this.agentService as any).prisma.thread.count({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
           createdAt: { gte: new Date(Date.now() - 86400_000) },
         },
       }),
       this.costService.getScopeCostRange(scopeTuple, 7),
     ]);
 
-    // PPR-59 — defence-in-depth scope filter. `PlatosToolHealth` only
-    // stores `environmentId` + `entityId` natively — organizationId and
-    // projectId live on the parent `RuntimeEnvironment` row. `environmentId`
-    // alone is already globally unique (RuntimeEnvironment is the scope
-    // container), so a leak would require environmentId reuse across
-    // scopes — which the schema theoretically permits even if the issuer
-    // never does it. Traversing the `environment` relation and re-checking
-    // (org, project) makes the query's scope intent explicit and matches
-    // the §5.1 "full tuple on every scoped read" invariant.
+    // Defence-in-depth scope filter. ToolHealth belongs to an Environment;
+    // traverse the canonical Environment → Project relation to re-check the
+    // full tuple instead of relying on a legacy RuntimeEnvironment delegate.
     const activeToolsRows: Array<{ totalCalls: number; lastCalledAt: Date | null }> =
-      await (this.agentService as any).prisma.platosToolHealth.findMany({
+      await (this.agentService as any).prisma.toolHealth.findMany({
         where: {
           environmentId: scope.environmentId,
           environment: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
+            project: { id: scope.projectId, organizationId: scope.organizationId },
           },
           lastCalledAt: { gte: new Date(Date.now() - 7 * 86400_000) },
         },

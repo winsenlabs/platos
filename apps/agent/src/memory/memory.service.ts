@@ -1,46 +1,27 @@
-import { Injectable, Inject, Logger, Optional } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import * as crypto from "node:crypto";
-import { PRISMA_TOKEN } from "../shared/database.provider";
-import type { RequestScope } from "../auth/scope.guard";
+import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import { EmbeddingService } from "./embedding.service";
 import { requireValidMemoryPayload } from "./memory-kind.validator";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
+import {
+  assertEnvironmentScope,
+  canShareAgentScope,
+  environmentScopeWhere,
+  resolveAgentBinding,
+  resolveEndUser,
+  resolveReadAgentIds,
+  resolveWriteBinding,
+  type MemoryScope,
+} from "./memory-scope";
 
-export type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
+export type ScopeTuple = MemoryScope;
 
-export type MemoryKind =
-  | "fact"
-  | "preference"
-  | "event"
-  | "relationship"
-  /** Theme M.1 — structured per-user fact keyed by metadata.profileKey. */
-  | "profile";
+export type MemoryKind = "fact" | "preference" | "event" | "relationship" | "profile";
 export type MemorySource = "manual" | "extracted" | "imported" | "rag";
-
-/**
- * audit L5 — RAG ingest stamps `source: "rag"` so the AUTOMATIC memory
- * injection can exclude document chunks in SQL (`excludeRag` below).
- *
- * Why not `metadata.__rag`, which is the marker RAG already writes: the
- * `metadata` Json column is envelope-ENCRYPTED at rest whenever
- * PLATOS_MESSAGE_ENCRYPTION_KEY is set — `add()` stores
- * `{__platos_enc:1,v,ct}` and the `__rag` key is not present in the stored
- * JSON at all. A `metadata->>'__rag' IS NULL` / `jsonb_exists(...)`
- * predicate would therefore match nothing on encrypted deployments and
- * silently fail OPEN, injecting raw document text — correct on a dev box
- * with no key, broken in production. (The existing RAG list/retrieve paths
- * post-filter `__rag` in JS, after decryption, for exactly this reason.)
- *
- * `source` is a plaintext String column, so it survives encryption and can
- * be filtered server-side. No migration: the column is a bare `String`,
- * `MemorySource` is a TS-only union.
- */
 export const RAG_MEMORY_SOURCE = "rag" as const;
-/** Theme O.6 — authoritative visibility state. */
 export type MemoryVisibility = "agent_visible" | "hidden" | "private";
 
-/** Shape returned to callers. Excludes the raw embedding — that's only
- *  ever used internally for similarity search. */
 export interface MemoryRow {
   id: string;
   organizationId: string;
@@ -52,49 +33,37 @@ export interface MemoryRow {
   content: string;
   metadata: unknown;
   agentVisible: boolean;
-  /** Theme O.6 — authoritative visibility state. */
   visibility: MemoryVisibility;
   source: string;
   sourceThreadId: string | null;
+  sourceTurnIds: string[];
+  /** @deprecated Read-only API alias. Values are clean Turn IDs. */
   sourceMessageIds: string[];
   extractorVersion: string | null;
-  /**
-   * Theme M.1 / M.5 — per-memory confidence score in [0, 1]. Set by the
-   * extractor judge LLM and bumped up (+0.1) on thumbs-up ratings. NULL
-   * for pre-M.1 rows; recall ranking treats NULL as 0 (no boost).
-   */
   confidence: number | null;
   createdAt: Date;
   updatedAt: Date;
   lastAccessedAt: Date | null;
-  /**
-   * MCPF-W2 — soft-delete marker. `null` for live rows; non-null for
-   * archived rows hidden from default list/search. Set via
-   * `MemoryService.archive`, cleared via `MemoryService.restore`.
-   */
   archivedAt: Date | null;
 }
 
 export interface MemorySearchHit extends MemoryRow {
-  /** Cosine similarity in [0, 1]. Higher = closer. */
   score: number;
 }
 
 export interface AddMemoryInput {
   userId: string;
   agentId?: string | null;
-  /** FK to PlatosEndUser when known. Null for legacy/anonymous rows. */
-  platosEndUserId?: string | null;
   content: string;
   kind?: MemoryKind;
   metadata?: unknown;
   agentVisible?: boolean;
-  /** Theme O.6 — preferred over `agentVisible`. When omitted, derived. */
   visibility?: MemoryVisibility;
   source?: MemorySource;
   sourceThreadId?: string | null;
-  sourceMessageIds?: string[];
+  sourceTurnIds?: string[];
   extractorVersion?: string | null;
+  confidence?: number | null;
 }
 
 export interface UpdateMemoryInput {
@@ -110,47 +79,12 @@ export interface SemanticSearchInput {
   userId: string;
   kind?: MemoryKind | string;
   agentId?: string | null;
+  agentIds?: string[];
   limit?: number;
   minScore?: number;
-  /**
-   * When set, only return memories with `agentVisible = true`.
-   *
-   * Theme O.6 — semanticSearch now also respects `visibility`. The
-   * agent-facing `recall` path filters to `visibility IN ('agent_visible',
-   * 'hidden')` regardless of this flag: "hidden" still lets the agent read
-   * the row (it's just the UI that skips it). "private" is always excluded
-   * from the agent path.
-   */
   agentVisibleOnly?: boolean;
-  /**
-   * Theme O.6 — explicit visibility filter. When omitted, semanticSearch
-   * uses the invariant default: excludes `private` so the agent never
-   * surfaces a user-marked-private memory, but includes both
-   * `agent_visible` and `hidden`. Pass `["agent_visible", "hidden",
-   * "private"]` explicitly from editor-only paths that need the full set.
-   */
   visibilityIn?: MemoryVisibility[];
-  /**
-   * Restrict to a set of agents (cluster-member search). Wins alongside
-   * the scope+user filters; mutually exclusive with `agentId` in practice.
-   */
-  agentIds?: string[];
-  /**
-   * MCPF-W2 — when `true`, semantic search includes archived rows. Default
-   * `false` — archived rows are filtered out so the agent never recalls
-   * them. Restore via `MemoryService.restore`.
-   */
   includeArchived?: boolean;
-  /**
-   * audit L5 — when `true`, exclude RAG document chunks (`source = "rag"`,
-   * see RAG_MEMORY_SOURCE) from the result set. OPT-IN: default `false` so
-   * `rag_retrieve` — which is supposed to find these rows — is unaffected.
-   *
-   * Wire this ONLY on the automatic memory-injection path. RAG chunks derive
-   * visibility "agent_visible" and kind "fact", so once they also carry an
-   * `agentId` they match the injection filter and raw document text would
-   * consume every turn's prompt/memory budget.
-   */
   excludeRag?: boolean;
 }
 
@@ -158,60 +92,33 @@ export interface ListMemoriesInput {
   userId: string;
   kind?: MemoryKind | string;
   agentId?: string | null;
-  /** Restrict to a set of agents (cluster-member listing). */
   agentIds?: string[];
   limit?: number;
   offset?: number;
-  /**
-   * MCPF-W2 — when `true`, the read path returns archived rows alongside
-   * live ones. Default `false` — list/search always filter
-   * `archivedAt IS NULL`. Restore via `MemoryService.restore`.
-   */
   includeArchived?: boolean;
 }
 
-/**
- * Theme L — semantic memory service (L3). Wraps the `PlatosMemory`
- * table plus the pgvector similarity query. The KG side lives in
- * `KnowledgeGraphService` to keep both files focused.
- *
- * Scope discipline: every method takes a `ScopeTuple` and every SQL
- * touch filters on `(organizationId, projectId, environmentId)`. The
- * controller pulls the scope from `ScopeGuard` before calling here —
- * callers never construct a scope from tool inputs.
- */
 @Injectable()
 export class MemoryService {
   private readonly logger = new Logger(MemoryService.name);
 
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     private readonly embeddings: EmbeddingService,
     @Optional() private readonly crypto?: MessageCryptoService,
   ) {}
 
-  /**
-   * EOBD.22 — envelope-stringify a String memory column so it can hold
-   * encrypted PII while remaining passthrough-compatible with pre-
-   * encryption rows. Embeddings MUST be computed on plaintext BEFORE
-   * we encrypt — the stored `content` becomes base64 ciphertext; the
-   * vector stays semantically meaningful because it was embedded from
-   * the plain text.
-   */
-  private encryptContent(value: string | null | undefined): string {
-    if (value === null || value === undefined) return "";
+  private encryptContent(value: string): string {
     if (!this.crypto) return value;
     const wrapped = this.crypto.encryptJsonField(value);
-    if (wrapped && typeof wrapped === "object" && (wrapped as any).__platos_enc === 1) {
-      return JSON.stringify(wrapped);
-    }
-    return value;
+    return wrapped && typeof wrapped === "object" && (wrapped as any).__platos_enc === 1
+      ? JSON.stringify(wrapped)
+      : value;
   }
 
   private decryptContent(value: string | null | undefined): string {
-    if (value === null || value === undefined) return "";
-    if (!this.crypto) return value;
-    if (!value.startsWith("{\"__platos_enc\"")) return value;
+    if (!value) return "";
+    if (!this.crypto || !value.startsWith("{\"__platos_enc\"")) return value;
     try {
       const plain = this.crypto.decryptJsonField(JSON.parse(value));
       return typeof plain === "string" ? plain : value;
@@ -220,701 +127,487 @@ export class MemoryService {
     }
   }
 
-  /**
-   * Insert a new memory row. Computes the embedding inline so a failure
-   * in the embedding pipeline surfaces on the write path — we never
-   * want to silently commit a row with a null vector if the caller
-   * intended to have one. If the embedding provider is unavailable we
-   * throw; callers may pass `agentVisible: false` for editor-only
-   * imports that don't need to be recall-searchable yet.
-   */
-  async add(scope: ScopeTuple, input: AddMemoryInput): Promise<MemoryRow> {
-    this.requireScope(scope);
-    if (!input.userId) throw new Error("MemoryService.add: `userId` is required");
+  private decryptMetadata(value: unknown): unknown {
+    return this.crypto?.decryptJsonField(value ?? null) ?? value ?? null;
+  }
 
-    // Theme O.4 — validate kind + content + metadata shape before we spend
-    // an embedding round-trip on garbage input. `requireValidMemoryPayload`
-    // throws a 400-stamped Error on failure.
+  private async scopeAndUser(scope: ScopeTuple, userId: string) {
+    await assertEnvironmentScope(this.prisma, scope);
+    return resolveEndUser(this.prisma, scope, userId);
+  }
+
+  async add(scope: ScopeTuple, input: AddMemoryInput): Promise<MemoryRow> {
+    if (!input.userId) throw new Error("MemoryService.add: `userId` is required");
     const validated = requireValidMemoryPayload({
       kind: input.kind,
       content: input.content,
       metadata: input.metadata,
     });
-
-    const source: string = input.source || "manual";
-    // Theme O.6 — visibility is the authoritative flag; derive agentVisible
-    // so legacy readers that still reach for the boolean stay consistent.
-    const visibility: MemoryVisibility = normalizeVisibility(
-      input.visibility,
-      input.agentVisible,
+    if (
+      input.confidence !== undefined &&
+      input.confidence !== null &&
+      (!Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1)
+    ) {
+      throw new Error("Memory confidence must be between 0 and 1");
+    }
+    const endUser = await this.scopeAndUser(scope, input.userId);
+    const binding = await resolveWriteBinding(
+      this.prisma,
+      scope,
+      input.agentId,
+      input.sourceThreadId,
     );
+    const source = input.source || "manual";
+    const visibility = normalizeVisibility(input.visibility, input.agentVisible);
     const agentVisible = visibility !== "private";
-
-    // EOBD.46 — dedupe extractor re-runs. Compute sha256(content) and,
-    // when a sourceThreadId is present (only extractor rows have one),
-    // check for an existing row with the same (scope, user, thread,
-    // hash). Found → merge sourceMessageIds + bump lastAccessedAt +
-    // return the existing row. Manual rows (no sourceThreadId) skip
-    // the dedupe check — they're user-driven and should always insert.
+    const sourceTurnIds = Array.from(new Set(input.sourceTurnIds ?? []));
+    if (sourceTurnIds.length && !input.sourceThreadId) {
+      throw new Error("Memory sourceTurnIds require a sourceThreadId");
+    }
+    if (input.sourceThreadId) {
+      const sourceThread = await this.prisma.thread.findFirst({
+        where: {
+          id: input.sourceThreadId,
+          ...environmentScopeWhere(scope),
+          endUserId: endUser.id,
+        },
+        select: { agentId: true, clusterId: true },
+      });
+      if (!sourceThread || !canShareAgentScope(binding, sourceThread)) {
+        throw new Error("Memory source thread not found or outside the acting Agent scope");
+      }
+      if (sourceTurnIds.length) {
+        const sourceTurnCount = await this.prisma.turn.count({
+          where: { id: { in: sourceTurnIds }, threadId: input.sourceThreadId },
+        });
+        if (sourceTurnCount !== sourceTurnIds.length) {
+          throw new Error("Memory sourceTurnIds must belong to the source thread");
+        }
+      }
+    }
     const contentHash = input.sourceThreadId
       ? crypto.createHash("sha256").update(validated.content).digest("hex")
       : null;
-    if (input.sourceThreadId && contentHash) {
-      const dup = await this.prisma.platosMemory.findFirst({
-        where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          userId: input.userId,
-          sourceThreadId: input.sourceThreadId,
-          contentHash,
-        },
-      });
-      if (dup) {
-        const mergedSourceIds = Array.from(
-          new Set([...(dup.sourceMessageIds ?? []), ...(input.sourceMessageIds ?? [])]),
-        );
-        const updated = await this.prisma.platosMemory.update({
-          where: { id: dup.id },
-          data: {
-            sourceMessageIds: mergedSourceIds,
-            lastAccessedAt: new Date(),
-          },
-        });
-        return toMemoryRow(
-          updated,
-          (v) => this.decryptContent(v),
-          (v) => this.crypto?.decryptJsonField(v) ?? v,
-        );
-      }
-    }
 
-    // EOBD.22 — embedding MUST be computed on plaintext so semantic
-    // search works; ciphertext is only the at-rest storage form.
-    //
-    // Theme M (follow-up) — `kind: "profile"` rows are key-value only:
-    // `recall_user_profile` does Prisma findMany with a metadata filter,
-    // not vector search, and the memory-injection path excludes profile
-    // rows via `visibilityIn: ["agent_visible","hidden"]` (profile rows
-    // are `private`). Skipping the embed call here means profile writes
-    // no longer require an embedding provider API key to be configured,
-    // which was silently failing `update_user_profile` calls whenever
-    // OPENAI_API_KEY was unset on the scope. Embedding column is
-    // nullable — the pgvector index simply skips NULL rows.
-    const needsEmbedding = validated.kind !== "profile";
-    const vector = needsEmbedding
-      ? await this.embeddings.embed(validated.content, scope)
-      : null;
-    const storedContent = this.encryptContent(validated.content);
-    // metadata is a Json column — envelope-wrap when crypto available.
-    const storedMetadata =
-      this.crypto?.encryptJsonField(validated.metadata ?? null) ?? (validated.metadata ?? null);
+    const vector = validated.kind === "profile"
+      ? null
+      : await this.embeddings.embed(validated.content, scope);
+    const id = crypto.randomUUID();
+    const storedMetadata = this.crypto?.encryptJsonField(validated.metadata ?? null)
+      ?? validated.metadata
+      ?? null;
 
-    // Two-step: Prisma can't write the Unsupported("vector") column,
-    // so we insert via raw SQL then re-read the row via findFirst.
-    // `$10::vector` on a NULL bind is a no-op cast returning NULL — the
-    // embedding column is nullable (profile rows + async back-fill rows
-    // both leave it NULL at insert time).
-    const id = createCuid();
-    const vectorParam = vector === null ? null : vectorToLiteral(vector);
     await this.prisma.$executeRawUnsafe(
-      `INSERT INTO "PlatosMemory" (
-          "id","organizationId","projectId","environmentId","agentId","userId","platosEndUserId",
-          "kind","content","metadata","embedding","agentVisible","visibility","source",
-          "sourceThreadId","sourceMessageIds","extractorVersion","contentHash",
-          "createdAt","updatedAt","lastAccessedAt"
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::vector,$12,$13,$14,$15,$16,$17,$18,NOW(),NOW(),NULL)`,
+      `INSERT INTO "Memory" (
+         "id", "environmentId", "endUserId", "agentId", "clusterId",
+         "kind", "content", "metadata", "agentVisible", "visibility", "source",
+         "embedding", "sourceThreadId", "sourceTurnIds", "extractorVersion", "contentHash", "confidence",
+         "createdAt", "updatedAt"
+       ) VALUES (
+         $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
+         $6, $7, $8::jsonb, $9, $10, $11,
+         $12::vector, $13::uuid, $14::uuid[], $15, $16, $17, NOW(), NOW()
+       )
+       ON CONFLICT ("environmentId", "endUserId", "sourceThreadId", "contentHash")
+       DO UPDATE SET
+         "sourceTurnIds" = ARRAY(
+           SELECT DISTINCT unnest("Memory"."sourceTurnIds" || EXCLUDED."sourceTurnIds")
+         ),
+         "extractorVersion" = EXCLUDED."extractorVersion",
+         "confidence" = GREATEST(
+           COALESCE("Memory"."confidence", 0),
+           COALESCE(EXCLUDED."confidence", 0)
+         ),
+         "lastAccessedAt" = NOW(),
+         "updatedAt" = NOW()`,
       id,
-      scope.organizationId,
-      scope.projectId,
       scope.environmentId,
-      input.agentId ?? null,
-      input.userId,
-      input.platosEndUserId ?? null,
+      endUser.id,
+      binding.agentId,
+      binding.clusterId,
       validated.kind,
-      storedContent,
+      this.encryptContent(validated.content),
       storedMetadata === null ? null : JSON.stringify(storedMetadata),
-      vectorParam,
       agentVisible,
       visibility,
       source,
+      vector ? vectorToLiteral(vector) : null,
       input.sourceThreadId ?? null,
-      input.sourceMessageIds ?? [],
+      sourceTurnIds,
       input.extractorVersion ?? null,
       contentHash,
+      input.confidence ?? null,
     );
 
-    const row = await this.prisma.platosMemory.findFirst({ where: { id } });
-    return toMemoryRow(row, (v) => this.decryptContent(v), (v) => this.crypto?.decryptJsonField(v) ?? v);
+    const row = contentHash && input.sourceThreadId
+      ? await this.prisma.memory.findFirst({
+          where: {
+            environmentId: scope.environmentId,
+            endUserId: endUser.id,
+            sourceThreadId: input.sourceThreadId,
+            contentHash,
+          },
+        })
+      : await this.prisma.memory.findUnique({ where: { id } });
+    if (!row) throw new Error("Memory persistence completed without a readable row");
+    return this.toMemoryRow(row, scope, endUser.externalId);
   }
 
-  /**
-   * Theme O.7 — patch/update an existing memory row. Re-validates the
-   * kind+content+metadata tuple if any of them change. Re-embeds when
-   * `content` changes. Scope-guarded.
-   */
-  async update(scope: ScopeTuple, id: string, patch: UpdateMemoryInput, userId?: string): Promise<MemoryRow | null> {
-    this.requireScope(scope);
+  async update(
+    scope: ScopeTuple,
+    id: string,
+    patch: UpdateMemoryInput,
+    userId?: string,
+  ): Promise<MemoryRow | null> {
+    await assertEnvironmentScope(this.prisma, scope);
     const existing = await this.get(scope, id);
     if (!existing) return null;
-    // SECURITY (audit H7 write-side residual) — when a userId is supplied,
-    // refuse to edit a memory the caller doesn't own (the REST path passes the
-    // caller's userId so it can't edit another user's memory by id).
     if (userId && existing.userId !== userId) return null;
 
-    const nextKind: string = patch.kind ?? existing.kind;
-    const nextContent: string = patch.content ?? existing.content;
-    const nextMetadata: unknown = patch.metadata === undefined ? existing.metadata : patch.metadata;
-
     const validated = requireValidMemoryPayload({
-      kind: nextKind,
-      content: nextContent,
-      metadata: nextMetadata,
+      kind: patch.kind ?? existing.kind,
+      content: patch.content ?? existing.content,
+      metadata: patch.metadata === undefined ? existing.metadata : patch.metadata,
     });
-
-    // Re-embed only when content changed AND the kind isn't "profile"
-    // (profile rows are key-value, never semantic-searched — see add()).
-    const needsEmbed =
-      validated.kind !== "profile" &&
-      patch.content !== undefined &&
-      patch.content !== existing.content;
-    const vector = needsEmbed ? await this.embeddings.embed(validated.content, scope) : null;
-
-    const visibility: MemoryVisibility = patch.visibility
+    const visibility = patch.visibility
       ? normalizeVisibility(patch.visibility, patch.agentVisible)
       : patch.agentVisible !== undefined
         ? normalizeVisibility(undefined, patch.agentVisible)
         : existing.visibility;
-    const agentVisible = visibility !== "private";
+    const changedContent = patch.content !== undefined && patch.content !== existing.content;
+    const vector = changedContent && validated.kind !== "profile"
+      ? await this.embeddings.embed(validated.content, scope)
+      : null;
+    const storedMetadata = this.crypto?.encryptJsonField(validated.metadata ?? null)
+      ?? validated.metadata
+      ?? null;
+    const newHash = changedContent
+      ? crypto.createHash("sha256").update(validated.content).digest("hex")
+      : null;
 
-    const setParts: string[] = [
-      `"kind" = $1`,
-      `"content" = $2`,
-      `"metadata" = $3::jsonb`,
-      `"agentVisible" = $4`,
-      `"visibility" = $5`,
-      `"updatedAt" = NOW()`,
-    ];
-    // EOBD.22 — encrypt on update too. Embedding stays plaintext-derived.
-    const storedContent = this.encryptContent(validated.content);
-    const storedMetadata =
-      this.crypto?.encryptJsonField(validated.metadata ?? null) ?? (validated.metadata ?? null);
-    const params: any[] = [
+    const result = await this.prisma.$executeRawUnsafe(
+      `UPDATE "Memory"
+       SET "kind" = $1,
+           "content" = $2,
+           "metadata" = $3::jsonb,
+           "agentVisible" = $4,
+           "visibility" = $5,
+           "embedding" = CASE WHEN $6::vector IS NULL THEN "embedding" ELSE $6::vector END,
+           "contentHash" = CASE WHEN $7::text IS NULL THEN "contentHash" ELSE $7 END,
+           "updatedAt" = NOW()
+       WHERE "id" = $8::uuid AND "environmentId" = $9::uuid`,
       validated.kind,
-      storedContent,
+      this.encryptContent(validated.content),
       storedMetadata === null ? null : JSON.stringify(storedMetadata),
-      agentVisible,
+      visibility !== "private",
       visibility,
-    ];
-    let nextIdx = params.length + 1;
-    if (needsEmbed && vector) {
-      setParts.push(`"embedding" = $${nextIdx}::vector`);
-      params.push(vectorToLiteral(vector));
-      nextIdx++;
-    }
-    // EOBD.46 review follow-up — recompute contentHash when content
-    // changes. Without this, a user edit leaves the hash stale and a
-    // future extractor run could skip dedupe and insert a logical
-    // duplicate. Only bump the hash when content actually changed (so
-    // a metadata-only edit doesn't invalidate the dedupe linkage).
-    if (needsEmbed) {
-      const newHash = crypto.createHash("sha256").update(validated.content).digest("hex");
-      setParts.push(`"contentHash" = $${nextIdx}`);
-      params.push(newHash);
-      nextIdx++;
-    }
-    setParts.push(
-      `"id" = "id"`, // no-op placeholder to keep trailing comma symmetry off
+      vector ? vectorToLiteral(vector) : null,
+      newHash,
+      id,
+      scope.environmentId,
     );
-    setParts.pop();
-
-    const sql = `UPDATE "PlatosMemory"
-        SET ${setParts.join(", ")}
-      WHERE "id" = $${nextIdx}
-        AND "organizationId" = $${nextIdx + 1}
-        AND "projectId" = $${nextIdx + 2}
-        AND "environmentId" = $${nextIdx + 3}`;
-    params.push(id, scope.organizationId, scope.projectId, scope.environmentId);
-
-    await this.prisma.$executeRawUnsafe(sql, ...params);
-
+    if (!result) return null;
     return this.get(scope, id);
   }
 
-  /** Fetch a single memory by id, scope-guarded. */
   async get(scope: ScopeTuple, id: string): Promise<MemoryRow | null> {
-    this.requireScope(scope);
-    const row = await this.prisma.platosMemory.findFirst({
+    await assertEnvironmentScope(this.prisma, scope);
+    const agentIds = await resolveReadAgentIds(this.prisma, scope);
+    const row = await this.prisma.memory.findFirst({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
+        agentId: { in: agentIds },
+      },
+      include: {
+        endUser: {
+          include: {
+            identities: {
+              where: { disabledAt: null },
+              orderBy: { createdAt: "asc" },
+              take: 1,
+            },
+          },
+        },
       },
     });
-    return row ? toMemoryRow(row, (v) => this.decryptContent(v), (v) => this.crypto?.decryptJsonField(v) ?? v) : null;
+    if (!row) return null;
+    const externalId = row.endUser.identities[0]?.subject ?? row.endUserId;
+    return this.toMemoryRow(row, scope, externalId);
   }
 
-  /**
-   * Delete a memory row. Returns `true` when a row was removed and
-   * `false` when the id didn't match anything in the current scope
-   * (silent no-op rather than an exception — the `forget` meta-tool
-   * prefers idempotent behaviour).
-   */
   async delete(scope: ScopeTuple, id: string, userId?: string): Promise<boolean> {
-    this.requireScope(scope);
-    const res = await this.prisma.platosMemory.deleteMany({
+    await assertEnvironmentScope(this.prisma, scope);
+    const endUser = userId ? await resolveEndUser(this.prisma, scope, userId) : null;
+    const agentIds = await resolveReadAgentIds(this.prisma, scope);
+    const result = await this.prisma.memory.deleteMany({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        // SECURITY (audit H7 write-side residual) — scope the delete to the
-        // caller's userId when supplied so a session token can't delete
-        // another user's memory by id.
-        ...(userId ? { userId } : {}),
+        ...environmentScopeWhere(scope),
+        agentId: { in: agentIds },
+        ...(endUser ? { endUserId: endUser.id } : {}),
       },
     });
-    return (res?.count ?? 0) > 0;
+    return result.count > 0;
   }
 
-  /**
-   * MCPF-W2 — soft-delete a memory. Sets `archivedAt = now()`. Idempotent:
-   * archiving an already-archived row returns `{ ok: false, archivedAt: null }`
-   * (the WHERE narrows on `archivedAt: null`). Live read paths
-   * (`list` + `semanticSearch`) filter archived rows out by default.
-   */
   async archive(
     scope: ScopeTuple,
     id: string,
   ): Promise<{ ok: boolean; archivedAt: string | null }> {
-    this.requireScope(scope);
+    await assertEnvironmentScope(this.prisma, scope);
+    const agentIds = await resolveReadAgentIds(this.prisma, scope);
     const now = new Date();
-    const res = await this.prisma.platosMemory.updateMany({
+    const result = await this.prisma.memory.updateMany({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
+        agentId: { in: agentIds },
         archivedAt: null,
       },
       data: { archivedAt: now },
     });
-    return {
-      ok: (res?.count ?? 0) > 0,
-      archivedAt: (res?.count ?? 0) > 0 ? now.toISOString() : null,
-    };
+    return { ok: result.count > 0, archivedAt: result.count ? now.toISOString() : null };
   }
 
-  /**
-   * MCPF-W2 — clear `archivedAt` so the memory is live again. Returns the
-   * restored row, or `{ ok: false, memory: null }` when the id wasn't an
-   * archived row in this scope. Idempotent for live rows (no-op).
-   */
   async restore(
     scope: ScopeTuple,
     id: string,
   ): Promise<{ ok: boolean; memory: MemoryRow | null }> {
-    this.requireScope(scope);
-    const res = await this.prisma.platosMemory.updateMany({
+    await assertEnvironmentScope(this.prisma, scope);
+    const agentIds = await resolveReadAgentIds(this.prisma, scope);
+    const result = await this.prisma.memory.updateMany({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
+        agentId: { in: agentIds },
         archivedAt: { not: null },
       },
       data: { archivedAt: null },
     });
-    if ((res?.count ?? 0) === 0) return { ok: false, memory: null };
-    const memory = await this.get(scope, id);
-    return { ok: true, memory };
+    if (!result.count) return { ok: false, memory: null };
+    return { ok: true, memory: await this.get(scope, id) };
   }
 
-  /**
-   * MCPF-W2 — hard-delete up to 100 memories by id in one round-trip. The
-   * scope filter is authoritative — cross-scope ids in the list are
-   * silently ignored (they'll fail the WHERE). Returns the count of rows
-   * actually removed.
-   */
-  async bulkDelete(
-    scope: ScopeTuple,
-    ids: string[],
-  ): Promise<{ deleted: number }> {
-    this.requireScope(scope);
+  async bulkDelete(scope: ScopeTuple, ids: string[]): Promise<{ deleted: number }> {
+    await assertEnvironmentScope(this.prisma, scope);
     if (!Array.isArray(ids) || ids.length === 0) return { deleted: 0 };
-    if (ids.length > 100) {
-      throw new Error("MemoryService.bulkDelete: max 100 memories per request");
-    }
-    const res = await this.prisma.platosMemory.deleteMany({
+    if (ids.length > 100) throw new Error("MemoryService.bulkDelete: max 100 memories per request");
+    const agentIds = await resolveReadAgentIds(this.prisma, scope);
+    const result = await this.prisma.memory.deleteMany({
       where: {
         id: { in: ids },
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
+        agentId: { in: agentIds },
       },
     });
-    return { deleted: res?.count ?? 0 };
+    return { deleted: result.count };
   }
 
-  /**
-   * List memories for a user (without embeddings) — used by the editor
-   * UI and the `list_memories` meta-tool. Orders by `lastAccessedAt`
-   * descending with nulls last, then `createdAt` descending.
-   */
   async list(scope: ScopeTuple, input: ListMemoriesInput): Promise<MemoryRow[]> {
-    this.requireScope(scope);
     if (!input.userId) throw new Error("MemoryService.list: `userId` is required");
-    const limit = clampInt(input.limit ?? 50, 1, 200);
-    const offset = clampInt(input.offset ?? 0, 0, 10_000);
-
-    // Raw query so we can use PostgreSQL's NULLS LAST and skip the
-    // embedding column (its pgvector type trips Prisma's selector).
-    // MCPF-W2 — filter archived rows by default; pass `includeArchived: true`
-    // to return them too (admin/editor paths only).
-    const includeArchived = input.includeArchived === true;
-    const rows: any[] = await this.prisma.$queryRawUnsafe(
-      `SELECT
-          "id","organizationId","projectId","environmentId","agentId","userId",
-          "kind","content","metadata","agentVisible","visibility","source",
-          "sourceThreadId","sourceMessageIds","extractorVersion","confidence",
-          "createdAt","updatedAt","lastAccessedAt","archivedAt"
-       FROM "PlatosMemory"
-       WHERE "organizationId" = $1
-         AND "projectId" = $2
-         AND "environmentId" = $3
-         AND "userId" = $4
-         ${includeArchived ? "" : `AND "archivedAt" IS NULL`}
-         ${input.kind ? `AND "kind" = $5` : ""}
-         ${input.agentId !== undefined ? `AND "agentId" ${input.agentId === null ? "IS NULL" : `= $${input.kind ? 6 : 5}`}` : ""}
-         ${
-           input.agentIds && input.agentIds.length > 0
-             ? `AND "agentId" = ANY($${
-                 4 +
-                 (input.kind ? 1 : 0) +
-                 (input.agentId !== undefined && input.agentId !== null ? 1 : 0) +
-                 1
-               }::text[])`
-             : ""
-         }
-       ORDER BY "lastAccessedAt" DESC NULLS LAST, "createdAt" DESC
-       LIMIT ${limit} OFFSET ${offset}`,
-      ...buildListArgs(scope, input),
+    const endUser = await this.scopeAndUser(scope, input.userId);
+    const agentIds = await resolveReadAgentIds(
+      this.prisma,
+      scope,
+      input.agentId,
+      input.agentIds,
     );
-    return rows.map((r: any) =>
-      toMemoryRow(r, (v) => this.decryptContent(v), (v) => this.crypto?.decryptJsonField(v) ?? v),
-    );
+    const rows = await this.prisma.memory.findMany({
+      where: {
+        ...environmentScopeWhere(scope),
+        endUserId: endUser.id,
+        ...(input.kind ? { kind: input.kind } : {}),
+        ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+        ...(input.includeArchived ? {} : { archivedAt: null }),
+      },
+      orderBy: [
+        { lastAccessedAt: { sort: "desc", nulls: "last" } },
+        { createdAt: "desc" },
+      ],
+      take: clampInt(input.limit ?? 50, 1, 10_000),
+      skip: clampInt(input.offset ?? 0, 0, 10_000),
+    });
+    return rows.map((row) => this.toMemoryRow(row, scope, endUser.externalId));
   }
 
-  /**
-   * Semantic search. Embeds the query once, then runs a pgvector
-   * cosine-distance filter. Returns hits ordered by cosine similarity
-   * (highest first) with a `score` in [0, 1].
-   */
-  async semanticSearch(scope: ScopeTuple, input: SemanticSearchInput): Promise<MemorySearchHit[]> {
-    this.requireScope(scope);
+  async semanticSearch(
+    scope: ScopeTuple,
+    input: SemanticSearchInput,
+  ): Promise<MemorySearchHit[]> {
     const query = (input.query || "").trim();
     if (!query) throw new Error("MemoryService.semanticSearch: `query` is required");
     if (!input.userId) throw new Error("MemoryService.semanticSearch: `userId` is required");
-    const limit = clampInt(input.limit ?? 10, 1, 50);
-    const minScore = typeof input.minScore === "number" ? input.minScore : 0;
-
+    const endUser = await this.scopeAndUser(scope, input.userId);
+    const agentIds = await resolveReadAgentIds(
+      this.prisma,
+      scope,
+      input.agentId,
+      input.agentIds,
+    );
     const qvec = await this.embeddings.embed(query, scope);
-    const vecLit = vectorToLiteral(qvec);
-
-    // Build the filter clause dynamically. Parameters are numbered
-    // 1..N; pgvector's `<=>` operator returns cosine distance in
-    // [0, 2]; we convert to similarity in [-1, 1] but clamp against
-    // 0 since both vectors are OpenAI-normalized (practically [0, 1]).
-    const params: any[] = [vecLit, scope.organizationId, scope.projectId, scope.environmentId, input.userId];
-    let nextIdx = params.length + 1;
-    const wheres: string[] = [
-      `"organizationId" = $2`,
-      `"projectId" = $3`,
-      `"environmentId" = $4`,
-      `"userId" = $5`,
+    const params: unknown[] = [vectorToLiteral(qvec), scope.environmentId, endUser.id];
+    const clauses = [
+      `"environmentId" = $2::uuid`,
+      `"endUserId" = $3::uuid`,
       `"embedding" IS NOT NULL`,
     ];
-    // MCPF-W2 — filter archived rows out of recall by default. Editor-only
-    // paths can pass `includeArchived: true` to see them.
-    if (input.includeArchived !== true) {
-      wheres.push(`"archivedAt" IS NULL`);
-    }
-    if (input.kind) {
-      params.push(input.kind);
-      wheres.push(`"kind" = $${nextIdx++}`);
-    }
-    if (input.agentId !== undefined) {
-      if (input.agentId === null) {
-        wheres.push(`"agentId" IS NULL`);
-      } else {
-        params.push(input.agentId);
-        wheres.push(`"agentId" = $${nextIdx++}`);
-      }
-    }
-    if (input.agentIds && input.agentIds.length > 0) {
-      params.push(input.agentIds);
-      wheres.push(`"agentId" = ANY($${nextIdx++}::text[])`);
-    }
-    if (input.agentVisibleOnly) {
-      wheres.push(`"agentVisible" = TRUE`);
-    }
+    const addParam = (value: unknown, cast = "") => {
+      params.push(value);
+      return `$${params.length}${cast}`;
+    };
+    if (!input.includeArchived) clauses.push(`"archivedAt" IS NULL`);
+    if (input.kind) clauses.push(`"kind" = ${addParam(input.kind)}`);
+    if (agentIds.length) clauses.push(`"agentId" = ANY(${addParam(agentIds, "::uuid[]")})`);
+    if (input.agentVisibleOnly) clauses.push(`"agentVisible" = TRUE`);
+    const visibility = input.visibilityIn?.length
+      ? input.visibilityIn
+      : ["agent_visible", "hidden"];
+    clauses.push(`"visibility" = ANY(${addParam(visibility, "::text[]")})`);
+    if (input.excludeRag) clauses.push(`"source" IS DISTINCT FROM ${addParam(RAG_MEMORY_SOURCE)}`);
 
-    // Theme O.6 — visibility filter. Default excludes "private" so the agent
-    // never surfaces a user-marked-private memory. Callers that need the
-    // full set (editor-only paths) pass `visibilityIn` explicitly.
-    const visibilityIn: MemoryVisibility[] =
-      input.visibilityIn && input.visibilityIn.length > 0
-        ? input.visibilityIn
-        : ["agent_visible", "hidden"];
-    const visPlaceholders = visibilityIn
-      .map(() => `$${nextIdx++}`)
-      .join(", ");
-    for (const v of visibilityIn) params.push(v);
-    wheres.push(`"visibility" IN (${visPlaceholders})`);
-
-    // audit L5 — opt-in RAG exclusion for the automatic injection path.
-    // MUST stay LAST: every block above maintains the invariant
-    // `params.length === nextIdx - 1`, and the visibility block above only
-    // restores it after its `.map()`/`for` split. Pushing the param BEFORE
-    // reading `$${nextIdx++}` lands the value at 1-based position nextIdx —
-    // i.e. the placeholder we emit is the param we just bound.
-    //
-    // `IS DISTINCT FROM` (not `<>`) so a NULL source can never swallow the
-    // row. Filtering on the plaintext `source` column, NOT `metadata`:
-    // metadata is envelope-encrypted at rest, so a `metadata->>'__rag'`
-    // predicate fails OPEN on encrypted deployments (see RAG_MEMORY_SOURCE).
-    if (input.excludeRag === true) {
-      params.push(RAG_MEMORY_SOURCE);
-      wheres.push(`"source" IS DISTINCT FROM $${nextIdx++}`);
-    }
-
-    const sql = `SELECT
-          "id","organizationId","projectId","environmentId","agentId","userId",
-          "kind","content","metadata","agentVisible","visibility","source",
-          "sourceThreadId","sourceMessageIds","extractorVersion","confidence",
-          "createdAt","updatedAt","lastAccessedAt","archivedAt",
-          1 - ("embedding" <=> $1::vector) AS score
-       FROM "PlatosMemory"
-       WHERE ${wheres.join(" AND ")}
+    const limit = clampInt(input.limit ?? 10, 1, 50);
+    const rows: any[] = await this.prisma.$queryRawUnsafe(
+      `SELECT "id", "environmentId", "endUserId", "agentId", "clusterId",
+              "kind", "content", "metadata", "agentVisible", "visibility", "source",
+              "sourceThreadId", "sourceTurnIds", "extractorVersion", "confidence",
+              "createdAt", "updatedAt", "lastAccessedAt", "archivedAt",
+              1 - ("embedding" <=> $1::vector) AS "score"
+       FROM "Memory"
+       WHERE ${clauses.join(" AND ")}
        ORDER BY "embedding" <=> $1::vector
-       LIMIT ${limit}`;
+       LIMIT ${limit}`,
+      ...params,
+    );
+    const minScore = typeof input.minScore === "number" ? input.minScore : 0;
+    const hits = rows
+      .map((row) => ({
+        ...this.toMemoryRow(row, scope, endUser.externalId),
+        score: typeof row.score === "number" ? row.score : Number(row.score) || 0,
+      }))
+      .filter((row) => row.score >= minScore);
 
-    const rows: any[] = await this.prisma.$queryRawUnsafe(sql, ...params);
-    const hits = rows.map((r) => ({
-      ...toMemoryRow(r, (v) => this.decryptContent(v), (v) => this.crypto?.decryptJsonField(v) ?? v),
-      score: typeof r.score === "number" ? r.score : Number(r.score) || 0,
-    }));
-    const filtered = hits.filter((h) => h.score >= minScore);
-
-    // Bump lastAccessedAt for returned rows fire-and-forget; keeps
-    // recall-ranking signals up to date without blocking the response.
-    if (filtered.length) {
-      const ids = filtered.map((h) => h.id);
-      this.prisma
-        .$executeRawUnsafe(
-          `UPDATE "PlatosMemory" SET "lastAccessedAt" = NOW() WHERE "id" = ANY($1::text[])`,
-          ids,
-        )
-        .catch((err: any) =>
-          this.logger.warn(`lastAccessedAt bump failed: ${err?.message || err}`),
+    if (hits.length) {
+      const ids = hits.map((hit) => hit.id);
+      void this.prisma.memory.updateMany({
+        where: { id: { in: ids }, environmentId: scope.environmentId },
+        data: { lastAccessedAt: new Date() },
+      }).catch((error: unknown) => {
+        this.logger.error(
+          `Memory last-access persistence failed: ${error instanceof Error ? error.message : String(error)}`,
         );
+      });
     }
-
-    return filtered;
+    return hits;
   }
 
-  /**
-   * PRA-AC: cluster-wide semantic search — omits the agentId filter so
-   * all memories for this user across every agent in the cluster are searched.
-   * Scope tuple still enforces org/project/env isolation.
-   */
   async semanticSearchForCluster(
     scope: ScopeTuple,
     query: string,
     userId: string,
-    options?: { limit?: number; minScore?: number; clusteringId?: string | null },
+    options?: {
+      limit?: number;
+      minScore?: number;
+      clusteringId?: string | null;
+      agentId?: string | null;
+    },
   ): Promise<MemorySearchHit[]> {
-    // Cluster share means the cluster's MEMBERS — not every agent in the
-    // scope. Resolve the member ids and filter to them; without a
-    // clusteringId (legacy callers) fall back to the old scope-wide search.
-    let agentIds: string[] | undefined;
-    if (options?.clusteringId) {
-      const members: Array<{ id: string }> = await this.prisma.platosAgent.findMany({
-        where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          clusteringId: options.clusteringId,
-        },
-        select: { id: true },
+    const current = scope.agentId || options?.agentId;
+    if (!current) throw new Error("Cluster memory recall requires the acting Agent");
+    const binding = await resolveAgentBinding(this.prisma, scope, current);
+    if (!binding.clusterId) {
+      return this.semanticSearch(scope, {
+        query,
+        userId,
+        agentId: binding.agentId,
+        limit: options?.limit ?? 10,
+        minScore: options?.minScore,
+        excludeRag: true,
       });
-      agentIds = members.map((m) => m.id);
     }
+    if (options?.clusteringId && options.clusteringId !== binding.clusterId) {
+      throw new Error("Caller-supplied AgentCluster does not match persisted Agent ownership");
+    }
+    const members = await this.prisma.agentBinding.findMany({
+      where: { ...environmentScopeWhere(scope), clusterId: binding.clusterId },
+      select: { agentId: true },
+    });
     return this.semanticSearch(scope, {
       query,
       userId,
+      agentIds: members.map((member) => member.agentId),
       limit: options?.limit ?? 10,
       minScore: options?.minScore,
-      // audit L5 — this helper backs ONLY the `recall` meta-tool (grep-
-      // confirmed single caller), which returns memories, not RAG document
-      // chunks. Exclude them here for the same reason as the single-agent
-      // recall branch; `rag_retrieve` never routes through this method.
       excludeRag: true,
-      ...(agentIds && agentIds.length > 0 ? { agentIds } : {}),
     });
   }
 
-  /**
-   * Theme O.9 — delete every memory belonging to a given user in this
-   * scope. Used by the "replace" import mode so a bundle can be restored
-   * deterministically. Returns the count of rows removed.
-   *
-   * Scope + userId are both required — there is no cross-scope variant.
-   */
   async deleteAllForUser(scope: ScopeTuple, userId: string): Promise<number> {
-    this.requireScope(scope);
     if (!userId) throw new Error("MemoryService.deleteAllForUser: `userId` is required");
-    const res = await this.prisma.platosMemory.deleteMany({
+    const endUser = await this.scopeAndUser(scope, userId);
+    const agentIds = await resolveReadAgentIds(this.prisma, scope);
+    const result = await this.prisma.memory.deleteMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        userId,
+        ...environmentScopeWhere(scope),
+        endUserId: endUser.id,
+        agentId: { in: agentIds },
       },
     });
-    return res?.count ?? 0;
+    return result.count;
   }
 
-  private requireScope(scope: ScopeTuple): void {
-    if (!scope?.organizationId || !scope?.projectId || !scope?.environmentId) {
-      throw new Error("MemoryService: scope tuple is required");
-    }
+  private toMemoryRow(row: any, scope: ScopeTuple, externalUserId: string): MemoryRow {
+    const visibility = normalizeVisibility(
+      typeof row.visibility === "string" ? row.visibility as MemoryVisibility : undefined,
+      row.agentVisible,
+    );
+    const sourceTurnIds = Array.isArray(row.sourceTurnIds) ? row.sourceTurnIds : [];
+    return {
+      id: row.id,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
+      environmentId: row.environmentId,
+      agentId: row.agentId ?? null,
+      userId: externalUserId,
+      kind: row.kind,
+      content: this.decryptContent(row.content),
+      metadata: this.decryptMetadata(row.metadata),
+      agentVisible: visibility !== "private" && row.agentVisible !== false,
+      visibility,
+      source: row.source,
+      sourceThreadId: row.sourceThreadId ?? null,
+      sourceTurnIds,
+      sourceMessageIds: sourceTurnIds,
+      extractorVersion: row.extractorVersion ?? null,
+      confidence: row.confidence == null ? null : Number(row.confidence),
+      createdAt: asDate(row.createdAt),
+      updatedAt: asDate(row.updatedAt),
+      lastAccessedAt: row.lastAccessedAt ? asDate(row.lastAccessedAt) : null,
+      archivedAt: row.archivedAt ? asDate(row.archivedAt) : null,
+    };
   }
 }
 
-function toMemoryRow(
-  row: any,
-  decryptContent?: (v: string | null | undefined) => string,
-  decryptJson?: (v: unknown) => unknown,
-): MemoryRow {
-  // Theme O.6 — derive visibility from the new column when present; fall
-  // back to agentVisible for older rows (migration backfills all rows, but
-  // keep the coercion so test fixtures without the column still work).
-  const rawVisibility: string | undefined =
-    typeof row.visibility === "string" ? row.visibility : undefined;
-  const visibility: MemoryVisibility =
-    rawVisibility === "agent_visible" ||
-    rawVisibility === "hidden" ||
-    rawVisibility === "private"
-      ? rawVisibility
-      : row.agentVisible === false
-        ? "hidden"
-        : "agent_visible";
-  // EOBD.22 — transparent decryption on read. Unencrypted rows (no
-  // __platos_enc envelope marker) pass through unchanged.
-  const content = decryptContent ? decryptContent(row.content) : row.content;
-  const metadata = decryptJson
-    ? decryptJson(row.metadata ?? null)
-    : (row.metadata ?? null);
-  return {
-    id: row.id,
-    organizationId: row.organizationId,
-    projectId: row.projectId,
-    environmentId: row.environmentId,
-    agentId: row.agentId ?? null,
-    userId: row.userId,
-    kind: row.kind,
-    content,
-    metadata,
-    agentVisible: visibility !== "private" && row.agentVisible !== false,
-    visibility,
-    source: row.source,
-    sourceThreadId: row.sourceThreadId ?? null,
-    sourceMessageIds: Array.isArray(row.sourceMessageIds) ? row.sourceMessageIds : [],
-    extractorVersion: row.extractorVersion ?? null,
-    confidence:
-      typeof row.confidence === "number"
-        ? row.confidence
-        : row.confidence == null
-          ? null
-          : Number.isFinite(Number(row.confidence))
-            ? Number(row.confidence)
-            : null,
-    createdAt: row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
-    updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
-    lastAccessedAt: row.lastAccessedAt
-      ? row.lastAccessedAt instanceof Date
-        ? row.lastAccessedAt
-        : new Date(row.lastAccessedAt)
-      : null,
-    archivedAt: row.archivedAt
-      ? row.archivedAt instanceof Date
-        ? row.archivedAt
-        : new Date(row.archivedAt)
-      : null,
-  };
-}
-
-/**
- * Theme O.6 — resolve visibility from the two possible inputs. Prefer the
- * explicit `visibility` value; fall back to the legacy `agentVisible`
- * boolean (false → `hidden`). Defaults to `agent_visible` when both are
- * unset.
- */
 function normalizeVisibility(
   explicit: MemoryVisibility | undefined,
   legacy: boolean | undefined,
 ): MemoryVisibility {
-  if (
-    explicit === "agent_visible" ||
-    explicit === "hidden" ||
-    explicit === "private"
-  ) {
+  if (explicit === "agent_visible" || explicit === "hidden" || explicit === "private") {
     return explicit;
   }
-  if (legacy === false) return "hidden";
-  return "agent_visible";
+  return legacy === false ? "hidden" : "agent_visible";
 }
 
-/** pgvector accepts a string literal like `[0.1,0.2,…]`. Cast to `vector`
- *  in the SQL so Postgres parses it into the fixed-dim column type. */
-function vectorToLiteral(vec: number[]): string {
-  return `[${vec.join(",")}]`;
+function vectorToLiteral(vector: number[]): string {
+  return `[${vector.join(",")}]`;
 }
 
-function clampInt(v: number, min: number, max: number): number {
-  const n = Math.floor(Number(v));
-  if (!Number.isFinite(n)) return min;
-  return Math.min(Math.max(n, min), max);
+function clampInt(value: number, min: number, max: number): number {
+  const normalized = Math.floor(Number(value));
+  if (!Number.isFinite(normalized)) return min;
+  return Math.min(Math.max(normalized, min), max);
 }
 
-function buildListArgs(scope: ScopeTuple, input: ListMemoriesInput): any[] {
-  const args: any[] = [scope.organizationId, scope.projectId, scope.environmentId, input.userId];
-  if (input.kind) args.push(input.kind);
-  if (input.agentId !== undefined && input.agentId !== null) args.push(input.agentId);
-  // FIX (audit L3) — bind the agentIds array to the `= ANY($N::text[])`
-  // placeholder the list() query emits for the cluster-listing branch. It was
-  // never pushed, so $N was unbound, Postgres rejected the statement, and
-  // clustered list_memories threw → caught → failed CLOSED (empty result).
-  // The guard mirrors the query text's own condition, so single-agent and
-  // no-filter calls are unchanged.
-  if (input.agentIds && input.agentIds.length > 0) args.push(input.agentIds);
-  return args;
-}
-
-/**
- * Lightweight CUID-ish id generator for raw SQL inserts. We don't pull
- * in the `cuid` package just for this — a timestamp + randomness hybrid
- * is collision-safe in practice and deliberately distinct from Prisma's
- * default-generated ids (which our raw INSERT bypasses).
- */
-function createCuid(): string {
-  const ts = Date.now().toString(36);
-  const rand = Math.random().toString(36).slice(2, 10);
-  const extra =
-    typeof globalThis.crypto?.randomUUID === "function"
-      ? globalThis.crypto.randomUUID().replace(/-/g, "").slice(0, 12)
-      : Math.random().toString(36).slice(2, 14);
-  return `pm_${ts}${rand}${extra}`;
+function asDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value);
 }

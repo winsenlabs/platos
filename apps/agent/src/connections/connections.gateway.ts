@@ -14,7 +14,11 @@ import { AgentTaskService } from "../agent-runtime/agent-task.service";
 import { TurnDispatchService } from "../agent-runtime/turn-dispatch.service";
 import { AuthService } from "../auth/auth.service";
 import { REDIS_TOKEN } from "../shared/redis.provider";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import {
+  type ControlDatabaseClient,
+  environmentScopeWhere,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
@@ -101,7 +105,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     // Phase 1 review follow-up — Prisma is needed on the gateway so
     // `join_thread` can scope-gate the thread lookup. DatabaseModule is
     // `@Global()`, so PRISMA_TOKEN resolves without changing module imports.
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     @Optional() private readonly approvalsService?: MonitoringApprovalsService,
     /**
      * PRELAUNCH-A3-9 — RateLimitService for the WS message handler. Without
@@ -239,7 +243,8 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         | undefined;
 
       if (token) {
-        // Mode 2 session-token JWT — verified HMAC against entity's serviceSecret.
+        // Platform-signed scoped JWT. Entity end-user tokens are additionally
+        // revalidated against their persisted McpBearerToken by AuthService.
         const payload = await this.authService.validateSessionToken(String(token));
         if (!payload) {
           client.emit("error", { message: "Invalid or expired session token." });
@@ -253,11 +258,11 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         entityId = payload.entityId;
         userToken = payload.userToken;
         // SECURITY (audit H6) — capture the token's pinned agentId; a turn must
-        // not target a different agent. Operator = platform-signed + non-guest
-        // (mirrors ScopeGuard / the HTTP path).
+        // not target a different agent. Operator tokens have no entity bearer
+        // authorization and are not guests (mirrors the HTTP ScopeGuard).
         pinnedAgentId = (payload as any).agentId;
         principal =
-          payload.iss === "platos-platform" && (payload as any).isGuest !== true
+          payload.authorizationId === undefined && (payload as any).isGuest !== true
             ? "operator"
             : "end-user";
         // Carry verified-identity claims for NON-GUEST tokens so WS turns
@@ -280,6 +285,20 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         if (payload.userMeta && (payload.userMeta.name || payload.userMeta.email)) {
           (auth as Record<string, unknown>).userMeta = payload.userMeta;
         }
+        // Retain the signed token for per-event lifecycle revalidation. An
+        // entity bearer revoked after the socket connected must not authorize
+        // subsequent messages on a long-lived connection.
+        (client as any).platosSessionToken = String(token);
+        const expiresInMs = Math.max(1, payload.exp * 1000 - Date.now());
+        const expiryTimer = setTimeout(() => {
+          client.emit("error", {
+            code: "SESSION_EXPIRED",
+            message: "Session token expired.",
+          });
+          client.disconnect();
+        }, expiresInMs);
+        expiryTimer.unref?.();
+        (client as any).platosSessionExpiryTimer = expiryTimer;
       } else if (!viaProxy) {
         // Mode 1 direct headers — only when request did NOT come through a proxy.
         organizationId = (auth.organizationId as string | undefined) || (headers["x-platos-organization-id"] as string | undefined);
@@ -392,10 +411,37 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
   }
 
   handleDisconnect(client: Socket) {
+    const expiryTimer = (client as any).platosSessionExpiryTimer as
+      | ReturnType<typeof setTimeout>
+      | undefined;
+    if (expiryTimer) clearTimeout(expiryTimer);
     const scope = (client as any).scope as RequestScope | undefined;
     console.log(
       `[Platos WS] Disconnected: ${client.id} org=${scope?.organizationId || "unknown"} project=${scope?.projectId || "unknown"} env=${scope?.environmentId || "unknown"}`,
     );
+  }
+
+  private async revalidateSocketSession(client: Socket): Promise<boolean> {
+    const token = (client as any).platosSessionToken as string | undefined;
+    if (!token) return true; // trusted internal direct-header connection
+    const payload = await this.authService.validateSessionToken(token);
+    const scope = (client as any).scope as RequestScope | undefined;
+    if (
+      !payload ||
+      !scope ||
+      payload.organizationId !== scope.organizationId ||
+      payload.projectId !== scope.projectId ||
+      payload.environmentId !== scope.environmentId ||
+      payload.userId !== scope.userId
+    ) {
+      client.emit("error", {
+        code: "SESSION_REVOKED_OR_EXPIRED",
+        message: "Session authorization is no longer active.",
+      });
+      client.disconnect();
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -422,6 +468,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       replyToMessageId?: string;
     },
   ) {
+    if (!(await this.revalidateSocketSession(client))) return;
     const scope = (client as any).scope as RequestScope;
     if (!scope) {
       client.emit("error", { message: "Not authenticated" });
@@ -454,12 +501,10 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         // deliberately NOT added: Postman mode overwrites thread.userId with
         // the SIMULATED user, so a userId filter would miss and silently fall
         // back to the "default" agent. The tenant tuple closes the oracle.
-        const threadRow = await this.prisma.platosAgentThread.findFirst({
+        const threadRow = await this.prisma.thread.findFirst({
           where: {
             id: data.threadId,
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
+            ...environmentScopeWhere(scope),
           },
           select: { agentId: true },
         });
@@ -522,14 +567,16 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       // behavior change (effectiveUserId stays scope.userId when not simulating).
       if (data.postmanUserId && data.postmanUserId !== scope.userId) {
         try {
-          const orgMember = await this.prisma.orgMember.findFirst({
+          const orgMember = await this.prisma.organizationMembership.findFirst({
             where: {
               userId: scope.userId,
               organizationId: scope.organizationId,
+              deactivatedAt: null,
             },
             select: { role: true },
           });
-          isOrgAdmin = orgMember?.role === "ADMIN";
+          isOrgAdmin =
+            orgMember?.role === "OWNER" || orgMember?.role === "ADMIN";
         } catch {
           // Defensive: if the role lookup blows up, fall through to no-op
           // (effectiveUserId stays as scope.userId — preserves BUG-11 guarantee).
@@ -745,6 +792,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { threadId: string },
   ) {
+    if (!(await this.revalidateSocketSession(client))) return;
     const scope = (client as any).scope as RequestScope | undefined;
     if (!scope) {
       client.emit("error", { message: "unauthenticated" });
@@ -788,6 +836,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { threadId: string },
   ) {
+    if (!(await this.revalidateSocketSession(client))) return;
     // BUG-16: validate threadId is a non-empty string before using it.
     // Socket.IO's leave() is per-socket (can only leave itself), but
     // we still validate to prevent malformed room key injection.
@@ -803,6 +852,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { approvalId: string; approved: boolean; comment?: string },
   ) {
+    if (!(await this.revalidateSocketSession(client))) return;
     const scope = (client as any).scope as RequestScope | undefined;
     if (!scope) return;
     // EOBD.14 — scope-gate the rpush. Caller in scope A must not be
@@ -874,6 +924,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { threadId: string; title: string | null },
   ) {
+    if (!(await this.revalidateSocketSession(client))) return;
     const scope = (client as any).scope as RequestScope | undefined;
     if (!scope) {
       client.emit("error", { message: "unauthenticated" });
@@ -889,13 +940,19 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
           ? null
           : data.title.replace(/[\r\n]/g, " ").trim().slice(0, 200) || null;
       const now = new Date();
-      const result = await this.prisma.platosAgentThread.updateMany({
+      const result = await this.prisma.thread.updateMany({
         where: {
           id: data.threadId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          userId: scope.userId,
+          ...environmentScopeWhere(scope),
+          endUser: {
+            identities: {
+              some: {
+                organizationId: scope.organizationId,
+                subject: scope.userId,
+                disabledAt: null,
+              },
+            },
+          },
         },
         data: { title: sanitized, updatedAt: now },
       });
@@ -932,6 +989,7 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { threadId: string },
   ) {
+    if (!(await this.revalidateSocketSession(client))) return;
     // EOBD.26 — activeStreams keyed by `${scope}:${threadId}` so a
     // stop from scope A can't abort scope B's in-flight turn.
     const scope = (client as any).scope as RequestScope | undefined;

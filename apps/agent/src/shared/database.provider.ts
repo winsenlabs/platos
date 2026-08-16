@@ -1,31 +1,35 @@
 import { Global, Module, type Provider } from "@nestjs/common";
+import { PrismaClient } from "@platos/tenancy-database";
 import { env } from "./env";
 
 export const PRISMA_TOKEN = "PRISMA";
+export type ControlDatabaseClient = PrismaClient;
+
+export interface CanonicalEnvironmentScope {
+  organizationId: string;
+  projectId: string;
+  environmentId: string;
+}
+
+/** Scope an Environment-owned model through its persisted canonical ancestry. */
+export function environmentScopeWhere(scope: CanonicalEnvironmentScope) {
+  return {
+    environmentId: scope.environmentId,
+    environment: {
+      projectId: scope.projectId,
+      project: { organizationId: scope.organizationId },
+    },
+  } as const;
+}
 
 /**
  * Database provider — creates a Prisma client connected to the shared PostgreSQL.
  *
- * Dynamic import: at runtime, @platos/database exports PrismaClient from
- * the generated Prisma client. During dev typecheck, the generated client may
- * not exist yet — that's fine, this only runs at runtime.
+ * The generated control-plane client is the sole runtime persistence boundary.
  */
-const prismaProvider: Provider = {
+const prismaProvider: Provider<PrismaClient> = {
   provide: PRISMA_TOKEN,
-  useFactory: async () => {
-    // Try multiple Prisma client locations (monorepo dev vs Docker standalone)
-    let PrismaClient: any;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      PrismaClient = require("@platos/database").PrismaClient;
-    } catch {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        PrismaClient = require("@prisma/client").PrismaClient;
-      } catch {
-        throw new Error("Could not find Prisma client. Run 'prisma generate' first.");
-      }
-    }
+  useFactory: async (): Promise<PrismaClient> => {
     const prisma = new PrismaClient({
       datasourceUrl: env.DATABASE_URL,
     });

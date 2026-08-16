@@ -1,5 +1,10 @@
 import { Injectable, Inject } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import type { EvalCriterion, Prisma } from "@platos/tenancy-database";
+import {
+  type ControlDatabaseClient,
+  environmentScopeWhere,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
@@ -58,11 +63,9 @@ export interface UpdateCriterionDto {
  */
 @Injectable()
 export class CriterionService {
-  private prisma: any;
-
-  constructor(@Inject(PRISMA_TOKEN) prisma: any) {
-    this.prisma = prisma;
-  }
+  constructor(
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+  ) {}
 
   async create(
     scope: RequestScope,
@@ -71,10 +74,8 @@ export class CriterionService {
     if (!input.name?.trim()) throw new Error("name required");
     if (!input.judgePrompt?.trim()) throw new Error("judgePrompt required");
 
-    const row = await this.prisma.platosEvalCriterion.create({
+    const row = await this.prisma.evalCriterion.create({
       data: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
         agentId: input.agentId ?? null,
         name: input.name.trim(),
@@ -88,7 +89,7 @@ export class CriterionService {
         createdBy: scope.userId,
       },
     });
-    return this.toRecord(row);
+    return this.toRecord(scope, row);
   }
 
   async list(
@@ -96,9 +97,7 @@ export class CriterionService {
     options: { agentId?: string | null; activeOnly?: boolean } = {},
   ): Promise<EvalCriterionRecord[]> {
     const where: Record<string, unknown> = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
+      ...environmentScopeWhere(scope),
     };
     if (options.activeOnly) where.isActive = true;
     if (options.agentId !== undefined) {
@@ -110,26 +109,24 @@ export class CriterionService {
         where.OR = [{ agentId: options.agentId }, { agentId: null }];
       }
     }
-    const rows = await this.prisma.platosEvalCriterion.findMany({
+    const rows = await this.prisma.evalCriterion.findMany({
       where,
       orderBy: [{ isActive: "desc" }, { updatedAt: "desc" }],
     });
-    return (rows as any[]).map((r) => this.toRecord(r));
+    return rows.map((row) => this.toRecord(scope, row));
   }
 
   async findById(
     scope: ScopeTuple,
     id: string,
   ): Promise<EvalCriterionRecord | null> {
-    const row = await this.prisma.platosEvalCriterion.findFirst({
+    const row = await this.prisma.evalCriterion.findFirst({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
       },
     });
-    return row ? this.toRecord(row) : null;
+    return row ? this.toRecord(scope, row) : null;
   }
 
   async update(
@@ -140,7 +137,7 @@ export class CriterionService {
     const existing = await this.findById(scope, id);
     if (!existing) throw new Error("Criterion not found");
 
-    const data: Record<string, unknown> = {};
+    const data: Prisma.EvalCriterionUncheckedUpdateInput = {};
     if (input.name !== undefined) data.name = input.name.trim();
     if (input.description !== undefined) data.description = input.description;
     if (input.judgePrompt !== undefined) data.judgePrompt = input.judgePrompt;
@@ -151,30 +148,28 @@ export class CriterionService {
     if (input.isActive !== undefined) data.isActive = input.isActive;
     if (input.agentId !== undefined) data.agentId = input.agentId;
 
-    const row = await this.prisma.platosEvalCriterion.update({
+    const row = await this.prisma.evalCriterion.update({
       where: { id },
       data,
     });
-    return this.toRecord(row);
+    return this.toRecord(scope, row);
   }
 
   async remove(scope: ScopeTuple, id: string): Promise<boolean> {
-    const result = await this.prisma.platosEvalCriterion.deleteMany({
+    const result = await this.prisma.evalCriterion.deleteMany({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
       },
     });
     return result.count > 0;
   }
 
-  private toRecord(r: any): EvalCriterionRecord {
+  private toRecord(scope: ScopeTuple, r: EvalCriterion): EvalCriterionRecord {
     return {
       id: r.id,
-      organizationId: r.organizationId,
-      projectId: r.projectId,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
       environmentId: r.environmentId,
       agentId: r.agentId ?? null,
       name: r.name,

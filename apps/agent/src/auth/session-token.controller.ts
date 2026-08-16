@@ -8,9 +8,12 @@ import {
   Param,
   Post,
 } from "@nestjs/common";
-import * as crypto from "node:crypto";
+import { createHash } from "node:crypto";
 import { AuthService } from "./auth.service";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import {
+  type ControlDatabaseClient,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 
 /**
  * EOBD.95 — entity-scoped session-token mint endpoint.
@@ -18,22 +21,20 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
  * `POST /api/v1/entities/:entityId/session-tokens`
  *
  * The endpoint lives outside the usual `api/v1/agent` prefix so it can
- * be reached without ScopeGuard's session-token-or-headers auth —
- * because the CLIENT here IS an entity backend proving itself with the
- * `serviceSecret`. ScopeGuard allow-lists this path and the controller
- * performs its own auth.
+ * be reached without an existing scoped JWT. The entity backend authorizes
+ * the mint with its clean `plt_ent_` McpBearerToken; ScopeGuard allow-lists
+ * this path and the controller performs the bearer lifecycle check.
  *
  * Wire format:
  *
  *   POST /api/v1/entities/my-entity/session-tokens
- *   Authorization: Bearer <serviceSecret>
+ *   Authorization: Bearer <plt_ent_...>
  *   Content-Type: application/json
  *
  *   { "userId": "usr_123", "userToken": "...", "ttlSeconds": 3600, "claims": {...} }
  *
  *   → 200 { "token": "<jwt>", "expiresAt": 1730003600 }
- *   → 401 when the bearer secret doesn't match
- *   → 404 when the entity isn't registered for the org+project
+ *   → 401 when the bearer is invalid, expired, revoked, or cross-scope
  *
  * Intended callers: customer backends. Equivalent to what
  * `@platosdev/token-mint` does locally, but the agent here can validate
@@ -42,7 +43,7 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
 
 /**
  * Sanitize caller-supplied verified-identity claims for a minted session
- * token. The mint endpoint is authed by the entity's serviceSecret, but the
+ * token. The mint endpoint is authed by the entity's McpBearerToken, but the
  * body is still untrusted input — bound the claim shape so a compromised /
  * buggy backend can't stuff arbitrary or oversized identity rows into the
  * signed token (which `ConversationService.resolveEndUser` later trusts to
@@ -87,7 +88,7 @@ function sanitizeUserIdentities(
 export class SessionTokenController {
   constructor(
     private readonly authService: AuthService,
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
   ) {}
 
   @Post(":entityId/session-tokens")
@@ -144,38 +145,71 @@ export class SessionTokenController {
         : "";
     if (!secret) {
       throw new HttpException(
-        "Authorization: Bearer <serviceSecret> required",
+        "Authorization: Bearer <plt_ent_ token> required",
         HttpStatus.UNAUTHORIZED,
       );
     }
 
-    const entity = await this.prisma.platosConnectedEntity.findUnique({
-      where: {
-        organizationId_projectId_entityId: {
-          organizationId: body.organizationId,
-          projectId: body.projectId,
-          entityId,
+    const tokenHash = createHash("sha256").update(secret).digest("hex");
+    const now = new Date();
+    const bearer = await this.prisma.mcpBearerToken.findUnique({
+      where: { tokenHash },
+      select: {
+        id: true,
+        expiresAt: true,
+        revokedAt: true,
+        entity: {
+          select: {
+            externalId: true,
+            project: { select: { id: true, organizationId: true } },
+          },
         },
       },
-      select: { id: true, serviceSecret: true },
     });
-    if (!entity) {
-      throw new HttpException("Entity not found for scope", HttpStatus.NOT_FOUND);
+    const environment = await this.prisma.environment.findUnique({
+      where: { id: body.environmentId },
+      select: { id: true, project: { select: { id: true, organizationId: true } } },
+    });
+    if (
+      !bearer ||
+      bearer.revokedAt ||
+      (bearer.expiresAt && bearer.expiresAt.getTime() <= now.getTime()) ||
+      bearer.entity.externalId !== entityId ||
+      bearer.entity.project.id !== body.projectId ||
+      bearer.entity.project.organizationId !== body.organizationId ||
+      !environment ||
+      environment.project.id !== bearer.entity.project.id ||
+      environment.project.organizationId !== bearer.entity.project.organizationId
+    ) {
+      throw new HttpException("Invalid entity bearer", HttpStatus.UNAUTHORIZED);
+    }
+    const active = await this.prisma.mcpBearerToken.updateMany({
+      where: {
+        id: bearer.id,
+        revokedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      data: { lastUsedAt: now },
+    });
+    if (active.count !== 1) {
+      throw new HttpException("Invalid entity bearer", HttpStatus.UNAUTHORIZED);
     }
 
-    const expected = Buffer.from(entity.serviceSecret, "utf8");
-    const provided = Buffer.from(secret, "utf8");
-    if (expected.length !== provided.length || !crypto.timingSafeEqual(expected, provided)) {
-      throw new HttpException("Invalid service secret", HttpStatus.UNAUTHORIZED);
-    }
-
-    const ttlSeconds = Math.max(60, Math.min(86400 * 7, body.ttlSeconds ?? 3600));
+    const rawTtl =
+      typeof body.ttlSeconds === "number" && Number.isFinite(body.ttlSeconds)
+        ? Math.floor(body.ttlSeconds)
+        : 3600;
+    const requestedTtl = Math.max(60, Math.min(86400 * 7, rawTtl));
+    const bearerTtl = bearer.expiresAt
+      ? Math.max(1, Math.floor((bearer.expiresAt.getTime() - now.getTime()) / 1000))
+      : requestedTtl;
+    const ttlSeconds = Math.min(requestedTtl, bearerTtl);
 
     // M2 — sanitize caller-supplied extra claims. `body.claims` is a
     // free-form bag from an untrusted request body; strip every key the
     // verifier trusts (tenancy, identity, entity/secret-lookup, agent pin,
     // guest/operator flag, permissions, issuer, timing) so a caller holding
-    // one entity's serviceSecret cannot mint a token for another scope,
+    // one entity's bearer cannot mint a token for another scope,
     // impersonate another user, or defeat the PIFSP-1 agent pin. Merge the
     // sanitized bag FIRST so the typed fields below always win — mirroring
     // the safe ordering in AuthService.createPlatformSessionToken.
@@ -187,6 +221,7 @@ export class SessionTokenController {
       "projectId",
       "environmentId",
       "entityId",
+      "authorizationId",
       "userId",
       "userToken",
       "agentId",
@@ -210,14 +245,14 @@ export class SessionTokenController {
     // signed token. undefined when nothing survives, so the claim is omitted.
     const userIdentities = sanitizeUserIdentities(body.userIdentities);
 
-    const token = await this.authService.createSessionToken(
+    const token = await this.authService.createEntitySessionToken(
       {
         ...safeClaims,
-        organizationId: body.organizationId,
-        projectId: body.projectId,
-        environmentId: body.environmentId,
+        organizationId: bearer.entity.project.organizationId,
+        projectId: bearer.entity.project.id,
+        environmentId: environment.id,
         userId: body.userId,
-        entityId,
+        entityId: bearer.entity.externalId,
         ...(body.userToken ? { userToken: body.userToken } : {}),
         ...(body.agentId ? { agentId: body.agentId } : {}),
         // M2 — restore the display-identity passthrough via the typed field
@@ -228,11 +263,12 @@ export class SessionTokenController {
         // settable only through this typed field.
         ...(userIdentities ? { userIdentities } : {}),
       } as any,
+      bearer.id,
       ttlSeconds,
     );
     if (!token) {
       throw new HttpException(
-        "Mint failed — entity serviceSecret missing in store",
+        "Mint failed — platform session signing is unavailable",
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }

@@ -1,5 +1,5 @@
 import { Injectable, Inject } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import { PRISMA_TOKEN, environmentScopeWhere } from "../shared/database.provider";
 import { PROVIDER_MANIFESTS, getManifest, type ProviderManifest } from "./manifests";
 import { ScopedEnvService } from "./scoped-env.service";
 import { ModelCatalogService } from "./model-catalog.service";
@@ -8,159 +8,100 @@ import type { RequestScope } from "../auth/scope.guard";
 export type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
 export interface ProviderState {
-  /** Manifest id (e.g. "anthropic"). */
   id: string;
   displayName: string;
   description: string;
-  /** All required env-vars + whether each is currently set in the agent container. */
   requiredEnv: Array<{ name: string; set: boolean }>;
   optionalEnv: string[];
-  /** True when all `requiredEnv[].set === true`. */
   envReady: boolean;
-  /** User-controlled toggle. Defaults to `envReady` when no PlatosProviderEnabled row exists. */
   enabled: boolean;
-  /** Has the user explicitly opted-in via UI? */
   linked: boolean;
   linkedAt: string | null;
-  /** Models exposed to the model picker when `enabled && envReady`. */
   models: string[];
 }
 
-/**
- * ProviderRegistryService — single source of truth for "which LLM providers
- * are available in this (org, project, env)".
- *
- * Source of provider definitions: code (see `providers/manifests/index.ts`).
- * Source of "is the env var set?": `process.env` (trigger.dev injects env
- * vars into the agent container at deploy time).
- * Source of user opt-in: `PlatosProviderEnabled` table (scoped per env).
- *
- * NOTE: The webapp has richer knowledge of the trigger.dev env-vars table —
- * it can show per-variable set/unset for any environment, not just the one
- * the agent container is running in. The webapp loader calls this service
- * for the `enabled` + `linked` state, and reads env-var presence itself.
- */
+/** Clean-schema provider registry backed by EnvironmentProvider and ProviderKey. */
 @Injectable()
 export class ProviderRegistryService {
-  private prisma: any;
-
   constructor(
-    @Inject(PRISMA_TOKEN) prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: any,
     private readonly scopedEnv: ScopedEnvService,
     private readonly modelCatalog: ModelCatalogService,
-  ) {
-    this.prisma = prisma;
-  }
+  ) {}
 
-  /** All manifest-defined providers with current-scope state. */
   async list(scope: ScopeTuple): Promise<ProviderState[]> {
-    const rows = await this.prisma.platosProviderEnabled.findMany({
-      where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-      },
+    const rows = await this.prisma.environmentProvider.findMany({
+      where: environmentScopeWhere(scope),
+      select: { providerId: true, enabled: true, linkedAt: true },
     });
-    const linkedById = new Map<string, { enabled: boolean; linkedAt: Date }>();
-    for (const row of rows) {
-      linkedById.set(row.providerId, { enabled: row.enabled, linkedAt: row.linkedAt });
-    }
-
-    return Promise.all(PROVIDER_MANIFESTS.map((m) => this.stateFor(scope, m, linkedById.get(m.id))));
+    const linkedById = new Map<string, { enabled: boolean; linkedAt: Date }>(
+      rows.map((row: any) => [row.providerId, row]),
+    );
+    return Promise.all(
+      PROVIDER_MANIFESTS.map((manifest) => this.stateFor(scope, manifest, linkedById.get(manifest.id))),
+    );
   }
 
   async getOne(scope: ScopeTuple, providerId: string): Promise<ProviderState | undefined> {
     const manifest = getManifest(providerId);
     if (!manifest) return undefined;
-    const row = await this.prisma.platosProviderEnabled.findUnique({
-      where: {
-        organizationId_projectId_environmentId_providerId: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          providerId,
-        },
-      },
+    const row = await this.prisma.environmentProvider.findFirst({
+      where: { ...environmentScopeWhere(scope), providerId },
+      select: { enabled: true, linkedAt: true },
     });
-    return this.stateFor(scope, manifest, row ? { enabled: row.enabled, linkedAt: row.linkedAt } : undefined);
+    return this.stateFor(scope, manifest, row ?? undefined);
   }
 
-  /** User clicked "Enable" on the providers page. */
   async link(scope: ScopeTuple, providerId: string): Promise<ProviderState> {
     const manifest = getManifest(providerId);
     if (!manifest) throw new Error(`Unknown providerId: ${providerId}`);
-
-    await this.prisma.platosProviderEnabled.upsert({
-      where: {
-        organizationId_projectId_environmentId_providerId: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          providerId,
-        },
-      },
-      create: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        providerId,
-        enabled: true,
-      },
-      update: { enabled: true },
-    });
-    const state = await this.getOne(scope, providerId);
-    return state!;
+    await this.writeProviderState(scope, providerId, true);
+    return (await this.getOne(scope, providerId))!;
   }
 
-  /** User clicked "Unlink". The row is deleted — next list() call treats it as unlinked. */
   async unlink(scope: ScopeTuple, providerId: string): Promise<void> {
-    await this.prisma.platosProviderEnabled.deleteMany({
-      where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        providerId,
-      },
+    await this.prisma.environmentProvider.deleteMany({
+      where: { ...environmentScopeWhere(scope), providerId },
     });
   }
 
-  /** Toggle enabled flag for a linked provider. */
   async setEnabled(scope: ScopeTuple, providerId: string, enabled: boolean): Promise<ProviderState> {
     const manifest = getManifest(providerId);
     if (!manifest) throw new Error(`Unknown providerId: ${providerId}`);
-    await this.prisma.platosProviderEnabled.upsert({
-      where: {
-        organizationId_projectId_environmentId_providerId: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          providerId,
-        },
-      },
-      create: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        providerId,
-        enabled,
-      },
-      update: { enabled },
-    });
-    const state = await this.getOne(scope, providerId);
-    return state!;
+    await this.writeProviderState(scope, providerId, enabled);
+    return (await this.getOne(scope, providerId))!;
   }
 
-  /**
-   * Models picker source — returns provider groups that are BOTH enabled
-   * (user opted-in) AND have all required env vars set in the container.
-   *
-   * This is what `/agents/new` and `/agents/:id` consume.
-   */
-  async availableModels(scope: ScopeTuple): Promise<Array<{ provider: string; displayName: string; models: string[] }>> {
+  async availableModels(
+    scope: ScopeTuple,
+  ): Promise<Array<{ provider: string; displayName: string; models: string[] }>> {
     const states = await this.list(scope);
     return states
-      .filter((s) => s.enabled && s.envReady)
-      .map((s) => ({ provider: s.id, displayName: s.displayName, models: s.models }));
+      .filter((state) => state.linked && state.enabled && state.envReady)
+      .map((state) => ({ provider: state.id, displayName: state.displayName, models: state.models }));
+  }
+
+  private async writeProviderState(scope: ScopeTuple, providerId: string, enabled: boolean): Promise<void> {
+    await this.prisma.$transaction(async (tx: any) => {
+      const environment = await tx.environment.findFirst({
+        where: {
+          id: scope.environmentId,
+          project: { id: scope.projectId, organizationId: scope.organizationId },
+        },
+        select: { id: true },
+      });
+      if (!environment) throw new Error("Environment not found or access denied");
+      await tx.environmentProvider.upsert({
+        where: {
+          environmentId_providerId: {
+            environmentId: scope.environmentId,
+            providerId,
+          },
+        },
+        create: { environmentId: scope.environmentId, providerId, enabled },
+        update: { enabled },
+      });
+    });
   }
 
   private async stateFor(
@@ -168,72 +109,28 @@ export class ProviderRegistryService {
     manifest: ProviderManifest,
     row?: { enabled: boolean; linkedAt: Date },
   ): Promise<ProviderState> {
-    // Only check the trigger.dev SecretStore — process.env is never a valid
-    // source for agent provider keys (those are admin/internal keys, not
-    // user-linked keys).
-    const setMap = await this.scopedEnv.setMap(scope, manifest.requiredEnv);
-    const requiredEnv = manifest.requiredEnv.map((name) => ({
-      name,
-      set: !!setMap[name],
-    }));
-    let envReady = requiredEnv.every((e) => e.set);
-
-    // PIFSP-14 — also consider ANY PlatosProviderKey for this provider.
-    // The canonical env var (e.g. ANTHROPIC_API_KEY) is not required if the
-    // user mapped a custom-named env var via the Providers UI. ANY registered
-    // key with a non-empty SecretStore value makes the provider ready.
-    if (!envReady) {
-      try {
-        const allKeys = await this.prisma.platosProviderKey.findMany({
-          where: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-            provider: manifest.id,
-          },
-          select: { envVarName: true },
-        });
-        for (const k of allKeys) {
-          const keyVal = await this.scopedEnv.get(scope, k.envVarName);
-          if (keyVal) { envReady = true; break; }
-        }
-      } catch {
-        // non-fatal
-      }
+    const requiredEnv: Array<{ name: string; set: boolean }> = [];
+    for (const [index, name] of manifest.requiredEnv.entries()) {
+      const set = index === 0
+        ? await this.scopedEnv.hasProviderCredential(scope, manifest.id)
+        : !!(await this.scopedEnv.get(scope, name));
+      requiredEnv.push({ name, set });
     }
+    const envReady = requiredEnv.every((entry) => entry.set);
 
-    // Setting the env-var IS linking — the explicit `PlatosProviderEnabled`
-    // row used to be the only signal, but that produced the contradictory
-    // "key set but provider not linked" UI. Now `linked` reflects whether
-    // the provider has a usable credential in scope; the row only carries
-    // the explicit enable/disable toggle for users who configure but
-    // intentionally disable a provider.
-    const linked = !!row || envReady;
-    const enabled = row ? row.enabled : envReady;
-
-    // Dynamic model discovery — for providers that publish a /v1/models
-    // endpoint, union the live list with the curated manifest defaults.
-    // Curated entries appear first so the picker preserves a stable order
-    // even when the upstream catalog reorders. De-dup by exact id match.
     let models = manifest.models;
-    if (envReady && manifest.modelsEndpoint) {
-      try {
-        const live = await this.modelCatalog.listFor(scope, manifest);
-        if (live.length > 0) {
-          const seen = new Set(manifest.models);
-          const additions: string[] = [];
-          for (const id of live) {
-            if (!seen.has(id)) {
-              seen.add(id);
-              additions.push(id);
-            }
-          }
-          models = [...manifest.models, ...additions];
-        }
-      } catch {
-        // ModelCatalogService swallows fetch errors internally; this catch
-        // is defense in depth for unexpected runtime errors. Keep the
-        // curated list on failure.
+    if (row?.enabled && envReady && manifest.modelsEndpoint) {
+      const live = await this.modelCatalog.listFor(scope, manifest);
+      if (live.length > 0) {
+        const seen = new Set(manifest.models);
+        models = [
+          ...manifest.models,
+          ...live.filter((id) => {
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
+          }),
+        ];
       }
     }
 
@@ -244,9 +141,9 @@ export class ProviderRegistryService {
       requiredEnv,
       optionalEnv: manifest.optionalEnv,
       envReady,
-      enabled,
-      linked,
-      linkedAt: row ? row.linkedAt.toISOString() : null,
+      enabled: row?.enabled ?? false,
+      linked: !!row,
+      linkedAt: row?.linkedAt.toISOString() ?? null,
       models,
     };
   }

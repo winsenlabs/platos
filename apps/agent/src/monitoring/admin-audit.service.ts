@@ -1,5 +1,9 @@
 import { Injectable, Inject, Logger } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import type { Prisma } from "@platos/tenancy-database";
+import {
+  type ControlDatabaseClient,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 
 /**
@@ -34,7 +38,9 @@ export type AdminAuditInput = {
 export class AdminAuditService {
   private readonly logger = new Logger(AdminAuditService.name);
 
-  constructor(@Inject(PRISMA_TOKEN) private readonly prisma: any) {}
+  constructor(
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+  ) {}
 
   /**
    * Fire-and-forget. Logs + swallows DB errors so the originating
@@ -59,18 +65,19 @@ export class AdminAuditService {
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId" | "userId">,
     input: AdminAuditInput,
   ): Promise<void> {
-    if (!this.prisma?.platosAdminAudit?.create) return;
-    await this.prisma.platosAdminAudit.create({
+    await this.prisma.adminAudit.create({
       data: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
         actorUserId: scope.userId ?? null,
         action: input.action,
         subjectType: input.subjectType,
         subjectId: input.subjectId ?? null,
-        beforeJson: input.beforeJson ?? null,
-        afterJson: input.afterJson ?? null,
+        before: (input.beforeJson ?? undefined) as
+          | Prisma.InputJsonValue
+          | undefined,
+        after: (input.afterJson ?? undefined) as
+          | Prisma.InputJsonValue
+          | undefined,
         reason: input.reason ?? null,
         source: input.source ?? "api",
       },

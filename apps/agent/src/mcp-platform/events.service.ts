@@ -1,6 +1,11 @@
 import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
+import type { Prisma } from "@platos/tenancy-database";
 import type Redis from "ioredis";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import {
+  type ControlDatabaseClient,
+  environmentScopeWhere,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import {
   validatePublicUrl,
@@ -128,7 +133,7 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
   private blockingRedis: Redis | null = null;
 
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
   ) {}
 
@@ -165,14 +170,12 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
     payload: unknown,
   ): Promise<void> {
     try {
-      const row = await this.prisma.platosEvent.create({
+      const row = await this.prisma.event.create({
         data: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
           eventType,
           subjectId,
-          payload: (payload ?? {}) as any,
+          payload: (payload ?? {}) as Prisma.InputJsonValue,
         },
         select: { id: true, createdAt: true },
       });
@@ -194,11 +197,9 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
 
       // Evaluate persistent rules. Fail-open on any per-rule error.
       try {
-        const rules = await this.prisma.platosNotificationRule.findMany({
+        const rules = await this.prisma.notificationRule.findMany({
           where: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
+            ...environmentScopeWhere(scope),
             enabled: true,
           },
         });
@@ -253,9 +254,7 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
   }>> {
     const limit = Math.min(Math.max(opts.limit ?? 50, 1), 500);
     const where: Record<string, unknown> = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
+      ...environmentScopeWhere(scope),
     };
     if (opts.eventTypes && opts.eventTypes.length > 0) {
       where["eventType"] = { in: opts.eventTypes };
@@ -263,12 +262,12 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
     if (opts.subjectIds && opts.subjectIds.length > 0) {
       where["subjectId"] = { in: opts.subjectIds };
     }
-    const rows = await this.prisma.platosEvent.findMany({
+    const rows = await this.prisma.event.findMany({
       where,
       orderBy: { createdAt: "desc" },
       take: limit,
     });
-    return rows.map((r: any) => ({
+    return rows.map((r) => ({
       id: r.id,
       eventType: r.eventType,
       subjectId: r.subjectId ?? null,
@@ -307,14 +306,12 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
         throw new Error(`delivery.url rejected: ${describeUrlValidationError(check.error)}`);
       }
     }
-    return this.prisma.platosNotificationRule.create({
+    return this.prisma.notificationRule.create({
       data: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
         name: input.name,
-        filters: input.filters as any,
-        delivery: input.delivery as any,
+        filters: input.filters as unknown as Prisma.InputJsonValue,
+        delivery: input.delivery as Prisma.InputJsonValue,
         enabled: true,
         createdBy,
       },
@@ -322,23 +319,19 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async listRules(scope: EventScope) {
-    return this.prisma.platosNotificationRule.findMany({
+    return this.prisma.notificationRule.findMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
       },
       orderBy: { createdAt: "desc" },
     });
   }
 
   async getRule(scope: EventScope, id: string) {
-    return this.prisma.platosNotificationRule.findFirst({
+    return this.prisma.notificationRule.findFirst({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
       },
     });
   }
@@ -355,18 +348,18 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
   ) {
     const existing = await this.getRule(scope, id);
     if (!existing) throw new Error(`rule ${id} not found in scope`);
-    const data: Record<string, unknown> = {};
+    const data: Prisma.NotificationRuleUpdateInput = {};
     if (input.name !== undefined) {
       if (input.name.length < 1 || input.name.length > 120) {
         throw new Error("name must be 1–120 chars");
       }
-      data["name"] = input.name;
+      data.name = input.name;
     }
     if (input.filters !== undefined) {
       if (!Array.isArray(input.filters.eventTypes) || input.filters.eventTypes.length === 0) {
         throw new Error("filters.eventTypes must be a non-empty array");
       }
-      data["filters"] = input.filters as any;
+      data.filters = input.filters as unknown as Prisma.InputJsonValue;
     }
     if (input.delivery !== undefined) {
       if (!isRuleDelivery(input.delivery)) {
@@ -378,18 +371,18 @@ export class McpEventsService implements OnModuleInit, OnModuleDestroy {
           throw new Error(`delivery.url rejected: ${describeUrlValidationError(check.error)}`);
         }
       }
-      data["delivery"] = input.delivery as any;
+      data.delivery = input.delivery as Prisma.InputJsonValue;
     }
     if (input.enabled !== undefined) {
-      data["enabled"] = input.enabled;
+      data.enabled = input.enabled;
     }
-    return this.prisma.platosNotificationRule.update({ where: { id }, data });
+    return this.prisma.notificationRule.update({ where: { id }, data });
   }
 
   async deleteRule(scope: EventScope, id: string): Promise<boolean> {
     const existing = await this.getRule(scope, id);
     if (!existing) return false;
-    await this.prisma.platosNotificationRule.delete({ where: { id } });
+    await this.prisma.notificationRule.delete({ where: { id } });
     return true;
   }
 

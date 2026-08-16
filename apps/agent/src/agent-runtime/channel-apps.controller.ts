@@ -16,16 +16,17 @@ import { ModuleRef } from "@nestjs/core";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { ChannelRuntimeService } from "../channels/channel-runtime.service";
+import { ChannelPersistenceService } from "../channels/channel-persistence.service";
 import { requireOperator, type RequestScope } from "../auth/scope.guard";
 import { validateAgentRouting } from "./channel-routing";
 
 /**
  * Connect v3 — dashboard REST for marketplace-grade channel APPS.
  *
- * A PlatosChannelApp is a publishable Slack app identity (one clientId /
- * clientSecret / signingSecret) OWNED by the operator's scope and installed
+ * A ChannelApp is a publishable Slack app identity (one clientId plus referenced
+ * client/signing credentials) OWNED by the operator's Environment and installed
  * into N external workspaces via OAuth ("Add to Slack"). Each install is a
- * PlatosChannelInstallation row (bot token + team). This controller is the
+ * ChannelInstallation with its own Credential reference. This controller is the
  * MANAGEMENT surface over the app model — the OAuth install/callback + the
  * per-app events webhook that receive Slack traffic are SEPARATE runtime slices
  * (channel-app-oauth.controller.ts / channel-app-events.controller.ts).
@@ -47,10 +48,10 @@ import { validateAgentRouting } from "./channel-routing";
  *
  * Every handler is OPERATOR-ONLY (requireOperator) and ScopeGuard-scoped — the
  * same posture as ChannelsController. `clientSecret` + `signingSecret` are
- * stored ENCRYPTED (MessageCryptoService envelope) and NEVER returned;
+ * stored only in the app's referenced Credential and NEVER returned;
  * `hasClientSecret` / `hasSigningSecret` booleans say whether they're set. The
- * install-time bot tokens live on the installation rows and are likewise
- * redacted (`hasBotToken`). `clientId` is a public identifier and IS returned.
+ * install-time bot tokens live only in referenced installation Credentials and
+ * are redacted (`hasBotToken`). `clientId` is a public identifier and IS returned.
  * POST returns `installUrl` — the "Add to Slack" href.
  *
  * RECOMMENDED Slack `scopes` for the "Agents & AI Apps" surface (send in the
@@ -84,11 +85,15 @@ const OAUTH_BASE = "/api/v1/channels/oauth";
 
 @Controller("api/v1/agent/channel-apps")
 export class ChannelAppsController {
+  private readonly persistence: ChannelPersistenceService;
+
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
-    private readonly messageCrypto: MessageCryptoService,
-    private readonly moduleRef: ModuleRef,
-  ) {}
+    messageCrypto: MessageCryptoService,
+    private readonly moduleRef: ModuleRef
+  ) {
+    this.persistence = new ChannelPersistenceService(prisma, messageCrypto);
+  }
 
   /**
    * Evict the runtime's cached decrypted bot token(s) for an app after a
@@ -99,9 +104,7 @@ export class ChannelAppsController {
    */
   private invalidateApp(appId: string): void {
     try {
-      this.moduleRef
-        .get(ChannelRuntimeService, { strict: false })
-        ?.invalidateApp(appId);
+      this.moduleRef.get(ChannelRuntimeService, { strict: false })?.invalidateApp(appId);
     } catch {
       // Runtime not registered (e.g. focused test module) — TTL is the backstop.
     }
@@ -118,39 +121,55 @@ export class ChannelAppsController {
     );
   }
 
-  private scopeWhere(scope: RequestScope) {
-    return {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
-    };
-  }
-
   private isPlainObject(v: unknown): v is Record<string, unknown> {
     return !!v && typeof v === "object" && !Array.isArray(v);
   }
 
-  /** Redact the two secret columns; expose only whether they're set. */
+  /** Redact app secrets and Credential internals; expose only presence metadata. */
   private projectApp(row: any) {
-    const { clientSecret, signingSecret, ...rest } = row;
+    const {
+      clientSecret,
+      signingSecret,
+      hasClientSecret,
+      hasSigningSecret,
+      credential,
+      environment,
+      credentialRevision,
+      ...rest
+    } = row;
     void clientSecret;
     void signingSecret;
+    void credential;
+    void environment;
+    void credentialRevision;
     return {
       ...rest,
-      hasClientSecret: clientSecret != null,
-      hasSigningSecret: signingSecret != null,
+      hasClientSecret: hasClientSecret === true,
+      hasSigningSecret: hasSigningSecret === true,
     };
   }
 
-  /** Redact the install secret columns; expose only whether they're set. */
+  /** Redact install secrets and Credential internals; expose only presence metadata. */
   private projectInstallation(row: any) {
-    const { botToken, refreshToken, ...rest } = row;
+    const {
+      botToken,
+      refreshToken,
+      hasBotToken,
+      hasRefreshToken,
+      credential,
+      app,
+      credentialRevision,
+      ...rest
+    } = row;
     void botToken;
     void refreshToken;
+    void credential;
+    void app;
+    void credentialRevision;
     return {
       ...rest,
-      hasBotToken: botToken != null,
-      hasRefreshToken: refreshToken != null,
+      hasBotToken: hasBotToken === true,
+      hasRefreshToken: hasRefreshToken === true,
     };
   }
 
@@ -174,11 +193,6 @@ export class ChannelAppsController {
     return origin ? `${origin}${OAUTH_BASE}/${id}/install` : null;
   }
 
-  /** Encrypt a single secret string into the stored envelope. */
-  private encryptSecret(plain: string): string {
-    return JSON.stringify(this.messageCrypto.encryptJsonField(plain));
-  }
-
   /**
    * Compact operator status view of an installation row (teamId / teamName /
    * status / lastEventAt + the resolved agent binding). `app` supplies the
@@ -187,12 +201,9 @@ export class ChannelAppsController {
    * `app.defaultAgentId`). Never leaks the bot token.
    */
   private installationStatusView(row: any, app: any) {
-    const overrideAgentId =
-      typeof row?.agentId === "string" && row.agentId ? row.agentId : null;
+    const overrideAgentId = typeof row?.agentId === "string" && row.agentId ? row.agentId : null;
     const appDefaultAgentId =
-      typeof app?.defaultAgentId === "string" && app.defaultAgentId
-        ? app.defaultAgentId
-        : null;
+      typeof app?.defaultAgentId === "string" && app.defaultAgentId ? app.defaultAgentId : null;
     return {
       installationId: row.id,
       teamId: row.teamId ?? null,
@@ -206,47 +217,27 @@ export class ChannelAppsController {
         agentId: overrideAgentId,
         effectiveAgentId: overrideAgentId ?? appDefaultAgentId,
         source: overrideAgentId ? "installation" : appDefaultAgentId ? "app" : "none",
-        hasRoutingOverride: row.agentRouting != null,
+        hasRoutingOverride: Array.isArray(row.agentRouting)
+          ? row.agentRouting.length > 0
+          : row.agentRouting != null,
       },
     };
   }
 
-  /**
-   * Explicit find-then-write "upsert" on the nullable (appId, teamId,
-   * enterpriseId) tuple — the SAME contract the OAuth callback's
-   * upsertInstallation uses. NOT prisma.upsert: teamId/enterpriseId are nullable
-   * and Postgres treats NULLs in a unique index as DISTINCT, so an ON CONFLICT
-   * upsert would duplicate-insert on re-import of a normal workspace. A findFirst
-   * with `teamId: null` compiles to `IS NULL` and reads the existing row.
-   */
-  private async importUpsert(
-    appId: string,
-    teamId: string | null,
-    enterpriseId: string | null,
-    data: Record<string, unknown>,
-  ): Promise<any> {
-    const existing = await this.prisma.platosChannelInstallation.findFirst({
-      where: { appId, teamId, enterpriseId },
-      select: { id: true },
-    });
-    if (existing) {
-      return this.prisma.platosChannelInstallation.update({
-        where: { id: existing.id },
-        data,
-      });
-    }
-    return this.prisma.platosChannelInstallation.create({
-      data: { appId, teamId, enterpriseId, ...data },
-    });
-  }
-
   /** Forged-id guard — the agent must belong to this exact scope. */
   private async agentInScope(scope: RequestScope, agentId: string): Promise<boolean> {
-    const agent = await this.prisma.platosAgent.findFirst({
-      where: { id: agentId, ...this.scopeWhere(scope) },
+    const binding = await this.prisma.agentBinding.findFirst({
+      where: {
+        agentId,
+        environmentId: scope.environmentId,
+        agent: { projectId: scope.projectId },
+        environment: {
+          project: { id: scope.projectId, organizationId: scope.organizationId },
+        },
+      },
       select: { id: true },
     });
-    return !!agent;
+    return !!binding;
   }
 
   /** Normalize a scopes[] payload into trimmed, non-empty, de-duped strings. */
@@ -270,10 +261,7 @@ export class ChannelAppsController {
   async list(@Req() req: Request) {
     const scope = this.getScope(req);
     requireOperator(scope);
-    const rows = await this.prisma.platosChannelApp.findMany({
-      where: this.scopeWhere(scope),
-      orderBy: { createdAt: "desc" },
-    });
+    const rows = await this.persistence.listApps(scope);
     return {
       apps: (rows as any[]).map((r) => ({
         ...this.projectApp(r),
@@ -298,16 +286,18 @@ export class ChannelAppsController {
       linking?: string;
       defaultAgentId?: string | null;
       agentRouting?: unknown;
-    },
+    }
   ) {
     const scope = this.getScope(req);
     requireOperator(scope);
 
-    const provider = String(body?.provider ?? "slack").trim().toLowerCase();
+    const provider = String(body?.provider ?? "slack")
+      .trim()
+      .toLowerCase();
     if (!APP_PROVIDERS.has(provider)) {
       throw new HttpException(
         { error: "invalid_provider", message: "provider must be slack (v1)" },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
     const clientId = String(body?.clientId ?? "").trim();
@@ -319,7 +309,7 @@ export class ChannelAppsController {
           error: "invalid_params",
           message: "clientId, clientSecret and signingSecret are required",
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -329,7 +319,7 @@ export class ChannelAppsController {
     if (!DISTRIBUTIONS.has(distribution)) {
       throw new HttpException(
         { error: "invalid_params", message: "distribution must be private | public" },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -343,16 +333,14 @@ export class ChannelAppsController {
             error: "invalid_params",
             message: "linking must be none | optional | required",
           },
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
     }
 
-    const displayName =
-      typeof body?.displayName === "string" ? body.displayName.trim() : undefined;
+    const displayName = typeof body?.displayName === "string" ? body.displayName.trim() : undefined;
     const scopes = this.normalizeScopes(body?.scopes);
-    const aiAppsSurface =
-      typeof body?.aiAppsSurface === "boolean" ? body.aiAppsSurface : undefined;
+    const aiAppsSurface = typeof body?.aiAppsSurface === "boolean" ? body.aiAppsSurface : undefined;
 
     // defaultAgentId (optional) — forged-id guard against the token scope.
     const defaultAgentId =
@@ -364,7 +352,7 @@ export class ChannelAppsController {
           message: `agent ${defaultAgentId} not found in scope`,
           agentId: defaultAgentId,
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -375,27 +363,24 @@ export class ChannelAppsController {
       if (!routing.ok) {
         throw new HttpException(
           { error: routing.error, message: routing.message },
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
       agentRoutingData = routing.rules;
     }
 
-    const row = await this.prisma.platosChannelApp.create({
-      data: {
-        ...this.scopeWhere(scope),
-        provider,
-        clientId,
-        clientSecret: this.encryptSecret(clientSecret),
-        signingSecret: this.encryptSecret(signingSecret),
-        distribution,
-        ...(displayName !== undefined ? { displayName } : {}),
-        ...(scopes !== undefined ? { scopes } : {}),
-        ...(aiAppsSurface !== undefined ? { aiAppsSurface } : {}),
-        ...(linking !== undefined ? { linking } : {}),
-        ...(defaultAgentId ? { defaultAgentId } : {}),
-        ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
-      },
+    const row = await this.persistence.createApp(scope, {
+      provider,
+      clientId,
+      clientSecret,
+      signingSecret,
+      distribution,
+      ...(displayName !== undefined ? { displayName } : {}),
+      ...(scopes !== undefined ? { scopes } : {}),
+      ...(aiAppsSurface !== undefined ? { aiAppsSurface } : {}),
+      ...(linking !== undefined ? { linking } : {}),
+      ...(defaultAgentId ? { defaultAgentId } : {}),
+      ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
     });
 
     return {
@@ -410,9 +395,7 @@ export class ChannelAppsController {
   async getOne(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
     requireOperator(scope);
-    const row = await this.prisma.platosChannelApp.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-    });
+    const row = await this.persistence.loadScopedApp(scope, id);
     if (!row) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
     return { app: this.projectApp(row), installUrl: this.installUrl(row.id) };
   }
@@ -433,18 +416,16 @@ export class ChannelAppsController {
       linking?: string;
       defaultAgentId?: string | null;
       agentRouting?: unknown;
-    },
+    }
   ) {
     const scope = this.getScope(req);
     requireOperator(scope);
 
-    const existing = await this.prisma.platosChannelApp.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-      select: { id: true },
-    });
+    const existing = await this.persistence.loadScopedApp(scope, id);
     if (!existing) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
 
     const data: Record<string, unknown> = {};
+    const credentialData: Record<string, unknown> = {};
     if (Object.prototype.hasOwnProperty.call(body, "displayName")) {
       data.displayName = typeof body.displayName === "string" ? body.displayName.trim() : null;
     }
@@ -453,16 +434,16 @@ export class ChannelAppsController {
       if (!clientId) {
         throw new HttpException(
           { error: "invalid_params", message: "clientId must be non-empty" },
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
       data.clientId = clientId;
     }
     if (typeof body.clientSecret === "string" && body.clientSecret.trim()) {
-      data.clientSecret = this.encryptSecret(body.clientSecret.trim());
+      credentialData.clientSecret = body.clientSecret.trim();
     }
     if (typeof body.signingSecret === "string" && body.signingSecret.trim()) {
-      data.signingSecret = this.encryptSecret(body.signingSecret.trim());
+      credentialData.signingSecret = body.signingSecret.trim();
     }
     if (Object.prototype.hasOwnProperty.call(body, "scopes")) {
       const scopes = this.normalizeScopes(body.scopes);
@@ -473,12 +454,14 @@ export class ChannelAppsController {
       if (!DISTRIBUTIONS.has(distribution)) {
         throw new HttpException(
           { error: "invalid_params", message: "distribution must be private | public" },
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
       data.distribution = distribution;
     }
-    if (typeof body.aiAppsSurface === "boolean") data.aiAppsSurface = body.aiAppsSurface;
+    if (typeof body.aiAppsSurface === "boolean") {
+      credentialData.aiAppsSurface = body.aiAppsSurface;
+    }
     if (typeof body.linking === "string") {
       const linking = body.linking.trim().toLowerCase();
       if (!LINKING.has(linking)) {
@@ -487,10 +470,10 @@ export class ChannelAppsController {
             error: "invalid_params",
             message: "linking must be none | optional | required",
           },
-          HttpStatus.BAD_REQUEST,
+          HttpStatus.BAD_REQUEST
         );
       }
-      data.linking = linking;
+      credentialData.linking = linking;
     }
     if (Object.prototype.hasOwnProperty.call(body, "defaultAgentId")) {
       const raw = body.defaultAgentId;
@@ -505,7 +488,7 @@ export class ChannelAppsController {
               message: `agent ${defaultAgentId} not found in scope`,
               agentId: defaultAgentId,
             },
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.BAD_REQUEST
           );
         }
         data.defaultAgentId = defaultAgentId;
@@ -514,28 +497,25 @@ export class ChannelAppsController {
     if (Object.prototype.hasOwnProperty.call(body, "agentRouting")) {
       const ar = body.agentRouting;
       if (ar === null) {
-        data.agentRouting = null; // explicit clear → default agent only
+        data.agentRouting = []; // explicit clear → default agent only
       } else {
         const routing = await validateAgentRouting(this.prisma, scope, ar);
         if (!routing.ok) {
           throw new HttpException(
             { error: routing.error, message: routing.message },
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.BAD_REQUEST
           );
         }
         data.agentRouting = routing.rules;
       }
     }
 
-    if (Object.keys(data).length === 0) {
-      const row = await this.prisma.platosChannelApp.findFirst({
-        where: { id, ...this.scopeWhere(scope) },
-      });
-      if (!row) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
-      return { app: this.projectApp(row), installUrl: this.installUrl(row.id) };
+    if (Object.keys(data).length === 0 && Object.keys(credentialData).length === 0) {
+      return { app: this.projectApp(existing), installUrl: this.installUrl(existing.id) };
     }
 
-    const updated = await this.prisma.platosChannelApp.update({ where: { id }, data });
+    const updated = await this.persistence.updateApp(scope, id, data, credentialData);
+    if (!updated) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
     // Credential changes must not linger in the runtime's decrypted-token cache.
     this.invalidateApp(id);
     return { app: this.projectApp(updated), installUrl: this.installUrl(updated.id) };
@@ -545,13 +525,9 @@ export class ChannelAppsController {
   async remove(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
     requireOperator(scope);
-    const existing = await this.prisma.platosChannelApp.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-      select: { id: true },
-    });
+    const existing = await this.persistence.loadScopedApp(scope, id);
     if (!existing) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
-    // Cascades PlatosChannelInstallation + PlatosChannelAppThread (schema onDelete).
-    await this.prisma.platosChannelApp.delete({ where: { id } });
+    await this.persistence.deleteApp(scope, id);
     this.invalidateApp(id);
     return { deleted: true, id };
   }
@@ -562,15 +538,8 @@ export class ChannelAppsController {
   async listInstallations(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
     requireOperator(scope);
-    const app = await this.prisma.platosChannelApp.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-      select: { id: true },
-    });
-    if (!app) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
-    const rows = await this.prisma.platosChannelInstallation.findMany({
-      where: { appId: id },
-      orderBy: { createdAt: "desc" },
-    });
+    const rows = await this.persistence.listInstallations(scope, id);
+    if (!rows) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
     return {
       installations: (rows as any[]).map((r) => this.projectInstallation(r)),
     };
@@ -589,15 +558,10 @@ export class ChannelAppsController {
   async installationsStatus(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
     requireOperator(scope);
-    const app = await this.prisma.platosChannelApp.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-      select: { id: true, defaultAgentId: true },
-    });
+    const app = await this.persistence.loadScopedApp(scope, id);
     if (!app) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
-    const rows = await this.prisma.platosChannelInstallation.findMany({
-      where: { appId: id },
-      orderBy: { createdAt: "desc" },
-    });
+    const rows = await this.persistence.listInstallations(scope, id);
+    if (!rows) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
     return {
       installations: (rows as any[]).map((r) => this.installationStatusView(r, app)),
     };
@@ -605,14 +569,14 @@ export class ChannelAppsController {
 
   /**
    * Operator-driven install IMPORT (requirement 1). Registers a
-   * PlatosChannelInstallation under an existing in-scope app from an
+   * ChannelInstallation under an existing in-scope app from an
    * operator-supplied bot token — for a manually-created Slack app, or migrating
    * an install from elsewhere — WITHOUT the browser OAuth dance. This is the
-   * additive twin of the OAuth callback's persistence: same encryption
-   * (MessageCryptoService envelope), same explicit find-then-write upsert on the
-   * nullable (appId, teamId, enterpriseId) tuple, so it is IDEMPOTENT (re-import
-   * of the same workspace updates the row in place and flips a revoked install
-   * back to active). Optional `agentId` / `agentRouting` bind the install at
+   * additive twin of the OAuth callback's persistence: the same referenced
+   * Credential envelope and stable `(appId, externalInstallationId)` upsert, so
+   * it is IDEMPOTENT (re-import of the same workspace updates the row in place
+   * and flips a revoked install back to active). Optional `agentId` /
+   * `agentRouting` bind the install at
    * import time (same in-scope guards as bind). The hosted-OAuth flow is
    * untouched; this is a parallel entry point onto the same rows.
    */
@@ -632,16 +596,13 @@ export class ChannelAppsController {
       installedByUserId?: string | null;
       agentId?: string | null;
       agentRouting?: unknown;
-    },
+    }
   ) {
     const scope = this.getScope(req);
     requireOperator(scope);
 
     // App must exist in the operator's scope (forged/cross-scope appId rejected).
-    const app = await this.prisma.platosChannelApp.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-      select: { id: true },
-    });
+    const app = await this.persistence.loadScopedApp(scope, id);
     if (!app) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
 
     const teamId =
@@ -656,7 +617,7 @@ export class ChannelAppsController {
     if (!botToken) {
       throw new HttpException(
         { error: "invalid_params", message: "botToken is required" },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
     // Keyed by (appId, teamId, enterpriseId) — at least one workspace anchor is
@@ -667,7 +628,7 @@ export class ChannelAppsController {
           error: "invalid_params",
           message: "teamId (or enterpriseId for a Grid org-install) is required",
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
     if (isEnterpriseInstall && !enterpriseId) {
@@ -676,7 +637,7 @@ export class ChannelAppsController {
           error: "invalid_params",
           message: "enterpriseId is required when isEnterpriseInstall is true",
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -705,7 +666,7 @@ export class ChannelAppsController {
               message: `agent ${trimmed} not found in scope`,
               agentId: trimmed,
             },
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.BAD_REQUEST
           );
         }
         agentId = trimmed;
@@ -715,42 +676,36 @@ export class ChannelAppsController {
     if (Object.prototype.hasOwnProperty.call(body, "agentRouting")) {
       const ar = body.agentRouting;
       if (ar === null) {
-        agentRoutingData = null;
+        agentRoutingData = [];
       } else {
         const routing = await validateAgentRouting(this.prisma, scope, ar);
         if (!routing.ok) {
           throw new HttpException(
             { error: routing.error, message: routing.message },
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.BAD_REQUEST
           );
         }
         agentRoutingData = routing.rules;
       }
     }
 
-    // ENCRYPT with the SAME envelope the OAuth callback uses. On re-import
-    // status is flipped back to active + revokedAt cleared (idempotent re-key).
-    // An operator-supplied token is a STATIC grant, so any rotation state a
-    // previous OAuth install left behind (refreshToken / tokenExpiresAt) is
-    // CLEARED: getFreshBotToken keys "this install rotates" off tokenExpiresAt,
-    // and a stale expiry would send every event through the refresh path —
-    // worst case rotating the OLD grant over the freshly imported key.
-    const data: Record<string, unknown> = {
-      botToken: this.encryptSecret(botToken),
-      refreshToken: null,
-      tokenExpiresAt: null,
-      isEnterpriseInstall,
-      grantedScopes,
-      teamName,
-      botUserId,
-      installedByUserId,
-      status: "active",
-      revokedAt: null,
-      ...(agentId !== undefined ? { agentId } : {}),
-      ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
-    };
-
-    const row = await this.importUpsert(id, teamId, enterpriseId, data);
+    // Persist through the same clean Credential-reference path as hosted OAuth.
+    // A manually imported token is static, so stale refresh state is cleared.
+    const row = await this.persistence.upsertInstallationGrant(
+      app,
+      { teamId, enterpriseId, isEnterpriseInstall },
+      {
+        botToken,
+        refreshToken: null,
+        tokenExpiresAt: null,
+        botUserId,
+        grantedScopes,
+        displayName: teamName,
+        installedByUserId,
+        ...(agentId !== undefined ? { defaultAgentId: agentId } : {}),
+        ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
+      }
+    );
     // A re-import that re-keys a live install must evict any cached bot token so
     // the new token takes effect immediately instead of after the runtime TTL.
     this.invalidateApp(id);
@@ -768,21 +723,15 @@ export class ChannelAppsController {
     @Req() req: Request,
     @Param("id") id: string,
     @Param("installationId") installationId: string,
-    @Body() body: { agentId?: string | null; agentRouting?: unknown },
+    @Body() body: { agentId?: string | null; agentRouting?: unknown }
   ) {
     const scope = this.getScope(req);
     requireOperator(scope);
 
     // The app must be in scope; the installation must belong to that app.
-    const app = await this.prisma.platosChannelApp.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-      select: { id: true },
-    });
+    const app = await this.persistence.loadScopedApp(scope, id);
     if (!app) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
-    const installation = await this.prisma.platosChannelInstallation.findFirst({
-      where: { id: installationId, appId: id },
-      select: { id: true },
-    });
+    const installation = await this.persistence.loadInstallation(installationId, id);
     if (!installation) {
       throw new HttpException("Installation not found", HttpStatus.NOT_FOUND);
     }
@@ -791,7 +740,7 @@ export class ChannelAppsController {
     if (Object.prototype.hasOwnProperty.call(body, "agentId")) {
       const raw = body.agentId;
       if (raw === null || raw === "") {
-        data.agentId = null; // clear override → app.defaultAgentId
+        data.defaultAgentId = null; // clear override → app.defaultAgentId
       } else if (typeof raw === "string") {
         const agentId = raw.trim();
         if (!(await this.agentInScope(scope, agentId))) {
@@ -801,22 +750,22 @@ export class ChannelAppsController {
               message: `agent ${agentId} not found in scope`,
               agentId,
             },
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.BAD_REQUEST
           );
         }
-        data.agentId = agentId;
+        data.defaultAgentId = agentId;
       }
     }
     if (Object.prototype.hasOwnProperty.call(body, "agentRouting")) {
       const ar = body.agentRouting;
       if (ar === null) {
-        data.agentRouting = null; // clear override → app.agentRouting
+        data.agentRouting = []; // clear override → app.agentRouting
       } else {
         const routing = await validateAgentRouting(this.prisma, scope, ar);
         if (!routing.ok) {
           throw new HttpException(
             { error: routing.error, message: routing.message },
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.BAD_REQUEST
           );
         }
         data.agentRouting = routing.rules;
@@ -825,14 +774,17 @@ export class ChannelAppsController {
     if (Object.keys(data).length === 0) {
       throw new HttpException(
         { error: "no_op", message: "supply at least one of agentId / agentRouting" },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
 
-    const updated = await this.prisma.platosChannelInstallation.update({
-      where: { id: installationId },
-      data,
-    });
+    const updated = await this.persistence.updateInstallationBinding(
+      scope,
+      id,
+      installationId,
+      data
+    );
+    if (!updated) throw new HttpException("Installation not found", HttpStatus.NOT_FOUND);
     // Routing/agent binding is read fresh per-event by the events runtime, so
     // no token-cache eviction is needed here.
     return { installation: this.projectInstallation(updated) };
@@ -848,26 +800,18 @@ export class ChannelAppsController {
   async revokeInstallation(
     @Req() req: Request,
     @Param("id") id: string,
-    @Param("installationId") installationId: string,
+    @Param("installationId") installationId: string
   ) {
     const scope = this.getScope(req);
     requireOperator(scope);
-    const app = await this.prisma.platosChannelApp.findFirst({
-      where: { id, ...this.scopeWhere(scope) },
-      select: { id: true },
-    });
+    const app = await this.persistence.loadScopedApp(scope, id);
     if (!app) throw new HttpException("Channel app not found", HttpStatus.NOT_FOUND);
-    const installation = await this.prisma.platosChannelInstallation.findFirst({
-      where: { id: installationId, appId: id },
-      select: { id: true },
-    });
+    const installation = await this.persistence.loadInstallation(installationId, id);
     if (!installation) {
       throw new HttpException("Installation not found", HttpStatus.NOT_FOUND);
     }
-    const updated = await this.prisma.platosChannelInstallation.update({
-      where: { id: installationId },
-      data: { status: "revoked", revokedAt: new Date() },
-    });
+    const updated = await this.persistence.revokeInstallation(scope, id, installationId);
+    if (!updated) throw new HttpException("Installation not found", HttpStatus.NOT_FOUND);
     this.invalidateApp(id);
     return { revoked: true, installation: this.projectInstallation(updated) };
   }

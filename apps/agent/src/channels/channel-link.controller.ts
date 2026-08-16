@@ -15,11 +15,9 @@ import type {
 } from "express";
 import { ModuleRef } from "@nestjs/core";
 import * as crypto from "node:crypto";
-import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
-import { MessageCryptoService } from "../monitoring/message-crypto.service";
-import { ConversationService } from "../memory/conversation.service";
+import { ChannelPersistenceService } from "./channel-persistence.service";
 
 /**
  * Connect v3 — Phase C hosted ACCOUNT LINKING (Sign in with Slack / OIDC).
@@ -105,10 +103,8 @@ export class ChannelLinkService {
   private readonly logger = new Logger(ChannelLinkService.name);
 
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    private readonly persistence: ChannelPersistenceService,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
-    private readonly messageCrypto: MessageCryptoService,
-    private readonly conversationService: ConversationService,
     // Phase D — used to lazily resolve ChannelRuntimeService so the
     // confirmation DM reads its bot token through the shared locked-refresh
     // seam (getFreshBotToken). ModuleRef is always container-provided.
@@ -141,6 +137,13 @@ export class ChannelLinkService {
     const appId = String(app?.id ?? "");
     const installationId = String(installation?.id ?? "");
     if (!appId || !installationId) return null;
+    const canonicalInstallation = await this.persistence.loadInstallation(
+      installationId,
+      appId,
+    );
+    if (!canonicalInstallation || canonicalInstallation.status !== "active") {
+      return null;
+    }
 
     const origin = this.publicOrigin();
     if (!origin) {
@@ -154,7 +157,9 @@ export class ChannelLinkService {
     const payload: LinkNoncePayload = {
       appId,
       installationId,
-      teamId: String(coords.teamId ?? ""),
+      teamId: String(
+        canonicalInstallation.teamId ?? canonicalInstallation.enterpriseId ?? "",
+      ),
       slackUserId: String(coords.slackUserId ?? ""),
       eventTeamId: coords.eventTeamId ? String(coords.eventTeamId) : undefined,
       replyChannel: String(coords.channel ?? ""),
@@ -276,7 +281,7 @@ export class ChannelLinkService {
 
     let clientSecret: string;
     try {
-      clientSecret = this.decryptSecretString(app.clientSecret);
+      clientSecret = this.requireSecretString(app.clientSecret);
     } catch {
       this.logger.error(`[chanapp-link] client_secret decrypt failed app=${appId}`);
       return { ok: false, reason: "config" };
@@ -396,99 +401,40 @@ export class ChannelLinkService {
     // the message path) and links the verified email onto that SAME canonical
     // person — unifying the slack person with any pre-existing email-keyed
     // person per the identity foundation's rules. NEVER maps by typed email.
-    const handle = `${teamId}:${slackUserId}`;
-    const scope = {
-      organizationId: String(app.organizationId),
-      projectId: String(app.projectId),
-      environmentId: String(app.environmentId),
-      userId: `slack:${handle}`,
-      userIdentities: [
-        { channel: "slack", handle, verified: true },
-        { channel: "email", handle: email, verified: true },
-      ],
-    };
-    let resolvedId: string | null = null;
-    try {
-      resolvedId = await this.conversationService.resolveEndUser(scope, {});
-    } catch {
-      resolvedId = null;
-    }
-    if (!resolvedId) {
+    const canonicalInstallation = await this.persistence.loadInstallation(
+      installationId,
+      appId,
+    );
+    if (!canonicalInstallation || canonicalInstallation.status !== "active") {
       this.logger.error(`[chanapp-link] identity attach failed app=${appId}`);
       return { ok: false, reason: "attach" };
     }
-
-    // ── VERIFY the email actually attached to the resolved person ──────────
-    // resolveEndUser's step (c) silently SKIPS attaching a claim whose
-    // (channel, handle) row already belongs to a DIFFERENT person
-    // (link-not-merge) — but still returns resolvedId. Without this check a
-    // P_slack/P_email split renders "Account linked" while the policy gate
-    // (isSlackUserLinked: slack row → person → verified email row) keeps
-    // withholding turns forever. Re-query the email row and require it to be
-    // verified AND pointing at the resolved person; otherwise render an honest
-    // failure instead of a success-but-still-gated loop.
-    //
-    // TODO(identity): decide the deliberate unification behavior for the
-    // P_slack/P_email split — today neither anchor order can unify once both
-    // persons exist (link-not-merge never re-points, never merges).
-    let emailRow: { platosEndUserId: string; verified: boolean } | null = null;
-    let emailRowLookupOk = false;
+    const realm = String(
+      canonicalInstallation.teamId ?? canonicalInstallation.enterpriseId ?? "",
+    );
+    let linked: Awaited<ReturnType<ChannelPersistenceService["attachVerifiedEmail"]>>;
     try {
-      emailRow = await this.prisma.platosEndUserIdentity.findUnique({
-        where: {
-          organizationId_projectId_environmentId_channel_handle: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-            channel: "email",
-            handle: email,
-          },
-        },
-        select: { platosEndUserId: true, verified: true },
+      linked = await this.persistence.attachVerifiedEmail({
+        appId,
+        installationId,
+        realm,
+        slackUserId,
+        email,
       });
-      emailRowLookupOk = true;
     } catch {
-      emailRow = null;
-    }
-    if (!emailRowLookupOk || !emailRow) {
-      // DB blip or the attach itself failed — retryable, not a conflict.
       this.logger.error(
-        `[chanapp-link] email identity verify-back failed app=${appId}`,
+        `[chanapp-link] identity attach failed app=${appId}`,
       );
       return { ok: false, reason: "attach" };
     }
-    if (emailRow.platosEndUserId !== resolvedId) {
-      // The email already belongs to a different canonical person — the
-      // link-not-merge split. Log the split (redacted handle, never raw PII).
+    if (linked.status === "conflict") {
       this.logger.warn(
-        `[chanapp-link] link conflict app=${appId} email=${this.redactHandle(
-          email,
-        )} attachedTo=${emailRow.platosEndUserId} resolved=${resolvedId} (link-not-merge split)`,
+        `[chanapp-link] link conflict app=${appId} email=${this.redactHandle(email)} (link-not-merge split)`,
       );
       return { ok: false, reason: "conflict" };
     }
-    if (emailRow.verified !== true) {
-      // Same person but the row is unverified (e.g. flipped by the
-      // tokens_revoked lifecycle). We JUST verified this email via SIWS for
-      // this exact person — re-verify in place (no re-pointing involved).
-      try {
-        await this.prisma.platosEndUserIdentity.updateMany({
-          where: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-            channel: "email",
-            handle: email,
-            platosEndUserId: resolvedId,
-          },
-          data: { verified: true },
-        });
-      } catch {
-        this.logger.error(
-          `[chanapp-link] email re-verify failed app=${appId}`,
-        );
-        return { ok: false, reason: "attach" };
-      }
+    if (linked.status !== "linked") {
+      return { ok: false, reason: "attach" };
     }
 
     this.logger.log(
@@ -515,10 +461,10 @@ export class ChannelLinkService {
   ): Promise<void> {
     try {
       if (!installationId || !channel) return;
-      const installation =
-        await this.prisma.platosChannelInstallation.findUnique({
-          where: { id: String(installationId) },
-        });
+      const installation = await this.persistence.loadInstallation(
+        String(installationId),
+        String(app.id),
+      );
       if (!installation) return;
       // Phase D — read the bot token through ChannelRuntimeService's shared
       // locked-refresh seam so a rotating install's near-expiry token is
@@ -542,7 +488,7 @@ export class ChannelLinkService {
       // total decrypt failure — best-effort direct decrypt keeps the prior
       // behavior. A rotating token past expiry that also fails to refresh is
       // already handled inside getFreshBotToken (degrades to current token).
-      if (!botToken) botToken = this.decryptSecretField(installation.botToken);
+      if (!botToken) botToken = this.optionalSecretString(installation.botToken);
       if (!botToken) return;
       const body: Record<string, unknown> = {
         channel,
@@ -591,9 +537,7 @@ export class ChannelLinkService {
   private async loadApp(appId: string): Promise<any | null> {
     if (!appId) return null;
     try {
-      return await this.prisma.platosChannelApp.findUnique({
-        where: { id: String(appId) },
-      });
+      return await this.persistence.loadApp(String(appId));
     } catch {
       return null;
     }
@@ -638,30 +582,15 @@ export class ChannelLinkService {
     }
   }
 
-  /** Decrypt the app's ENCRYPTED clientSecret envelope → plaintext (fail-closed). */
-  private decryptSecretString(stored: unknown): string {
-    const parsed = JSON.parse(String(stored));
-    const decrypted = this.messageCrypto.decryptJsonField(parsed);
-    // On a key mismatch decryptJsonField returns its {__platos_enc,error}
-    // envelope (an object) — treat anything non-string as a fail-closed error
-    // rather than POSTing a broken secret to Slack.
-    if (typeof decrypted !== "string" || !decrypted) {
+  private requireSecretString(stored: unknown): string {
+    if (typeof stored !== "string" || !stored) {
       throw new Error("secret unavailable");
     }
-    return decrypted;
+    return stored;
   }
 
-  /** Decrypt a single ENCRYPTED string column → plaintext, or null (best-effort). */
-  private decryptSecretField(stored: unknown): string | null {
-    if (typeof stored !== "string" || !stored) return null;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(stored);
-    } catch {
-      return null;
-    }
-    const dec = this.messageCrypto.decryptJsonField(parsed);
-    return typeof dec === "string" && dec ? dec : null;
+  private optionalSecretString(stored: unknown): string | null {
+    return typeof stored === "string" && stored ? stored : null;
   }
 
   /**

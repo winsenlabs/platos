@@ -54,19 +54,21 @@ export class FilesController {
         a.id AS "agentId",
         COUNT(att.id)::int AS "_count",
         MAX(att."createdAt") AS "lastAt"
-      FROM "PlatosAgent" a
-      JOIN "PlatosAgentThread" t ON t."agentId" = a.id
-        AND t."organizationId" = ${scope.organizationId}
-        AND t."projectId" = ${scope.projectId}
-        AND t."environmentId" = ${scope.environmentId}
-      JOIN "PlatosAgentMessage" m ON m."threadId" = t.id
-      JOIN "PlatosMessageAttachment" att ON att."messageId" = m.id
-        AND att."organizationId" = ${scope.organizationId}
-        AND att."projectId" = ${scope.projectId}
-        AND att."environmentId" = ${scope.environmentId}
-      WHERE a."organizationId" = ${scope.organizationId}
-        AND a."projectId" = ${scope.projectId}
-        AND a."environmentId" = ${scope.environmentId}
+      FROM "Agent" a
+      JOIN "AgentBinding" binding ON binding."agentId" = a.id
+        AND binding."environmentId" = ${scope.environmentId}
+      JOIN "Thread" t ON t."agentId" = a.id
+        AND t."environmentId" = binding."environmentId"
+      JOIN "Turn" turn ON turn."threadId" = t.id
+      JOIN "MessageAttachment" att ON att."turnId" = turn.id
+        AND att."environmentId" = t."environmentId"
+        AND att."endUserId" = t."endUserId"
+      JOIN "Environment" environment ON environment.id = t."environmentId"
+      JOIN "Project" project ON project.id = environment."projectId"
+      WHERE environment.id = ${scope.environmentId}
+        AND project.id = ${scope.projectId}
+        AND project."organizationId" = ${scope.organizationId}
+        AND a."projectId" = project.id
       GROUP BY a.id
       ORDER BY "lastAt" DESC
       LIMIT ${limit}
@@ -75,7 +77,15 @@ export class FilesController {
     // Fetch agent names
     const agentIds = rows.map((r) => r.agentId);
     const agentRows: Array<{ id: string; name: string }> = agentIds.length
-      ? await this.prisma.platosAgent.findMany({ where: { id: { in: agentIds } }, select: { id: true, name: true } })
+      ? await this.prisma.agent.findMany({
+          where: {
+            id: { in: agentIds },
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+            bindings: { some: { environmentId: scope.environmentId } },
+          },
+          select: { id: true, name: true },
+        })
       : [];
     const nameMap = new Map(agentRows.map((a) => [a.id, a.name]));
 
@@ -113,21 +123,24 @@ export class FilesController {
       lastAt: Date;
     }> = await this.prisma.$queryRaw`
       SELECT
-        t."userId",
+        t."endUserId" AS "userId",
         COUNT(att.id)::int AS "attachmentCount",
         COUNT(DISTINCT t.id)::int AS "distinctThreads",
         MAX(att."createdAt") AS "lastAt"
-      FROM "PlatosAgentThread" t
-      JOIN "PlatosAgentMessage" m ON m."threadId" = t.id
-      JOIN "PlatosMessageAttachment" att ON att."messageId" = m.id
-        AND att."organizationId" = ${scope.organizationId}
-        AND att."projectId" = ${scope.projectId}
-        AND att."environmentId" = ${scope.environmentId}
+      FROM "Thread" t
+      JOIN "Turn" turn ON turn."threadId" = t.id
+      JOIN "MessageAttachment" att ON att."turnId" = turn.id
+        AND att."environmentId" = t."environmentId"
+        AND att."endUserId" = t."endUserId"
+      JOIN "Environment" environment ON environment.id = t."environmentId"
+      JOIN "Project" project ON project.id = environment."projectId"
+      JOIN "AgentBinding" binding ON binding."agentId" = t."agentId"
+        AND binding."environmentId" = t."environmentId"
       WHERE t."agentId" = ${agentId}
-        AND t."organizationId" = ${scope.organizationId}
-        AND t."projectId" = ${scope.projectId}
         AND t."environmentId" = ${scope.environmentId}
-      GROUP BY t."userId"
+        AND project.id = ${scope.projectId}
+        AND project."organizationId" = ${scope.organizationId}
+      GROUP BY t."endUserId"
       ORDER BY "lastAt" DESC
       LIMIT ${limit}
     `;
@@ -171,17 +184,20 @@ export class FilesController {
         t.title,
         COUNT(att.id)::int AS "attachmentCount",
         MAX(att."createdAt") AS "lastAt"
-      FROM "PlatosAgentThread" t
-      JOIN "PlatosAgentMessage" m ON m."threadId" = t.id
-      JOIN "PlatosMessageAttachment" att ON att."messageId" = m.id
-        AND att."organizationId" = ${scope.organizationId}
-        AND att."projectId" = ${scope.projectId}
-        AND att."environmentId" = ${scope.environmentId}
+      FROM "Thread" t
+      JOIN "Turn" turn ON turn."threadId" = t.id
+      JOIN "MessageAttachment" att ON att."turnId" = turn.id
+        AND att."environmentId" = t."environmentId"
+        AND att."endUserId" = t."endUserId"
+      JOIN "Environment" environment ON environment.id = t."environmentId"
+      JOIN "Project" project ON project.id = environment."projectId"
+      JOIN "AgentBinding" binding ON binding."agentId" = t."agentId"
+        AND binding."environmentId" = t."environmentId"
       WHERE t."agentId" = ${agentId}
-        AND t."userId" = ${userId}
-        AND t."organizationId" = ${scope.organizationId}
-        AND t."projectId" = ${scope.projectId}
+        AND t."endUserId" = ${userId}
         AND t."environmentId" = ${scope.environmentId}
+        AND project.id = ${scope.projectId}
+        AND project."organizationId" = ${scope.organizationId}
       GROUP BY t.id, t.title
       ORDER BY "lastAt" DESC
       LIMIT ${limit}
@@ -218,10 +234,14 @@ export class FilesController {
     const limit = Math.min(200, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 50 : 50));
 
     const whereBase: Record<string, unknown> = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
       environmentId: scope.environmentId,
-      message: { threadId },
+      environment: {
+        project: {
+          id: scope.projectId,
+          organizationId: scope.organizationId,
+        },
+      },
+      turn: { threadId },
     };
 
     const rows: Array<{
@@ -231,9 +251,9 @@ export class FilesController {
       bytes: number;
       createdAt: Date;
       storageKey: string;
-      messageId: string | null;
+      turnId: string | null;
       kind: string;
-    }> = await this.prisma.platosMessageAttachment.findMany({
+    }> = await this.prisma.messageAttachment.findMany({
       where: whereBase,
       select: {
         id: true,
@@ -242,7 +262,7 @@ export class FilesController {
         bytes: true,
         createdAt: true,
         storageKey: true,
-        messageId: true,
+        turnId: true,
         kind: true,
       },
       orderBy: { createdAt: "desc" },
@@ -277,7 +297,10 @@ export class FilesController {
           kind: r.kind,
           bytes: r.bytes,
           uploadedAt: r.createdAt.toISOString(),
-          messageId: r.messageId,
+          // Compatibility name for existing clients; the identifier is now a
+          // clean Turn id, not one half of a legacy message pair.
+          messageId: r.turnId,
+          turnId: r.turnId,
           downloadUrl,
         };
       }),

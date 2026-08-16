@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import { SkillRegistryService } from "./skill-registry.service";
 import { OFFICIAL_SKILL_SOURCES } from "./official/official-skills";
 import { parseSkill } from "./skill-manifest.parser";
@@ -9,10 +9,10 @@ import { parseSkill } from "./skill-manifest.parser";
  *
  * Registers the 4 bundled Platos skills (`platos.web_search`,
  * `platos.code_execution`, `platos.file_operations`, `platos.image_generation`)
- * at the ORGANIZATION level (projectId + environmentId NULL) so every
- * project/env within the org can enable them without duplicating the row.
+ * as Organization-owned Skill catalog rows so every project/environment can
+ * enable them through normalized ProjectSkill and EnvironmentSkill links.
  *
- * Idempotent — re-running upserts by (orgId, skillId) and overwrites the
+ * Idempotent — re-running upserts by (organizationId, slug, version) and overwrites the
  * source/manifest/promptBlock. Runs once at module bootstrap.
  */
 @Injectable()
@@ -20,7 +20,7 @@ export class OfficialSkillsSeederService {
   private readonly logger = new Logger(OfficialSkillsSeederService.name);
 
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     private readonly registry: SkillRegistryService,
   ) {}
 
@@ -48,14 +48,10 @@ export class OfficialSkillsSeederService {
             `Official skill ${id} source declares mismatched id "${parsed.manifest.id}" — using the one from source.`,
           );
         }
-        // isOfficial:true forces projectId + environmentId NULL in the row
-        // — the scope passed here is only used for hydrating env-var status
-        // in the return value, which the seeder throws away.
-        await this.registry.register(
-          { organizationId, projectId: "__official__", environmentId: "__official__" },
-          parsed,
-          { isOfficial: true, origin: "official" },
-        );
+        // Official catalog rows are Organization-owned. ProjectSkill and
+        // EnvironmentSkill links are created only when an environment enables
+        // the skill; no fabricated tenancy tuple is passed through the seeder.
+        await this.registry.registerOfficial(organizationId, parsed);
       } catch (err: any) {
         this.logger.error(
           `Failed to seed official skill ${id} for org ${organizationId}: ${err?.message ?? err}`,

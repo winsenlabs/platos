@@ -1,28 +1,39 @@
 import { defineConfig } from "@trigger.dev/sdk";
+import { generatedWorkerExternalsMustResolve } from "./scripts/trigger-worker-externals";
 
 /**
- * Trigger.dev config for the Platos agent tasks.
+ * Deployment-only config for Platos registrations in an external Trigger
+ * application (Trigger Cloud or a separately self-hosted Trigger service).
  *
- * Trigger is a separate external application used by Platos. For local
- * development, run its supported CLI from this directory:
+ * The Trigger CLI loads this file from apps/agent. Normal agent startup and
+ * unit tests do not import it. For local external-Trigger development:
  *   npx trigger.dev@latest dev
  *
- * The worker registers the tasks in `src/trigger-tasks/` with external
- * Trigger/Trigger Cloud, and `tasks.trigger("platos-agent-tool-block", ...)`
- * dispatches runs through that external service.
- *
- * Without a running dev worker, `spawn_bgo` (alias: `spawn_task`) gracefully
- * falls back to the Redis stub (the meta-tool still returns a sensible
- * response to the LLM).
+ * Registration classification is documented in
+ * `src/trigger-tasks/registration-manifest.ts`. Source discovery remains the
+ * Trigger CLI's responsibility; this config does not route runtime dispatch.
  */
+function requireTriggerProjectRef(): string {
+  const projectRef = process.env.TRIGGER_PROJECT_REF?.trim();
+  if (!projectRef) {
+    throw new Error(
+      "TRIGGER_PROJECT_REF is required to load the external Trigger deployment config; set it to the target proj_... reference."
+    );
+  }
+  return projectRef;
+}
+
 export default defineConfig({
-  project: process.env.TRIGGER_PROJECT_REF || "proj_hovobxjmqdvnduupguwa",
+  project: requireTriggerProjectRef(),
   dirs: ["./src/trigger-tasks"],
-  // Every task is a thin shell — it POSTs to the agent and waits; the real work
-  // (turns, DLQ drain, …) runs on the agent, not the task machine. `micro` is the
-  // right size. (A task can override if it ever runs work in-worker.)
+  // Most Platos tasks are thin shells that call back into the agent, where
+  // tenant state and credentials remain authoritative. A declaration can
+  // override this default if it performs work in the external Trigger worker.
   machine: "micro",
   maxDuration: 600,
+  build: {
+    extensions: [generatedWorkerExternalsMustResolve()],
+  },
   retries: {
     enabledInDev: true,
     default: {

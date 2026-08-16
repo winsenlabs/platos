@@ -76,18 +76,25 @@ export class TestController {
     projectId?: string;
     environmentId?: string;
     entityId: string;
+    authorizationId: string;
     userId: string;
     userToken?: string;
   }) {
-    const token = await this.authService.createSessionToken({
-      userId: body.userId,
-      organizationId: body.organizationId || DUMMY_ORG_ID,
-      projectId: body.projectId || DUMMY_PROJECT_ID,
-      environmentId: body.environmentId || DUMMY_ENV_ID,
-      entityId: body.entityId,
-      ...(body.userToken ? { userToken: body.userToken } : {}),
-    });
-    return token ? { token } : { token: null, reason: "entity not registered" };
+    if (!body.authorizationId) {
+      return { token: null, reason: "authorizationId is required" };
+    }
+    const token = await this.authService.createEntitySessionToken(
+      {
+        userId: body.userId,
+        organizationId: body.organizationId || DUMMY_ORG_ID,
+        projectId: body.projectId || DUMMY_PROJECT_ID,
+        environmentId: body.environmentId || DUMMY_ENV_ID,
+        entityId: body.entityId,
+        ...(body.userToken ? { userToken: body.userToken } : {}),
+      },
+      body.authorizationId,
+    );
+    return token ? { token } : { token: null, reason: "platform signing unavailable" };
   }
 
   @Post("auth/validate-session")
@@ -159,20 +166,18 @@ export class TestController {
       checks.bm25 = { status: "fail", latencyMs: Date.now() - bm25Start, error: e.message };
     }
 
-    // Auth — exercises the full per-entity sign/verify path. Requires a
-    // registered entity; if none exists in test mode we short-circuit "ok"
-    // (no token could be minted, so nothing to verify).
+    // Auth — exercises the platform HS256 mint/verify path. Bearer-backed
+    // entity lifecycle is covered by the dedicated session-token endpoint.
     const authStart = Date.now();
     try {
-      const token = await this.authService.createSessionToken({
+      const token = await this.authService.createPlatformSessionToken({
         userId: "healthcheck",
         organizationId: DUMMY_ORG_ID,
         projectId: DUMMY_PROJECT_ID,
         environmentId: DUMMY_ENV_ID,
-        entityId: "healthcheck-entity",
       });
       if (!token) {
-        checks.auth = { status: "skip", latencyMs: Date.now() - authStart, error: "no entity registered" };
+        checks.auth = { status: "skip", latencyMs: Date.now() - authStart, error: "platform signing unavailable" };
       } else {
         const valid = await this.authService.validateSessionToken(token);
         checks.auth = { status: valid ? "ok" : "fail", latencyMs: Date.now() - authStart };

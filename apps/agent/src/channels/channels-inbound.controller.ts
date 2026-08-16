@@ -6,7 +6,6 @@ import {
   Req,
   Res,
   Logger,
-  Inject,
 } from "@nestjs/common";
 import type { Request as ExpressRequest, Response as ExpressResponse } from "express";
 
@@ -17,8 +16,8 @@ import type { Request as ExpressRequest, Response as ExpressResponse } from "exp
  */
 type RawBodyExpressRequest = ExpressRequest & { rawBody?: Buffer };
 import * as crypto from "node:crypto";
-import { PRISMA_TOKEN } from "../shared/database.provider";
 import { ChannelRuntimeService } from "./channel-runtime.service";
+import { ChannelPersistenceService } from "./channel-persistence.service";
 
 /**
  * Inbound webhook doorway for messaging channels (Slack / Telegram / WhatsApp /
@@ -54,7 +53,7 @@ export class ChannelsInboundController {
   private readonly logger = new Logger(ChannelsInboundController.name);
 
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    private readonly persistence: ChannelPersistenceService,
     private readonly runtime: ChannelRuntimeService,
   ) {}
 
@@ -179,9 +178,7 @@ export class ChannelsInboundController {
     if (!connectionId || !webhookSecret) return null;
     let row: any;
     try {
-      row = await this.prisma.platosChannelConnection.findUnique({
-        where: { id: connectionId },
-      });
+      row = await this.persistence.loadConnection(connectionId);
     } catch {
       return null;
     }

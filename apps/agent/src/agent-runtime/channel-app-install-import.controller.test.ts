@@ -1,58 +1,48 @@
-/**
- * Connect v3 (operator install tier) — install IMPORT API + operator status
- * surface, ADDITIVE to the hosted-OAuth flow.
- *
- * Acceptance pinned here:
- *  - Two installs under ONE app — one persisted the way the OAuth callback
- *    would, one created via the new import API with an operator bot token —
- *    are DISTINCT rows and therefore route to DISTINCT Platos threads + DISTINCT
- *    end users (the runtime keys a thread by installationId and an end user by
- *    `<team>:<slackUser>`; both differ, so even an identical inbound message
- *    cannot collide).
- *  - Import is IDEMPOTENT on the nullable (appId, teamId, enterpriseId) tuple
- *    (re-import updates in place, un-revokes) and encrypts the bot token with
- *    the SAME MessageCryptoService envelope the callback uses — never plaintext.
- *  - Import is scope-guarded (cross-scope appId → 404) and honours the same
- *    in-scope agent guard as bind at import time.
- *  - Uninstall (soft-revoke) is OPERATOR-VISIBLE via the status surface as
- *    `status: "revoked"`.
- *
- * CLAUDE.md §9.11: Vitest, no mocking framework — an in-memory Prisma shim +
- * a round-tripping MessageCrypto fake. Mirrors channel-app-events.controller.test.ts.
- */
 import { describe, it, expect, beforeEach } from "vitest";
 import { ChannelAppsController } from "./channel-apps.controller";
 
-// ── In-memory Prisma shim ──────────────────────────────────────────────────
+type CredentialRow = {
+  id: string;
+  environmentId: string;
+  kind: string;
+  name: string;
+  provider: string | null;
+  externalClientId: string | null;
+  encryptedReference: string | null;
+  expiresAt: Date | null;
+  revokedAt: Date | null;
+  updatedAt: Date;
+};
+
 type AppRow = {
   id: string;
-  organizationId: string;
-  projectId: string;
   environmentId: string;
   provider: string;
+  displayName: string | null;
+  clientId: string;
+  credentialId: string | null;
+  scopes: string[];
+  distribution: string;
   defaultAgentId: string | null;
-  agentRouting: unknown | null;
+  agentRouting: unknown;
+  createdAt: Date;
 };
+
 type InstallRow = {
   id: string;
   appId: string;
-  teamId: string | null;
-  enterpriseId: string | null;
-  isEnterpriseInstall: boolean;
-  teamName: string | null;
-  botToken: string;
-  refreshToken: string | null;
-  tokenExpiresAt: Date | null;
-  botUserId: string | null;
+  externalInstallationId: string;
+  displayName: string | null;
+  credentialId: string | null;
   grantedScopes: string[];
-  installedByUserId: string | null;
-  agentId: string | null;
-  agentRouting: unknown | null;
+  defaultAgentId: string | null;
+  agentRouting: unknown;
   status: string;
   revokedAt: Date | null;
   lastEventAt: Date | null;
   createdAt: Date;
 };
+
 type AgentRow = {
   id: string;
   organizationId: string;
@@ -60,78 +50,18 @@ type AgentRow = {
   environmentId: string;
 };
 
-// Prisma treats every provided where key as an equality filter; `null` compiles
-// to `IS NULL` — replicated by strict `===` (row nulls are literal null).
-const matches = (row: any, where: Record<string, unknown>): boolean =>
-  Object.entries(where).every(([k, v]) => row[k] === v);
-
-function makePrisma(seed: { apps?: AppRow[]; installs?: InstallRow[]; agents?: AgentRow[] } = {}) {
-  const apps = seed.apps ?? [];
-  const installs = seed.installs ?? [];
-  const agents = seed.agents ?? [];
-  let seq = 0;
-  const nextId = (p: string) => `${p}_${++seq}`;
-  return {
-    apps,
-    installs,
-    agents,
-    platosChannelApp: {
-      findFirst: async ({ where }: any) => apps.find((a) => matches(a, where)) ?? null,
-    },
-    platosAgent: {
-      findFirst: async ({ where }: any) => agents.find((a) => matches(a, where)) ?? null,
-    },
-    platosChannelInstallation: {
-      findFirst: async ({ where }: any) => installs.find((r) => matches(r, where)) ?? null,
-      findMany: async ({ where }: any) =>
-        installs
-          .filter((r) => matches(r, where))
-          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
-      create: async ({ data }: any) => {
-        const row: InstallRow = {
-          id: nextId("inst"),
-          appId: data.appId,
-          teamId: data.teamId ?? null,
-          enterpriseId: data.enterpriseId ?? null,
-          isEnterpriseInstall: data.isEnterpriseInstall ?? false,
-          teamName: data.teamName ?? null,
-          botToken: data.botToken,
-          refreshToken: data.refreshToken ?? null,
-          tokenExpiresAt: data.tokenExpiresAt ?? null,
-          botUserId: data.botUserId ?? null,
-          grantedScopes: data.grantedScopes ?? [],
-          installedByUserId: data.installedByUserId ?? null,
-          agentId: data.agentId ?? null,
-          agentRouting: data.agentRouting ?? null,
-          status: data.status ?? "active",
-          revokedAt: data.revokedAt ?? null,
-          lastEventAt: data.lastEventAt ?? null,
-          createdAt: new Date(Date.now() + seq), // stable ordering
-        };
-        installs.push(row);
-        return row;
-      },
-      update: async ({ where, data }: any) => {
-        const row = installs.find((r) => r.id === where.id);
-        if (!row) throw new Error("not found");
-        Object.assign(row, data);
-        return row;
-      },
-    },
-  };
-}
-
-// Round-tripping crypto fake — envelope on encrypt, unwrap on decrypt.
 const messageCrypto = {
-  encryptJsonField: (v: unknown) => ({ __enc: true, v }),
-  decryptJsonField: (e: any) => e?.v,
+  encryptJsonField: (value: unknown) => ({
+    __enc: true,
+    payload: Buffer.from(JSON.stringify(value), "utf8").toString("base64"),
+  }),
+  decryptJsonField: (envelope: any) =>
+    JSON.parse(Buffer.from(envelope.payload, "base64").toString("utf8")),
 } as any;
 
-// invalidateApp resolves ChannelRuntimeService via ModuleRef; absent in a
-// focused module — the controller swallows the throw.
 const moduleRef = {
   get: () => {
-    throw new Error("no runtime in test module");
+    throw new Error("runtime unavailable in focused test");
   },
 } as any;
 
@@ -142,244 +72,499 @@ const SCOPE = {
   userId: "u1",
   principal: "operator" as const,
 };
-const OTHER_SCOPE = { ...SCOPE, organizationId: "orgX" };
-
 const req = (scope: unknown) => ({ scope }) as any;
 
-function makeApp(over: Partial<AppRow> = {}): AppRow {
-  return {
-    id: "app1",
-    organizationId: "org1",
+function makePrisma(seed: { agents?: AgentRow[] } = {}) {
+  const credentials: CredentialRow[] = [];
+  const apps: AppRow[] = [
+    {
+      id: "app1",
+      environmentId: "env1",
+      provider: "slack",
+      displayName: "Platos Slack",
+      clientId: "client1",
+      credentialId: null,
+      scopes: [],
+      distribution: "private",
+      defaultAgentId: "appDefaultAgent",
+      agentRouting: [],
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+    },
+  ];
+  const installs: InstallRow[] = [];
+  const agents = seed.agents ?? [];
+  let sequence = 0;
+  const nextId = (prefix: string) => `${prefix}_${++sequence}`;
+
+  const environment = {
+    id: "env1",
     projectId: "proj1",
-    environmentId: "env1",
-    provider: "slack",
-    defaultAgentId: null,
-    agentRouting: null,
-    ...over,
+    project: { id: "proj1", organizationId: "org1" },
   };
+  const credentialFor = (id: string | null) =>
+    id ? credentials.find((credential) => credential.id === id) ?? null : null;
+  const hydrateApp = (app: AppRow) => ({
+    ...app,
+    credential: credentialFor(app.credentialId),
+    environment,
+  });
+  const hydrateInstall = (installation: InstallRow) => {
+    const app = apps.find((candidate) => candidate.id === installation.appId)!;
+    return {
+      ...installation,
+      credential: credentialFor(installation.credentialId),
+      app: hydrateApp(app),
+    };
+  };
+
+  const prisma: any = {
+    apps,
+    installs,
+    credentials,
+    agents,
+    environment: {
+      findUnique: async ({ where }: any) => (where.id === environment.id ? environment : null),
+    },
+    channelApp: {
+      findUnique: async ({ where }: any) => {
+        const app = apps.find((candidate) => candidate.id === where.id);
+        return app ? hydrateApp(app) : null;
+      },
+      findFirst: async ({ where }: any) => {
+        const app = apps.find(
+          (candidate) =>
+            candidate.id === where.id && candidate.environmentId === where.environmentId
+        );
+        return app ? hydrateApp(app) : null;
+      },
+      findMany: async ({ where }: any) =>
+        apps
+          .filter((candidate) => candidate.environmentId === where.environmentId)
+          .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+          .map(hydrateApp),
+      create: async ({ data }: any) => {
+        const row: AppRow = {
+          id: nextId("app"),
+          environmentId: data.environmentId,
+          provider: data.provider,
+          displayName: data.displayName ?? null,
+          clientId: data.clientId,
+          credentialId: data.credentialId ?? null,
+          scopes: data.scopes ?? [],
+          distribution: data.distribution,
+          defaultAgentId: data.defaultAgentId ?? null,
+          agentRouting: data.agentRouting ?? [],
+          createdAt: new Date(Date.now() + sequence),
+        };
+        apps.push(row);
+        return { id: row.id };
+      },
+      update: async ({ where, data }: any) => {
+        const row = apps.find((candidate) => candidate.id === where.id);
+        if (!row) throw new Error("app not found");
+        Object.assign(row, data);
+        return hydrateApp(row);
+      },
+      delete: async ({ where }: any) => {
+        const index = apps.findIndex((candidate) => candidate.id === where.id);
+        if (index < 0) throw new Error("app not found");
+        const [deleted] = apps.splice(index, 1);
+        for (let installIndex = installs.length - 1; installIndex >= 0; installIndex--) {
+          if (installs[installIndex].appId === deleted.id) installs.splice(installIndex, 1);
+        }
+        return deleted;
+      },
+    },
+    channelInstallation: {
+      findUnique: async ({ where }: any) => {
+        const key = where.appId_externalInstallationId;
+        const row = installs.find(
+          (candidate) =>
+            candidate.appId === key.appId &&
+            candidate.externalInstallationId === key.externalInstallationId
+        );
+        return row ? hydrateInstall(row) : null;
+      },
+      findFirst: async ({ where }: any) => {
+        const row = installs.find(
+          (candidate) =>
+            (!where.id || candidate.id === where.id) &&
+            (!where.appId || candidate.appId === where.appId)
+        );
+        return row ? hydrateInstall(row) : null;
+      },
+      findMany: async ({ where }: any) =>
+        installs
+          .filter((candidate) => candidate.appId === where.appId)
+          .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+          .map(hydrateInstall),
+      upsert: async ({ where, update, create }: any) => {
+        const key = where.appId_externalInstallationId;
+        let row = installs.find(
+          (candidate) =>
+            candidate.appId === key.appId &&
+            candidate.externalInstallationId === key.externalInstallationId
+        );
+        if (row) {
+          Object.assign(row, update);
+        } else {
+          row = {
+            id: nextId("installation"),
+            appId: create.appId,
+            externalInstallationId: create.externalInstallationId,
+            displayName: create.displayName ?? null,
+            credentialId: create.credentialId ?? null,
+            grantedScopes: create.grantedScopes ?? [],
+            defaultAgentId: create.defaultAgentId ?? null,
+            agentRouting: create.agentRouting ?? [],
+            status: create.status,
+            revokedAt: null,
+            lastEventAt: null,
+            createdAt: new Date(Date.now() + sequence),
+          };
+          installs.push(row);
+        }
+        return { id: row.id };
+      },
+      update: async ({ where, data }: any) => {
+        const row = installs.find((candidate) => candidate.id === where.id);
+        if (!row) throw new Error("installation not found");
+        Object.assign(row, data);
+        return hydrateInstall(row);
+      },
+    },
+    credential: {
+      create: async ({ data }: any) => {
+        const row: CredentialRow = {
+          id: nextId("credential"),
+          environmentId: data.environmentId,
+          kind: data.kind,
+          name: data.name,
+          provider: data.provider ?? null,
+          externalClientId: data.externalClientId ?? null,
+          encryptedReference: data.encryptedReference ?? null,
+          expiresAt: data.expiresAt ?? null,
+          revokedAt: null,
+          updatedAt: new Date(),
+        };
+        credentials.push(row);
+        return { id: row.id };
+      },
+      upsert: async ({ where, update, create }: any) => {
+        const key = where.environmentId_kind_name;
+        let row = credentials.find(
+          (candidate) =>
+            candidate.environmentId === key.environmentId &&
+            candidate.kind === key.kind &&
+            candidate.name === key.name
+        );
+        if (row) {
+          Object.assign(row, update, { updatedAt: new Date() });
+        } else {
+          row = {
+            id: nextId("credential"),
+            environmentId: create.environmentId,
+            kind: create.kind,
+            name: create.name,
+            provider: create.provider ?? null,
+            externalClientId: create.externalClientId ?? null,
+            encryptedReference: create.encryptedReference ?? null,
+            expiresAt: create.expiresAt ?? null,
+            revokedAt: null,
+            updatedAt: new Date(),
+          };
+          credentials.push(row);
+        }
+        return { id: row.id };
+      },
+      updateMany: async ({ where, data }: any) => {
+        const rows = credentials.filter(
+          (candidate) =>
+            candidate.id === where.id &&
+            candidate.environmentId === where.environmentId &&
+            candidate.kind === where.kind
+        );
+        rows.forEach((row) => Object.assign(row, data, { updatedAt: new Date() }));
+        return { count: rows.length };
+      },
+      deleteMany: async ({ where }: any) => {
+        const ids = where.id?.in ?? [where.id];
+        let count = 0;
+        for (let index = credentials.length - 1; index >= 0; index--) {
+          if (
+            ids.includes(credentials[index].id) &&
+            credentials[index].environmentId === where.environmentId
+          ) {
+            credentials.splice(index, 1);
+            count++;
+          }
+        }
+        return { count };
+      },
+    },
+    agentBinding: {
+      findFirst: async ({ where }: any) => {
+        const agent = agents.find(
+          (candidate) =>
+            candidate.id === where.agentId &&
+            candidate.environmentId === where.environmentId &&
+            candidate.projectId === where.agent?.projectId &&
+            candidate.projectId === where.environment?.project?.id &&
+            candidate.organizationId === where.environment?.project?.organizationId
+        );
+        return agent ? { id: `binding_${agent.id}` } : null;
+      },
+    },
+  };
+  prisma.$transaction = async (callback: (tx: any) => Promise<unknown>) => callback(prisma);
+  return prisma;
 }
 
-describe("ChannelAppsController — operator install import", () => {
+function credentialPayload(prisma: ReturnType<typeof makePrisma>, installation: InstallRow) {
+  return payloadForCredential(prisma, installation.credentialId);
+}
+
+function payloadForCredential(prisma: ReturnType<typeof makePrisma>, credentialId: string | null) {
+  const credential = prisma.credentials.find(
+    (candidate: CredentialRow) => candidate.id === credentialId
+  );
+  return messageCrypto.decryptJsonField(JSON.parse(credential!.encryptedReference!));
+}
+
+describe("ChannelAppsController clean app management", () => {
   let prisma: ReturnType<typeof makePrisma>;
-  let ctrl: any;
+  let controller: ChannelAppsController;
 
   beforeEach(() => {
-    prisma = makePrisma({ apps: [makeApp()] });
-    ctrl = new ChannelAppsController(prisma as any, messageCrypto, moduleRef);
+    prisma = makePrisma();
+    controller = new ChannelAppsController(prisma, messageCrypto, moduleRef);
   });
 
-  it("imports an install under an in-scope app, encrypting the bot token (never plaintext)", async () => {
-    const res = await ctrl.importInstallation(req(SCOPE), "app1", {
+  it("creates and rotates app secrets only through a referenced Credential", async () => {
+    const created = await controller.create(req(SCOPE), {
+      provider: "slack",
+      displayName: "Customer Support",
+      clientId: "client-new",
+      clientSecret: "client-secret-one",
+      signingSecret: "signing-secret-one",
+      aiAppsSurface: true,
+      linking: "optional",
+      scopes: ["chat:write", "chat:write"],
+    });
+
+    expect(created.app).toMatchObject({
+      clientId: "client-new",
+      hasClientSecret: true,
+      hasSigningSecret: true,
+      linking: "optional",
+      scopes: ["chat:write"],
+    });
+    expect(created.app.credential).toBeUndefined();
+    const stored = prisma.apps.find((app: AppRow) => app.id === created.app.id)!;
+    expect(stored).not.toHaveProperty("clientSecret");
+    expect(stored).not.toHaveProperty("signingSecret");
+    expect(payloadForCredential(prisma, stored.credentialId)).toMatchObject({
+      kind: "channel-app",
+      clientSecret: "client-secret-one",
+      signingSecret: "signing-secret-one",
+      linking: "optional",
+    });
+
+    const updated = await controller.update(req(SCOPE), stored.id, {
+      clientSecret: "client-secret-two",
+      aiAppsSurface: false,
+      linking: "required",
+    });
+    expect(prisma.credentials).toHaveLength(1);
+    expect(updated.app).toMatchObject({ aiAppsSurface: false, linking: "required" });
+    expect(payloadForCredential(prisma, stored.credentialId)).toMatchObject({
+      clientSecret: "client-secret-two",
+      signingSecret: "signing-secret-one",
+      aiAppsSurface: false,
+      linking: "required",
+    });
+  });
+
+  it("lists scoped redacted metadata and deletes app credentials with the app", async () => {
+    const created = await controller.create(req(SCOPE), {
+      clientId: "client-new",
+      clientSecret: "client-secret",
+      signingSecret: "signing-secret",
+    });
+    const listed = await controller.list(req(SCOPE));
+    const projected = listed.apps.find((app: any) => app.id === created.app.id);
+    expect(projected).toMatchObject({
+      hasClientSecret: true,
+      hasSigningSecret: true,
+    });
+    expect(JSON.stringify(projected)).not.toContain("client-secret");
+    expect(JSON.stringify(projected)).not.toContain("signing-secret");
+
+    await controller.remove(req(SCOPE), created.app.id);
+    expect(prisma.apps.some((app: AppRow) => app.id === created.app.id)).toBe(false);
+    expect(prisma.credentials).toHaveLength(0);
+  });
+});
+
+describe("ChannelAppsController clean installation management", () => {
+  let prisma: ReturnType<typeof makePrisma>;
+  let controller: ChannelAppsController;
+
+  beforeEach(() => {
+    prisma = makePrisma();
+    controller = new ChannelAppsController(prisma, messageCrypto, moduleRef);
+  });
+
+  it("imports only through a referenced same-Environment Credential", async () => {
+    const result = await controller.importInstallation(req(SCOPE), "app1", {
       teamId: "T100",
       teamName: "Acme",
-      botToken: "xoxb-secret-token",
+      botToken: "xoxb-secret",
     });
-    expect(res.installation.status).toBe("active");
-    expect(res.installation.teamId).toBe("T100");
-    // Redacted projection: bot token stripped, boolean surfaced.
-    expect(res.installation.botToken).toBeUndefined();
-    expect(res.installation.hasBotToken).toBe(true);
-    // Stored value is the crypto envelope, and it round-trips — NOT plaintext.
-    const stored = prisma.installs[0].botToken;
-    expect(stored).not.toBe("xoxb-secret-token");
-    expect(messageCrypto.decryptJsonField(JSON.parse(stored))).toBe("xoxb-secret-token");
+
+    expect(result.installation).toMatchObject({
+      teamId: "T100",
+      externalInstallationId: "slack:team:T100",
+      status: "active",
+      hasBotToken: true,
+    });
+    expect(result.installation.botToken).toBeUndefined();
+    expect(result.installation.credential).toBeUndefined();
+    expect(prisma.installs[0]).not.toHaveProperty("botToken");
+    expect(prisma.credentials).toHaveLength(1);
+    expect(prisma.credentials[0].environmentId).toBe("env1");
+    expect(prisma.credentials[0].encryptedReference).not.toContain("xoxb-secret");
+    expect(credentialPayload(prisma, prisma.installs[0]).botToken).toBe("xoxb-secret");
   });
 
-  it("is idempotent on (appId, teamId, enterpriseId) and un-revokes on re-import", async () => {
-    const first = await ctrl.importInstallation(req(SCOPE), "app1", {
+  it("is idempotent, un-revokes, and clears stale OAuth rotation state", async () => {
+    const first = await controller.importInstallation(req(SCOPE), "app1", {
       teamId: "T100",
       botToken: "xoxb-1",
     });
-    // Soft-revoke it, then re-import the same workspace. Also simulate stale
-    // ROTATION state left behind by a previous rotating OAuth install — a
-    // re-import with a static operator token must clear it, or the runtime's
-    // getFreshBotToken would treat the imported token as rotating and could
-    // refresh the OLD grant over the freshly imported key.
-    await ctrl.revokeInstallation(req(SCOPE), "app1", first.installation.id);
-    expect(prisma.installs[0].status).toBe("revoked");
-    prisma.installs[0].refreshToken = JSON.stringify(
-      messageCrypto.encryptJsonField("xoxe-old-refresh"),
+    const credential = prisma.credentials[0];
+    credential.encryptedReference = JSON.stringify(
+      messageCrypto.encryptJsonField({
+        ...credentialPayload(prisma, prisma.installs[0]),
+        refreshToken: "xoxe-stale",
+        tokenExpiresAt: new Date(0).toISOString(),
+      })
     );
-    prisma.installs[0].tokenExpiresAt = new Date(Date.now() - 1000);
-    const second = await ctrl.importInstallation(req(SCOPE), "app1", {
+    await controller.revokeInstallation(req(SCOPE), "app1", first.installation.id);
+
+    const second = await controller.importInstallation(req(SCOPE), "app1", {
       teamId: "T100",
       botToken: "xoxb-2",
     });
-    // SAME row — no duplicate insert despite the nullable enterpriseId.
-    expect(prisma.installs.length).toBe(1);
+
+    expect(prisma.installs).toHaveLength(1);
+    expect(prisma.credentials).toHaveLength(1);
     expect(second.installation.id).toBe(first.installation.id);
-    expect(prisma.installs[0].status).toBe("active");
-    expect(prisma.installs[0].revokedAt).toBeNull();
-    // Re-keyed to the new token, and the stale rotation state is cleared so the
-    // imported static token is authoritative (non-rotating short-circuit).
-    expect(messageCrypto.decryptJsonField(JSON.parse(prisma.installs[0].botToken))).toBe("xoxb-2");
-    expect(prisma.installs[0].refreshToken).toBeNull();
-    expect(prisma.installs[0].tokenExpiresAt).toBeNull();
+    expect(prisma.installs[0]).toMatchObject({ status: "active", revokedAt: null });
+    expect(prisma.credentials[0].revokedAt).toBeNull();
+    expect(credentialPayload(prisma, prisma.installs[0])).toMatchObject({
+      botToken: "xoxb-2",
+      refreshToken: null,
+      tokenExpiresAt: null,
+    });
   });
 
-  it("rejects a cross-scope appId (404) without writing", async () => {
+  it("derives scope from persisted Environment ancestry", async () => {
     await expect(
-      ctrl.importInstallation(req(OTHER_SCOPE), "app1", { teamId: "T100", botToken: "xoxb" }),
+      controller.importInstallation(req({ ...SCOPE, organizationId: "forged-org" }), "app1", {
+        teamId: "T100",
+        botToken: "xoxb",
+      })
     ).rejects.toMatchObject({ status: 404 });
-    expect(prisma.installs.length).toBe(0);
+    expect(prisma.installs).toHaveLength(0);
   });
 
-  it("requires a bot token and a workspace anchor", async () => {
+  it("requires a token and workspace anchor", async () => {
     await expect(
-      ctrl.importInstallation(req(SCOPE), "app1", { teamId: "T100" }),
+      controller.importInstallation(req(SCOPE), "app1", { teamId: "T100" })
     ).rejects.toMatchObject({ status: 400 });
     await expect(
-      ctrl.importInstallation(req(SCOPE), "app1", { botToken: "xoxb" }),
+      controller.importInstallation(req(SCOPE), "app1", { botToken: "xoxb" })
     ).rejects.toMatchObject({ status: 400 });
-    expect(prisma.installs.length).toBe(0);
   });
 
-  it("binds an in-scope agent at import time and rejects a forged agentId", async () => {
+  it("binds only canonically scoped clean AgentBindings", async () => {
     prisma.agents.push({
       id: "agentA",
       organizationId: "org1",
       projectId: "proj1",
       environmentId: "env1",
     });
-    const ok = await ctrl.importInstallation(req(SCOPE), "app1", {
+    const imported = await controller.importInstallation(req(SCOPE), "app1", {
       teamId: "T100",
       botToken: "xoxb",
       agentId: "agentA",
     });
-    expect(ok.installation.agentId).toBe("agentA");
+    expect(imported.installation.agentId).toBe("agentA");
 
     await expect(
-      ctrl.importInstallation(req(SCOPE), "app1", {
+      controller.importInstallation(req(SCOPE), "app1", {
         teamId: "T200",
         botToken: "xoxb",
-        agentId: "ghost",
-      }),
+        agentId: "forged-agent",
+      })
     ).rejects.toMatchObject({ status: 400 });
   });
 
-  it("rejects an end-user (non-operator) principal", async () => {
-    await expect(
-      ctrl.importInstallation(req({ ...SCOPE, principal: "end-user" }), "app1", {
-        teamId: "T100",
-        botToken: "xoxb",
-      }),
-    ).rejects.toBeTruthy();
-    expect(prisma.installs.length).toBe(0);
-  });
-});
-
-describe("ChannelAppsController — two installs route to distinct threads + end users", () => {
-  // Replicates the runtime's key derivation (channel-runtime.service.ts):
-  //   thread    → keyed by (installationId, channelThreadKey)   [line 1407]
-  //   conv user → `channel-app:${installationId}:${channelThreadKey}` [appConversationUserId]
-  //   end user  → verified claim handle `${team}:${slackUser}`  [handleAppEvent ~998]
-  const channelThreadKey = (channel: string, ts: string) => `slack:${channel}:${ts}`;
-  const convUserId = (installationId: string, ctk: string) =>
-    `channel-app:${installationId}:${ctk}`;
-  const endUserHandle = (team: string, slackUser: string) => `${team}:${slackUser}`;
-
-  it("distinct installationId ⇒ distinct thread + distinct conversation identity; distinct team ⇒ distinct end user", async () => {
-    const prisma = makePrisma({ apps: [makeApp()] });
-    const ctrl: any = new ChannelAppsController(prisma as any, messageCrypto, moduleRef);
-
-    // Install A — persisted exactly as the OAuth callback's upsertInstallation would.
-    const oauthRow = await prisma.platosChannelInstallation.create({
-      data: {
-        appId: "app1",
-        teamId: "T_OAUTH",
-        botToken: JSON.stringify(messageCrypto.encryptJsonField("xoxb-oauth")),
-        status: "active",
-      },
+  it("keeps installations, thread keys, and identity realms distinct", async () => {
+    const first = await controller.importInstallation(req(SCOPE), "app1", {
+      teamId: "T100",
+      botToken: "xoxb-1",
     });
-    // Install B — via the new operator import API, different workspace + token.
-    const importRes = await ctrl.importInstallation(req(SCOPE), "app1", {
-      teamId: "T_IMPORT",
-      botToken: "xoxb-import",
+    const second = await controller.importInstallation(req(SCOPE), "app1", {
+      teamId: "T200",
+      botToken: "xoxb-2",
     });
-    const importRow = importRes.installation;
 
-    // Two DISTINCT rows under the one app.
-    expect(prisma.installs.length).toBe(2);
-    expect(oauthRow.id).not.toBe(importRow.id);
-    expect(oauthRow.teamId).not.toBe(importRow.teamId);
-
-    // Even an IDENTICAL inbound (same channel, thread ts, slack user) cannot collide:
-    const ctk = channelThreadKey("C1", "1700000000.1");
-    const slackUser = "U9";
-    // Distinct thread binding (keyed by installationId).
-    expect(convUserId(oauthRow.id, ctk)).not.toBe(convUserId(importRow.id, ctk));
-    // Distinct end user (handle qualified by team).
-    expect(endUserHandle(oauthRow.teamId!, slackUser)).not.toBe(
-      endUserHandle(importRow.teamId!, slackUser),
+    expect(first.installation.id).not.toBe(second.installation.id);
+    expect(first.installation.externalInstallationId).not.toBe(
+      second.installation.externalInstallationId
     );
-  });
-});
-
-describe("ChannelAppsController — operator-visible install lifecycle", () => {
-  let prisma: ReturnType<typeof makePrisma>;
-  let ctrl: any;
-
-  beforeEach(() => {
-    prisma = makePrisma({ apps: [makeApp({ defaultAgentId: "appDefaultAgent" })] });
-    ctrl = new ChannelAppsController(prisma as any, messageCrypto, moduleRef);
+    const threadKey = "slack:C1:1700000000.1";
+    expect(`${first.installation.id}:${threadKey}`).not.toBe(
+      `${second.installation.id}:${threadKey}`
+    );
+    expect(`channel:slack:T100:U9`).not.toBe(`channel:slack:T200:U9`);
   });
 
-  it("status surface reports lifecycle + resolved agent binding, and reflects a soft-revoke", async () => {
-    const imported = await ctrl.importInstallation(req(SCOPE), "app1", {
+  it("projects effective agent lifecycle and soft revocation without secrets", async () => {
+    const imported = await controller.importInstallation(req(SCOPE), "app1", {
       teamId: "T100",
       teamName: "Acme",
       botToken: "xoxb",
     });
 
-    let status = await ctrl.installationsStatus(req(SCOPE), "app1");
-    expect(status.installations).toHaveLength(1);
-    const view = status.installations[0];
-    expect(view).toMatchObject({
+    let status = await controller.installationsStatus(req(SCOPE), "app1");
+    expect(status.installations[0]).toMatchObject({
       teamId: "T100",
-      teamName: "Acme",
       status: "active",
-      lastEventAt: null,
+      agentBinding: {
+        agentId: null,
+        effectiveAgentId: "appDefaultAgent",
+        source: "app",
+        hasRoutingOverride: false,
+      },
     });
-    // No per-install override → inherits the app default.
-    expect(view.agentBinding).toMatchObject({
-      agentId: null,
-      effectiveAgentId: "appDefaultAgent",
-      source: "app",
-      hasRoutingOverride: false,
-    });
-    // The compact status view NEVER leaks the bot token.
-    expect(view.botToken).toBeUndefined();
+    expect(JSON.stringify(status)).not.toContain("xoxb");
 
-    // Uninstall (soft-revoke) is operator-visible as status=revoked.
-    await ctrl.revokeInstallation(req(SCOPE), "app1", imported.installation.id);
-    status = await ctrl.installationsStatus(req(SCOPE), "app1");
+    await controller.revokeInstallation(req(SCOPE), "app1", imported.installation.id);
+    status = await controller.installationsStatus(req(SCOPE), "app1");
     expect(status.installations[0].status).toBe("revoked");
     expect(status.installations[0].revokedAt).toBeInstanceOf(Date);
   });
 
-  it("status surface is scope-guarded (cross-scope appId → 404)", async () => {
-    await expect(ctrl.installationsStatus(req(OTHER_SCOPE), "app1")).rejects.toMatchObject({
-      status: 404,
-    });
-  });
-
-  it("reports an installation override as agentBinding.source=installation", async () => {
-    prisma.agents.push({
-      id: "overrideAgent",
-      organizationId: "org1",
-      projectId: "proj1",
-      environmentId: "env1",
-    });
-    await ctrl.importInstallation(req(SCOPE), "app1", {
-      teamId: "T100",
-      botToken: "xoxb",
-      agentId: "overrideAgent",
-    });
-    const status = await ctrl.installationsStatus(req(SCOPE), "app1");
-    expect(status.installations[0].agentBinding).toMatchObject({
-      agentId: "overrideAgent",
-      effectiveAgentId: "overrideAgent",
-      source: "installation",
-    });
+  it("rejects non-operator principals", async () => {
+    await expect(
+      controller.importInstallation(req({ ...SCOPE, principal: "end-user" }), "app1", {
+        teamId: "T100",
+        botToken: "xoxb",
+      })
+    ).rejects.toBeTruthy();
+    expect(prisma.installs).toHaveLength(0);
   });
 });

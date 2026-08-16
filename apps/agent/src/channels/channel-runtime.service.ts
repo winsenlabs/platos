@@ -9,8 +9,6 @@ import {
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
-import { MessageCryptoService } from "../monitoring/message-crypto.service";
-import { ConversationService } from "../memory/conversation.service";
 import { TurnDispatchService } from "../agent-runtime/turn-dispatch.service";
 import { env } from "../shared/env";
 import type { RequestScope } from "../auth/scope.guard";
@@ -27,6 +25,7 @@ import {
 // degrades to `linking:none` behavior (no connect URLs, no gate) instead of
 // failing to construct.
 import { ChannelLinkService } from "./channel-link.controller";
+import { ChannelPersistenceService } from "./channel-persistence.service";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Chat SDK (v4.34) — RUNTIME + BRIDGE slice.
@@ -97,6 +96,7 @@ interface ConnectionContext {
   organizationId: string;
   projectId: string;
   environmentId: string;
+  environment: any;
   entityPk: string | null;
   provider: string;
   /** Default agent (used when no routing rule matches). */
@@ -110,6 +110,7 @@ interface ConnectionContext {
 interface CachedBot {
   bot: any;
   provider: string;
+  credentialRevision: string;
   builtAt: number;
   /** Discord-only: tear down the long-lived Gateway WebSocket on evict. */
   gatewayStop?: () => void | Promise<void>;
@@ -125,13 +126,10 @@ interface CachedBot {
  */
 interface CachedAppCreds {
   /**
-   * The ENCRYPTED botToken source string this entry was derived from. Used as
-   * a self-invalidation key: when a workspace re-installs (OAuth callback
-   * upserts a fresh encrypted botToken on the same installation row), the next
-   * event sees a different `enc` and re-decrypts WITHOUT waiting for the TTL or
-   * an explicit invalidateApp — the events runtime always passes the fresh row.
+   * Revision of the installation's referenced Credential. A re-install or
+   * token refresh changes the revision and bypasses the TTL immediately.
    */
-  enc: string;
+  credentialRevision: string;
   botToken: string;
   builtAt: number;
 }
@@ -252,8 +250,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     // lock so concurrent events can't double-refresh a single-use refresh token.
     // RedisModule is @Global, so no ChannelsModule import is required.
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
-    private readonly messageCrypto: MessageCryptoService,
-    private readonly conversationService: ConversationService,
+    private readonly persistence: ChannelPersistenceService,
     // The durable-vs-direct chokepoint. Both channel turn call-sites route
     // through collectTurn so a durable Walle/Slack agent now drives a Trigger
     // SESSION (the ONE durable mechanism — the SAME session envelope the
@@ -312,9 +309,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   private async warmDiscordConnections(): Promise<void> {
     let rows: any[];
     try {
-      rows = await this.prisma.platosChannelConnection.findMany({
-        where: { provider: "discord", enabled: true },
-      });
+      rows = await this.persistence.listEnabledConnections("discord");
     } catch {
       return; // DB hiccup — the next sweep retries
     }
@@ -353,9 +348,18 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   async getOrCreateBot(
     connection: any,
   ): Promise<{ bot: any; provider: string }> {
-    const connectionId = String(connection.id);
+    const connectionId = String(connection?.id ?? connection ?? "");
+    const canonical = await this.persistence.loadConnection(connectionId);
+    if (!canonical || canonical.enabled !== true) {
+      throw new Error("channel connection unavailable");
+    }
+    connection = canonical;
     const existing = this.cache.get(connectionId);
-    if (existing && Date.now() - existing.builtAt < this.TTL_MS) {
+    if (
+      existing &&
+      existing.credentialRevision === connection.credentialRevision &&
+      Date.now() - existing.builtAt < this.TTL_MS
+    ) {
       return { bot: existing.bot, provider: existing.provider };
     }
     // buildBot is ASYNC (ESM dynamic import) — without an in-flight memo two
@@ -433,6 +437,11 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** Drop positive account-link assertions after provider revocation. */
+  invalidateIdentityLinks(): void {
+    this.linkStatusCache.clear();
+  }
+
   // ───────────────────────────────────────────────────────────────────────
   // Chat SDK construction (ISOLATED — adjust here after first real build)
   // ───────────────────────────────────────────────────────────────────────
@@ -459,6 +468,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       organizationId: String(connection.organizationId),
       projectId: String(connection.projectId),
       environmentId: String(connection.environmentId),
+      environment: connection.environment,
       entityPk: connection.entityPk ?? null,
       provider,
       agentId: String(connection.agentId),
@@ -477,7 +487,13 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       gatewayStop = this.startDiscordGateway(bot) || undefined;
     }
 
-    return { bot, provider, builtAt: Date.now(), gatewayStop };
+    return {
+      bot,
+      provider,
+      credentialRevision: String(connection.credentialRevision ?? "none"),
+      builtAt: Date.now(),
+      gatewayStop,
+    };
   }
 
   /** Build the provider adapter from DECRYPTED creds + public config. */
@@ -702,6 +718,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       );
       agentId = resolved.agentId;
       platosThreadId = resolved.platosThreadId;
+      conversationScope.userId = resolved.endUserId;
     } catch {
       this.logger.error(
         `[channels] thread-binding failed connection=${connectionId} provider=${provider}`,
@@ -727,6 +744,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       ...conversationScope,
       agentId,
       threadId: platosThreadId,
+      sessionId: platosThreadId,
     } as RequestScope;
     const userText = typeof message?.text === "string" ? message.text : "";
     // Capture the SDK thread id NOW — the detached closure below outlives the
@@ -806,25 +824,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     conversationScope: RequestScope,
     threadKey: string,
     text: string,
-  ): Promise<{ agentId: string; platosThreadId: string }> {
-    const connectionId = connCtx.id;
-
-    const existing = await this.prisma.platosChannelThread.findUnique({
-      where: {
-        connectionId_channelThreadKey: {
-          connectionId,
-          channelThreadKey: threadKey,
-        },
-      },
-    });
-    if (existing) {
-      return {
-        // Pinned agent (fall back to connection default for legacy null rows).
-        agentId: existing.agentId ?? connCtx.agentId,
-        platosThreadId: existing.platosThreadId,
-      };
-    }
-
+  ): Promise<{ agentId: string; platosThreadId: string; endUserId: string }> {
     // First contact — resolve the agent from routing rules.
     const platformChannelId = extractPlatformChannelId(threadKey);
     const agentId = resolveAgentForMessage(
@@ -848,53 +848,25 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
         ? platformChannelId?.startsWith("D") === true
         : false;
 
-    // Create the Platos thread bound to the resolved agent. Owned by the
-    // per-channel-thread conversation userId (NOT the author) so later
-    // participants can resolve it through getThread's ownership filter.
-    const platosThread = await this.conversationService.getOrCreateThread(
-      { ...conversationScope, agentId },
+    const qualifiedSubject = String(authorScope.userId).replace(/^[^:]+:/, "");
+    const subjectParts = qualifiedSubject.split(":");
+    const realm =
+      connCtx.provider === "slack" && subjectParts.length > 1
+        ? subjectParts[0]
+        : String((connCtx.config as any)?.team_id ?? "global");
+    const bound = await this.persistence.resolveConnectionThread({
+      connection: connCtx,
+      provider: connCtx.provider,
+      realm,
+      authorSubject: subjectParts.pop() ?? "",
+      channelThreadKey: threadKey,
       agentId,
-      undefined,
-      { singleEndUser: isDmOrAssistant },
-    );
-    const platosThreadId = platosThread.id;
-
-    // Best-effort link to a canonical PlatosEndUser (link-not-merge) — uses
-    // the REAL author scope so the person record reflects the first author.
-    let platosEndUserId: string | null = null;
-    try {
-      platosEndUserId = await this.conversationService.resolveEndUser(
-        authorScope,
-        {},
-      );
-    } catch {
-      platosEndUserId = null;
-    }
-
-    // Upsert is race-safe on the (connectionId, channelThreadKey) unique: if a
-    // concurrent inbound already created the row, we read back ITS pinned agent
-    // + thread and let this call's freshly-created Platos thread be orphaned
-    // (rare; acceptable for v1 — the conversation never splits).
-    const row = await this.prisma.platosChannelThread.upsert({
-      where: {
-        connectionId_channelThreadKey: {
-          connectionId,
-          channelThreadKey: threadKey,
-        },
-      },
-      create: {
-        connectionId,
-        channelThreadKey: threadKey,
-        platosThreadId,
-        platosEndUserId,
-        agentId,
-      },
-      update: {},
+      singleEndUser: isDmOrAssistant,
     });
-
     return {
-      agentId: row.agentId ?? agentId,
-      platosThreadId: row.platosThreadId,
+      agentId: bound.agentId,
+      platosThreadId: bound.threadId,
+      endUserId: bound.endUserId,
     };
   }
 
@@ -943,11 +915,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   private stampInstallationLastEvent(installationId: string): void {
     if (!installationId) return;
     try {
-      this.prisma.platosChannelInstallation
-        .updateMany({
-          where: { id: installationId },
-          data: { lastEventAt: new Date() },
-        })
+      this.persistence
+        .stampInstallationLastEvent(installationId)
         .catch(() => undefined);
     } catch {
       // Telemetry only — a stamp failure must never disturb the turn.
@@ -970,6 +939,13 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     const appId = String(app?.id ?? "");
     const installationId = String(installation?.id ?? "");
     if (!appId || !installationId) return;
+    const canonicalInstallation = await this.persistence.loadInstallation(
+      installationId,
+      appId,
+    );
+    if (!canonicalInstallation) return;
+    installation = canonicalInstallation;
+    app = canonicalInstallation.app;
     // v1 apps are Slack-only; ignore anything else defensively.
     if (String(app?.provider ?? "slack") !== "slack") return;
     // Revoked installs never process events (the controller already routes
@@ -1085,7 +1061,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     const eventTeamId = String(
       envelope?.team_id ?? envelope?.authorizations?.[0]?.team_id ?? "",
     );
-    const proceed = await this.applyLinkingGate(app, installation, authorScope, botToken, {
+    const proceed = await this.applyLinkingGate(app, installation, botToken, {
       team,
       eventTeamId,
       slackUserId: parsed.user,
@@ -1112,6 +1088,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       );
       agentId = resolved.agentId;
       platosThreadId = resolved.platosThreadId;
+      conversationScope.userId = resolved.endUserId;
     } catch {
       this.logger.error(
         `[channel-apps] thread-binding failed app=${appId} installation=${installationId}`,
@@ -1144,6 +1121,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       ...conversationScope,
       agentId,
       threadId: platosThreadId,
+      sessionId: platosThreadId,
     } as RequestScope;
     try {
       // Route through the dispatch chokepoint (collected-result mode). A
@@ -1382,12 +1360,21 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   } | null> {
     if (!agentId) return null;
     try {
-      const row = await this.prisma.platosAgent.findFirst({
+      const row = await this.prisma.agent.findFirst({
         where: {
           id: agentId,
-          organizationId: String(app.organizationId),
           projectId: String(app.projectId),
-          environmentId: String(app.environmentId),
+          bindings: {
+            some: {
+              environmentId: String(app.environmentId),
+              environment: {
+                project: {
+                  id: String(app.projectId),
+                  organizationId: String(app.organizationId),
+                },
+              },
+            },
+          },
         },
       });
       return (row as any) ?? null;
@@ -1466,19 +1453,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     conversationScope: RequestScope,
     channelThreadKey: string,
     text: string,
-  ): Promise<{ agentId: string; platosThreadId: string }> {
-    const existing = await this.prisma.platosChannelAppThread.findUnique({
-      where: {
-        installationId_channelThreadKey: { installationId, channelThreadKey },
-      },
-    });
-    if (existing) {
-      return {
-        agentId: existing.agentId ?? defaultAgentId,
-        platosThreadId: existing.platosThreadId,
-      };
-    }
-
+  ): Promise<{ agentId: string; platosThreadId: string; endUserId: string }> {
     // First contact — resolve the agent from the routing rules.
     const platformChannelId = extractPlatformChannelId(channelThreadKey);
     const agentId = resolveAgentForMessage(
@@ -1494,46 +1469,22 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     // `{{endUserId}}`.
     const isDmOrAssistant = platformChannelId?.startsWith("D") === true;
 
-    const platosThread = await this.conversationService.getOrCreateThread(
-      { ...conversationScope, agentId },
+    const installation = await this.persistence.loadInstallation(installationId);
+    if (!installation) throw new Error("installation unavailable");
+    const realm = String(installation.teamId ?? installation.enterpriseId ?? "");
+    const bound = await this.persistence.resolveAppThread({
+      app: installation.app,
+      installation,
+      realm,
+      authorSubject: String(authorScope.userId).replace(/^slack:/, "").split(":").pop() ?? "",
+      channelThreadKey,
       agentId,
-      undefined,
-      { singleEndUser: isDmOrAssistant },
-    );
-    const platosThreadId = platosThread.id;
-
-    // Best-effort canonical PlatosEndUser link (link-not-merge) off the REAL
-    // author scope so the person record reflects the first author.
-    let platosEndUserId: string | null = null;
-    try {
-      platosEndUserId = await this.conversationService.resolveEndUser(
-        authorScope,
-        {},
-      );
-    } catch {
-      platosEndUserId = null;
-    }
-
-    // Race-safe on the (installationId, channelThreadKey) unique — a concurrent
-    // inbound that already created the row wins; this call's fresh Platos thread
-    // is orphaned (rare; acceptable for v1 — the conversation never splits).
-    const row = await this.prisma.platosChannelAppThread.upsert({
-      where: {
-        installationId_channelThreadKey: { installationId, channelThreadKey },
-      },
-      create: {
-        installationId,
-        channelThreadKey,
-        platosThreadId,
-        platosEndUserId,
-        agentId,
-      },
-      update: {},
+      singleEndUser: isDmOrAssistant,
     });
-
     return {
-      agentId: row.agentId ?? agentId,
-      platosThreadId: row.platosThreadId,
+      agentId: bound.agentId,
+      platosThreadId: bound.threadId,
+      endUserId: bound.endUserId,
     };
   }
 
@@ -1694,7 +1645,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     current: string,
   ): Promise<string> {
     const installationId = String(installation?.id ?? "");
-    const refreshToken = this.decryptSecretField(installation.refreshToken);
+    const refreshToken = this.optionalSecretString(installation.refreshToken);
     if (!refreshToken) {
       // Rotation is on (expiry set) but no usable refresh token to rotate with.
       this.logger.warn(
@@ -1703,7 +1654,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       return current;
     }
     const clientId = typeof app?.clientId === "string" ? app.clientId : "";
-    const clientSecret = this.decryptSecretField(app?.clientSecret);
+    const clientSecret = this.optionalSecretString(app?.clientSecret);
     if (!clientId || !clientSecret) {
       this.logger.error(
         `[channel-apps] token refresh blocked — app credentials unavailable installation=${installationId}`,
@@ -1755,20 +1706,17 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
         ? new Date(Date.now() + json.expires_in * 1000)
         : null;
 
-    const encBot = this.encryptSecretField(newBotToken);
-    const encRefresh = this.encryptSecretField(newRefreshToken);
-
-    // Persist (best-effort — the in-memory token still serves THIS event even if
-    // the write fails; the next event refreshes again).
+    let rotated: any | null = null;
     try {
-      await this.prisma.platosChannelInstallation.update({
-        where: { id: installationId },
-        data: {
-          botToken: encBot,
-          refreshToken: encRefresh,
-          ...(newExpiresAt ? { tokenExpiresAt: newExpiresAt } : {}),
+      rotated = await this.persistence.rotateInstallationGrant(
+        installationId,
+        String(app.id),
+        {
+          botToken: newBotToken,
+          refreshToken: newRefreshToken,
+          tokenExpiresAt: newExpiresAt,
         },
-      });
+      );
     } catch {
       this.logger.error(
         `[channel-apps] token refresh persist failed installation=${installationId}`,
@@ -1778,10 +1726,13 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     // Keep the caller's in-memory row + decrypted-token cache coherent with the
     // rotated grant (the encrypted-source self-invalidation key now matches, so
     // a later getAppBotToken on this same row returns the new token from cache).
-    installation.botToken = encBot;
-    installation.refreshToken = encRefresh;
+    installation.botToken = newBotToken;
+    installation.refreshToken = newRefreshToken;
     if (newExpiresAt) installation.tokenExpiresAt = newExpiresAt;
-    this.cacheAppToken(app, installation, encBot, newBotToken);
+    if (rotated?.credentialRevision) {
+      installation.credentialRevision = rotated.credentialRevision;
+    }
+    this.cacheAppToken(app, installation, newBotToken);
 
     this.logger.log(
       `[channel-apps] bot token refreshed installation=${installationId}`,
@@ -1801,22 +1752,21 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     app: any,
     row: any,
   ): string | null {
-    const token = this.decryptSecretField(row?.botToken);
-    if (!token || typeof row.botToken !== "string") return null;
+    const token = this.optionalSecretString(row?.botToken);
+    if (!token) return null;
     installation.botToken = row.botToken;
     if (typeof row.refreshToken === "string") {
       installation.refreshToken = row.refreshToken;
     }
     if (row.tokenExpiresAt) installation.tokenExpiresAt = row.tokenExpiresAt;
-    this.cacheAppToken(app, installation, row.botToken, token);
+    installation.credentialRevision = row.credentialRevision;
+    this.cacheAppToken(app, installation, token);
     return token;
   }
 
   private async reloadInstallation(installationId: string): Promise<any | null> {
     try {
-      return await this.prisma.platosChannelInstallation.findUnique({
-        where: { id: installationId },
-      });
+      return await this.persistence.loadInstallation(installationId);
     } catch {
       return null;
     }
@@ -1831,16 +1781,6 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Encrypt a scalar secret into the stored envelope — the inverse of
-   * decryptSecretField, mirroring channel-app-oauth.controller's
-   * encryptSecretString so a rotated token is stored in the identical shape the
-   * OAuth callback wrote.
-   */
-  private encryptSecretField(value: string): string {
-    return JSON.stringify(this.messageCrypto.encryptJsonField(value));
   }
 
   /**
@@ -1861,11 +1801,10 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   private cacheAppToken(
     app: any,
     installation: any,
-    encSource: string,
     botToken: string,
   ): void {
     this.appCache.set(this.appCacheKey(app, installation), {
-      enc: encSource,
+      credentialRevision: String(installation.credentialRevision ?? "none"),
       botToken,
       builtAt: Date.now(),
     });
@@ -1882,17 +1821,22 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
    */
   private getAppBotToken(app: any, installation: any): string {
     const key = this.appCacheKey(app, installation);
-    const encSource =
-      typeof installation.botToken === "string" ? installation.botToken : "";
+    const credentialRevision = String(
+      installation.credentialRevision ?? "none",
+    );
     const cached = this.appCache.get(key);
     // Reuse only when both the encrypted source AND the TTL still hold — a
     // re-install rotates the source and forces a fresh decrypt on the spot.
-    if (cached && cached.enc === encSource && Date.now() - cached.builtAt < this.TTL_MS) {
+    if (
+      cached &&
+      cached.credentialRevision === credentialRevision &&
+      Date.now() - cached.builtAt < this.TTL_MS
+    ) {
       return cached.botToken;
     }
-    const botToken = this.decryptSecretField(installation.botToken);
+    const botToken = this.optionalSecretString(installation.botToken);
     if (!botToken) throw new Error("channel-app bot token unavailable");
-    this.cacheAppToken(app, installation, encSource, botToken);
+    this.cacheAppToken(app, installation, botToken);
     return botToken;
   }
 
@@ -1973,7 +1917,6 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   private async applyLinkingGate(
     app: any,
     installation: any,
-    scope: { organizationId: string; projectId: string; environmentId: string },
     botToken: string,
     ctx: {
       team: string;
@@ -2016,7 +1959,11 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       return false;
     }
     if (command === "unlink") {
-      const removed = await this.unlinkEmailIdentities(scope, ctx.slackHandle);
+      const removed = await this.unlinkEmailIdentities(
+        app,
+        installation,
+        ctx.slackHandle,
+      );
       // Drop the positive memo so a `required` app re-gates on the next message.
       this.linkStatusCache.delete(this.linkCacheKey(installation, ctx.slackHandle));
       await this.postSlackMessage(
@@ -2034,7 +1981,11 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     // ── Policy gate — only `required` withholds a turn ─────────────────────
     if (linking !== "required") return true; // optional never blocks
 
-    const linked = await this.isSlackUserLinked(installation, scope, ctx.slackHandle);
+    const linked = await this.isSlackUserLinked(
+      app,
+      installation,
+      ctx.slackHandle,
+    );
     if (linked) return true;
 
     const url = await this.linkStartUrl(app, installation, ctx);
@@ -2110,8 +2061,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
    * unverified user, and the turn would very likely fail on the same blip anyway.
    */
   private async isSlackUserLinked(
+    app: any,
     installation: any,
-    scope: { organizationId: string; projectId: string; environmentId: string },
     slackHandle: string,
   ): Promise<boolean> {
     const key = this.linkCacheKey(installation, slackHandle);
@@ -2121,32 +2072,16 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     if (memo && memo <= now) this.linkStatusCache.delete(key); // prune stale
 
     try {
-      const slackRow = await this.prisma.platosEndUserIdentity.findUnique({
-        where: {
-          organizationId_projectId_environmentId_channel_handle: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-            channel: "slack",
-            handle: slackHandle,
-          },
-        },
-        select: { platosEndUserId: true },
-      });
-      if (!slackRow?.platosEndUserId) return false;
-
-      const emailRow = await this.prisma.platosEndUserIdentity.findFirst({
-        where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          platosEndUserId: slackRow.platosEndUserId,
-          channel: "email",
-          verified: true,
-        },
-        select: { id: true },
-      });
-      if (emailRow) {
+      const realm = String(
+        installation.teamId ?? installation.enterpriseId ?? "",
+      );
+      const slackUserId = slackHandle.split(":").pop() ?? "";
+      const linked = await this.persistence.isSlackUserLinked(
+        app,
+        realm,
+        slackUserId,
+      );
+      if (linked) {
         this.linkStatusCache.set(key, now + this.TTL_MS);
         return true;
       }
@@ -2168,33 +2103,20 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
    * app owner; best-effort (never throws).
    */
   private async unlinkEmailIdentities(
-    scope: { organizationId: string; projectId: string; environmentId: string },
+    app: any,
+    installation: any,
     slackHandle: string,
   ): Promise<number> {
     try {
-      const slackRow = await this.prisma.platosEndUserIdentity.findUnique({
-        where: {
-          organizationId_projectId_environmentId_channel_handle: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-            channel: "slack",
-            handle: slackHandle,
-          },
-        },
-        select: { platosEndUserId: true },
-      });
-      if (!slackRow?.platosEndUserId) return 0;
-
-      const { count } = await this.prisma.platosEndUserIdentity.deleteMany({
-        where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          platosEndUserId: slackRow.platosEndUserId,
-          channel: "email",
-        },
-      });
+      const realm = String(
+        installation.teamId ?? installation.enterpriseId ?? "",
+      );
+      const slackUserId = slackHandle.split(":").pop() ?? "";
+      const count = await this.persistence.unlinkSlackUserEmails(
+        app,
+        realm,
+        slackUserId,
+      );
       this.logger.log(
         `[channel-apps] unlink removed ${count} email identity row(s)`,
       );
@@ -2218,24 +2140,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * Decrypt a single ENCRYPTED-envelope string column (the app tier stores each
-   * secret — botToken / signingSecret / clientSecret — as its own
-   * `JSON.stringify(encryptJsonField(plain))`, unlike the v2 connection which
-   * wraps ALL creds in one object). Returns the plaintext or null when the
-   * value is absent, unparseable, or the decrypt key is missing (the crypto
-   * service returns its `{ __platos_enc, error }` marker → not a string → null).
-   */
-  private decryptSecretField(stored: unknown): string | null {
-    if (typeof stored !== "string" || !stored) return null;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(stored);
-    } catch {
-      return null;
-    }
-    const dec = this.messageCrypto.decryptJsonField(parsed);
-    return typeof dec === "string" && dec ? dec : null;
+  private optionalSecretString(stored: unknown): string | null {
+    return typeof stored === "string" && stored ? stored : null;
   }
 
   // ───────────────────────────────────────────────────────────────────────
@@ -2260,16 +2166,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
    */
   private decryptCredentials(row: any): Record<string, unknown> {
     if (!row?.credentials) return {};
-    let decrypted: unknown;
-    try {
-      const parsed = JSON.parse(String(row.credentials));
-      decrypted = this.messageCrypto.decryptJsonField(parsed);
-    } catch {
-      this.logger.error(
-        `[channels] credential decrypt failed connection=${row.id}`,
-      );
-      throw new Error("channel credentials unavailable");
-    }
+    const decrypted: unknown = row.credentials;
     if (
       !this.isPlainObject(decrypted) ||
       (decrypted as Record<string, unknown>)["__platos_enc"] !== undefined ||

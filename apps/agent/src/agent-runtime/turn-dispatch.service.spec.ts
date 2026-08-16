@@ -1,7 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { TurnDispatchService, type TurnDispatchContext } from "./turn-dispatch.service";
 import type { RequestScope } from "../auth/scope.guard";
 import type { AgentStreamEvent } from "./agent.service";
+
+vi.mock("../shared/external-trigger-config", () => ({
+  configureExternalTriggerSdk: vi.fn(() => ({
+    status: "configured",
+    endpoint: "https://trigger.test",
+    accessToken: "test-token",
+  })),
+}));
 
 /**
  * Unit tests for the durable-vs-direct chokepoint.
@@ -46,49 +54,120 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
   let svc: TurnDispatchService;
 
   beforeEach(() => {
-    prisma = { platosAgent: { findFirst: vi.fn() } };
+    prisma = { agentBinding: { findFirst: vi.fn() } };
     agentTaskService = { executeStreamingTurn: vi.fn() };
     conversationService = { getOrCreateThread: vi.fn() };
-    // driveSession is stubbed at the primitive seam in these tests, so a
-    // minimal Redis stub suffices (cursor get/set are never exercised here).
-    redis = { get: vi.fn().mockResolvedValue(null), set: vi.fn().mockResolvedValue("OK") };
+    // Routing tests stub driveSession at the primitive seam; the timeout
+    // regression below also exercises its best-effort cursor cleanup.
+    redis = {
+      get: vi.fn().mockResolvedValue(null),
+      set: vi.fn().mockResolvedValue("OK"),
+      del: vi.fn().mockResolvedValue(1),
+    };
     svc = new TurnDispatchService(prisma, agentTaskService, conversationService, redis);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
+
+  describe("driveSession — timeout cleanup", () => {
+    it("does not await an AsyncIterator return() that never settles after the drive timeout", async () => {
+      vi.useFakeTimers();
+      vi.stubEnv("PLATOS_CHAT_SESSIONS", "true");
+      vi.stubEnv("PLATOS_SESSION_DRIVE_TIMEOUT_MS", "15000");
+
+      const next = vi.fn(() => new Promise<IteratorResult<unknown>>(() => undefined));
+      const returnIterator = vi.fn(() => new Promise<IteratorResult<unknown>>(() => undefined));
+      const stream = {
+        [Symbol.asyncIterator]: () => ({ next, return: returnIterator }),
+      };
+      const sendMessage = vi.fn().mockResolvedValue(stream);
+      class AgentChatStub {
+        readonly session = {};
+        readonly sendMessage = sendMessage;
+      }
+
+      conversationService.getOrCreateThread.mockResolvedValue({ id: "t-timeout" });
+      svc = new TurnDispatchService(prisma, agentTaskService, conversationService, redis);
+      vi.spyOn(svc as any, "loadAgentChat").mockReturnValue(AgentChatStub);
+
+      const events: Record<string, unknown>[] = [];
+      const completed = vi.fn();
+      const drive = (svc as any)
+        .driveSession("a1", makeCtx(), (event: Record<string, unknown>) => events.push(event))
+        .then((result: unknown) => {
+          completed();
+          return result;
+        });
+
+      await vi.advanceTimersByTimeAsync(14_999);
+      expect(completed).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(drive).resolves.toEqual({
+        text: "",
+        threadId: "t-timeout",
+        costCents: 0,
+        messageId: undefined,
+      });
+      expect(returnIterator).toHaveBeenCalledOnce();
+      expect(events).toEqual([
+        { type: "meta", thread_id: "t-timeout", threadId: "t-timeout", durable: true, session: true },
+        { type: "error", message: "durable session timed out" },
+        { type: "done" },
+      ]);
+    });
   });
 
   describe("resolveMode — the ONE executionMode read", () => {
     it("returns 'direct' when managed trigger is unconfigured, regardless of executionMode", async () => {
       vi.spyOn(svc as any, "triggerReady").mockReturnValue(false);
-      prisma.platosAgent.findFirst.mockResolvedValue({ executionMode: "durable" });
+      prisma.agentBinding.findFirst.mockResolvedValue({
+        activeAgentVersion: { memoryConfig: { __runtime: { executionMode: "durable" } } },
+      });
       expect(await svc.resolveMode("a1", makeScope())).toBe("direct");
       // Short-circuits before the DB read — durable is simply unreachable.
-      expect(prisma.platosAgent.findFirst).not.toHaveBeenCalled();
+      expect(prisma.agentBinding.findFirst).not.toHaveBeenCalled();
     });
 
     it("returns 'durable' for a durable agent when trigger IS configured", async () => {
       vi.spyOn(svc as any, "triggerReady").mockReturnValue(true);
-      prisma.platosAgent.findFirst.mockResolvedValue({ executionMode: "durable" });
+      prisma.agentBinding.findFirst.mockResolvedValue({
+        activeAgentVersion: { memoryConfig: { __runtime: { executionMode: "durable" } } },
+      });
       expect(await svc.resolveMode("a1", makeScope())).toBe("durable");
     });
 
     it("returns 'direct' for a direct agent when trigger IS configured", async () => {
       vi.spyOn(svc as any, "triggerReady").mockReturnValue(true);
-      prisma.platosAgent.findFirst.mockResolvedValue({ executionMode: "direct" });
+      prisma.agentBinding.findFirst.mockResolvedValue({
+        activeAgentVersion: { memoryConfig: { __runtime: { executionMode: "direct" } } },
+      });
       expect(await svc.resolveMode("a1", makeScope())).toBe("direct");
     });
 
     it("scopes the read to the full (org, project, env, id) tuple", async () => {
       vi.spyOn(svc as any, "triggerReady").mockReturnValue(true);
-      prisma.platosAgent.findFirst.mockResolvedValue({ executionMode: "durable" });
+      prisma.agentBinding.findFirst.mockResolvedValue({
+        activeAgentVersion: { memoryConfig: { __runtime: { executionMode: "durable" } } },
+      });
       await svc.resolveMode("a1", makeScope());
-      expect(prisma.platosAgent.findFirst).toHaveBeenCalledWith({
-        where: { id: "a1", organizationId: "org1", projectId: "proj1", environmentId: "env1" },
-        select: { executionMode: true },
+      expect(prisma.agentBinding.findFirst).toHaveBeenCalledWith({
+        where: {
+          agentId: "a1",
+          environmentId: "env1",
+          agent: { projectId: "proj1" },
+          environment: { project: { id: "proj1", organizationId: "org1" } },
+        },
+        select: { activeAgentVersion: { select: { memoryConfig: true } } },
       });
     });
 
     it("fails open to 'direct' when the executionMode lookup throws", async () => {
       vi.spyOn(svc as any, "triggerReady").mockReturnValue(true);
-      prisma.platosAgent.findFirst.mockRejectedValue(new Error("db down"));
+      prisma.agentBinding.findFirst.mockRejectedValue(new Error("db down"));
       expect(await svc.resolveMode("a1", makeScope())).toBe("direct");
     });
   });
@@ -103,7 +182,7 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
           { type: "meta", thread_id: "t1" } as AgentStreamEvent,
           { type: "token", text: "he" } as AgentStreamEvent,
           { type: "token", text: "llo" } as AgentStreamEvent,
-          { type: "message_persisted", messageId: "m1", costCents: 3 } as unknown as AgentStreamEvent,
+          { type: "message_persisted", messageId: "m1", costCents: 3 } as AgentStreamEvent,
           { type: "done" } as AgentStreamEvent,
         ),
       );
@@ -140,7 +219,7 @@ describe("TurnDispatchService — the durable-vs-direct chokepoint", () => {
         gen(
           { type: "meta", thread_id: "t2" } as AgentStreamEvent,
           { type: "token", text: "fallback" } as AgentStreamEvent,
-          { type: "message_persisted", messageId: "m2", costCents: 1 } as unknown as AgentStreamEvent,
+          { type: "message_persisted", messageId: "m2", costCents: 1 } as AgentStreamEvent,
         ),
       );
       const r = await svc.collectTurn("a1", makeCtx());

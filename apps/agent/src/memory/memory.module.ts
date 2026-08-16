@@ -18,7 +18,7 @@ import { ProvidersModule } from "../providers/providers.module";
   // has no edges into memory, so no cycle.
   //
   // Theme L — ProvidersModule is imported so EmbeddingService can resolve
-  // the OPENAI_API_KEY from the scoped SecretStore via ScopedEnvService.
+  // the OPENAI_API_KEY from the scoped Environment credential service.
   // Theme O — MemoryExtractionService uses ScopedEnvService to resolve the
   // judge-LLM API key; same provider module covers both.
   imports: [MonitoringModule, ProvidersModule],

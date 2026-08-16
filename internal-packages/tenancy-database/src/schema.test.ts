@@ -132,6 +132,25 @@ describe("clean-slate domain schema", () => {
       OAuthAccessToken: ["clientId", "userId", "scopeKind", "scopes"],
       OAuthRefreshToken: ["accessTokenId", "rotationFamilyId", "parentRefreshTokenId", "consumedAt", "replayDetectedAt"],
       McpBearerToken: ["entityId", "mcpUserId", "createdByUserId", "scopes"],
+      Thread: ["compactedUpToTurnId", "compactionState", "compactedAt"],
+      Turn: ["agentVersionId", "versionBucket", "costCents", "latencyMs"],
+      Step: [
+        "cacheCreationInputTokens",
+        "cacheReadInputTokens",
+        "reasoningTokens",
+        "costCents",
+        "latencyMs",
+      ],
+      Memory: [
+        "agentId",
+        "clusterId",
+        "sourceThreadId",
+        "sourceTurnIds",
+        "extractorVersion",
+        "contentHash",
+      ],
+      MemoryEntity: ["agentId", "clusterId"],
+      MemoryRelationship: ["agentId", "clusterId", "sourceMemoryId"],
     })) {
       const actual = fields(name);
       for (const field of expected) expect(actual.has(field), `${name}.${field}`).toBe(true);
@@ -145,6 +164,51 @@ describe("clean-slate domain schema", () => {
       .toEqual(["McpBearerToken"]);
     expect(migration).toContain('CONSTRAINT "PersonalAccessToken_scope_shape_check"');
     expect(migration).toContain('CONSTRAINT "OAuthRefreshToken_scope_shape_check"');
+    expect(migration).toContain('CREATE UNIQUE INDEX "ProviderKey_one_default_per_environment_provider"');
+    expect(migration).toContain('WHERE "isDefault" = TRUE');
+    expect(migration).toContain('CREATE TRIGGER "ProviderKey_executable_reference"');
+    expect(migration).toContain('version."memoryConfig" #>> \'{__runtime,providerKeyId}\'');
+    expect(migration).toContain("route ->> 'providerCredentialId'");
+    expect(migration).toContain("route ->> 'providerKeyId'");
+  });
+
+  test("models runtime attribution, compaction, vector recall, and cluster sharing structurally", () => {
+    const model = (name: string) => ControlPrisma.dmmf.datamodel.models.find(
+      (candidate) => candidate.name === name
+    )!;
+    const field = (modelName: string, fieldName: string) => model(modelName).fields.find(
+      (candidate) => candidate.name === fieldName
+    )!;
+
+    expect(field("Turn", "agentVersionId").isRequired).toBe(true);
+    expect(field("Turn", "agentVersion")).toMatchObject({
+      kind: "object",
+      type: "AgentVersion",
+    });
+    expect(field("Thread", "compactedUpToTurn")).toMatchObject({
+      kind: "object",
+      type: "Turn",
+    });
+    expect(field("Memory", "agentId").isRequired).toBe(true);
+    expect(field("Memory", "cluster")).toMatchObject({ kind: "object", type: "AgentCluster" });
+    expect(field("MemoryRelationship", "sourceMemory")).toMatchObject({
+      kind: "object",
+      type: "Memory",
+    });
+
+    for (const expected of [
+      'CREATE EXTENSION IF NOT EXISTS "vector"',
+      'CREATE INDEX "Memory_embedding_hnsw_cosine_idx"',
+      'CREATE INDEX "MemoryEntity_embedding_hnsw_cosine_idx"',
+      'CREATE UNIQUE INDEX "MemoryEntity_shared_cluster_entityKey_key"',
+      'CONSTRAINT "Memory_extraction_provenance_check"',
+      'CONSTRAINT "Step_usage_check"',
+      'CREATE TRIGGER "Turn_ancestry"',
+      'CREATE TRIGGER "MemoryRelationship_owner_immutable"',
+    ]) {
+      expect(migration).toContain(expected);
+    }
+    expect(migration).not.toContain("ClickHouse");
   });
 
   test("documents and registers every retained Json field", () => {

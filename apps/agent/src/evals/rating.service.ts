@@ -72,15 +72,19 @@ export class RatingService {
       throw new Error("rating must be 1 or -1");
     }
 
-    // Scope-gate via message.thread.agent — a guessed messageId in another
+    // Scope-gate via turn.thread.environment — a guessed turn id in another
     // scope returns null and we throw, surfacing as 404 in the controller.
-    const msg = await this.prisma.platosAgentMessage.findFirst({
+    const turn = await this.prisma.turn.findFirst({
       where: {
         id: input.messageId,
         thread: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          environment: {
+            project: {
+              id: scope.projectId,
+              organizationId: scope.organizationId,
+            },
+          },
         },
       },
       select: {
@@ -89,18 +93,29 @@ export class RatingService {
         thread: {
           select: {
             agentId: true,
-            lockedVersionId: true,
+            endUserId: true,
+            agent: {
+              select: {
+                bindings: {
+                  where: { environmentId: scope.environmentId },
+                  take: 1,
+                  select: { activeAgentVersionId: true },
+                },
+              },
+            },
           },
         },
       },
     });
-    if (!msg) throw new Error("Message not found");
+    if (!turn) throw new Error("Turn not found");
 
-    const row = await this.prisma.platosMessageRating.upsert({
+    const agentVersionId = turn.thread.agent.bindings[0]?.activeAgentVersionId ?? null;
+
+    const row = await this.prisma.messageRating.upsert({
       where: {
-        messageId_userId: {
-          messageId: msg.id,
-          userId: scope.userId,
+        turnId_endUserId: {
+          turnId: turn.id,
+          endUserId: turn.thread.endUserId,
         },
       },
       update: {
@@ -108,14 +123,11 @@ export class RatingService {
         comment: input.comment ?? null,
       },
       create: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
-        messageId: msg.id,
-        threadId: msg.threadId,
-        agentId: msg.thread.agentId,
-        agentVersionId: msg.thread.lockedVersionId ?? null,
-        userId: scope.userId,
+        turnId: turn.id,
+        agentId: turn.thread.agentId,
+        agentVersionId,
+        endUserId: turn.thread.endUserId,
         rating: input.rating,
         comment: input.comment ?? null,
       },
@@ -137,7 +149,7 @@ export class RatingService {
             userId: scope.userId,
           },
           {
-            messageId: msg.id,
+            messageId: turn.id,
             rating: input.rating,
             comment: input.comment ?? null,
           },
@@ -149,7 +161,10 @@ export class RatingService {
         );
     }
 
-    return this.toRecord(row);
+    return this.toRecord(row, {
+      threadId: turn.threadId,
+      userId: turn.thread.endUserId,
+    });
   }
 
   /** Remove this user's rating for a message. Idempotent. */
@@ -157,12 +172,27 @@ export class RatingService {
     // Scope-gate via a scope-stamped delete — PostgreSQL's deleteMany is
     // a no-op on zero matches, so a cross-scope id can never reveal
     // existence.
-    const result = await this.prisma.platosMessageRating.deleteMany({
+    const turn = await this.prisma.turn.findFirst({
       where: {
-        messageId,
-        userId: scope.userId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
+        id: messageId,
+        thread: {
+          environmentId: scope.environmentId,
+          environment: {
+            project: {
+              id: scope.projectId,
+              organizationId: scope.organizationId,
+            },
+          },
+        },
+      },
+      select: { id: true, thread: { select: { endUserId: true } } },
+    });
+    if (!turn) return false;
+
+    const result = await this.prisma.messageRating.deleteMany({
+      where: {
+        turnId: messageId,
+        endUserId: turn.thread.endUserId,
         environmentId: scope.environmentId,
       },
     });
@@ -178,47 +208,68 @@ export class RatingService {
     messageId: string,
     options: { onlyCurrentUser?: boolean } = { onlyCurrentUser: true },
   ): Promise<{ userRating: RatingRecord | null; aggregate: { ups: number; downs: number } }> {
+    const turn = await this.prisma.turn.findFirst({
+      where: {
+        id: messageId,
+        thread: {
+          environmentId: scope.environmentId,
+          environment: {
+            project: {
+              id: scope.projectId,
+              organizationId: scope.organizationId,
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        threadId: true,
+        thread: { select: { endUserId: true } },
+      },
+    });
+    if (!turn) return { userRating: null, aggregate: { ups: 0, downs: 0 } };
+
     const where: Record<string, unknown> = {
-      messageId,
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
+      turnId: messageId,
       environmentId: scope.environmentId,
     };
     if (options.onlyCurrentUser) {
-      where.userId = scope.userId;
+      where.endUserId = turn.thread.endUserId;
     }
-    const rows = await this.prisma.platosMessageRating.findMany({ where });
-    const userRow = (rows as any[]).find((r) => r.userId === scope.userId) ?? null;
+    const rows = await this.prisma.messageRating.findMany({ where });
+    const userRow =
+      (rows as any[]).find((r) => r.endUserId === turn.thread.endUserId) ?? null;
     // Compute aggregate across ALL users (scope-filtered) for display-only.
     const [ups, downs] = await Promise.all([
-      this.prisma.platosMessageRating.count({
+      this.prisma.messageRating.count({
         where: {
-          messageId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
+          turnId: messageId,
           environmentId: scope.environmentId,
           rating: 1,
         },
       }),
-      this.prisma.platosMessageRating.count({
+      this.prisma.messageRating.count({
         where: {
-          messageId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
+          turnId: messageId,
           environmentId: scope.environmentId,
           rating: -1,
         },
       }),
     ]);
     return {
-      userRating: userRow ? this.toRecord(userRow) : null,
+      userRating: userRow
+        ? this.toRecord(userRow, {
+            threadId: turn.threadId,
+            userId: turn.thread.endUserId,
+          })
+        : null,
       aggregate: { ups, downs },
     };
   }
 
   /**
    * Theme J.2 — aggregated satisfaction per agent version. Joined with
-   * PlatosAgentVersion so the UI can label v3 / v7 / etc. Ratings are
+   * AgentVersion so the UI can label v3 / v7 / etc. Ratings are
    * anonymized (no userId surfacing).
    */
   async satisfactionByVersion(
@@ -234,11 +285,15 @@ export class RatingService {
     const since = new Date(Date.now() - days * 86400_000);
 
     const rows: Array<{ agentVersionId: string | null; rating: number }> =
-      await this.prisma.platosMessageRating.findMany({
+      await this.prisma.messageRating.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          environment: {
+            project: {
+              id: scope.projectId,
+              organizationId: scope.organizationId,
+            },
+          },
           agentId,
           createdAt: { gte: since },
         },
@@ -256,7 +311,7 @@ export class RatingService {
 
     const versionNumberById = new Map<string, number>();
     const versions: Array<{ id: string; versionNumber: number }> =
-      await this.prisma.platosAgentVersion.findMany({
+      await this.prisma.agentVersion.findMany({
         where: { agentId },
         select: { id: true, versionNumber: true },
       });
@@ -302,11 +357,15 @@ export class RatingService {
     const since = new Date(Date.now() - days * 86400_000);
 
     const rows: Array<{ agentId: string; rating: number }> =
-      await this.prisma.platosMessageRating.findMany({
+      await this.prisma.messageRating.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          environment: {
+            project: {
+              id: scope.projectId,
+              organizationId: scope.organizationId,
+            },
+          },
           createdAt: { gte: since },
         },
         select: { agentId: true, rating: true },
@@ -327,14 +386,17 @@ export class RatingService {
     });
   }
 
-  private toRecord(r: any): RatingRecord {
+  private toRecord(
+    r: any,
+    context: { threadId: string; userId: string },
+  ): RatingRecord {
     return {
       id: r.id,
-      messageId: r.messageId,
-      threadId: r.threadId,
+      messageId: r.turnId,
+      threadId: context.threadId,
       agentId: r.agentId,
       agentVersionId: r.agentVersionId ?? null,
-      userId: r.userId,
+      userId: context.userId,
       rating: r.rating,
       comment: r.comment ?? null,
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),

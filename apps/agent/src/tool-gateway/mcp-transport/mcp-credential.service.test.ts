@@ -88,7 +88,7 @@ describe("McpCredentialService.resolveHeaders — {{endUserId}} fail-closed guar
   it("NEVER touches the secret store when the end-user guard fires — even if the header also references {{secret}}", async () => {
     const server: CredentialServerSlice = {
       headersTemplate: { Authorization: "Bearer {{secret}}-{{endUserId}}" },
-      credsSecretKey: "MY_KEY",
+      credential: { name: "MY_KEY" },
     };
     await expect(
       svc.resolveHeaders(server, SCOPE, null),
@@ -117,7 +117,7 @@ describe("McpCredentialService.resolveHeaders — {{endUserId}} fail-closed guar
   it("interpolates BOTH {{secret}} and {{endUserId}} in the same value", async () => {
     const server: CredentialServerSlice = {
       headersTemplate: { Authorization: "Bearer {{secret}}::{{endUserId}}" },
-      credsSecretKey: "MY_KEY",
+      credential: { name: "MY_KEY" },
     };
     const resolved = await svc.resolveHeaders(server, SCOPE, "bob");
     expect(resolved).toEqual({ Authorization: "Bearer sk-test-123::bob" });

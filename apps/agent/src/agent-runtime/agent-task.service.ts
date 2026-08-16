@@ -19,6 +19,76 @@ import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { env } from "../shared/env";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
+import { ProviderRuntimeError } from "../providers/provider-runtime.error";
+import { randomUUID } from "node:crypto";
+
+export const TURN_MUTEX_TTL_MS = 30_000;
+export const TURN_MUTEX_HEARTBEAT_MS = 10_000;
+
+const RENEW_TURN_MUTEX_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("pexpire", KEYS[1], ARGV[2])
+end
+return 0
+`;
+
+const RELEASE_TURN_MUTEX_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+end
+return 0
+`;
+
+export interface TurnMutexHandle {
+  readonly token: string;
+  release(): Promise<void>;
+}
+
+/**
+ * Acquire a short Redis lease and keep it alive only while this owner holds it.
+ * Both renewal and release compare the random token atomically in Lua, so an
+ * expired owner can never extend or delete a successor's lock.
+ */
+export async function acquireTurnMutex(
+  redis: Redis,
+  key: string,
+): Promise<TurnMutexHandle | null> {
+  const token = randomUUID();
+  const acquired = await redis.set(key, token, "PX", TURN_MUTEX_TTL_MS, "NX");
+  if (!acquired) return null;
+
+  let stopped = false;
+  let renewalInFlight = false;
+  const stopHeartbeat = () => {
+    if (stopped) return;
+    stopped = true;
+    clearInterval(heartbeat);
+  };
+  const heartbeat = setInterval(() => {
+    if (stopped || renewalInFlight) return;
+    renewalInFlight = true;
+    void redis
+      .eval(RENEW_TURN_MUTEX_SCRIPT, 1, key, token, TURN_MUTEX_TTL_MS)
+      .then((renewed) => {
+        if (Number(renewed) !== 1) stopHeartbeat();
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        renewalInFlight = false;
+      });
+  }, TURN_MUTEX_HEARTBEAT_MS);
+  heartbeat.unref?.();
+
+  return {
+    token,
+    async release() {
+      stopHeartbeat();
+      await redis
+        .eval(RELEASE_TURN_MUTEX_SCRIPT, 1, key, token)
+        .catch(() => undefined);
+    },
+  };
+}
 
 /**
  * AgentTaskService — orchestrates a complete agent conversation turn.
@@ -168,8 +238,15 @@ export class AgentTaskService {
     if (!agentId && options.threadId) {
       try {
         const prisma = (this.conversationService as any).prisma;
-        const threadRow = await prisma?.platosAgentThread?.findFirst?.({
-          where: { id: options.threadId },
+        const threadRow = await prisma?.thread?.findFirst?.({
+          where: {
+            id: options.threadId,
+            environmentId: scope.environmentId,
+            environment: {
+              projectId: scope.projectId,
+              project: { organizationId: scope.organizationId },
+            },
+          },
           select: { agentId: true },
         });
         if (threadRow?.agentId) agentId = threadRow.agentId;
@@ -230,16 +307,19 @@ export class AgentTaskService {
     // before any thread lookup happens.
     let preClusteringId: string | null = null;
     try {
-      const agentRow = await (this.conversationService as any).prisma.platosAgent.findFirst({
+      const agentRow = await (this.conversationService as any).prisma.agentBinding.findFirst({
         where: {
-          id: agentId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
+          agentId,
           environmentId: scope.environmentId,
+          agent: { projectId: scope.projectId },
+          environment: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
         },
-        select: { clusteringId: true },
+        select: { clusterId: true },
       });
-      preClusteringId = agentRow?.clusteringId ?? null;
+      preClusteringId = agentRow?.clusterId ?? null;
     } catch {
       preClusteringId = null;
     }
@@ -251,18 +331,20 @@ export class AgentTaskService {
     );
 
     // EOBD.30 — per-thread mutex. Two concurrent messages on the same
-    // thread would otherwise race on the history snapshot. We SET NX
-    // with the turn timeout as TTL so a crashed agent doesn't leave a
-    // wedged lock; on conflict we yield a 409-style error event + exit
-    // without touching history.
+    // thread would otherwise race on the history snapshot. The bounded
+    // Redis lease is renewed while this turn owns its unique token. A
+    // crashed worker loses the lease quickly, while a stale worker cannot
+    // renew or delete a successor's lock.
     const redis = (this.agentService as any)?.redis;
     const mutexKey = `turn:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${thread.id}`;
-    const mutexTtlSec = Math.max(60, Math.ceil(turnTimeoutMs / 1000) + 30);
-    let mutexAcquired = false;
+    let mutex: TurnMutexHandle | null = null;
     // PRELAUNCH-A3-7 — reservation state hoisted outside the try block so
     // the finally can settle even when the try body throws before the
     // happy-path settle would have run.
     let reservationCommitted = false;
+    let openTurnId: string | null = null;
+    let openStepModel = "unknown";
+    let turnFinalized = false;
     const reservationEstimateCents = 25;
     const reservationScopeTuple = {
       organizationId: scope.organizationId,
@@ -270,9 +352,8 @@ export class AgentTaskService {
       environmentId: scope.environmentId,
     };
     if (redis) {
-      const acquired = await redis.set(mutexKey, Date.now().toString(), "EX", mutexTtlSec, "NX");
-      if (acquired) mutexAcquired = true;
-      else {
+      mutex = await acquireTurnMutex(redis, mutexKey);
+      if (!mutex) {
         // Wave 11b — mutex held by a live turn; release the idempotency
         // reservation so a legit retry (once the live turn finishes) isn't
         // locked out for 600s with the same key.
@@ -324,9 +405,7 @@ export class AgentTaskService {
     // link to it. If inbound was absent, the turn root has no parent.
     const inboundParent: string | undefined = inboundParentSpanId;
 
-    // PPR-21 — stamp turn start so we can stamp latency_ms on responseJson.
-    // Theme G.6 canary metrics dashboard reads `rj?.latency_ms` to compute
-    // avgLatencyMs per version; without this the column is permanently null.
+    // PPR-21 — stamp turn start so normalized Turn/Step latency remains durable.
     const turnStartMs = Date.now();
 
     yield { type: "meta", thread_id: thread.id, agent_id: agentId };
@@ -499,11 +578,14 @@ export class AgentTaskService {
 
     // 3. Get agent config for this turn. Theme G.5 — honour the per-thread
     //    version lock, and on the first turn roll canary vs current. The
-    //    returned `versionIdUsed` is stamped into responseJson below so the
-    //    canary metrics dashboard (G.6) can pivot cost/latency by version.
+    //    returned `versionIdUsed` is persisted structurally on the Turn so
+    //    canary metrics can pivot cost/latency by version.
     const resolved = await this.agentService.resolveConfigForThread(agentId, thread.id, scope);
     let config = resolved.config;
     const versionIdUsed = resolved.versionIdUsed;
+    if (!versionIdUsed) {
+      throw new Error("Runtime turn cannot persist without a selected AgentVersion");
+    }
 
     // LAUNCH-3 — per-request `X-Platos-Config` override. Deep-merge a
     // whitelisted subset of agent config for this single turn. Used for
@@ -540,6 +622,7 @@ export class AgentTaskService {
         }
       }
     }
+    openStepModel = config.model;
 
     // PRA-AC: stamp clusteringId onto scope so createThread + getThread use it.
     // This propagates into conversation.service.ts createThread (clusteringId on thread)
@@ -585,12 +668,15 @@ export class AgentTaskService {
     const userMessage = await this.conversationService.storeMessage(thread.id, scopeWithCluster, {
       role: "user",
       content: message,
+      agentVersionId: versionIdUsed,
+      versionBucket: resolved.bucket,
       systemPromptOverride: options.systemPromptOverride ?? undefined,
       outputSchema: (options.outputSchema as any) ?? undefined,
       threadReplyToId: options.replyToMessageId ?? null,
       // PRA-AC: attribute message to the calling agent when in a cluster.
       authorAgentId: config.clusteringId ? agentId : null,
     });
+    openTurnId = userMessage.id;
     if (resolvedAttachments.length > 0 && userMessage?.id) {
       await this.attachmentsService.markAttachedToMessage(
         options.attachmentIds!,
@@ -605,7 +691,7 @@ export class AgentTaskService {
       dynamicContext.__compacted_summary = thread.compactedSummary;
     }
     if (config.enableUserProfiling) {
-      // Theme M.4 — profile rows live exclusively in PlatosMemory
+      // Theme M.4 — profile rows live exclusively in clean Memory
       // (kind="profile"). The legacy PlatosAgentUserProfile blob was
       // dropped. Readers pay the Redis projection cache on the hot path,
       // falling back to Prisma only on cache miss.
@@ -617,16 +703,15 @@ export class AgentTaskService {
           // (org, project, env, agentId, userId) so a forged agentId
           // can't leak another scope's data.
           const prisma = (this.conversationService as any).prisma;
-          if (prisma?.platosMemory) {
+          if (prisma?.memory) {
             const rows: Array<{ content: string; metadata: unknown }> =
-              await prisma.platosMemory.findMany({
+              await prisma.memory.findMany({
                 where: {
-                  organizationId: scope.organizationId,
-                  projectId: scope.projectId,
                   environmentId: scope.environmentId,
-                  userId: scope.userId,
+                  endUserId: thread.endUserId,
                   agentId,
                   kind: "profile",
+                  archivedAt: null,
                 },
                 select: { content: true, metadata: true },
               });
@@ -695,17 +780,9 @@ export class AgentTaskService {
     // (OpenAI o-series, DeepSeek R1, Gemini 2.5 thinking, Perplexity
     // reasoning). Zero on non-reasoning models.
     let totalReasoningTokens = 0;
-    // PRELAUNCH-A1-5 (follow-up) — capture the LAST observed raw v6
-    // `inputTokenDetails` / `outputTokenDetails` blobs from the meta
-    // event. Persisted onto `responseJson.usage` so the cost reconcile +
-    // post-hoc cost audit pipeline can replay billing math against rate-
-    // table shifts without re-running the LLM.
-    let lastInputTokenDetails: Record<string, unknown> | null = null;
-    let lastOutputTokenDetails: Record<string, unknown> | null = null;
     const toolCallsLog: any[] = [];
     // Theme F.5 — when the agent returns a structured output, capture the
-    // validated object + attempt count so it lands in
-    // `responseJson.structured_output` on the assistant message row.
+    // validated object + attempt count so it lands in the normalized Turn output.
     let structuredOutput: { object: unknown; attempts: number } | null = null;
 
     for await (const event of this.agentService.stream(
@@ -728,6 +805,9 @@ export class AgentTaskService {
         allowedTools: options.allowedTools,
       },
     )) {
+      if (event.type === "error" && event.code === "provider_unavailable") {
+        throw new ProviderRuntimeError("provider_configuration_unavailable");
+      }
       // Capture text for storage
       if (event.type === "token") {
         fullText += event.text;
@@ -773,19 +853,16 @@ export class AgentTaskService {
         totalCacheReadTokens += usage.cacheReadInputTokens || 0;
         // PRELAUNCH-A1-3 — reasoning tokens.
         totalReasoningTokens += usage.reasoningTokens || 0;
-        // PRELAUNCH-A1-5 (follow-up) — capture last observed raw
-        // token-details blobs for post-hoc cost-audit replay. We always
-        // overwrite (most recent wins; the SDK v6 emits cumulative shapes).
-        if (usage.inputTokenDetails) {
-          lastInputTokenDetails = usage.inputTokenDetails;
-        }
-        if (usage.outputTokenDetails) {
-          lastOutputTokenDetails = usage.outputTokenDetails;
-        }
       }
 
-      // Forward all events to the frontend
-      yield event;
+      // AgentService owns model streaming, but AgentTaskService owns the
+      // persisted assistant message. Do not expose the provider stream's
+      // completion marker yet: consumers (notably the Trigger session bridge)
+      // correctly treat `done` as terminal and would discard the
+      // `message_persisted` event emitted after the durable write below.
+      if (event.type !== "done") {
+        yield event;
+      }
     }
 
     // 7. Safety check on output. Theme H — persist flags to the ledger
@@ -854,8 +931,8 @@ export class AgentTaskService {
     //    truth; Redis/CH are rebuildable from Postgres via the
     //    reconcile task. If Postgres dies mid-turn we haven't billed
     //    yet, and the user sees the error cleanly. If Redis dies AFTER
-    //    storeMessage, the reconcile task backfills the counter from
-    //    `responseJson.cost_cents`.
+    //    storeMessage, normalized Turn/Step usage remains available to repair
+    //    rebuildable counters.
     //
     //    Cost is computed locally first (no side effects), stamped on
     //    the message, THEN pushed to Redis via recordUsage.
@@ -893,117 +970,29 @@ export class AgentTaskService {
     //     error and can retry. Previously: Redis cost bump happened
     //     first, so a Postgres outage billed the user + lost the
     //     assistant row.
-    // HISTORICAL RATES — resolve once, alongside the cost that used them, so the
-    // stamped figures and `cost_cents` can never disagree. Fail-open: a rate
-    // lookup must never cost us the turn or the message row.
-    let turnRates: Record<string, unknown> | undefined;
-    try {
-      turnRates = await this.costService.resolveEffectiveRates(config.model);
-    } catch {
-      turnRates = undefined;
-    }
-
     const storedAssistant = await this.conversationService.storeMessage(thread.id, scopeWithCluster, {
       role: "assistant",
+      turnId: userMessage.id,
       content: fullText || undefined,
       toolCalls: toolCallsLog.length > 0 ? toolCallsLog : undefined,
       threadReplyToId: options.replyToMessageId ?? null,
       // PRA-AC: attribute assistant response to the calling agent when in a cluster.
       authorAgentId: config.clusteringId ? agentId : null,
-      responseJson: {
-        model: config.model,
-        usage: {
-          inputTokens: totalInputTokens,
-          outputTokens: totalOutputTokens,
-          // MC.1 — persist cache telemetry on the authoritative message row
-          // so the PPR-24 Redis↔Postgres reconcile can rebuild cache counters
-          // and the dashboard stays correct across Redis restarts.
-          ...(totalCacheCreationTokens > 0 ? { cacheCreationInputTokens: totalCacheCreationTokens } : {}),
-          ...(totalCacheReadTokens > 0 ? { cacheReadInputTokens: totalCacheReadTokens } : {}),
-          // PRELAUNCH-A1-3 — reasoning tokens. Reasoning models (OpenAI o-series,
-          // DeepSeek R1, Gemini 2.5 thinking, Perplexity reasoning) bill the
-          // reasoning span at the output rate; persisting the count enables
-          // post-hoc cost reconstruction + monitoring slices.
-          ...(totalReasoningTokens > 0 ? { reasoningTokens: totalReasoningTokens } : {}),
-          // PRELAUNCH-A1-5 (follow-up 2026-05-04) — durable shape for the
-          // post-hoc cost audit pipeline. `provider` lets reports slice
-          // spend by vendor without re-deriving from the model string.
-          // `noCacheInputTokens` is the fresh-token count (already used to
-          // compute `cost_cents` above) — surfacing it makes the row self-
-          // describing. Raw `inputTokenDetails` / `outputTokenDetails`
-          // blobs preserve the SDK's full per-step shape (e.g. cached vs
-          // uncached subdivisions, reasoning vs text-output split) so we
-          // can replay billing math against historical rate changes.
-          provider: config.model.includes(":") ? config.model.split(":")[0] : null,
-          noCacheInputTokens: noCacheInputTokens,
-          ...(lastInputTokenDetails ? { inputTokenDetails: lastInputTokenDetails } : {}),
-          ...(lastOutputTokenDetails ? { outputTokenDetails: lastOutputTokenDetails } : {}),
-          // HISTORICAL RATES — stamp the per-1M-token rates actually used, in
-          // cents, so this row is self-describing and its cost can be re-derived
-          // later without knowing which catalog version, verified override, or
-          // fallback tier happened to be live at the time.
-          //
-          // The comment above already promised that the token-detail blobs let
-          // us "replay billing math against historical rate changes" — but the
-          // rates themselves were never stored, so a replay could only ever use
-          // TODAY's prices. A price change silently rewrote history. This closes
-          // that: `rates` is the missing half.
-          //
-          // `cacheRead`/`cacheWrite` are EFFECTIVE rates (per-model when the
-          // price source states one, otherwise input x the per-provider
-          // multiplier), and `source` records which tier answered, so a row
-          // priced by the conservative estimator is distinguishable from one
-          // priced by a verified provider figure.
-          rates: turnRates,
-        },
-        cost_cents: costCents,
-        // MC.2 — cache-adjusted cost lives on the same row. When there was
-        // no cache hit/write this equals cost_cents exactly.
-        cost_with_cache_cents: costWithCacheCents,
-        // PPR-21 — turn duration in ms. Theme G.6 canary metrics reads this
-        // to compute avgLatencyMs per version. Previously unstamped so the
-        // dashboard column was permanently null.
-        latency_ms: Date.now() - turnStartMs,
-        // Theme E.9 — stamp the billing agent id on the message row so
-        // `getCostByAgent` doesn't have to join through `thread.agentId`
-        // (which is wrong when the turn was billed under a different agent,
-        // e.g. via a future handoff or version-swap). Durable source of truth
-        // for per-agent cost rollups.
-        agent_id: agentId,
-        trace_id: traceId,
-        // Theme G.5 — version the turn actually ran on. Used by the
-        // canary metrics dashboard (G.6) to bucket cost + latency per version.
-        version_id: versionIdUsed,
-        version_bucket: resolved.bucket,
-        // Theme F.5 — structured output metadata. Stores the validated object
-        // plus how many attempts it took (1 = first-try, 2 = retry after
-        // a validation failure). The schema itself is already on the user
-        // message row (systemPromptOverride/outputSchema) — don't duplicate.
-        ...(structuredOutput
-          ? {
-              structured_output: {
-                object: structuredOutput.object,
-                attempts: structuredOutput.attempts,
-              },
-            }
-          : {}),
-        // LAUNCH-3 audit — when an `X-Platos-Config` per-request override
-        // was applied for this turn, stamp the override keys onto the
-        // assistant message so post-hoc analysis can attribute the run to
-        // the override. Values intentionally NOT logged (might contain
-        // model strings + retry rules but not secrets); only the keys + a
-        // shallow shape signature so we know what was overridden without
-        // leaking any large blobs into the message row.
-        ...(options.agentConfigOverride
-          ? {
-              override_applied: {
-                keys: Object.keys(options.agentConfigOverride),
-                source: "x-platos-config-header",
-              },
-            }
-          : {}),
+      model: config.model,
+      usage: {
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        cacheCreationInputTokens: totalCacheCreationTokens,
+        cacheReadInputTokens: totalCacheReadTokens,
+        reasoningTokens: totalReasoningTokens,
       },
+      costCents: costWithCacheCents,
+      latencyMs: Date.now() - turnStartMs,
+      structuredOutput: structuredOutput
+        ? { object: structuredOutput.object, attempts: structuredOutput.attempts }
+        : undefined,
     });
+    turnFinalized = true;
 
     // 8a.ii. EOBD.71 — surface the Postgres messageId so the UI can
     //        swap its provisional `bot-<N>` client id for the real
@@ -1026,11 +1015,11 @@ export class AgentTaskService {
       outputTokens: totalOutputTokens,
       totalTokens: totalInputTokens + totalOutputTokens,
       ...(options.replyToMessageId ? { replyToMessageId: options.replyToMessageId } : {}),
-    } as any;
+    };
 
     // 8b. EOBD.36 — Redis/CH side effects run AFTER the Postgres write.
-    //     All of these are rebuildable from responseJson via the
-    //     reconcile task, so a Redis/CH outage here just delays
+    //     All of these are rebuildable from normalized Turn/Step fields, so a
+    //     Redis/CH outage here just delays
     //     dashboard freshness — the authoritative message row is safe.
     //     Every block is wrapped so one failure can't cascade.
     try {
@@ -1055,7 +1044,7 @@ export class AgentTaskService {
         },
       );
     } catch {
-      // Cost counter hiccup — reconcile task will backfill from responseJson.
+      // Cost counter hiccup — reconciliation can backfill from clean Turn/Step data.
     }
 
     // 8c. Theme H.6/H.7 — increment the per-user budget counter (so
@@ -1220,8 +1209,7 @@ export class AgentTaskService {
         },
       );
     } catch {
-      // Root span write hiccup — message row already has latency_ms +
-      // cost_cents stamped on responseJson for the canary dashboard.
+      // Root span write hiccup — the clean Turn already has latency and cost.
     }
 
     // EOBD.41 + PRELAUNCH-A1-12 — hot-path Prometheus bumps with `kind`
@@ -1336,30 +1324,20 @@ export class AgentTaskService {
             ],
           },
         ).catch((err: any) => {
-          console.warn(`[compaction] trigger.dev dispatch failed for thread ${thread.id}: ${err?.message}`);
+          this.logger.error(`[compaction] external dispatch failed for thread ${thread.id}: ${err?.message}`);
           // Last-resort fallback so a transient trigger.dev outage doesn't
           // skip compaction entirely. In-process Promise — same shape as
           // the pre-LAUNCH-11 behavior.
           this.compactIfNeeded(thread.id, scope, config).catch((inner: any) => {
-            console.warn(`[compaction] in-process fallback also failed for thread ${thread.id}: ${inner?.message}`);
+            this.logger.error(`[compaction] in-process fallback failed for thread ${thread.id}: ${inner?.message}`);
           });
         });
       } else {
         // trigger.dev not configured — keep the in-process fallback so
         // dev environments (and self-hosters who haven't wired
         // trigger.dev) still get compaction.
-        this.compactIfNeeded(thread.id, scope, config).catch(async (err) => {
-          console.warn(`[compaction] in-process failed for thread ${thread.id}: ${err?.message}`);
-          // PIFSP-17: release mutex on error so next turn can retry.
-          try {
-            const prismaInner = (this.conversationService as any).prisma;
-            if (prismaInner?.platosAgentThread) {
-              await prismaInner.platosAgentThread.updateMany({
-                where: { id: thread.id, organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
-                data: { compactionInFlight: false },
-              });
-            }
-          } catch { /* best-effort */ }
+        this.compactIfNeeded(thread.id, scope, config).catch((err) => {
+          this.logger.error(`[compaction] in-process failed for thread ${thread.id}: ${err?.message}`);
         });
       }
     }
@@ -1390,15 +1368,34 @@ export class AgentTaskService {
       } catch {}
     });
 
+    // `done` is the task-level terminal event. It must follow the durable
+    // assistant write and its `message_persisted` notification above.
+    yield { type: "done" };
+
     // Wave 11b — mutex + idempotency key cleanup moved to finally below
     // so abnormal exit (throw) releases them too. Before this, idemKey
     // in particular was only released on the happy path, which meant a
     // transient auth/provider failure mid-turn locked out legitimate
     // retries for the full 600s TTL.
-    } finally {
-      if (mutexAcquired && redis) {
-        await redis.del(mutexKey).catch(() => undefined);
+    } catch (error) {
+      if (openTurnId && !turnFinalized) {
+        try {
+          await this.conversationService.failTurn(
+            thread.id,
+            openTurnId,
+            scopeForThreadLookup,
+            error,
+            openStepModel,
+          );
+        } catch (persistenceError: any) {
+          this.logger.error(
+            `Failed to mark runtime turn ${openTurnId} failed: ${persistenceError?.message ?? persistenceError}`,
+          );
+        }
       }
+      throw error;
+    } finally {
+      await mutex?.release();
       if (idemKey && earlyRedis) {
         await earlyRedis.del(idemKey).catch(() => undefined);
       }
@@ -1413,7 +1410,7 @@ export class AgentTaskService {
           .settleReservation(reservationScopeTuple, reservationEstimateCents, scope.userId ?? null)
           .catch(() => undefined);
       }
-      // Backfill displayName/email on PlatosEndUser from resolved sessionContext.
+      // Backfill displayName/email on the clean EndUser from resolved sessionContext.
       // scope.sessionContext is mutated by agentService.stream() so by this point
       // it contains the merged user.* fields (name, email). Fire-and-forget.
       if (scope.userId && scope.sessionContext) {
@@ -1467,7 +1464,7 @@ export class AgentTaskService {
    * when below threshold. This moves the decision to the dispatch site so a
    * run is spawned only when (a) the thread is at/over `compactThreshold`
    * AND (b) at least a batch of messages has aged out of the live window
-   * since the last compaction (tracked via `compactedUpToMessageId`). Any
+   * since the last compaction (tracked via `compactedUpToTurnId`). Any
    * error assessing → return true (dispatch), so the guard can never
    * silently suppress compaction.
    */
@@ -1476,232 +1473,121 @@ export class AgentTaskService {
     scope: RequestScope,
     config: AgentConfig,
   ): Promise<boolean> {
-    try {
-      const prisma = (this.conversationService as any).prisma;
-      if (!prisma?.platosAgentMessage) return true;
-      const msgWhere = {
-        threadId,
-        role: { in: ["user", "assistant"] },
-        thread: {
-          organizationId: scope.organizationId,
+    const prisma = (this.conversationService as any).prisma;
+    const thread = await prisma.thread.findFirst({
+      where: {
+        id: threadId,
+        environmentId: scope.environmentId,
+        environment: {
           projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          userId: scope.userId,
+          project: { organizationId: scope.organizationId },
         },
-      } as const;
-      const total = await prisma.platosAgentMessage.count({ where: msgWhere });
-      if (total < config.compactThreshold) return false;
-      // How many messages have aged out of the live window but are NOT yet
-      // summarized (pending)? Only fire when a full batch is pending, so we
-      // compact roughly every `minBatch` aged-out messages, not every turn.
-      let alreadyCompacted = 0;
-      const threadRow = await prisma.platosAgentThread.findFirst({
-        where: {
-          id: threadId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        },
-        select: { compactedUpToMessageId: true },
-      });
-      if (threadRow?.compactedUpToMessageId) {
-        const cursor = await prisma.platosAgentMessage.findUnique({
-          where: { id: threadRow.compactedUpToMessageId },
-          select: { createdAt: true },
-        });
-        if (cursor?.createdAt) {
-          alreadyCompacted = await prisma.platosAgentMessage.count({
-            where: { ...msgWhere, createdAt: { lte: cursor.createdAt } },
-          });
-        }
-      }
-      const pending = total - config.contextLimit - alreadyCompacted;
-      const minBatch = Math.max(5, Math.round(config.contextLimit / 2));
-      return pending >= minBatch;
-    } catch {
-      return true;
-    }
+      },
+      select: {
+        compactedUpToTurn: { select: { sequence: true } },
+        _count: { select: { turns: true } },
+      },
+    });
+    if (!thread) throw new Error("Compaction scope check failed");
+    if (thread._count.turns < config.compactThreshold) return false;
+    const alreadyCompacted = thread.compactedUpToTurn?.sequence ?? 0;
+    const pending = thread._count.turns - config.contextLimit - alreadyCompacted;
+    return pending >= Math.max(5, Math.round(config.contextLimit / 2));
   }
 
   private async compactIfNeeded(
     threadId: string,
     scope: RequestScope,
     config: AgentConfig,
-    /**
-     * PRELAUNCH-A2-7 — abort signal for the compaction summarizer LLM call.
-     * Compaction runs at turn-tail; in normal flow the user's stop click
-     * targeted the streamText turn which is already done. But callers
-     * (test harnesses, batch executors) can plumb a signal here so
-     * cancellation cascades into the compaction provider call.
-     */
     abortSignal?: AbortSignal,
   ): Promise<void> {
     const prisma = (this.conversationService as any).prisma;
-    if (!prisma?.platosAgentMessage) return;
-
-    // Scope guard: confirm the thread belongs to the caller before touching
-    // any of its messages. Short-circuit is intentional — a scope mismatch
-    // means either a bug higher up or a stale reference; either way the
-    // safe thing is to do nothing.
-    const threadRow = await prisma.platosAgentThread.findFirst({
-      where: {
-        id: threadId,
-        organizationId: scope.organizationId,
+    const scopeWhere = {
+      id: threadId,
+      environmentId: scope.environmentId,
+      environment: {
         projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        userId: scope.userId,
-      },
-      select: { id: true, compactedSummary: true, compactionInFlight: true, compactedUpToMessageId: true },
-    });
-    if (!threadRow) return;
-
-    // PIFSP-17: optimistic mutex — skip if another worker is already running.
-    if ((threadRow as any).compactionInFlight) {
-      console.log(`[compaction] thread ${threadId}: already in flight, skipping`);
-      return;
-    }
-    // Acquire mutex (conditional update so concurrent race loses cleanly).
-    await prisma.platosAgentThread.updateMany({
-      where: { id: threadId, organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId, compactionInFlight: false },
-      data: { compactionInFlight: true },
-    });
-
-    // Messages inherit their thread's scope via `threadId`, but we re-filter
-    // on the full scope tuple so a future denormalization (or a drift bug)
-    // can't leak cross-scope rows into the summarizer prompt. Belt-and-braces.
-    const messageScopeWhere = {
-      threadId,
-      role: { in: ["user", "assistant"] },
-      thread: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        userId: scope.userId,
+        project: { organizationId: scope.organizationId },
       },
     } as const;
+    const acquired = await prisma.thread.updateMany({
+      where: { ...scopeWhere, compactionState: "IDLE" },
+      data: { compactionState: "IN_PROGRESS" },
+    });
+    if (acquired.count === 0) {
+      const existing = await prisma.thread.findFirst({ where: scopeWhere, select: { compactionState: true } });
+      if (!existing) throw new Error("Compaction thread not found or access denied");
+      return;
+    }
 
-    // MUTEX-LEAK FIX — `compactionInFlight` was set true above; the previous
-    // early-returns (below threshold / too few messages) and any summarizer
-    // error returned WITHOUT releasing it, permanently blocking compaction on
-    // that thread. Everything past mutex acquisition now runs in try/finally
-    // so the mutex is released on EVERY path.
-    let compactedCount = 0;
-    let summaryLen = 0;
     try {
-      const totalMessages = await prisma.platosAgentMessage.count({
-        where: messageScopeWhere,
-      });
-      if (totalMessages < config.compactThreshold) return;
-
-      // INCREMENTAL — only summarize messages that have aged out of the live
-      // window SINCE the last compaction (the `compactedUpToMessageId`
-      // cursor), not from the very beginning every run. Prevents O(n²)
-      // re-summarization and unbounded re-reading of already-summarized
-      // history; the cursor advances to cover everything compacted this run.
-      const cursorId = (threadRow as any).compactedUpToMessageId as string | null | undefined;
-      let cursorCreatedAt: Date | null = null;
-      if (cursorId) {
-        const c = await prisma.platosAgentMessage.findUnique({
-          where: { id: cursorId },
-          select: { createdAt: true },
-        });
-        cursorCreatedAt = c?.createdAt ?? null;
-      }
-      // All summarizable messages AFTER the cursor, oldest first. EOBD.19 —
-      // select encKeyVersion so decryptIfNeeded can round-trip ciphertext
-      // rows (else the summarizer is fed base64 garbage and leaks ciphertext
-      // into compactedSummary).
-      const postCursor = await prisma.platosAgentMessage.findMany({
-        where: {
-          ...messageScopeWhere,
-          content: { not: null },
-          ...(cursorCreatedAt ? { createdAt: { gt: cursorCreatedAt } } : {}),
+      const thread = await prisma.thread.findFirstOrThrow({
+        where: scopeWhere,
+        select: {
+          summary: true,
+          compactedUpToTurn: { select: { sequence: true } },
+          _count: { select: { turns: true } },
         },
-        orderBy: { createdAt: "asc" },
-        select: { id: true, role: true, content: true, encKeyVersion: true },
       });
-      // Keep the LAST contextLimit messages verbatim (the live window);
-      // summarize everything older that isn't already summarized.
-      const toCompact = postCursor.slice(0, Math.max(0, postCursor.length - config.contextLimit));
-      if (toCompact.length < 5) return; // nothing meaningful aged out since last run
-
-      // Decrypt row-by-row via the conversation service's crypto wrapper.
-      // Unencrypted / pre-encryption rows pass through unchanged.
-      const cryptoSvc = (this.conversationService as any).crypto as
-        | { decryptIfNeeded: (c: string | null, v: number | null) => string | null }
-        | undefined;
-      const conversationText = toCompact
-        .map((m: any) => {
-          const plain = cryptoSvc
-            ? cryptoSvc.decryptIfNeeded(m.content, m.encKeyVersion ?? null)
-            : m.content;
-          return `${m.role.toUpperCase()}: ${plain}`;
-        })
-        .join("\n\n");
-
-      // COMPACTION MODEL — operator-selected via the reserved `compaction`
-      // label in modelRoutes, with that route's provider key. Previously this
-      // was a hardcoded Haiku with NO key argument, so it ran on the platform's
-      // ambient credentials rather than the tenant's. See
-      // AgentService.resolveCompactionModel.
-      const { model, modelString: compactionModelString, source: compactionModelSource } =
-        await this.agentService.resolveCompactionModel(config, scope);
-      // PRELAUNCH-A2-7 — propagate abort signal.
+      if (thread._count.turns < config.compactThreshold) {
+        const released = await prisma.thread.updateMany({
+          where: { ...scopeWhere, compactionState: "IN_PROGRESS" },
+          data: { compactionState: "IDLE" },
+        });
+        if (released.count !== 1) throw new Error("Compaction no-op could not release ownership");
+        return;
+      }
+      const cursorSequence = thread.compactedUpToTurn?.sequence ?? 0;
+      const turns = await prisma.turn.findMany({
+        where: {
+          threadId,
+          sequence: { gt: cursorSequence },
+          status: "SUCCEEDED",
+        },
+        orderBy: { sequence: "asc" },
+        select: { id: true, sequence: true, inputText: true, outputText: true },
+      });
+      const toCompact = turns.slice(0, Math.max(0, turns.length - config.contextLimit));
+      if (toCompact.length < 5) {
+        const released = await prisma.thread.updateMany({
+          where: { ...scopeWhere, compactionState: "IN_PROGRESS" },
+          data: { compactionState: "IDLE" },
+        });
+        if (released.count !== 1) throw new Error("Compaction no-op could not release ownership");
+        return;
+      }
+      const conversationText = toCompact.flatMap((turn: any) => [
+        ...(turn.inputText ? [`USER: ${turn.inputText}`] : []),
+        ...(turn.outputText ? [`ASSISTANT: ${turn.outputText}`] : []),
+      ]).join("\n\n");
+      const { model, modelString, source } = await this.agentService.resolveCompactionModel(config, scope);
       const summary = await generateText({
         model,
-        instructions: "You are a conversation summarizer. Produce a concise, factual summary of the conversation below that preserves key facts, decisions, user preferences, and context — but NOT verbatim messages. Write in past tense from an observer's perspective. Keep under 500 words.",
+        instructions: "You are a conversation summarizer. Produce a concise, factual summary that preserves key facts, decisions, preferences, and context, without quoting messages verbatim. Keep under 500 words.",
         messages: [{ role: "user" as const, content: conversationText }],
         abortSignal,
       });
-
-      this.logger?.log?.(
-        `[compaction] thread=${threadId} summarized ${toCompact.length} messages with ${compactionModelString} (${compactionModelSource})`,
-      );
-
-      // Merge with any existing summary (already loaded under scope above).
-      const merged = threadRow.compactedSummary
-        ? `${threadRow.compactedSummary}\n\n---\n\n${summary.text}`
-        : summary.text;
-
-      // Advance the cursor to the last message summarized this run. `updateMany`
-      // + scope filter fails closed on a scope-move race (scope is immutable,
-      // but the query stays correct if that invariant ever weakens).
-      const lastCompacted = toCompact[toCompact.length - 1] as any;
-      await prisma.platosAgentThread.updateMany({
-        where: {
-          id: threadId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          userId: scope.userId,
-        },
-        data: {
-          compactedSummary: merged,
-          compactedAt: new Date(),
-          compactedUpToMessageId: lastCompacted?.id ?? null,
-        },
-      });
-      compactedCount = toCompact.length;
-      summaryLen = summary.text.length;
-    } finally {
-      // Always release the mutex — covers the early returns above AND any
-      // summarizer error. Separate from the summary update so a failed run
-      // can't leave the thread stuck `compactionInFlight`.
-      await prisma.platosAgentThread
-        .updateMany({
-          where: {
-            id: threadId,
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
+      const lastCompacted = toCompact.at(-1)!;
+      const merged = thread.summary ? `${thread.summary}\n\n---\n\n${summary.text}` : summary.text;
+      await prisma.$transaction(async (tx: any) => {
+        const advanced = await tx.thread.updateMany({
+          where: { ...scopeWhere, compactionState: "IN_PROGRESS" },
+          data: {
+            summary: merged,
+            compactedAt: new Date(),
+            compactedUpToTurnId: lastCompacted.id,
+            compactionState: "IDLE",
           },
-          data: { compactionInFlight: false },
-        })
-        .catch(() => undefined);
-    }
-
-    if (compactedCount > 0) {
-      console.log(`[compaction] thread ${threadId}: compacted ${compactedCount} msgs → ${summaryLen} chars summary`);
+        });
+        if (advanced.count !== 1) throw new Error("Compaction cursor lost its ownership token");
+      });
+      this.logger.log(`[compaction] thread=${threadId} compacted=${toCompact.length} model=${modelString} source=${source}`);
+    } catch (error) {
+      await prisma.thread.updateMany({
+        where: { ...scopeWhere, compactionState: "IN_PROGRESS" },
+        data: { compactionState: "IDLE" },
+      });
+      throw error;
     }
   }
 
@@ -1763,15 +1649,17 @@ export class AgentTaskService {
     abortSignal?: AbortSignal,
   ): Promise<void> {
     const prisma = (this.conversationService as any).prisma;
-    if (!prisma?.platosAgentThread) return;
+    if (!prisma?.thread) throw new Error("Thread persistence is unavailable");
 
     // Confirm thread is still in scope and still untitled.
-    const row = await prisma.platosAgentThread.findFirst({
+    const row = await prisma.thread.findFirst({
       where: {
         id: threadId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
+        environment: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
         title: null,
       },
       select: { id: true },
@@ -1798,12 +1686,14 @@ export class AgentTaskService {
 
     // updateMany with title: null guard is idempotent — if another worker
     // already named the thread this becomes a no-op.
-    await prisma.platosAgentThread.updateMany({
+    await prisma.thread.updateMany({
       where: {
         id: threadId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
+        environment: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
         title: null,
       },
       data: { title },

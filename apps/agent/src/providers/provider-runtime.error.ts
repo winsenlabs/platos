@@ -1,0 +1,25 @@
+export type ProviderRuntimeErrorCode =
+  | "provider_configuration_unavailable"
+  | "provider_credential_unavailable"
+  | "provider_request_failed";
+
+const SAFE_MESSAGES: Record<ProviderRuntimeErrorCode, string> = {
+  provider_configuration_unavailable: "Provider configuration is unavailable for this environment.",
+  provider_credential_unavailable: "Provider credential is unavailable for this environment.",
+  provider_request_failed: "Provider request failed.",
+};
+
+/** Stable runtime error that never contains credential, database, crypto, or upstream response detail. */
+export class ProviderRuntimeError extends Error {
+  readonly name = "ProviderRuntimeError";
+
+  constructor(public readonly code: ProviderRuntimeErrorCode) {
+    super(SAFE_MESSAGES[code]);
+  }
+}
+
+export function asSafeProviderRuntimeError(error: unknown): ProviderRuntimeError {
+  return error instanceof ProviderRuntimeError
+    ? error
+    : new ProviderRuntimeError("provider_request_failed");
+}

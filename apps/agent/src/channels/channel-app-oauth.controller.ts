@@ -13,10 +13,10 @@ import type {
   Response as ExpressResponse,
 } from "express";
 import * as crypto from "node:crypto";
-import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
-import { MessageCryptoService } from "../monitoring/message-crypto.service";
+import { ChannelPersistenceService } from "./channel-persistence.service";
+import { ChannelRuntimeService } from "./channel-runtime.service";
 
 /**
  * Connect v3 — marketplace channel-app OAuth V2 install dance (Slack first).
@@ -42,20 +42,20 @@ import { MessageCryptoService } from "../monitoring/message-crypto.service";
  *          PLATOS_CHANNEL_OAUTH_IP_LIMIT), mirroring the EOBD.89 public
  *          guest-token controller. Fails OPEN on a Redis blip (same policy).
  *
- * SECRETS never leak: the app's `clientSecret` is stored ENCRYPTED (same
- * MessageCryptoService envelope as connection credentials) and decrypted ONLY
- * to POST oauth.v2.access; the returned bot token is re-encrypted before it
- * touches Postgres; no secret/token is ever logged or rendered into an HTML
- * response. Every Slack HTTP call is bounded by a 10s AbortSignal.timeout.
+ * SECRETS never leak: app and installation rows carry Credential references;
+ * only the credential envelope is decrypted for Slack calls, and OAuth grants
+ * are encrypted into the referenced installation Credential before commit.
+ * No secret/token is logged or rendered into HTML. Every Slack HTTP call is
+ * bounded by a 10s AbortSignal.timeout.
  */
 @Controller()
 export class ChannelAppOAuthController {
   private readonly logger = new Logger(ChannelAppOAuthController.name);
 
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    private readonly persistence: ChannelPersistenceService,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
-    private readonly messageCrypto: MessageCryptoService,
+    private readonly runtime: ChannelRuntimeService,
   ) {}
 
   // ───────────────────────────────────────────────────────────────────────
@@ -221,7 +221,7 @@ export class ChannelAppOAuthController {
 
     let clientSecret: string;
     try {
-      clientSecret = this.decryptSecretString(app.clientSecret);
+      clientSecret = this.requireSecretString(app.clientSecret);
     } catch {
       this.logger.error(`[chanapp] client_secret decrypt failed app=${appId}`);
       this.sendPage(
@@ -313,20 +313,20 @@ export class ChannelAppOAuthController {
         : null;
 
     try {
-      await this.upsertInstallation(String(app.id), teamId, enterpriseId, {
-        botToken: this.encryptSecretString(botToken),
+      await this.persistence.upsertInstallationGrant(app, {
+        teamId,
+        enterpriseId,
+        isEnterpriseInstall,
+      }, {
+        botToken,
         botUserId,
         grantedScopes,
-        isEnterpriseInstall,
-        teamName,
+        displayName: teamName,
         installedByUserId,
-        status: "active",
-        revokedAt: null,
-        ...(refreshToken !== null
-          ? { refreshToken: this.encryptSecretString(refreshToken) }
-          : {}),
-        ...(tokenExpiresAt !== null ? { tokenExpiresAt } : {}),
+        refreshToken,
+        tokenExpiresAt,
       });
+      this.runtime.invalidateApp(String(app.id));
     } catch {
       this.logger.error(`[chanapp] installation upsert failed app=${appId}`);
       this.sendPage(
@@ -354,45 +354,10 @@ export class ChannelAppOAuthController {
     );
   }
 
-  // ───────────────────────────────────────────────────────────────────────
-  // Persistence — explicit find-then-write "upsert" on the nullable
-  // (appId, teamId, enterpriseId) tuple.
-  //
-  // NOT prisma.upsert: teamId/enterpriseId are nullable and Postgres treats
-  // NULLs in a unique index as DISTINCT, so an `ON CONFLICT`-backed upsert
-  // would insert a duplicate row on re-install of a normal (enterpriseId NULL)
-  // workspace. A findFirst with `teamId: null` compiles to `IS NULL` and reads
-  // the existing row correctly; the OAuth callback for one workspace is not a
-  // concurrent hot path, so read-then-write is race-safe enough here.
-  // ───────────────────────────────────────────────────────────────────────
-  private async upsertInstallation(
-    appId: string,
-    teamId: string | null,
-    enterpriseId: string | null,
-    data: Record<string, unknown>,
-  ): Promise<void> {
-    const existing = await this.prisma.platosChannelInstallation.findFirst({
-      where: { appId, teamId, enterpriseId },
-      select: { id: true },
-    });
-    if (existing) {
-      await this.prisma.platosChannelInstallation.update({
-        where: { id: existing.id },
-        data,
-      });
-    } else {
-      await this.prisma.platosChannelInstallation.create({
-        data: { appId, teamId, enterpriseId, ...data },
-      });
-    }
-  }
-
   private async loadApp(appId: string): Promise<any | null> {
     if (!appId) return null;
     try {
-      return await this.prisma.platosChannelApp.findUnique({
-        where: { id: appId },
-      });
+      return await this.persistence.loadApp(appId);
     } catch {
       return null;
     }
@@ -455,24 +420,11 @@ export class ChannelAppOAuthController {
     return `${origin}/api/v1/channels/oauth/${appId}/callback`;
   }
 
-  // ── Secret envelope helpers (mirror channels.controller.ts encryptCredentials
-  //    / channel-runtime.service.ts decryptCredentials, but for a scalar string
-  //    field). Duplicated rather than shared because a shared extraction would
-  //    touch a file outside this slice's scope. ─────────────────────────────
-  private encryptSecretString(value: string): string {
-    return JSON.stringify(this.messageCrypto.encryptJsonField(value));
-  }
-
-  private decryptSecretString(stored: unknown): string {
-    const parsed = JSON.parse(String(stored));
-    const decrypted = this.messageCrypto.decryptJsonField(parsed);
-    // On a key mismatch decryptJsonField returns its {__platos_enc,error}
-    // envelope (an object), NOT a string — treat anything non-string as a
-    // fail-closed decrypt error rather than POSTing a broken secret to Slack.
-    if (typeof decrypted !== "string" || !decrypted) {
+  private requireSecretString(stored: unknown): string {
+    if (typeof stored !== "string" || !stored) {
       throw new Error("secret unavailable");
     }
-    return decrypted;
+    return stored;
   }
 
   /**

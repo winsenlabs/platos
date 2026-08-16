@@ -1,5 +1,12 @@
-import { Injectable, Inject } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import { Inject, Injectable } from "@nestjs/common";
+import { PolicyEffect } from "@platos/tenancy-database";
+import {
+  type ControlDatabaseClient,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
+
+const PAT_SCOPE_PREFIX = "platos:pat:";
+const DEFAULT_SCOPE = "mcp:tools";
 
 export interface ToolAclRow {
   id: string;
@@ -15,243 +22,304 @@ export interface ToolAclRow {
 }
 
 /**
- * What `list()` returns to API callers. Tools that have an ACL row pull
- * straight from the row (real `id`, real `addedAt`). Tools that don't have
- * an ACL row yet — the common case for fresh entities — get a synthetic
- * "default-shaped" row keyed on the mapping id so the frontend has a
- * stable handle to toggle. `addedAt` is null for synthesized rows so the
- * UI can distinguish "never touched" from "operator-set".
+ * What `list()` returns to API callers. A mapping without a policy gets a
+ * synthetic deny row keyed by the EnvironmentEntityTool id so it can be
+ * toggled without weakening the default-deny contract.
  */
-export interface ToolAclListRow {
-  /** ACL row id when present, otherwise the mapping id (acts as the toggle key). */
-  id: string;
-  entityPk: string;
-  toolId: string;
-  toolName: string;
-  exposed: boolean;
-  minIdentityMode: string;
-  allowedPatIds: string[];
-  scopeLabels: string[];
+export interface ToolAclListRow extends Omit<ToolAclRow, "addedAt"> {
   addedAt: Date | null;
-  lastReviewedAt: Date | null;
 }
 
-/**
- * PIFSP-25 — Tool-level MCP ACL.
- * Default: nothing exposed (safest). Operators opt-in per tool.
- */
+interface PolicyWithTool {
+  id: string;
+  entityId: string;
+  toolId: string;
+  effect: PolicyEffect;
+  minIdentityMode: string;
+  scopeLabels: string[];
+  addedBy: string;
+  addedAt: Date;
+  lastReviewedAt: Date | null;
+  tool: { name: string };
+}
+
+function decodeLabels(labels: string[]): {
+  scopeLabels: string[];
+  allowedPatIds: string[];
+} {
+  return {
+    scopeLabels: labels.filter((label) => !label.startsWith(PAT_SCOPE_PREFIX)),
+    allowedPatIds: labels
+      .filter((label) => label.startsWith(PAT_SCOPE_PREFIX))
+      .map((label) => label.slice(PAT_SCOPE_PREFIX.length)),
+  };
+}
+
+function encodeLabels(scopeLabels: string[], allowedPatIds: string[]): string[] {
+  return Array.from(
+    new Set([
+      ...scopeLabels.filter((label) => !label.startsWith(PAT_SCOPE_PREFIX)),
+      ...allowedPatIds.map((id) => `${PAT_SCOPE_PREFIX}${id}`),
+    ]),
+  );
+}
+
+/** PIFSP-25 — clean-schema, default-deny entity tool policy service. */
 @Injectable()
 export class McpToolAclService {
-  constructor(@Inject(PRISMA_TOKEN) private readonly prisma: any) {}
+  constructor(
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+  ) {}
 
-  /**
-   * List the entity's tools with their MCP exposure state.
-   *
-   * Bug fix: previously this only returned rows from PlatosEntityMcpToolAcl,
-   * which is empty until an operator explicitly toggles a tool. Fresh
-   * entities therefore showed zero tools on the MCP page even when their
-   * tool registry was full — a chicken-and-egg with no toggle target.
-   *
-   * Now we LEFT-JOIN: every enabled PlatosEntityToolMapping row appears in
-   * the response, populated from its ACL row when one exists or a default
-   * shape (exposed:false, minIdentityMode:"bearer") when it doesn't. The
-   * first toggle creates the real ACL row via upsert.
-   *
-   * Note on schema: PlatosEntityToolMapping uses `entityId` (FK to
-   * PlatosConnectedEntity.id), not `entityPk`. We pass `entityPk` in here
-   * because that IS the PlatosConnectedEntity.id — the naming is
-   * unfortunate, mirrored from McpEntityController.loadEntity.
-   */
+  private projectPolicy(policy: PolicyWithTool): ToolAclRow {
+    const labels = decodeLabels(policy.scopeLabels);
+    return {
+      id: policy.id,
+      entityPk: policy.entityId,
+      toolId: policy.toolId,
+      toolName: policy.tool.name,
+      exposed: policy.effect === PolicyEffect.ALLOW,
+      minIdentityMode: policy.minIdentityMode,
+      allowedPatIds: labels.allowedPatIds,
+      scopeLabels: labels.scopeLabels,
+      addedAt: policy.addedAt,
+      lastReviewedAt: policy.lastReviewedAt,
+    };
+  }
+
   async list(
     entityPk: string,
     options: { exposed?: boolean; search?: string; limit?: number; offset?: number } = {},
   ): Promise<ToolAclListRow[]> {
-    // 1. Every enabled tool registered for this entity. We need toolName
-    //    which lives on PlatosToolDefinition — join in.
-    const mappings: Array<{ id: string; toolId: string; tool: { name: string } }> =
-      await this.prisma.platosEntityToolMapping.findMany({
-        where: { entityId: entityPk, enabled: true },
-        select: { id: true, toolId: true, tool: { select: { name: true } } },
-        orderBy: { tool: { name: "asc" } },
-      });
-
+    const mappings = await this.prisma.environmentEntityTool.findMany({
+      where: { entityId: entityPk, enabled: true },
+      select: {
+        id: true,
+        toolId: true,
+        tool: { select: { name: true } },
+      },
+      orderBy: { tool: { name: "asc" } },
+    });
     if (mappings.length === 0) return [];
 
-    // 2. Existing ACL rows for this entity. Keyed on the mapping id since
-    //    that's what `upsert(entityPk, toolId, …)` writes when the
-    //    operator toggles via the patch endpoint.
-    const aclRows: ToolAclRow[] = await this.prisma.platosEntityMcpToolAcl.findMany({
-      where: { entityPk },
-    });
-    const aclByToolId = new Map<string, ToolAclRow>(aclRows.map((r) => [r.toolId, r]));
+    // EntityToolPolicy is entity-wide while EnvironmentEntityTool is
+    // environment-owned. De-duplicate the same canonical Tool across envs.
+    const mappingByToolId = new Map<string, (typeof mappings)[number]>();
+    for (const mapping of mappings) {
+      if (!mappingByToolId.has(mapping.toolId)) {
+        mappingByToolId.set(mapping.toolId, mapping);
+      }
+    }
 
-    // 3. Merge — every tool gets a row. Tools without an ACL row get a
-    //    synthesized default-shape row so the frontend has a stable
-    //    toggle handle (using mapping.id as the row id).
-    let merged: ToolAclListRow[] = mappings.map((m) => {
-      const existing = aclByToolId.get(m.id);
-      if (existing) {
+    const policies = await this.prisma.entityToolPolicy.findMany({
+      where: { entityId: entityPk, toolId: { in: [...mappingByToolId.keys()] } },
+      include: { tool: { select: { name: true } } },
+    });
+    const policyByToolId = new Map(
+      policies.map((policy) => [policy.toolId, this.projectPolicy(policy)]),
+    );
+
+    let merged: ToolAclListRow[] = [...mappingByToolId.values()].map((mapping) => {
+      const policy = policyByToolId.get(mapping.toolId);
+      if (!policy) {
         return {
-          id: existing.id,
-          entityPk: existing.entityPk,
-          toolId: existing.toolId,
-          toolName: existing.toolName,
-          exposed: existing.exposed,
-          minIdentityMode: existing.minIdentityMode,
-          allowedPatIds: existing.allowedPatIds,
-          scopeLabels: existing.scopeLabels,
-          addedAt: existing.addedAt,
-          lastReviewedAt: existing.lastReviewedAt,
+          id: mapping.id,
+          entityPk,
+          toolId: mapping.id,
+          toolName: mapping.tool.name,
+          exposed: false,
+          minIdentityMode: "bearer",
+          allowedPatIds: [],
+          scopeLabels: [DEFAULT_SCOPE],
+          addedAt: null,
+          lastReviewedAt: null,
         };
       }
-      // No ACL row yet — default-shaped synthetic row. id == mapping.id so
-      // the frontend's toggle PATCH lands on the right toolId.
-      return {
-        id: m.id,
-        entityPk,
-        toolId: m.id,
-        toolName: m.tool.name,
-        exposed: false,
-        minIdentityMode: "bearer",
-        allowedPatIds: [],
-        scopeLabels: ["mcp:tools"],
-        addedAt: null,
-        lastReviewedAt: null,
-      };
+      // Keep the transport API's toolId as the mapping id. The controller
+      // resolves it back to the canonical Tool id before mutation.
+      return { ...policy, toolId: mapping.id };
     });
 
-    // 4. Apply filters AFTER the merge so a `?exposed=true` query still
-    //    returns only the operator-flipped rows, not synthetic defaults.
     if (options.exposed !== undefined) {
-      merged = merged.filter((r) => r.exposed === options.exposed);
+      merged = merged.filter((row) => row.exposed === options.exposed);
     }
     if (options.search) {
-      const q = options.search.toLowerCase();
-      merged = merged.filter((r) => r.toolName.toLowerCase().includes(q));
+      const query = options.search.toLowerCase();
+      merged = merged.filter((row) => row.toolName.toLowerCase().includes(query));
     }
-
-    // 5. Sort: exposed first, then by name — matches the previous contract.
     merged.sort((a, b) => {
       if (a.exposed !== b.exposed) return a.exposed ? -1 : 1;
       return a.toolName.localeCompare(b.toolName);
     });
 
-    // 6. Pagination — applied last so offset/limit work on the merged set.
     const offset = options.offset ?? 0;
     const limit = options.limit ?? 200;
     return merged.slice(offset, offset + limit);
   }
 
-  /** Get names of all exposed tools for fast allowlist lookup. */
   async getExposedToolNames(entityPk: string): Promise<string[]> {
-    const rows = await this.prisma.platosEntityMcpToolAcl.findMany({
-      where: { entityPk, exposed: true },
-      select: { toolName: true },
+    const rows = await this.prisma.entityToolPolicy.findMany({
+      where: { entityId: entityPk, effect: PolicyEffect.ALLOW },
+      select: { tool: { select: { name: true } } },
     });
-    return rows.map((r: { toolName: string }) => r.toolName);
+    return Array.from(new Set(rows.map((row) => row.tool.name)));
   }
 
-  /** Filter exposed tools by caller identity. */
+  /** Load every effective allow policy for a name (normally exactly one). */
+  async getExposedPoliciesByName(
+    entityPk: string,
+    toolName?: string,
+  ): Promise<ToolAclRow[]> {
+    const rows = await this.prisma.entityToolPolicy.findMany({
+      where: {
+        entityId: entityPk,
+        effect: PolicyEffect.ALLOW,
+        ...(toolName ? { tool: { name: toolName } } : {}),
+      },
+      include: { tool: { select: { name: true } } },
+    });
+    return rows.map((row) => this.projectPolicy(row));
+  }
+
+  /** Filter exposed tools by caller identity and scopes. */
   filterByIdentity(
     rows: ToolAclRow[],
     caller: { identityMode: string; mcpUserId: string; scopes: string[] },
   ): ToolAclRow[] {
-    // Identity strength is an ordered floor: anonymous < bearer < oidc.
-    // `minIdentityMode` is the MINIMUM strength a caller must present, so a
-    // stronger identity always satisfies a weaker floor (audit H12). The
-    // previous exact-match check both (a) denied an oidc caller a default
-    // `bearer` tool — which would have broken every OAuth MCP client the
-    // moment enforcement was wired — and (b) let a `bearer` PAT through an
-    // `oidc`-required tool. Rank-comparison fixes both. filterByIdentity had
-    // zero call sites before this change, so no caller relied on the old
-    // behavior.
     const identityRank = (mode: string): number =>
       mode === "oidc" ? 2 : mode === "bearer" ? 1 : 0;
     return rows.filter((acl) => {
-      // Identity gate — caller must meet at least the tool's minimum strength.
       if (identityRank(caller.identityMode) < identityRank(acl.minIdentityMode)) {
         return false;
       }
-      // Allowed PAT gate (bearer only, empty = any)
       if (acl.allowedPatIds.length > 0 && caller.identityMode === "bearer") {
         const patId = caller.mcpUserId.replace("mcp:pat:", "");
         if (!acl.allowedPatIds.includes(patId)) return false;
       }
-      // Scope gate
-      if (acl.scopeLabels.length > 0 && !acl.scopeLabels.every((s) => caller.scopes.includes(s))) {
+      if (
+        acl.scopeLabels.length > 0 &&
+        !acl.scopeLabels.every((scope) => caller.scopes.includes(scope))
+      ) {
         return false;
       }
       return true;
     });
   }
 
-  /** Upsert an ACL entry and sync toolAllowlist. */
   async upsert(
     entityPk: string,
     toolId: string,
-    toolName: string,
+    _toolName: string,
     addedBy: string,
-    data: Partial<Pick<ToolAclRow, "exposed" | "minIdentityMode" | "allowedPatIds" | "scopeLabels">>,
+    data: Partial<
+      Pick<ToolAclRow, "exposed" | "minIdentityMode" | "allowedPatIds" | "scopeLabels">
+    >,
   ): Promise<ToolAclRow> {
-    const row = await this.prisma.platosEntityMcpToolAcl.upsert({
-      where: { entityPk_toolId: { entityPk, toolId } },
+    const existing = await this.prisma.entityToolPolicy.findUnique({
+      where: { entityId_toolId: { entityId: entityPk, toolId } },
+      select: { scopeLabels: true },
+    });
+    const current = decodeLabels(existing?.scopeLabels ?? [DEFAULT_SCOPE]);
+    const row = await this.prisma.entityToolPolicy.upsert({
+      where: { entityId_toolId: { entityId: entityPk, toolId } },
       create: {
-        entityPk,
+        entityId: entityPk,
         toolId,
-        toolName,
-        addedBy,
-        exposed: data.exposed ?? false,
+        effect: data.exposed ? PolicyEffect.ALLOW : PolicyEffect.DENY,
         minIdentityMode: data.minIdentityMode ?? "bearer",
-        allowedPatIds: data.allowedPatIds ?? [],
-        scopeLabels: data.scopeLabels ?? ["mcp:tools"],
+        scopeLabels: encodeLabels(
+          data.scopeLabels ?? [DEFAULT_SCOPE],
+          data.allowedPatIds ?? [],
+        ),
+        addedBy,
       },
       update: {
-        ...(data.exposed !== undefined && { exposed: data.exposed }),
-        ...(data.minIdentityMode !== undefined && { minIdentityMode: data.minIdentityMode }),
-        ...(data.allowedPatIds !== undefined && { allowedPatIds: data.allowedPatIds }),
-        ...(data.scopeLabels !== undefined && { scopeLabels: data.scopeLabels }),
+        ...(data.exposed !== undefined && {
+          effect: data.exposed ? PolicyEffect.ALLOW : PolicyEffect.DENY,
+        }),
+        ...(data.minIdentityMode !== undefined && {
+          minIdentityMode: data.minIdentityMode,
+        }),
+        ...((data.scopeLabels !== undefined || data.allowedPatIds !== undefined) && {
+          scopeLabels: encodeLabels(
+            data.scopeLabels ?? current.scopeLabels,
+            data.allowedPatIds ?? current.allowedPatIds,
+          ),
+        }),
       },
+      include: { tool: { select: { name: true } } },
     });
-    // Sync denormalized toolAllowlist
     await this.syncAllowlist(entityPk);
-    return row;
+    return this.projectPolicy(row);
   }
 
-  /** Bulk expose or hide tools. */
   async bulk(
     entityPk: string,
-    toolIds: string[],
+    mappingIds: string[],
     action: "expose" | "hide" | "set_identity",
     options: { minIdentityMode?: string; addedBy?: string } = {},
   ): Promise<number> {
+    if (mappingIds.length === 0) return 0;
+    const mappings = await this.prisma.environmentEntityTool.findMany({
+      where: { id: { in: mappingIds }, entityId: entityPk },
+      select: { toolId: true },
+    });
+    const toolIds = Array.from(new Set(mappings.map((mapping) => mapping.toolId)));
     if (toolIds.length === 0) return 0;
-    const data: Record<string, unknown> =
-      action === "expose" ? { exposed: true } :
-      action === "hide" ? { exposed: false } :
-      { minIdentityMode: options.minIdentityMode ?? "bearer" };
 
-    const result = await this.prisma.platosEntityMcpToolAcl.updateMany({
-      where: { entityPk, toolId: { in: toolIds } },
-      data,
-    });
+    await this.prisma.$transaction(
+      toolIds.map((toolId) =>
+        this.prisma.entityToolPolicy.upsert({
+          where: { entityId_toolId: { entityId: entityPk, toolId } },
+          create: {
+            entityId: entityPk,
+            toolId,
+            effect:
+              action === "expose" ? PolicyEffect.ALLOW : PolicyEffect.DENY,
+            minIdentityMode:
+              action === "set_identity"
+                ? options.minIdentityMode ?? "bearer"
+                : "bearer",
+            scopeLabels: [DEFAULT_SCOPE],
+            addedBy: options.addedBy ?? "system",
+          },
+          update:
+            action === "set_identity"
+              ? { minIdentityMode: options.minIdentityMode ?? "bearer" }
+              : {
+                  effect:
+                    action === "expose" ? PolicyEffect.ALLOW : PolicyEffect.DENY,
+                },
+        }),
+      ),
+    );
     await this.syncAllowlist(entityPk);
-    return result.count;
+    return toolIds.length;
   }
 
-  /** Auto-insert ACL row for a newly registered tool (exposed: false). */
-  async autoInsert(entityPk: string, toolId: string, toolName: string): Promise<void> {
-    await this.prisma.platosEntityMcpToolAcl.upsert({
-      where: { entityPk_toolId: { entityPk, toolId } },
-      create: { entityPk, toolId, toolName, addedBy: "system", exposed: false },
-      update: {}, // already exists — don't overwrite operator settings
+  async autoInsert(
+    entityPk: string,
+    toolId: string,
+    _toolName: string,
+  ): Promise<void> {
+    await this.prisma.entityToolPolicy.upsert({
+      where: { entityId_toolId: { entityId: entityPk, toolId } },
+      create: {
+        entityId: entityPk,
+        toolId,
+        effect: PolicyEffect.DENY,
+        minIdentityMode: "bearer",
+        scopeLabels: [DEFAULT_SCOPE],
+        addedBy: "system",
+      },
+      update: {},
     });
   }
 
-  /** Sync PlatosEntityMcpConfig.toolAllowlist from the ACL table. */
   private async syncAllowlist(entityPk: string): Promise<void> {
     const names = await this.getExposedToolNames(entityPk);
-    await this.prisma.platosEntityMcpConfig.updateMany({
-      where: { entityPk },
+    await this.prisma.entityMcpConfig.updateMany({
+      where: { entityId: entityPk },
       data: { toolAllowlist: names },
     });
   }

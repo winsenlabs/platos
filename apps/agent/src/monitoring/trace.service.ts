@@ -1,14 +1,14 @@
-import { Injectable, Inject } from "@nestjs/common";
-// ONE SOURCE OF TRUTH for cost — see billable-usage.ts.
-import { billableCostCents } from "./billable-usage";
+import { Injectable, Inject, Logger, Optional } from "@nestjs/common";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { SpansService, type PlatosSpan } from "./spans.service";
 import type { RequestScope } from "../auth/scope.guard";
+import { CostService } from "./cost.service";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
 export interface TraceMessage {
   id: string;
+  turnId: string;
   role: string;
   content: string | null;
   toolCalls: unknown;
@@ -62,18 +62,20 @@ export interface ThreadTraceResponse {
 
 /**
  * TraceService — builds the `GET /monitoring/trace/:threadId` payload.
- * Joins PlatosAgentMessage (messages + attachments) with the Redis-backed
- * span log to produce a single interleaved timeline for the trace viewer.
+ * Projects clean Turns (with Steps, ToolCalls, and attachments) into the
+ * message-shaped contract and joins the Redis-backed span log.
  * Scope-filtered: a thread from another (org, project, env) returns null.
  * Theme E.2.
  */
 @Injectable()
 export class TraceService {
+  private readonly logger = new Logger(TraceService.name);
   private prisma: any;
 
   constructor(
     @Inject(PRISMA_TOKEN) prisma: any,
     private readonly spansService: SpansService,
+    @Optional() private readonly costService?: CostService,
   ) {
     this.prisma = prisma;
   }
@@ -83,61 +85,138 @@ export class TraceService {
     threadId: string,
   ): Promise<ThreadTraceResponse | null> {
     // 1. Load the thread — scope-filtered. This is the cross-env leakage gate.
-    const thread = await this.prisma.platosAgentThread.findFirst({
+    const thread = await this.prisma.thread.findFirst({
       where: {
         id: threadId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
+        environment: {
+          project: {
+            id: scope.projectId,
+            organizationId: scope.organizationId,
+          },
+        },
       },
       select: {
         id: true,
         agentId: true,
         title: true,
         status: true,
-        turnCount: true,
         createdAt: true,
         updatedAt: true,
+        _count: { select: { turns: true } },
       },
     });
 
     if (!thread) return null;
 
-    // 2. Messages — ordered, with attachments joined.
-    const rawMessages: Array<{
+    // 2. Turns — ordered, with normalized steps/tool calls and attachments.
+    const rawTurns: Array<{
       id: string;
-      role: string;
-      content: string | null;
-      toolCalls: unknown;
+      inputText: string | null;
+      outputText: string | null;
       thinkingContent: string | null;
-      responseJson: unknown;
       createdAt: Date;
+      completedAt: Date | null;
+      steps: Array<{
+        id: string;
+        sequence: number;
+        model: string;
+        inputTokens: number | null;
+        outputTokens: number | null;
+        status: string;
+        error: string | null;
+        toolCalls: Array<{
+          id: string;
+          sequence: number;
+          toolName: string;
+          arguments: unknown;
+          result: unknown;
+          status: string;
+          error: string | null;
+          latencyMs: number | null;
+        }>;
+      }>;
       attachments: Array<{
         id: string;
         kind: string;
         mimeType: string;
         bytes: number;
       }>;
-    }> = await this.prisma.platosAgentMessage.findMany({
+    }> = await this.prisma.turn.findMany({
       where: { threadId },
-      orderBy: { createdAt: "asc" },
+      orderBy: { sequence: "asc" },
       include: {
+        steps: {
+          orderBy: { sequence: "asc" },
+          include: { toolCalls: { orderBy: { sequence: "asc" } } },
+        },
         attachments: {
           select: { id: true, kind: true, mimeType: true, bytes: true },
         },
       },
     });
 
-    const messages: TraceMessage[] = rawMessages.map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      toolCalls: m.toolCalls,
-      thinkingContent: m.thinkingContent,
-      responseJson: (m.responseJson as Record<string, unknown> | null) ?? null,
-      createdAt: m.createdAt.toISOString(),
-      attachments: m.attachments,
-    }));
+    // Preserve the trace viewer's message-shaped wire contract while deriving
+    // it from the clean turn. The persisted identifier is the assistant-side
+    // Turn id; the input projection gets a non-persisted suffix so it cannot be
+    // mistaken for another database row.
+    const messages: TraceMessage[] = rawTurns.flatMap((turn) => {
+      const toolCalls = turn.steps.flatMap((step) =>
+        step.toolCalls.map((call) => ({
+          type: "call",
+          toolCallId: call.id,
+          toolName: call.toolName,
+          args: call.arguments,
+          result: call.result,
+          status: call.status,
+          error: call.error,
+          latencyMs: call.latencyMs,
+        })),
+      );
+      const usage = turn.steps.reduce(
+        (total, step) => ({
+          inputTokens: total.inputTokens + (step.inputTokens ?? 0),
+          outputTokens: total.outputTokens + (step.outputTokens ?? 0),
+        }),
+        { inputTokens: 0, outputTokens: 0 },
+      );
+      const projected: TraceMessage[] = [];
+      if (turn.inputText !== null) {
+        projected.push({
+          id: `${turn.id}:input`,
+          turnId: turn.id,
+          role: "user",
+          content: turn.inputText,
+          toolCalls: [],
+          thinkingContent: null,
+          responseJson: null,
+          createdAt: turn.createdAt.toISOString(),
+          attachments: turn.attachments,
+        });
+      }
+      if (
+        turn.outputText !== null ||
+        turn.thinkingContent !== null ||
+        turn.steps.length > 0
+      ) {
+        projected.push({
+          id: turn.id,
+          turnId: turn.id,
+          role: "assistant",
+          content: turn.outputText,
+          toolCalls,
+          thinkingContent: turn.thinkingContent,
+          responseJson: {
+            model: turn.steps.at(-1)?.model ?? null,
+            usage,
+            stepCount: turn.steps.length,
+          },
+          createdAt: (turn.completedAt ?? turn.createdAt).toISOString(),
+          attachments: [],
+        });
+      }
+      return projected;
+    });
 
     // 3. Spans — PPR-15: prefer ClickHouse when configured so traces survive
     //    the Redis 14-day TTL + LRU trim, fall back to Redis when the env var
@@ -149,8 +228,10 @@ export class TraceService {
       try {
         const chSpans = await this.spansService.getThreadSpansFromClickhouse(scope, threadId);
         if (chSpans) spans = chSpans;
-      } catch (err) {
-        console.warn("[Platos TraceService] clickhouse read failed, falling back to Redis:", err);
+      } catch (err: any) {
+        this.logger.warn(
+          `[trace] ClickHouse read failed; falling back to Redis: ${err?.message ?? err}`,
+        );
       }
     }
     if (spans.length === 0) {
@@ -194,19 +275,45 @@ export class TraceService {
     }
     timeline.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
 
-    // 6. Rollup from responseJson (authoritative) + span attributes.
+    // 6. Tokens and tool counts live on Step/ToolCall. Exact cost remains in
+    // the full-fidelity Redis ledger written by CostService.recordUsage.
     let totalCostCents = 0;
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
     let toolCallCount = 0;
-    for (const m of messages) {
-      const rj = m.responseJson as { usage?: { inputTokens?: number; outputTokens?: number }; cost_cents?: number } | null;
-      totalCostCents += billableCostCents(rj as any);
-      if (rj?.usage?.inputTokens) totalInputTokens += rj.usage.inputTokens;
-      if (rj?.usage?.outputTokens) totalOutputTokens += rj.usage.outputTokens;
-      if (Array.isArray(m.toolCalls)) {
-        toolCallCount += (m.toolCalls as Array<{ type?: string }>).filter((t) => t.type === "call").length;
+    for (const turn of rawTurns) {
+      for (const step of turn.steps) {
+        totalInputTokens += step.inputTokens ?? 0;
+        totalOutputTokens += step.outputTokens ?? 0;
+        toolCallCount += step.toolCalls.length;
       }
+    }
+    if (this.costService) {
+      try {
+        totalCostCents = (await this.costService.getThreadCost(threadId)).costCents;
+      } catch (err: any) {
+        this.logger.warn(
+          `[trace] exact thread cost unavailable for ${threadId}: ${err?.message ?? err}`,
+        );
+      }
+    } else {
+      this.logger.warn(
+        `[trace] CostService is not wired; exact thread cost is unavailable for ${threadId}`,
+      );
+    }
+    if (totalCostCents === 0) {
+      totalCostCents = spans.reduce(
+        (sum, span) => sum + Number(span.attributes["platos.cost_cents"] ?? 0),
+        0,
+      );
+    }
+    if (
+      totalCostCents === 0 &&
+      (totalInputTokens > 0 || totalOutputTokens > 0)
+    ) {
+      this.logger.warn(
+        `[trace] cost attribution is unavailable for token-bearing thread ${threadId}`,
+      );
     }
 
     return {
@@ -216,7 +323,7 @@ export class TraceService {
         agentId: thread.agentId,
         title: thread.title,
         status: thread.status,
-        turnCount: thread.turnCount,
+        turnCount: thread._count.turns,
         createdAt: thread.createdAt.toISOString(),
         updatedAt: thread.updatedAt.toISOString(),
       },
@@ -240,7 +347,7 @@ export class TraceService {
   /**
    * MCPF-W6 — list traces (threads with cost rollups) for the operator
    * monitoring surface. Returns scope-filtered thread metadata + per-thread
-   * cost / token / tool-call rollups derived from message responseJson.
+   * cost / token / tool-call rollups derived from clean Turns and Steps.
    *
    * NOT a substitute for `buildThreadTrace` — this is the lightweight
    * sibling: one row per thread, no spans, no full message text. Useful
@@ -276,9 +383,13 @@ export class TraceService {
     const offset = Math.max(0, opts.offset ?? 0);
 
     const where: Record<string, unknown> = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
       environmentId: scope.environmentId,
+      environment: {
+        project: {
+          id: scope.projectId,
+          organizationId: scope.organizationId,
+        },
+      },
     };
     if (opts.agentId) where["agentId"] = opts.agentId;
     if (opts.since) where["createdAt"] = { gte: opts.since };
@@ -288,10 +399,18 @@ export class TraceService {
       agentId: string;
       title: string | null;
       status: string;
-      turnCount: number;
       createdAt: Date;
       updatedAt: Date;
-    }> = await this.prisma.platosAgentThread.findMany({
+      turns: Array<{
+        inputText: string | null;
+        outputText: string | null;
+        steps: Array<{
+          inputTokens: number | null;
+          outputTokens: number | null;
+          toolCalls: Array<{ id: string }>;
+        }>;
+      }>;
+    }> = await this.prisma.thread.findMany({
       where,
       orderBy: { updatedAt: "desc" },
       take: limit,
@@ -301,78 +420,75 @@ export class TraceService {
         agentId: true,
         title: true,
         status: true,
-        turnCount: true,
         createdAt: true,
         updatedAt: true,
+        turns: {
+          select: {
+            inputText: true,
+            outputText: true,
+            steps: {
+              select: {
+                inputTokens: true,
+                outputTokens: true,
+                toolCalls: { select: { id: true } },
+              },
+            },
+          },
+        },
       },
     });
 
     if (threads.length === 0) return { traces: [], count: 0 };
 
-    const threadIds = threads.map((t) => t.id);
-    const messages: Array<{
-      threadId: string;
-      toolCalls: unknown;
-      responseJson: unknown;
-    }> = await this.prisma.platosAgentMessage.findMany({
-      where: { threadId: { in: threadIds }, status: "active" },
-      select: { threadId: true, toolCalls: true, responseJson: true },
-    });
-
-    // Per-thread aggregation.
-    const rollups = new Map<
-      string,
-      {
-        messageCount: number;
-        totalCostCents: number;
-        totalInputTokens: number;
-        totalOutputTokens: number;
-        toolCallCount: number;
-      }
-    >();
-    for (const id of threadIds) {
-      rollups.set(id, {
-        messageCount: 0,
-        totalCostCents: 0,
-        totalInputTokens: 0,
-        totalOutputTokens: 0,
-        toolCallCount: 0,
-      });
-    }
-    for (const m of messages) {
-      const r = rollups.get(m.threadId);
-      if (!r) continue;
-      r.messageCount += 1;
-      const rj = m.responseJson as
-        | {
-            usage?: { inputTokens?: number; outputTokens?: number };
-            cost_cents?: number;
+    const traces = await Promise.all(threads.map(async (t) => {
+      const r = t.turns.reduce(
+        (rollup, turn) => {
+          if (turn.inputText !== null) rollup.messageCount += 1;
+          if (turn.outputText !== null || turn.steps.length > 0) {
+            rollup.messageCount += 1;
           }
-        | null;
-      r.totalCostCents += billableCostCents(rj as any);
-      if (rj?.usage?.inputTokens) r.totalInputTokens += rj.usage.inputTokens;
-      if (rj?.usage?.outputTokens) r.totalOutputTokens += rj.usage.outputTokens;
-      if (Array.isArray(m.toolCalls)) {
-        r.toolCallCount += (m.toolCalls as Array<{ type?: string }>).filter(
-          (t) => t.type === "call",
-        ).length;
+          for (const step of turn.steps) {
+            rollup.totalInputTokens += step.inputTokens ?? 0;
+            rollup.totalOutputTokens += step.outputTokens ?? 0;
+            rollup.toolCallCount += step.toolCalls.length;
+          }
+          return rollup;
+        },
+        {
+          messageCount: 0,
+          totalCostCents: 0,
+          totalInputTokens: 0,
+          totalOutputTokens: 0,
+          toolCallCount: 0,
+        },
+      );
+      if (this.costService) {
+        try {
+          r.totalCostCents = (await this.costService.getThreadCost(t.id)).costCents;
+        } catch (err: any) {
+          this.logger.warn(
+            `[trace] exact thread cost unavailable for ${t.id}: ${err?.message ?? err}`,
+          );
+        }
+      } else {
+        this.logger.warn(
+          `[trace] CostService is not wired; exact thread cost is unavailable for ${t.id}`,
+        );
       }
-    }
-
-    const traces = threads.map((t) => {
-      const r = rollups.get(t.id) ?? {
-        messageCount: 0,
-        totalCostCents: 0,
-        totalInputTokens: 0,
-        totalOutputTokens: 0,
-        toolCallCount: 0,
-      };
+      if (
+        r.totalCostCents === 0 &&
+        (r.totalInputTokens > 0 || r.totalOutputTokens > 0)
+      ) {
+        this.logger.warn(
+          `[trace] cost attribution is unavailable for token-bearing thread ${t.id}`,
+        );
+      }
       return {
         threadId: t.id,
         agentId: t.agentId,
         title: t.title,
         status: t.status,
-        turnCount: t.turnCount,
+        turnCount: t.turns.length,
         messageCount: r.messageCount,
         totalCostCents: Math.round(r.totalCostCents * 100) / 100,
         totalInputTokens: r.totalInputTokens,
@@ -381,7 +497,7 @@ export class TraceService {
         createdAt: t.createdAt.toISOString(),
         updatedAt: t.updatedAt.toISOString(),
       };
-    });
+    }));
 
     return { traces, count: traces.length };
   }

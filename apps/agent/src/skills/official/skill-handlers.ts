@@ -9,6 +9,11 @@ import {
   fetchWithValidatedRedirects,
 } from "../../shared/url-validator";
 import { MemoryService, RAG_MEMORY_SOURCE } from "../../memory/memory.service";
+import {
+  environmentScopeWhere,
+  resolveAgentBinding,
+  resolveEndUser,
+} from "../../memory/memory-scope";
 import { VercelSandboxService } from "../vercel-sandbox.service";
 import { configureExternalTriggerSdk } from "../../shared/external-trigger-config";
 
@@ -199,7 +204,7 @@ export class OfficialSkillHandlers {
   // ──────────────────────────────────────────────────────────────────────────
   // platos.platos_rag — retrieval-augmented generation helpers.
   //
-  // Storage strategy: every ingested chunk is a `PlatosMemory` row. We set
+  // Storage strategy: every ingested chunk is a clean `Memory` row. We set
   //   - kind = "fact"      (memory-kind.validator only accepts the 4-way
   //                        taxonomy; `rag` is tracked in metadata instead)
   //   - metadata = {
@@ -1204,6 +1209,48 @@ export class OfficialSkillHandlers {
     };
   }
 
+  private async resolveSandboxAttachment(
+    scope: ScopeTuple,
+    attachmentId: string,
+    attachmentsSvc: unknown,
+  ): Promise<{ id: string; storageKey: string; filename: string; bytes: number }> {
+    const prisma = (attachmentsSvc as any).prisma;
+    if (!prisma?.messageAttachment) {
+      throw new Error("upload_to_sandbox: clean MessageAttachment adapter unavailable.");
+    }
+    const endUser = await resolveEndUser(prisma, scope, this.ragResolveUserId(scope));
+    const agentId = this.ragResolveAgentId(scope);
+    if (!agentId) throw new Error("upload_to_sandbox: acting Agent is required.");
+    const binding = await resolveAgentBinding(prisma, scope, agentId);
+    const threadAgentWhere = binding.clusterId
+      ? { OR: [{ agentId: binding.agentId }, { clusterId: binding.clusterId }] }
+      : { agentId: binding.agentId };
+    const row = await prisma.messageAttachment.findFirst({
+      where: {
+        id: attachmentId,
+        endUserId: endUser.id,
+        ...environmentScopeWhere(scope),
+        turn: {
+          thread: {
+            endUserId: endUser.id,
+            ...environmentScopeWhere(scope),
+            ...threadAgentWhere,
+          },
+        },
+      },
+      select: { id: true, storageKey: true, originalName: true, bytes: true },
+    });
+    if (!row) {
+      throw new Error(`upload_to_sandbox: attachment ${attachmentId} not found in scope.`);
+    }
+    return {
+      id: row.id,
+      storageKey: row.storageKey,
+      filename: row.originalName ?? row.id,
+      bytes: row.bytes,
+    };
+  }
+
   private async uploadToSandbox(scope: ScopeTuple, input: Record<string, unknown>) {
     // CE.3 — under the Vercel provider the download happens inside the thread's
     // Vercel sandbox (same filesystem as run_shell / install_package); E2B and
@@ -1224,18 +1271,7 @@ export class OfficialSkillHandlers {
       : null;
     if (!attachmentsSvc) throw new Error("upload_to_sandbox: AttachmentsService not available.");
 
-    // Fetch attachment row to get storageKey, scoped for IDOR safety
-    const prisma = (attachmentsSvc as any).prisma;
-    const row = await prisma.platosMessageAttachment.findFirst({
-      where: {
-        id: attachmentId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-      },
-      select: { id: true, storageKey: true, filename: true, bytes: true },
-    });
-    if (!row) throw new Error(`upload_to_sandbox: attachment ${attachmentId} not found in scope.`);
+    const row = await this.resolveSandboxAttachment(scope, attachmentId, attachmentsSvc);
 
     const presignedUrl = await attachmentsSvc.getPresignedDownloadUrl(row.storageKey);
 

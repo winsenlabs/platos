@@ -92,7 +92,7 @@ async function* parseSSE(body: ReadableStream<Uint8Array>): AsyncGenerator<any> 
  * forwarded as `data-platos-event` parts so the Platos proxy-bridge can
  * translate them back into the client's existing `agent_event` frames.
  */
-async function* toUIChunks(events: AsyncGenerator<any>): AsyncGenerator<UIChunk> {
+export async function* toUIChunks(events: AsyncGenerator<any>): AsyncGenerator<UIChunk> {
   const textId = "platos-turn-text";
   let textOpen = false;
   let sawDone = false;
