@@ -59,16 +59,23 @@ describe("EmbeddingService.embed — provider timeout", () => {
     expect(Date.now() - start).toBeLessThan(2000);
   });
 
-  it("does not fall back to a container key when a scoped credential is absent", async () => {
-    const get = vi.fn().mockResolvedValue(undefined);
-    const svc = new EmbeddingService({ get } as any);
-    const scope = {
-      organizationId: "org-1",
-      projectId: "project-1",
-      environmentId: "environment-1",
-    };
+  it("does not use a populated deployment key when a scoped credential is missing", async () => {
+    global.fetch = vi.fn() as any;
+    const scopedEnv = { getForProvider: vi.fn(async () => undefined) };
+    const svc = new EmbeddingService(scopedEnv as any);
 
-    await expect((svc as any).resolveApiKey(scope)).resolves.toBeUndefined();
-    expect(get).toHaveBeenCalledWith(scope, "VOYAGE_API_KEY");
+    await expect(
+      svc.embed("scoped text", {
+        organizationId: "org-1",
+        projectId: "project-1",
+        environmentId: "env-1",
+      }),
+    ).rejects.toThrow(/not configured for this Environment/i);
+    expect(scopedEnv.getForProvider).toHaveBeenCalledWith(
+      expect.objectContaining({ environmentId: "env-1" }),
+      "VOYAGE_API_KEY",
+      "voyage",
+    );
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

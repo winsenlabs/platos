@@ -16,11 +16,9 @@
  *                      this field stay on the static list (Perplexity has no
  *                      endpoint; Azure is per-deployment; Vertex needs OAuth).
  *
- * Per Theme B + PLATOS_SPEC §4.4: provider API keys live **only** in the
- * trigger.dev Environment Variables table. We never store them in a
- * Platos-owned row or Redis cache. The `/agent-providers` UI is a
- * "link-env" checklist — the webapp reads the env var presence for the
- * current scope and shows each provider as `Set | Not set`.
+ * Provider API keys live only in Environment-owned Platos Credentials. The
+ * `/agent-providers` UI links ProviderKey metadata by bare credential name;
+ * plaintext and envelope fields never enter manifests or readiness payloads.
  */
 
 export type ModelsEndpointShape =

@@ -74,6 +74,46 @@ const webappEncryptionKey = z
     message: "ENCRYPTION_KEY must be 64 hex chars or an existing 32-byte UTF-8 key",
   });
 
+const credentialRootKeys = z.string().transform((raw, ctx) => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "PLATOS_CREDENTIAL_ROOT_KEYS must be a JSON object mapping positive versions to 64-hex keys",
+    });
+    return z.NEVER;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "PLATOS_CREDENTIAL_ROOT_KEYS must be a JSON object mapping positive versions to 64-hex keys",
+    });
+    return z.NEVER;
+  }
+  const keys: Record<number, string> = {};
+  for (const [rawVersion, rawKey] of Object.entries(parsed)) {
+    const version = Number(rawVersion);
+    if (!Number.isSafeInteger(version) || version <= 0 || typeof rawKey !== "string" || !/^[0-9a-fA-F]{64}$/.test(rawKey)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "PLATOS_CREDENTIAL_ROOT_KEYS must map positive integer versions to 64-hex keys",
+      });
+      return z.NEVER;
+    }
+    keys[version] = rawKey;
+  }
+  if (Object.keys(keys).length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "PLATOS_CREDENTIAL_ROOT_KEYS must contain at least one key",
+    });
+    return z.NEVER;
+  }
+  return keys;
+});
+
 function normalizedEncryptionKey(value: string): string {
   return (
     /^[0-9a-fA-F]{64}$/.test(value) ? Buffer.from(value, "hex") : Buffer.from(value, "utf8")
@@ -94,6 +134,12 @@ export const AgentEnvSchema = z
 
     // Secrets
     PLATOS_ENCRYPTION_KEY: hex64("PLATOS_ENCRYPTION_KEY"),
+    // Environment credential envelope key ring. The active version must be
+    // present in the JSON map; prior versions remain during staged rotation.
+    PLATOS_CREDENTIAL_ROOT_KEY_VERSION: intString("PLATOS_CREDENTIAL_ROOT_KEY_VERSION", {
+      min: 1,
+    }).pipe(z.number()),
+    PLATOS_CREDENTIAL_ROOT_KEYS: credentialRootKeys,
     SESSION_SECRET: z.string().min(16, {
       message: "SESSION_SECRET must be at least 16 chars",
     }),
@@ -392,6 +438,9 @@ export const AgentEnvSchema = z
       ["ENCRYPTION_KEY", data.ENCRYPTION_KEY],
       ["PLATOS_ENCRYPTION_KEY", data.PLATOS_ENCRYPTION_KEY],
       ["PLATOS_MESSAGE_ENCRYPTION_KEY", data.PLATOS_MESSAGE_ENCRYPTION_KEY],
+      ...Object.entries(data.PLATOS_CREDENTIAL_ROOT_KEYS).map(
+        ([version, key]) => [`PLATOS_CREDENTIAL_ROOT_KEYS[${version}]`, key] as const,
+      ),
     ] as const;
     for (let i = 0; i < encryptionDomains.length; i += 1) {
       for (let j = i + 1; j < encryptionDomains.length; j += 1) {
@@ -410,6 +459,14 @@ export const AgentEnvSchema = z
           message: `${rightName} must differ from ${leftName} — use separate keys for each encryption domain`,
         });
       }
+    }
+
+    if (!(data.PLATOS_CREDENTIAL_ROOT_KEY_VERSION in data.PLATOS_CREDENTIAL_ROOT_KEYS)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["PLATOS_CREDENTIAL_ROOT_KEY_VERSION"],
+        message: "PLATOS_CREDENTIAL_ROOT_KEY_VERSION must identify a key in PLATOS_CREDENTIAL_ROOT_KEYS",
+      });
     }
 
     if (data.NODE_ENV === "production") {

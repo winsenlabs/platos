@@ -37,6 +37,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The project navigation is desktop-width by default. Hide it on narrow
+ * browser viewports rather than leaving child pages clipped beside it. */
+@media (max-width: 639px) {
+  .side-menu-responsive {
+    display: none !important;
+  }
+}
+
 @property --gradient-angle {
   syntax: "<angle>";
   initial-value: 0deg;

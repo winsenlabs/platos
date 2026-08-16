@@ -241,7 +241,7 @@ export function buildEntityToolHandlers(deps: {
                 },
               }
             : {}),
-        });
+        }, scope);
 
         // Kick discovery for mcp entities (fire-and-forget). tools/list writes
         // the shared matrix per env + stamps connectionStatus (§1.5a / §5).
@@ -295,6 +295,7 @@ export function buildEntityToolHandlers(deps: {
           scope.organizationId,
           scope.projectId,
           entityId,
+          scope,
         );
         if (!result) throw new Error(`entity ${entityId} not found in scope`);
         return result;

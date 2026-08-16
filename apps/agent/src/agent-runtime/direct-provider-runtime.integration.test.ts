@@ -2,14 +2,18 @@ import { execFileSync } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { resolve } from "node:path";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import { PrismaClient, CredentialKind } from "@platos/tenancy-database";
+import {
+  CredentialKind,
+  CredentialRootKeyRing,
+  PlatosSecretStore,
+  PrismaClient,
+} from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { SecretsService } from "../auth/secrets.service";
 import { ConversationService } from "../memory/conversation.service";
 import { ModelCatalogService } from "../providers/model-catalog.service";
 import { ProviderRegistryService } from "../providers/provider-registry.service";
 import { ProviderRuntimeError } from "../providers/provider-runtime.error";
-import { ScopedEnvService, credentialReference } from "../providers/scoped-env.service";
+import { ScopedEnvService } from "../providers/scoped-env.service";
 import { AgentService, type AgentStreamEvent } from "./agent.service";
 import { AgentTaskService } from "./agent-task.service";
 
@@ -57,6 +61,8 @@ describe("direct provider runtime on a clean database", () => {
   let fixtureBaseURL: string;
   let failProvider = false;
   let service: AgentTaskService;
+  let makeTaskService: (secretStore: PlatosSecretStore, withProviderGate?: boolean) => AgentTaskService;
+  let runtimeThreadId: string;
   let ids: { agentId: string; environmentId: string; organizationId: string; projectId: string };
 
   beforeAll(async () => {
@@ -162,35 +168,42 @@ describe("direct provider runtime on a clean database", () => {
       data: { environmentId: environment.id, providerId: "openai", enabled: true },
     });
 
-    const secrets = new SecretsService();
-    const keyCredential = await prisma.credential.create({
-      data: {
-        environmentId: environment.id,
-        kind: CredentialKind.SERVICE_CREDENTIAL,
-        name: "OPENAI_API_KEY",
-        provider: "openai",
-        encryptedReference: secrets.encrypt("fixture-key"),
-      },
+    const secretStore = new PlatosSecretStore(
+      prisma,
+      new CredentialRootKeyRing({ activeVersion: 1, keys: { 1: "11".repeat(32) } }),
+    );
+    const operator = {
+      principalType: "operator",
+      tier: "PROJECT",
+      access: "secret:mutate",
+      environmentId: environment.id,
+      projectId: project.id,
+      organizationId: organization.id,
+      actorUserId: user.id,
+      effectiveUserId: user.id,
+      organizationRole: null,
+      projectRole: "ADMIN",
+    } as any;
+    const keyCredential = await secretStore.create({
+      authorization: operator,
+      kind: CredentialKind.SERVICE_CREDENTIAL,
+      name: "OPENAI_API_KEY",
+      provider: "openai",
+      plaintext: "fixture-key",
     });
-    await prisma.credential.create({
-      data: {
-        environmentId: environment.id,
-        kind: CredentialKind.SECRET_REFERENCE,
-        name: "OPENAI_BASE_URL",
-        provider: "openai",
-        encryptedReference: secrets.encrypt(fixtureBaseURL),
-      },
+    await secretStore.create({
+      authorization: operator,
+      kind: CredentialKind.SECRET_REFERENCE,
+      name: "OPENAI_BASE_URL",
+      provider: "openai",
+      plaintext: fixtureBaseURL,
     });
-    await prisma.providerKey.create({
-      data: {
-        environmentId: environment.id,
-        provider: "openai",
-        label: "fixture",
-        environmentKeyName: keyCredential.name,
-        encryptedReference: credentialReference(keyCredential.id),
-        isDefault: true,
-        createdBy: user.id,
-      },
+    await secretStore.linkProviderKey({
+      authorization: operator,
+      provider: "openai",
+      label: "fixture",
+      envVarName: keyCredential.name,
+      isDefault: true,
     });
 
     ids = {
@@ -201,23 +214,6 @@ describe("direct provider runtime on a clean database", () => {
     };
 
     const redis = new MemoryRedis();
-    const scopedEnv = new ScopedEnvService(prisma, secrets);
-    const catalog = new ModelCatalogService(scopedEnv);
-    const registry = new ProviderRegistryService(prisma, scopedEnv, catalog);
-    const agentService = new AgentService(
-      redis as any,
-      prisma,
-      scopedEnv,
-      { get: () => null } as any,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      registry,
-    );
-    const conversation = new ConversationService(prisma);
     const safety = {
       checkText: () => ({ passed: true, flags: [] }),
       checkGroundedness: () => ({ grounded: true, unsupportedClaims: [] }),
@@ -239,23 +235,42 @@ describe("direct provider runtime on a clean database", () => {
       recordUserSpend: vi.fn(),
       detectThresholdCrossings: vi.fn().mockResolvedValue([]),
     };
-    service = new AgentTaskService(
-      agentService,
-      conversation,
-      safety as any,
-      cost as any,
-      spans as any,
-      {} as any,
-      {} as any,
-      {
-        resolveAttachments: vi.fn().mockResolvedValue([]),
-        markAttachedToMessage: vi.fn(),
-      } as any,
-      budget as any,
-      { checkUserMessage: vi.fn().mockResolvedValue({ allowed: true }) } as any,
-      { record: vi.fn() } as any,
-      redis as any,
-    );
+    makeTaskService = (runtimeSecretStore, withProviderGate = true) => {
+      const scopedEnv = new ScopedEnvService(prisma, runtimeSecretStore);
+      const catalog = new ModelCatalogService(scopedEnv);
+      const registry = new ProviderRegistryService(prisma, scopedEnv, catalog);
+      const agentService = new AgentService(
+        redis as any,
+        prisma,
+        scopedEnv,
+        { get: () => null } as any,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        withProviderGate ? registry : undefined,
+      );
+      return new AgentTaskService(
+        agentService,
+        new ConversationService(prisma),
+        safety as any,
+        cost as any,
+        spans as any,
+        {} as any,
+        {} as any,
+        {
+          resolveAttachments: vi.fn().mockResolvedValue([]),
+          markAttachedToMessage: vi.fn(),
+        } as any,
+        budget as any,
+        { checkUserMessage: vi.fn().mockResolvedValue({ allowed: true }) } as any,
+        { record: vi.fn() } as any,
+        redis as any,
+      );
+    };
+    service = makeTaskService(secretStore);
   }, 180_000);
 
   afterAll(async () => {
@@ -275,6 +290,7 @@ describe("direct provider runtime on a clean database", () => {
 
     const first = await collect(service.executeStreamingTurn("first", scope, { agentId: ids.agentId }));
     const threadId = (first.find((event) => event.type === "meta") as any)?.thread_id as string;
+    runtimeThreadId = threadId;
     expect(first.filter((event) => event.type === "token").map((event: any) => event.text).join(""))
       .toBe("deterministic reply");
     expect(first.at(-1)).toMatchObject({ type: "done" });
@@ -326,5 +342,101 @@ describe("direct provider runtime on a clean database", () => {
     });
     expect(JSON.stringify(turns[2])).not.toContain("upstream-body-with-secret-fixture-key");
     expect(JSON.stringify(turns[2])).not.toContain("fixture-key");
+  });
+
+  it("persists FAILED Turn/Step and rejects direct execution when configured decrypt fails", async () => {
+    failProvider = false;
+    const wrongRootStore = new PlatosSecretStore(
+      prisma,
+      new CredentialRootKeyRing({ activeVersion: 1, keys: { 1: "22".repeat(32) } }),
+    );
+    // Disable only the metadata provider gate so this regression exercises the
+    // active credential constructor boundary directly rather than live catalog discovery.
+    const failingService = makeTaskService(wrongRootStore, false);
+    const scope = {
+      organizationId: ids.organizationId,
+      projectId: ids.projectId,
+      environmentId: ids.environmentId,
+      userId: "runtime-end-user",
+      agentId: ids.agentId,
+    } as any;
+
+    const error = await failingService.executeNonStreamingTurn("decrypt failure", scope, {
+      agentId: ids.agentId,
+      threadId: runtimeThreadId,
+    }).catch((value) => value as ProviderRuntimeError);
+
+    expect(error).toBeInstanceOf(ProviderRuntimeError);
+    expect(error).toMatchObject({
+      code: "provider_credential_unavailable",
+      message: "Provider credential is unavailable for this environment.",
+    });
+    expect(JSON.stringify(error)).toEqual(JSON.stringify({
+      name: "ProviderRuntimeError",
+      code: "provider_credential_unavailable",
+      message: "Provider credential is unavailable for this environment.",
+    }));
+
+    const failed = await prisma.turn.findFirstOrThrow({
+      where: { threadId: runtimeThreadId },
+      orderBy: { sequence: "desc" },
+      include: { steps: true },
+    });
+    expect(failed).toMatchObject({ status: "FAILED", outputText: null });
+    expect(failed.steps).toHaveLength(1);
+    expect(failed.steps[0]).toMatchObject({
+      status: "FAILED",
+      model: "openai:fixture-model",
+      error: "Provider credential is unavailable for this environment.",
+    });
+    const serialized = JSON.stringify(failed);
+    expect(serialized).not.toMatch(/authenticate|cipher|prisma|fixture-key/i);
+  });
+
+  it("keeps an absent default distinct as provider configuration unavailable", async () => {
+    await prisma.providerKey.updateMany({
+      where: { environmentId: ids.environmentId, provider: "openai" },
+      data: { isDefault: false },
+    });
+    const correctRootStore = new PlatosSecretStore(
+      prisma,
+      new CredentialRootKeyRing({ activeVersion: 1, keys: { 1: "11".repeat(32) } }),
+    );
+    const missingConfigurationService = makeTaskService(correctRootStore, false);
+    const scope = {
+      organizationId: ids.organizationId,
+      projectId: ids.projectId,
+      environmentId: ids.environmentId,
+      userId: "runtime-end-user",
+      agentId: ids.agentId,
+    } as any;
+
+    try {
+      const error = await missingConfigurationService.executeNonStreamingTurn(
+        "missing configuration",
+        scope,
+        { agentId: ids.agentId, threadId: runtimeThreadId },
+      ).catch((value) => value as ProviderRuntimeError);
+
+      expect(error).toMatchObject({
+        code: "provider_configuration_unavailable",
+        message: "Provider configuration is unavailable for this environment.",
+      });
+      const failed = await prisma.turn.findFirstOrThrow({
+        where: { threadId: runtimeThreadId },
+        orderBy: { sequence: "desc" },
+        include: { steps: true },
+      });
+      expect(failed).toMatchObject({ status: "FAILED", outputText: null });
+      expect(failed.steps[0]).toMatchObject({
+        status: "FAILED",
+        error: "Provider configuration is unavailable for this environment.",
+      });
+    } finally {
+      await prisma.providerKey.updateMany({
+        where: { environmentId: ids.environmentId, provider: "openai" },
+        data: { isDefault: true },
+      });
+    }
   });
 });

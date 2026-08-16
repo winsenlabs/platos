@@ -23,9 +23,9 @@ import {
   type OutputSchemaInput,
   type NormalizedSchema,
 } from "./structured-output";
-import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
-import { openai, createOpenAI } from "@ai-sdk/openai";
-import { google, createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createVertex } from "@ai-sdk/google-vertex";
 import { makeRetryFetch, DEFAULT_RETRY_RULES, type RetryRule } from "./retry-fetch";
 import { hardenToolResults } from "./tool-result-sanitizer";
@@ -216,17 +216,17 @@ async function getScopedTriggerClient(_prisma: any, environmentId: string): Prom
  *   "google-vertex:gemini-2.5-flash-001"
  *
  * For Vertex AI (google-vertex:), `apiKey` is the FULL content of a GCP
- * service-account JSON file stored as a string in the SecretStore under
+ * service-account JSON file stored as a Platos Credential under
  * GOOGLE_VERTEX_CREDENTIALS. No file path or container volume needed.
  * GOOGLE_VERTEX_PROJECT and GOOGLE_VERTEX_LOCATION are also read from the
- * scoped env / process.env (project extracted from the JSON when available).
+ * scoped configuration (project extracted from the JSON when available).
  */
 /**
  * Resolve a model string to a Vercel AI SDK LanguageModelV1. When an `apiKey`
  * is supplied (the normal case — sourced from the scoped env-var resolver),
  * constructs a per-scope provider client so the key bypasses `process.env`
- * entirely. Without an apiKey (e.g. ambient dev use), falls back to the
- * default singleton which reads `process.env`.
+ * entirely. Missing scoped material fails closed; provider SDK ambient-env
+ * discovery is never used for an authenticated Environment request.
  */
 // OpenAI-compatible providers that we proxy through `createOpenAI` with a
 // custom `baseURL`. Mirrors `manifests/index.ts` — keep in sync.
@@ -269,6 +269,9 @@ function resolveModel(
   // `Retry-After` on 429s, exp-backoff on 5xx, fail-fast on auth errors. If
   // the agent passes its own rules, those win; else use sensible defaults.
   const retryFetch = makeRetryFetch(retryRules ?? DEFAULT_RETRY_RULES);
+  if (!apiKey) {
+    throw new ProviderRuntimeError("provider_configuration_unavailable");
+  }
 
   // OpenAI-compatible upstreams (Groq, Mistral, xAI, DeepSeek, Cerebras,
   // Perplexity, Together, Fireworks) all speak the same `/v1/chat/completions`
@@ -277,16 +280,17 @@ function resolveModel(
     // AI SDK v6: `createOpenAI(...)(model)` defaults to the OpenAI Responses
     // API (/v1/responses), which these third-party providers don't implement.
     // Use `.chat(model)` to pin chat/completions.
-    return apiKey
-      ? createOpenAI({ baseURL: OPENAI_COMPAT_BASE_URLS[provider], apiKey, fetch: retryFetch }).chat(model)
-      : createOpenAI({ baseURL: OPENAI_COMPAT_BASE_URLS[provider], fetch: retryFetch }).chat(model);
+    return createOpenAI({
+      baseURL: OPENAI_COMPAT_BASE_URLS[provider],
+      apiKey,
+      fetch: retryFetch,
+    }).chat(model);
   }
 
   switch (provider) {
     case "anthropic":
-      return apiKey ? createAnthropic({ apiKey, fetch: retryFetch })(model) : anthropic(model);
+      return createAnthropic({ apiKey, fetch: retryFetch })(model);
     case "openai":
-      if (!apiKey) throw new ProviderRuntimeError("provider_credential_unavailable");
       return runtime.baseURL
         ? createOpenAI({ baseURL: runtime.baseURL, apiKey, fetch: retryFetch }).chat(model)
         : createOpenAI({ apiKey, fetch: retryFetch })(model);
@@ -296,14 +300,9 @@ function resolveModel(
       // The user supplies the full URL via AZURE_OPENAI_BASE_URL and the model
       // string is the deployment name. Auth header is `api-key` (set by
       // createOpenAI when the host is azure.com — the SDK auto-detects this).
-      if (!apiKey) {
-        throw new Error("azure: AZURE_OPENAI_API_KEY required.");
-      }
       const azureBase = runtime.baseURL;
       if (!azureBase) {
-        throw new Error(
-          "azure: AZURE_OPENAI_BASE_URL must be set (e.g. https://<resource>.openai.azure.com).",
-        );
+        throw new ProviderRuntimeError("provider_configuration_unavailable");
       }
       // AI SDK v6 — `compatibility` option removed from OpenAIProviderSettings.
       // Azure's `api-key` header + per-resource baseURL are still honored;
@@ -316,26 +315,15 @@ function resolveModel(
       })(model);
     }
     case "google":
-      return apiKey ? createGoogleGenerativeAI({ apiKey, fetch: retryFetch })(model) : google(model);
+      return createGoogleGenerativeAI({ apiKey, fetch: retryFetch })(model);
     case "google-vertex": {
       // apiKey is the full service-account JSON string stored in
       // GOOGLE_VERTEX_CREDENTIALS. Parse it to extract project + credentials.
-      // Falls back to ambient ADC (gcloud auth / GOOGLE_APPLICATION_CREDENTIALS)
-      // when no explicit credentials are provided (local dev convenience).
-      if (!apiKey) {
-        // Ambient ADC fallback — reads GOOGLE_VERTEX_PROJECT + GOOGLE_VERTEX_LOCATION
-        // from process.env (e.g. set in docker-compose for local dev).
-        return createVertex({})(model);
-      }
       let creds: { project_id?: string; client_email?: string; private_key?: string };
       try {
         creds = JSON.parse(apiKey) as typeof creds;
       } catch {
-        throw new Error(
-          "google-vertex: GOOGLE_VERTEX_CREDENTIALS must be the full contents of a GCP " +
-          "service account JSON file. Download it from GCP Console → IAM → Service Accounts " +
-          "→ Keys → Create key (JSON), then paste the file content as the env var value.",
-        );
+        throw new ProviderRuntimeError("provider_configuration_unavailable");
       }
       const location = runtime.location ?? "us-central1";
       // Note: `@ai-sdk/google-vertex` 1.0.x doesn't accept a custom `fetch` —
@@ -355,11 +343,7 @@ function resolveModel(
       })(model);
     }
     default:
-      throw new Error(
-        `Unknown model provider: "${provider}". ` +
-        `Supported: anthropic:, openai:, azure:, google:, google-vertex:, ` +
-        `groq:, mistral:, xai:, deepseek:, cerebras:, perplexity:, together:, fireworks:`,
-      );
+      throw new ProviderRuntimeError("provider_configuration_unavailable");
   }
 }
 
@@ -1038,10 +1022,8 @@ export class AgentService {
 
   /**
    * Resolve the LLM provider API key for a given model under a scope.
-   * Reads the trigger.dev SecretStore first (webapp env-var UI), then falls
-   * back to the agent container's own process.env. Returns undefined if
-   * neither source has it — the caller decides whether to throw or proceed
-   * anyway (e.g. google-vertex uses GOOGLE_VERTEX_CREDENTIALS instead).
+   * Reads only the same-Environment Platos credential store. Missing material
+   * remains missing; provider SDK ambient environment fallback is forbidden.
    */
   /**
    * COMPACTION MODEL — resolve the model used for background summarisation.
@@ -1067,14 +1049,15 @@ export class AgentService {
       ? routes.find((r) => r && r.label === COMPACTION_ROUTE_LABEL && typeof r.model === "string" && r.model.length > 0)
       : undefined;
     const modelString = route?.model ?? DEFAULT_COMPACTION_MODEL;
-    // Fail-open on key resolution: compaction is a background nicety and must
-    // never take down a turn. Undefined key falls back to ambient env, which is
-    // the pre-existing behaviour.
+    // Resolution failure remains missing and resolveModel fails closed rather
+    // than charging an ambient deployment credential.
     let apiKey: string | undefined;
     try {
       apiKey = await this.resolveApiKey(modelString, scope, route?.providerKeyId ?? undefined);
-    } catch {
-      throw new ProviderRuntimeError("provider_credential_unavailable");
+    } catch (error) {
+      throw error instanceof ProviderRuntimeError
+        ? error
+        : new ProviderRuntimeError("provider_credential_unavailable");
     }
     const runtime = await this.resolveProviderRuntimeOptions(modelString, scope);
     return {
@@ -1092,7 +1075,7 @@ export class AgentService {
     const envName = apiKeyEnvVarFor(modelString);
     if (!envName) return undefined;
     // PIFSP-14 — route through multi-key resolver when a pinned key or
-    // default key is configured; falls back to legacy single-key path.
+    // default key is configured; the legacy bare-name path remains scoped.
     const provider = modelString.split(":")[0] ?? "";
     return this.scopedEnv.getProviderApiKey(scope, provider, envName, providerKeyId);
   }
@@ -1103,7 +1086,11 @@ export class AgentService {
   ): Promise<ProviderRuntimeOptions> {
     const provider = modelString.split(":")[0] || "anthropic";
     if (provider === "openai") {
-      const configured = await this.scopedEnv.get(scope, "OPENAI_BASE_URL");
+      const configured = await this.scopedEnv.getProviderConfiguration(
+        scope,
+        "OPENAI_BASE_URL",
+        provider,
+      );
       return {
         baseURL: configured
           ? (configured.replace(/\/$/, "").endsWith("/v1")
@@ -1113,12 +1100,22 @@ export class AgentService {
       };
     }
     if (provider === "azure") {
-      const baseURL = await this.scopedEnv.get(scope, "AZURE_OPENAI_BASE_URL");
+      const baseURL = await this.scopedEnv.getProviderConfiguration(
+        scope,
+        "AZURE_OPENAI_BASE_URL",
+        provider,
+      );
       if (!baseURL) throw new ProviderRuntimeError("provider_configuration_unavailable");
       return { baseURL };
     }
     if (provider === "google-vertex") {
-      return { location: await this.scopedEnv.get(scope, "GOOGLE_VERTEX_LOCATION") };
+      return {
+        location: await this.scopedEnv.getProviderConfiguration(
+          scope,
+          "GOOGLE_VERTEX_LOCATION",
+          provider,
+        ),
+      };
     }
     return {};
   }
@@ -1245,9 +1242,7 @@ export class AgentService {
         }
         return { apiKey: c.apiKey, model: c.model, routeLabel: c.routeLabel };
       } catch (err: any) {
-        this.logger.warn(
-          `[agent.stream] LAUNCH-4 ping failed route='${c.routeLabel ?? "primary"}' model=${c.modelString} err=${(err?.message ?? String(err)).slice(0, 120)}`,
-        );
+        this.logFallbackPreflightFailure(c.routeLabel, c.modelString, err);
       }
     }
 
@@ -1258,6 +1253,17 @@ export class AgentService {
       `[agent.stream] LAUNCH-4 all ${candidates.length} routes failed ping; falling back to primary for the actual streamText (will surface real error)`,
     );
     return { apiKey: primary.apiKey, model: primary.model, routeLabel: null };
+  }
+
+  private logFallbackPreflightFailure(
+    routeLabel: string | null,
+    modelString: string,
+    error: unknown,
+  ): void {
+    const safeError = asSafeProviderRuntimeError(error);
+    this.logger.warn(
+      `[agent.stream] LAUNCH-4 ping failed route='${routeLabel ?? "primary"}' model=${modelString} code=${safeError.code} message=${safeError.message}`,
+    );
   }
 
   /**
@@ -4770,12 +4776,9 @@ export class AgentService {
       allowedTools?: string[];
     },
   ): AsyncGenerator<AgentStreamEvent> {
-    // Provider credentials (API keys, service accounts) are resolved
-    // per-scope from the trigger.dev SecretStore (what the webapp env-var
-    // UI writes to), falling back to the agent container's own process.env
-    // for admin-seeded defaults. Per-scope resolution is required because
-    // different envs (dev / prod) have different keys — one container,
-    // many tenant scopes.
+    // Provider credentials are resolved only from the authenticated Platos
+    // Environment. One process may serve many tenant scopes, so deployment
+    // provider env vars must never satisfy a scoped request.
 
     let providerCallStarted = false;
     try {

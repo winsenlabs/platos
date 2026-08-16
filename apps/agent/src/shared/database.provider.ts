@@ -1,8 +1,13 @@
 import { Global, Module, type Provider } from "@nestjs/common";
-import { PrismaClient } from "@platos/tenancy-database";
+import {
+  CredentialRootKeyRing,
+  PlatosSecretStore,
+  PrismaClient,
+} from "@platos/tenancy-database";
 import { env } from "./env";
 
 export const PRISMA_TOKEN = "PRISMA";
+export const PLATOS_SECRET_STORE_TOKEN = "PLATOS_SECRET_STORE";
 export type ControlDatabaseClient = PrismaClient;
 
 export interface CanonicalEnvironmentScope {
@@ -22,26 +27,33 @@ export function environmentScopeWhere(scope: CanonicalEnvironmentScope) {
   } as const;
 }
 
-/**
- * Database provider — creates a Prisma client connected to the shared PostgreSQL.
- *
- * The generated control-plane client is the sole runtime persistence boundary.
- */
+/** The generated control client is the sole runtime persistence boundary. */
 const prismaProvider: Provider<PrismaClient> = {
   provide: PRISMA_TOKEN,
   useFactory: async (): Promise<PrismaClient> => {
-    const prisma = new PrismaClient({
-      datasourceUrl: env.DATABASE_URL,
-    });
+    const prisma = new PrismaClient({ datasourceUrl: env.DATABASE_URL });
     await prisma.$connect();
     console.log("[Platos] Database connected");
     return prisma;
   },
 };
 
+const platosSecretStoreProvider: Provider<PlatosSecretStore> = {
+  provide: PLATOS_SECRET_STORE_TOKEN,
+  inject: [PRISMA_TOKEN],
+  useFactory: (prisma: PrismaClient) =>
+    new PlatosSecretStore(
+      prisma,
+      new CredentialRootKeyRing({
+        activeVersion: env.PLATOS_CREDENTIAL_ROOT_KEY_VERSION,
+        keys: env.PLATOS_CREDENTIAL_ROOT_KEYS,
+      }),
+    ),
+};
+
 @Global()
 @Module({
-  providers: [prismaProvider],
-  exports: [PRISMA_TOKEN],
+  providers: [prismaProvider, platosSecretStoreProvider],
+  exports: [PRISMA_TOKEN, PLATOS_SECRET_STORE_TOKEN],
 })
 export class DatabaseModule {}

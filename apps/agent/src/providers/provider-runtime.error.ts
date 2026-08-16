@@ -16,6 +16,10 @@ export class ProviderRuntimeError extends Error {
   constructor(public readonly code: ProviderRuntimeErrorCode) {
     super(SAFE_MESSAGES[code]);
   }
+
+  toJSON(): { name: "ProviderRuntimeError"; code: ProviderRuntimeErrorCode; message: string } {
+    return { name: this.name, code: this.code, message: this.message };
+  }
 }
 
 export function asSafeProviderRuntimeError(error: unknown): ProviderRuntimeError {

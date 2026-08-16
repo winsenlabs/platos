@@ -41,9 +41,11 @@ const SCOPE: ScopeTuple = {
  */
 class FakeScopedEnv {
   public getCalls = 0;
+  public names: string[] = [];
   constructor(private readonly secret: string | undefined) {}
   async get(_scope: ScopeTuple, _name: string): Promise<string | undefined> {
     this.getCalls += 1;
+    this.names.push(_name);
     return this.secret;
   }
 }
@@ -122,6 +124,19 @@ describe("McpCredentialService.resolveHeaders — {{endUserId}} fail-closed guar
     const resolved = await svc.resolveHeaders(server, SCOPE, "bob");
     expect(resolved).toEqual({ Authorization: "Bearer sk-test-123::bob" });
     expect(env.getCalls).toBe(1);
+    expect(env.names).toEqual(["MY_KEY"]);
+  });
+
+  it("keeps credsSecretKey as a bare same-Environment reference name", async () => {
+    const server: CredentialServerSlice = {
+      headersTemplate: { Authorization: "Bearer {{secret}}" },
+      credsSecretKey: "COMPOSIO_API_KEY",
+    };
+
+    await expect(svc.resolveHeaders(server, SCOPE, null)).resolves.toEqual({
+      Authorization: "Bearer sk-test-123",
+    });
+    expect(env.names).toEqual(["COMPOSIO_API_KEY"]);
   });
 });
 

@@ -144,7 +144,9 @@ curl -X POST https://platos.example.com/api/v1/agent/mcp/servers \
   }'
 ```
 
-The credential lives in the scoped SecretStore; only the key name is stored on the server row.
+Create `MCP_LINEAR_TOKEN` in the dashboard for this Environment first. The
+server row stores only that bare same-Environment credential name; it never
+stores plaintext. Runtime resolution does not fall back to `process.env`.
 
 Platos automatically calls `tools/list` to discover what tools the server exposes.
 </Step>

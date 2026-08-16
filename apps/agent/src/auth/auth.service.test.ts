@@ -290,22 +290,29 @@ describe("AuthService — clean-tenancy access keys", () => {
     return prisma;
   }
 
-  it("retains the platos_live_ prefix and stores Environment ownership only", async () => {
+  it("stores only browser-generated hash material under Environment ownership", async () => {
     const prisma = accessKeyPrisma();
     let created: any;
     prisma.accessKey.create = async (args: any) => {
       created = args.data;
-      return {};
+      return { ...args.data, id: "key-1", allowedOrigins: [], validUntil: null };
     };
+    prisma.$queryRaw = async () => [{ id: "env_1" }];
     const auth = new AuthService(prisma, {} as any);
+    auth.authorizeEnvironmentOperatorScope = async () => ({ environmentId: "env_1" } as any);
 
-    const result = await auth.generateAccessKey({
-      organizationId: "org_1",
-      projectId: "proj_1",
-      environmentId: "env_1",
-    });
+    const result = await auth.createOrRotateAccessKey(
+      {
+        organizationId: "org_1",
+        projectId: "proj_1",
+        environmentId: "env_1",
+        userId: "user_1",
+        principal: "operator",
+      } as any,
+      { keyHash: "a".repeat(64), keyPrefix: "platos_live_test" },
+    );
 
-    expect(result.rawKey).toMatch(/^platos_live_/);
+    expect(result).not.toHaveProperty("rawKey");
     expect(created.environmentId).toBe("env_1");
     expect(created.keyHash).toMatch(/^[0-9a-f]{64}$/);
     expect(created).not.toHaveProperty("organizationId");
@@ -342,6 +349,8 @@ describe("AuthService — clean Entity registry", () => {
       credential: {
         create: vi.fn(),
         findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        update: vi.fn(),
         updateMany: vi.fn(),
         upsert: vi.fn(),
       },
@@ -371,27 +380,48 @@ describe("AuthService — clean Entity registry", () => {
     createdAt: new Date("2026-08-15T00:00:00.000Z"),
     updatedAt: new Date("2026-08-15T00:00:00.000Z"),
   };
-  const secrets = {
-    encrypt: vi.fn((value: string) => `encrypted:${value}`),
-    decrypt: vi.fn((value: string) => value.replace(/^encrypted:/, "")),
+  const operatorScope = {
+    organizationId: "org_1",
+    projectId: "proj_1",
+    environmentId: "env_1",
+    userId: "user_1",
+    principal: "operator" as const,
   };
+
+  function secretStore() {
+    return {
+      createInTransaction: vi.fn(async (_tx: any, params: any) => ({
+        id: `credential-${params.authorization.environmentId}`,
+      })),
+      rotateInTransaction: vi.fn(async (_tx: any, params: any) => ({
+        id: params.credentialId,
+      })),
+    };
+  }
 
   it("creates a clean Entity and one Environment-owned wire credential per active environment", async () => {
     const prisma = entityPrisma();
     prisma.project.findFirst.mockResolvedValue(project);
     prisma.entity.create.mockResolvedValue({ id: cleanEntity.id });
     prisma.entity.findUniqueOrThrow.mockResolvedValue(cleanEntity);
-    const auth = new AuthService(prisma, {} as any, undefined, secrets as any);
+    const store = secretStore();
+    const auth = new AuthService(prisma, {} as any, undefined, store as any);
+    auth.authorizeEnvironmentOperatorScope = async (scope) => ({
+      environmentId: scope.environmentId,
+    } as any);
 
-    const result = await auth.registerEntity({
-      organizationId: "org_1",
-      projectId: "proj_1",
-      environmentId: "env_1",
-      entityId: "support-core",
-      displayName: "Support Core",
-      mcpUrls: ["https://entity.example/mcp"],
-      serviceSecret: "wire-secret",
-    });
+    const result = await auth.registerEntity(
+      {
+        organizationId: "org_1",
+        projectId: "proj_1",
+        environmentId: "env_1",
+        entityId: "support-core",
+        displayName: "Support Core",
+        mcpUrls: ["https://entity.example/mcp"],
+        serviceSecret: "wire-secret",
+      },
+      operatorScope,
+    );
 
     expect(prisma.entity.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -400,14 +430,21 @@ describe("AuthService — clean Entity registry", () => {
         connectionKind: "wire",
       }),
     });
-    expect(prisma.credential.create).toHaveBeenCalledTimes(2);
-    expect(prisma.credential.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        environmentId: "env_1",
+    expect(store.createInTransaction).toHaveBeenCalledTimes(2);
+    expect(store.createInTransaction).toHaveBeenCalledWith(
+      prisma,
+      expect.objectContaining({
+        authorization: expect.objectContaining({ environmentId: "env_1" }),
         kind: "ENTITY_SECRET",
         name: "support-core",
+        plaintext: "wire-secret",
+      }),
+    );
+    expect(prisma.credential.update).toHaveBeenCalledWith({
+      where: { id: "credential-env_1" },
+      data: expect.objectContaining({
         secretHash: expect.stringMatching(/^[0-9a-f]{64}$/),
-        encryptedReference: "encrypted:wire-secret",
+        permissions: ["entity:wire"],
       }),
     });
     expect(result).toMatchObject({
@@ -421,7 +458,7 @@ describe("AuthService — clean Entity registry", () => {
   it("projects clean Entity ancestry without credential material", async () => {
     const prisma = entityPrisma();
     prisma.entity.findFirst.mockResolvedValue(cleanEntity);
-    const auth = new AuthService(prisma, {} as any, undefined, secrets as any);
+    const auth = new AuthService(prisma, {} as any, undefined, secretStore() as any);
 
     const result = await auth.getEntity("org_1", "proj_1", "support-core");
 
@@ -446,7 +483,7 @@ describe("AuthService — clean Entity registry", () => {
   it("lists clean project Entities through canonical Organization ancestry", async () => {
     const prisma = entityPrisma();
     prisma.entity.findMany.mockResolvedValue([cleanEntity]);
-    const auth = new AuthService(prisma, {} as any, undefined, secrets as any);
+    const auth = new AuthService(prisma, {} as any, undefined, secretStore() as any);
 
     const result = await auth.listEntities("org_1", "proj_1");
 
@@ -472,7 +509,7 @@ describe("AuthService — clean Entity registry", () => {
       displayName: "Renamed",
       allowedOrigins: ["https://app.example"],
     });
-    const auth = new AuthService(prisma, {} as any, undefined, secrets as any);
+    const auth = new AuthService(prisma, {} as any, undefined, secretStore() as any);
 
     const result = await auth.updateEntity("org_1", "proj_1", "support-core", {
       displayName: "Renamed",
@@ -501,19 +538,32 @@ describe("AuthService — clean Entity registry", () => {
       id: cleanEntity.id,
       project: { environments: project.environments },
     });
-    const auth = new AuthService(prisma, {} as any, undefined, secrets as any);
+    prisma.credential.findUnique
+      .mockResolvedValueOnce({ id: "credential-env_1", activeSecretVersionId: "version-1", revokedAt: null })
+      .mockResolvedValueOnce({ id: "credential-env_2", activeSecretVersionId: "version-2", revokedAt: null });
+    const store = secretStore();
+    const auth = new AuthService(prisma, {} as any, undefined, store as any);
+    auth.authorizeEnvironmentOperatorScope = async (scope) => ({
+      environmentId: scope.environmentId,
+    } as any);
 
-    const result = await auth.regenerateServiceSecret("org_1", "proj_1", "support-core");
+    const result = await auth.regenerateServiceSecret(
+      "org_1",
+      "proj_1",
+      "support-core",
+      operatorScope,
+    );
 
     expect(result?.serviceSecret).toMatch(/^[0-9a-f]{64}$/);
-    expect(prisma.credential.upsert).toHaveBeenCalledTimes(2);
-    for (const call of prisma.credential.upsert.mock.calls) {
-      expect(call[0].update).toMatchObject({
+    expect(store.rotateInTransaction).toHaveBeenCalledTimes(2);
+    expect(prisma.credential.update).toHaveBeenCalledTimes(2);
+    for (const call of prisma.credential.update.mock.calls) {
+      expect(call[0].data).toMatchObject({
         secretHash: expect.stringMatching(/^[0-9a-f]{64}$/),
-        encryptedReference: `encrypted:${result!.serviceSecret}`,
-        revokedAt: null,
+        permissions: ["entity:wire"],
       });
-      expect(call[0].update).not.toHaveProperty("serviceSecret");
+      expect(call[0].data).not.toHaveProperty("serviceSecret");
+      expect(call[0].data).not.toHaveProperty("encryptedReference");
     }
   });
 
@@ -521,7 +571,7 @@ describe("AuthService — clean Entity registry", () => {
     const prisma = entityPrisma();
     prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
     prisma.entity.deleteMany.mockResolvedValue({ count: 1 });
-    const auth = new AuthService(prisma, {} as any, undefined, secrets as any);
+    const auth = new AuthService(prisma, {} as any, undefined, secretStore() as any);
 
     await expect(auth.deleteEntity("org_1", "proj_1", "support-core")).resolves.toBe(true);
     expect(prisma.credential.updateMany).toHaveBeenCalledWith({

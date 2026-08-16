@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { validateAgentEnv } from "./env";
-import { decodeScopedEnvEncryptionKey } from "../providers/scoped-env.service";
 
 const BASE_ENV = {
   NODE_ENV: "test",
@@ -8,6 +7,8 @@ const BASE_ENV = {
   REDIS_URL: "redis://localhost:6379",
   SESSION_SECRET: "test-session-secret-long-enough",
   PLATOS_ENCRYPTION_KEY: "11".repeat(32),
+  PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "1",
+  PLATOS_CREDENTIAL_ROOT_KEYS: JSON.stringify({ "1": "33".repeat(32) }),
 };
 
 describe("credential-domain environment validation", () => {
@@ -19,7 +20,26 @@ describe("credential-domain environment validation", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(decodeScopedEnvEncryptionKey(legacy)).toEqual(Buffer.from(legacy, "utf8"));
+  });
+
+  it("requires the active credential root version to exist in the validated ring", () => {
+    const result = validateAgentEnv({
+      ...BASE_ENV,
+      PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "2",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.join("\n")).toMatch(/must identify a key/i);
+  });
+
+  it("rejects credential root material reused by another encryption domain", () => {
+    const result = validateAgentEnv({
+      ...BASE_ENV,
+      PLATOS_CREDENTIAL_ROOT_KEYS: JSON.stringify({ "1": "11".repeat(32) }),
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.join("\n")).toMatch(/must differ from PLATOS_ENCRYPTION_KEY/i);
   });
 
   it("rejects reused encryption material across every configured domain", () => {

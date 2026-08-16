@@ -354,6 +354,8 @@ services:
       PLATOS_AGENT_HTTP_URL: "http://agent:3100"
       PLATOS_ENCRYPTION_KEY: "${PLATOS_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
       ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 64 hex chars for new deployments}"
+      PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "${PLATOS_CREDENTIAL_ROOT_KEY_VERSION:?required — positive active credential root version}"
+      PLATOS_CREDENTIAL_ROOT_KEYS: "${PLATOS_CREDENTIAL_ROOT_KEYS:?required — JSON map of positive versions to 64-hex roots}"
       PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
       PLATOS_MESSAGE_ENCRYPTION_KEY_V: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V:-1}"
       PLATOS_MESSAGE_ENCRYPTION_KEY_V1: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V1:-}"
@@ -409,10 +411,14 @@ services:
       PLATOS_TEST_MODE: "${PLATOS_TEST_MODE:-false}"
       # PLATOS_ENCRYPTION_KEY: 64 hex chars (32 bytes). `openssl rand -hex 32`.
       PLATOS_ENCRYPTION_KEY: "${PLATOS_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
-      # ENCRYPTION_KEY must match the webapp value — ScopedEnvService uses it to
-      # decrypt provider API keys stored by the webapp in the env-var table.
+      # Separate webapp/operator-TOTP domain retained for consumers outside the
+      # native credential store. Provider/MCP credentials use the root ring below.
       # New values use 64 hex chars; existing 32-byte UTF-8 values remain valid.
       ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 64 hex chars for new deployments}"
+      # Platos-native credential envelope roots. All consumers receive the
+      # same active version and active/prior numbered roots during rotation.
+      PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "${PLATOS_CREDENTIAL_ROOT_KEY_VERSION:?required — positive active credential root version}"
+      PLATOS_CREDENTIAL_ROOT_KEYS: "${PLATOS_CREDENTIAL_ROOT_KEYS:?required — JSON map of positive versions to 64-hex roots}"
       # Separate message/audit-content encryption domain. Increment the
       # version during rotation and retain old keys as ..._V<N> inputs.
       PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
@@ -585,6 +591,8 @@ services:
       SESSION_SECRET: "${SESSION_SECRET:?required — see .env.example}"
       MAGIC_LINK_SECRET: "${MAGIC_LINK_SECRET:?required — see .env.example}"
       ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 64 hex chars for new deployments}"
+      PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "${PLATOS_CREDENTIAL_ROOT_KEY_VERSION:?required — positive active credential root version}"
+      PLATOS_CREDENTIAL_ROOT_KEYS: "${PLATOS_CREDENTIAL_ROOT_KEYS:?required — JSON map of positive versions to 64-hex roots}"
       # SESSION_SECRET above must match the agent container's value. The
       # webapp mints platform-issued session tokens (iss: platos-platform)
       # for browser WS handshakes to the agent (PPR-7).
