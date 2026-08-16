@@ -1,14 +1,25 @@
 import { Injectable, Inject, Logger, Optional } from "@nestjs/common";
-import { CredentialKind } from "@platos/tenancy-database";
+import {
+  ACCESS_KEY_SAFE_SELECT,
+  CredentialKind,
+  PlatosSecretStore,
+  authorizeEnvironmentOperator,
+  authorizeEnvironmentRuntime,
+  rotateAccessKey,
+  type EnvironmentAuthorizationAccess,
+  type EnvironmentOperatorAuthorization,
+  type OperatorAuthorization,
+} from "@platos/tenancy-database";
 import {
   type ControlDatabaseClient,
+  PLATOS_SECRET_STORE_TOKEN,
   PRISMA_TOKEN,
 } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import * as crypto from "crypto";
 import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
-import { SecretsService } from "./secrets.service";
+import type { RequestScope } from "./scope.guard";
 
 /**
  * Session token claims.
@@ -81,10 +92,21 @@ export interface EntityRegistration {
   mcpClient?: {
     transport: string; // "remote-http" | "remote-sse" | "hosted-*" (stdio deferred)
     url?: string | null; // remote only; MAY contain {{endUserId}}
-    credsSecretKey?: string | null; // bare SecretStore var name; never the raw secret
+    credsSecretKey?: string | null; // bare Credential name; never the raw secret
     headersTemplate?: unknown; // { header: valueTemplate }; values may embed {{secret}}/{{endUserId}}
   };
 }
+
+export type AccessKeyOperatorScope = Pick<
+  RequestScope,
+  | "organizationId"
+  | "projectId"
+  | "environmentId"
+  | "userId"
+  | "sessionId"
+  | "principal"
+  | "operatorUserId"
+>;
 
 /**
  * AuthService — handles session tokens, HMAC verification, and entity registry.
@@ -109,7 +131,9 @@ export class AuthService {
     // have to pull the whole tool gateway in. ToolGatewayModule has no edge
     // back into AuthModule, so this import direction introduces no cycle.
     @Optional() private readonly toolRegistry?: ToolRegistryService,
-    @Optional() private readonly secretsService?: SecretsService,
+    @Optional()
+    @Inject(PLATOS_SECRET_STORE_TOKEN)
+    private readonly secretStore?: PlatosSecretStore,
   ) {
     this.prisma = prisma;
   }
@@ -354,7 +378,7 @@ export class AuthService {
    * cryptographically strong 32-byte hex secret and return it in the response.
    * The secret is shown ONCE at creation — if lost, use regenerateServiceSecret.
    */
-  async registerEntity(data: EntityRegistration): Promise<any> {
+  async registerEntity(data: EntityRegistration, operatorScope?: AccessKeyOperatorScope): Promise<any> {
     const connectionKind = data.connectionKind === "mcp" ? "mcp" : "wire";
     if (connectionKind === "mcp" && (!data.mcpClient || !data.mcpClient.transport)) {
       const bad: any = new Error(
@@ -401,12 +425,21 @@ export class AuthService {
           ? crypto.randomBytes(32).toString("hex")
           : data.serviceSecret
         : null;
-    if (secret && !this.secretsService) {
+    if (secret && (!this.secretStore || !operatorScope)) {
       throw new Error("Entity credential encryption is unavailable");
     }
-    const secretHash = secret
-      ? crypto.createHash("sha256").update(secret).digest("hex")
-      : null;
+    const credentialAuthorizations = new Map<string, EnvironmentOperatorAuthorization>();
+    if (secret && operatorScope) {
+      for (const environment of project.environments) {
+        credentialAuthorizations.set(
+          environment.id,
+          await this.authorizeEnvironmentOperatorScope(
+            { ...operatorScope, environmentId: environment.id },
+            "secret:mutate",
+          ),
+        );
+      }
+    }
 
     const credentialEnvironmentId =
       data.environmentId ?? project.environments[0]?.id;
@@ -464,16 +497,21 @@ export class AuthService {
               : {}),
           },
         });
-        if (secret && secretHash) {
+        if (secret) {
           for (const environment of project.environments) {
-            await tx.credential.create({
+            const authorization = credentialAuthorizations.get(environment.id);
+            if (!authorization) throw new Error("Entity credential encryption is unavailable");
+            const credential = await this.secretStore!.createInTransaction(tx, {
+              authorization,
+              kind: CredentialKind.ENTITY_SECRET,
+              name: data.entityId,
+              plaintext: secret,
+            });
+            await tx.credential.update({
+              where: { id: credential.id },
               data: {
-                environmentId: environment.id,
-                kind: CredentialKind.ENTITY_SECRET,
-                name: data.entityId,
                 prefix: secret.slice(0, 8),
-                secretHash,
-                encryptedReference: this.secretsService!.encrypt(secret),
+                secretHash: crypto.createHash("sha256").update(secret).digest("hex"),
                 permissions: ["entity:wire"],
               },
             });
@@ -752,100 +790,115 @@ export class AuthService {
   // Access Keys
   // ═══════════════════════════════════════════════════════
 
-  private async resolveEnvironmentScope(scope: {
-    organizationId: string;
-    projectId: string;
-    environmentId: string;
-  }): Promise<{ organizationId: string; projectId: string; environmentId: string } | null> {
-    const environment = await this.prisma.environment.findUnique({
-      where: { id: scope.environmentId },
-      select: {
-        id: true,
-        project: { select: { id: true, organizationId: true } },
-      },
-    });
-    if (
-      !environment ||
-      environment.project.id !== scope.projectId ||
-      environment.project.organizationId !== scope.organizationId
-    ) {
-      return null;
-    }
-    return {
-      organizationId: environment.project.organizationId,
-      projectId: environment.project.id,
-      environmentId: environment.id,
+  /** Resolve canonical Environment ancestry and current operator membership. */
+  async authorizeEnvironmentOperatorScope(
+    scope: AccessKeyOperatorScope,
+    access: EnvironmentAuthorizationAccess,
+  ): Promise<EnvironmentOperatorAuthorization> {
+    if (scope.principal !== "operator") throw new Error("environment_forbidden");
+    const operator: OperatorAuthorization = {
+      sessionId: scope.sessionId || "platos-agent-control-plane",
+      actorUserId: scope.operatorUserId || scope.userId,
+      effectiveUserId: scope.userId,
+      email: "",
+      expiresAt: new Date(Date.now() + 60_000),
+      mfaVerifiedAt: null,
+      impersonation: scope.operatorUserId
+        ? {
+            active: true,
+            actorUserId: scope.operatorUserId,
+            targetUserId: scope.userId,
+          }
+        : null,
     };
+    const authorization = await authorizeEnvironmentOperator(
+      this.prisma,
+      operator,
+      scope.environmentId,
+      access,
+    );
+    if (
+      authorization.organizationId !== scope.organizationId ||
+      authorization.projectId !== scope.projectId
+    ) {
+      throw new Error("environment_forbidden");
+    }
+    return authorization;
   }
 
-  /** Generate a new scoped access key. Returns the raw key (shown once) + the DB record. */
-  async generateAccessKey(scope: { organizationId: string; projectId: string; environmentId: string }): Promise<{ rawKey: string; keyPrefix: string }> {
-    const canonical = await this.resolveEnvironmentScope(scope);
-    if (!canonical) throw new Error("Environment not found in scope");
-    const raw = `platos_live_${crypto.randomBytes(24).toString("hex")}`;
-    const hash = crypto.createHash("sha256").update(raw).digest("hex");
-    const prefix = raw.slice(0, 16);
-    const now = new Date();
-    await this.prisma.$transaction(async (tx: any) => {
-      await tx.accessKey.updateMany({
-        where: { environmentId: canonical.environmentId, revokedAt: null },
-        data: { revokedAt: now },
-      });
-      await tx.accessKey.create({
-        data: {
-          environmentId: canonical.environmentId,
-          keyHash: hash,
-          keyPrefix: prefix,
-        },
-      });
+  /** Store only a browser-generated hash and retain the replaced key briefly. */
+  async createOrRotateAccessKey(
+    scope: AccessKeyOperatorScope,
+    input: { keyHash: string; keyPrefix: string },
+  ) {
+    const authorization = await this.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
+    return rotateAccessKey(this.prisma, {
+      environmentId: authorization.environmentId,
+      keyHash: input.keyHash,
+      keyPrefix: input.keyPrefix,
     });
-    return { rawKey: raw, keyPrefix: prefix };
   }
 
-  /** Update allowed origins for a scope's access key. */
-  async setAllowedOrigins(scope: { organizationId: string; projectId: string; environmentId: string }, origins: string[]): Promise<void> {
-    const canonical = await this.resolveEnvironmentScope(scope);
-    if (!canonical) throw new Error("Environment not found in scope");
+  async setAllowedOrigins(scope: AccessKeyOperatorScope, origins: string[]): Promise<void> {
+    const authorization = await this.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
     await this.prisma.accessKey.updateMany({
-      where: { environmentId: canonical.environmentId, revokedAt: null },
+      where: {
+        environmentId: authorization.environmentId,
+        revokedAt: null,
+        validUntil: null,
+      },
       data: { allowedOrigins: origins },
     });
   }
 
-  /** Verify X-Platos-Api-Key + origin. Returns: true=pass, false=fail, null=no key configured (skip). */
+  /** Verify the active or unexpired retiring hash without serializing either. */
   async verifyAccessKey(
-    scope: { organizationId: string; projectId: string; environmentId: string },
+    scope: { organizationId: string; projectId: string; environmentId: string; userId?: string },
     providedKey: string | undefined,
     origin: string | undefined,
   ): Promise<boolean | null> {
-    const canonical = await this.resolveEnvironmentScope(scope);
-    if (!canonical) return false;
-    const record = await this.prisma.accessKey.findFirst({
-      where: { environmentId: canonical.environmentId, revokedAt: null },
-      select: { keyHash: true, allowedOrigins: true, id: true },
-      orderBy: { createdAt: "desc" },
+    let environmentId: string;
+    try {
+      const authorization = await authorizeEnvironmentRuntime(this.prisma, {
+        actorId: scope.userId || "access-key-verifier",
+        environmentId: scope.environmentId,
+      });
+      if (
+        authorization.organizationId !== scope.organizationId ||
+        authorization.projectId !== scope.projectId
+      ) return false;
+      environmentId = authorization.environmentId;
+    } catch {
+      return false;
+    }
+
+    const records = await this.prisma.accessKey.findMany({
+      where: {
+        environmentId,
+        revokedAt: null,
+        OR: [{ validUntil: null }, { validUntil: { gt: new Date() } }],
+      },
+      select: { id: true, keyHash: true, allowedOrigins: true },
     });
-    if (!record) return null; // no key configured — pass through
+    if (records.length === 0) return null;
     if (!providedKey) return false;
-    const hash = crypto.createHash("sha256").update(providedKey).digest("hex");
-    // BUG-7: use timing-safe comparison to prevent timing oracle attacks.
-    const hashBuf = Buffer.from(hash, "hex");
-    const storedBuf = Buffer.from(record.keyHash, "hex");
-    if (hashBuf.length !== storedBuf.length || !crypto.timingSafeEqual(hashBuf, storedBuf)) return false;
+    const candidate = Buffer.from(crypto.createHash("sha256").update(providedKey).digest("hex"), "hex");
+    const record = records.find((entry) => {
+      const stored = Buffer.from(entry.keyHash, "hex");
+      return candidate.length === stored.length && crypto.timingSafeEqual(candidate, stored);
+    });
+    if (!record) return false;
     if (record.allowedOrigins.length > 0) {
       if (!origin) return false;
-      // BUG-8: use exact origin comparison, not startsWith, to prevent
-      // bypass via crafted subdomains (e.g. https://example.com.evil.com).
-      const allowed = (record.allowedOrigins as string[]).some((o: string) => {
+      const allowed = record.allowedOrigins.some((configured) => {
         try {
-          return new URL(origin).origin === new URL(o).origin;
+          return new URL(origin).origin === new URL(configured).origin;
         } catch {
-          return origin === o;
+          return origin === configured;
         }
       });
       if (!allowed) return false;
     }
-    // Update lastUsedAt asynchronously — don't block the request
     void this.prisma.accessKey.updateMany({
       where: { id: record.id, revokedAt: null },
       data: { lastUsedAt: new Date() },
@@ -853,23 +906,23 @@ export class AuthService {
     return true;
   }
 
-  /** Get the access key record (without keyHash) for display. */
-  async getAccessKey(scope: { organizationId: string; projectId: string; environmentId: string }) {
-    const canonical = await this.resolveEnvironmentScope(scope);
-    if (!canonical) return null;
-    return this.prisma.accessKey.findFirst({
-      where: { environmentId: canonical.environmentId, revokedAt: null },
-      select: { keyPrefix: true, allowedOrigins: true, lastUsedAt: true, createdAt: true },
+  async getAccessKey(scope: AccessKeyOperatorScope) {
+    const authorization = await this.authorizeEnvironmentOperatorScope(scope, "metadata");
+    const keys = await this.prisma.accessKey.findMany({
+      where: { environmentId: authorization.environmentId, revokedAt: null },
       orderBy: { createdAt: "desc" },
+      select: ACCESS_KEY_SAFE_SELECT,
     });
+    return {
+      key: keys.find((key) => key.validUntil === null) ?? null,
+      retiringKey: keys.find((key) => key.validUntil !== null) ?? null,
+    };
   }
 
-  /** Revoke the active access key for a scope. */
-  async deleteAccessKey(scope: { organizationId: string; projectId: string; environmentId: string }): Promise<void> {
-    const canonical = await this.resolveEnvironmentScope(scope);
-    if (!canonical) throw new Error("Environment not found in scope");
+  async deleteAccessKey(scope: AccessKeyOperatorScope): Promise<void> {
+    const authorization = await this.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
     await this.prisma.accessKey.updateMany({
-      where: { environmentId: canonical.environmentId, revokedAt: null },
+      where: { environmentId: authorization.environmentId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
   }
@@ -882,8 +935,9 @@ export class AuthService {
     organizationId: string,
     projectId: string,
     entityId: string,
+    operatorScope?: AccessKeyOperatorScope,
   ): Promise<{ organizationId: string; projectId: string; entityId: string; serviceSecret: string } | null> {
-    if (!this.secretsService) {
+    if (!this.secretStore || !operatorScope) {
       throw new Error("Entity credential encryption is unavailable");
     }
     const entity = await this.prisma.entity.findFirst({
@@ -894,7 +948,6 @@ export class AuthService {
         project: { organizationId },
       },
       select: {
-        id: true,
         project: {
           select: {
             environments: {
@@ -908,11 +961,20 @@ export class AuthService {
     if (!entity || entity.project.environments.length === 0) return null;
 
     const newSecret = crypto.randomBytes(32).toString("hex");
-    const secretHash = crypto.createHash("sha256").update(newSecret).digest("hex");
+    const authorizations = new Map<string, EnvironmentOperatorAuthorization>();
+    for (const environment of entity.project.environments) {
+      authorizations.set(
+        environment.id,
+        await this.authorizeEnvironmentOperatorScope(
+          { ...operatorScope, environmentId: environment.id },
+          "secret:mutate",
+        ),
+      );
+    }
     await this.prisma.$transaction(async (tx) => {
       for (const environment of entity.project.environments) {
-        const encryptedReference = this.secretsService!.encrypt(newSecret);
-        await tx.credential.upsert({
+        const authorization = authorizations.get(environment.id)!;
+        const existing = await tx.credential.findUnique({
           where: {
             environmentId_kind_name: {
               environmentId: environment.id,
@@ -920,21 +982,33 @@ export class AuthService {
               name: entityId,
             },
           },
-          create: {
-            environmentId: environment.id,
+          select: { id: true, revokedAt: true, activeSecretVersionId: true },
+        });
+        let credentialId: string;
+        if (existing?.activeSecretVersionId && !existing.revokedAt) {
+          const rotated = await this.secretStore!.rotateInTransaction(tx, {
+            authorization,
+            credentialId: existing.id,
+            plaintext: newSecret,
+          });
+          credentialId = rotated.id;
+        } else if (!existing) {
+          const created = await this.secretStore!.createInTransaction(tx, {
+            authorization,
             kind: CredentialKind.ENTITY_SECRET,
             name: entityId,
+            plaintext: newSecret,
+          });
+          credentialId = created.id;
+        } else {
+          throw new Error("entity_credential_unavailable");
+        }
+        await tx.credential.update({
+          where: { id: credentialId },
+          data: {
             prefix: newSecret.slice(0, 8),
-            secretHash,
-            encryptedReference,
+            secretHash: crypto.createHash("sha256").update(newSecret).digest("hex"),
             permissions: ["entity:wire"],
-          },
-          update: {
-            prefix: newSecret.slice(0, 8),
-            secretHash,
-            encryptedReference,
-            revokedAt: null,
-            lastUsedAt: null,
           },
         });
       }
@@ -942,43 +1016,32 @@ export class AuthService {
     return { organizationId, projectId, entityId, serviceSecret: newSecret };
   }
 
-  /** Resolve a wire entity's Environment-owned signing secret for an internal
-   * transport call. This method never returns credential rows or ciphertext. */
+  /** Resolve a wire entity secret only after canonical Environment authorization. */
   async resolveEntityServiceSecret(scope: {
     organizationId: string;
     projectId: string;
     environmentId: string;
     entityId: string;
   }): Promise<string | null> {
-    if (!this.secretsService) return null;
-    const credential = await this.prisma.credential.findFirst({
-      where: {
-        environmentId: scope.environmentId,
-        kind: CredentialKind.ENTITY_SECRET,
-        name: scope.entityId,
-        revokedAt: null,
-        environment: {
-          projectId: scope.projectId,
-          project: {
-            organizationId: scope.organizationId,
-            entities: {
-              some: { externalId: scope.entityId, connectionKind: "wire" },
-            },
-          },
-        },
-      },
-      select: { id: true, encryptedReference: true },
-    });
-    if (!credential?.encryptedReference) return null;
+    if (!this.secretStore) return null;
     try {
-      const secret = this.secretsService.decrypt(credential.encryptedReference);
-      await this.prisma.credential.updateMany({
-        where: { id: credential.id, revokedAt: null },
-        data: { lastUsedAt: new Date() },
+      const authorization = await authorizeEnvironmentRuntime(this.prisma, {
+        actorId: `entity:${scope.entityId}`,
+        environmentId: scope.environmentId,
       });
-      return secret;
+      if (
+        authorization.organizationId !== scope.organizationId ||
+        authorization.projectId !== scope.projectId
+      ) return null;
+      const material = await this.secretStore.readForRuntime({
+        authorization,
+        name: scope.entityId,
+        kind: CredentialKind.ENTITY_SECRET,
+      });
+      return material.reveal();
     } catch {
       return null;
     }
   }
+
 }

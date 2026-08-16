@@ -4,10 +4,7 @@ import { User } from "~/models/user.server";
 import { filterOrphanedEnvironments, sortEnvironments } from "~/utils/environmentSort";
 import { EnvironmentVariablesRepository } from "~/v3/environmentVariables/environmentVariablesRepository.server";
 import type { EnvironmentVariableUpdater } from "~/v3/environmentVariables/repository";
-import {
-  SyncEnvVarsMapping,
-  EnvSlug,
-} from "~/v3/vercel/vercelProjectIntegrationSchema";
+import { SyncEnvVarsMapping, EnvSlug } from "~/v3/vercel/vercelProjectIntegrationSchema";
 import { VercelIntegrationService } from "~/services/vercelIntegration.server";
 
 type Result = Awaited<ReturnType<EnvironmentVariablesPresenter["call"]>>;
@@ -108,8 +105,10 @@ export class EnvironmentVariablesPresenter {
           })
         : [];
 
-    const usersRecord: Record<string, { id: string; name: string | null; displayName: string | null; avatarUrl: string | null }> =
-      Object.fromEntries(users.map((u) => [u.id, u]));
+    const usersRecord: Record<
+      string,
+      { id: string; name: string | null; displayName: string | null; avatarUrl: string | null }
+    > = Object.fromEntries(users.map((u) => [u.id, u]));
 
     const environments = await this.#prismaClient.runtimeEnvironment.findMany({
       select: {
@@ -136,7 +135,16 @@ export class EnvironmentVariablesPresenter {
     );
 
     const repository = new EnvironmentVariablesRepository(this.#prismaClient);
-    const variables = await repository.getProject(project.id);
+    const dashboardValues = new Map<string, string>();
+    await Promise.all(
+      environmentVariables.flatMap((environmentVariable) =>
+        environmentVariable.values.map(async (value) => {
+          const referenceKey = value.valueReference?.key ?? null;
+          const resolved = await repository.getDashboardValue(referenceKey, value.isSecret);
+          dashboardValues.set(value.id, resolved);
+        })
+      )
+    );
 
     // Get Vercel integration data if it exists
     const vercelService = new VercelIntegrationService(this.#prismaClient);
@@ -147,20 +155,18 @@ export class EnvironmentVariablesPresenter {
 
     if (vercelIntegration) {
       vercelSyncEnvVarsMapping = vercelIntegration.parsedIntegrationData.syncEnvVarsMapping;
-      vercelPullEnvVarsBeforeBuild = vercelIntegration.parsedIntegrationData.config.pullEnvVarsBeforeBuild ?? null;
+      vercelPullEnvVarsBeforeBuild =
+        vercelIntegration.parsedIntegrationData.config.pullEnvVarsBeforeBuild ?? null;
     }
 
     return {
       environmentVariables: environmentVariables
         .flatMap((environmentVariable) => {
-          const variable = variables.find((v) => v.key === environmentVariable.key);
-
           return sortedEnvironments.flatMap((env) => {
-            const val = variable?.values.find((v) => v.environment.id === env.id);
             const valueRecord = environmentVariable.values.find((v) => v.environmentId === env.id);
             const isSecret = valueRecord?.isSecret ?? false;
 
-            if (!val || !valueRecord) {
+            if (!valueRecord) {
               return [];
             }
 
@@ -185,7 +191,7 @@ export class EnvironmentVariablesPresenter {
                 id: environmentVariable.id,
                 key: environmentVariable.key,
                 environment: { type: env.type, id: env.id, branchName: env.branchName },
-                value: isSecret ? "" : val.value,
+                value: dashboardValues.get(valueRecord.id) ?? "",
                 isSecret,
                 version: valueRecord.version,
                 lastUpdatedBy,

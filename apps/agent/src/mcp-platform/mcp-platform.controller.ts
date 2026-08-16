@@ -40,6 +40,7 @@ import { MemoryService } from "../memory/memory.service";
 import { MemoryExtractionService } from "../memory/memory-extraction.service";
 import { KnowledgeGraphService } from "../memory/knowledge-graph.service";
 import { ProviderRegistryService } from "../providers/provider-registry.service";
+import { ProviderKeyService } from "../providers/provider-key.service";
 import { ScopedEnvService } from "../providers/scoped-env.service";
 import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { BudgetService } from "../monitoring/budget.service";
@@ -120,6 +121,7 @@ export class McpPlatformController {
     private readonly memoryExtraction: MemoryExtractionService,
     private readonly graph: KnowledgeGraphService,
     private readonly providers: ProviderRegistryService,
+    private readonly providerKeys: ProviderKeyService,
     // MCPF-W3 — providers.test_credentials + providers.rotate_key need scoped-env access.
     private readonly scopedEnv: ScopedEnvService,
     private readonly approvals: MonitoringApprovalsService,
@@ -187,6 +189,7 @@ export class McpPlatformController {
         memoryExtraction: this.memoryExtraction,
         graph: this.graph,
         providers: this.providers,
+        providerKeys: this.providerKeys,
         // MCPF-W3 — providers.test_credentials / rotate_key + oauth.* tools.
         scopedEnv: this.scopedEnv,
         oauth: this.oauth,

@@ -21,8 +21,9 @@ function mockExecutionContext(
   headers: HeaderMap = {},
   url = "/api/v1/agent/threads",
   preScoped?: Record<string, unknown>,
+  method = "GET",
 ): ExecutionContext {
-  const request: Record<string, unknown> = { headers, url };
+  const request: Record<string, unknown> = { headers, url, method };
   if (preScoped) request.scope = preScoped;
   const response = {
     status: vi.fn().mockReturnThis(),
@@ -75,15 +76,21 @@ function makeAuthHarness() {
       findUnique: vi.fn(async () => state.environment),
     },
     accessKey: {
-      findFirst: vi.fn(async () => state.accessKey),
+      findMany: vi.fn(async () => (state.accessKey ? [state.accessKey] : [])),
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
   };
+  const auth = new AuthService(prisma as any, {} as any);
+  // ScopeGuard owns token validation and delegates key verification. The
+  // AccessKey data model is covered in AuthService tests; this lightweight
+  // session fixture does not model EnvironmentRuntimeAuthorization.
+  const verifyAccessKey = vi.spyOn(auth, "verifyAccessKey").mockResolvedValue(null);
   return {
     scope,
     state,
     prisma,
-    auth: new AuthService(prisma as any, {} as any),
+    auth,
+    verifyAccessKey,
   };
 }
 
@@ -167,6 +174,53 @@ describe("ScopeGuard — Path 2 direct headers", () => {
     expect(req.scope.entityId).toBe("fandesk-main");
     expect(req.scope.userToken).toBe("opaque.user.jwt");
   });
+
+  it.each([
+    ["GET", "/api/v1/agent/access-key"],
+    ["POST", "/api/v1/agent/access-key"],
+    ["DELETE", "/api/v1/agent/access-key"],
+    ["POST", "/api/v1/agent/access-key/origins?from=dashboard"],
+  ])(
+    "allows trusted direct-header AccessKey lifecycle %s %s without raw bearer material",
+    async (method, url) => {
+      const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
+      const guard = new ScopeGuard(authService as any);
+      const ctx = mockExecutionContext(
+        {
+          "x-platos-organization-id": "org_1",
+          "x-platos-project-id": "proj_1",
+          "x-platos-environment-id": "env_1",
+          "x-platos-user-id": "user_1",
+        },
+        url,
+        undefined,
+        method,
+      );
+
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(authService.verifyAccessKey).not.toHaveBeenCalled();
+      expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
+    },
+  );
+
+  it("continues to verify raw bearer material for non-lifecycle direct-header routes", async () => {
+    const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
+    const guard = new ScopeGuard(authService as any);
+    const ctx = mockExecutionContext(
+      {
+        "x-platos-organization-id": "org_1",
+        "x-platos-project-id": "proj_1",
+        "x-platos-environment-id": "env_1",
+        "x-platos-user-id": "user_1",
+      },
+      "/api/v1/agent/threads",
+      undefined,
+      "POST",
+    );
+
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+    expect(authService.verifyAccessKey).toHaveBeenCalledOnce();
+  });
 });
 
 describe("ScopeGuard — Path 1 session token", () => {
@@ -244,7 +298,7 @@ describe("ScopeGuard — Path 1 session token", () => {
 
     await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
     expect(h.prisma.mcpBearerToken.updateMany).toHaveBeenCalledOnce();
-    expect(h.prisma.accessKey.findFirst).toHaveBeenCalledOnce();
+    expect(h.verifyAccessKey).toHaveBeenCalledOnce();
   });
 
   it("rejects the removed legacy two-part token format", async () => {

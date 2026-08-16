@@ -51,10 +51,11 @@ The service runs on port 3100 by default.
 - `DELETE /api/v1/agent/orgs/:orgId` — remove an org
 
 ### Credentials
-- `POST /api/v1/agent/credentials` — store encrypted API key / service account
-- `GET /api/v1/agent/credentials` — list configured providers
-- `DELETE /api/v1/agent/credentials/:provider` — remove a credential
-- `GET /api/v1/agent/credentials/status` — check encryption configuration
+
+Credentials are created and rotated through the dashboard for one authenticated
+Environment. Agent/provider/MCP paths store and accept references only; metadata
+responses never contain plaintext or envelope fields. `scopedEnv.get()` resolves
+only dashboard credentials and never falls back to `process.env` provider keys.
 
 ### Monitoring
 - `GET /api/v1/agent/monitoring/cost/:orgId` — org daily cost
@@ -71,26 +72,33 @@ controllers, and strict production builds remove their compiled files.
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
-| `REDIS_URL` | Yes | `redis://localhost:6379` | Redis connection string |
-| `PLATOS_AGENT_PORT` | No | `3100` | HTTP port |
-| `PLATOS_TEST_MODE` | No | `false` | Enable deterministic local test providers |
-| `PLATOS_DEFAULT_MODEL` | No | `anthropic:claude-sonnet-4-20250514` | Default LLM model |
-| `PLATOS_ENCRYPTION_KEY` | Prod | — | 32-byte hex for secrets encryption |
-| `SESSION_SECRET` | Prod | — | Session token signing secret |
-| `PLATOS_MESSAGE_ENCRYPTION_KEY` | Prod | — | 32-byte hex for versioned message/audit-content encryption |
-| `PLATOS_INTERNAL_AUTH_TOKEN` | Prod | — | Dedicated scheduled/internal callback authentication only |
-| `PLATOS_CORS_ORIGIN` | No | `*` | CORS allowed origins |
-| `PLATOS_RATE_LIMIT_PER_MIN` | No | `60` | Per-org requests/minute |
-| `PLATOS_RATE_LIMIT_PER_DAY` | No | `1000` | Per-org requests/day |
-| `PLATOS_WORKING_MEMORY_TTL` | No | `3600` | Working memory TTL (seconds) |
-| `PLATOS_TOOL_EXECUTOR_MODEL` | No | — | GPT-OSS model for Mode 1 tool execution |
-| `ANTHROPIC_API_KEY` | No | — | Default Anthropic API key |
-| `OPENAI_API_KEY` | No | — | Default OpenAI API key |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | No | — | Default Google AI API key |
-| `GOOGLE_APPLICATION_CREDENTIALS` | No | — | GCP service account JSON path |
+| Variable                             | Required | Default                              | Description                                                        |
+| ------------------------------------ | -------- | ------------------------------------ | ------------------------------------------------------------------ |
+| `DATABASE_URL`                       | Yes      | —                                    | PostgreSQL connection string                                       |
+| `REDIS_URL`                          | Yes      | `redis://localhost:6379`             | Redis connection string                                            |
+| `PLATOS_AGENT_PORT`                  | No       | `3100`                               | HTTP port                                                          |
+| `PLATOS_TEST_MODE`                   | No       | `false`                              | Enable deterministic local test providers                          |
+| `PLATOS_DEFAULT_MODEL`               | No       | `anthropic:claude-sonnet-4-20250514` | Default LLM model                                                  |
+| `PLATOS_ENCRYPTION_KEY`              | Prod     | —                                    | Separate 32-byte hex agent integration encryption domain           |
+| `PLATOS_CREDENTIAL_ROOT_KEY_VERSION` | Prod     | —                                    | Positive active version for the credential root-key ring           |
+| `PLATOS_CREDENTIAL_ROOT_KEYS`        | Prod     | —                                    | JSON object mapping active/prior positive versions to 64-hex roots |
+| `SESSION_SECRET`                     | Prod     | —                                    | Session token signing secret                                       |
+| `PLATOS_MESSAGE_ENCRYPTION_KEY`      | Prod     | —                                    | 32-byte hex for versioned message/audit-content encryption         |
+| `PLATOS_INTERNAL_AUTH_TOKEN`         | Prod     | —                                    | Dedicated scheduled/internal callback authentication only          |
+| `PLATOS_CORS_ORIGIN`                 | No       | `*`                                  | CORS allowed origins                                               |
+| `PLATOS_RATE_LIMIT_PER_MIN`          | No       | `60`                                 | Per-org requests/minute                                            |
+| `PLATOS_RATE_LIMIT_PER_DAY`          | No       | `1000`                               | Per-org requests/day                                               |
+| `PLATOS_WORKING_MEMORY_TTL`          | No       | `3600`                               | Working memory TTL (seconds)                                       |
+| `PLATOS_TOOL_EXECUTOR_MODEL`         | No       | —                                    | GPT-OSS model for Mode 1 tool execution                            |
+| `GOOGLE_APPLICATION_CREDENTIALS`     | No       | —                                    | GCP service account JSON path                                      |
+
+Credential roots must not reuse `ENCRYPTION_KEY`, `PLATOS_ENCRYPTION_KEY`,
+`PLATOS_MESSAGE_ENCRYPTION_KEY`, session, magic-link, or service-auth material.
+To rotate a root: distribute the new numbered root everywhere without changing
+the active version; switch the active version everywhere; rewrap active
+credentials; verify credential status reports zero active envelopes on the old
+root and `canRemoveRoot` succeeds; only then remove the old numbered root. A
+failed read, rotate, rewrap, or audit insert fails closed.
 
 ## Authentication
 

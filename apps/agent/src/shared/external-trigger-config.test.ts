@@ -22,6 +22,8 @@ describe("external Trigger configuration", () => {
         REDIS_URL: "redis://localhost:6379",
         PLATOS_ENCRYPTION_KEY:
           "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "1",
+        PLATOS_CREDENTIAL_ROOT_KEYS: JSON.stringify({ "1": "33".repeat(32) }),
         SESSION_SECRET: "test-session-secret-not-real-do-not-use-in-prod",
       }),
     ).toMatchObject({ ok: true });

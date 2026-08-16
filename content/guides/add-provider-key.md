@@ -1,7 +1,7 @@
 ---
 slug: add-provider-key
 title: Add a provider key (BYOK)
-description: Link your OpenAI, Anthropic, or other provider key to a Platos environment via environment variables.
+description: Create and link an OpenAI, Anthropic, or other credential to one Platos Environment.
 category: getting-started
 order: 30
 trigger_dev_primitive: false
@@ -23,7 +23,7 @@ source_files_referenced:
 
 # Add a provider key (BYOK)
 
-Platos runs on your provider keys. Keys are stored as environment variables on the agent process; the dashboard's Providers page shows you which providers are wired and runs health checks against them. This guide adds your first key.
+Platos runs on dashboard-managed provider credentials. Raw values are encrypted in the Platos-native store for one Environment; provider rows and agent configs retain references only.
 
 ## The goal
 
@@ -31,11 +31,11 @@ A linked Anthropic or OpenAI key in your `dev` environment. After this, the Prov
 
 ## Mental model
 
-A "provider" is a slot Platos knows about (Anthropic, OpenAI, Google, Vertex, and a handful of OpenAI-compatible ones). Each slot declares which environment variable holds the key. Self-hosted: you set the env var in your `.env` file. Managed deployments: you set it in the dashboard's Environment Variables page (which writes to the same secret store).
+A "provider" is a slot Platos knows about (Anthropic, OpenAI, Google, Vertex, and OpenAI-compatible providers). Each slot declares a conventional bare credential name. The Providers page creates the encrypted Environment credential and provider reference together.
 
-There is no separate dialog to "paste a key into the Providers page." The Providers page is a read-and-link surface, not a create-a-secret surface. The actual secret lives in env vars.
+The agent resolves only the dashboard credential store. A matching value in the agent process environment is not a fallback and does not make the provider available.
 
-## Steps (self-host)
+## Steps
 
 1. **Get the key.**
 
@@ -47,39 +47,25 @@ There is no separate dialog to "paste a key into the Providers page." The Provid
 
    Make sure billing is set up. Platos uses the key directly for inference.
 
-2. **Add the env var.**
+2. **Create the Environment credential and reference.**
 
-   Edit your `.env` file at the repo root. Add the variable for the provider you have:
+   Open Providers for the target Environment, choose **Add key** under the provider, and use the manifest's bare name:
 
-   ```bash
-   ANTHROPIC_API_KEY=sk-ant-...
-   # or
-   OPENAI_API_KEY=sk-...
-   # or
-   GOOGLE_GENERATIVE_AI_API_KEY=...
+   ```text
+   ANTHROPIC_API_KEY
+   OPENAI_API_KEY
+   GOOGLE_GENERATIVE_AI_API_KEY
    ```
 
-   The exact variable name per provider lives in `.env.example`. The Providers page also shows the expected variable name for each provider so you do not have to remember.
+   Paste the raw value only into the credential create form. It is encrypted immediately and is not returned by list, health, provider, or MCP APIs.
 
-3. **Restart the stack.**
+3. **Enable/link the provider.**
 
-   ```bash
-   docker compose -f docker-compose.platos.yml up -d
-   ```
-
-   This propagates the new env into the running webapp + agent containers. Existing turns keep going; new turns pick up the key on first inference call.
+   Select the new key as default when required, then enable/link the provider. Provider tools retain the name/reference only, not plaintext.
 
 4. **Verify on the Providers page.**
 
    Sidebar to Providers (`/orgs/{org}/projects/{project}/env/dev/agent-providers`). The provider card flips to a green health badge within a few seconds. The badge runs a cheap "list models" call against the key.
-
-## Steps (managed deployment)
-
-If you are running on managed Platos (no `.env` file), use the dashboard Environment Variables page:
-
-1. Sidebar to Environment Variables.
-2. New variable. Name: `ANTHROPIC_API_KEY` (or whichever provider). Value: your key. Scope it to the environments where you want the provider available.
-3. Save. The agent process picks up the change on the next request; no manual restart needed.
 
 ## Verify
 
@@ -89,21 +75,22 @@ If you are running on managed Platos (no `.env` file), use the dashboard Environ
 
 ## Rotate without downtime
 
-To rotate a key, edit the env var (in `.env` or in the dashboard) with the new value and either restart the stack (self-host) or save (managed). New turns use the new key on first inference call. Turns already in flight finish on the credentials they started with. No agent-config edits required.
+Rotate the credential in the dashboard. The update atomically activates a new secret revision; no provider-link or agent-config edit is required. Turns already holding the old material may finish, while subsequent reads use the replacement. The immutable audit must persist or rotation fails closed.
 
 ## Multiple keys for the same provider
 
-For multi-key support (e.g. one Anthropic key per region or per cost center), Platos accepts numbered variants: `ANTHROPIC_API_KEY`, `ANTHROPIC_API_KEY_2`, `ANTHROPIC_API_KEY_3`. The Providers page lists all variants linked to a provider; agents can pin to a specific variant or use scope default.
+For separate regions or cost centers, create distinctly named/labeled credentials in the same Environment and link each to the provider. Agents can pin a specific provider-key reference or use the Environment default.
 
 ## Common pitfalls
 
-- **Model picker is empty.** No env var is linked. Check the Providers page for a red status, set the env var, restart.
-- **Health check fails with 401.** The key is invalid or revoked. Replace the value in `.env` and restart.
+- **Model picker is empty.** No dashboard credential is linked in this Environment. A deployment env var does not count.
+- **Health check fails with 401.** The provider rejected the credential. Rotate it in the dashboard.
 - **Health check fails with 429 or quota error.** The key is valid but the provider account has hit a rate limit or billing issue. Fix on the provider's dashboard.
-- **Wrong variable name.** Check `.env.example` for the exact name. `OPENAI_KEY` is wrong; it has to be `OPENAI_API_KEY`.
+- **Wrong reference name.** Check the provider manifest/dashboard hint. `OPENAI_KEY` does not resolve a credential named `OPENAI_API_KEY`.
+- **Plaintext pasted into a reference field.** Provider and MCP configuration fields store references only; create the credential first.
 
 ## Next steps
 
 - [Create your first agent](/guides/create-first-agent) using the new provider's model.
-- For separate `prod` keys, set a differently-scoped env var in the `prod` environment. Keys do not auto-cross environments.
+- For separate `prod` keys, create a credential in the production Environment. Credentials do not cross Environment boundaries.
 - [Self-host with docker compose](/guides/install-self-host) covers the broader env-var lifecycle.

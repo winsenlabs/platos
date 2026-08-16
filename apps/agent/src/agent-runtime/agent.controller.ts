@@ -1524,7 +1524,9 @@ export class AgentController {
   @Get("providers")
   async listProviders(@Req() req: Request) {
     const scope = this.getScope(req);
-    const providers = await this.providerRegistry.list(this.scopeTuple(scope));
+    requireOperator(scope);
+    const authorization = await this.authService.authorizeEnvironmentOperatorScope(scope, "metadata");
+    const providers = await this.providerRegistry.list(authorization);
     return { providers };
   }
 
@@ -1532,35 +1534,45 @@ export class AgentController {
   @Get("providers/models")
   async availableModels(@Req() req: Request) {
     const scope = this.getScope(req);
-    return this.providerRegistry.availableModels(this.scopeTuple(scope));
+    requireOperator(scope);
+    const authorization = await this.authService.authorizeEnvironmentOperatorScope(scope, "metadata");
+    return this.providerRegistry.availableModels(authorization);
   }
 
   /** Run a live health probe across every manifest provider. */
   @Get("providers/health")
   async checkProviderHealth(@Req() req: Request) {
     const scope = this.getScope(req);
-    return this.providerHealth.testAllProviders(this.scopeTuple(scope));
+    requireOperator(scope);
+    const authorization = await this.authService.authorizeEnvironmentOperatorScope(scope, "metadata");
+    return this.providerHealth.testAllProviders(authorization);
   }
 
   /** Live health probe for a single provider. */
   @Get("providers/:provider/health")
   async testProvider(@Req() req: Request, @Param("provider") provider: string) {
     const scope = this.getScope(req);
-    return this.providerHealth.testProvider(this.scopeTuple(scope), provider);
+    requireOperator(scope);
+    const authorization = await this.authService.authorizeEnvironmentOperatorScope(scope, "metadata");
+    return this.providerHealth.testProvider(authorization, provider);
   }
 
   /** Enable a provider in the current scope (upsert). */
   @Post("providers/:provider/link")
   async linkProvider(@Req() req: Request, @Param("provider") provider: string) {
     const scope = this.getScope(req);
-    return this.providerRegistry.link(this.scopeTuple(scope), provider);
+    requireOperator(scope);
+    const authorization = await this.authService.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
+    return this.providerRegistry.link(authorization, provider);
   }
 
   /** Remove the enabled row (reverts to default envReady behavior). */
   @Delete("providers/:provider/link")
   async unlinkProvider(@Req() req: Request, @Param("provider") provider: string) {
     const scope = this.getScope(req);
-    await this.providerRegistry.unlink(this.scopeTuple(scope), provider);
+    requireOperator(scope);
+    const authorization = await this.authService.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
+    await this.providerRegistry.unlink(authorization, provider);
     return { unlinked: true };
   }
 
@@ -1572,7 +1584,9 @@ export class AgentController {
     @Body() body: { enabled: boolean },
   ) {
     const scope = this.getScope(req);
-    return this.providerRegistry.setEnabled(this.scopeTuple(scope), provider, body.enabled);
+    requireOperator(scope);
+    const authorization = await this.authService.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
+    return this.providerRegistry.setEnabled(authorization, provider, body.enabled);
   }
 
   /** Get connection details for integrating a custom frontend */
@@ -2251,7 +2265,7 @@ export class AgentController {
               },
             }
           : {}),
-      });
+      }, scope);
     } catch (err: any) {
       if (err?.statusCode === 409) {
         throw new HttpException(err.message, HttpStatus.CONFLICT);
@@ -2339,6 +2353,7 @@ export class AgentController {
       scope.organizationId,
       scope.projectId,
       entityId,
+      scope,
     );
     if (!result) return { error: "Entity not found", status: 404 };
     // Force-close any live WS sessions still authenticated with the OLD
@@ -5819,29 +5834,59 @@ Write the summary now:`;
   @Get("access-key")
   async getAccessKey(@Req() req: Request) {
     const scope = this.getScope(req);
-    const record = await this.authService.getAccessKey({ organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId });
-    return { key: record ?? null };
+    requireOperator(scope);
+    const record = await this.authService.getAccessKey(scope);
+    return record;
   }
 
-  @Post("access-key/generate")
-  async generateAccessKey(@Req() req: Request) {
+  @Post("access-key")
+  async createOrRotateAccessKey(
+    @Req() req: Request,
+    @Body() body: unknown,
+  ) {
     const scope = this.getScope(req);
-    const result = await this.authService.generateAccessKey({ organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId });
-    return result; // { rawKey, keyPrefix } — rawKey shown once
+    requireOperator(scope);
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      Array.isArray(body) ||
+      Object.keys(body).length !== 2 ||
+      !Object.hasOwn(body, "keyHash") ||
+      !Object.hasOwn(body, "keyPrefix")
+    ) {
+      throw new BadRequestException("invalid_access_key_material");
+    }
+
+    const { keyHash, keyPrefix } = body as Record<string, unknown>;
+    if (
+      typeof keyHash !== "string" ||
+      !/^[a-f0-9]{64}$/.test(keyHash) ||
+      typeof keyPrefix !== "string" ||
+      !/^platos_live_[A-Za-z0-9_-]{1,12}$/.test(keyPrefix)
+    ) {
+      throw new BadRequestException("invalid_access_key_material");
+    }
+
+    return this.authService.createOrRotateAccessKey(
+      scope,
+      { keyHash, keyPrefix },
+    );
   }
 
   @Post("access-key/origins")
   async setAllowedOrigins(@Req() req: Request, @Body() body: { origins: string[] }) {
     const scope = this.getScope(req);
+    requireOperator(scope);
     const origins = (body.origins ?? []).map((o: string) => o.trim()).filter(Boolean);
-    await this.authService.setAllowedOrigins({ organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId }, origins);
+    await this.authService.setAllowedOrigins(scope, origins);
     return { ok: true, origins };
   }
 
   @Delete("access-key")
   async deleteAccessKey(@Req() req: Request) {
     const scope = this.getScope(req);
-    await this.authService.deleteAccessKey({ organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId });
+    requireOperator(scope);
+    await this.authService.deleteAccessKey(scope);
     return { ok: true };
   }
 

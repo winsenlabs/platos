@@ -11,6 +11,8 @@ import {
   ImpersonationAction,
   OperatorIdentityProvider,
   OrganizationRole,
+  PrincipalTier,
+  ProjectRole,
   type Prisma,
   type PrismaClient,
 } from "../generated/control";
@@ -79,6 +81,188 @@ export interface OperatorAuthorization {
     actorUserId: string;
     targetUserId: string;
   };
+}
+
+const environmentAuthorizationBrand: unique symbol = Symbol("EnvironmentAuthorization");
+
+export type EnvironmentAuthorizationAccess = "metadata" | "secret:mutate";
+
+export interface EnvironmentOperatorAuthorization {
+  readonly [environmentAuthorizationBrand]: true;
+  readonly principalType: "operator";
+  readonly tier: "OPERATOR";
+  readonly access: EnvironmentAuthorizationAccess;
+  readonly environmentId: string;
+  readonly projectId: string;
+  readonly organizationId: string;
+  readonly actorUserId: string;
+  readonly effectiveUserId: string;
+  readonly organizationRole: OrganizationRole;
+  readonly projectRole: ProjectRole | null;
+}
+
+export interface AuthenticatedRuntimeActor {
+  readonly actorId: string;
+  readonly environmentId: string;
+}
+
+export interface EnvironmentRuntimeAuthorization {
+  readonly [environmentAuthorizationBrand]: true;
+  readonly principalType: "runtime";
+  readonly tier: "RUNTIME";
+  readonly access: "secret:read";
+  readonly environmentId: string;
+  readonly projectId: string;
+  readonly organizationId: string;
+  readonly actorId: string;
+}
+
+export interface EnvironmentServiceAuthorization {
+  readonly [environmentAuthorizationBrand]: true;
+  readonly principalType: "service";
+  readonly tier: "RUNTIME";
+  readonly access: "secret:write";
+  readonly environmentId: string;
+  readonly projectId: string;
+  readonly organizationId: string;
+  readonly actorId: string;
+}
+
+export type EnvironmentAuthorization =
+  | EnvironmentOperatorAuthorization
+  | EnvironmentRuntimeAuthorization
+  | EnvironmentServiceAuthorization;
+
+/**
+ * Resolves Environment ancestry and current memberships from canonical rows.
+ * Callers pass the result of operator-session authentication, never tenant IDs
+ * copied from request headers.
+ */
+export async function authorizeEnvironmentOperator(
+  database: DatabaseClient,
+  operator: OperatorAuthorization,
+  environmentId: string,
+  access: EnvironmentAuthorizationAccess
+): Promise<EnvironmentOperatorAuthorization> {
+  const environment = await database.environment.findUnique({
+    where: { id: environmentId },
+    select: {
+      id: true,
+      archivedAt: true,
+      project: {
+        select: { id: true, archivedAt: true, organizationId: true, organization: { select: { archivedAt: true } } },
+      },
+    },
+  });
+  if (
+    !environment ||
+    environment.archivedAt ||
+    environment.project.archivedAt ||
+    environment.project.organization.archivedAt
+  ) {
+    throw environmentForbidden();
+  }
+
+  const organizationMembership = await database.organizationMembership.findUnique({
+    where: {
+      organizationId_userId: {
+        organizationId: environment.project.organizationId,
+        userId: operator.effectiveUserId,
+      },
+    },
+    select: { id: true, role: true, deactivatedAt: true },
+  });
+  if (!organizationMembership || organizationMembership.deactivatedAt) {
+    throw environmentForbidden();
+  }
+
+  const projectMembership = await database.projectMembership.findUnique({
+    where: {
+      projectId_organizationMembershipId: {
+        projectId: environment.project.id,
+        organizationMembershipId: organizationMembership.id,
+      },
+    },
+    select: { role: true },
+  });
+  const organizationAdmin =
+    organizationMembership.role === OrganizationRole.OWNER ||
+    organizationMembership.role === OrganizationRole.ADMIN;
+  if (!organizationAdmin && !projectMembership) throw environmentForbidden();
+  if (access === "secret:mutate" && !organizationAdmin && projectMembership?.role !== ProjectRole.ADMIN) {
+    throw environmentForbidden();
+  }
+
+  return Object.freeze({
+    [environmentAuthorizationBrand]: true as const,
+    principalType: "operator",
+    tier: PrincipalTier.OPERATOR,
+    access,
+    environmentId: environment.id,
+    projectId: environment.project.id,
+    organizationId: environment.project.organizationId,
+    actorUserId: operator.actorUserId,
+    effectiveUserId: operator.effectiveUserId,
+    organizationRole: organizationMembership.role,
+    projectRole: projectMembership?.role ?? null,
+  });
+}
+
+/**
+ * Pins an already-authenticated runtime actor to ancestry loaded from the
+ * database. End-user sessions are intentionally not accepted by this API.
+ */
+export async function authorizeEnvironmentRuntime(
+  database: DatabaseClient,
+  actor: AuthenticatedRuntimeActor
+): Promise<EnvironmentRuntimeAuthorization> {
+  const environment = await database.environment.findUnique({
+    where: { id: actor.environmentId },
+    select: {
+      id: true,
+      archivedAt: true,
+      project: {
+        select: { id: true, archivedAt: true, organizationId: true, organization: { select: { archivedAt: true } } },
+      },
+    },
+  });
+  if (
+    !actor.actorId ||
+    !environment ||
+    environment.archivedAt ||
+    environment.project.archivedAt ||
+    environment.project.organization.archivedAt
+  ) {
+    throw environmentForbidden();
+  }
+  return Object.freeze({
+    [environmentAuthorizationBrand]: true as const,
+    principalType: "runtime",
+    tier: "RUNTIME",
+    access: "secret:read",
+    environmentId: environment.id,
+    projectId: environment.project.id,
+    organizationId: environment.project.organizationId,
+    actorId: actor.actorId,
+  });
+}
+
+/** Resolve a trusted internal service actor for non-dashboard credential writes. */
+export async function authorizeEnvironmentService(
+  database: DatabaseClient,
+  actor: AuthenticatedRuntimeActor
+): Promise<EnvironmentServiceAuthorization> {
+  const runtime = await authorizeEnvironmentRuntime(database, actor);
+  return Object.freeze({
+    [environmentAuthorizationBrand]: true as const,
+    principalType: "service",
+    tier: "RUNTIME",
+    access: "secret:write",
+    environmentId: runtime.environmentId,
+    projectId: runtime.projectId,
+    organizationId: runtime.organizationId,
+    actorId: runtime.actorId,
+  });
 }
 
 export interface SessionIssueResult {
@@ -852,6 +1036,14 @@ function decodeBase32(input: string): Buffer {
 
 function unauthorized(): PlatosAuthError {
   return new PlatosAuthError("unauthorized", 401, "Invalid operator session");
+}
+
+function environmentForbidden(): PlatosAuthError {
+  return new PlatosAuthError(
+    "forbidden",
+    403,
+    "Operator is not authorized for this environment"
+  );
 }
 
 function impersonationForbidden(): PlatosAuthError {

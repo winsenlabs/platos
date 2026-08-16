@@ -11,6 +11,7 @@ export interface ProviderState {
   id: string;
   displayName: string;
   description: string;
+  /** All required bare credential names + whether each is available in scope. */
   requiredEnv: Array<{ name: string; set: boolean }>;
   optionalEnv: string[];
   envReady: boolean;
@@ -20,7 +21,11 @@ export interface ProviderState {
   models: string[];
 }
 
-/** Clean-schema provider registry backed by EnvironmentProvider and ProviderKey. */
+/**
+ * Clean-schema provider registry backed by EnvironmentProvider, ProviderKey,
+ * and metadata-only Credential readiness. It never reads deployment provider
+ * variables or decrypts secrets while building dashboard metadata.
+ */
 @Injectable()
 export class ProviderRegistryService {
   constructor(
@@ -109,12 +114,17 @@ export class ProviderRegistryService {
     manifest: ProviderManifest,
     row?: { enabled: boolean; linkedAt: Date },
   ): Promise<ProviderState> {
-    const requiredEnv: Array<{ name: string; set: boolean }> = [];
-    for (const [index, name] of manifest.requiredEnv.entries()) {
-      const set = index === 0
-        ? await this.scopedEnv.hasProviderCredential(scope, manifest.id)
-        : !!(await this.scopedEnv.get(scope, name));
-      requiredEnv.push({ name, set });
+    const setMap = await this.scopedEnv.setMapForProvider(
+      scope,
+      manifest.requiredEnv,
+      manifest.id,
+    );
+    const requiredEnv = manifest.requiredEnv.map((name) => ({
+      name,
+      set: !!setMap[name],
+    }));
+    if (requiredEnv[0] && (await this.scopedEnv.hasProviderCredential(scope, manifest.id))) {
+      requiredEnv[0].set = true;
     }
     const envReady = requiredEnv.every((entry) => entry.set);
 

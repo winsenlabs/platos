@@ -39,9 +39,10 @@ const DEFAULT_MODEL: Record<EmbeddingProvider, string> = {
  *
  * Computes 1536-dim vectors for memory content via the OpenAI embeddings
  * API. Default model is `text-embedding-3-small`; override with the
- * `PLATOS_EMBEDDING_MODEL` env var. Scoped runtime requests resolve the
- * OpenAI API key through the same Environment credential service used by
- * LLM providers. Unscoped maintenance scripts may use the container key.
+ * `PLATOS_EMBEDDING_MODEL` env var. The OpenAI API key is resolved
+ * through the same `ScopedEnvService` the LLM providers use. Scoped calls
+ * never fall back to deployment environment variables; unscoped maintenance
+ * jobs may still use explicitly configured deployment credentials.
  *
  * Requests are deduped via an LRU cache keyed on `sha256(model + text)`.
  * The model is part of the cache key so switching
@@ -128,9 +129,8 @@ export class EmbeddingService {
   ): Promise<string | undefined> {
     const keyName = this.provider === "voyage" ? "VOYAGE_API_KEY" : "OPENAI_API_KEY";
     if (scope) {
-      // A request scope must never fall back to deployment configuration:
-      // that would allow one Environment to use a container-wide credential.
-      return this.scopedEnv?.get(scope, keyName);
+      if (!this.scopedEnv) return undefined;
+      return this.scopedEnv.getForProvider(scope, keyName, this.provider);
     }
     return this.provider === "voyage" ? env.VOYAGE_API_KEY : env.OPENAI_API_KEY;
   }
@@ -138,7 +138,7 @@ export class EmbeddingService {
   private missingKeyError(): Error {
     const keyName = this.provider === "voyage" ? "VOYAGE_API_KEY" : "OPENAI_API_KEY";
     return new Error(
-      `${keyName} not configured — link it via the Providers UI or set it in the agent container env (embedding provider: ${this.provider})`,
+      `${keyName} not configured for this Environment (embedding provider: ${this.provider})`,
     );
   }
 

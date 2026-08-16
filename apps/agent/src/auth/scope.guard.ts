@@ -152,6 +152,34 @@ export interface RequestScope {
 export class ScopeGuard implements CanActivate {
   constructor(@Optional() @Inject(AuthService) private readonly authService?: AuthService) {}
 
+  /**
+   * Access-key lifecycle is a control-plane operation. The webapp sends it
+   * over the trusted direct-header channel and deliberately never retains the
+   * raw bearer after its one-time browser reveal. Keep this exception exact:
+   * it applies only to the lifecycle routes and only from Path 2 below, which
+   * rejects requests that arrived through the public proxy.
+   */
+  private isDirectAccessKeyLifecycleRequest(request: {
+    method?: unknown;
+    originalUrl?: unknown;
+    url?: unknown;
+  }): boolean {
+    const method = typeof request.method === "string" ? request.method.toUpperCase() : "";
+    const url =
+      typeof request.originalUrl === "string"
+        ? request.originalUrl
+        : typeof request.url === "string"
+          ? request.url
+          : "";
+    const pathname = url.split("?", 1)[0];
+
+    return (
+      (pathname === "/api/v1/agent/access-key" &&
+        (method === "GET" || method === "POST" || method === "DELETE")) ||
+      (pathname === "/api/v1/agent/access-key/origins" && method === "POST")
+    );
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
@@ -492,6 +520,7 @@ export class ScopeGuard implements CanActivate {
             organizationId: request.scope.organizationId,
             projectId: request.scope.projectId,
             environmentId: request.scope.environmentId,
+            userId: request.scope.userId,
           };
           const keyResult = await this.authService.verifyAccessKey(scopeForCheck, providedKey, origin);
           if (keyResult === false) {
@@ -535,14 +564,18 @@ export class ScopeGuard implements CanActivate {
         // path too (webapp → agent over the Docker network).
         ...(traceCtx ? { traceId: traceCtx.traceId, parentSpanId: traceCtx.parentSpanId } : {}),
       } satisfies RequestScope;
-      // Access key check (if configured for this scope)
-      if (this.authService) {
+      // Access key checks protect ordinary direct-header runtime requests. The
+      // exact AccessKey lifecycle routes are operator-authorized by their
+      // controller/service and cannot require raw bearer material that the
+      // dashboard intentionally discards after the one-time reveal.
+      if (this.authService && !this.isDirectAccessKeyLifecycleRequest(request)) {
         const providedKey = request.headers["x-platos-api-key"] as string | undefined;
         const origin = (request.headers["origin"] || request.headers["referer"]) as string | undefined;
         const scopeForCheck = {
           organizationId: request.scope.organizationId,
           projectId: request.scope.projectId,
           environmentId: request.scope.environmentId,
+          userId: request.scope.userId,
         };
         const keyResult = await this.authService.verifyAccessKey(scopeForCheck, providedKey, origin);
         if (keyResult === false) {

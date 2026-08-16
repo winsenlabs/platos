@@ -55,10 +55,24 @@ export class ModelCatalogService {
     if (!manifest.modelsEndpoint) return [];
 
     const legacyEnv = manifest.requiredEnv[0];
-    const apiKey = await this.scopedEnv.getProviderApiKey(scope, manifest.id, legacyEnv);
+    if (!legacyEnv) return [];
+    let apiKey: string | undefined;
+    try {
+      apiKey = await this.scopedEnv.getProviderApiKey(scope, manifest.id, legacyEnv);
+    } catch {
+      // Live catalog discovery is metadata/readiness only. Active turn
+      // resolution calls ScopedEnvService separately and remains fail-loud.
+      this.logger.warn(`model-catalog credential unavailable for ${manifest.id}`);
+      return [];
+    }
+    if (!apiKey) return [];
     let endpoint = manifest.modelsEndpoint;
     if (manifest.id === "openai") {
-      const baseURL = await this.scopedEnv.get(scope, "OPENAI_BASE_URL");
+      const baseURL = await this.scopedEnv.getProviderConfiguration(
+        scope,
+        "OPENAI_BASE_URL",
+        manifest.id,
+      );
       if (baseURL) {
         const root = baseURL.replace(/\/$/, "").endsWith("/v1")
           ? baseURL.replace(/\/$/, "")

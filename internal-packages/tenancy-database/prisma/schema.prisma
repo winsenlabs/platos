@@ -366,6 +366,7 @@ model Environment {
   agentClusters           AgentCluster[]
   agentBindings           AgentBinding[]
   credentials             Credential[]
+  credentialAudits        CredentialAudit[]
   postmanTemplates        PostmanTemplate[]
   threads                 Thread[]
   artifacts               Artifact[]
@@ -607,25 +608,32 @@ model AgentBinding {
 }
 
 model Credential {
-  id                 String         @id @default(uuid()) @db.Uuid
-  environmentId      String         @db.Uuid
-  kind               CredentialKind
-  name               String
-  prefix             String?
-  secretHash         String?
-  encryptedReference String?
-  permissions        String[]       @default([])
-  allowedOrigins     String[]       @default([])
-  provider           String?
-  externalClientId   String?
-  expiresAt          DateTime?
-  lastUsedAt         DateTime?
-  revokedAt          DateTime?
-  createdBy          String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  id                    String         @id @default(uuid()) @db.Uuid
+  environmentId         String         @db.Uuid
+  activeSecretVersionId String?        @db.Uuid
+  kind                  CredentialKind
+  name                  String
+  prefix                String?
+  /// Transitional non-provider verifier used by canonical wire transport authentication.
+  secretHash            String?
+  /// Transitional non-provider channel envelope; provider/MCP resolution must use secretVersions.
+  encryptedReference    String?
+  permissions           String[]       @default([])
+  allowedOrigins        String[]       @default([])
+  provider              String?
+  externalClientId      String?
+  expiresAt             DateTime?
+  lastUsedAt            DateTime?
+  revokedAt             DateTime?
+  createdBy             String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
-  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  environment         Environment               @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  activeSecretVersion CredentialSecretVersion?  @relation("CredentialActiveSecretVersion", fields: [activeSecretVersionId, id], references: [id, credentialId], onDelete: Restrict)
+  secretVersions      CredentialSecretVersion[] @relation("CredentialSecretVersions")
+  credentialAudits    CredentialAudit[]
+  providerKeys        ProviderKey[]
 
   channelConnections   ChannelConnection[]
   channelApps          ChannelApp[]
@@ -633,8 +641,55 @@ model Credential {
   entityMcpClients     EntityMcpClient[]
   mcpOidcSessions      McpOidcSession[]
 
+  @@unique([id, environmentId])
+  @@unique([activeSecretVersionId, id])
   @@unique([environmentId, kind, name])
   @@index([environmentId, kind, revokedAt])
+  @@index([activeSecretVersionId])
+}
+
+model CredentialSecretVersion {
+  id             String    @id @default(uuid()) @db.Uuid
+  credentialId   String    @db.Uuid
+  secretRevision Int
+  formatVersion  Int
+  rootKeyVersion Int
+  salt           Bytes
+  nonce          Bytes
+  ciphertext     Bytes
+  authTag        Bytes
+  retiredAt      DateTime?
+  readableUntil  DateTime?
+  createdAt      DateTime  @default(now())
+
+  credential Credential  @relation("CredentialSecretVersions", fields: [credentialId], references: [id], onDelete: Restrict)
+  activeFor  Credential? @relation("CredentialActiveSecretVersion")
+
+  @@unique([id, credentialId])
+  @@unique([credentialId, secretRevision, rootKeyVersion])
+  @@index([credentialId, retiredAt])
+  @@index([rootKeyVersion])
+}
+
+model CredentialAudit {
+  id                 String   @id @default(uuid()) @db.Uuid
+  environmentId      String   @db.Uuid
+  credentialId       String   @db.Uuid
+  action             String
+  outcome            String
+  actorType          String
+  actorId            String
+  effectiveUserId    String?
+  secretRevision     Int?
+  fromRootKeyVersion Int?
+  toRootKeyVersion   Int?
+  createdAt          DateTime @default(now())
+
+  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Restrict)
+  credential  Credential  @relation(fields: [credentialId, environmentId], references: [id, environmentId], onDelete: Restrict)
+
+  @@index([environmentId, createdAt])
+  @@index([credentialId, createdAt])
 }
 
 model AccessKey {
@@ -644,22 +699,27 @@ model AccessKey {
   keyHash        String    @unique
   allowedOrigins String[]  @default([])
   lastUsedAt     DateTime?
+  validUntil     DateTime?
+  replacedById   String?   @db.Uuid
   revokedAt      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  replacedBy  AccessKey?  @relation("AccessKeyReplacement", fields: [replacedById], references: [id], onDelete: Restrict)
+  replaces    AccessKey[] @relation("AccessKeyReplacement")
 
-  @@index([environmentId, revokedAt])
+  @@index([environmentId, revokedAt, validUntil])
+  @@index([replacedById])
 }
 
 model ProviderKey {
   id                 String    @id @default(uuid()) @db.Uuid
   environmentId      String    @db.Uuid
+  credentialId       String    @db.Uuid
   provider           String
   label              String
   environmentKeyName String
-  encryptedReference String?
   /// The initial migration enforces at most one default per Environment/provider with a partial unique index.
   isDefault          Boolean   @default(false)
   createdBy          String
@@ -668,9 +728,11 @@ model ProviderKey {
   updatedAt          DateTime  @updatedAt
 
   environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  credential  Credential  @relation(fields: [credentialId, environmentId], references: [id, environmentId], onDelete: Restrict)
 
   @@unique([environmentId, provider, label])
   @@index([environmentId, provider, isDefault])
+  @@index([credentialId])
 }
 
 model McpToken {

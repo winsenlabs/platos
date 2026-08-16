@@ -62,9 +62,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(77);
-    expect(domainModelNames).toHaveLength(61);
-    expect(new Set(domainModelNames).size).toBe(61);
+    expect(models).toHaveLength(79);
+    expect(domainModelNames).toHaveLength(63);
+    expect(new Set(domainModelNames).size).toBe(63);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");
@@ -125,7 +125,10 @@ describe("clean-slate domain schema", () => {
 
     for (const [name, expected] of Object.entries({
       AccessKey: ["environmentId", "keyPrefix", "keyHash", "allowedOrigins"],
-      ProviderKey: ["environmentId", "provider", "environmentKeyName", "isDefault"],
+      ProviderKey: ["environmentId", "credentialId", "provider", "environmentKeyName", "isDefault"],
+      Credential: ["environmentId", "activeSecretVersionId"],
+      CredentialSecretVersion: ["credentialId", "secretRevision", "rootKeyVersion", "ciphertext"],
+      CredentialAudit: ["environmentId", "credentialId", "action", "outcome", "actorType"],
       McpToken: ["environmentId", "mintedByUserId", "permissions", "tier"],
       PersonalAccessToken: ["userId", "scopeKind", "organizationId", "projectId", "environmentId"],
       OAuthAuthorizationCode: ["clientId", "userId", "scopeKind", "organizationId", "projectId", "environmentId"],
@@ -251,6 +254,9 @@ describe("clean-slate domain schema", () => {
     expect(migration).toContain('CREATE FUNCTION "public"."reject_canonical_owner_change"()');
     expect(migration).toContain('CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_impersonation_audit_mutation"()');
+    expect(migration).toContain('CREATE FUNCTION "public"."reject_credential_audit_mutation"()');
+    expect(migration).toContain('CREATE UNIQUE INDEX "AccessKey_one_active_per_environment"');
+    expect(migration).toContain('WHERE "revokedAt" IS NULL AND "validUntil" IS NULL');
     expect(migration).toContain('CONSTRAINT "OperatorSession_tokenHash_check"');
     expect(migration).toContain('OR "impersonatedUserId" = affected_user_id');
     for (const trigger of [

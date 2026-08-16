@@ -15,26 +15,19 @@ import {
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
-import { CredentialKind } from "@platos/tenancy-database";
+import {
+  CredentialKind,
+  PlatosSecretStore,
+  authorizeEnvironmentService,
+} from "@platos/tenancy-database";
 import { OAuthError, OAuthService, OAUTH_ACCESS_TOKEN_TTL_SEC } from "./oauth.service";
 import { env } from "../shared/env";
 import {
   type ControlDatabaseClient,
+  PLATOS_SECRET_STORE_TOKEN,
   PRISMA_TOKEN,
 } from "../shared/database.provider";
 import { validatePublicUrl, describeUrlValidationError } from "../shared/url-validator";
-import { SecretsService } from "../auth/secrets.service";
-
-// M3 — one process-wide SecretsService instance shared by the (instance)
-// encrypt path and the (static, cross-module) decrypt path so both use the
-// same key material. SecretsService reads PLATOS_ENCRYPTION_KEY and is
-// fail-closed in production (its constructor throws when the key is missing
-// or malformed), so entity OAuth tokens can never be persisted in plaintext.
-let entityTokenSecrets: SecretsService | null = null;
-function getEntityTokenSecrets(): SecretsService {
-  if (!entityTokenSecrets) entityTokenSecrets = new SecretsService();
-  return entityTokenSecrets;
-}
 
 /**
  * Theme K.10 — OAuth 2.1 authorization-server endpoints.
@@ -56,6 +49,7 @@ export class OAuthController {
   constructor(
     private readonly oauth: OAuthService,
     @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+    @Inject(PLATOS_SECRET_STORE_TOKEN) private readonly secretStore: PlatosSecretStore,
   ) {}
 
   private get issuerUrl(): string {
@@ -1365,13 +1359,10 @@ export class OAuthController {
       .digest("hex");
     const mcpUserId = `mcp:oidc:${provider}:${identityHash.slice(0, 32)}`;
 
-    // Encrypt tokens for at-rest storage via SecretsService (M3). Fail-CLOSED:
-    // in production a missing PLATOS_ENCRYPTION_KEY throws rather than storing
-    // plaintext.
-    const encryptedReference = this.encryptEntityTokens(
-      entityTokenData.access_token,
-      entityTokenData.refresh_token,
-    );
+    const tokenPayload = JSON.stringify({
+      accessToken: entityTokenData.access_token,
+      refreshToken: entityTokenData.refresh_token ?? null,
+    });
     const expiresAt = entityTokenData.expires_in
       ? new Date(Date.now() + entityTokenData.expires_in * 1000)
       : null;
@@ -1385,8 +1376,12 @@ export class OAuthController {
     // Persist entity-issued token material only through the clean Credential
     // relation. McpOidcSession remains canonical identity metadata.
     const credentialName = `mcp-oidc-${identityHash}`;
+    const serviceAuthorization = await authorizeEnvironmentService(this.prisma, {
+      actorId: `mcp-oidc:${ent.entityPk}`,
+      environmentId: ent.environmentId,
+    });
     const oidcSession = await this.prisma.$transaction(async (tx) => {
-      const credential = await tx.credential.upsert({
+      const existing = await tx.credential.findUnique({
         where: {
           environmentId_kind_name: {
             environmentId: ent.environmentId,
@@ -1394,22 +1389,25 @@ export class OAuthController {
             name: credentialName,
           },
         },
-        create: {
-          environmentId: ent.environmentId,
+        select: { id: true, activeSecretVersionId: true, revokedAt: true },
+      });
+      const credential = existing?.activeSecretVersionId && !existing.revokedAt
+        ? await this.secretStore.rotateInTransaction(tx, {
+            authorization: serviceAuthorization,
+            credentialId: existing.id,
+            plaintext: tokenPayload,
+          })
+        : !existing
+        ? await this.secretStore.createInTransaction(tx, {
+          authorization: serviceAuthorization,
           kind: CredentialKind.ENTITY_SECRET,
           name: credentialName,
-          encryptedReference,
-          permissions: ["entity:oauth"],
-          expiresAt,
-          createdBy: client.registeredByUserId,
-        },
-        update: {
-          encryptedReference,
-          expiresAt,
-          revokedAt: null,
-          lastUsedAt: new Date(),
-        },
-        select: { id: true },
+          plaintext: tokenPayload,
+        })
+        : (() => { throw new Error("entity_oauth_credential_unavailable"); })();
+      await tx.credential.update({
+        where: { id: credential.id },
+        data: { expiresAt, lastUsedAt: new Date() },
       });
       return tx.mcpOidcSession.upsert({
         where: {
@@ -1527,26 +1525,5 @@ export class OAuthController {
     }
   }
 
-  private encryptEntityTokens(
-    accessToken: string,
-    refreshToken?: string,
-  ): string {
-    // M3 — encrypt at rest with PLATOS_ENCRYPTION_KEY via SecretsService.
-    // No plaintext fallback: in production SecretsService throws when the key
-    // is missing/malformed, so tokens are never persisted unencrypted.
-    const secrets = getEntityTokenSecrets();
-    return secrets.encrypt(JSON.stringify({
-      accessToken,
-      refreshToken: refreshToken ?? null,
-    }));
-  }
 
-  /** Decrypt a token that was stored by encryptEntityTokens. */
-  static decryptEntityToken(ciphertext: string): string {
-    const payload = JSON.parse(getEntityTokenSecrets().decrypt(ciphertext)) as {
-      accessToken: string;
-    };
-    if (!payload.accessToken) throw new Error("Entity OAuth credential is malformed");
-    return payload.accessToken;
-  }
 }

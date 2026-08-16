@@ -39,7 +39,7 @@ A connected entity is an external backend (your service, a SaaS adapter, a micro
 A `PlatosConnectedEntity` row plus a live WebSocket. The row stores:
 
 - `slug` and `name`: identifier for the entity within the project scope.
-- `serviceSecret`: encrypted, used to authenticate the entity when it connects. This is the only secret Platos stores in its own database; everything else lives in trigger.dev's environment-variables table.
+- `serviceSecret`: encrypted, used to authenticate the entity when it connects. Dashboard provider/MCP credentials live separately in the Platos-native Environment credential store; neither path dual-writes to trigger.dev's SecretStore.
 - `entityType`: a discriminator (e.g. `slack`, `calendar`, `custom`).
 - `status`: `online` or `offline`, updated by the gateway on connect/disconnect.
 

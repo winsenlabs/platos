@@ -18,7 +18,7 @@ import { ScopedEnvService, type ScopeTuple } from "../../providers/scoped-env.se
  * returns as a failed dispatch).
  *
  * Template tokens:
- *   - `{{secret}}`     — the decrypted SecretStore value, interpolated here.
+ *   - `{{secret}}`     — the resolved same-Environment value, interpolated here.
  *   - `{{endUserId}}`  — the turn's resolved end-user identity (the customer-
  *                        meaningful opaque id that becomes Composio's
  *                        `user_id`). Interpolated here into BOTH header values
@@ -46,6 +46,8 @@ export interface CredentialServerSlice {
   headersTemplate?: unknown;
   /** Safe Credential metadata; `name` remains the bare scoped reference. */
   credential?: { name: string } | null;
+  /** Compatibility projection used by registered-handler inputs; always a bare name. */
+  credsSecretKey?: string | null;
 }
 
 /**
@@ -129,7 +131,7 @@ export class McpCredentialService {
 
     let secret: string | undefined;
     if (needsSecret) {
-      const credentialName = server.credential?.name;
+      const credentialName = server.credential?.name ?? server.credsSecretKey;
       if (!credentialName) {
         throw new McpCredentialError(
           "MCP header template references {{secret}} but the server has no credential configured",
@@ -232,7 +234,7 @@ export class McpCredentialService {
       }
     }
 
-    if (Object.keys(out).length === 0 && server.credential?.name) {
+    if (Object.keys(out).length === 0 && (server.credential?.name || server.credsSecretKey)) {
       out["Authorization"] = `Bearer ${SECRET_TOKEN}`;
     }
     return out;
