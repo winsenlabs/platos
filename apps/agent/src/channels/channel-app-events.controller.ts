@@ -9,11 +9,10 @@ import {
 } from "@nestjs/common";
 import type { Request as ExpressRequest, Response as ExpressResponse } from "express";
 import * as crypto from "node:crypto";
-import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
-import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { ChannelRuntimeService } from "./channel-runtime.service";
+import { ChannelPersistenceService } from "./channel-persistence.service";
 
 /**
  * Express request augmented with the raw body Buffer. `main.ts` boots the app
@@ -59,9 +58,8 @@ export class ChannelAppEventsController {
   private static readonly MAX_SKEW_SECONDS = 300;
 
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    private readonly persistence: ChannelPersistenceService,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
-    private readonly messageCrypto: MessageCryptoService,
     private readonly runtime: ChannelRuntimeService,
   ) {}
 
@@ -82,7 +80,7 @@ export class ChannelAppEventsController {
     // ── Verify the Slack v0 signature over the RAW body ───────────────────
     let signingSecret: string;
     try {
-      signingSecret = this.decryptSecretString(app.signingSecret);
+      signingSecret = this.requireSecretString(app.signingSecret);
     } catch {
       this.logger.error(`[chanapp] signing_secret decrypt failed app=${appId}`);
       res.status(500).json({ error: "app_unavailable" });
@@ -165,6 +163,7 @@ export class ChannelAppEventsController {
     if (innerType === "app_uninstalled") {
       try {
         await this.revokeInstallations(String(app.id), teamId, enterpriseId);
+        this.runtime.invalidateApp(String(app.id));
         this.logger.log(
           `[chanapp] lifecycle app_uninstalled app=${appId} — installation revoked`,
         );
@@ -202,6 +201,7 @@ export class ChannelAppEventsController {
       if (botIds.length > 0 || unparseable) {
         try {
           await this.revokeInstallations(String(app.id), teamId, enterpriseId);
+          this.runtime.invalidateApp(String(app.id));
           this.logger.log(
             `[chanapp] lifecycle tokens_revoked (bot) app=${appId} — installation revoked`,
           );
@@ -219,6 +219,7 @@ export class ChannelAppEventsController {
             enterpriseId,
             oauthIds,
           );
+          this.runtime.invalidateIdentityLinks();
         } catch {
           this.logger.error(
             `[chanapp] lifecycle tokens_revoked identity-invalidate failed app=${appId}`,
@@ -299,28 +300,7 @@ export class ChannelAppEventsController {
   ): Promise<any | null> {
     // Nullable discriminators compile to `IS NULL`; scope by status so a
     // revoked workspace can't resurrect a turn.
-    const exact = await this.prisma.platosChannelInstallation.findFirst({
-      where: { appId, teamId, enterpriseId, status: "active" },
-    });
-    if (exact) return exact;
-    // Enterprise Grid org-install fallback: an org-install grant comes back
-    // from oauth.v2.access with team:null, so its row has teamId=NULL — but
-    // event envelopes always carry the ORIGINATING workspace's team_id, so
-    // the exact tuple above can never hit the org row. When the exact lookup
-    // misses inside a Grid (enterpriseId present, workspace-level teamId
-    // present), fall back to the org-install row.
-    if (enterpriseId != null && teamId != null) {
-      return this.prisma.platosChannelInstallation.findFirst({
-        where: {
-          appId,
-          teamId: null,
-          enterpriseId,
-          isEnterpriseInstall: true,
-          status: "active",
-        },
-      });
-    }
-    return null;
+    return this.persistence.findActiveInstallation(appId, teamId, enterpriseId);
   }
 
   /**
@@ -334,31 +314,7 @@ export class ChannelAppEventsController {
     teamId: string | null,
     enterpriseId: string | null,
   ): Promise<void> {
-    const revokedAt = new Date();
-    const { count } = await this.prisma.platosChannelInstallation.updateMany({
-      where: { appId, teamId, enterpriseId, status: "active" },
-      data: { status: "revoked", revokedAt },
-    });
-    // Grid org-install fallback — same tuple mismatch as
-    // findActiveInstallation: the org-install row has teamId=NULL but the
-    // lifecycle envelope carries the originating workspace's team_id, so the
-    // exact update above touches zero rows and the encrypted bot token would
-    // stay "active" forever. Only when the exact tuple revoked nothing do we
-    // revoke the org row. (Phase A has no per-workspace grid rows, so a
-    // workspace-level removal inside a still-org-installed grid revokes the
-    // org install — fail toward revoking a live token rather than leaking one.)
-    if (count === 0 && enterpriseId != null && teamId != null) {
-      await this.prisma.platosChannelInstallation.updateMany({
-        where: {
-          appId,
-          teamId: null,
-          enterpriseId,
-          isEnterpriseInstall: true,
-          status: "active",
-        },
-        data: { status: "revoked", revokedAt },
-      });
-    }
+    await this.persistence.revokeInstallations(appId, teamId, enterpriseId);
   }
 
   /**
@@ -384,9 +340,6 @@ export class ChannelAppEventsController {
     enterpriseId: string | null,
     userIds: string[],
   ): Promise<void> {
-    const organizationId = String(app.organizationId);
-    const projectId = String(app.projectId);
-    const environmentId = String(app.environmentId);
     // Candidate handle team components: the event carries the WORKSPACE team_id
     // even for Grid org-level installs, but the runtime stored the slack handle
     // with `installation.teamId ?? enterpriseId` — which is the ENTERPRISE id
@@ -396,61 +349,28 @@ export class ChannelAppEventsController {
     const teamCandidates = Array.from(
       new Set([teamId, enterpriseId].filter((t): t is string => !!t)),
     );
-    for (const userId of userIds) {
-      if (!userId) continue;
-      const handleCandidates =
-        teamCandidates.length > 0
-          ? teamCandidates.map((t) => `${t}:${userId}`)
-          : [userId];
-      try {
-        let slackIdentity: { platosEndUserId: string | null } | null = null;
-        for (const handle of handleCandidates) {
-          slackIdentity = await this.prisma.platosEndUserIdentity.findUnique({
-            where: {
-              organizationId_projectId_environmentId_channel_handle: {
-                organizationId,
-                projectId,
-                environmentId,
-                channel: "slack",
-                handle,
-              },
-            },
-            select: { platosEndUserId: true },
-          });
-          if (slackIdentity?.platosEndUserId) break;
-        }
-        if (!slackIdentity?.platosEndUserId) continue;
-        const { count } = await this.prisma.platosEndUserIdentity.updateMany({
-          where: {
-            organizationId,
-            projectId,
-            environmentId,
-            platosEndUserId: slackIdentity.platosEndUserId,
-            channel: "email",
-            verified: true,
-          },
-          data: { verified: false },
-        });
-        if (count > 0) {
-          this.logger.log(
-            `[chanapp] tokens_revoked invalidated ${count} email identity(ies) app=${String(app.id)}`,
-          );
-        }
-      } catch {
-        // Per-user isolation — one bad lookup must not abort the rest.
-        this.logger.error(
-          `[chanapp] tokens_revoked identity lookup failed app=${String(app.id)}`,
+    try {
+      const count = await this.persistence.disableLinkedEmails(
+        app,
+        teamCandidates,
+        userIds.filter(Boolean),
+      );
+      if (count > 0) {
+        this.logger.log(
+          `[chanapp] tokens_revoked invalidated ${count} email identity(ies) app=${String(app.id)}`,
         );
       }
+    } catch {
+      this.logger.error(
+        `[chanapp] tokens_revoked identity lookup failed app=${String(app.id)}`,
+      );
     }
   }
 
   private async loadApp(appId: string): Promise<any | null> {
     if (!appId) return null;
     try {
-      return await this.prisma.platosChannelApp.findUnique({
-        where: { id: appId },
-      });
+      return await this.persistence.loadApp(appId);
     } catch {
       return null;
     }
@@ -516,13 +436,11 @@ export class ChannelAppEventsController {
    * rather than verifying against a broken secret. Duplicated (not shared)
    * to keep this slice from touching a file outside its scope.
    */
-  private decryptSecretString(stored: unknown): string {
-    const parsed = JSON.parse(String(stored));
-    const decrypted = this.messageCrypto.decryptJsonField(parsed);
-    if (typeof decrypted !== "string" || !decrypted) {
+  private requireSecretString(stored: unknown): string {
+    if (typeof stored !== "string" || !stored) {
       throw new Error("secret unavailable");
     }
-    return decrypted;
+    return stored;
   }
 
   private firstHeader(v: string | string[] | undefined): string | undefined {

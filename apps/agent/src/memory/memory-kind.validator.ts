@@ -3,7 +3,7 @@ import { z } from "zod";
 /**
  * Theme O.4 — memory-kind validator.
  *
- * Each `kind` in `PlatosMemory` has its own content + metadata expectations.
+ * Each `kind` in clean `Memory` has its own content + metadata expectations.
  * Keeping them as Zod schemas here lets both the REST controller and the
  * `remember` meta-tool pipe inputs through the same gate before they touch
  * the embedding service or the DB.

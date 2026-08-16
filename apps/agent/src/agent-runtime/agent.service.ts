@@ -41,6 +41,10 @@ import { ToolExecutorService } from "../tool-gateway/tool-executor.service";
 import { ToolRouterService } from "../tool-gateway/tool-router.service";
 import { ScopedEnvService } from "../providers/scoped-env.service";
 import { ProviderRegistryService } from "../providers/provider-registry.service";
+import {
+  ProviderRuntimeError,
+  asSafeProviderRuntimeError,
+} from "../providers/provider-runtime.error";
 import { SkillRuntimeService } from "../skills/skill-runtime.service";
 import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
@@ -249,7 +253,14 @@ export const COMPACTION_ROUTE_LABEL = "compaction";
 /** Used when no `compaction` route is configured — matches historical behaviour. */
 export const DEFAULT_COMPACTION_MODEL = "anthropic:claude-haiku-4-5-20251001";
 
-function resolveModel(modelString: string, apiKey?: string, retryRules?: RetryRule[]) {
+type ProviderRuntimeOptions = { baseURL?: string; location?: string };
+
+function resolveModel(
+  modelString: string,
+  apiKey?: string,
+  retryRules?: RetryRule[],
+  runtime: ProviderRuntimeOptions = {},
+) {
   const colonIdx = modelString.indexOf(":");
   const provider = colonIdx > 0 ? modelString.slice(0, colonIdx) : "anthropic";
   const model = colonIdx > 0 ? modelString.slice(colonIdx + 1) : modelString;
@@ -275,7 +286,10 @@ function resolveModel(modelString: string, apiKey?: string, retryRules?: RetryRu
     case "anthropic":
       return apiKey ? createAnthropic({ apiKey, fetch: retryFetch })(model) : anthropic(model);
     case "openai":
-      return apiKey ? createOpenAI({ apiKey, fetch: retryFetch })(model) : openai(model);
+      if (!apiKey) throw new ProviderRuntimeError("provider_credential_unavailable");
+      return runtime.baseURL
+        ? createOpenAI({ baseURL: runtime.baseURL, apiKey, fetch: retryFetch }).chat(model)
+        : createOpenAI({ apiKey, fetch: retryFetch })(model);
     case "azure": {
       // Azure OpenAI deployments are reached via a per-resource baseURL of
       // the form `https://<resource>.openai.azure.com/openai/deployments/<deployment>`.
@@ -285,7 +299,7 @@ function resolveModel(modelString: string, apiKey?: string, retryRules?: RetryRu
       if (!apiKey) {
         throw new Error("azure: AZURE_OPENAI_API_KEY required.");
       }
-      const azureBase = process.env.AZURE_OPENAI_BASE_URL;
+      const azureBase = runtime.baseURL;
       if (!azureBase) {
         throw new Error(
           "azure: AZURE_OPENAI_BASE_URL must be set (e.g. https://<resource>.openai.azure.com).",
@@ -323,8 +337,7 @@ function resolveModel(modelString: string, apiKey?: string, retryRules?: RetryRu
           "→ Keys → Create key (JSON), then paste the file content as the env var value.",
         );
       }
-      const location =
-        process.env.GOOGLE_VERTEX_LOCATION ?? "us-central1";
+      const location = runtime.location ?? "us-central1";
       // Note: `@ai-sdk/google-vertex` 1.0.x doesn't accept a custom `fetch` —
       // it builds requests through google-auth-library which has its own
       // retry stack. Skipping retryFetch here is OK: Vertex's auth layer
@@ -410,6 +423,21 @@ export type AgentStreamEvent =
   | {
       type: "safety_flags";
       flags: AgentSafetyFlag[];
+    }
+  | {
+      /**
+       * Emitted after the assistant message has been durably committed. This
+       * must precede the task-level terminal `done` event so SSE and durable
+       * session consumers can reconcile their provisional message id.
+       */
+      type: "message_persisted";
+      messageId: string;
+      threadId?: string;
+      costCents?: number;
+      inputTokens?: number;
+      outputTokens?: number;
+      totalTokens?: number;
+      replyToMessageId?: string | null;
     }
   | {
       type: "error";
@@ -891,6 +919,15 @@ function coerceRouteList(raw: unknown): any[] | null {
   return Array.isArray(v) ? v : null;
 }
 
+function cleanVersionRuntime(version: any): Record<string, any> {
+  const memoryConfig = version?.memoryConfig;
+  if (!memoryConfig || typeof memoryConfig !== "object" || Array.isArray(memoryConfig)) return {};
+  const runtime = (memoryConfig as Record<string, unknown>).__runtime;
+  return runtime && typeof runtime === "object" && !Array.isArray(runtime)
+    ? runtime as Record<string, any>
+    : {};
+}
+
 @Injectable()
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
@@ -1037,10 +1074,11 @@ export class AgentService {
     try {
       apiKey = await this.resolveApiKey(modelString, scope, route?.providerKeyId ?? undefined);
     } catch {
-      apiKey = undefined;
+      throw new ProviderRuntimeError("provider_credential_unavailable");
     }
+    const runtime = await this.resolveProviderRuntimeOptions(modelString, scope);
     return {
-      model: resolveModel(modelString, apiKey),
+      model: resolveModel(modelString, apiKey, undefined, runtime),
       modelString,
       source: route ? "route:compaction" : "default",
     };
@@ -1057,6 +1095,32 @@ export class AgentService {
     // default key is configured; falls back to legacy single-key path.
     const provider = modelString.split(":")[0] ?? "";
     return this.scopedEnv.getProviderApiKey(scope, provider, envName, providerKeyId);
+  }
+
+  private async resolveProviderRuntimeOptions(
+    modelString: string,
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+  ): Promise<ProviderRuntimeOptions> {
+    const provider = modelString.split(":")[0] || "anthropic";
+    if (provider === "openai") {
+      const configured = await this.scopedEnv.get(scope, "OPENAI_BASE_URL");
+      return {
+        baseURL: configured
+          ? (configured.replace(/\/$/, "").endsWith("/v1")
+              ? configured.replace(/\/$/, "")
+              : `${configured.replace(/\/$/, "")}/v1`)
+          : undefined,
+      };
+    }
+    if (provider === "azure") {
+      const baseURL = await this.scopedEnv.get(scope, "AZURE_OPENAI_BASE_URL");
+      if (!baseURL) throw new ProviderRuntimeError("provider_configuration_unavailable");
+      return { baseURL };
+    }
+    if (provider === "google-vertex") {
+      return { location: await this.scopedEnv.get(scope, "GOOGLE_VERTEX_LOCATION") };
+    }
+    return {};
   }
 
   /**
@@ -1094,9 +1158,10 @@ export class AgentService {
       scope,
       agentConfig.providerKeyId,
     );
+    const primaryRuntime = await this.resolveProviderRuntimeOptions(agentConfig.model, scope);
     const primary = {
       apiKey: primaryApiKey,
-      model: resolveModel(agentConfig.model, primaryApiKey, retryRules),
+      model: resolveModel(agentConfig.model, primaryApiKey, retryRules, primaryRuntime),
       routeLabel: null as string | null,
       modelString: agentConfig.model,
     };
@@ -1126,9 +1191,10 @@ export class AgentService {
     const fallbackCandidates = await Promise.all(
       fallbackRoutes.map(async (r) => {
         const k = await this.resolveApiKey(r.model, scope, r.providerKeyId ?? undefined);
+        const runtime = await this.resolveProviderRuntimeOptions(r.model, scope);
         return {
           apiKey: k,
-          model: resolveModel(r.model, k, retryRules),
+          model: resolveModel(r.model, k, retryRules, runtime),
           routeLabel: r.label as string | null,
           modelString: r.model,
         };
@@ -1211,274 +1277,107 @@ export class AgentService {
   }
 
   /**
-   * Theme G.5 — resolve the exact config a turn should run with, honoring the
-   * per-thread version lock.
-   *
-   * Rules (CLAUDE.md §8 "Model picker" + THEME_G §6):
-   *   1. If `PlatosAgentThread.lockedVersionId` is set, load that snapshot —
-   *      no matter what's changed on the agent row. This is the invariant that
-   *      keeps a thread on one version for its lifetime even across rollback
-   *      or canaryPercent tweaks mid-conversation.
-   *   2. Otherwise, on the thread's FIRST turn, decide current-vs-canary by
-   *      rolling a uniform random in [0, 100). If `hit < canaryPercent`, use
-   *      `canaryVersionId`; else use `currentVersionId`. Write the chosen id
-   *      to `lockedVersionId` so step 1 applies on every subsequent turn.
-   *   3. If neither `currentVersionId` nor `canaryVersionId` resolve (legacy
-   *      row, canary config broken), fall back to the live agent row fields.
-   *
-   * Returns both the resolved AgentConfig (with `versionIdUsed` set so
-   * AgentTaskService can stamp it onto `PlatosAgentMessage.responseJson` for
-   * the G.6 dashboard) and the routing decision for logging.
+   * Resolve the immutable AgentVersion selected by the Environment-owned
+   * AgentBinding. A per-thread Redis compare-and-set retains the existing
+   * sticky current/canary choice without treating request ancestry as authority.
    */
   async resolveConfigForThread(
     agentId: string,
     threadId: string | null | undefined,
     scope?: { organizationId: string; projectId: string; environmentId: string },
   ): Promise<{ config: AgentConfig; versionIdUsed: string | null; bucket: "locked" | "canary" | "current" | "fallback" }> {
-    // Fast path: no thread id yet (e.g. non-streaming unit path) → standard config.
-    if (!threadId) {
-      const config = await this.getAgentConfig(agentId, scope);
-      return { config, versionIdUsed: config.versionIdUsed ?? null, bucket: "current" };
+    if (!scope) {
+      const config = await this.getAgentConfig(agentId);
+      return { config, versionIdUsed: null, bucket: "fallback" };
     }
 
-    // PPR-11 (IDOR fix): `findFirst({where:{id}})` without scope filter lets
-    // any valid-scope caller probe other orgs' agent configs by enumerating
-    // cuids. Scope-filter when caller supplies scope (production path); keep
-    // id-only for legacy callers without scope context.
-    const agentWhere: Record<string, unknown> = { id: agentId };
-    if (scope) {
-      agentWhere.organizationId = scope.organizationId;
-      agentWhere.projectId = scope.projectId;
-      agentWhere.environmentId = scope.environmentId;
-    }
-    const agent = await this.prisma.platosAgent.findFirst({ where: agentWhere });
-    if (!agent) {
-      // Agent isn't in the caller's scope. Try a scope-less lookup so the
-      // runtime can still serve the agent's CURRENT version snapshot
-      // instead of hardcoded "helpful AI assistant" defaults — that
-      // hardcoded default has been the source of "the agent has two
-      // personalities" reports when scope detection is flaky on session-
-      // token-authed paths. We still don't expose neighbor-tenant configs:
-      // the snapshot is loaded by versionId+agentId pair, which is
-      // public-keyed and not enumerable.
-      const fallbackAgent = await this.prisma.platosAgent.findFirst({
-        where: { id: agentId },
-        select: { id: true, currentVersionId: true, modelRoutes: true, dynamicBlocks: true },
-      });
-      if (fallbackAgent?.currentVersionId) {
-        const versionConfig = await this.loadVersionConfig(
-          agentId,
-          fallbackAgent.currentVersionId,
-          fallbackAgent,
-        );
-        if (versionConfig) {
-          return { config: versionConfig, versionIdUsed: fallbackAgent.currentVersionId, bucket: "current" };
-        }
-      }
+    const binding = await this.prisma.agentBinding.findFirst({
+      where: {
+        agentId,
+        environmentId: scope.environmentId,
+        agent: { projectId: scope.projectId },
+        environment: {
+          project: { id: scope.projectId, organizationId: scope.organizationId },
+        },
+      },
+      include: {
+        activeAgentVersion: true,
+        canaryAgentVersion: true,
+      },
+    });
+    if (!binding) {
       const config = await this.getAgentConfig(agentId, scope);
       return { config, versionIdUsed: null, bucket: "fallback" };
     }
 
-    // PPR-11: same scope filter on the thread lookup. Cross-scope threadId
-    // should fail closed.
-    const threadWhere: Record<string, unknown> = { id: threadId };
-    if (scope) {
-      threadWhere.organizationId = scope.organizationId;
-      threadWhere.projectId = scope.projectId;
-      threadWhere.environmentId = scope.environmentId;
-    }
-    const thread = await this.prisma.platosAgentThread.findFirst({
-      where: threadWhere,
-      select: { id: true, lockedVersionId: true },
-    });
-
-    // Step 1 — thread already locked, load the snapshot.
-    if (thread?.lockedVersionId) {
-      const locked = await this.loadVersionConfig(agentId, thread.lockedVersionId, agent);
-      if (locked) {
-        this.logger.log(
-          `[agent.resolveConfigForThread] agent=${agentId} thread=${threadId} → LOCKED v=${thread.lockedVersionId}`,
-        );
-        return { config: locked, versionIdUsed: thread.lockedVersionId, bucket: "locked" };
-      }
-      // Locked version pointer broken — fall through to current; do not re-roll canary.
-      this.logger.warn(
-        `[agent.resolveConfigForThread] thread=${threadId} lockedVersionId=${thread.lockedVersionId} not found; falling back to current`,
+    if (!threadId) {
+      const config = this.materializeVersionConfig(
+        binding.activeAgentVersion,
+        binding,
+        this.defaultAgentConfig(),
       );
+      return {
+        config,
+        versionIdUsed: binding.activeAgentVersionId,
+        bucket: "current",
+      };
     }
 
-    // Step 2 — first turn on this thread (or broken lock). Decide canary vs current.
-    const canaryPercent = Math.max(0, Math.min(100, Number(agent.canaryPercent ?? 0)));
-    const canaryVersionId: string | null = agent.canaryVersionId ?? null;
-    const currentVersionId: string | null = agent.currentVersionId ?? null;
-
-    let pickedVersionId: string | null = null;
-    let bucket: "canary" | "current" | "fallback" = "current";
-    if (canaryPercent > 0 && canaryVersionId) {
-      // Math.random ∈ [0,1) — uniform. Multiply by 100 to get percentile bucket.
-      const hit = Math.random() * 100;
-      if (hit < canaryPercent) {
-        pickedVersionId = canaryVersionId;
-        bucket = "canary";
-      } else {
-        pickedVersionId = currentVersionId;
-        bucket = "current";
+    const lockKey = `agent-version-lock:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${threadId}`;
+    if (lockKey) {
+      const lockedVersionId = await this.redis.get(lockKey);
+      if (lockedVersionId) {
+        const locked = await this.loadVersionConfig(agentId, lockedVersionId, binding);
+        if (locked) {
+          return { config: locked, versionIdUsed: lockedVersionId, bucket: "locked" };
+        }
       }
-    } else {
-      pickedVersionId = currentVersionId;
+    }
+
+    const canaryPercent = Math.max(0, Math.min(100, Number(binding.canaryPercent ?? 0)));
+    const useCanary = !!binding.canaryAgentVersionId && canaryPercent > 0 && Math.random() * 100 < canaryPercent;
+    let pickedVersionId = useCanary
+      ? binding.canaryAgentVersionId
+      : binding.activeAgentVersionId;
+    let bucket: "canary" | "current" = useCanary ? "canary" : "current";
+    let config = await this.loadVersionConfig(agentId, pickedVersionId, binding);
+    if (!config && pickedVersionId !== binding.activeAgentVersionId) {
+      pickedVersionId = binding.activeAgentVersionId;
       bucket = "current";
-    }
-
-    let config: AgentConfig | null = null;
-    if (pickedVersionId) {
-      config = await this.loadVersionConfig(agentId, pickedVersionId, agent);
-    }
-    if (!config && currentVersionId && currentVersionId !== pickedVersionId) {
-      // pickedVersionId was a canary that vanished. Fall to current.
-      config = await this.loadVersionConfig(agentId, currentVersionId, agent);
-      if (config) {
-        pickedVersionId = currentVersionId;
-        bucket = "current";
-      }
+      config = await this.loadVersionConfig(agentId, pickedVersionId, binding);
     }
     if (!config) {
-      // No snapshot available — fall back to live agent row (legacy rows).
-      config = await this.getAgentConfig(agentId);
-      pickedVersionId = currentVersionId ?? null;
-      bucket = "fallback";
-    } else {
-      config.versionIdUsed = pickedVersionId;
+      const fallback = await this.getAgentConfig(agentId, scope);
+      return { config: fallback, versionIdUsed: null, bucket: "fallback" };
     }
 
-    // Persist the thread lock on FIRST touch. updateMany so a concurrent turn
-    // that beats us to the DB doesn't race to a different version.
-    //
-    // PPR-18 (version-lock race fix): `updateMany` with `lockedVersionId: null`
-    // guard is atomic, but both concurrent callers had picked their own
-    // `pickedVersionId` locally BEFORE this write. If we're the loser (the
-    // updateMany affected 0 rows because another caller wrote first), we
-    // must re-read the winner's version and switch to it, otherwise this
-    // turn serves a response under a DIFFERENT version than what the thread
-    // is now locked to — breaking Theme G.5's "never flip mid-thread"
-    // invariant for the first few concurrent messages.
-    if (thread && !thread.lockedVersionId && pickedVersionId) {
+    if (lockKey) {
       try {
-        const result = await this.prisma.platosAgentThread.updateMany({
-          where: { id: threadId, lockedVersionId: null },
-          data: { lockedVersionId: pickedVersionId },
-        });
-        if (result.count === 0) {
-          // Another concurrent caller won the lock. Re-read the winning
-          // version and re-load the snapshot so this turn serves under the
-          // actual locked version.
-          const reLocked = await this.prisma.platosAgentThread.findFirst({
-            where: { id: threadId },
-            select: { lockedVersionId: true },
-          });
-          const winnerVersionId = reLocked?.lockedVersionId ?? null;
+        const won = await (this.redis as any).set(lockKey, pickedVersionId, "NX");
+        if (won === null) {
+          const winnerVersionId = await this.redis.get(lockKey);
           if (winnerVersionId && winnerVersionId !== pickedVersionId) {
-            const winnerConfig = await this.loadVersionConfig(agentId, winnerVersionId, agent);
-            if (winnerConfig) {
-              config = winnerConfig;
+            const winner = await this.loadVersionConfig(agentId, winnerVersionId, binding);
+            if (winner) {
+              config = winner;
               pickedVersionId = winnerVersionId;
-              // Bucket the loser's turn as "locked" since the thread is now
-              // committed to the winner's version. G.6 metrics will pivot
-              // correctly.
-              bucket = "current";
-              winnerConfig.versionIdUsed = winnerVersionId;
-              this.logger.log(
-                `[agent.resolveConfigForThread] agent=${agentId} thread=${threadId} LOCK-RACE-LOSER → switched to winner v=${winnerVersionId}`,
-              );
+              return { config, versionIdUsed: pickedVersionId, bucket: "locked" };
             }
           }
         }
-      } catch (err: any) {
+      } catch (error: any) {
         this.logger.warn(
-          `[agent.resolveConfigForThread] failed to persist lockedVersionId on thread ${threadId}: ${err?.message}`,
+          `[agent.resolveConfigForThread] failed to persist version lock for thread ${threadId}: ${error?.message}`,
         );
       }
     }
 
-    this.logger.log(
-      `[agent.resolveConfigForThread] agent=${agentId} thread=${threadId} canaryPercent=${canaryPercent} → bucket=${bucket} v=${pickedVersionId}`,
-    );
+    config.versionIdUsed = pickedVersionId;
     return { config, versionIdUsed: pickedVersionId, bucket };
   }
 
-  /**
-   * Materialize an AgentConfig from a PlatosAgentVersion.snapshot. Falls back
-   * to defaults for any missing field. Returns `null` when the version row
-   * doesn't exist so callers can decide between current-row fallback vs error.
-   */
-  private async loadVersionConfig(
-    agentId: string,
-    versionId: string,
-    agentRow: any,
-  ): Promise<AgentConfig | null> {
-    const row = await this.prisma.platosAgentVersion.findFirst({
-      where: { id: versionId, agentId },
-      select: { id: true, snapshot: true },
-    });
-    if (!row) return null;
-    const snap = (row.snapshot as any) || {};
-    const defaults = await this.getAgentConfig(agentId);
+  private defaultAgentConfig(): AgentConfig {
     return {
-      model: snap.model || defaults.model,
-      systemPrompt: snap.systemPrompt ?? defaults.systemPrompt,
-      promptBlocks: snap.promptBlocks ?? defaults.promptBlocks ?? null,
-      // Dynamic blocks are operational config — always prefer the live agent row
-      // over the version snapshot. The snapshot may carry an empty array []
-      // from when blocks didn't exist; ?? treats [] as truthy so the fallback
-      // would never fire. Explicit length check avoids that trap.
-      dynamicBlocks: (() => {
-        const live = agentRow?.dynamicBlocks as any;
-        if (Array.isArray(live) && live.length > 0) return live;
-        const fromSnap = snap.dynamicBlocks as any;
-        if (Array.isArray(fromSnap) && fromSnap.length > 0) return fromSnap;
-        return defaults.dynamicBlocks ?? null;
-      })(),
-      maxSteps: snap.maxSteps ?? defaults.maxSteps,
-      contextLimit: snap.contextLimit ?? defaults.contextLimit,
-      historyMode: (snap.historyMode as "rolling" | "compact") ?? defaults.historyMode,
-      compactThreshold: snap.compactThreshold ?? defaults.compactThreshold,
-      enableUserProfiling: snap.enableUserProfiling ?? defaults.enableUserProfiling,
-      toolsBlockConfig: snap.toolsBlockConfig ?? defaults.toolsBlockConfig ?? null,
-      subAgentConfig: snap.subAgentConfig ?? defaults.subAgentConfig ?? null,
-      metaTools: (snap.metaTools as Record<string, boolean>) ?? defaults.metaTools,
-      versionIdUsed: row.id,
-      // Theme F.5 — schema travels with the version snapshot so rolling back
-      // restores the exact schema the agent was serving.
-      outputSchema: (snap.outputSchema as any) ?? defaults.outputSchema ?? null,
-      // modelRoutes lives on the live agent row (not versioned) so always
-      // pull from agentRow — same as dynamicBlocks above.
-      modelRoutes: (agentRow?.modelRoutes as any) ?? defaults.modelRoutes ?? null,
-    };
-    // `agentRow` is passed for future use (e.g. feature flags), kept to keep
-    // call sites forward compatible.
-    void agentRow;
-  }
-
-  /**
-   * Get agent config — loads from PlatosAgent DB table with Redis cache (1h TTL).
-   * Falls back to defaults if agent not in database.
-   */
-  async getAgentConfig(
-    agentId: string,
-    scope?: { organizationId: string; projectId: string; environmentId: string },
-  ): Promise<AgentConfig> {
-    // Check Redis cache first. PPR-11: cache key includes scope when
-    // provided so a cross-scope query on the same agentId never serves a
-    // cached neighbor-tenant config. When scope is absent (legacy callers),
-    // we still use the un-scoped key to preserve compatibility.
-    const cacheKey = scope
-      ? `agent:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${agentId}:config`
-      : `agent:${agentId}:config`;
-    const cached = await this.redis.get(cacheKey);
-    if (cached) {
-      try { return JSON.parse(cached); } catch { /* fall through to reload */ }
-    }
-
-    const defaults: AgentConfig = {
       model: env.PLATOS_DEFAULT_MODEL || "anthropic:claude-sonnet-4-6",
       systemPrompt: "You are a helpful AI assistant powered by Platos.",
       promptBlocks: null,
@@ -1495,99 +1394,119 @@ export class AgentService {
         execute_tools: true,
         remember: true,
         recall: true,
-        // Theme L — additional memory meta-tools. Default enabled since
-        // they share the same pgvector-backed store as `remember`/`recall`
-        // and the store is always scope-guarded.
         forget: true,
         list_memories: true,
         relate: true,
-        // Theme O — manual extraction trigger. Default off so agents don't
-        // spontaneously kick an extraction pass; opt in per-agent.
         memory_extract: false,
-        // Theme BGO — new primary names. Old names (`spawn_task`,
-        // `list_tasks`, `trigger_with_delay`) are kept below as deprecated
-        // aliases that resolve to the same handlers for one release.
         spawn_bgo: true,
         list_bgos: false,
         schedule_bgo: false,
-        // Deprecated aliases — remove in next major. See docs/BGO_RENAME.md.
         spawn_task: true,
         list_tasks: false,
         trigger_with_delay: false,
         spawn_batch: false,
-        // W.1 — agent_batch durable loop. Default-on.
         agent_batch: true,
         wait_for_runs: false,
         get_run_details: false,
         cancel_run: false,
         create_schedule: false,
         list_runs: false,
-        // PPR-50 — new control-plane meta-tools. Default disabled (opt-in
-        // per-agent via the metaTools map).
         replay_run: false,
         cancel_schedule: false,
         list_schedules: false,
         request_approval: true,
-        // PPR-51 — durable variant of request_approval. Disabled by
-        // default; opt in per-agent when a waitpoint must survive an
-        // agent restart (up to 24h).
         request_durable_approval: false,
       },
     };
+  }
+
+  private materializeVersionConfig(version: any, binding: any, defaults: AgentConfig): AgentConfig {
+    const runtime = cleanVersionRuntime(version);
+    const tools = version?.toolsBlockConfig && typeof version.toolsBlockConfig === "object"
+      ? { ...version.toolsBlockConfig }
+      : {};
+    if (Array.isArray(runtime.enabledTools)) tools.enabledTools = runtime.enabledTools;
+    const routes = coerceRouteList(version?.modelRoutes)?.map((route: any) => ({
+      ...route,
+      providerKeyId: route.providerKeyId ?? route.providerCredentialId ?? null,
+    })) ?? null;
+    const config: AgentConfig = {
+      model: version?.model || defaults.model,
+      systemPrompt: version?.systemPrompt || defaults.systemPrompt,
+      promptBlocks: Array.isArray(version?.promptBlocks) ? version.promptBlocks : null,
+      dynamicBlocks: Array.isArray(version?.dynamicBlocks) ? version.dynamicBlocks : null,
+      maxSteps: version?.maxSteps ?? defaults.maxSteps,
+      contextLimit: version?.contextLimit ?? defaults.contextLimit,
+      historyMode: runtime.historyMode === "compact" ? "compact" : "rolling",
+      compactThreshold: runtime.compactThreshold ?? defaults.compactThreshold,
+      enableUserProfiling: runtime.enableUserProfiling ?? defaults.enableUserProfiling,
+      toolsBlockConfig: Object.keys(tools).length ? tools as AgentConfig["toolsBlockConfig"] : null,
+      subAgentConfig: runtime.subAgentConfig ?? null,
+      metaTools: runtime.metaTools ?? defaults.metaTools,
+      versionIdUsed: version?.id ?? null,
+      outputSchema: version?.outputSchema ?? null,
+      providerKeyId: runtime.providerKeyId ?? null,
+      modelRoutes: routes,
+      clusteringId: binding?.clusterId ?? null,
+      maxBgosPerTurn: runtime.maxBgosPerTurn ?? null,
+      agentRetryConfig: runtime.agentRetryConfig ?? null,
+    };
+    (config as any).contextMapping = runtime.contextMapping ?? null;
+    (config as any).extractionPolicy = runtime.extractionPolicy ?? null;
+    (config as any).executionMode = runtime.executionMode ?? "direct";
+    (config as any).featureFlags = runtime.featureFlags ?? null;
+    (config as any).memoryConfig = (() => {
+      const memory = version?.memoryConfig;
+      if (!memory || typeof memory !== "object" || Array.isArray(memory)) return null;
+      const { __runtime: _runtime, ...publicConfig } = memory;
+      return Object.keys(publicConfig).length ? publicConfig : null;
+    })();
+    return config;
+  }
+
+  private async loadVersionConfig(agentId: string, versionId: string, binding: any): Promise<AgentConfig | null> {
+    const row = await this.prisma.agentVersion.findFirst({
+      where: { id: versionId, agentId },
+    });
+    if (!row) return null;
+    return this.materializeVersionConfig(row, binding, this.defaultAgentConfig());
+  }
+
+  /**
+   * Loads the active AgentVersion through a canonically scoped AgentBinding.
+   * Scope-less callers receive defaults rather than an arbitrary deployment.
+   */
+  async getAgentConfig(
+    agentId: string,
+    scope?: { organizationId: string; projectId: string; environmentId: string },
+  ): Promise<AgentConfig> {
+    const defaults = this.defaultAgentConfig();
+    if (!scope) return defaults;
+    const cacheKey = `agent:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${agentId}:config`;
+    const cached = await this.redis.get(cacheKey);
+    if (cached) {
+      try { return JSON.parse(cached); } catch { /* reload */ }
+    }
 
     try {
-      // PPR-11 (IDOR fix): scope-filter the findFirst when caller supplied
-      // a scope, same pattern as resolveConfigForThread above. Legacy
-      // scope-less callers still get id-only lookup (kept for now — see
-      // follow-up to remove this overload).
-      const agentWhere: Record<string, unknown> = { id: agentId };
-      if (scope) {
-        agentWhere.organizationId = scope.organizationId;
-        agentWhere.projectId = scope.projectId;
-        agentWhere.environmentId = scope.environmentId;
-      }
-      const agent = await this.prisma.platosAgent.findFirst({ where: agentWhere });
-      const config: AgentConfig = agent
-        ? {
-            model: agent.model || defaults.model,
-            systemPrompt: agent.systemPrompt || defaults.systemPrompt,
-            promptBlocks: (agent.promptBlocks as any) || null,
-            dynamicBlocks: (agent.dynamicBlocks as any) || null,
-            maxSteps: agent.maxSteps ?? 20,
-            contextLimit: agent.contextLimit ?? 20,
-            historyMode: (agent.historyMode as "rolling" | "compact") || "rolling",
-            compactThreshold: agent.compactThreshold ?? 40,
-            enableUserProfiling: agent.enableUserProfiling ?? false,
-            toolsBlockConfig: (agent.toolsBlockConfig as any) || null,
-            subAgentConfig: (agent.subAgentConfig as any) || null,
-            metaTools: (agent.metaTools as Record<string, boolean>) || defaults.metaTools,
-            // Theme F.5 — optional agent-level output schema (JSON Schema).
-            // Nullable column; stays undefined on the config when unset so
-            // `resolveTurnSchema` can short-circuit cleanly.
-            outputSchema: (agent.outputSchema as any) ?? null,
-            // PIFSP-14 — pinned provider key id.
-            providerKeyId: agent.providerKeyId ?? null,
-            // Per-request model routing table (null when not configured).
-            // Coerced: this reads raw Prisma, so a double-encoded write leaves a
-            // JSON string here. The resolver guards with `Array.isArray`, so it
-            // did not crash — it silently saw NO routes and fell back to the
-            // default model. Every configured route was inert, with nothing in
-            // the logs to say so. Failing quiet is worse than failing loud here.
-            modelRoutes: coerceRouteList(agent.modelRoutes),
-            // PRA-AC: cluster membership for cluster-wide memory recall.
-            clusteringId: agent.clusteringId ?? null,
-            // Per-agent BGO cap — overrides PLATOS_MAX_BGOS_PER_TURN env var.
-            maxBgosPerTurn: (agent as any).maxBgosPerTurn ?? null,
-            // LAUNCH-2 — per-agent retry/fallback waterfall. Null = use
-            // built-in DEFAULT_RETRY_RULES from retry-fetch.ts.
-            agentRetryConfig: (agent as any).agentRetryConfig ?? null,
-          }
+      const binding = await this.prisma.agentBinding.findFirst({
+        where: {
+          agentId,
+          environmentId: scope.environmentId,
+          agent: { projectId: scope.projectId },
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
+        },
+        include: { activeAgentVersion: true },
+      });
+      const config = binding?.activeAgentVersion
+        ? this.materializeVersionConfig(binding.activeAgentVersion, binding, defaults)
         : defaults;
-
-      // Cache for 1 hour. Use setex (single-step) — some Redis clients drop
-      // multi-arg set + EX in pipelined modes; setex is atomic and reliable.
-      await this.redis.setex(cacheKey, 60, JSON.stringify(config)); // 60s: live edits (dynamic blocks, context mapping) take effect within one turn
-      this.logger.log(`[agent.config] loaded ${agentId} contextLimit=${config.contextLimit} historyMode=${config.historyMode} profiling=${config.enableUserProfiling} cached -> platos:agent:${agentId}:config`);
+      await this.redis.setex(cacheKey, 60, JSON.stringify(config));
+      this.logger.log(
+        `[agent.config] loaded ${agentId} contextLimit=${config.contextLimit} historyMode=${config.historyMode} profiling=${config.enableUserProfiling} cached`,
+      );
       return config;
     } catch (error: any) {
       this.logger.warn(`[agent.config] getAgentConfig error for ${agentId}: ${error?.message}`);
@@ -1625,22 +1544,34 @@ export class AgentService {
    */
   private async memoryAgentFilter(
     agentId: string | undefined,
-    clusteringId: string | null | undefined,
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
   ): Promise<{ agentId?: string; agentIds?: string[] }> {
-    if (!agentId) return {};
-    if (!clusteringId) return { agentId };
+    if (!agentId) throw new Error("Memory reads require the acting Agent");
     try {
-      const members: Array<{ id: string }> = await this.prisma.platosAgent.findMany({
+      const acting = await this.prisma.agentBinding.findFirst({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
+          agentId,
           environmentId: scope.environmentId,
-          clusteringId,
+          agent: { projectId: scope.projectId },
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
         },
-        select: { id: true },
+        select: { clusterId: true },
       });
-      const ids = members.map((m) => m.id);
+      if (!acting?.clusterId) return { agentId };
+      const members: Array<{ agentId: string }> = await this.prisma.agentBinding.findMany({
+        where: {
+          environmentId: scope.environmentId,
+          clusterId: acting.clusterId,
+          agent: { projectId: scope.projectId },
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
+        },
+        select: { agentId: true },
+      });
+      const ids = members.map((m) => m.agentId);
       return ids.length > 0 ? { agentIds: ids } : { agentId };
     } catch {
       // On lookup failure, fail CLOSED to the single agent (never scope-wide).
@@ -1670,37 +1601,37 @@ export class AgentService {
       if (scope.resolvedEndUserId !== undefined) return scope.resolvedEndUserId;
       const threadId = scope.sessionId;
       if (!threadId) return null;
-      const thread = await this.prisma.platosAgentThread.findFirst({
+      const thread = await this.prisma.thread.findFirst({
         where: {
           id: threadId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          agent: { projectId: scope.projectId },
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
         },
-        select: { platosEndUserId: true, singleEndUser: true },
-      });
-      // IDENTITY-CORE §C — single-end-user gate. A multi-human thread (shared
-      // channel / group DM / non-Slack channel thread with no DM predicate) has
-      // `singleEndUser === false`; fail CLOSED before reading the pinned person
-      // so per-user Composio-MCP never runs as the wrong human. In a 1:1 thread
-      // the single (adopted) pinned person IS the one human — correct by
-      // construction, and composes with the §A resolver rule below.
-      if (thread?.singleEndUser === false) return null;
-      const endUserPk = thread?.platosEndUserId;
-      if (!endUserPk) return null;
-      const endUser = await this.prisma.platosEndUser.findFirst({
-        where: {
-          id: endUserPk,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
+        select: {
+          endUser: {
+            select: {
+              identities: {
+                where: { disabledAt: null },
+                orderBy: [{ verifiedAt: "desc" }, { createdAt: "asc" }],
+                take: 1,
+                select: { subject: true, profile: true },
+              },
+            },
+          },
         },
-        select: { linkedExternalId: true, externalUserId: true },
       });
-      if (!endUser) return null;
-      // §A.2 frozen rule: prefer the adopted linkedExternalId; empty-string
-      // guarded; null ⇒ fail closed downstream.
-      return pickExternalId(endUser.linkedExternalId, endUser.externalUserId);
+      const identity = thread?.endUser?.identities?.[0];
+      if (!identity) return null;
+      const profile = identity.profile && typeof identity.profile === "object"
+        ? identity.profile as Record<string, unknown>
+        : {};
+      return pickExternalId(
+        typeof profile.linkedExternalId === "string" ? profile.linkedExternalId : null,
+        typeof profile.externalUserId === "string" ? profile.externalUserId : identity.subject,
+      );
     } catch {
       return null;
     }
@@ -2087,14 +2018,14 @@ export class AgentService {
     };
 
     // ─────────────────────────────────────────────────────────────────
-    // Theme L — memory meta-tools. Delegate to MemoryService /
-    // KnowledgeGraphService when wired (production); fall back to the
-    // legacy Redis stub when unavailable (test harness).
+    // Theme L — memory meta-tools. Clean Memory/KnowledgeGraph persistence is
+    // required; there is no Redis compatibility store.
     // ─────────────────────────────────────────────────────────────────
     const scopeTuple = {
       organizationId: scope.organizationId,
       projectId: scope.projectId,
       environmentId: scope.environmentId,
+      agentId: scope.agentId ?? null,
     };
     const memoryUserId = scope.userId;
     // Local enablement lookup — `metaEnabled` is declared further down in
@@ -2126,36 +2057,23 @@ export class AgentService {
           .describe("Optional metadata (e.g. { source: 'thread-xyz' })."),
       }),
       execute: async ({ content, kind, metadata }) => {
-        if (this.memoryService) {
-          try {
-            const row = await this.memoryService.add(scopeTuple, {
-              userId: memoryUserId,
-              agentId: scope.agentId ?? null,
-              content,
-              kind,
-              metadata,
-              source: "manual",
-              sourceThreadId: (scope as any).threadId ?? null,
-            });
-            return { saved: true, id: row.id, kind: row.kind };
-          } catch (err: any) {
-            return { saved: false, error: err?.message || "remember failed" };
-          }
+        if (!this.memoryService) {
+          return { saved: false, error: "clean memory service unavailable" };
         }
-        // Legacy Redis stub — kept so test/dev without MemoryModule still
-        // returns a sensible response.
-        const key = `memory:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.agentId || "default"}`;
-        const entry = JSON.stringify({
-          content,
-          kind: kind || "fact",
-          metadata: metadata || null,
-          userId: scope.userId,
-          timestamp: new Date().toISOString(),
-        });
-        await this.redis.lpush(key, entry);
-        await this.redis.ltrim(key, 0, 499);
-        await this.redis.expire(key, 86400 * 90);
-        return { saved: true, fallback: "redis", content };
+        try {
+          const row = await this.memoryService.add(scopeTuple, {
+            userId: memoryUserId,
+            agentId: scope.agentId ?? null,
+            content,
+            kind,
+            metadata,
+            source: "manual",
+            sourceThreadId: (scope as any).threadId ?? null,
+          });
+          return { saved: true, id: row.id, kind: row.kind };
+        } catch (err: any) {
+          return { saved: false, error: err?.message || "remember failed" };
+        }
       },
     };
 
@@ -2178,58 +2096,44 @@ export class AgentService {
           .describe("Max results (default 10)."),
       }),
       execute: async ({ query, kind, limit }) => {
-        if (this.memoryService) {
-          try {
-            // Agent/cluster scoping (fail-closed to single agent) — memory
-            // crosses agents only within a cluster. Mirrors the single-agent
-            // recall leak fix (Mark surfaced Ada's context) and the cluster
-            // share rule, resolved in ONE place now.
-            const filter = await this.memoryAgentFilter(
-              scope.agentId,
-              agentConfig?.clusteringId,
-              scope,
-            );
-            const fused = await fuseContextRetrieval(
-              { memory: this.memoryService, graph: this.knowledgeGraph },
-              scopeTuple,
-              { query, userId: memoryUserId, kind, limit, ...filter },
-            );
-            const results = fused.memories.map((h: any) => ({
-              id: h.id,
-              content: h.content,
-              kind: h.kind,
-              score: typeof h.score === "number" ? Number(h.score.toFixed(4)) : undefined,
-              // Which signals surfaced this (dense / graph) — accounting.
-              ...(Array.isArray(h.signals) ? { signals: h.signals } : {}),
-              metadata: h.metadata,
-              createdAt: h.createdAt,
-            }));
-            return {
-              query,
-              total: results.length,
-              results,
-              // The KG slice the situation resolved to — the graph now
-              // PARTICIPATES in recall instead of being write-only.
-              ...(fused.entities.length
-                ? { graph: { entities: fused.entities, relationships: fused.relationships } }
-                : {}),
-              signals: fused.signals,
-            };
-          } catch (err: any) {
-            return { query, total: 0, results: [], error: err?.message || "recall failed" };
-          }
+        if (!this.memoryService) {
+          return {
+            query,
+            total: 0,
+            results: [],
+            error: "clean memory service unavailable",
+          };
         }
-        // Legacy Redis fallback (substring search).
-        const key = `memory:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${scope.agentId || "default"}`;
-        const all = await this.redis.lrange(key, 0, 499);
-        const queryLower = query.toLowerCase();
-        const matches = all
-          .map((raw: string) => {
-            try { return JSON.parse(raw); } catch { return null; }
-          })
-          .filter((m: any) => m && typeof m.content === "string" && m.content.toLowerCase().includes(queryLower))
-          .slice(0, limit ?? 10);
-        return { query, results: matches, total: matches.length, fallback: "redis" };
+        try {
+          // Agent/cluster scoping is derived from the persisted acting
+          // AgentBinding; memory crosses Agents only inside that cluster.
+          const filter = await this.memoryAgentFilter(scope.agentId, scope);
+          const fused = await fuseContextRetrieval(
+            { memory: this.memoryService, graph: this.knowledgeGraph },
+            scopeTuple,
+            { query, userId: memoryUserId, kind, limit, ...filter },
+          );
+          const results = fused.memories.map((h: any) => ({
+            id: h.id,
+            content: h.content,
+            kind: h.kind,
+            score: typeof h.score === "number" ? Number(h.score.toFixed(4)) : undefined,
+            ...(Array.isArray(h.signals) ? { signals: h.signals } : {}),
+            metadata: h.metadata,
+            createdAt: h.createdAt,
+          }));
+          return {
+            query,
+            total: results.length,
+            results,
+            ...(fused.entities.length
+              ? { graph: { entities: fused.entities, relationships: fused.relationships } }
+              : {}),
+            signals: fused.signals,
+          };
+        } catch (err: any) {
+          return { query, total: 0, results: [], error: err?.message || "recall failed" };
+        }
       },
     };
 
@@ -2273,7 +2177,7 @@ export class AgentService {
             limit,
             offset,
             // Own agent, or cluster MEMBERS when clustered (never scope-wide).
-            ...(await this.memoryAgentFilter(scope.agentId, agentConfig?.clusteringId, scope)),
+            ...(await this.memoryAgentFilter(scope.agentId, scope)),
           });
           return {
             total: rows.length,
@@ -2392,8 +2296,8 @@ export class AgentService {
     // The LLM calls this when it learns something worth remembering about the user.
     // Only actually writes when enableUserProfiling=true on the agent config.
     //
-    // Theme M.4 — the legacy PlatosAgentUserProfile blob is gone. This
-    // meta-tool now delegates to the unified PlatosMemory store (kind=
+    // Theme M.4 — the legacy profile blob is gone. This meta-tool delegates
+    // to the normalized Memory store (kind=
     // "profile"), which is what the turn-start __user_profile injector +
     // recall_user_profile already read from. The meta-tool name is kept
     // for LLM-facing API stability (older serialized AgentConfig rows
@@ -2409,14 +2313,15 @@ export class AgentService {
         value: z.string().describe("The value — can be a string, JSON-encoded object, or a short sentence. Agent-readable."),
       }),
       execute: async ({ key, value }) => {
-        const agentId = scope.agentId || "default";
+        const agentId = scope.agentId;
+        if (!agentId) return { saved: false, error: "acting Agent is required" };
         // One-time deprecation breadcrumb — the LLM-facing name stays, but
         // the underlying store is now unified with `remember`.
         const warnKey = `${agentId}:update_user_profile`;
         if (!updateUserProfileWarned.has(warnKey)) {
           updateUserProfileWarned.add(warnKey);
           this.logger.warn(
-            `[platos.profile] Meta-tool "update_user_profile" now delegates to PlatosMemory (kind="profile"). Consider migrating to remember({kind:"profile", content, metadata:{profileKey}}) directly.`,
+            `[platos.profile] Meta-tool "update_user_profile" now delegates to clean Memory (kind="profile"). Consider migrating to remember({kind:"profile", content, metadata:{profileKey}}) directly.`,
           );
         }
         try {
@@ -2426,60 +2331,43 @@ export class AgentService {
           if (!key || key.trim().length === 0 || key.startsWith("_")) {
             return { saved: false, error: "profile key must be non-empty and not start with '_'" };
           }
-          // EOBD.16 parity — scope-verify the agent exists in THIS scope
-          // before writing. Keeps a forged agentId from leaking into
-          // another tenant's profile rows via the (agentId, userId)
-          // composite key.
-          const agentInScope = await this.prisma.platosAgent.findFirst({
-            where: {
-              id: agentId,
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-            },
-            select: { id: true },
-          });
-          if (!agentInScope && agentId !== "default") {
-            return { saved: false, error: "Agent not found in this scope" };
-          }
-
           const memoryContent = typeof value === "string" ? value : String(value);
-          // Profile keys are idempotent at the (scope, userId, agentId,
-          // profileKey) level — delete any prior row first so `add()`
-          // inserts the new value. contentHash-based dedupe only triggers
-          // when a sourceThreadId is set (extracted rows), so we manage
-          // supersession here explicitly.
-          const prior = await this.prisma.platosMemory.findFirst({
-            where: {
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-              userId: scope.userId,
-              agentId,
-              kind: "profile",
-              metadata: {
-                path: ["profileKey"],
-                equals: key,
-              },
-            },
-            select: { id: true },
-          });
-          if (prior) {
-            await this.memoryService.delete(scopeTuple, prior.id);
-          }
-          await this.memoryService.add(scopeTuple, {
+          const profiles = await this.memoryService.list(scopeTuple, {
             userId: scope.userId,
             agentId,
             kind: "profile",
-            content: memoryContent,
-            metadata: {
-              profileKey: key,
-              blobSyncedAt: new Date().toISOString(),
-            },
-            source: "manual",
-            visibility: "private",
-            agentVisible: true,
+            limit: 100,
           });
+          const prior = profiles.find((memory) => {
+            const metadata = memory.metadata;
+            return !!metadata && typeof metadata === "object" && !Array.isArray(metadata)
+              && (metadata as Record<string, unknown>).profileKey === key;
+          });
+          const metadata = {
+            profileKey: key,
+            blobSyncedAt: new Date().toISOString(),
+          };
+          if (prior) {
+            const updated = await this.memoryService.update(scopeTuple, prior.id, {
+              kind: "profile",
+              content: memoryContent,
+              metadata,
+              visibility: "private",
+              agentVisible: true,
+            }, scope.userId);
+            if (!updated) throw new Error("Profile memory disappeared during update");
+          } else {
+            await this.memoryService.add(scopeTuple, {
+              userId: scope.userId,
+              agentId,
+              kind: "profile",
+              content: memoryContent,
+              metadata,
+              source: "manual",
+              visibility: "private",
+              agentVisible: true,
+            });
+          }
           // Invalidate the projection cache so the next reader (turn-
           // start injector or recall_user_profile) sees fresh data.
           await this.profileCache?.invalidate(scopeTuple, agentId, scope.userId);
@@ -2493,8 +2381,8 @@ export class AgentService {
 
     // recall_user_profile — read the per-user profile on demand.
     //
-    // Theme M.4 — legacy PlatosAgentUserProfile blob is gone. This reads
-    // exclusively from PlatosMemory rows (kind="profile"), reassembling
+    // Theme M.4 — the legacy profile blob is gone. This reads exclusively
+    // from normalized Memory rows (kind="profile"), reassembling
     // the blob shape from `metadata.profileKey`. Redis projection cache
     // handles the hot path (O(1) Redis vs O(N) Prisma on miss).
     tools.recall_user_profile = {
@@ -2503,7 +2391,8 @@ export class AgentService {
         key: z.string().optional().describe("Specific key to retrieve (optional — omit to return the full profile)"),
       }),
       execute: async ({ key }) => {
-        const agentId = scope.agentId || "default";
+        const agentId = scope.agentId;
+        if (!agentId) return { found: false, error: "acting Agent is required" };
         try {
           // Cache hit path — skip Prisma entirely when a fresh
           // projection is already in Redis.
@@ -2513,16 +2402,14 @@ export class AgentService {
             // Cache miss — rebuild from memory rows. Scope-gated to
             // (org, project, env, agentId, userId) so a forged agentId
             // can't leak another scope's data (EOBD.16 parity).
-            const rows = await this.prisma.platosMemory.findMany({
-              where: {
-                organizationId: scope.organizationId,
-                projectId: scope.projectId,
-                environmentId: scope.environmentId,
-                userId: scope.userId,
-                agentId,
-                kind: "profile",
-              },
-              select: { content: true, metadata: true },
+            if (!this.memoryService) {
+              return { found: false, error: "memory service unavailable" };
+            }
+            const rows = await this.memoryService.list(scopeTuple, {
+              userId: scope.userId,
+              agentId,
+              kind: "profile",
+              limit: 100,
             });
             data = {};
             for (const row of rows) {
@@ -3493,15 +3380,17 @@ export class AgentService {
         }),
         execute: async (args: { taskId: string; payload?: Record<string, unknown> }) => {
           const prisma = (this as any).prisma as any;
-          const taskRow = await prisma.platosTask.findFirst({
+          const taskRow = await prisma.job.findFirst({
             where: {
-              taskId: args.taskId,
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
+              externalId: args.taskId,
               environmentId: scope.environmentId,
-              isActive: true,
+              status: "ACTIVE",
+              environment: {
+                projectId: scope.projectId,
+                project: { organizationId: scope.organizationId },
+              },
             },
-            select: { id: true, taskId: true, displayName: true, triggerType: true, allowedAgentIds: true },
+            select: { id: true, externalId: true, displayName: true, triggerType: true, allowedAgentIds: true },
           });
           if (!taskRow) return { error: `Task "${args.taskId}" not found or inactive in this scope.` };
           if (taskRow.triggerType !== "agent-spawn") {
@@ -3528,9 +3417,9 @@ export class AgentService {
               // unverifiable (and thus rejected by the fail-closed check above).
               // scopeTags/scopeMetadata are the same consts every other site uses.
               tags: scopeTags,
-              metadata: { ...scopeMetadata, taskIdHint: taskRow.taskId },
+              metadata: { ...scopeMetadata, taskIdHint: taskRow.externalId },
             });
-            return { queued: true, runId: run.id, taskId: taskRow.taskId, displayName: taskRow.displayName };
+            return { queued: true, runId: run.id, taskId: taskRow.externalId, displayName: taskRow.displayName };
           } catch (err: any) {
             return { error: `Failed to queue task: ${err?.message}` };
           }
@@ -4607,7 +4496,13 @@ export class AgentService {
     // waterfall instead of always using DEFAULT_RETRY_RULES. Without this,
     // a per-agent retry config configured by the operator silently does
     // not apply to delegate_to_sub_agent invocations.
-    const model = resolveModel(subModel, subApiKey, args.parentConfig.agentRetryConfig?.rules);
+    const subRuntime = await this.resolveProviderRuntimeOptions(subModel, args.scope);
+    const model = resolveModel(
+      subModel,
+      subApiKey,
+      args.parentConfig.agentRetryConfig?.rules,
+      subRuntime,
+    );
 
     // Sub-agent gets execute_tools with the enabled tools list.
     // Note: for now the sub-agent uses execute_tools meta-tool (which calls
@@ -4882,6 +4777,7 @@ export class AgentService {
     // different envs (dev / prod) have different keys — one container,
     // many tenant scopes.
 
+    let providerCallStarted = false;
     try {
     // Theme CTX.2 — load per-turn session context + the agent's declared
     // context mapping. Both are JSONB columns added by CTX.1 and may be
@@ -4900,12 +4796,15 @@ export class AgentService {
     if (scope.sessionId && scope.agentId) {
       try {
         if (!sessionContext) {
-          const ctxRow = await this.prisma.platosAgentThread.findFirst({
+          const ctxRow = await this.prisma.thread.findFirst({
             where: {
               id: scope.sessionId,
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
               environmentId: scope.environmentId,
+              agentId: scope.agentId,
+              agent: { projectId: scope.projectId },
+              environment: {
+                project: { id: scope.projectId, organizationId: scope.organizationId },
+              },
             },
             select: { sessionContext: true },
           });
@@ -4913,16 +4812,7 @@ export class AgentService {
             sessionContext = ctxRow.sessionContext as Record<string, unknown>;
           }
         }
-        const agentRow = await this.prisma.platosAgent.findFirst({
-          where: {
-            id: scope.agentId,
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-          },
-          select: { contextMapping: true },
-        });
-        contextMapping = normalizeContextMapping(agentRow?.contextMapping ?? null);
+        contextMapping = normalizeContextMapping((agentConfig as any)?.contextMapping ?? null);
       } catch (err: any) {
         // Fail-open — a broken DB read must not take down the turn.
         this.logger.warn(
@@ -5079,20 +4969,9 @@ export class AgentService {
       memoryFusePromise = (async () => {
         try {
           let policyEnabled = true;
-          let injectClusteringId: string | null = null;
           if (scope.agentId) {
-            const agentRow = await this.prisma.platosAgent.findFirst({
-              where: {
-                id: scope.agentId,
-                organizationId: scope.organizationId,
-                projectId: scope.projectId,
-                environmentId: scope.environmentId,
-              },
-              select: { extractionPolicy: true, clusteringId: true },
-            });
-            const policy = resolveExtractionPolicy(agentRow?.extractionPolicy ?? null);
+            const policy = resolveExtractionPolicy((agentConfig as any)?.extractionPolicy ?? null);
             policyEnabled = policy.enabled;
-            injectClusteringId = (agentRow as any)?.clusteringId ?? null;
           }
           if (!policyEnabled) return null;
           // Hard timeout preserved exactly — a slow embedding key can never
@@ -5105,6 +4984,7 @@ export class AgentService {
                 organizationId: scope.organizationId,
                 projectId: scope.projectId,
                 environmentId: scope.environmentId,
+                agentId: scope.agentId ?? null,
               },
               {
                 query: message,
@@ -5117,7 +4997,7 @@ export class AgentService {
                 // clustered — never scope-wide (the Mark/Ada leak fix). RAG
                 // chunks are excluded inside the fusion so raw document text
                 // never eats the injection budget.
-                ...(await this.memoryAgentFilter(scope.agentId, injectClusteringId, scope)),
+                ...(await this.memoryAgentFilter(scope.agentId, scope)),
               },
             ),
             new Promise<never>((_, reject) =>
@@ -5171,24 +5051,12 @@ export class AgentService {
           (state!.models.includes(agentConfig.model) ||
             state!.models.includes(bareModel));
         if (!available || !modelMatches) {
-          yield {
-            type: "error",
-            code: "provider_unavailable",
-            message: available
-              ? `Model "${agentConfig.model}" is not in the scope-filtered catalog for provider "${providerId}". Update the agent's model or link a compatible provider.`
-              : `Provider "${providerId}" is not linked or its required env vars are missing in this environment. Link it under Agent Providers before running the agent.`,
-            model: agentConfig.model,
-            providerId,
-          };
-          yield { type: "done" };
-          return;
+          throw new ProviderRuntimeError("provider_configuration_unavailable");
         }
-      } catch (err: any) {
-        // Registry lookup itself failed — log + fall through to the old
-        // behaviour (the downstream API call will surface the real error).
-        this.logger.warn(
-          `[agent.stream] provider-registry availability check failed, proceeding: ${err?.message ?? String(err)}`,
-        );
+      } catch (error) {
+        throw error instanceof ProviderRuntimeError
+          ? error
+          : new ProviderRuntimeError("provider_configuration_unavailable");
       }
     }
 
@@ -6289,6 +6157,7 @@ export class AgentService {
       // from throwing AI_InvalidPromptError on tool turns. Idempotent + mutates
       // the same `tools` object the call below reads.
       hardenToolResults(tools);
+      providerCallStarted = true;
       const result = streamText({
         model,
         messages,
@@ -6457,6 +6326,11 @@ export class AgentService {
           this.logger.debug(`[agent.stream] total usage: ${JSON.stringify(event.usage)}`);
           this.logger.debug(`[agent.stream] steps: ${event.steps?.length ?? 1}`);
           this.logger.debug(`[agent.stream] =======================`);
+        },
+        // Override the SDK's default console.error handler. Provider errors may
+        // carry response bodies and request metadata; runtime logs stay stable.
+        onError: () => {
+          this.logger.warn("[agent.stream] provider request failed");
         },
       });
 
@@ -6660,8 +6534,7 @@ export class AgentService {
             break;
 
           case "error":
-            yield { type: "error", message: String(chunk.error) };
-            break;
+            throw new ProviderRuntimeError("provider_request_failed");
         }
       }
 
@@ -6674,6 +6547,9 @@ export class AgentService {
 
       yield { type: "done" };
     } catch (error: unknown) {
+      if (error instanceof ProviderRuntimeError || providerCallStarted) {
+        throw asSafeProviderRuntimeError(error);
+      }
       const msg = error instanceof Error ? error.message : "Unknown error";
       yield { type: "error", message: msg };
       yield { type: "done" };
@@ -6709,8 +6585,14 @@ export class AgentService {
     },
   ): Promise<any> {
     const apiKey = await this.resolveApiKey(agentConfig.model, scope, agentConfig.providerKeyId);
+    const runtime = await this.resolveProviderRuntimeOptions(agentConfig.model, scope);
     // LAUNCH-2 — per-agent retry rules override the built-in defaults.
-    const model = resolveModel(agentConfig.model, apiKey, agentConfig.agentRetryConfig?.rules);
+    const model = resolveModel(
+      agentConfig.model,
+      apiKey,
+      agentConfig.agentRetryConfig?.rules,
+      runtime,
+    );
     // TL.2 — same display-mode addendum holder as stream(). Populated by
     // buildMetaTools when the agent is in summary / hybrid mode.
     const runDisplayModeAddendumHolder: { value: string } = { value: "" };

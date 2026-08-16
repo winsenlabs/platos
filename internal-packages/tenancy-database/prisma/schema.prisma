@@ -1,12 +1,14 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 generator client {
-  provider      = "prisma-client-js"
-  output        = "../generated/control"
-  binaryTargets = ["native", "debian-openssl-1.1.x"]
+  provider        = "prisma-client-js"
+  output          = "../generated/control"
+  binaryTargets   = ["native", "debian-openssl-1.1.x"]
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 enum PrincipalTier {
@@ -86,6 +88,16 @@ enum AuthorizationScopeKind {
 enum AgentToolDefaultPolicy {
   NONE
   ALL
+}
+
+enum AgentVersionBucket {
+  CURRENT
+  CANARY
+}
+
+enum ThreadCompactionState {
+  IDLE
+  IN_PROGRESS
 }
 
 model User {
@@ -501,6 +513,8 @@ model Agent {
   agentEvals           AgentEval[]
   goldenSets           GoldenSet[]
   memories             Memory[]
+  memoryEntities       MemoryEntity[]
+  memoryRelationships  MemoryRelationship[]
   channelConnections   ChannelConnection[]
   channelApps          ChannelApp[]
   channelInstallations ChannelInstallation[]
@@ -521,9 +535,12 @@ model AgentCluster {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  environment Environment    @relation(fields: [environmentId], references: [id], onDelete: Cascade)
-  bindings    AgentBinding[]
-  threads     Thread[]
+  environment         Environment          @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  bindings            AgentBinding[]
+  threads             Thread[]
+  memories            Memory[]
+  memoryEntities      MemoryEntity[]
+  memoryRelationships MemoryRelationship[]
 
   @@unique([environmentId, slug])
 }
@@ -561,6 +578,7 @@ model AgentVersion {
   skills         AgentSkill[]
   messageRatings MessageRating[]
   agentEvals     AgentEval[]
+  turns          Turn[]
 
   @@unique([agentId, versionNumber])
 }
@@ -642,6 +660,7 @@ model ProviderKey {
   label              String
   environmentKeyName String
   encryptedReference String?
+  /// The initial migration enforces at most one default per Environment/provider with a partial unique index.
   isDefault          Boolean   @default(false)
   createdBy          String
   lastUsedAt         DateTime?
@@ -806,22 +825,25 @@ model PostmanTemplate {
 }
 
 model Thread {
-  id             String     @id @default(uuid()) @db.Uuid
-  environmentId  String     @db.Uuid
-  agentId        String     @db.Uuid
-  endUserId      String     @db.Uuid
-  clusterId      String?    @db.Uuid
-  parentThreadId String?    @db.Uuid
-  title          String?
-  status         WorkStatus @default(ACTIVE)
-  summary        String?
+  id                  String                @id @default(uuid()) @db.Uuid
+  environmentId       String                @db.Uuid
+  agentId             String                @db.Uuid
+  endUserId           String                @db.Uuid
+  clusterId           String?               @db.Uuid
+  parentThreadId      String?               @db.Uuid
+  compactedUpToTurnId String?               @db.Uuid
+  title               String?
+  status              WorkStatus            @default(ACTIVE)
+  summary             String?
+  compactionState     ThreadCompactionState @default(IDLE)
+  compactedAt         DateTime?
   /// Object root containing verified, non-authoritative channel context; validated by jsonShapeRegistry.
-  sessionContext Json?
-  tags           String[]   @default([])
-  pinnedAt       DateTime?
-  archivedAt     DateTime?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  sessionContext      Json?
+  tags                String[]              @default([])
+  pinnedAt            DateTime?
+  archivedAt          DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   environment       Environment        @relation(fields: [environmentId], references: [id], onDelete: Cascade)
   agent             Agent              @relation(fields: [agentId], references: [id], onDelete: Restrict)
@@ -829,7 +851,9 @@ model Thread {
   cluster           AgentCluster?      @relation(fields: [clusterId], references: [id], onDelete: SetNull)
   parentThread      Thread?            @relation("ThreadFork", fields: [parentThreadId], references: [id], onDelete: SetNull)
   forks             Thread[]           @relation("ThreadFork")
-  turns             Turn[]
+  compactedUpToTurn Turn?              @relation("ThreadCompactionCursor", fields: [compactedUpToTurnId], references: [id], onDelete: SetNull)
+  turns             Turn[]             @relation("ThreadTurns")
+  sourceMemories    Memory[]           @relation("MemorySourceThread")
   artifacts         Artifact[]
   channelThreads    ChannelThread[]
   channelAppThreads ChannelAppThread[]
@@ -842,12 +866,15 @@ model Thread {
   @@index([agentId, status])
   @@index([clusterId])
   @@index([parentThreadId])
+  @@index([compactionState, compactedAt])
 }
 
 model Turn {
-  id                String     @id @default(uuid()) @db.Uuid
-  threadId          String     @db.Uuid
-  parentTurnId      String?    @db.Uuid
+  id                String             @id @default(uuid()) @db.Uuid
+  threadId          String             @db.Uuid
+  parentTurnId      String?            @db.Uuid
+  agentVersionId    String             @db.Uuid
+  versionBucket     AgentVersionBucket
   sequence          Int
   inputText         String?
   outputText        String?
@@ -856,41 +883,51 @@ model Turn {
   /// Object root containing structured final output; validated by jsonShapeRegistry.
   output            Json?
   thinkingContent   String?
-  status            WorkStatus @default(PENDING)
+  status            WorkStatus         @default(PENDING)
   externalRuntimeId String?
+  costCents         Decimal?           @db.Decimal(18, 6)
+  latencyMs         Int?
   startedAt         DateTime?
   completedAt       DateTime?
-  createdAt         DateTime   @default(now())
+  createdAt         DateTime           @default(now())
 
-  thread         Thread              @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  parentTurn     Turn?               @relation("TurnRevision", fields: [parentTurnId], references: [id], onDelete: SetNull)
-  revisions      Turn[]              @relation("TurnRevision")
-  steps          Step[]
-  attachments    MessageAttachment[]
-  artifacts      Artifact[]
-  approvals      AgentApproval[]
-  safetyEvents   SafetyEvent[]
-  messageRatings MessageRating[]
-  agentEvals     AgentEval[]
+  thread                     Thread              @relation("ThreadTurns", fields: [threadId], references: [id], onDelete: Cascade)
+  parentTurn                 Turn?               @relation("TurnRevision", fields: [parentTurnId], references: [id], onDelete: SetNull)
+  revisions                  Turn[]              @relation("TurnRevision")
+  agentVersion               AgentVersion        @relation(fields: [agentVersionId], references: [id], onDelete: Restrict)
+  compactionCursorForThreads Thread[]            @relation("ThreadCompactionCursor")
+  steps                      Step[]
+  attachments                MessageAttachment[]
+  artifacts                  Artifact[]
+  approvals                  AgentApproval[]
+  safetyEvents               SafetyEvent[]
+  messageRatings             MessageRating[]
+  agentEvals                 AgentEval[]
 
   @@unique([threadId, sequence])
   @@index([parentTurnId])
+  @@index([agentVersionId, versionBucket])
   @@index([threadId, status])
 }
 
 model Step {
-  id           String     @id @default(uuid()) @db.Uuid
-  turnId       String     @db.Uuid
-  sequence     Int
-  model        String
-  status       WorkStatus @default(PENDING)
-  retryCount   Int        @default(0)
-  inputTokens  Int?
-  outputTokens Int?
-  error        String?
-  startedAt    DateTime?
-  completedAt  DateTime?
-  createdAt    DateTime   @default(now())
+  id                       String     @id @default(uuid()) @db.Uuid
+  turnId                   String     @db.Uuid
+  sequence                 Int
+  model                    String
+  status                   WorkStatus @default(PENDING)
+  retryCount               Int        @default(0)
+  inputTokens              Int?
+  outputTokens             Int?
+  cacheCreationInputTokens Int?
+  cacheReadInputTokens     Int?
+  reasoningTokens          Int?
+  costCents                Decimal?   @db.Decimal(18, 6)
+  latencyMs                Int?
+  error                    String?
+  startedAt                DateTime?
+  completedAt              DateTime?
+  createdAt                DateTime   @default(now())
 
   turn      Turn       @relation(fields: [turnId], references: [id], onDelete: Cascade)
   toolCalls ToolCall[]
@@ -1562,75 +1599,95 @@ model AgentToolPolicy {
 }
 
 model Memory {
-  id             String    @id @default(uuid()) @db.Uuid
-  environmentId  String    @db.Uuid
-  endUserId      String    @db.Uuid
-  agentId        String?   @db.Uuid
-  kind           String
-  content        String
+  id               String                       @id @default(uuid()) @db.Uuid
+  environmentId    String                       @db.Uuid
+  endUserId        String                       @db.Uuid
+  agentId          String                       @db.Uuid
+  clusterId        String?                      @db.Uuid
+  kind             String
+  content          String
   /// Object root containing non-secret extraction/source attributes; validated by jsonShapeRegistry.
-  metadata       Json?
-  agentVisible   Boolean   @default(true)
-  visibility     String
-  source         String
-  sourceThreadId String?
-  sourceTurnIds  String[]  @default([])
-  contentHash    String?
-  confidence     Float?
-  lastAccessedAt DateTime?
-  archivedAt     DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  metadata         Json?
+  agentVisible     Boolean                      @default(true)
+  visibility       String
+  source           String
+  embedding        Unsupported("vector(1536)")?
+  sourceThreadId   String?                      @db.Uuid
+  sourceTurnIds    String[]                     @default([]) @db.Uuid
+  extractorVersion String?
+  contentHash      String?
+  confidence       Float?
+  lastAccessedAt   DateTime?
+  archivedAt       DateTime?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
 
-  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
-  endUser     EndUser     @relation(fields: [endUserId], references: [id], onDelete: Cascade)
-  agent       Agent?      @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  environment          Environment          @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  endUser              EndUser              @relation(fields: [endUserId], references: [id], onDelete: Cascade)
+  agent                Agent                @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  cluster              AgentCluster?        @relation(fields: [clusterId], references: [id], onDelete: Restrict)
+  sourceThread         Thread?              @relation("MemorySourceThread", fields: [sourceThreadId], references: [id], onDelete: Cascade)
+  sourcedRelationships MemoryRelationship[]
 
+  @@unique([environmentId, endUserId, sourceThreadId, contentHash])
   @@index([environmentId, endUserId, archivedAt])
-  @@index([agentId])
+  @@index([environmentId, endUserId, agentId, archivedAt])
+  @@index([environmentId, endUserId, clusterId, archivedAt])
 }
 
 model MemoryEntity {
-  id            String   @id @default(uuid()) @db.Uuid
-  environmentId String   @db.Uuid
-  endUserId     String   @db.Uuid
+  id            String                       @id @default(uuid()) @db.Uuid
+  environmentId String                       @db.Uuid
+  endUserId     String                       @db.Uuid
+  agentId       String                       @db.Uuid
+  clusterId     String?                      @db.Uuid
   entityKey     String
   entityType    String
   label         String
-  aliases       String[] @default([])
+  aliases       String[]                     @default([])
   /// Object root containing extracted entity attributes; validated by jsonShapeRegistry.
   metadata      Json?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  embedding     Unsupported("vector(1536)")?
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
 
   environment       Environment          @relation(fields: [environmentId], references: [id], onDelete: Cascade)
   endUser           EndUser              @relation(fields: [endUserId], references: [id], onDelete: Cascade)
+  agent             Agent                @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  cluster           AgentCluster?        @relation(fields: [clusterId], references: [id], onDelete: Restrict)
   fromRelationships MemoryRelationship[] @relation("MemoryRelationshipFrom")
   toRelationships   MemoryRelationship[] @relation("MemoryRelationshipTo")
 
-  @@unique([environmentId, endUserId, entityKey])
+  @@unique([environmentId, endUserId, agentId, entityKey])
+  @@index([environmentId, endUserId, clusterId])
 }
 
 model MemoryRelationship {
   id               String   @id @default(uuid()) @db.Uuid
   environmentId    String   @db.Uuid
   endUserId        String   @db.Uuid
+  agentId          String   @db.Uuid
+  clusterId        String?  @db.Uuid
   fromEntityId     String   @db.Uuid
   toEntityId       String   @db.Uuid
   relationshipType String
   weight           Float?
   /// Object root containing extracted relationship attributes; validated by jsonShapeRegistry.
   metadata         Json?
-  sourceMemoryId   String?
+  sourceMemoryId   String?  @db.Uuid
   createdAt        DateTime @default(now())
 
-  environment Environment  @relation(fields: [environmentId], references: [id], onDelete: Cascade)
-  endUser     EndUser      @relation(fields: [endUserId], references: [id], onDelete: Cascade)
-  fromEntity  MemoryEntity @relation("MemoryRelationshipFrom", fields: [fromEntityId], references: [id], onDelete: Cascade)
-  toEntity    MemoryEntity @relation("MemoryRelationshipTo", fields: [toEntityId], references: [id], onDelete: Cascade)
+  environment  Environment   @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  endUser      EndUser       @relation(fields: [endUserId], references: [id], onDelete: Cascade)
+  agent        Agent         @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  cluster      AgentCluster? @relation(fields: [clusterId], references: [id], onDelete: Restrict)
+  fromEntity   MemoryEntity  @relation("MemoryRelationshipFrom", fields: [fromEntityId], references: [id], onDelete: Cascade)
+  toEntity     MemoryEntity  @relation("MemoryRelationshipTo", fields: [toEntityId], references: [id], onDelete: Cascade)
+  sourceMemory Memory?       @relation(fields: [sourceMemoryId], references: [id], onDelete: SetNull)
 
   @@unique([fromEntityId, toEntityId, relationshipType])
-  @@index([environmentId, endUserId])
+  @@index([environmentId, endUserId, agentId])
+  @@index([environmentId, endUserId, clusterId])
   @@index([toEntityId])
 }
 

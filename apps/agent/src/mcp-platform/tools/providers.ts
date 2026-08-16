@@ -9,16 +9,12 @@
  *   • `providers.get`             — single-provider details (state + manifest)
  *   • `providers.test_credentials` — health-check a registered key without
  *                                    returning the plaintext.
- *   • `providers.list_keys`        — list every PlatosProviderKey in scope.
- *   • `providers.add_key`          — register a key (ENV-var pointer, not
- *                                    plaintext — secrets stay in SecretStore).
+ *   • `providers.list_keys`        — list every ProviderKey in scope.
+ *   • `providers.add_key`          — register a key (Credential reference,
+ *                                    never plaintext).
  *   • `providers.delete_key`       — remove a key. Refuses if any agents are
  *                                    pinned to it (mirrors REST controller).
- *   • `providers.rotate_key`       — replace a key's `envVarName` pointer (the
- *                                    plaintext rotation lives in the webapp's
- *                                    SecretStore writer; this tool lets the
- *                                    operator point an existing PlatosProviderKey
- *                                    at the new SecretStore var).
+ *   • `providers.rotate_key`       — replace a key's Credential reference.
  *   • `providers.set_routes`       — write per-agent `modelRoutes` JSON.
  *   • `providers.get_routes`       — read `modelRoutes` for one agent or all
  *                                    agents in scope.
@@ -32,9 +28,11 @@
 
 import type { ProviderRegistryService } from "../../providers/provider-registry.service";
 import type { ScopedEnvService } from "../../providers/scoped-env.service";
+import type { AgentCrudService } from "../../agent-runtime/agent-crud.service";
 import type { ToolAuditService } from "../../monitoring/tool-audit.service";
 import type { McpToolHandler } from "../mcp-router";
 import type { RequestScope } from "../../auth/scope.guard";
+import { environmentScopeWhere } from "../../shared/database.provider";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -64,13 +62,109 @@ function isModelRoute(x: unknown): x is ModelRoute {
   );
 }
 
+const SAFE_PROVIDER_KEY_SELECT = {
+  id: true,
+  provider: true,
+  label: true,
+  environmentKeyName: true,
+  isDefault: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+  lastUsedAt: true,
+} as const;
+
+function keyResult(row: any): Record<string, unknown> {
+  return {
+    id: row.id,
+    provider: row.provider,
+    label: row.label,
+    envVarName: row.environmentKeyName,
+    isDefault: row.isDefault,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    lastUsedAt: row.lastUsedAt,
+  };
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return !!error && typeof error === "object" && "code" in error
+    && (error as { code?: unknown }).code === "P2002";
+}
+
+function isReferenceConstraintError(error: unknown): boolean {
+  return !!error && typeof error === "object" && "code" in error
+    && (error as { code?: unknown }).code === "P2003";
+}
+
+function modelProvider(model: string): string | null {
+  const separator = model.indexOf(":");
+  return separator > 0 ? model.slice(0, separator) : null;
+}
+
 export function buildProviderToolHandlers(deps: {
+  agentCrud: AgentCrudService;
   providers: ProviderRegistryService;
   scopedEnv: ScopedEnvService;
   toolAudit: ToolAuditService;
   prisma: any;
 }): McpToolHandler[] {
-  const { providers, scopedEnv, toolAudit, prisma } = deps;
+  const { agentCrud, providers, scopedEnv, toolAudit, prisma } = deps;
+
+  async function lockProviderDefaults(
+    tx: any,
+    environmentId: string,
+    provider: string,
+  ): Promise<void> {
+    await tx.$queryRawUnsafe(
+      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))::text AS locked",
+      `${environmentId}:${provider}`,
+    );
+  }
+
+  async function hasExecutableReference(
+    tx: any,
+    scope: RequestScope,
+    key: { id: string; provider: string },
+  ): Promise<boolean> {
+    const rows = await tx.$queryRawUnsafe(
+      `SELECT version.id
+         FROM "ProviderKey" provider_key
+         JOIN "Environment" environment ON environment.id = provider_key."environmentId"
+         JOIN "Project" project ON project.id = environment."projectId"
+         JOIN "AgentBinding" binding ON binding."environmentId" = environment.id
+         JOIN "Agent" agent ON agent.id = binding."agentId" AND agent."projectId" = project.id
+         JOIN "AgentVersion" version ON version."agentId" = agent.id
+        WHERE provider_key.id = $1::uuid
+          AND provider_key."environmentId" = $2::uuid
+          AND provider_key.provider = $3
+          AND project.id = $4::uuid
+          AND project."organizationId" = $5::uuid
+          AND (
+            (
+              version."memoryConfig" #>> '{__runtime,providerKeyId}' = provider_key.id::text
+              AND split_part(version.model, ':', 1) = provider_key.provider
+            )
+            OR EXISTS (
+              SELECT 1
+                FROM jsonb_array_elements(version."modelRoutes") route
+               WHERE split_part(COALESCE(route ->> 'model', ''), ':', 1) = provider_key.provider
+                 AND (
+                   route ->> 'providerCredentialId' = provider_key.id::text
+                   OR route ->> 'providerKeyId' = provider_key.id::text
+                 )
+            )
+          )
+        LIMIT 1`,
+      key.id,
+      scope.environmentId,
+      key.provider,
+      scope.projectId,
+      scope.organizationId,
+    );
+    return Array.isArray(rows) && rows.length > 0;
+  }
 
   function auditMutation(
     scope: RequestScope,
@@ -121,12 +215,10 @@ export function buildProviderToolHandlers(deps: {
       name: "providers.test_credentials",
       description:
         "Health-check a registered provider key without returning the " +
-        "plaintext value. Looks up `PlatosProviderKey` by id, attempts " +
-        "to resolve + decrypt the underlying SecretStore row, and " +
+        "plaintext value. Looks up `ProviderKey` by id, attempts " +
+        "to resolve the same-Environment, same-provider Credential, and " +
         "returns `{ ok, exists, decryptable, envVarName, provider }`. " +
-        "`exists=true, decryptable=false` is the canonical signal of a " +
-        "webapp ↔ agent ENCRYPTION_KEY mismatch. Accepts either `keyId` " +
-        "(the PlatosProviderKey row id) or `providerId` (a backwards-" +
+        "Accepts either `keyId` (the ProviderKey row id) or `providerId` (a backwards-" +
         "compat alias some callers ship).",
       inputSchema: {
         type: "object",
@@ -151,26 +243,41 @@ export function buildProviderToolHandlers(deps: {
           };
         }
         const keyId = rawKey;
-        const key = await prisma.platosProviderKey.findFirst({
+        const key = await prisma.providerKey.findFirst({
           where: {
             id: keyId,
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
+            ...environmentScopeWhere(scope),
           },
-          select: { id: true, provider: true, envVarName: true, label: true },
+          select: {
+            id: true,
+            provider: true,
+            environmentKeyName: true,
+            label: true,
+          },
         });
         if (!key) return { error: "not_found", keyId };
-        const probe = await scopedEnv.test(tuple(scope), key.envVarName);
+        let exists = false;
+        let ready = false;
+        try {
+          exists = !!(await scopedEnv.findCredentialMetadata(
+            tuple(scope),
+            key.environmentKeyName,
+            key.provider,
+          ));
+          ready = exists
+            && await scopedEnv.hasProviderCredential(tuple(scope), key.provider, key.id);
+        } catch {
+          ready = false;
+        }
         return {
           keyId,
           provider: key.provider,
           label: key.label,
-          envVarName: key.envVarName,
-          ok: probe.ok,
-          exists: probe.exists,
-          decryptable: probe.decryptable,
-          ...(probe.error ? { error: probe.error } : {}),
+          envVarName: key.environmentKeyName,
+          ok: ready,
+          exists,
+          decryptable: ready,
+          ...(!ready ? { error: "provider_credential_unavailable" } : {}),
         };
       },
     },
@@ -178,11 +285,11 @@ export function buildProviderToolHandlers(deps: {
     {
       name: "providers.list_keys",
       description:
-        "List every PlatosProviderKey row in the current scope. " +
+        "List every ProviderKey row in the current scope. " +
         "Optional `provider` filter narrows by manifest id. NEVER " +
-        "returns plaintext values — only the SecretStore var name + " +
+        "returns plaintext or encrypted values — only the Credential name + " +
         "metadata. `envVarSet` reflects whether the underlying " +
-        "SecretStore row is present + decryptable in this agent.",
+        "same-provider Credential is present + decryptable in this agent.",
       inputSchema: {
         type: "object",
         properties: {
@@ -193,34 +300,20 @@ export function buildProviderToolHandlers(deps: {
       async execute(params, scope) {
         const t = tuple(scope);
         const provider = params["provider"] as string | undefined;
-        const where: Record<string, unknown> = {
-          organizationId: t.organizationId,
-          projectId: t.projectId,
-          environmentId: t.environmentId,
-        };
+        const where: Record<string, unknown> = { ...environmentScopeWhere(t) };
         if (provider) where["provider"] = provider;
-        const keys = await prisma.platosProviderKey.findMany({
+        const keys = await prisma.providerKey.findMany({
           where,
           orderBy: [
             { provider: "asc" },
             { isDefault: "desc" },
             { createdAt: "asc" },
           ],
-          select: {
-            id: true,
-            provider: true,
-            label: true,
-            envVarName: true,
-            isDefault: true,
-            createdBy: true,
-            createdAt: true,
-            updatedAt: true,
-            lastUsedAt: true,
-          },
+          select: SAFE_PROVIDER_KEY_SELECT,
         });
         const enriched = await Promise.all(
           keys.map(async (k: any) => ({
-            ...k,
+            ...keyResult(k),
             createdAt:
               k.createdAt instanceof Date ? k.createdAt.toISOString() : String(k.createdAt),
             updatedAt:
@@ -230,7 +323,9 @@ export function buildProviderToolHandlers(deps: {
                 ? k.lastUsedAt.toISOString()
                 : String(k.lastUsedAt)
               : null,
-            envVarSet: !!(await scopedEnv.get(t, k.envVarName)),
+            envVarSet: await scopedEnv
+              .hasProviderCredential(t, k.provider, k.id)
+              .catch(() => false),
           })),
         );
         return { keys: enriched };
@@ -240,11 +335,9 @@ export function buildProviderToolHandlers(deps: {
     {
       name: "providers.add_key",
       description:
-        "Register a new provider key. The plaintext API key MUST be " +
-        "written to the trigger.dev SecretStore separately (via the " +
-        "Environment Variables UI or the trigger CLI) — this tool only " +
-        "registers the *pointer* (PlatosProviderKey) that maps a " +
-        "(provider, label) pair to a SecretStore env-var name. Setting " +
+        "Register a new provider key by referencing an existing " +
+        "same-Environment, same-provider Credential name. This tool never " +
+        "accepts or returns plaintext. Setting " +
         "`isDefault: true` clears any other default for the same " +
         "provider in scope. Audit-logged (label + envVarName only — " +
         "no plaintext).",
@@ -265,52 +358,60 @@ export function buildProviderToolHandlers(deps: {
         const envVarName = String(params["envVarName"]).trim();
         const isDefault = !!params["isDefault"];
         const startedAt = Date.now();
+        const auditArgs = { provider, label, envVarName, isDefault };
         if (!provider || !label || !envVarName) {
           const err = "provider, label, envVarName required";
-          auditMutation(scope, "providers.add_key", params, null, "failed", startedAt, err);
+          auditMutation(scope, "providers.add_key", auditArgs, null, "failed", startedAt, err);
           return { error: err };
         }
-        // Same uniqueness guard as the REST controller — clear any
-        // existing default for this (scope, provider) before flipping a
-        // new row to default.
+        const credential = await scopedEnv.findCredentialMetadata(
+          tuple(scope),
+          envVarName,
+          provider,
+        );
+        if (!credential) {
+          auditMutation(
+            scope,
+            "providers.add_key",
+            auditArgs,
+            null,
+            "failed",
+            startedAt,
+            "credential_not_found",
+          );
+          return { error: "credential_not_found" };
+        }
         try {
-          if (isDefault) {
-            await prisma.platosProviderKey.updateMany({
-              where: {
-                organizationId: scope.organizationId,
-                projectId: scope.projectId,
+          const key = await prisma.$transaction(async (tx: any) => {
+            if (isDefault) {
+              await lockProviderDefaults(tx, scope.environmentId, provider);
+              await tx.providerKey.updateMany({
+                where: {
+                  ...environmentScopeWhere(scope),
+                  provider,
+                  isDefault: true,
+                },
+                data: { isDefault: false },
+              });
+            }
+            return tx.providerKey.create({
+              data: {
                 environmentId: scope.environmentId,
                 provider,
-                isDefault: true,
+                label,
+                environmentKeyName: credential.name,
+                encryptedReference: `credential://${credential.id}`,
+                isDefault,
+                createdBy: scope.userId ?? "mcp:platform",
               },
-              data: { isDefault: false },
+              select: SAFE_PROVIDER_KEY_SELECT,
             });
-          }
-          const key = await prisma.platosProviderKey.create({
-            data: {
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-              provider,
-              label,
-              envVarName,
-              isDefault,
-              createdBy: scope.userId ?? "mcp:platform",
-            },
-            select: {
-              id: true,
-              provider: true,
-              label: true,
-              envVarName: true,
-              isDefault: true,
-              createdAt: true,
-            },
           });
           const result = {
             keyId: key.id,
             provider: key.provider,
             label: key.label,
-            envVarName: key.envVarName,
+            envVarName: key.environmentKeyName,
             isDefault: key.isDefault,
             createdAt:
               key.createdAt instanceof Date
@@ -320,32 +421,30 @@ export function buildProviderToolHandlers(deps: {
           auditMutation(
             scope,
             "providers.add_key",
-            { provider, label, envVarName, isDefault },
+            auditArgs,
             result,
             "success",
             startedAt,
           );
           return result;
-        } catch (err: any) {
-          const message = err?.message ?? String(err);
+        } catch (err: unknown) {
           auditMutation(
             scope,
             "providers.add_key",
-            { provider, label, envVarName, isDefault },
+            auditArgs,
             null,
             "failed",
             startedAt,
-            message,
+            "add_key_failed",
           );
-          // Unique-constraint collision (same envVarName for same scope+provider).
-          if (/unique/i.test(message) || err?.code === "P2002") {
+          if (isUniqueConstraintError(err)) {
             return {
               error: "already_exists",
               message:
                 "A provider key with this envVarName already exists in this scope+provider.",
             };
           }
-          return { error: "add_key_failed", message };
+          return { error: "add_key_failed" };
         }
       },
     },
@@ -353,10 +452,8 @@ export function buildProviderToolHandlers(deps: {
     {
       name: "providers.delete_key",
       description:
-        "Delete a PlatosProviderKey row. Refuses if any agents in scope " +
-        "are pinned to this key (`providerKeyId`) — caller must update " +
-        "those agents first. Does NOT delete the SecretStore plaintext " +
-        "value (use the trigger.dev UI for that). Scope-pinned. " +
+        "Delete a ProviderKey row. Refuses if any executable agent version " +
+        "in scope references this key. Does not delete its Credential. Scope-pinned. " +
         "Audit-logged.",
       inputSchema: {
         type: "object",
@@ -367,52 +464,66 @@ export function buildProviderToolHandlers(deps: {
       async execute(params, scope) {
         const keyId = String(params["keyId"]);
         const startedAt = Date.now();
-        const existing = await prisma.platosProviderKey.findFirst({
-          where: {
-            id: keyId,
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-          },
-          select: { id: true, provider: true, label: true, envVarName: true },
-        });
-        if (!existing) {
-          auditMutation(scope, "providers.delete_key", params, null, "failed", startedAt, "not_found");
+        const auditArgs = { keyId };
+        let outcome:
+          | { status: "not_found" }
+          | { status: "pinned" }
+          | { status: "deleted"; key: any };
+        try {
+          outcome = await prisma.$transaction(async (tx: any) => {
+            const existing = await tx.providerKey.findFirst({
+              where: { id: keyId, ...environmentScopeWhere(scope) },
+              select: {
+                id: true,
+                provider: true,
+                label: true,
+                environmentKeyName: true,
+              },
+            });
+            if (!existing) return { status: "not_found" as const };
+            await lockProviderDefaults(tx, scope.environmentId, existing.provider);
+            if (await hasExecutableReference(tx, scope, existing)) {
+              return { status: "pinned" as const };
+            }
+            await tx.providerKey.delete({ where: { id: keyId } });
+            return { status: "deleted" as const, key: existing };
+          });
+        } catch (error) {
+          if (isReferenceConstraintError(error)) {
+            outcome = { status: "pinned" };
+          } else {
+            auditMutation(
+              scope,
+              "providers.delete_key",
+              auditArgs,
+              null,
+              "failed",
+              startedAt,
+              "delete_failed",
+            );
+            return { error: "delete_failed" };
+          }
+        }
+        if (outcome.status === "not_found") {
+          auditMutation(scope, "providers.delete_key", auditArgs, null, "failed", startedAt, "not_found");
           return { error: "not_found", keyId };
         }
-        const pinnedCount = await prisma.platosAgent.count({
-          where: {
-            providerKeyId: keyId,
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-          },
-        });
-        if (pinnedCount > 0) {
-          auditMutation(
-            scope,
-            "providers.delete_key",
-            params,
-            { pinnedAgents: pinnedCount },
-            "failed",
-            startedAt,
-            "pinned_agents",
-          );
+        if (outcome.status === "pinned") {
+          auditMutation(scope, "providers.delete_key", auditArgs, null, "failed", startedAt, "pinned_agents");
           return {
             error: "pinned_agents",
-            message: `${pinnedCount} agent(s) are pinned to this key. Update them first.`,
-            pinnedAgents: pinnedCount,
+            message: "One or more executable agent versions reference this key. Update them first.",
           };
         }
-        await prisma.platosProviderKey.delete({ where: { id: keyId } });
+        const existing = outcome.key;
         const result = {
           deleted: true,
           keyId,
           provider: existing.provider,
           label: existing.label,
-          envVarName: existing.envVarName,
+          envVarName: existing.environmentKeyName,
         };
-        auditMutation(scope, "providers.delete_key", params, result, "success", startedAt);
+        auditMutation(scope, "providers.delete_key", auditArgs, result, "success", startedAt);
         return result;
       },
     },
@@ -420,13 +531,9 @@ export function buildProviderToolHandlers(deps: {
     {
       name: "providers.rotate_key",
       description:
-        "Repoint an existing PlatosProviderKey row at a NEW SecretStore " +
-        "env-var. Use this after writing the new plaintext to a different " +
-        "SecretStore var (e.g. `ANTHROPIC_API_KEY_V2`) to atomically swap " +
-        "without recreating the row + every agent's pin. Optional `label` " +
-        "rename in the same call. Does NOT touch the underlying " +
-        "SecretStore — the new var must already exist or `envVarSet` will " +
-        "report `false` until it does. Audit-logged.",
+        "Repoint an existing ProviderKey at a different same-Environment, " +
+        "same-provider Credential. Optional `label` renames the key in the " +
+        "same operation. This tool never accepts or returns plaintext. Audit-logged.",
       inputSchema: {
         type: "object",
         required: ["keyId", "envVarName"],
@@ -442,47 +549,77 @@ export function buildProviderToolHandlers(deps: {
         const envVarName = String(params["envVarName"]).trim();
         const label = (params["label"] as string | undefined)?.trim();
         const startedAt = Date.now();
-        const existing = await prisma.platosProviderKey.findFirst({
+        const auditArgs = { keyId, envVarName, ...(label ? { label } : {}) };
+        const existing = await prisma.providerKey.findFirst({
           where: {
             id: keyId,
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
+            ...environmentScopeWhere(scope),
           },
-          select: { id: true, provider: true, envVarName: true, label: true },
+          select: {
+            id: true,
+            provider: true,
+            environmentKeyName: true,
+            label: true,
+          },
         });
         if (!existing) {
-          auditMutation(scope, "providers.rotate_key", params, null, "failed", startedAt, "not_found");
+          auditMutation(scope, "providers.rotate_key", auditArgs, null, "failed", startedAt, "not_found");
           return { error: "not_found", keyId };
         }
+        const credential = await scopedEnv.findCredentialMetadata(
+          tuple(scope),
+          envVarName,
+          existing.provider,
+        );
+        if (!credential) {
+          auditMutation(
+            scope,
+            "providers.rotate_key",
+            auditArgs,
+            null,
+            "failed",
+            startedAt,
+            "credential_not_found",
+          );
+          return { error: "credential_not_found" };
+        }
         try {
-          const updated = await prisma.platosProviderKey.update({
-            where: { id: keyId },
-            data: {
-              envVarName,
-              ...(label ? { label } : {}),
-            },
-            select: {
-              id: true,
-              provider: true,
-              label: true,
-              envVarName: true,
-              isDefault: true,
-              updatedAt: true,
-            },
+          const rotation = await prisma.$transaction(async (tx: any) => {
+            const current = await tx.providerKey.findFirst({
+              where: {
+                id: keyId,
+                provider: existing.provider,
+                ...environmentScopeWhere(scope),
+              },
+              select: { id: true, environmentKeyName: true },
+            });
+            if (!current) return null;
+            const previousEnvVarName = current.environmentKeyName;
+            const updated = await tx.providerKey.update({
+              where: { id: keyId },
+              data: {
+                environmentKeyName: credential.name,
+                encryptedReference: `credential://${credential.id}`,
+                ...(label ? { label } : {}),
+              },
+              select: SAFE_PROVIDER_KEY_SELECT,
+            });
+            return { updated, previousEnvVarName };
           });
-          // Invalidate the scoped-env cache so the new var resolves
-          // immediately (the OLD envVarName probably still has a cached
-          // value from prior reads).
-          scopedEnv.invalidate(tuple(scope), existing.envVarName);
+          if (!rotation) {
+            auditMutation(scope, "providers.rotate_key", auditArgs, null, "failed", startedAt, "not_found");
+            return { error: "not_found", keyId };
+          }
+          const { updated, previousEnvVarName } = rotation;
+          scopedEnv.invalidate(tuple(scope), previousEnvVarName);
           scopedEnv.invalidate(tuple(scope), envVarName);
           const result = {
             rotated: true,
             keyId,
             provider: updated.provider,
             label: updated.label,
-            previousEnvVarName: existing.envVarName,
-            envVarName: updated.envVarName,
+            previousEnvVarName,
+            envVarName: updated.environmentKeyName,
             updatedAt:
               updated.updatedAt instanceof Date
                 ? updated.updatedAt.toISOString()
@@ -491,16 +628,15 @@ export function buildProviderToolHandlers(deps: {
           auditMutation(
             scope,
             "providers.rotate_key",
-            { keyId, envVarName, ...(label ? { label } : {}) },
+            auditArgs,
             result,
             "success",
             startedAt,
           );
           return result;
-        } catch (err: any) {
-          const message = err?.message ?? String(err);
-          auditMutation(scope, "providers.rotate_key", params, null, "failed", startedAt, message);
-          return { error: "rotate_failed", message };
+        } catch {
+          auditMutation(scope, "providers.rotate_key", auditArgs, null, "failed", startedAt, "rotate_failed");
+          return { error: "rotate_failed" };
         }
       },
     },
@@ -550,11 +686,14 @@ export function buildProviderToolHandlers(deps: {
         const cleaned: ModelRoute[] = [];
         for (const r of rawRoutes) {
           if (!isModelRoute(r)) {
-            return { error: "invalid_route", route: r };
+            return { error: "invalid_route" };
           }
+          const label = r.label.trim();
+          const model = r.model.trim();
+          if (!label || !model) return { error: "invalid_route" };
           cleaned.push({
-            label: r.label.trim(),
-            model: r.model.trim(),
+            label,
+            model,
             providerKeyId: r.providerKeyId,
             isDefault: r.isDefault,
           });
@@ -568,17 +707,10 @@ export function buildProviderToolHandlers(deps: {
         if (defaults.length > 1) {
           return { error: "multiple_defaults" };
         }
-        const agent = await prisma.platosAgent.findFirst({
-          where: {
-            id: agentId,
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-          },
-          select: { id: true },
-        });
+        const auditArgs = { agentId, routeCount: cleaned.length, labels };
+        const agent = await agentCrud.findById(agentId, scope);
         if (!agent) {
-          auditMutation(scope, "providers.set_routes", params, null, "failed", startedAt, "agent_not_found");
+          auditMutation(scope, "providers.set_routes", auditArgs, null, "failed", startedAt, "agent_not_found");
           return { error: "agent_not_found", agentId };
         }
         // Validate each providerKeyId is in scope.
@@ -586,22 +718,29 @@ export function buildProviderToolHandlers(deps: {
           new Set(cleaned.map((r) => r.providerKeyId).filter((x): x is string => !!x)),
         );
         if (referencedKeyIds.length > 0) {
-          const known = await prisma.platosProviderKey.findMany({
+          const known = await prisma.providerKey.findMany({
             where: {
               id: { in: referencedKeyIds },
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
+              ...environmentScopeWhere(scope),
             },
-            select: { id: true },
+            select: { id: true, provider: true },
           });
-          const knownIds = new Set((known as Array<{ id: string }>).map((k) => k.id));
-          const bogus = referencedKeyIds.filter((id) => !knownIds.has(id));
+          const knownById = new Map(
+            (known as Array<{ id: string; provider: string }>).map((key) => [key.id, key.provider]),
+          );
+          const bogus = referencedKeyIds.filter((id) => {
+            const actualProvider = knownById.get(id);
+            return !actualProvider || cleaned.some((route) => {
+              if (route.providerKeyId !== id) return false;
+              const expectedProvider = modelProvider(route.model);
+              return !!expectedProvider && actualProvider !== expectedProvider;
+            });
+          });
           if (bogus.length > 0) {
             auditMutation(
               scope,
               "providers.set_routes",
-              params,
+              auditArgs,
               { unknownProviderKeyIds: bogus },
               "failed",
               startedAt,
@@ -610,10 +749,23 @@ export function buildProviderToolHandlers(deps: {
             return { error: "unknown_provider_key_ids", unknownProviderKeyIds: bogus };
           }
         }
-        await prisma.platosAgent.update({
-          where: { id: agentId },
-          data: { modelRoutes: cleaned.length === 0 ? null : cleaned },
-        });
+        try {
+          await agentCrud.update(agentId, scope, {
+            modelRoutes: cleaned.length === 0 ? null : cleaned,
+            versionNote: "Updated by providers.set_routes",
+          });
+        } catch {
+          auditMutation(
+            scope,
+            "providers.set_routes",
+            auditArgs,
+            null,
+            "failed",
+            startedAt,
+            "set_routes_failed",
+          );
+          return { error: "set_routes_failed" };
+        }
         const result = {
           ok: true,
           agentId,
@@ -623,7 +775,7 @@ export function buildProviderToolHandlers(deps: {
         auditMutation(
           scope,
           "providers.set_routes",
-          { agentId, routeCount: cleaned.length, labels },
+          auditArgs,
           result,
           "success",
           startedAt,
@@ -648,24 +800,9 @@ export function buildProviderToolHandlers(deps: {
       },
       async execute(params, scope) {
         const agentId = params["agentId"] as string | undefined;
-        const where: Record<string, unknown> = {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        };
-        if (agentId) where["id"] = agentId;
-        const agents = await prisma.platosAgent.findMany({
-          where,
-          select: {
-            id: true,
-            slug: true,
-            name: true,
-            model: true,
-            providerKeyId: true,
-            modelRoutes: true,
-          },
-          orderBy: { createdAt: "desc" },
-        });
+        const agents = agentId
+          ? [await agentCrud.findById(agentId, scope)].filter((agent) => agent !== null)
+          : await agentCrud.list(scope);
         if (agentId && agents.length === 0) {
           return { error: "agent_not_found", agentId };
         }

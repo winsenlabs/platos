@@ -34,6 +34,31 @@ interface UsageRecord {
   costWithCacheCents?: number;
 }
 
+type ModelCostBucket = {
+  costCents: number;
+  costWithCacheCents: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationInputTokens: number;
+  cacheReadInputTokens: number;
+  messages: number;
+};
+
+type AgentCostBucket = Omit<ModelCostBucket, "messages"> & {
+  threads: Set<string>;
+};
+
+type UserCostBucket = {
+  costCents: number;
+  turns: Set<string>;
+  threads: Set<string>;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadInputTokens: number;
+  cacheCreationInputTokens: number;
+  reasoningTokens: number;
+};
+
 /**
  * SM.1 — Skill-tier usage event.
  *
@@ -52,7 +77,7 @@ interface UsageRecord {
  * Persistence: we reuse the Redis aggregation that `recordAuxiliaryCost`
  * uses — there's no dedicated ClickHouse `cost_events` table today; the
  * authoritative cost record for LLM spend is
- * `PlatosAgentMessage.responseJson.cost_cents` (write-once per row). For
+ * the clean Turn/Step ledger plus full-fidelity Redis counters. For
  * skill spend we fan out to:
  *   - `cost:scope:<s>:<day>` — bump `cost_cents:tier:skill` breakdown
  *   - `cost:agent:<s>:<agentId>:<day>` — per-agent rollup
@@ -433,7 +458,7 @@ import {
  * for accurate pricing. Falls back to hardcoded rates for unknown models.
  *
  * Costs are recorded:
- * - Per message (stored in PlatosAgentMessage.responseJson.cost_cents)
+ * - Per LLM step (tokens/model stored in Step; exact priced cost in Redis)
  * - Per thread (aggregated in Redis for real-time dashboard)
  * - Per (org, project, env) (aggregated daily for billing)
  */
@@ -448,12 +473,55 @@ export class CostService {
     loadedAt: 0,
   };
   private lastKnownCatalog: LiteLLMCatalog | null = null;
+  private cleanStepCostFallbackWarned = false;
 
   constructor(
     @Inject(PRISMA_TOKEN) prisma: any,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
   ) {
     this.prisma = prisma;
+  }
+
+  private warnOnUnpricedStepFallback(): void {
+    if (this.cleanStepCostFallbackWarned) return;
+    this.cleanStepCostFallbackWarned = true;
+    this.logger.warn(
+      "[cost] clean Step fallback can reconstruct model/input/output attribution but not historical cache/reasoning/rate fields; exact values remain in the full-fidelity Redis ledger",
+    );
+  }
+
+  private async scanHashes(
+    pattern: string,
+  ): Promise<Array<{ key: string; values: Record<string, string> }>> {
+    if (typeof (this.redis as any).scan !== "function") return [];
+    const keys: string[] = [];
+    let cursor = "0";
+    try {
+      do {
+        const [next, page] = (await (this.redis as any).scan(
+          cursor,
+          "MATCH",
+          pattern,
+          "COUNT",
+          200,
+        )) as [string, string[]];
+        cursor = next;
+        keys.push(...page);
+      } while (cursor !== "0");
+      if (keys.length === 0) return [];
+      const pipeline = this.redis.pipeline();
+      for (const key of keys) pipeline.hgetall(key);
+      const results = await pipeline.exec();
+      return keys.map((key, index) => ({
+        key,
+        values: (results?.[index]?.[1] as Record<string, string>) ?? {},
+      }));
+    } catch (err: any) {
+      this.logger.warn(
+        `[cost] exact Redis cost scan failed for ${pattern}: ${err?.message ?? err}`,
+      );
+      return [];
+    }
   }
 
   /**
@@ -749,9 +817,9 @@ export class CostService {
    * changing the billing target (optional diagnostic only).
    *
    * Idempotency: `hincrby` / `hincrbyfloat` are append-only. Re-running a
-   * turn will double-count in Redis; per-message cost lives authoritatively
-   * in `PlatosAgentMessage.responseJson.cost_cents` (write-once per row).
-   * Redis is the real-time dashboard; Postgres is the durable source.
+   * turn will double-count in Redis unless callers provide `idempotencyKey`.
+   * The clean Step row durably stores model + token usage; Redis preserves the
+   * exact historical price/cache breakdown that has no lossless Step column.
    */
   async recordUsage(
     scope: ScopeTuple,
@@ -890,6 +958,33 @@ export class CostService {
     if (reasoning > 0) pipeline.hincrby(scopeKeyStr, "reasoning_tokens", reasoning);
     pipeline.hincrbyfloat(scopeKeyStr, "cost_with_cache_cents", costWithCacheCents);
     pipeline.expire(scopeKeyStr, 86400 * 90); // 90 day TTL
+    // Exact per-model attribution. Step preserves model + total tokens, while
+    // this hash preserves the historical priced/cache breakdown.
+    const scopeModelKey = `cost:model:${s}:${model}:${today}`;
+    pipeline.hincrby(scopeModelKey, "input_tokens", inputTokens);
+    pipeline.hincrby(scopeModelKey, "output_tokens", outputTokens);
+    if (cacheCreation > 0) {
+      pipeline.hincrby(
+        scopeModelKey,
+        "cache_creation_input_tokens",
+        cacheCreation,
+      );
+    }
+    if (cacheRead > 0) {
+      pipeline.hincrby(scopeModelKey, "cache_read_input_tokens", cacheRead);
+    }
+    if (reasoning > 0) {
+      pipeline.hincrby(scopeModelKey, "reasoning_tokens", reasoning);
+    }
+    pipeline.hincrbyfloat(scopeModelKey, "cost_cents", costCents);
+    pipeline.hincrbyfloat(
+      scopeModelKey,
+      "cost_with_cache_cents",
+      costWithCacheCents,
+    );
+    pipeline.hincrby(scopeModelKey, "calls", 1);
+    pipeline.hset(scopeModelKey, "attribution_source", "exact");
+    pipeline.expire(scopeModelKey, 86400 * 90);
     // per-agent daily rollup (E.9)
     if (agentId) {
       const agentKey = `cost:agent:${s}:${agentId}:${today}`;
@@ -901,6 +996,7 @@ export class CostService {
       if (reasoning > 0) pipeline.hincrby(agentKey, "reasoning_tokens", reasoning);
       pipeline.hincrbyfloat(agentKey, "cost_with_cache_cents", costWithCacheCents);
       pipeline.hincrby(agentKey, "calls", 1);
+      pipeline.hset(agentKey, "attribution_source", "exact");
       pipeline.expire(agentKey, 86400 * 90);
       // per-agent × per-model daily rollup (E.9). Keeps the model dimension
       // alive on the Redis side so a live dashboard can show "agent X burned
@@ -927,6 +1023,7 @@ export class CostService {
       if (cacheRead > 0) pipeline.hincrby(userKey, "cache_read_input_tokens", cacheRead);
       if (reasoning > 0) pipeline.hincrby(userKey, "reasoning_tokens", reasoning);
       pipeline.hincrby(userKey, "calls", 1);
+      pipeline.hset(userKey, "attribution_source", "exact");
       pipeline.expire(userKey, 86400 * 90);
     }
     await pipeline.exec();
@@ -990,22 +1087,21 @@ export class CostService {
   /**
    * PPR-24 — Redis ↔ Postgres cost reconcile.
    *
-   * Postgres (`PlatosAgentMessage.responseJson.cost_cents` + `agent_id` + `usage`
-   * written write-once-per-row in `agent-task.service.ts`) is the authoritative
-   * source of truth; the Redis `cost:scope:*` + `cost:agent:*` hashes are a
-   * real-time dashboard mirror. The pipeline-based recordUsage path can drop
-   * writes during Redis restarts/evictions, so this periodic reconciler
-   * rebuilds the Redis hashes by day from the durable store.
+   * Clean Step rows are the durable model/input/output ledger, while Redis is
+   * the only full-fidelity historical price/cache/reasoning ledger. The
+   * pipeline-based recordUsage path can drop writes during Redis restarts or
+   * eviction, so this periodic reconciler backfills missing daily hashes from
+   * Step using current pricing without overwriting exact Redis attribution.
    *
    * Strategy:
-   *   1. For each day in the reconcile window, pull every message whose
-   *      `createdAt` lands in that day (per thread -> scope join).
+   *   1. For each day in the reconcile window, pull every Step whose
+   *      `createdAt` lands in that day (per turn -> thread -> scope join).
    *   2. Group by (scope, day) and (scope, agentId, day) to build fresh
    *      totals for `cost:scope:<scope>:<day>` +
    *      `cost:agent:<scope>:<agentId>:<day>`.
-   *   3. Use `hset` (not `hincrby`) to OVERWRITE the Redis entries atomically —
-   *      this is the whole point of reconcile: Redis becomes authoritative-
-   *      from-Postgres for every tracked key.
+   *   3. Write only hashes that do not already exist. Existing hashes may
+   *      contain exact historical or auxiliary attribution that Step cannot
+   *      reconstruct and must never be overwritten.
    *   4. Preserve 90-day TTL semantics.
    *
    * `daysBack` defaults to 2 — enough to smooth over yesterday's tail. Longer
@@ -1018,10 +1114,9 @@ export class CostService {
    * budget. Bumps the scope daily + optional agent daily rollups in
    * Redis so the dashboard doesn't undercount spend.
    *
-   * Postgres is NOT written — these calls don't have an owning
-   * PlatosAgentMessage row. The PPR-24 reconcile job rebuilds Redis
-   * from Postgres for the LLM-turn surface; auxiliary costs live in
-   * Redis only (90d TTL) which matches the dashboard retention.
+   * Postgres is NOT written — these calls don't have an owning Step row. The
+   * PPR-24 reconcile job backfills missing Redis turn-cost hashes from Step;
+   * auxiliary costs live in Redis only (90d TTL), matching dashboard retention.
    */
   async recordAuxiliaryCost(input: {
     scope: ScopeTuple;
@@ -1063,18 +1158,90 @@ export class CostService {
     }
     pipeline.hincrbyfloat(scopeDayKey, "cost_cents", input.costCents);
     pipeline.hincrbyfloat(scopeDayKey, `cost_cents:${input.kind}`, input.costCents);
+    pipeline.hset(scopeDayKey, "attribution_source", "exact");
     pipeline.expire(scopeDayKey, 86400 * 90);
     if (input.agentId) {
       const agentKey = `cost:agent:${s}:${input.agentId}:${today}`;
+      pipeline.hincrby(agentKey, "input_tokens", input.inputTokens ?? 0);
+      pipeline.hincrby(agentKey, "output_tokens", input.outputTokens ?? 0);
+      if ((input.cacheReadInputTokens ?? 0) > 0) {
+        pipeline.hincrby(
+          agentKey,
+          "cache_read_input_tokens",
+          input.cacheReadInputTokens!,
+        );
+      }
+      if ((input.cacheCreationInputTokens ?? 0) > 0) {
+        pipeline.hincrby(
+          agentKey,
+          "cache_creation_input_tokens",
+          input.cacheCreationInputTokens!,
+        );
+      }
+      if ((input.reasoningTokens ?? 0) > 0) {
+        pipeline.hincrby(agentKey, "reasoning_tokens", input.reasoningTokens!);
+      }
       pipeline.hincrbyfloat(agentKey, "cost_cents", input.costCents);
+      pipeline.hincrbyfloat(agentKey, "cost_with_cache_cents", input.costCents);
       pipeline.hincrbyfloat(agentKey, `cost_cents:${input.kind}`, input.costCents);
+      pipeline.hincrby(agentKey, "calls", 1);
+      pipeline.hset(agentKey, "attribution_source", "exact");
       pipeline.expire(agentKey, 86400 * 90);
     }
     // Breakdown-by-kind for cost-by-model dashboard slice.
     const modelKey = `cost:model:${s}:${input.model}:${today}`;
+    pipeline.hincrby(modelKey, "input_tokens", input.inputTokens ?? 0);
+    pipeline.hincrby(modelKey, "output_tokens", input.outputTokens ?? 0);
+    if ((input.cacheReadInputTokens ?? 0) > 0) {
+      pipeline.hincrby(
+        modelKey,
+        "cache_read_input_tokens",
+        input.cacheReadInputTokens!,
+      );
+    }
+    if ((input.cacheCreationInputTokens ?? 0) > 0) {
+      pipeline.hincrby(
+        modelKey,
+        "cache_creation_input_tokens",
+        input.cacheCreationInputTokens!,
+      );
+    }
+    if ((input.reasoningTokens ?? 0) > 0) {
+      pipeline.hincrby(modelKey, "reasoning_tokens", input.reasoningTokens!);
+    }
     pipeline.hincrbyfloat(modelKey, "cost_cents", input.costCents);
+    pipeline.hincrbyfloat(modelKey, "cost_with_cache_cents", input.costCents);
     pipeline.hincrbyfloat(modelKey, `cost_cents:${input.kind}`, input.costCents);
+    pipeline.hincrby(modelKey, "calls", 1);
+    pipeline.hset(modelKey, "attribution_source", "exact");
     pipeline.expire(modelKey, 86400 * 90);
+    if (input.userId) {
+      const userKey = `cost:user:${s}:${input.userId}:${today}`;
+      pipeline.hincrby(userKey, "input_tokens", input.inputTokens ?? 0);
+      pipeline.hincrby(userKey, "output_tokens", input.outputTokens ?? 0);
+      if ((input.cacheReadInputTokens ?? 0) > 0) {
+        pipeline.hincrby(
+          userKey,
+          "cache_read_input_tokens",
+          input.cacheReadInputTokens!,
+        );
+      }
+      if ((input.cacheCreationInputTokens ?? 0) > 0) {
+        pipeline.hincrby(
+          userKey,
+          "cache_creation_input_tokens",
+          input.cacheCreationInputTokens!,
+        );
+      }
+      if ((input.reasoningTokens ?? 0) > 0) {
+        pipeline.hincrby(userKey, "reasoning_tokens", input.reasoningTokens!);
+      }
+      pipeline.hincrbyfloat(userKey, "cost_cents", input.costCents);
+      pipeline.hincrbyfloat(userKey, "cost_with_cache_cents", input.costCents);
+      pipeline.hincrby(userKey, "calls", 1);
+      pipeline.hset(userKey, "attribution_source", "exact");
+      pipeline.expire(userKey, 86400 * 90);
+    }
     try {
       await pipeline.exec();
     } catch {
@@ -1355,26 +1522,32 @@ export class CostService {
     const now = new Date();
     const windowStart = new Date(now.getTime() - daysBack * 86400 * 1000);
 
-    // Pull the relevant messages in one query. We need:
-    //  - thread.{organizationId, projectId, environmentId} (scope)
-    //  - responseJson.cost_cents, .usage.inputTokens/outputTokens, .agent_id
-    //  - createdAt (to bucket into YYYY-MM-DD)
-    // `responseJson` is a JSON column; we pull the whole row and read in JS
-    // because Postgres-side aggregation on JSON is fiddly + breaks portability.
-    const rows = await this.prisma.platosAgentMessage.findMany({
+    // The clean durable ledger is one Step per model invocation. Step stores
+    // model + token totals directly; canonical scope is derived through its
+    // Turn -> Thread -> Environment -> Project ancestry.
+    const rows = await this.prisma.step.findMany({
       where: {
-        role: "assistant",
         createdAt: { gte: windowStart },
       },
       select: {
         createdAt: true,
-        responseJson: true,
-        thread: {
+        model: true,
+        inputTokens: true,
+        outputTokens: true,
+        turn: {
           select: {
-            organizationId: true,
-            projectId: true,
-            environmentId: true,
-            agentId: true,
+            thread: {
+              select: {
+                environmentId: true,
+                agentId: true,
+                environment: {
+                  select: {
+                    projectId: true,
+                    project: { select: { organizationId: true } },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -1389,23 +1562,37 @@ export class CostService {
 
     for (const row of rows as Array<{
       createdAt: Date;
-      responseJson: { usage?: { inputTokens?: number; outputTokens?: number }; cost_cents?: number; agent_id?: string } | null;
-      thread: { organizationId: string; projectId: string; environmentId: string; agentId: string } | null;
+      model: string;
+      inputTokens: number | null;
+      outputTokens: number | null;
+      turn: {
+        thread: {
+          environmentId: string;
+          agentId: string;
+          environment: {
+            projectId: string;
+            project: { organizationId: string };
+          };
+        };
+      } | null;
     }>) {
-      if (!row.thread) continue;
-      const rj = row.responseJson;
-      if (!rj) continue;
-      const costCents = Number(rj.cost_cents ?? 0);
-      const inputTokens = Number(rj.usage?.inputTokens ?? 0);
-      const outputTokens = Number(rj.usage?.outputTokens ?? 0);
+      const thread = row.turn?.thread;
+      if (!thread) continue;
+      const inputTokens = Number(row.inputTokens ?? 0);
+      const outputTokens = Number(row.outputTokens ?? 0);
+      const costCents = await this.calculateCost(
+        row.model,
+        inputTokens,
+        outputTokens,
+      );
       if (costCents <= 0 && inputTokens <= 0 && outputTokens <= 0) continue;
       const day = row.createdAt.toISOString().slice(0, 10);
       const s = scopeKey({
-        organizationId: row.thread.organizationId,
-        projectId: row.thread.projectId,
-        environmentId: row.thread.environmentId,
+        organizationId: thread.environment.project.organizationId,
+        projectId: thread.environment.projectId,
+        environmentId: thread.environmentId,
       });
-      const agentId = rj.agent_id || row.thread.agentId;
+      const agentId = thread.agentId;
 
       const scopeKeyStr = `cost:scope:${s}:${day}`;
       let scopeBucket = scopeKeys.get(scopeKeyStr);
@@ -1426,34 +1613,65 @@ export class CostService {
       }
     }
 
-    // Overwrite Redis hashes in one pipeline. Use `hset` (not hincrby) to
-    // make the reconciled values authoritative, then re-arm the TTL.
+    // Preserve any existing hash: it may contain exact cache/reasoning rates
+    // or auxiliary spend that the clean Step model cannot reconstruct.
+    const candidates = [
+      ...Array.from(scopeKeys.entries()).map(([key, bucket]) => ({
+        key,
+        bucket,
+        kind: "scope" as const,
+      })),
+      ...Array.from(agentKeys.entries()).map(([key, bucket]) => ({
+        key,
+        bucket,
+        kind: "agent" as const,
+      })),
+    ];
+    // The existence check and fallback write must be atomic: recordUsage may
+    // create an exact hash while reconcile is running, and that exact write
+    // must win rather than being overwritten by a stale current-price estimate.
+    const writeMissingHash = `
+      if redis.call("EXISTS", KEYS[1]) == 1 then
+        return 0
+      end
+      redis.call(
+        "HSET", KEYS[1],
+        "input_tokens", ARGV[1],
+        "output_tokens", ARGV[2],
+        "cost_cents", ARGV[3],
+        "cost_with_cache_cents", ARGV[3],
+        "calls", ARGV[4],
+        "attribution_source", "step_fallback"
+      )
+      redis.call("EXPIRE", KEYS[1], 7776000)
+      return 1
+    `;
     const pipeline = this.redis.pipeline();
-    for (const [key, b] of scopeKeys) {
-      pipeline.hset(key, {
-        input_tokens: String(b.input_tokens),
-        output_tokens: String(b.output_tokens),
-        cost_cents: String(b.cost_cents),
-      });
-      pipeline.expire(key, 86400 * 90);
+    for (const { key, bucket: b } of candidates) {
+      pipeline.eval(
+        writeMissingHash,
+        1,
+        key,
+        String(b.input_tokens),
+        String(b.output_tokens),
+        String(b.cost_cents),
+        String(b.calls),
+      );
     }
-    for (const [key, b] of agentKeys) {
-      pipeline.hset(key, {
-        input_tokens: String(b.input_tokens),
-        output_tokens: String(b.output_tokens),
-        cost_cents: String(b.cost_cents),
-        calls: String(b.calls),
-      });
-      pipeline.expire(key, 86400 * 90);
-    }
-    if (scopeKeys.size + agentKeys.size > 0) {
-      await pipeline.exec();
+    const results = candidates.length > 0 ? await pipeline.exec() : [];
+    const failed = results?.find(([err]) => err);
+    if (failed?.[0]) throw failed[0];
+    const written = candidates.filter(
+      (_candidate, index) => Number(results?.[index]?.[1] ?? 0) === 1,
+    );
+    if (written.length > 0) {
+      this.warnOnUnpricedStepFallback();
     }
 
     return {
       daysReconciled: daysBack,
-      scopesReconciled: scopeKeys.size,
-      agentsReconciled: agentKeys.size,
+      scopesReconciled: written.filter((entry) => entry.kind === "scope").length,
+      agentsReconciled: written.filter((entry) => entry.kind === "agent").length,
     };
   }
 
@@ -1486,10 +1704,9 @@ export class CostService {
   }
 
   /**
-   * Cost rollup by model — pulls from PlatosAgentMessage.responseJson. Redis
-   * hashes don't carry model dimension (they're scope-aggregated), so we
-   * fall back to the durable store. This is authoritative; the Redis hashes
-   * are used for live dashboard totals. Theme E.3.
+   * Cost rollup by model from clean Step rows. Exact cache-adjusted cost is
+   * also fanned out to `cost:model:*` by recordUsage; Step is the durable
+   * model/token fallback when Redis has expired or restarted. Theme E.3.
    */
   async getCostByModel(
     scope: ScopeTuple,
@@ -1508,46 +1725,22 @@ export class CostService {
     const limit = options.limit ?? 20;
     const since = new Date(Date.now() - days * 86400_000);
 
-    // Pull every message's responseJson for threads in this scope. The
-    // thread-level scope filter IS the leakage gate — we never join across
-    // environments.
-    const rows: Array<{ responseJson: any }> = await this.prisma.platosAgentMessage.findMany({
-      where: {
-        role: "assistant",
-        createdAt: { gte: since },
-        thread: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        },
-      },
-      select: { responseJson: true },
-    });
-
-    type ModelBucket = {
-      costCents: number;
-      costWithCacheCents: number;
-      inputTokens: number;
-      outputTokens: number;
-      cacheCreationInputTokens: number;
-      cacheReadInputTokens: number;
-      messages: number;
-    };
-    const byModel = new Map<string, ModelBucket>();
-    for (const r of rows) {
-      const rj = r.responseJson as {
-        model?: string;
-        usage?: {
-          inputTokens?: number;
-          outputTokens?: number;
-          cacheCreationInputTokens?: number;
-          cacheReadInputTokens?: number;
-        };
-        cost_cents?: number;
-        cost_with_cache_cents?: number;
-      } | null;
-      if (!rj?.model) continue;
-      const bucket = byModel.get(rj.model) ?? {
+    const modelPrefix = `cost:model:${scopeKey(scope)}:`;
+    const exactRows = await this.scanHashes(`${modelPrefix}*`);
+    const exactByModel = new Map<string, ModelCostBucket>();
+    const redisDaysByModel = new Map<string, Set<string>>();
+    let usedStepFallback = false;
+    for (const row of exactRows) {
+      const dateMatch = /:(\d{4}-\d{2}-\d{2})$/.exec(row.key);
+      if (!dateMatch || new Date(`${dateMatch[1]}T23:59:59.999Z`) < since) {
+        continue;
+      }
+      const model = row.key.slice(
+        modelPrefix.length,
+        row.key.length - dateMatch[0].length,
+      );
+      if (!model) continue;
+      const bucket = exactByModel.get(model) ?? {
         costCents: 0,
         costWithCacheCents: 0,
         inputTokens: 0,
@@ -1556,18 +1749,79 @@ export class CostService {
         cacheReadInputTokens: 0,
         messages: 0,
       };
-      const naive = Number(rj.cost_cents ?? 0);
-      bucket.costCents += naive;
-      // MC.2 — cache-adjusted cost falls back to naive when absent (pre-MC
-      // rows), so historical data keeps showing a sensible number.
-      bucket.costWithCacheCents += Number(rj.cost_with_cache_cents ?? naive);
-      bucket.inputTokens += rj.usage?.inputTokens ?? 0;
-      bucket.outputTokens += rj.usage?.outputTokens ?? 0;
-      bucket.cacheCreationInputTokens += rj.usage?.cacheCreationInputTokens ?? 0;
-      bucket.cacheReadInputTokens += rj.usage?.cacheReadInputTokens ?? 0;
-      bucket.messages += 1;
-      byModel.set(rj.model, bucket);
+      const cost = parseFloat(row.values.cost_cents || "0") || 0;
+      bucket.costCents += cost;
+      bucket.costWithCacheCents +=
+        parseFloat(row.values.cost_with_cache_cents || "") || cost;
+      bucket.inputTokens += parseInt(row.values.input_tokens || "0", 10) || 0;
+      bucket.outputTokens += parseInt(row.values.output_tokens || "0", 10) || 0;
+      bucket.cacheCreationInputTokens +=
+        parseInt(row.values.cache_creation_input_tokens || "0", 10) || 0;
+      bucket.cacheReadInputTokens +=
+        parseInt(row.values.cache_read_input_tokens || "0", 10) || 0;
+      bucket.messages += parseInt(row.values.calls || "0", 10) || 0;
+      exactByModel.set(model, bucket);
+      const redisDays = redisDaysByModel.get(model) ?? new Set<string>();
+      redisDays.add(dateMatch[1]);
+      redisDaysByModel.set(model, redisDays);
+      if (row.values.attribution_source === "step_fallback") {
+        usedStepFallback = true;
+      }
     }
+
+    const rows: Array<{
+      createdAt: Date;
+      model: string;
+      inputTokens: number | null;
+      outputTokens: number | null;
+    }> = await this.prisma.step.findMany({
+      where: {
+        createdAt: { gte: since },
+        turn: {
+          thread: {
+            environmentId: scope.environmentId,
+            environment: {
+              project: {
+                id: scope.projectId,
+                organizationId: scope.organizationId,
+              },
+            },
+          },
+        },
+      },
+      select: {
+        createdAt: true,
+        model: true,
+        inputTokens: true,
+        outputTokens: true,
+      },
+    });
+
+    const byModel = new Map<string, ModelCostBucket>(exactByModel);
+    for (const row of rows) {
+      const day = row.createdAt.toISOString().slice(0, 10);
+      if (redisDaysByModel.get(row.model)?.has(day)) continue;
+      usedStepFallback = true;
+      const bucket = byModel.get(row.model) ?? {
+        costCents: 0,
+        costWithCacheCents: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+        messages: 0,
+      };
+      const inputTokens = row.inputTokens ?? 0;
+      const outputTokens = row.outputTokens ?? 0;
+      const naive = await this.calculateCost(row.model, inputTokens, outputTokens);
+      bucket.costCents += naive;
+      bucket.costWithCacheCents += naive;
+      bucket.inputTokens += inputTokens;
+      bucket.outputTokens += outputTokens;
+      bucket.messages += 1;
+      byModel.set(row.model, bucket);
+    }
+    if (usedStepFallback) this.warnOnUnpricedStepFallback();
 
     return Array.from(byModel.entries())
       .map(([model, b]) => ({
@@ -1581,7 +1835,7 @@ export class CostService {
   }
 
   /**
-   * Cost rollup by agent — joins messages → threads → agentId. Theme E.3.
+   * Cost rollup by agent — joins Step → Turn → Thread → Agent. Theme E.3.
    */
   async getCostByAgent(
     scope: ScopeTuple,
@@ -1601,50 +1855,85 @@ export class CostService {
     const limit = options.limit ?? 20;
     const since = new Date(Date.now() - days * 86400_000);
 
-    const rows: Array<{ thread: { agentId: string; id: string } | null; responseJson: any }> =
-      await this.prisma.platosAgentMessage.findMany({
+    const agentPrefix = `cost:agent:${scopeKey(scope)}:`;
+    const exactAgentRows = await this.scanHashes(`${agentPrefix}*`);
+    const exactByAgent = new Map<string, AgentCostBucket>();
+    const redisDaysByAgent = new Map<string, Set<string>>();
+    let usedStepFallback = false;
+    for (const row of exactAgentRows) {
+      const dateMatch = /:(\d{4}-\d{2}-\d{2})$/.exec(row.key);
+      if (!dateMatch || new Date(`${dateMatch[1]}T23:59:59.999Z`) < since) {
+        continue;
+      }
+      const agentId = row.key.slice(
+        agentPrefix.length,
+        row.key.length - dateMatch[0].length,
+      );
+      // Per-agent × model hashes share this prefix. Only the UUID-only daily
+      // hash is an agent total.
+      if (!agentId || agentId.includes(":")) continue;
+      const bucket = exactByAgent.get(agentId) ?? {
+        costCents: 0,
+        costWithCacheCents: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+        threads: new Set<string>(),
+      };
+      const cost = parseFloat(row.values.cost_cents || "0") || 0;
+      bucket.costCents += cost;
+      bucket.costWithCacheCents +=
+        parseFloat(row.values.cost_with_cache_cents || "") || cost;
+      bucket.inputTokens += parseInt(row.values.input_tokens || "0", 10) || 0;
+      bucket.outputTokens += parseInt(row.values.output_tokens || "0", 10) || 0;
+      bucket.cacheCreationInputTokens +=
+        parseInt(row.values.cache_creation_input_tokens || "0", 10) || 0;
+      bucket.cacheReadInputTokens +=
+        parseInt(row.values.cache_read_input_tokens || "0", 10) || 0;
+      exactByAgent.set(agentId, bucket);
+      const redisDays = redisDaysByAgent.get(agentId) ?? new Set<string>();
+      redisDays.add(dateMatch[1]);
+      redisDaysByAgent.set(agentId, redisDays);
+      if (row.values.attribution_source === "step_fallback") {
+        usedStepFallback = true;
+      }
+    }
+
+    const rows: Array<{
+      createdAt: Date;
+      model: string;
+      inputTokens: number | null;
+      outputTokens: number | null;
+      turn: { thread: { agentId: string; id: string } } | null;
+    }> =
+      await this.prisma.step.findMany({
         where: {
-          role: "assistant",
           createdAt: { gte: since },
-          thread: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
+          turn: {
+            thread: {
+              environmentId: scope.environmentId,
+              environment: {
+                project: {
+                  id: scope.projectId,
+                  organizationId: scope.organizationId,
+                },
+              },
+            },
           },
         },
         select: {
-          responseJson: true,
-          thread: { select: { agentId: true, id: true } },
+          createdAt: true,
+          model: true,
+          inputTokens: true,
+          outputTokens: true,
+          turn: { select: { thread: { select: { agentId: true, id: true } } } },
         },
       });
 
-    type AgentBucket = {
-      costCents: number;
-      costWithCacheCents: number;
-      inputTokens: number;
-      outputTokens: number;
-      cacheCreationInputTokens: number;
-      cacheReadInputTokens: number;
-      threads: Set<string>;
-    };
-    const byAgent = new Map<string, AgentBucket>();
+    const byAgent = new Map<string, AgentCostBucket>(exactByAgent);
     for (const r of rows) {
-      const rj = r.responseJson as {
-        usage?: {
-          inputTokens?: number;
-          outputTokens?: number;
-          cacheCreationInputTokens?: number;
-          cacheReadInputTokens?: number;
-        };
-        cost_cents?: number;
-        cost_with_cache_cents?: number;
-        agent_id?: string;
-      } | null;
-      // Theme E.9 — prefer the explicit `agent_id` stamped on the message row
-      // over the thread's `agentId`. These normally match; they diverge when
-      // a sub-agent turn is billed separately (future), or when migration
-      // rewrites attribution. Fall back to thread.agentId for legacy rows.
-      const agentId = rj?.agent_id ?? r.thread?.agentId;
+      const agentId = r.turn?.thread.agentId;
       if (!agentId) continue;
       const bucket = byAgent.get(agentId) ?? {
         costCents: 0,
@@ -1655,27 +1944,31 @@ export class CostService {
         cacheReadInputTokens: 0,
         threads: new Set<string>(),
       };
-      const naive = Number(rj?.cost_cents ?? 0);
-      bucket.costCents += naive;
-      // MC.2 — fall back to naive cost for pre-MC rows.
-      bucket.costWithCacheCents += Number(rj?.cost_with_cache_cents ?? naive);
-      bucket.inputTokens += rj?.usage?.inputTokens ?? 0;
-      bucket.outputTokens += rj?.usage?.outputTokens ?? 0;
-      bucket.cacheCreationInputTokens += rj?.usage?.cacheCreationInputTokens ?? 0;
-      bucket.cacheReadInputTokens += rj?.usage?.cacheReadInputTokens ?? 0;
-      if (r.thread?.id) bucket.threads.add(r.thread.id);
+      const inputTokens = r.inputTokens ?? 0;
+      const outputTokens = r.outputTokens ?? 0;
+      const day = r.createdAt.toISOString().slice(0, 10);
+      if (!redisDaysByAgent.get(agentId)?.has(day)) {
+        usedStepFallback = true;
+        const naive = await this.calculateCost(r.model, inputTokens, outputTokens);
+        bucket.costCents += naive;
+        bucket.costWithCacheCents += naive;
+        bucket.inputTokens += inputTokens;
+        bucket.outputTokens += outputTokens;
+      }
+      if (r.turn?.thread.id) bucket.threads.add(r.turn.thread.id);
       byAgent.set(agentId, bucket);
     }
+    if (usedStepFallback) this.warnOnUnpricedStepFallback();
 
     // Resolve agent names in a single query.
     const agentIds = Array.from(byAgent.keys());
     const agents: Array<{ id: string; name: string }> = agentIds.length
-      ? await this.prisma.platosAgent.findMany({
+      ? await this.prisma.agent.findMany({
           where: {
             id: { in: agentIds },
-            organizationId: scope.organizationId,
             projectId: scope.projectId,
-            environmentId: scope.environmentId,
+            project: { organizationId: scope.organizationId },
+            bindings: { some: { environmentId: scope.environmentId } },
           },
           select: { id: true, name: true },
         })
@@ -1704,9 +1997,9 @@ export class CostService {
    * PRELAUNCH-A1-10 — payload extended with the full token breakdown
    * (input / output / cache_read / cache_creation / reasoning) so
    * monitoring dashboards can sort + filter by reasoning spend or cache
-   * hit rate per user. All token fields default to 0 — pre-A1 messages
-   * stored only `inputTokens` + `outputTokens` so reasoning/cache values
-   * legitimately show 0 on legacy traffic.
+   * hit rate per user. Clean Step stores only `inputTokens` + `outputTokens`;
+   * cache/reasoning values come from exact Redis attribution and remain zero
+   * only when a warned Step fallback is required.
    */
   async getCostByUser(
     scope: ScopeTuple,
@@ -1728,51 +2021,24 @@ export class CostService {
     const limit = options.limit ?? 20;
     const since = new Date(Date.now() - days * 86400_000);
 
-    const rows: Array<{ thread: { userId: string; id: string } | null; responseJson: any }> =
-      await this.prisma.platosAgentMessage.findMany({
-        where: {
-          role: "assistant",
-          createdAt: { gte: since },
-          thread: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-          },
-        },
-        select: {
-          responseJson: true,
-          thread: { select: { userId: true, id: true } },
-        },
-      });
-
-    type UserRow = {
-      costCents: number;
-      messages: number;
-      threads: Set<string>;
-      inputTokens: number;
-      outputTokens: number;
-      cacheReadInputTokens: number;
-      cacheCreationInputTokens: number;
-      reasoningTokens: number;
-    };
-    const byUser = new Map<string, UserRow>();
-    for (const r of rows) {
-      const userId = r.thread?.userId;
+    const userPrefix = `cost:user:${scopeKey(scope)}:`;
+    const exactUserRows = await this.scanHashes(`${userPrefix}*`);
+    const exactByUser = new Map<string, UserCostBucket>();
+    const redisDaysByUser = new Map<string, Set<string>>();
+    let usedStepFallback = false;
+    for (const row of exactUserRows) {
+      const dateMatch = /:(\d{4}-\d{2}-\d{2})$/.exec(row.key);
+      if (!dateMatch || new Date(`${dateMatch[1]}T23:59:59.999Z`) < since) {
+        continue;
+      }
+      const userId = row.key.slice(
+        userPrefix.length,
+        row.key.length - dateMatch[0].length,
+      );
       if (!userId) continue;
-      const rj = (r.responseJson ?? {}) as {
-        cost_cents?: number;
-        usage?: {
-          inputTokens?: number;
-          outputTokens?: number;
-          cacheReadInputTokens?: number;
-          cacheCreationInputTokens?: number;
-          reasoningTokens?: number;
-        };
-      };
-      const usage = rj.usage ?? {};
-      const bucket: UserRow = byUser.get(userId) ?? {
+      const bucket = exactByUser.get(userId) ?? {
         costCents: 0,
-        messages: 0,
+        turns: new Set<string>(),
         threads: new Set<string>(),
         inputTokens: 0,
         outputTokens: 0,
@@ -1780,22 +2046,98 @@ export class CostService {
         cacheCreationInputTokens: 0,
         reasoningTokens: 0,
       };
-      bucket.costCents += Number(rj.cost_cents ?? 0);
-      bucket.messages += 1;
-      bucket.inputTokens += Number(usage.inputTokens ?? 0) || 0;
-      bucket.outputTokens += Number(usage.outputTokens ?? 0) || 0;
-      bucket.cacheReadInputTokens += Number(usage.cacheReadInputTokens ?? 0) || 0;
-      bucket.cacheCreationInputTokens += Number(usage.cacheCreationInputTokens ?? 0) || 0;
-      bucket.reasoningTokens += Number(usage.reasoningTokens ?? 0) || 0;
-      if (r.thread?.id) bucket.threads.add(r.thread.id);
+      bucket.costCents += parseFloat(row.values.cost_cents || "0") || 0;
+      bucket.inputTokens += parseInt(row.values.input_tokens || "0", 10) || 0;
+      bucket.outputTokens += parseInt(row.values.output_tokens || "0", 10) || 0;
+      bucket.cacheReadInputTokens +=
+        parseInt(row.values.cache_read_input_tokens || "0", 10) || 0;
+      bucket.cacheCreationInputTokens +=
+        parseInt(row.values.cache_creation_input_tokens || "0", 10) || 0;
+      bucket.reasoningTokens +=
+        parseInt(row.values.reasoning_tokens || "0", 10) || 0;
+      exactByUser.set(userId, bucket);
+      const redisDays = redisDaysByUser.get(userId) ?? new Set<string>();
+      redisDays.add(dateMatch[1]);
+      redisDaysByUser.set(userId, redisDays);
+      if (row.values.attribution_source === "step_fallback") {
+        usedStepFallback = true;
+      }
+    }
+
+    const rows: Array<{
+      createdAt: Date;
+      model: string;
+      inputTokens: number | null;
+      outputTokens: number | null;
+      turn: { id: string; thread: { endUserId: string; id: string } } | null;
+    }> =
+      await this.prisma.step.findMany({
+        where: {
+          createdAt: { gte: since },
+          turn: {
+            thread: {
+              environmentId: scope.environmentId,
+              environment: {
+                project: {
+                  id: scope.projectId,
+                  organizationId: scope.organizationId,
+                },
+              },
+            },
+          },
+        },
+        select: {
+          createdAt: true,
+          model: true,
+          inputTokens: true,
+          outputTokens: true,
+          turn: {
+            select: {
+              id: true,
+              thread: { select: { endUserId: true, id: true } },
+            },
+          },
+        },
+      });
+
+    const byUser = new Map<string, UserCostBucket>(exactByUser);
+    for (const r of rows) {
+      const userId = r.turn?.thread.endUserId;
+      if (!userId) continue;
+      const bucket = byUser.get(userId) ?? {
+        costCents: 0,
+        turns: new Set<string>(),
+        threads: new Set<string>(),
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadInputTokens: 0,
+        cacheCreationInputTokens: 0,
+        reasoningTokens: 0,
+      };
+      const inputTokens = r.inputTokens ?? 0;
+      const outputTokens = r.outputTokens ?? 0;
+      const day = r.createdAt.toISOString().slice(0, 10);
+      if (!redisDaysByUser.get(userId)?.has(day)) {
+        usedStepFallback = true;
+        bucket.costCents += await this.calculateCost(
+          r.model,
+          inputTokens,
+          outputTokens,
+        );
+        bucket.inputTokens += inputTokens;
+        bucket.outputTokens += outputTokens;
+      }
+      if (r.turn?.id) bucket.turns.add(r.turn.id);
+      if (r.turn?.thread.id) bucket.threads.add(r.turn.thread.id);
       byUser.set(userId, bucket);
     }
+    if (usedStepFallback) this.warnOnUnpricedStepFallback();
 
     return Array.from(byUser.entries())
       .map(([userId, b]) => ({
         userId,
         costCents: Math.round(b.costCents * 100) / 100,
-        messages: b.messages,
+        messages: b.turns.size,
         threads: b.threads.size,
         inputTokens: b.inputTokens,
         outputTokens: b.outputTokens,
@@ -1939,12 +2281,12 @@ export class CostService {
     const agentNameById = new Map<string, string>();
     if (agentIds.length > 0) {
       try {
-        const agents: Array<{ id: string; name: string }> = await this.prisma.platosAgent.findMany({
+        const agents: Array<{ id: string; name: string }> = await this.prisma.agent.findMany({
           where: {
             id: { in: agentIds },
-            organizationId: scope.organizationId,
             projectId: scope.projectId,
-            environmentId: scope.environmentId,
+            project: { organizationId: scope.organizationId },
+            bindings: { some: { environmentId: scope.environmentId } },
           },
           select: { id: true, name: true },
         });

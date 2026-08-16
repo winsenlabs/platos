@@ -8,7 +8,7 @@ import { REDIS_TOKEN } from "../shared/redis.provider";
  * blobs.
  *
  * Backs the turn-start `__user_profile` context block and the
- * `recall_user_profile` meta-tool. Profiles live in PlatosMemory
+ * `recall_user_profile` meta-tool. Profiles live in clean Memory
  * (kind="profile") since M.4 dropped the legacy blob; without this cache
  * every turn would pay a Prisma round-trip just to reassemble the blob
  * shape from N profile rows. Hit the cache first and fall through to

@@ -1,5 +1,10 @@
 import { Injectable, Inject, Optional } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import type { Prisma, SafetyEvent } from "@platos/tenancy-database";
+import {
+  type ControlDatabaseClient,
+  environmentScopeWhere,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 import { MessageCryptoService } from "./message-crypto.service";
 
@@ -35,7 +40,7 @@ export interface SafetyEventRow {
   action: DetectorAction;
   severity: "low" | "medium" | "high";
   detail: string | null;
-  meta: any;
+  meta: unknown;
   toolName: string | null;
   toolCallId: string | null;
   createdAt: Date;
@@ -50,14 +55,10 @@ export interface SafetyEventRow {
  */
 @Injectable()
 export class SafetyEventService {
-  private prisma: any;
-
   constructor(
-    @Inject(PRISMA_TOKEN) prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     @Optional() private readonly crypto?: MessageCryptoService,
-  ) {
-    this.prisma = prisma;
-  }
+  ) {}
 
   async record(
     scope: ScopeTuple,
@@ -83,20 +84,21 @@ export class SafetyEventService {
       const encDetail = this.encryptString(data.detail);
       const encMeta =
         this.crypto?.encryptJsonField(data.meta ?? null) ?? (data.meta ?? null);
-      await this.prisma.platosSafetyEvent.create({
+      await this.prisma.safetyEvent.create({
         data: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
           detector: data.detector,
           action: data.action,
           severity: data.severity,
           detail: encDetail,
-          meta: encMeta as any,
+          metadata: this.storeMetadata(data.userId ?? null, encMeta),
           agentId: data.agentId ?? null,
           threadId: data.threadId ?? null,
-          messageId: data.messageId ?? null,
-          userId: data.userId ?? null,
+          turnId: data.messageId ?? null,
+          // RequestScope.userId is the caller's external subject, not the
+          // canonical UUID EndUser.id required by this FK. Preserve it in the
+          // metadata adapter instead of making the whole best-effort write fail.
+          endUserId: null,
           toolName: data.toolName ?? null,
           toolCallId: data.toolCallId ?? null,
         },
@@ -111,7 +113,11 @@ export class SafetyEventService {
     if (value === null || value === undefined) return null;
     if (!this.crypto) return value;
     const wrapped = this.crypto.encryptJsonField(value);
-    if (wrapped && typeof wrapped === "object" && (wrapped as any).__platos_enc === 1) {
+    if (
+      wrapped &&
+      typeof wrapped === "object" &&
+      (wrapped as Record<string, unknown>).__platos_enc === 1
+    ) {
       return JSON.stringify(wrapped);
     }
     return value;
@@ -148,35 +154,34 @@ export class SafetyEventService {
     const limit = Math.max(1, Math.min(options.limit ?? 50, 200));
     const offset = Math.max(0, options.offset ?? 0);
 
-    const where: any = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
+    const where: Prisma.SafetyEventWhereInput = {
+      ...environmentScopeWhere(scope),
       createdAt: { gte: new Date(Date.now() - sinceDays * 86400_000) },
     };
     if (options.detector) where.detector = options.detector;
     if (options.action) where.action = options.action;
     if (options.threadId) where.threadId = options.threadId;
     if (options.agentId) where.agentId = options.agentId;
-    if (options.userId) where.userId = options.userId;
+    if (options.userId) {
+      where.metadata = {
+        path: ["__platosSafety", "userId"],
+        equals: options.userId,
+      };
+    }
     if (options.severity) where.severity = options.severity;
 
     const [rawRows, total] = await Promise.all([
-      this.prisma.platosSafetyEvent.findMany({
+      this.prisma.safetyEvent.findMany({
         where,
         orderBy: { createdAt: "desc" },
         take: limit,
         skip: offset,
       }),
-      this.prisma.platosSafetyEvent.count({ where }),
+      this.prisma.safetyEvent.count({ where }),
     ]);
 
     // EOBD.21 — transparent decryption on read. Unencrypted rows pass through.
-    const rows = rawRows.map((r: any) => ({
-      ...r,
-      detail: this.decryptString(r.detail),
-      meta: this.crypto?.decryptJsonField(r.meta ?? null) ?? (r.meta ?? null),
-    }));
+    const rows = rawRows.map((row) => this.toRecord(scope, row));
 
     return { rows, total, limit, offset };
   }
@@ -193,11 +198,9 @@ export class SafetyEventService {
     const sinceDays = Math.max(1, Math.min(options.sinceDays ?? 30, 365));
     const since = new Date(Date.now() - sinceDays * 86400_000);
     const rows: Array<{ detector: string; action: string; severity: string }> =
-      await this.prisma.platosSafetyEvent.findMany({
+      await this.prisma.safetyEvent.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
+          ...environmentScopeWhere(scope),
           createdAt: { gte: since },
         },
         select: { detector: true, action: true, severity: true },
@@ -211,5 +214,57 @@ export class SafetyEventService {
       bySeverity[r.severity] = (bySeverity[r.severity] ?? 0) + 1;
     }
     return { total: rows.length, byDetector, byAction, bySeverity };
+  }
+
+  private toRecord(scope: ScopeTuple, row: SafetyEvent): SafetyEventRow {
+    const storedMetadata = this.readMetadata(row.metadata);
+    return {
+      id: row.id,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
+      environmentId: row.environmentId,
+      agentId: row.agentId,
+      threadId: row.threadId,
+      messageId: row.turnId,
+      userId: storedMetadata.userId ?? row.endUserId,
+      detector: row.detector as DetectorKind,
+      action: row.action as DetectorAction,
+      severity: row.severity as SafetyEventRow["severity"],
+      detail: this.decryptString(row.detail),
+      meta:
+        this.crypto?.decryptJsonField(storedMetadata.value) ??
+        storedMetadata.value,
+      toolName: row.toolName,
+      toolCallId: row.toolCallId,
+      createdAt: row.createdAt,
+    };
+  }
+
+  private storeMetadata(
+    userId: string | null,
+    value: unknown,
+  ): Prisma.InputJsonObject {
+    return {
+      __platosSafety: { userId },
+      value: value as Prisma.InputJsonValue,
+    };
+  }
+
+  private readMetadata(value: Prisma.JsonValue | null): {
+    userId: string | null;
+    value: Prisma.JsonValue | null;
+  } {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const stored = value as Record<string, Prisma.JsonValue>;
+      const adapter = stored.__platosSafety;
+      if (adapter && typeof adapter === "object" && !Array.isArray(adapter)) {
+        const userId = (adapter as Record<string, Prisma.JsonValue>).userId;
+        return {
+          userId: typeof userId === "string" ? userId : null,
+          value: stored.value ?? null,
+        };
+      }
+    }
+    return { userId: null, value };
   }
 }

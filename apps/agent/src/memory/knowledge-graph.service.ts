@@ -1,6 +1,17 @@
-import { Injectable, Inject, Logger } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
+import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
+import { MessageCryptoService } from "../monitoring/message-crypto.service";
+import { EmbeddingService } from "./embedding.service";
 import type { ScopeTuple } from "./memory.service";
+import {
+  assertEnvironmentScope,
+  canShareAgentScope,
+  environmentScopeWhere,
+  resolveAgentBinding,
+  resolveEndUser,
+  resolveReadAgentIds,
+  resolveWriteBinding,
+} from "./memory-scope";
 
 export interface EntityRow {
   id: string;
@@ -8,6 +19,8 @@ export interface EntityRow {
   projectId: string;
   environmentId: string;
   userId: string;
+  agentId: string;
+  clusterId: string | null;
   entityKey: string;
   entityType: string;
   label: string;
@@ -23,6 +36,8 @@ export interface RelationshipRow {
   projectId: string;
   environmentId: string;
   userId: string;
+  agentId: string;
+  clusterId: string | null;
   fromEntityId: string;
   toEntityId: string;
   relationshipType: string;
@@ -40,15 +55,16 @@ export interface EntityRelationships {
 
 export interface ShortestPathHop {
   entity: EntityRow;
-  /** The relationship traversed to arrive at this entity. `null` for
-   *  the start node (first hop) where no edge is traversed. */
   relationship: RelationshipRow | null;
-  /** Direction the edge was traversed — "out" means the edge points
-   *  from the previous node to this one; "in" means the opposite. */
   direction: "out" | "in" | null;
 }
 
-export interface ShortestPathInput {
+interface AgentReadInput {
+  agentId?: string | null;
+  agentIds?: string[];
+}
+
+export interface ShortestPathInput extends AgentReadInput {
   fromEntityId: string;
   toEntityId: string;
   userId: string;
@@ -57,33 +73,12 @@ export interface ShortestPathInput {
 
 export interface UpsertEntityInput {
   userId: string;
-  /// L6 — acting agent (null for operator/non-agent-pinned callers). Stamped
-  /// on CREATE only; entities are shared per (scope,userId,entityKey) so an
-  /// existing node keeps its first-writer agentId.
   agentId?: string | null;
   entityKey: string;
   entityType?: string;
   label?: string;
   aliases?: string[];
   metadata?: unknown;
-}
-
-/**
- * Theme L.7 / L.8 — knowledge-graph query + mutation primitives.
- *
- * The graph is scoped like every other Platos surface: every read +
- * write filters on `(organizationId, projectId, environmentId,
- * userId)`. BFS is capped at `maxHops = 4` by default; callers may
- * raise but the upper bound is 6 to keep worst-case edge scans
- * bounded (per-node branching ≤ relationship count).
- */
-import { Optional } from "@nestjs/common";
-import { MessageCryptoService } from "../monitoring/message-crypto.service";
-import { EmbeddingService } from "./embedding.service";
-
-/** pgvector literal — `[a,b,c]`. Same shape MemoryService uses. */
-function vectorToEntityLiteral(vec: number[]): string {
-  return `[${vec.join(",")}]`;
 }
 
 @Injectable()
@@ -93,350 +88,299 @@ export class KnowledgeGraphService {
   private static readonly HARD_MAX_HOPS = 6;
 
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     @Optional() private readonly crypto?: MessageCryptoService,
     @Optional() private readonly embeddings?: EmbeddingService,
   ) {}
 
-  /** EOBD.22 — envelope-stringify for String columns carrying PII. */
-  private encString(v: string | null | undefined): string | null {
-    if (v === null || v === undefined) return null;
-    if (!this.crypto) return v;
-    const wrapped = this.crypto.encryptJsonField(v);
-    if (wrapped && typeof wrapped === "object" && (wrapped as any).__platos_enc === 1) {
-      return JSON.stringify(wrapped);
-    }
-    return v;
+  private encString(value: string): string {
+    if (!this.crypto) return value;
+    const wrapped = this.crypto.encryptJsonField(value);
+    return wrapped && typeof wrapped === "object" && (wrapped as any).__platos_enc === 1
+      ? JSON.stringify(wrapped)
+      : value;
   }
 
-  private decString(v: string | null | undefined): string | null {
-    if (v === null || v === undefined) return null;
-    if (!this.crypto) return v;
-    if (!v.startsWith("{\"__platos_enc\"")) return v;
+  private decString(value: string): string {
+    if (!this.crypto || !value.startsWith("{\"__platos_enc\"")) return value;
     try {
-      const plain = this.crypto.decryptJsonField(JSON.parse(v));
-      return typeof plain === "string" ? plain : v;
+      const plain = this.crypto.decryptJsonField(JSON.parse(value));
+      return typeof plain === "string" ? plain : value;
     } catch {
-      return v;
+      return value;
     }
   }
 
-  /** List entities for a user. Newest first. */
+  private decMetadata(value: unknown): unknown {
+    return this.crypto?.decryptJsonField(value ?? null) ?? value ?? null;
+  }
+
   async getEntities(
     scope: ScopeTuple,
-    input: { userId: string; entityType?: string; limit?: number; offset?: number },
+    input: {
+      userId: string;
+      entityType?: string;
+      limit?: number;
+      offset?: number;
+      agentId?: string | null;
+      agentIds?: string[];
+    },
   ): Promise<EntityRow[]> {
-    this.requireScope(scope);
     if (!input.userId) throw new Error("KnowledgeGraphService.getEntities: `userId` is required");
-    const limit = clampInt(input.limit ?? 100, 1, 500);
-    const offset = clampInt(input.offset ?? 0, 0, 10_000);
-    const where: Record<string, unknown> = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
-      userId: input.userId,
-    };
-    if (input.entityType) where.entityType = input.entityType;
-    const rows = await this.prisma.platosMemoryEntity.findMany({
-      where,
+    await assertEnvironmentScope(this.prisma, scope);
+    const endUser = await resolveEndUser(this.prisma, scope, input.userId);
+    const agentIds = await resolveReadAgentIds(this.prisma, scope, input.agentId, input.agentIds);
+    const rows = await this.prisma.memoryEntity.findMany({
+      where: {
+        ...environmentScopeWhere(scope),
+        endUserId: endUser.id,
+        ...(input.entityType ? { entityType: input.entityType } : {}),
+        ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+      },
       orderBy: { createdAt: "desc" },
-      take: limit,
-      skip: offset,
+      take: clampInt(input.limit ?? 100, 1, 500),
+      skip: clampInt(input.offset ?? 0, 0, 10_000),
     });
-    return rows.map((r: any) =>
-      toEntityRow(r, (v) => this.decString(v), (v) => this.crypto?.decryptJsonField(v) ?? v),
-    );
+    return rows.map((row) => this.toEntityRow(row, scope, endUser.externalId));
   }
 
-  /**
-   * Upsert an entity by `entityKey`. Used by the `relate` meta-tool so
-   * repeated calls with the same slug are idempotent — the second
-   * invocation updates the label/aliases/metadata if supplied, but
-   * keeps the id stable so relationships stay connected.
-   */
   async upsertEntity(scope: ScopeTuple, input: UpsertEntityInput): Promise<EntityRow> {
-    this.requireScope(scope);
     if (!input.userId) throw new Error("KnowledgeGraphService.upsertEntity: `userId` is required");
     if (!input.entityKey) throw new Error("KnowledgeGraphService.upsertEntity: `entityKey` is required");
-
-    const row = await this.prisma.platosMemoryEntity.upsert({
+    await assertEnvironmentScope(this.prisma, scope);
+    const endUser = await resolveEndUser(this.prisma, scope, input.userId);
+    const binding = await resolveWriteBinding(this.prisma, scope, input.agentId);
+    const storedMetadata = input.metadata === undefined
+      ? undefined
+      : this.crypto?.encryptJsonField(input.metadata) ?? input.metadata;
+    const row = await this.prisma.memoryEntity.upsert({
       where: {
-        organizationId_projectId_environmentId_userId_entityKey: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
+        environmentId_endUserId_agentId_entityKey: {
           environmentId: scope.environmentId,
-          userId: input.userId,
+          endUserId: endUser.id,
+          agentId: binding.agentId,
           entityKey: input.entityKey,
         },
       },
       create: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
-        userId: input.userId,
-        agentId: input.agentId ?? null,
+        endUserId: endUser.id,
+        agentId: binding.agentId,
+        clusterId: binding.clusterId,
         entityKey: input.entityKey,
         entityType: input.entityType || "other",
-        // EOBD.22 — encrypt label + metadata at rest (label is typically
-        // a full user/entity name; metadata is freeform PII). Aliases
-        // left plaintext for this wave (low-risk display strings, short
-        // array) — tracked as follow-up.
-        label: this.encString(input.label || input.entityKey) ?? input.entityKey,
+        label: this.encString(input.label || input.entityKey),
         aliases: input.aliases ?? [],
-        metadata: (this.crypto?.encryptJsonField(input.metadata ?? null) ??
-          input.metadata ??
-          undefined) as any,
+        metadata: storedMetadata as any,
       },
       update: {
+        clusterId: binding.clusterId,
         ...(input.entityType ? { entityType: input.entityType } : {}),
-        ...(input.label ? { label: this.encString(input.label) ?? input.label } : {}),
+        ...(input.label ? { label: this.encString(input.label) } : {}),
         ...(input.aliases ? { aliases: input.aliases } : {}),
-        ...(input.metadata !== undefined
-          ? {
-              metadata: (this.crypto?.encryptJsonField(input.metadata) ??
-                (input.metadata as any)) as any,
-            }
-          : {}),
+        ...(storedMetadata !== undefined ? { metadata: storedMetadata as any } : {}),
       },
     });
-    // Async embedding back-fill (context-compiler piece 4) — embed the
-    // PLAINTEXT label + aliases so the entity becomes semantically searchable
-    // and resolvable. Fire-and-forget: never blocks the upsert (so it adds no
-    // latency to a per-turn relate() call or the extraction sweep); the column
-    // is nullable and just fills in on completion. Mirrors the memory
-    // back-fill pattern. No-op when no embedding provider is configured.
+
     if (this.embeddings) {
-      const embedText = [input.label || input.entityKey, ...(input.aliases ?? [])]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
-      if (embedText) {
-        void this.embeddings
-          .embed(embedText, scope)
-          .then((vec) =>
-            vec && vec.length > 0
-              ? this.prisma.$executeRawUnsafe(
-                  `UPDATE "PlatosMemoryEntity" SET "embedding" = $1::vector WHERE "id" = $2`,
-                  vectorToEntityLiteral(vec),
-                  row.id,
-                )
-              : undefined,
-          )
-          .catch(() => undefined);
+      const text = [input.label || input.entityKey, ...(input.aliases ?? [])].filter(Boolean).join(" ").trim();
+      if (text) {
+        void this.embeddings.embed(text, scope)
+          .then((vector) => this.prisma.$executeRawUnsafe(
+            `UPDATE "MemoryEntity" SET "embedding" = $1::vector WHERE "id" = $2::uuid`,
+            vectorToLiteral(vector),
+            row.id,
+          ))
+          .catch((error: unknown) => {
+            this.logger.error(
+              `MemoryEntity embedding persistence failed for ${row.id}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          });
       }
     }
-    return toEntityRow(row, (v) => this.decString(v), (v) => this.crypto?.decryptJsonField(v) ?? v);
+    return this.toEntityRow(row, scope, endUser.externalId);
   }
 
-  async getEntityById(scope: ScopeTuple, id: string, userId?: string): Promise<EntityRow | null> {
-    this.requireScope(scope);
-    // SECURITY (audit H9) — when a userId is supplied, gate the entity to that
-    // user (KG entities carry userId). The session-token REST path passes
-    // scope.userId so it can't read another user's entity by id; operator MCP
-    // tools omit it (scope-only, operator-trusted).
-    const row = await this.prisma.platosMemoryEntity.findFirst({
+  async getEntityById(
+    scope: ScopeTuple,
+    id: string,
+    userId?: string,
+    access: AgentReadInput = {},
+  ): Promise<EntityRow | null> {
+    await assertEnvironmentScope(this.prisma, scope);
+    const endUser = userId ? await resolveEndUser(this.prisma, scope, userId) : null;
+    const agentIds = await resolveReadAgentIds(
+      this.prisma,
+      scope,
+      access.agentId,
+      access.agentIds,
+    );
+    const row = await this.prisma.memoryEntity.findFirst({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        ...(userId ? { userId } : {}),
+        ...environmentScopeWhere(scope),
+        ...(endUser ? { endUserId: endUser.id } : {}),
+        ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+      },
+      include: {
+        endUser: {
+          include: {
+            identities: {
+              where: { disabledAt: null },
+              orderBy: { createdAt: "asc" },
+              take: 1,
+            },
+          },
+        },
       },
     });
-    return row ? toEntityRow(row, (v) => this.decString(v), (v) => this.crypto?.decryptJsonField(v) ?? v) : null;
+    if (!row) return null;
+    const externalId = endUser?.externalId ?? row.endUser.identities[0]?.subject ?? row.endUserId;
+    return this.toEntityRow(row, scope, externalId);
   }
 
-  /**
-   * Return both inbound and outbound relationships for a given entity
-   * id, each joined with the counterpart entity row so the caller
-   * doesn't have to follow up with per-id lookups.
-   */
   async getRelationships(
     scope: ScopeTuple,
-    input: { entityId: string },
+    input: { entityId: string; agentId?: string | null; agentIds?: string[] },
     userId?: string,
   ): Promise<EntityRelationships | null> {
-    this.requireScope(scope);
-    // SECURITY (audit H9) — gate the root entity by userId (the getEntityById
-    // call returns null for a foreign entity), and filter the relationship
-    // rows by userId too when supplied.
-    const entity = await this.getEntityById(scope, input.entityId, userId);
+    const access = { agentId: input.agentId, agentIds: input.agentIds };
+    const entity = await this.getEntityById(scope, input.entityId, userId, access);
     if (!entity) return null;
-
-    const [outRows, inRows] = await Promise.all([
-      this.prisma.platosMemoryRelationship.findMany({
-        where: {
-          fromEntityId: input.entityId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          ...(userId ? { userId } : {}),
-        },
+    const agentIds = await resolveReadAgentIds(this.prisma, scope, input.agentId, input.agentIds);
+    const endUser = await resolveEndUser(this.prisma, scope, userId || entity.userId);
+    const where = {
+      ...environmentScopeWhere(scope),
+      endUserId: endUser.id,
+      ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+    };
+    const [outbound, inbound] = await Promise.all([
+      this.prisma.memoryRelationship.findMany({
+        where: { ...where, fromEntityId: input.entityId },
         include: { toEntity: true },
         orderBy: { createdAt: "desc" },
         take: 500,
       }),
-      this.prisma.platosMemoryRelationship.findMany({
-        where: {
-          toEntityId: input.entityId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          ...(userId ? { userId } : {}),
-        },
+      this.prisma.memoryRelationship.findMany({
+        where: { ...where, toEntityId: input.entityId },
         include: { fromEntity: true },
         orderBy: { createdAt: "desc" },
         take: 500,
       }),
     ]);
-
     return {
       entity,
-      outbound: outRows.map((r: any) => ({
-        relationship: toRelationshipRow(r),
-        to: toEntityRow(r.toEntity, (v) => this.decString(v), (v) => this.crypto?.decryptJsonField(v) ?? v),
+      outbound: outbound.map((row) => ({
+        relationship: this.toRelationshipRow(row, scope, endUser.externalId),
+        to: this.toEntityRow(row.toEntity, scope, endUser.externalId),
       })),
-      inbound: inRows.map((r: any) => ({
-        relationship: toRelationshipRow(r),
-        from: toEntityRow(r.fromEntity, (v) => this.decString(v), (v) => this.crypto?.decryptJsonField(v) ?? v),
+      inbound: inbound.map((row) => ({
+        relationship: this.toRelationshipRow(row, scope, endUser.externalId),
+        from: this.toEntityRow(row.fromEntity, scope, endUser.externalId),
       })),
     };
   }
 
-  /**
-   * BFS shortest-path between two entities. Treats relationships as
-   * undirected for path-finding but the returned hop list carries the
-   * traversal direction so callers can reconstruct the edge. Returns
-   * `null` when no path exists within `maxHops`.
-   */
   async shortestPath(scope: ScopeTuple, input: ShortestPathInput): Promise<ShortestPathHop[] | null> {
-    this.requireScope(scope);
     if (!input.userId) throw new Error("KnowledgeGraphService.shortestPath: `userId` is required");
-    if (input.fromEntityId === input.toEntityId) {
-      const entity = await this.getEntityById(scope, input.fromEntityId);
-      if (!entity) return null;
-      return [{ entity, relationship: null, direction: null }];
-    }
+    const access = { agentId: input.agentId, agentIds: input.agentIds };
+    const start = await this.getEntityById(scope, input.fromEntityId, input.userId, access);
+    const target = await this.getEntityById(scope, input.toEntityId, input.userId, access);
+    if (!start || !target) return null;
+    if (start.id === target.id) return [{ entity: start, relationship: null, direction: null }];
 
+    const endUser = await resolveEndUser(this.prisma, scope, input.userId);
+    const agentIds = await resolveReadAgentIds(this.prisma, scope, input.agentId, input.agentIds);
     const maxHops = clampInt(
       input.maxHops ?? KnowledgeGraphService.DEFAULT_MAX_HOPS,
       1,
       KnowledgeGraphService.HARD_MAX_HOPS,
     );
-
-    // Frontier BFS — at depth d we know every node reachable in d hops.
-    // For each node we remember the previous node + the relationship
-    // row used, so a final backtrace produces the hop list.
-    interface Trace {
-      prev: string | null;
+    type Trace = {
+      previous: string | null;
       relationship: RelationshipRow | null;
       direction: "out" | "in" | null;
-    }
-    const visited = new Map<string, Trace>();
-    visited.set(input.fromEntityId, { prev: null, relationship: null, direction: null });
-
-    let frontier: string[] = [input.fromEntityId];
-    for (let depth = 0; depth < maxHops && frontier.length > 0; depth++) {
-      // Pull every outgoing + incoming edge from the current frontier
-      // in one round-trip. Scope filter is mandatory.
-      const edges: any[] = await this.prisma.platosMemoryRelationship.findMany({
+    };
+    const visited = new Map<string, Trace>([
+      [start.id, { previous: null, relationship: null, direction: null }],
+    ]);
+    let frontier = [start.id];
+    for (let depth = 0; depth < maxHops && frontier.length; depth++) {
+      const edges = await this.prisma.memoryRelationship.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          userId: input.userId,
+          ...environmentScopeWhere(scope),
+          endUserId: endUser.id,
+          ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
           OR: [{ fromEntityId: { in: frontier } }, { toEntityId: { in: frontier } }],
         },
       });
-
-      const nextFrontier: string[] = [];
+      const next: string[] = [];
       for (const edge of edges) {
-        const [prev, neighbour, direction]: [string, string, "out" | "in"] =
-          frontier.includes(edge.fromEntityId)
-            ? [edge.fromEntityId, edge.toEntityId, "out"]
-            : [edge.toEntityId, edge.fromEntityId, "in"];
-        if (visited.has(neighbour)) continue;
-        visited.set(neighbour, {
-          prev,
-          relationship: toRelationshipRow(edge),
-          direction,
+        const outbound = frontier.includes(edge.fromEntityId);
+        const previous = outbound ? edge.fromEntityId : edge.toEntityId;
+        const neighbor = outbound ? edge.toEntityId : edge.fromEntityId;
+        if (visited.has(neighbor)) continue;
+        visited.set(neighbor, {
+          previous,
+          relationship: this.toRelationshipRow(edge, scope, endUser.externalId),
+          direction: outbound ? "out" : "in",
         });
-        if (neighbour === input.toEntityId) {
-          return this.backtrace(scope, visited, input.fromEntityId, input.toEntityId);
+        if (neighbor === target.id) {
+          return this.backtrace(scope, endUser.externalId, visited, start.id, target.id, agentIds);
         }
-        nextFrontier.push(neighbour);
+        next.push(neighbor);
       }
-      frontier = nextFrontier;
+      frontier = next;
     }
-
     return null;
   }
 
   private async backtrace(
     scope: ScopeTuple,
-    visited: Map<string, { prev: string | null; relationship: RelationshipRow | null; direction: "out" | "in" | null }>,
-    from: string,
-    to: string,
+    externalUserId: string,
+    visited: Map<string, {
+      previous: string | null;
+      relationship: RelationshipRow | null;
+      direction: "out" | "in" | null;
+    }>,
+    startId: string,
+    targetId: string,
+    agentIds: string[],
   ): Promise<ShortestPathHop[]> {
-    // Walk prev pointers from `to` back to `from`, collect hops, reverse.
-    const idsReversed: string[] = [];
-    const edgesReversed: (RelationshipRow | null)[] = [];
-    const dirsReversed: ("out" | "in" | null)[] = [];
-    let cursor: string | null = to;
+    const ids: string[] = [];
+    const relationships: Array<RelationshipRow | null> = [];
+    const directions: Array<"out" | "in" | null> = [];
+    let cursor: string | null = targetId;
     while (cursor) {
       const trace = visited.get(cursor);
       if (!trace) break;
-      idsReversed.push(cursor);
-      edgesReversed.push(trace.relationship);
-      dirsReversed.push(trace.direction);
-      cursor = trace.prev;
-      if (cursor === from) {
-        idsReversed.push(from);
-        edgesReversed.push(null);
-        dirsReversed.push(null);
-        break;
-      }
+      ids.push(cursor);
+      relationships.push(trace.relationship);
+      directions.push(trace.direction);
+      if (cursor === startId) break;
+      cursor = trace.previous;
     }
-    const ids = idsReversed.reverse();
-    const edges = edgesReversed.reverse();
-    const dirs = dirsReversed.reverse();
-
-    // Fetch all entity rows in one shot to avoid N round-trips.
-    const rows: any[] = await this.prisma.platosMemoryEntity.findMany({
+    ids.reverse();
+    relationships.reverse();
+    directions.reverse();
+    const rows = await this.prisma.memoryEntity.findMany({
       where: {
         id: { in: ids },
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
+        ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
       },
     });
-    const byId = new Map<string, EntityRow>();
-    for (const r of rows) byId.set(r.id, toEntityRow(r, (v) => this.decString(v), (v) => this.crypto?.decryptJsonField(v) ?? v));
-
-    const hops: ShortestPathHop[] = [];
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i]!;
-      const ent = byId.get(id);
-      if (!ent) continue; // defensive — scope mismatch, skip
-      hops.push({
-        entity: ent,
-        relationship: edges[i] ?? null,
-        direction: dirs[i] ?? null,
-      });
-    }
-    return hops;
+    const byId = new Map(rows.map((row) => [row.id, this.toEntityRow(row, scope, externalUserId)]));
+    return ids.flatMap((id, index) => {
+      const entity = byId.get(id);
+      return entity ? [{ entity, relationship: relationships[index] ?? null, direction: directions[index] ?? null }] : [];
+    });
   }
 
-  /**
-   * Create a relationship row between two entities. Scope + userId
-   * must match both endpoints; we reject cross-user edges to preserve
-   * the per-user memory boundary (Theme O invariant).
-   */
   async createRelationship(
     scope: ScopeTuple,
     input: {
       userId: string;
-      /// L6 — acting agent (null for operator/non-agent-pinned callers).
       agentId?: string | null;
       fromEntityId: string;
       toEntityId: string;
@@ -446,381 +390,276 @@ export class KnowledgeGraphService {
       sourceMemoryId?: string | null;
     },
   ): Promise<RelationshipRow> {
-    this.requireScope(scope);
     if (!input.userId) throw new Error("KnowledgeGraphService.createRelationship: `userId` is required");
     if (!input.relationshipType) {
       throw new Error("KnowledgeGraphService.createRelationship: `relationshipType` is required");
     }
-    // Verify both endpoints live in the same scope + user so the graph
-    // invariants hold.
-    const [from, to] = await Promise.all([
-      this.getEntityById(scope, input.fromEntityId),
-      this.getEntityById(scope, input.toEntityId),
-    ]);
-    if (!from || !to) {
-      throw new Error("KnowledgeGraphService.createRelationship: endpoint not found in scope");
+    await assertEnvironmentScope(this.prisma, scope);
+    const endUser = await resolveEndUser(this.prisma, scope, input.userId);
+    const endpoints = await this.prisma.memoryEntity.findMany({
+      where: {
+        id: { in: [input.fromEntityId, input.toEntityId] },
+        ...environmentScopeWhere(scope),
+        endUserId: endUser.id,
+      },
+      select: { id: true, agentId: true, clusterId: true },
+    });
+    const from = endpoints.find((row) => row.id === input.fromEntityId);
+    const to = endpoints.find((row) => row.id === input.toEntityId);
+    if (!from || !to) throw new Error("KnowledgeGraphService.createRelationship: endpoint not found in scope");
+    if (!canShareAgentScope(from, to)) {
+      throw new Error("KnowledgeGraphService.createRelationship: endpoints are outside one Agent or AgentCluster");
     }
-    if (from.userId !== input.userId || to.userId !== input.userId) {
-      throw new Error(
-        "KnowledgeGraphService.createRelationship: cross-user relationships are not allowed",
-      );
+    const binding = await resolveWriteBinding(
+      this.prisma,
+      scope,
+      input.agentId || (!scope.agentId ? from.agentId : null),
+    );
+    if (!canShareAgentScope(binding, from) || !canShareAgentScope(binding, to)) {
+      throw new Error("KnowledgeGraphService.createRelationship: acting Agent cannot access both endpoints");
     }
-    const row = await this.prisma.platosMemoryRelationship.create({
-      data: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
+    if (input.sourceMemoryId) {
+      const source = await this.prisma.memory.findFirst({
+        where: {
+          id: input.sourceMemoryId,
+          ...environmentScopeWhere(scope),
+          endUserId: endUser.id,
+        },
+        select: { agentId: true, clusterId: true },
+      });
+      if (!source || !canShareAgentScope(binding, source)) {
+        throw new Error("KnowledgeGraphService.createRelationship: source memory not found or access denied");
+      }
+    }
+    const metadata = this.crypto?.encryptJsonField(input.metadata ?? null) ?? input.metadata ?? null;
+    const row = await this.prisma.memoryRelationship.upsert({
+      where: {
+        fromEntityId_toEntityId_relationshipType: {
+          fromEntityId: input.fromEntityId,
+          toEntityId: input.toEntityId,
+          relationshipType: input.relationshipType,
+        },
+      },
+      create: {
         environmentId: scope.environmentId,
-        userId: input.userId,
-        agentId: input.agentId ?? null,
+        endUserId: endUser.id,
+        agentId: binding.agentId,
+        clusterId: binding.clusterId,
         fromEntityId: input.fromEntityId,
         toEntityId: input.toEntityId,
         relationshipType: input.relationshipType,
         weight: input.weight ?? null,
-        metadata: input.metadata as any,
+        metadata: metadata as any,
+        sourceMemoryId: input.sourceMemoryId ?? null,
+      },
+      update: {
+        agentId: binding.agentId,
+        clusterId: binding.clusterId,
+        weight: input.weight ?? null,
+        metadata: metadata as any,
         sourceMemoryId: input.sourceMemoryId ?? null,
       },
     });
-    return toRelationshipRow(row);
+    return this.toRelationshipRow(row, scope, endUser.externalId);
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // MCPF-W5 — search, partial update, cascade delete, link discovery.
-  // ──────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Substring-match search over entity `label` + `aliases` for a user.
-   * Case-insensitive. MVP scoring (v1):
-   *   - exact label match               → 1.0
-   *   - label.startsWith(query)         → 0.9
-   *   - label.includes(query)           → 0.7
-   *   - alias substring match           → 0.5
-   *
-   * For larger graphs (>1000 entities/user), swap to Postgres tsvector
-   * or pgvector embeddings — out of scope for v1. Hard-caps the candidate
-   * scan at 1000 rows so memory stays bounded.
-   */
   async searchEntities(
     scope: ScopeTuple,
-    input: { userId: string; query: string; limit?: number },
+    input: { userId: string; query: string; limit?: number; agentId?: string | null; agentIds?: string[] },
   ): Promise<Array<{ entity: EntityRow; score: number }>> {
-    this.requireScope(scope);
-    if (!input.userId) {
-      throw new Error("KnowledgeGraphService.searchEntities: `userId` is required");
-    }
-    const limit = clampInt(input.limit ?? 20, 1, 100);
-    const q = (input.query ?? "").trim().toLowerCase();
-    if (!q) return [];
-
-    const candidates = await this.prisma.platosMemoryEntity.findMany({
-      where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        userId: input.userId,
-      },
-      take: 1000,
-      orderBy: { updatedAt: "desc" },
+    const query = (input.query || "").trim().toLowerCase();
+    if (!query) return [];
+    const rows = await this.getEntities(scope, {
+      userId: input.userId,
+      agentId: input.agentId,
+      agentIds: input.agentIds,
+      limit: 500,
     });
-
-    // LATENCY (audit F6) — searchEntities now runs on EVERY turn (the
-    // recall/injection graph signal), so decrypting metadata for all ~1000
-    // candidates just to substring-match on label was pure per-turn waste.
-    // Match/score using only the decrypted label + plaintext aliases, then
-    // build the full EntityRow (which also decrypts metadata) ONLY for the
-    // top `limit` winners. Identical return; metadata decrypt drops from
-    // ~1000/turn to ≤ limit.
-    const matched: Array<{ raw: (typeof candidates)[number]; score: number }> = [];
-    for (const c of candidates) {
-      const label = (this.decString(c.label) ?? "").toLowerCase();
-      // aliases are stored plaintext (see upsertEntity) — no decrypt needed.
-      const aliases = ((c.aliases as string[]) ?? []).map((a) => (a ?? "").toLowerCase());
-      let score = 0;
-      if (label === q) score = 1.0;
-      else if (label.startsWith(q)) score = 0.9;
-      else if (label.includes(q)) score = 0.7;
-      else if (aliases.some((a) => a.includes(q))) score = 0.5;
-      if (score > 0) matched.push({ raw: c, score });
-    }
-
-    matched.sort((a, b) => b.score - a.score);
-    return matched.slice(0, limit).map(({ raw, score }) => ({
-      entity: toEntityRow(
-        raw,
-        (v) => this.decString(v),
-        (v) => this.crypto?.decryptJsonField(v) ?? v,
-      ),
-      score,
-    }));
+    const matches = rows.flatMap((entity) => {
+      const label = entity.label.toLowerCase();
+      const aliases = entity.aliases.map((alias) => alias.toLowerCase());
+      const score = label === query
+        ? 1
+        : label.startsWith(query)
+          ? 0.9
+          : label.includes(query)
+            ? 0.7
+            : aliases.some((alias) => alias.includes(query))
+              ? 0.5
+              : 0;
+      return score ? [{ entity, score }] : [];
+    });
+    return matches.sort((left, right) => right.score - left.score).slice(0, clampInt(input.limit ?? 20, 1, 100));
   }
 
-  /**
-   * Partial-patch update of an entity by id.
-   * Only `label`, `aliases`, `metadata`, and `entityType` may be patched —
-   * `entityKey` is the upsert key and immutable; scope columns are immutable.
-   *
-   * Uses `updateMany` with the full scope filter so cross-tenant id probes
-   * never mutate; returns `null` when no row matched (caller surfaces as
-   * `not_found`).
-   */
   async updateEntityById(
     scope: ScopeTuple,
     id: string,
-    patch: {
-      label?: string;
-      aliases?: string[];
-      metadata?: unknown;
-      entityType?: string;
-    },
+    patch: { label?: string; aliases?: string[]; metadata?: unknown; entityType?: string },
   ): Promise<EntityRow | null> {
-    this.requireScope(scope);
-
+    await assertEnvironmentScope(this.prisma, scope);
+    const agentIds = await resolveReadAgentIds(this.prisma, scope);
     const data: Record<string, unknown> = {};
-    if (patch.label !== undefined) {
-      data.label = this.encString(patch.label) ?? patch.label;
-    }
-    if (patch.aliases !== undefined) {
-      data.aliases = patch.aliases;
-    }
+    if (patch.label !== undefined) data.label = this.encString(patch.label);
+    if (patch.aliases !== undefined) data.aliases = patch.aliases;
     if (patch.metadata !== undefined) {
-      data.metadata = (this.crypto?.encryptJsonField(patch.metadata) ?? patch.metadata) as any;
+      data.metadata = this.crypto?.encryptJsonField(patch.metadata) ?? patch.metadata;
     }
-    if (patch.entityType !== undefined) {
-      data.entityType = patch.entityType;
-    }
-
-    if (Object.keys(data).length === 0) {
-      // Nothing to patch — fast-path: just refetch + return.
-      return this.getEntityById(scope, id);
-    }
-
-    const result = await this.prisma.platosMemoryEntity.updateMany({
+    if (patch.entityType !== undefined) data.entityType = patch.entityType;
+    if (!Object.keys(data).length) return this.getEntityById(scope, id);
+    const result = await this.prisma.memoryEntity.updateMany({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
+        agentId: { in: agentIds },
       },
-      data,
+      data: data as any,
     });
-    if (result.count === 0) return null;
-
-    return this.getEntityById(scope, id);
+    return result.count ? this.getEntityById(scope, id) : null;
   }
 
-  /**
-   * Cascade-delete an entity AND every relationship pointing to or from it.
-   * Verifies scope before issuing the destructive op so cross-tenant id
-   * probes return `{ ok: false }` rather than silently no-op'ing.
-   *
-   * Both deletes run in a single transaction so an entity is never left
-   * orphaned with dangling edges (PlatosMemoryRelationship FKs already
-   * cascade on entity delete, but doing it explicitly inside the txn lets
-   * us return a stable count + keeps the audit trail symmetric).
-   */
-  async deleteEntity(scope: ScopeTuple, id: string): Promise<{ ok: boolean; deletedRelationships: number }> {
-    this.requireScope(scope);
-    const entity = await this.getEntityById(scope, id);
+  async deleteEntity(
+    scope: ScopeTuple,
+    id: string,
+  ): Promise<{ ok: boolean; deletedRelationships: number }> {
+    await assertEnvironmentScope(this.prisma, scope);
+    const agentIds = await resolveReadAgentIds(this.prisma, scope);
+    const entity = await this.prisma.memoryEntity.findFirst({
+      where: {
+        id,
+        ...environmentScopeWhere(scope),
+        agentId: { in: agentIds },
+      },
+      select: { id: true },
+    });
     if (!entity) return { ok: false, deletedRelationships: 0 };
-
-    const [relResult, entityResult] = await this.prisma.$transaction([
-      this.prisma.platosMemoryRelationship.deleteMany({
+    const [relationships, deleted] = await this.prisma.$transaction([
+      this.prisma.memoryRelationship.deleteMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
+          ...environmentScopeWhere(scope),
           OR: [{ fromEntityId: id }, { toEntityId: id }],
         },
       }),
-      this.prisma.platosMemoryEntity.deleteMany({
+      this.prisma.memoryEntity.deleteMany({
         where: {
           id,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
+          ...environmentScopeWhere(scope),
+          agentId: { in: agentIds },
         },
       }),
     ]);
-
-    return {
-      ok: (entityResult?.count ?? 0) > 0,
-      deletedRelationships: relResult?.count ?? 0,
-    };
+    return { ok: deleted.count > 0, deletedRelationships: relationships.count };
   }
 
-  /**
-   * Suggest candidate edges via shared-neighbor heuristic. Returns pairs
-   * `(a, b)` where:
-   *   - `a` and `b` are not directly linked (in either direction)
-   *   - `a` and `b` share at least `minSharedNeighbors` common neighbors
-   *
-   * Sorted by shared-neighbor count desc; capped at 50 suggestions.
-   * Hard cap at 5000 entities to avoid OOM on pathologically large graphs.
-   *
-   * Approval-gated at the tool surface — pair-iteration is O(n²) in the
-   * candidate set and the result can leak relationship structure if abused.
-   */
   async discoverLinks(
     scope: ScopeTuple,
-    input: { userId: string; limit?: number; minSharedNeighbors?: number },
+    input: {
+      userId: string;
+      limit?: number;
+      minSharedNeighbors?: number;
+      agentId?: string | null;
+      agentIds?: string[];
+    },
   ): Promise<{
-    suggestions: Array<{
-      from: EntityRow;
-      to: EntityRow;
-      sharedNeighbors: number;
-      reason: string;
-    }>;
+    suggestions: Array<{ from: EntityRow; to: EntityRow; sharedNeighbors: number; reason: string }>;
   }> {
-    this.requireScope(scope);
-    if (!input.userId) {
-      throw new Error("KnowledgeGraphService.discoverLinks: `userId` is required");
-    }
-    const limit = clampInt(input.limit ?? 20, 1, 50);
-    const minShared = clampInt(input.minSharedNeighbors ?? 2, 1, 100);
-
-    const entities = await this.prisma.platosMemoryEntity.findMany({
-      where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        userId: input.userId,
-      },
-      select: { id: true },
-      take: 5000,
+    const entities = await this.getEntities(scope, {
+      userId: input.userId,
+      agentId: input.agentId,
+      agentIds: input.agentIds,
+      limit: 500,
     });
-    const ids: string[] = entities.map((e: any) => e.id);
-    if (ids.length < 2) return { suggestions: [] };
-
-    const edges = await this.prisma.platosMemoryRelationship.findMany({
+    if (entities.length < 2) return { suggestions: [] };
+    const endUser = await resolveEndUser(this.prisma, scope, input.userId);
+    const agentIds = await resolveReadAgentIds(this.prisma, scope, input.agentId, input.agentIds);
+    const ids = entities.map((entity) => entity.id);
+    const edges = await this.prisma.memoryRelationship.findMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        userId: input.userId,
+        ...environmentScopeWhere(scope),
+        endUserId: endUser.id,
+        ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
         OR: [{ fromEntityId: { in: ids } }, { toEntityId: { in: ids } }],
       },
       select: { fromEntityId: true, toEntityId: true },
     });
-
-    const adj = new Map<string, Set<string>>();
-    for (const id of ids) adj.set(id, new Set());
-    for (const e of edges) {
-      adj.get(e.fromEntityId)?.add(e.toEntityId);
-      adj.get(e.toEntityId)?.add(e.fromEntityId);
+    const adjacency = new Map(ids.map((id) => [id, new Set<string>()]));
+    for (const edge of edges) {
+      adjacency.get(edge.fromEntityId)?.add(edge.toEntityId);
+      adjacency.get(edge.toEntityId)?.add(edge.fromEntityId);
     }
-
-    type Pair = { fromId: string; toId: string; shared: number };
-    const candidates: Pair[] = [];
-    for (let i = 0; i < ids.length; i++) {
-      const a = ids[i]!;
-      const aSet = adj.get(a)!;
-      for (let j = i + 1; j < ids.length; j++) {
-        const b = ids[j]!;
-        if (aSet.has(b)) continue; // already linked (either direction)
-        const bSet = adj.get(b)!;
-        let shared = 0;
-        // Iterate the smaller set for fewer lookups.
-        const [smaller, bigger] = aSet.size <= bSet.size ? [aSet, bSet] : [bSet, aSet];
-        for (const n of smaller) {
-          if (bigger.has(n)) shared++;
+    const minimum = clampInt(input.minSharedNeighbors ?? 2, 1, 100);
+    const candidates: Array<{ from: EntityRow; to: EntityRow; sharedNeighbors: number; reason: string }> = [];
+    for (let left = 0; left < entities.length; left++) {
+      for (let right = left + 1; right < entities.length; right++) {
+        const from = entities[left]!;
+        const to = entities[right]!;
+        const fromSet = adjacency.get(from.id)!;
+        if (fromSet.has(to.id)) continue;
+        const toSet = adjacency.get(to.id)!;
+        const shared = [...fromSet].filter((id) => toSet.has(id)).length;
+        if (shared >= minimum) {
+          candidates.push({
+            from,
+            to,
+            sharedNeighbors: shared,
+            reason: `${shared} shared neighbor${shared === 1 ? "" : "s"}`,
+          });
         }
-        if (shared >= minShared) candidates.push({ fromId: a, toId: b, shared });
       }
     }
-
-    candidates.sort((x, y) => y.shared - x.shared);
-    const top = candidates.slice(0, limit);
-
-    if (top.length === 0) return { suggestions: [] };
-
-    // Hydrate entity rows for the top suggestions.
-    const idSet = new Set<string>();
-    for (const s of top) {
-      idSet.add(s.fromId);
-      idSet.add(s.toId);
-    }
-    const rows = await this.prisma.platosMemoryEntity.findMany({
-      where: {
-        id: { in: Array.from(idSet) },
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-      },
-    });
-    const byId = new Map<string, EntityRow>();
-    for (const r of rows) {
-      byId.set(
-        r.id,
-        toEntityRow(r, (v) => this.decString(v), (v) => this.crypto?.decryptJsonField(v) ?? v),
-      );
-    }
-
-    const suggestions = top
-      .map((s) => {
-        const from = byId.get(s.fromId);
-        const to = byId.get(s.toId);
-        if (!from || !to) return null;
-        return {
-          from,
-          to,
-          sharedNeighbors: s.shared,
-          reason: `${s.shared} shared neighbor${s.shared === 1 ? "" : "s"}`,
-        };
-      })
-      .filter((s): s is { from: EntityRow; to: EntityRow; sharedNeighbors: number; reason: string } => s !== null);
-
-    return { suggestions };
+    candidates.sort((left, right) => right.sharedNeighbors - left.sharedNeighbors);
+    return { suggestions: candidates.slice(0, clampInt(input.limit ?? 20, 1, 50)) };
   }
 
-  private requireScope(scope: ScopeTuple): void {
-    if (!scope?.organizationId || !scope?.projectId || !scope?.environmentId) {
-      throw new Error("KnowledgeGraphService: scope tuple is required");
-    }
+  private toEntityRow(row: any, scope: ScopeTuple, externalUserId: string): EntityRow {
+    return {
+      id: row.id,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
+      environmentId: row.environmentId,
+      userId: externalUserId,
+      agentId: row.agentId,
+      clusterId: row.clusterId ?? null,
+      entityKey: row.entityKey,
+      entityType: row.entityType,
+      label: this.decString(row.label),
+      aliases: Array.isArray(row.aliases) ? row.aliases : [],
+      metadata: this.decMetadata(row.metadata),
+      createdAt: asDate(row.createdAt),
+      updatedAt: asDate(row.updatedAt),
+    };
+  }
+
+  private toRelationshipRow(row: any, scope: ScopeTuple, externalUserId: string): RelationshipRow {
+    return {
+      id: row.id,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
+      environmentId: row.environmentId,
+      userId: externalUserId,
+      agentId: row.agentId,
+      clusterId: row.clusterId ?? null,
+      fromEntityId: row.fromEntityId,
+      toEntityId: row.toEntityId,
+      relationshipType: row.relationshipType,
+      weight: row.weight ?? null,
+      metadata: this.decMetadata(row.metadata),
+      sourceMemoryId: row.sourceMemoryId ?? null,
+      createdAt: asDate(row.createdAt),
+    };
   }
 }
 
-function toEntityRow(
-  row: any,
-  decString?: (v: string | null | undefined) => string | null,
-  decJson?: (v: unknown) => unknown,
-): EntityRow {
-  // EOBD.22 — transparent decryption on read. Pre-encryption rows pass through.
-  const label = decString ? (decString(row.label) ?? row.label) : row.label;
-  const metadata = decJson ? decJson(row.metadata ?? null) : (row.metadata ?? null);
-  return {
-    id: row.id,
-    organizationId: row.organizationId,
-    projectId: row.projectId,
-    environmentId: row.environmentId,
-    userId: row.userId,
-    entityKey: row.entityKey,
-    entityType: row.entityType,
-    label,
-    aliases: Array.isArray(row.aliases) ? row.aliases : [],
-    metadata,
-    createdAt: row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
-    updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
-  };
+function vectorToLiteral(vector: number[]): string {
+  return `[${vector.join(",")}]`;
 }
 
-function toRelationshipRow(row: any): RelationshipRow {
-  return {
-    id: row.id,
-    organizationId: row.organizationId,
-    projectId: row.projectId,
-    environmentId: row.environmentId,
-    userId: row.userId,
-    fromEntityId: row.fromEntityId,
-    toEntityId: row.toEntityId,
-    relationshipType: row.relationshipType,
-    weight: row.weight ?? null,
-    metadata: row.metadata ?? null,
-    sourceMemoryId: row.sourceMemoryId ?? null,
-    createdAt: row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
-  };
+function clampInt(value: number, min: number, max: number): number {
+  const normalized = Math.floor(Number(value));
+  if (!Number.isFinite(normalized)) return min;
+  return Math.min(Math.max(normalized, min), max);
 }
 
-function clampInt(v: number, min: number, max: number): number {
-  const n = Math.floor(Number(v));
-  if (!Number.isFinite(n)) return min;
-  return Math.min(Math.max(n, min), max);
+function asDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value);
 }

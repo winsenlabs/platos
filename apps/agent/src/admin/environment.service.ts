@@ -102,24 +102,20 @@ export class EnvironmentService {
    */
   async list(scope: ScopeTuple, userId: string | null) {
     await this.requireMember(scope.organizationId, userId);
-    const envs = await this.prisma.runtimeEnvironment.findMany({
+    const envs = await this.prisma.environment.findMany({
       where: {
-        organizationId: scope.organizationId,
         projectId: scope.projectId,
+        project: { organizationId: scope.organizationId },
         archivedAt: null,
       },
-      orderBy: [{ type: "asc" }, { slug: "asc" }],
+      orderBy: { slug: "asc" },
       select: {
         id: true,
         slug: true,
-        type: true,
-        shortcode: true,
-        branchName: true,
-        paused: true,
+        name: true,
         createdAt: true,
         updatedAt: true,
         archivedAt: true,
-        orgMemberId: true,
       },
     });
     return envs;
@@ -145,39 +141,32 @@ export class EnvironmentService {
     await this.requireAdmin(scope.organizationId, userId);
     const slug = String(opts.slug || "").trim().toLowerCase();
     if (!SLUG_RE.test(slug)) throw new Error("slug_invalid");
-    // Resolve the caller's OrgMember row so we can bind dev/preview
-    // envs to a specific member (matches webapp createEnvironment).
-    const member = await this.prisma.orgMember.findFirst({
-      where: { organizationId: scope.organizationId, userId: userId ?? "__none__" },
+    const project = await this.prisma.project.findFirst({
+      where: {
+        id: scope.projectId,
+        organizationId: scope.organizationId,
+        archivedAt: null,
+      },
       select: { id: true },
     });
-    const type = opts.type ?? "DEVELOPMENT";
-    // apiKey + pkApiKey are unique across all envs in the system.
-    const apiKey = `tr_${type === "PRODUCTION" ? "prd" : type === "STAGING" ? "stg" : "dev"}_${randomAlphaNumId(20)}`;
-    const pkApiKey = `pk_${type === "PRODUCTION" ? "prd" : type === "STAGING" ? "stg" : "dev"}_${randomAlphaNumId(20)}`;
+    if (!project) throw new Error("not_found");
     try {
-      const created = await this.prisma.runtimeEnvironment.create({
+      const created = await this.prisma.environment.create({
         data: {
           slug,
-          apiKey,
-          pkApiKey,
-          shortcode: shortcode(),
-          type,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          orgMemberId: member?.id ?? null,
+          name: slug,
+          projectId: project.id,
         },
         select: {
           id: true,
           slug: true,
-          type: true,
-          shortcode: true,
+          name: true,
           createdAt: true,
         },
       });
       return created;
     } catch (err: any) {
-      // Unique constraint on (projectId, slug, orgMemberId).
+      // Unique constraint on (projectId, slug).
       if (String(err?.code) === "P2002") throw new Error("slug_taken");
       throw err;
     }
@@ -195,29 +184,43 @@ export class EnvironmentService {
     opts: { environmentId: string },
   ) {
     await this.requireAdmin(scope.organizationId, userId);
-    const target = await this.prisma.runtimeEnvironment.findFirst({
+    const target = await this.prisma.environment.findFirst({
       where: {
         id: opts.environmentId,
-        organizationId: scope.organizationId,
         projectId: scope.projectId,
+        project: { organizationId: scope.organizationId },
       },
-      select: { id: true, archivedAt: true, type: true },
+      select: { id: true, archivedAt: true, slug: true },
     });
     if (!target) throw new Error("not_found");
     if (target.archivedAt) return { archived: false, alreadyArchived: true };
-    if (target.type === "PRODUCTION") throw new Error("production_env_protected");
+    if (["prod", "production"].includes(target.slug.toLowerCase())) {
+      throw new Error("production_env_protected");
+    }
     // Block when agents reference the env.
     const [agentCount, threadCount] = await Promise.all([
-      this.prisma.platosAgent.count({
-        where: { environmentId: opts.environmentId, isActive: true },
+      this.prisma.agentBinding.count({
+        where: {
+          environmentId: target.id,
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
+          agent: { projectId: scope.projectId, isActive: true },
+        },
       }),
-      this.prisma.platosAgentThread.count({
-        where: { environmentId: opts.environmentId, status: { not: "archived" } },
+      this.prisma.thread.count({
+        where: {
+          environmentId: target.id,
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
+          archivedAt: null,
+        },
       }),
     ]);
     if (agentCount > 0) throw new Error(`env_in_use_by_agents:${agentCount}`);
     if (threadCount > 0) throw new Error(`env_in_use_by_threads:${threadCount}`);
-    await this.prisma.runtimeEnvironment.update({
+    await this.prisma.environment.update({
       where: { id: target.id },
       data: { archivedAt: new Date() },
     });
@@ -494,8 +497,8 @@ export class EnvironmentService {
 
   private async requireMember(orgId: string, userId: string | null): Promise<void> {
     if (!userId) throw new Error("access_denied");
-    const m = await this.prisma.orgMember.findFirst({
-      where: { organizationId: orgId, userId },
+    const m = await this.prisma.organizationMembership.findFirst({
+      where: { organizationId: orgId, userId, deactivatedAt: null },
       select: { id: true },
     });
     if (!m) throw new Error("access_denied");
@@ -503,11 +506,10 @@ export class EnvironmentService {
 
   private async requireAdmin(orgId: string, userId: string | null): Promise<void> {
     if (!userId) throw new Error("access_denied");
-    const m = await this.prisma.orgMember.findFirst({
-      where: { organizationId: orgId, userId },
+    const m = await this.prisma.organizationMembership.findFirst({
+      where: { organizationId: orgId, userId, deactivatedAt: null },
       select: { role: true },
     });
-    if (!m) throw new Error("access_denied");
-    if (m.role !== "ADMIN") throw new Error("access_denied");
+    if (!m || m.role === "MEMBER") throw new Error("access_denied");
   }
 }

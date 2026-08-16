@@ -67,6 +67,7 @@ export class MemoryController {
       organizationId: scope.organizationId,
       projectId: scope.projectId,
       environmentId: scope.environmentId,
+      agentId: scope.agentId ?? null,
     };
   }
 
@@ -85,6 +86,7 @@ export class MemoryController {
       visibility?: MemoryVisibility;
       source?: "manual" | "extracted" | "imported";
       sourceThreadId?: string | null;
+      sourceTurnIds?: string[];
       sourceMessageIds?: string[];
       extractorVersion?: string | null;
     },
@@ -101,7 +103,7 @@ export class MemoryController {
         visibility: body.visibility,
         source: body.source,
         sourceThreadId: body.sourceThreadId ?? null,
-        sourceMessageIds: body.sourceMessageIds,
+        sourceTurnIds: body.sourceTurnIds ?? body.sourceMessageIds,
         extractorVersion: body.extractorVersion ?? null,
       });
       return { memory: row };
@@ -212,7 +214,8 @@ export class MemoryController {
           agentVisible: m.agentVisible,
           source: m.source,
           sourceThreadId: m.sourceThreadId,
-          sourceMessageIds: m.sourceMessageIds,
+          sourceTurnIds: m.sourceTurnIds,
+          sourceMessageIds: m.sourceTurnIds,
           extractorVersion: m.extractorVersion,
           createdAt: m.createdAt,
           updatedAt: m.updatedAt,
@@ -319,8 +322,10 @@ export class MemoryController {
             agentVisible: typeof (m as any).agentVisible === "boolean" ? (m as any).agentVisible : undefined,
             source: "imported",
             sourceThreadId: (m as any).sourceThreadId ?? null,
-            sourceMessageIds: Array.isArray((m as any).sourceMessageIds)
-              ? (m as any).sourceMessageIds
+            sourceTurnIds: Array.isArray((m as any).sourceTurnIds)
+              ? (m as any).sourceTurnIds
+              : Array.isArray((m as any).sourceMessageIds)
+                ? (m as any).sourceMessageIds
               : [],
             extractorVersion: (m as any).extractorVersion ?? null,
           });
@@ -456,21 +461,18 @@ export class MemoryController {
       const since = new Date(Date.now() - 90 * 60_000);
       const threads: Array<{
         id: string;
-        organizationId: string;
-        projectId: string;
         environmentId: string;
-      }> = await this.prisma.platosAgentThread.findMany({
+        environment: { project: { id: string; organizationId: string } };
+      }> = await this.prisma.thread.findMany({
         where: {
-          updatedAt: { gte: since },
-          turnCount: { gte: 2 },
-          // We scan userId !== null downstream in the extractor; threads
-          // without a user return cheap reason=thread-has-no-user.
+          turns: { some: { status: "SUCCEEDED", completedAt: { gte: since } } },
         },
         select: {
           id: true,
-          organizationId: true,
-          projectId: true,
           environmentId: true,
+          environment: {
+            select: { project: { select: { id: true, organizationId: true } } },
+          },
         },
         orderBy: { updatedAt: "desc" },
         take: 500,
@@ -481,8 +483,8 @@ export class MemoryController {
         try {
           const out = await this.extraction.extractFromThread(
             {
-              organizationId: t.organizationId,
-              projectId: t.projectId,
+              organizationId: t.environment.project.organizationId,
+              projectId: t.environment.project.id,
               environmentId: t.environmentId,
             },
             { threadId: t.id },
@@ -498,8 +500,11 @@ export class MemoryController {
           stats.entitiesCreated += out.entitiesCreated;
           stats.relationshipsCreated += out.relationshipsCreated;
           stats.skipped += out.skipped;
-        } catch {
+        } catch (error: any) {
           stats.errors += 1;
+          console.error(
+            `[memory-extraction] failed for thread ${t.id}: ${error?.message ?? error}`,
+          );
         }
       }
     } finally {

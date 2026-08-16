@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { Inject } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import {
+  type ControlDatabaseClient,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "crypto";
 
 const TOKEN_PREFIX = "plt_ent_";
@@ -22,24 +25,65 @@ function constantTimeHexEqual(a: string, b: string): boolean {
  */
 @Injectable()
 export class McpBearerTokenService {
-  constructor(@Inject(PRISMA_TOKEN) private readonly prisma: any) {}
+  constructor(
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+  ) {}
 
   private static hashToken(raw: string): string {
     return createHash("sha256").update(raw).digest("hex");
   }
 
-  private async auditScope(entityPk: string): Promise<{
-    organizationId: string | null;
-    projectId: string | null;
+  private async auditScope(entityId: string): Promise<{
+    organizationId: string;
+    projectId: string;
+    environmentId: string;
   }> {
-    const entity = await this.prisma.platosConnectedEntity.findUnique({
-      where: { id: entityPk },
-      select: { organizationId: true, projectId: true },
+    const entity = await this.prisma.entity.findUnique({
+      where: { id: entityId },
+      select: {
+        project: {
+          select: {
+            id: true,
+            organizationId: true,
+            environments: {
+              where: { archivedAt: null },
+              select: { id: true },
+              orderBy: { createdAt: "asc" },
+              take: 1,
+            },
+          },
+        },
+      },
     });
+    const environmentId = entity?.project.environments[0]?.id;
+    if (!entity || !environmentId) {
+      throw new Error("Entity is not attached to an active environment");
+    }
     return {
-      organizationId: entity?.organizationId ?? null,
-      projectId: entity?.projectId ?? null,
+      organizationId: entity.project.organizationId,
+      projectId: entity.project.id,
+      environmentId,
     };
+  }
+
+  private auditData(
+    scope: Awaited<ReturnType<McpBearerTokenService["auditScope"]>>,
+    tokenId: string,
+    action: "mint" | "use" | "revoke",
+    actorUserId?: string,
+  ) {
+    return {
+      environmentId: scope.environmentId,
+      actorUserId: actorUserId ?? null,
+      action: `mcp_bearer.${action}`,
+      subjectType: "McpBearerToken",
+      subjectId: tokenId,
+      after: {
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+      },
+      source: "entity_mcp",
+    } as const;
   }
 
   /** Generate a new PAT for an entity. Returns the raw token (shown once). */
@@ -58,28 +102,21 @@ export class McpBearerTokenService {
     if (expiresAt.getTime() <= Date.now()) {
       throw new Error("expiresAt must be in the future");
     }
-    await this.prisma.$transaction(async (tx: any) => {
-      await tx.platosMcpBearerToken.create({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.mcpBearerToken.create({
         data: {
           id,
-          entityPk,
+          entityId: entityPk,
           tokenHash,
           label,
           mcpUserId,
           scopes: options.scopes ?? ["mcp:tools"],
-          createdBy,
+          createdByUserId: createdBy,
           expiresAt,
         },
       });
-      await tx.platosCredentialAudit.create({
-        data: {
-          family: "entity_mcp",
-          credentialId: id,
-          action: "mint",
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          actorUserId: createdBy,
-        },
+      await tx.adminAudit.create({
+        data: this.auditData(scope, id, "mint", createdBy),
       });
     });
     return { id, raw, mcpUserId };
@@ -94,7 +131,7 @@ export class McpBearerTokenService {
   } | null> {
     if (!raw.startsWith(TOKEN_PREFIX)) return null;
     const tokenHash = McpBearerTokenService.hashToken(raw);
-    const row = await this.prisma.platosMcpBearerToken.findFirst({
+    const row = await this.prisma.mcpBearerToken.findFirst({
       where: {
         tokenHash,
         revokedAt: null,
@@ -102,9 +139,9 @@ export class McpBearerTokenService {
       },
     });
     if (!row || !constantTimeHexEqual(row.tokenHash, tokenHash)) return null;
-    const scope = await this.auditScope(row.entityPk);
-    const recorded = await this.prisma.$transaction(async (tx: any) => {
-      const updated = await tx.platosMcpBearerToken.updateMany({
+    const scope = await this.auditScope(row.entityId);
+    const recorded = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.mcpBearerToken.updateMany({
         where: {
           id: row.id,
           revokedAt: null,
@@ -113,19 +150,13 @@ export class McpBearerTokenService {
         data: { lastUsedAt: new Date() },
       });
       if (updated.count !== 1) return false;
-      await tx.platosCredentialAudit.create({
-        data: {
-          family: "entity_mcp",
-          credentialId: row.id,
-          action: "use",
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-        },
+      await tx.adminAudit.create({
+        data: this.auditData(scope, row.id, "use"),
       });
       return true;
     });
     if (!recorded) return null;
-    return { id: row.id, entityPk: row.entityPk, mcpUserId: row.mcpUserId, scopes: row.scopes };
+    return { id: row.id, entityPk: row.entityId, mcpUserId: row.mcpUserId, scopes: row.scopes };
   }
 
   /** List tokens for an entity (hashes not returned). */
@@ -141,8 +172,8 @@ export class McpBearerTokenService {
       revokedAt: Date | null;
     }>
   > {
-    return this.prisma.platosMcpBearerToken.findMany({
-      where: { entityPk },
+    return this.prisma.mcpBearerToken.findMany({
+      where: { entityId: entityPk },
       select: {
         id: true,
         label: true,
@@ -159,28 +190,21 @@ export class McpBearerTokenService {
 
   /** Revoke a PAT by id, scoped to entityPk. */
   async revoke(id: string, entityPk: string, revokedBy?: string): Promise<boolean> {
-    const existing = await this.prisma.platosMcpBearerToken.findFirst({
-      where: { id, entityPk },
+    const existing = await this.prisma.mcpBearerToken.findFirst({
+      where: { id, entityId: entityPk },
       select: { id: true, revokedAt: true },
     });
     if (!existing) return false;
     if (existing.revokedAt) return true;
     const scope = await this.auditScope(entityPk);
-    await this.prisma.$transaction(async (tx: any) => {
-      const updated = await tx.platosMcpBearerToken.updateMany({
-        where: { id, entityPk, revokedAt: null },
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.mcpBearerToken.updateMany({
+        where: { id, entityId: entityPk, revokedAt: null },
         data: { revokedAt: new Date() },
       });
       if (updated.count === 0) return;
-      await tx.platosCredentialAudit.create({
-        data: {
-          family: "entity_mcp",
-          credentialId: id,
-          action: "revoke",
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          actorUserId: revokedBy ?? null,
-        },
+      await tx.adminAudit.create({
+        data: this.auditData(scope, id, "revoke", revokedBy),
       });
     });
     return true;

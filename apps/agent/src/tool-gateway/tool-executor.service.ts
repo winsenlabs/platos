@@ -746,7 +746,10 @@ export class ToolExecutorService {
     // Resolve the tool's callback URL within this scope. If many entities in
     // the scope expose the same tool, we pick the first — callers who need a
     // specific entity can narrow beforehand via the registry.
-    let scopedTools = this.toolRegistry.getScopedTools(scope);
+    let scopedTools = this.toolRegistry.getScopedTools(scope, {
+      enabledOnly: true,
+      agentId: scope.agentId,
+    });
     // Theme CTX.2 — Role 3 (tool-matrix routing). Narrow to tools belonging
     // to the entity_ids declared on `thread.sessionContext` before picking a
     // target. Ensures a tool-name collision across entities resolves to the
@@ -829,7 +832,7 @@ export class ToolExecutorService {
       // SECURITY (audit L2) — re-verify scope when re-loading the entity's
       // serviceSecret. The cache boundary holds today, so this is defense in
       // depth: a slip that yielded a cross-scope entityPk would otherwise hand
-      // back another tenant's HMAC signing key. PlatosConnectedEntity is scoped
+      // back another tenant's HMAC signing key. Entity is scoped
       // by (organizationId, projectId) only — it has NO environmentId column,
       // so do not add one here.
       // MCP-as-connected-entity (design Commit 4) — also load `connectionKind`
@@ -837,20 +840,20 @@ export class ToolExecutorService {
       // `mcpClient: true` inside a `select` returns the full related row (the
       // select-mode equivalent of `include: { mcpClient: true }`) while keeping
       // the read tight, per the audit-L2 defense-in-depth note above.
-      const entity = await this.prisma.platosConnectedEntity.findFirst({
+      const entity = await this.prisma.entity.findFirst({
         where: {
           id: toolEntry.entityPk,
-          organizationId: scope.organizationId,
           projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
         },
         select: {
           id: true,
-          serviceSecret: true,
-          entityId: true,
-          organizationId: true,
+          externalId: true,
           projectId: true,
           connectionKind: true,
-          mcpClient: true,
+          mcpClient: {
+            include: { credential: { select: { name: true } } },
+          },
         },
       });
       if (!entity) {
@@ -889,7 +892,42 @@ export class ToolExecutorService {
         );
       }
 
-      serviceSecret = entity.serviceSecret;
+      const credential = await this.prisma.credential.findFirst({
+        where: {
+          environmentId: scope.environmentId,
+          kind: "ENTITY_SECRET",
+          name: entity.externalId,
+          revokedAt: null,
+          environment: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
+        },
+        select: { name: true },
+      });
+      serviceSecret = credential
+        ? (await this.mcpCredentials?.resolveCredentialReference(
+            {
+              organizationId: scope.organizationId,
+              projectId: scope.projectId,
+              environmentId: scope.environmentId,
+            },
+            credential.name,
+          )) ?? ""
+        : "";
+      if (!serviceSecret) {
+        return {
+          result: {
+            tool: call.tool,
+            status: "failed",
+            error: `Entity ${toolEntry.sourceEntityId} signing credential is unavailable`,
+            latencyMs: Date.now() - startTime,
+          },
+          toolId: toolEntry.toolId,
+          entityId: toolEntry.sourceEntityId,
+          entityPk: toolEntry.entityPk,
+        };
+      }
 
       // Theme CTX.6 — 4-tier resolution (constant → session-override →
       // auto-match → LLM). Operator intent (constant / explicit mapping)
@@ -986,18 +1024,24 @@ export class ToolExecutorService {
     let entityAccessToken: string | undefined;
     if (origin?.mcpUserId && origin.mcpUserId.startsWith("mcp:oidc:")) {
       try {
-        const oidcSession = await this.prisma.platosMcpOidcSession.findUnique({
-          where: { mcpUserId: origin.mcpUserId },
-          select: { entityAccessToken: true, revokedAt: true, entityTokenExpiresAt: true },
+        const oidcSession = await this.prisma.mcpOidcSession.findFirst({
+          where: {
+            environmentId: scope.environmentId,
+            entityId: toolEntry.entityPk,
+            mcpUserId: origin.mcpUserId,
+            revokedAt: null,
+          },
+          select: { credential: { select: { name: true } } },
         });
-        if (
-          oidcSession &&
-          !oidcSession.revokedAt &&
-          oidcSession.entityAccessToken &&
-          (!oidcSession.entityTokenExpiresAt || oidcSession.entityTokenExpiresAt > new Date())
-        ) {
-          const { OAuthController } = await import("../oauth/oauth.controller");
-          entityAccessToken = OAuthController.decryptEntityToken(oidcSession.entityAccessToken);
+        if (oidcSession?.credential?.name && this.mcpCredentials) {
+          entityAccessToken = await this.mcpCredentials.resolveCredentialReference(
+            {
+              organizationId: scope.organizationId,
+              projectId: scope.projectId,
+              environmentId: scope.environmentId,
+            },
+            oidcSession.credential.name,
+          );
         }
       } catch {
         // Fail-open — never let a session lookup break tool dispatch.
@@ -1066,7 +1110,7 @@ export class ToolExecutorService {
           callId,
         );
         const latencyMs = Date.now() - startTime;
-        await this.recordHealth(toolEntry.toolId, toolEntry.entityPk, scope.environmentId, "success", latencyMs);
+        await this.recordHealth(toolEntry.toolId, toolEntry.sourceEntityId, scope.environmentId, "success", latencyMs);
         return {
           result: { tool: call.tool, status: "success", result: res.result, latencyMs },
           toolId: toolEntry.toolId,
@@ -1078,7 +1122,7 @@ export class ToolExecutorService {
         const errorMsg = err?.message || "WS dispatch failed";
         const isTimeout = errorMsg.includes("timed out");
         const status = isTimeout ? "timeout" : "failed";
-        await this.recordHealth(toolEntry.toolId, toolEntry.entityPk, scope.environmentId, status, latencyMs);
+        await this.recordHealth(toolEntry.toolId, toolEntry.sourceEntityId, scope.environmentId, status, latencyMs);
         return {
           result: { tool: call.tool, status, error: errorMsg, latencyMs },
           toolId: toolEntry.toolId,
@@ -1147,7 +1191,7 @@ export class ToolExecutorService {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => "Unknown error");
-        await this.recordHealth(toolEntry.toolId, toolEntry.entityPk, scope.environmentId, "failed", latencyMs);
+        await this.recordHealth(toolEntry.toolId, toolEntry.sourceEntityId, scope.environmentId, "failed", latencyMs);
         // Surface entity-backend rate limits as a structured tool result so
         // the LLM can react (wait, retry, or pick a different tool) instead
         // of crashing the turn. Honour the Retry-After header when present.
@@ -1183,7 +1227,7 @@ export class ToolExecutorService {
       }
 
       const result = await response.json();
-      await this.recordHealth(toolEntry.toolId, toolEntry.entityPk, scope.environmentId, "success", latencyMs);
+      await this.recordHealth(toolEntry.toolId, toolEntry.sourceEntityId, scope.environmentId, "success", latencyMs);
 
       return {
         result: { tool: call.tool, status: "success", result, latencyMs },
@@ -1197,7 +1241,7 @@ export class ToolExecutorService {
       const status = isTimeout ? "timeout" : "failed";
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
 
-      await this.recordHealth(toolEntry.toolId, toolEntry.entityPk, scope.environmentId, status, latencyMs);
+      await this.recordHealth(toolEntry.toolId, toolEntry.sourceEntityId, scope.environmentId, status, latencyMs);
       return {
         result: { tool: call.tool, status, error: errorMsg, latencyMs },
         toolId: toolEntry.toolId,
@@ -1229,18 +1273,18 @@ export class ToolExecutorService {
    *
    * Never throws — always returns the standard `{ result, toolId, entityId,
    * entityPk }` shape so the `execute()` wrapper records health + audit (with
-   * `entityPk` now dereferencing a real `PlatosConnectedEntity`). Redaction: it
+   * `entityPk` now dereferencing a real `Entity`). Redaction: it
    * never logs resolved headers or a resolved URL, per the McpCredentialService
    * contract (AC7).
    */
   private async mcpDispatch(
-    entity: { id: string; entityId: string },
+    entity: { id: string; externalId: string },
     mcpClient:
       | {
           transport: string;
           url?: string | null;
           headersTemplate?: unknown;
-          credsSecretKey?: string | null;
+          credential?: { name: string } | null;
         }
       | null,
     toolEntry: OrgToolEntry,
@@ -1268,7 +1312,7 @@ export class ToolExecutorService {
       const latencyMs = Date.now() - startTime;
       await this.recordHealth(
         ids.toolId,
-        ids.entityPk,
+        ids.entityId,
         scope.environmentId,
         status,
         latencyMs,
@@ -1411,15 +1455,19 @@ export class ToolExecutorService {
    */
   private async recordHealth(
     toolId: string,
-    entityPk: string,
+    entityExternalId: string,
     environmentId: string,
     status: string,
     latencyMs: number,
   ): Promise<void> {
     try {
-      await this.prisma.platosToolHealth.upsert({
+      await this.prisma.toolHealth.upsert({
         where: {
-          toolId_entityId_environmentId: { toolId, entityId: entityPk, environmentId },
+          environmentId_toolId_entityExternalId: {
+            environmentId,
+            toolId,
+            entityExternalId,
+          },
         },
         update: {
           lastCalledAt: new Date(),
@@ -1432,7 +1480,7 @@ export class ToolExecutorService {
         },
         create: {
           toolId,
-          entityId: entityPk,
+          entityExternalId,
           environmentId,
           lastCalledAt: new Date(),
           lastStatus: status,

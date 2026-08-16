@@ -1,29 +1,37 @@
-# Trigger.dev Tasks (Platos integration)
+# Trigger registrations
 
-Durable task definitions that the agent runtime spawns via `tasks.trigger()`.
+This directory contains Trigger SDK declarations. Active Platos durable work is
+executed by a separate Trigger application (Trigger Cloud or a separately
+self-hosted Trigger service selected by deployment configuration). The Platos
+agent remains the tenancy and credential authority; task shells call back into
+the agent where application work and provider access are required.
 
-## Tasks
+`registration-manifest.ts` is the typed ownership/disposition inventory. It is
+not a runtime dispatch table and changes no task ID, schedule, queue, retry, or
+dispatch behavior. `registration-manifest.test.ts` parses these source files and
+requires every declaration to be classified exactly once.
 
-| File | ID | Purpose |
-|---|---|---|
-| `agent-tool-block.task.ts` | `platos-agent-tool-block` | Durable execution of a tool block (for ops >30s, or when idempotency/retries matter) |
-| `agent-batch-op.task.ts` | `platos-agent-batch-op` | One unit of a batch operation (AI-employee bulk ops). Spawned via `batchTrigger()`. |
-| `agent-scheduled-run.task.ts` | `platos-agent-scheduled-run` | Agent execution on a cron schedule. Registered via `schedules.task()`. |
+## Registration classes
 
-## Callback pattern
+| Manifest                           | Count | Semantics                                                                                                                                   |
+| ---------------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EXTERNAL_PLATOS_TASK_MANIFEST`    |    18 | Active Platos task/schedule IDs executed by an external Trigger deployment.                                                                 |
+| `EXTERNAL_PLATOS_SESSION_MANIFEST` |     1 | Active external Trigger Session: `platos.chat.session`.                                                                                     |
+| `INTERNAL_TRIGGER_TASK_MANIFEST`   |     2 | Retained internal/mode-C registrations: `platos-agent-batch-op` and `price-verify`. WIN-132 owns removal of that surface.                   |
+| `DORMANT_TRIGGER_TASK_MANIFEST`    |     1 | Retained, functional source for `platos.agent.durable-turn`; chat dispatch uses `platos.chat.session` and must not be rewired to this task. |
 
-When a trigger.dev task needs to execute an actual tool call against an org's backend,
-it calls back into the agent service via `POST /internal/execute-tool` with HMAC signing.
-This keeps per-org credentials centralized in the agent service.
+There are 21 `task`/`schedules.task` declarations plus one
+`chat.customAgent` declaration. Trigger CLI source discovery still scans this
+directory, so the manifests document classification rather than filtering
+files from discovery.
 
-## Metadata/tags
+## External deployment
 
-Every trigger call is tagged:
-- `org:{orgId}` — for dashboard grouping
-- `agent:{agentId}` — which agent triggered it
-- `thread:{threadId}` — which conversation
-- `user:{userId}` — who initiated
+Run the Trigger CLI from `apps/agent`. `trigger.config.ts` deliberately requires
+an explicit `TRIGGER_PROJECT_REF`; there is no repository-specific fallback.
+Loading ordinary agent runtime modules or running agent unit tests does not load
+the deployment config.
 
-And metadata includes:
-- `orgId`, `agentId`, `threadId`, `userId`, `model`
-- Updated during run: `progress`, `tokens`, `costCents`, `logs[]`
+Per-tenant credentials stay in Platos and are not copied into Trigger task
+payloads. Task callbacks use the agent's internal authentication boundary and
+carry only the scope needed by that declaration.

@@ -19,25 +19,24 @@ import { ToolRegistryService, type ToolSchema } from "../tool-registry.service";
  * SDK client). Everything else of that service — CRUD, the parallel
  * `PlatosMCPServerTool` cache, the `PlatosAgentMCPBinding` matrix — is deleted;
  * discovery's OUTPUT is now `ToolRegistryService.registerTools`, i.e. the same
- * `PlatosToolDefinition` + `PlatosEntityToolMapping` matrix wire entities use.
+ * `Tool` + `EnvironmentEntityTool` matrix wire entities use.
  *
  * ── Environment scoping (design §1.5b — MIRROR the wire path) ──────────────
- * A `PlatosConnectedEntity` is `(org, project)`-scoped and has NO
- * `environmentId`, but `PlatosEntityToolMapping` (and `registerTools`) require
+ * An `Entity` is project-scoped and has NO `environmentId`, but
+ * `EnvironmentEntityTool` (and `registerTools`) require
  * one. A wire backend supplies it by opening one WS `/tools/sync` connection
  * PER env. Discovery is outbound (no inbound connection to carry an env), so we
  * replace "one connection per env" with "one discovery+registration pass per
- * env": `discover()` enumerates `runtimeEnvironment.findMany({ projectId })` as
- * the SOLE supplier of `environmentId` (callers never pass one) and loops
- * `registerTools` + `reconcileEntityTools` ONCE PER ENV. Both keep their
+ * env": `discover()` enumerates `environment.findMany({ projectId })` as the
+ * SOLE supplier of `environmentId` (callers never pass one) and calls
+ * declarative `registerTools` ONCE PER ENV. Both keep their
  * existing single-`environmentId` signatures — discovery loops; the registry
  * stays env-at-a-time exactly as the wire path drives it.
  *
- * Per-env credentials fall out for free: each env's pass resolves
- * `credsSecretKey` through `ScopedEnvService` keyed on that env, so a single
- * `PlatosEntityMcpClient.credsSecretKey` transparently yields the dev key in
- * the dev env and the prod key in prod — definitions fan out across envs, the
- * secret stays per-env, and the entity can stay env-less. The pool key includes
+ * Per-env credentials fall out for free: each env's pass resolves the linked
+ * Credential's bare name through `ScopedEnvService` keyed on that env. Tool
+ * definitions fan out across envs, secret material stays per-env, and the
+ * entity can stay env-less. The pool key includes
  * the resolved URL + a hash of the resolved headers, so two envs (or two users
  * at dispatch time) never share a pooled session.
  *
@@ -47,13 +46,13 @@ import { ToolRegistryService, type ToolSchema } from "../tool-registry.service";
  * without a user. The per-user substitution happens later, at dispatch.
  */
 
-/** Minimal slice of a `PlatosEntityMcpClient` row the round-trip reads. */
+/** Minimal slice of an EntityMcpClient row the round-trip reads. */
 interface McpClientSlice {
   transport: string;
   url?: string | null;
   /** `Json?` — { header: valueTemplate }; satisfies `CredentialServerSlice`. */
   headersTemplate?: unknown;
-  credsSecretKey?: string | null;
+  credential?: { name: string } | null;
 }
 
 export interface DiscoveryResult {
@@ -85,10 +84,10 @@ export class EntityMcpDiscoveryService {
 
   /**
    * Discover + register the tools of a `connectionKind == "mcp"` entity into
-   * every environment of its project. Idempotent-REPLACE: `registerTools` is
-   * additive-upsert and `reconcileEntityTools` prunes anything the fresh
-   * `tools/list` no longer reports, per env (AC1 + AC6). Stamps
-   * `PlatosEntityMcpClient.lastDiscoveryAt` / `discoveryError` and the entity's
+   * every environment of its project. Idempotent-REPLACE: `registerTools`
+   * atomically prunes anything the fresh `tools/list` no longer reports in
+   * that Environment (AC1 + AC6). Stamps
+   * `EntityMcpClient.lastDiscoveryAt` / `discoveryError` and the entity's
    * `connectionStatus` so census/list don't show every MCP entity disconnected
    * forever (design §1.5a).
    *
@@ -96,9 +95,12 @@ export class EntityMcpDiscoveryService {
    * caller never passes one.
    */
   async discover(entityPk: string): Promise<DiscoveryResult> {
-    const entity = await this.prisma.platosConnectedEntity.findFirst({
+    const entity = await this.prisma.entity.findFirst({
       where: { id: entityPk },
-      include: { mcpClient: true },
+      include: {
+        project: { select: { organizationId: true } },
+        mcpClient: { include: { credential: { select: { name: true } } } },
+      },
     });
     if (!entity) throw new Error(`entity ${entityPk} not found`);
     if (entity.connectionKind !== "mcp") {
@@ -117,9 +119,10 @@ export class EntityMcpDiscoveryService {
     // §1.5b — the SOLE environmentId supplier. All project envs, mirroring the
     // env set a wire backend could land in.
     const envs: Array<{ id: string }> =
-      await this.prisma.runtimeEnvironment.findMany({
+      await this.prisma.environment.findMany({
         where: { projectId: entity.projectId },
         select: { id: true },
+        orderBy: { id: "asc" },
       });
 
     if (envs.length === 0) {
@@ -136,41 +139,34 @@ export class EntityMcpDiscoveryService {
     // One discovery + registration + prune pass per env (design §1.5b).
     for (const envRow of envs) {
       const scope: ScopeTuple = {
-        organizationId: entity.organizationId,
+        organizationId: entity.project.organizationId,
         projectId: entity.projectId,
         environmentId: envRow.id,
       };
       try {
         const tools = await this.fetchToolsList(entity.id, client, scope);
-        const freshNames = tools.map((t) => t.name);
-
         const res = await this.registry.registerTools(
           {
-            organizationId: entity.organizationId,
+            organizationId: entity.project.organizationId,
             projectId: entity.projectId,
             environmentId: envRow.id,
             entityPk: entity.id,
-            sourceEntityId: entity.entityId,
+            sourceEntityId: entity.externalId,
           },
           tools,
           // mcp is outbound — no callback URL. Persists as NULL; the cache
           // entry gets the "mcp:noop" sentinel (design §1.3 / §4).
           null,
         );
-        const rec = await this.registry.reconcileEntityTools(
-          entity.id,
-          envRow.id,
-          freshNames,
-        );
-
         registered += res.registered;
-        pruned += rec.removed;
+        pruned += res.removed;
         anySuccess = true;
       } catch (err: any) {
         const msg = err?.message
           ? String(err.message).slice(0, 500)
           : "discovery failed";
         if (!firstError) firstError = msg;
+        this.registry.setEntityDispatchable(entity.id, false, envRow.id);
         // Redacted — resolveHeaders/pool never echo secret or header values.
         this.logger.warn(
           `MCP discovery failed for entity ${entity.id} env ${envRow.id}: ${msg}`,
@@ -271,13 +267,13 @@ export class EntityMcpDiscoveryService {
   /** Stamp a successful discovery: connected + fresh timestamp, error cleared. */
   private async stampSuccess(entityPk: string): Promise<void> {
     const now = new Date();
-    await this.prisma.platosEntityMcpClient
+    await this.prisma.entityMcpClient
       .update({
-        where: { entityPk },
+        where: { entityId: entityPk },
         data: { lastDiscoveryAt: now, discoveryError: null },
       })
       .catch(() => undefined);
-    await this.prisma.platosConnectedEntity
+    await this.prisma.entity
       .update({
         where: { id: entityPk },
         data: { connectionStatus: "connected", lastConnectedAt: now },
@@ -287,9 +283,9 @@ export class EntityMcpDiscoveryService {
 
   /** Stamp a total discovery failure: disconnected + discoveryError. */
   private async stampFailure(entityPk: string, error: string): Promise<void> {
-    await this.prisma.platosEntityMcpClient
+    await this.prisma.entityMcpClient
       .update({
-        where: { entityPk },
+        where: { entityId: entityPk },
         data: { lastDiscoveryAt: null, discoveryError: error.slice(0, 500) },
       })
       .catch(() => undefined);
@@ -297,11 +293,12 @@ export class EntityMcpDiscoveryService {
   }
 
   private async markEntityDisconnected(entityPk: string): Promise<void> {
-    await this.prisma.platosConnectedEntity
+    await this.prisma.entity
       .update({
         where: { id: entityPk },
         data: { connectionStatus: "disconnected" },
       })
       .catch(() => undefined);
+    this.registry.setEntityDispatchable(entityPk, false);
   }
 }

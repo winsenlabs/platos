@@ -56,7 +56,16 @@ export class ModelCatalogService {
 
     const legacyEnv = manifest.requiredEnv[0];
     const apiKey = await this.scopedEnv.getProviderApiKey(scope, manifest.id, legacyEnv);
-    if (!apiKey) return [];
+    let endpoint = manifest.modelsEndpoint;
+    if (manifest.id === "openai") {
+      const baseURL = await this.scopedEnv.get(scope, "OPENAI_BASE_URL");
+      if (baseURL) {
+        const root = baseURL.replace(/\/$/, "").endsWith("/v1")
+          ? baseURL.replace(/\/$/, "")
+          : `${baseURL.replace(/\/$/, "")}/v1`;
+        endpoint = { ...endpoint, url: `${root}/models` };
+      }
+    }
 
     const cacheKey = `${manifest.id}:${sha256(apiKey)}`;
     const now = Date.now();
@@ -66,7 +75,7 @@ export class ModelCatalogService {
     const existing = this.inflight.get(cacheKey);
     if (existing) return existing;
 
-    const promise = this.fetchAndCache(manifest, apiKey, cacheKey);
+    const promise = this.fetchAndCache(manifest, endpoint, apiKey, cacheKey);
     this.inflight.set(cacheKey, promise);
     try {
       return await promise;
@@ -89,21 +98,20 @@ export class ModelCatalogService {
 
   private async fetchAndCache(
     manifest: ProviderManifest,
+    endpoint: ModelsEndpoint,
     apiKey: string,
     cacheKey: string,
   ): Promise<string[]> {
     try {
-      const ids = await this.fetchUpstream(manifest.modelsEndpoint!, apiKey);
+      const ids = await this.fetchUpstream(endpoint, apiKey);
       const prefixed = ids.map((id) => `${manifest.id}:${id}`);
       this.cache.set(cacheKey, {
         models: prefixed,
         expiresAt: Date.now() + ModelCatalogService.CATALOG_TTL_MS,
       });
       return prefixed;
-    } catch (err: any) {
-      this.logger.warn(
-        `model-catalog fetch failed for ${manifest.id}: ${err?.message ?? String(err)}`,
-      );
+    } catch {
+      this.logger.warn(`model-catalog fetch failed for ${manifest.id}`);
       // Cache the negative result briefly so we don't hammer a broken
       // upstream on every loader call. 30s is short enough that a fixed
       // upstream recovers quickly.
@@ -134,8 +142,7 @@ export class ModelCatalogService {
       signal: AbortSignal.timeout(ModelCatalogService.FETCH_TIMEOUT_MS),
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`${res.status} ${res.statusText}: ${body.slice(0, 120)}`);
+      throw new Error("provider_catalog_request_failed");
     }
     const json = await res.json();
     return parseModelsResponse(endpoint.shape, json);

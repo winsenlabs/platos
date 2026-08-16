@@ -1,84 +1,99 @@
-/**
- * Connect v3 — Enterprise Grid envelope routing for channel-app events.
- *
- * An org-install grant (oauth.v2.access → team:null, is_enterprise_install
- * true) is stored with teamId=NULL, but Slack event envelopes always carry
- * the ORIGINATING workspace's team_id. These tests pin the fallback: when
- * the exact (appId, teamId, enterpriseId) tuple misses inside a Grid, both
- * installation lookup and lifecycle revocation must fall back to the
- * (appId, teamId IS NULL, enterpriseId) org-install row.
- *
- * CLAUDE.md §9.11: Vitest, no mocking framework — an in-memory Prisma shim
- * implements only platosChannelInstallation.findFirst/updateMany with
- * Prisma's null-compiles-to-IS-NULL matching semantics.
- */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, expect, it } from "vitest";
+import * as crypto from "node:crypto";
 import { ChannelAppEventsController } from "./channel-app-events.controller";
 
 type Row = {
   id: string;
   appId: string;
-  teamId: string | null;
-  enterpriseId: string | null;
-  isEnterpriseInstall: boolean;
+  externalInstallationId: string;
   status: string;
   revokedAt: Date | null;
 };
 
-function makePrismaShim(rows: Row[]) {
-  const matches = (row: Row, where: Record<string, unknown>): boolean =>
-    Object.entries(where).every(
-      ([k, v]) => (row as Record<string, unknown>)[k] === v,
-    );
+function makePersistenceShim(rows: Row[]) {
+  const externalId = (
+    teamId: string | null,
+    enterpriseId: string | null,
+    enterpriseInstall = false
+  ) =>
+    enterpriseInstall || (!teamId && enterpriseId)
+      ? enterpriseId
+        ? `slack:enterprise:${enterpriseId}`
+        : null
+      : teamId
+      ? `slack:team:${teamId}`
+      : null;
   return {
-    rows,
-    platosChannelInstallation: {
-      findFirst: async ({ where }: { where: Record<string, unknown> }) =>
-        rows.find((r) => matches(r, where)) ?? null,
-      updateMany: async ({
-        where,
-        data,
-      }: {
-        where: Record<string, unknown>;
-        data: Partial<Row>;
-      }) => {
-        const hit = rows.filter((r) => matches(r, where));
-        for (const r of hit) Object.assign(r, data);
-        return { count: hit.length };
-      },
+    findActiveInstallation: async (
+      appId: string,
+      teamId: string | null,
+      enterpriseId: string | null
+    ) => {
+      const exact = externalId(teamId, enterpriseId);
+      const hit = rows.find(
+        (row) =>
+          row.appId === appId && row.externalInstallationId === exact && row.status === "active"
+      );
+      if (hit) return hit;
+      if (teamId && enterpriseId) {
+        return (
+          rows.find(
+            (row) =>
+              row.appId === appId &&
+              row.externalInstallationId === externalId(null, enterpriseId, true) &&
+              row.status === "active"
+          ) ?? null
+        );
+      }
+      return null;
+    },
+    revokeInstallations: async (
+      appId: string,
+      teamId: string | null,
+      enterpriseId: string | null
+    ) => {
+      const revoke = (key: string | null) => {
+        let count = 0;
+        for (const row of rows) {
+          if (
+            row.appId === appId &&
+            row.externalInstallationId === key &&
+            row.status === "active"
+          ) {
+            row.status = "revoked";
+            row.revokedAt = new Date();
+            count++;
+          }
+        }
+        return count;
+      };
+      let count = revoke(externalId(teamId, enterpriseId));
+      if (count === 0 && teamId && enterpriseId) {
+        count = revoke(externalId(null, enterpriseId, true));
+      }
+      return count;
     },
   };
 }
 
-function makeController(prisma: ReturnType<typeof makePrismaShim>) {
-  // redis / messageCrypto / runtime are not touched by the lookup/revoke
-  // paths under test.
-  return new ChannelAppEventsController(
-    prisma,
-    {} as any,
-    {} as any,
-    {} as any,
-  ) as any;
+function makeController(persistence: ReturnType<typeof makePersistenceShim>) {
+  return new ChannelAppEventsController(persistence as any, {} as any, {} as any) as any;
 }
 
-const APP = "app_1";
+const APP = "00000000-0000-0000-0000-000000000001";
 
 const orgInstallRow = (): Row => ({
-  id: "inst_org",
+  id: "00000000-0000-0000-0000-000000000002",
   appId: APP,
-  teamId: null,
-  enterpriseId: "E1",
-  isEnterpriseInstall: true,
+  externalInstallationId: "slack:enterprise:E1",
   status: "active",
   revokedAt: null,
 });
 
 const workspaceRow = (): Row => ({
-  id: "inst_ws",
+  id: "00000000-0000-0000-0000-000000000003",
   appId: APP,
-  teamId: "T123",
-  enterpriseId: "E1",
-  isEnterpriseInstall: false,
+  externalInstallationId: "slack:team:T123",
   status: "active",
   revokedAt: null,
 });
@@ -87,64 +102,109 @@ describe("ChannelAppEventsController — Grid org-install routing", () => {
   let rows: Row[];
 
   describe("findActiveInstallation", () => {
-    it("falls back to the teamId-NULL org-install row for a Grid envelope", async () => {
+    it("falls back to the enterprise installation for a Grid envelope", async () => {
       rows = [orgInstallRow()];
-      const ctrl = makeController(makePrismaShim(rows));
-      // Envelope from workspace T123 of grid E1 — exact tuple can never match.
-      const found = await ctrl.findActiveInstallation(APP, "T123", "E1");
-      expect(found?.id).toBe("inst_org");
+      const found = await makeController(makePersistenceShim(rows)).findActiveInstallation(
+        APP,
+        "T123",
+        "E1"
+      );
+      expect(found?.id).toBe("00000000-0000-0000-0000-000000000002");
     });
 
-    it("prefers an exact workspace row over the org-install fallback", async () => {
+    it("prefers an exact workspace installation", async () => {
       rows = [orgInstallRow(), workspaceRow()];
-      const ctrl = makeController(makePrismaShim(rows));
-      const found = await ctrl.findActiveInstallation(APP, "T123", "E1");
-      expect(found?.id).toBe("inst_ws");
+      const found = await makeController(makePersistenceShim(rows)).findActiveInstallation(
+        APP,
+        "T123",
+        "E1"
+      );
+      expect(found?.id).toBe("00000000-0000-0000-0000-000000000003");
     });
 
-    it("does not fall back outside a Grid (enterpriseId null)", async () => {
+    it("does not fall back outside a Grid", async () => {
       rows = [orgInstallRow()];
-      const ctrl = makeController(makePrismaShim(rows));
-      const found = await ctrl.findActiveInstallation(APP, "T999", null);
+      const found = await makeController(makePersistenceShim(rows)).findActiveInstallation(
+        APP,
+        "T999",
+        null
+      );
       expect(found).toBeNull();
     });
 
-    it("never resurrects a revoked org install", async () => {
+    it("never resurrects a revoked enterprise installation", async () => {
       const revoked = orgInstallRow();
       revoked.status = "revoked";
       rows = [revoked];
-      const ctrl = makeController(makePrismaShim(rows));
-      const found = await ctrl.findActiveInstallation(APP, "T123", "E1");
+      const found = await makeController(makePersistenceShim(rows)).findActiveInstallation(
+        APP,
+        "T123",
+        "E1"
+      );
       expect(found).toBeNull();
     });
   });
 
   describe("revokeInstallations", () => {
-    it("revokes the org-install row when the Grid lifecycle envelope carries a workspace team_id", async () => {
+    it("revokes the enterprise installation when the envelope carries a workspace team", async () => {
       rows = [orgInstallRow()];
-      const ctrl = makeController(makePrismaShim(rows));
-      await ctrl.revokeInstallations(APP, "T123", "E1");
+      await makeController(makePersistenceShim(rows)).revokeInstallations(APP, "T123", "E1");
       expect(rows[0].status).toBe("revoked");
       expect(rows[0].revokedAt).toBeInstanceOf(Date);
     });
 
-    it("only touches the exact row when a workspace row matches", async () => {
+    it("only touches the exact workspace installation when it matches", async () => {
       rows = [orgInstallRow(), workspaceRow()];
-      const ctrl = makeController(makePrismaShim(rows));
-      await ctrl.revokeInstallations(APP, "T123", "E1");
-      const org = rows.find((r) => r.id === "inst_org");
-      const ws = rows.find((r) => r.id === "inst_ws");
-      expect(ws?.status).toBe("revoked");
-      expect(org?.status).toBe("active");
+      await makeController(makePersistenceShim(rows)).revokeInstallations(APP, "T123", "E1");
+      expect(rows[1].status).toBe("revoked");
+      expect(rows[0].status).toBe("active");
     });
 
-    it("is idempotent — the second (unordered) lifecycle event updates nothing", async () => {
+    it("is idempotent", async () => {
       rows = [orgInstallRow()];
-      const ctrl = makeController(makePrismaShim(rows));
-      await ctrl.revokeInstallations(APP, "T123", "E1");
+      const controller = makeController(makePersistenceShim(rows));
+      await controller.revokeInstallations(APP, "T123", "E1");
       const firstRevokedAt = rows[0].revokedAt;
-      await ctrl.revokeInstallations(APP, "T123", "E1");
+      await controller.revokeInstallations(APP, "T123", "E1");
       expect(rows[0].revokedAt).toBe(firstRevokedAt);
+    });
+  });
+
+  describe("Slack request verification", () => {
+    it("verifies the exact raw body and rejects a modified body", () => {
+      const controller = makeController(makePersistenceShim([]));
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const rawBody = Buffer.from('{"type":"event_callback","event_id":"E1"}');
+      const secret = "signing-secret";
+      const signature = `v0=${crypto
+        .createHmac("sha256", secret)
+        .update(`v0:${timestamp}:`)
+        .update(rawBody)
+        .digest("hex")}`;
+
+      expect(controller.verifySlackSignature(secret, rawBody, timestamp, signature)).toBe(true);
+      expect(
+        controller.verifySlackSignature(
+          secret,
+          Buffer.from(`${rawBody.toString("utf8")} `),
+          timestamp,
+          signature
+        )
+      ).toBe(false);
+    });
+
+    it("rejects signatures outside Slack's five-minute replay window", () => {
+      const controller = makeController(makePersistenceShim([]));
+      const timestamp = String(Math.floor(Date.now() / 1000) - 301);
+      const rawBody = Buffer.from("{}");
+      const secret = "signing-secret";
+      const signature = `v0=${crypto
+        .createHmac("sha256", secret)
+        .update(`v0:${timestamp}:`)
+        .update(rawBody)
+        .digest("hex")}`;
+
+      expect(controller.verifySlackSignature(secret, rawBody, timestamp, signature)).toBe(false);
     });
   });
 });

@@ -903,6 +903,7 @@ export function buildPlatformToolHandlers(deps: {
   // ── MCPF-W3 providers.* (8 tools) ─────────────────────────────────
   handlers.push(
     ...buildProviderToolHandlers({
+      agentCrud: deps.agentCrud,
       providers: deps.providers,
       scopedEnv: deps.scopedEnv,
       toolAudit: deps.toolAudit,

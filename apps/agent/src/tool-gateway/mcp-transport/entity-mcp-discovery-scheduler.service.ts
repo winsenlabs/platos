@@ -11,7 +11,7 @@ import { EntityMcpDiscoveryService } from "./entity-mcp-discovery.service";
  * `connectionKind == "mcp"` entities (design Commit 5 / §5).
  *
  * The cron fires every minute; each tick re-discovers the mcp entities whose
- * `PlatosEntityMcpClient.lastDiscoveryAt` is older than
+ * `EntityMcpClient.lastDiscoveryAt` is older than
  * `PLATOS_MCP_DISCOVERY_INTERVAL_SEC` (default 300s) — the same "reuse the old
  * cache-TTL constant" cadence Phase 1 used. This mirrors a wire backend
  * re-registering its tools on reconnect: `EntityMcpDiscoveryService.discover`
@@ -81,8 +81,8 @@ export class EntityMcpDiscoverySchedulerService {
       // discovery is stale (or never happened). The client row carries
       // lastDiscoveryAt; the relation filter guards the kind (mcpClient rows
       // only ever exist for mcp entities, but belt-and-suspenders).
-      const staleClients: Array<{ entityPk: string }> =
-        await this.prisma.platosEntityMcpClient.findMany({
+      const staleClients: Array<{ entityId: string }> =
+        await this.prisma.entityMcpClient.findMany({
           where: {
             OR: [
               { lastDiscoveryAt: null },
@@ -90,7 +90,7 @@ export class EntityMcpDiscoverySchedulerService {
             ],
             entity: { connectionKind: "mcp" },
           },
-          select: { entityPk: true },
+          select: { entityId: true },
           orderBy: { lastDiscoveryAt: { sort: "asc", nulls: "first" } },
           take: EntityMcpDiscoverySchedulerService.BATCH,
         });
@@ -99,12 +99,12 @@ export class EntityMcpDiscoverySchedulerService {
         try {
           // discover() loops the entity's project envs (the existing
           // (entity, env) mapping set) and re-stamps status on its own.
-          await this.discovery.discover(row.entityPk);
+          await this.discovery.discover(row.entityId);
           swept += 1;
         } catch (err: any) {
           failed += 1;
           this.logger.warn(
-            `MCP discovery refresh failed for entity ${row.entityPk}: ` +
+            `MCP discovery refresh failed for entity ${row.entityId}: ` +
               `${err?.message ?? err}`,
           );
         }

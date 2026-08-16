@@ -58,4 +58,17 @@ describe("EmbeddingService.embed — provider timeout", () => {
     // Must reject promptly at the timeout, not hang indefinitely.
     expect(Date.now() - start).toBeLessThan(2000);
   });
+
+  it("does not fall back to a container key when a scoped credential is absent", async () => {
+    const get = vi.fn().mockResolvedValue(undefined);
+    const svc = new EmbeddingService({ get } as any);
+    const scope = {
+      organizationId: "org-1",
+      projectId: "project-1",
+      environmentId: "environment-1",
+    };
+
+    await expect((svc as any).resolveApiKey(scope)).resolves.toBeUndefined();
+    expect(get).toHaveBeenCalledWith(scope, "VOYAGE_API_KEY");
+  });
 });

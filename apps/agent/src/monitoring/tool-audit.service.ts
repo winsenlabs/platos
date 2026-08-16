@@ -1,5 +1,14 @@
 import { Injectable, Inject, Optional } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import type {
+  Prisma,
+  ToolCallAudit,
+  WorkStatus,
+} from "@platos/tenancy-database";
+import {
+  type ControlDatabaseClient,
+  environmentScopeWhere,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 import { MessageCryptoService } from "./message-crypto.service";
 
@@ -98,14 +107,10 @@ export interface RecordToolAuditInput {
  */
 @Injectable()
 export class ToolAuditService {
-  private prisma: any;
-
   constructor(
-    @Inject(PRISMA_TOKEN) prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     @Optional() private readonly crypto?: MessageCryptoService,
-  ) {
-    this.prisma = prisma;
-  }
+  ) {}
 
   /**
    * Append a single audit row. Called from ToolExecutorService — never fails
@@ -127,34 +132,35 @@ export class ToolAuditService {
       const encResult =
         this.crypto?.encryptJsonField(input.result ?? null) ?? (input.result ?? null);
       const encError = input.error ?? null;
-      const row = await this.prisma.platosToolCallAudit.create({
+      const auditMetadata = {
+        entityId: input.entityId ?? null,
+        entityPk: input.entityPk ?? null,
+        userId: input.userId ?? null,
+        spanId: input.spanId ?? null,
+        parentSpanId: input.parentSpanId ?? null,
+        source: input.source ?? null,
+        mcpUserId: input.mcpUserId ?? null,
+        mcpClientId: input.mcpClientId ?? null,
+        endUserId: input.endUserId ?? null,
+        status: input.status,
+      };
+      const row = await this.prisma.toolCallAudit.create({
         data: {
-          organizationId: input.scope.organizationId,
-          projectId: input.scope.projectId,
           environmentId: input.scope.environmentId,
           toolId: input.toolId ?? null,
           toolName: input.toolName,
-          entityId: input.entityId ?? null,
-          entityPk: input.entityPk ?? null,
           agentId: input.agentId ?? null,
           threadId: input.threadId ?? null,
-          userId: input.userId ?? null,
           traceId: input.traceId ?? null,
-          spanId: input.spanId ?? null,
-          parentSpanId: input.parentSpanId ?? null,
-          args: encArgs as any,
-          result: encResult as any,
+          arguments: {
+            __platosAudit: auditMetadata,
+            value: encArgs,
+          } as Prisma.InputJsonObject,
+          result: this.jsonResult(encResult),
           error: encError,
-          status: input.status,
+          status: this.persistedStatus(input.status),
           latencyMs: Math.max(0, Math.round(input.latencyMs)),
           costCents: input.costCents ?? null,
-          // PIFSP-21 — origin tagging. Nullable so legacy callers that
-          // don't pass any of these three keep writing `null` columns.
-          source: input.source ?? null,
-          mcpUserId: input.mcpUserId ?? null,
-          mcpClientId: input.mcpClientId ?? null,
-          // MCP per-user isolation — verbatim externalUserId (Composio user_id).
-          endUserId: input.endUserId ?? null,
         },
         select: { id: true },
       });
@@ -177,21 +183,37 @@ export class ToolAuditService {
     const offset = Math.max(filters.offset ?? 0, 0);
     const sinceDays = filters.sinceDays ?? 30;
 
-    const where: Record<string, unknown> = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
+    const where: Prisma.ToolCallAuditWhereInput = {
+      ...environmentScopeWhere(scope),
       createdAt: { gte: new Date(Date.now() - sinceDays * 86400_000) },
     };
+    const metadataFilters: Prisma.ToolCallAuditWhereInput[] = [];
     if (filters.threadId) where.threadId = filters.threadId;
     if (filters.agentId) where.agentId = filters.agentId;
     if (filters.toolName) where.toolName = filters.toolName;
-    if (filters.status) where.status = filters.status;
-    if (filters.entityId) where.entityId = filters.entityId;
+    if (filters.status === "success") where.status = "SUCCEEDED";
+    if (filters.status === "failed") where.status = "FAILED";
+    if (filters.status === "timeout") {
+      metadataFilters.push({
+        arguments: {
+          path: ["__platosAudit", "status"],
+          equals: "timeout",
+        },
+      });
+    }
+    if (filters.entityId) {
+      metadataFilters.push({
+        arguments: {
+          path: ["__platosAudit", "entityId"],
+          equals: filters.entityId,
+        },
+      });
+    }
+    if (metadataFilters.length > 0) where.AND = metadataFilters;
 
     const [total, rawRows] = await Promise.all([
-      this.prisma.platosToolCallAudit.count({ where }),
-      this.prisma.platosToolCallAudit.findMany({
+      this.prisma.toolCallAudit.count({ where }),
+      this.prisma.toolCallAudit.findMany({
         where,
         orderBy: { createdAt: "desc" },
         take: limit,
@@ -200,7 +222,7 @@ export class ToolAuditService {
     ]);
 
     return {
-      rows: (rawRows as any[]).map((r) => this.toRecord(r)),
+      rows: rawRows.map((row) => this.toRecord(scope, row)),
       total,
       limit,
       offset,
@@ -212,50 +234,76 @@ export class ToolAuditService {
    * the controller returns 404.
    */
   async getById(scope: ScopeTuple, id: string): Promise<ToolAuditRecord | null> {
-    const row = await this.prisma.platosToolCallAudit.findFirst({
+    const row = await this.prisma.toolCallAudit.findFirst({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
       },
     });
-    return row ? this.toRecord(row) : null;
+    return row ? this.toRecord(scope, row) : null;
   }
 
-  private toRecord(r: any): ToolAuditRecord {
+  private toRecord(scope: ScopeTuple, r: ToolCallAudit): ToolAuditRecord {
     // EOBD.20 — transparent decryption on read. `decryptJsonField` is a
     // passthrough for rows that pre-date encryption (no __platos_enc
     // marker), so mixed corpora during rollout both decrypt correctly.
-    const args = this.crypto?.decryptJsonField(r.args ?? {}) ?? (r.args ?? {});
-    const result = this.crypto?.decryptJsonField(r.result ?? null) ?? (r.result ?? null);
+    const storedArgs = r.arguments as {
+      __platosAudit?: Record<string, unknown>;
+      value?: unknown;
+    };
+    const adapted = !!storedArgs.__platosAudit;
+    const metadata = storedArgs.__platosAudit ?? {};
+    const argumentValue = adapted ? (storedArgs.value ?? {}) : r.arguments;
+    const args =
+      this.crypto?.decryptJsonField(argumentValue) ?? argumentValue;
+    const storedResult = r.result as { __platosScalarResult?: unknown } | null;
+    const resultValue =
+      storedResult && "__platosScalarResult" in storedResult
+        ? storedResult.__platosScalarResult
+        : r.result;
+    const result =
+      this.crypto?.decryptJsonField(resultValue ?? null) ??
+      (resultValue ?? null);
     return {
       id: r.id,
-      organizationId: r.organizationId,
-      projectId: r.projectId,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
       environmentId: r.environmentId,
       toolId: r.toolId ?? null,
       toolName: r.toolName,
-      entityId: r.entityId ?? null,
-      entityPk: r.entityPk ?? null,
+      entityId: (metadata.entityId as string | null | undefined) ?? null,
+      entityPk: (metadata.entityPk as string | null | undefined) ?? null,
       agentId: r.agentId ?? null,
       threadId: r.threadId ?? null,
-      userId: r.userId ?? null,
+      userId: (metadata.userId as string | null | undefined) ?? null,
       traceId: r.traceId ?? null,
-      spanId: r.spanId ?? null,
-      parentSpanId: r.parentSpanId ?? null,
+      spanId: (metadata.spanId as string | null | undefined) ?? null,
+      parentSpanId:
+        (metadata.parentSpanId as string | null | undefined) ?? null,
       args,
       result,
       error: r.error ?? null,
-      status: r.status,
+      status: (metadata.status as string | undefined) ?? r.status.toLowerCase(),
       latencyMs: r.latencyMs,
-      costCents: r.costCents ?? null,
-      source: r.source ?? null,
-      mcpUserId: r.mcpUserId ?? null,
-      mcpClientId: r.mcpClientId ?? null,
-      endUserId: r.endUserId ?? null,
+      costCents: r.costCents === null ? null : Number(r.costCents),
+      source: (metadata.source as string | null | undefined) ?? null,
+      mcpUserId: (metadata.mcpUserId as string | null | undefined) ?? null,
+      mcpClientId: (metadata.mcpClientId as string | null | undefined) ?? null,
+      endUserId: (metadata.endUserId as string | null | undefined) ?? null,
       createdAt:
         r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     };
+  }
+
+  private persistedStatus(
+    status: RecordToolAuditInput["status"],
+  ): WorkStatus {
+    return status === "success" ? "SUCCEEDED" : "FAILED";
+  }
+
+  private jsonResult(value: unknown): Prisma.InputJsonValue | undefined {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === "object") return value as Prisma.InputJsonValue;
+    return { __platosScalarResult: value } as Prisma.InputJsonObject;
   }
 }

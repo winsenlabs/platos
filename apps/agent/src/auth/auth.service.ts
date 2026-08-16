@@ -1,26 +1,23 @@
 import { Injectable, Inject, Logger, Optional } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import { CredentialKind } from "@platos/tenancy-database";
+import {
+  type ControlDatabaseClient,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import * as crypto from "crypto";
-import { env } from "../shared/env";
 import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
+import { SecretsService } from "./secrets.service";
 
 /**
  * Session token claims.
  *
- * Two signing sources:
- *
- * 1. **Entity-signed** (default, `iss: "entity"` or omitted) — signed by an
- *    entity backend using its `serviceSecret`. Platos verifies by looking
- *    up the entity in the DB and recomputing HMAC with that entity's secret.
- *    `entityId` is required. Every entity has its own signing key; external
- *    integrators use this path.
- *
- * 2. **Platform-signed** (`iss: "platos-platform"`) — signed by the Platos
- *    webapp using the shared `SESSION_SECRET`. Used to auth browser
- *    WS connections from the Platos dashboard to the agent. `entityId` is
- *    absent. No DB lookup — verified against the platform secret directly.
+ * Every scoped token is a standard HS256 JWT signed by the Platos platform.
+ * Entity-backed end-user tokens additionally carry `authorizationId`, the ID
+ * of the clean McpBearerToken that authorized the mint. Validation re-loads
+ * that row and its Entity ancestry so bearer revocation/expiry immediately
+ * invalidates already-minted HTTP and WebSocket session tokens.
  *
  * `userToken` is an OPTIONAL opaque blob — the customer's own user JWT (or
  * any identity proof). Platos never parses it; it just forwards it on tool
@@ -31,12 +28,14 @@ export interface SessionPayload {
   organizationId: string;
   projectId: string;
   environmentId: string;
-  entityId?: string;        // required when iss === "entity"; absent when iss === "platos-platform"
+  entityId?: string;
+  /** Persisted McpBearerToken that authorized an entity end-user mint. */
+  authorizationId?: string;
   userId: string;
   userToken?: string;       // opaque user identity proof from the entity's auth system
   permissions?: string[];
-  iss?: "entity" | "platos-platform"; // issuer — defaults to "entity" for backwards compat
-  iat?: number;             // EOBD.1 — issued-at (optional). Emitted by new mints.
+  iss: "platos-platform";
+  iat: number;
   /** PIFSP-1 — optional agent scope. When set the token can only be used
    * with that specific agent (ScopeGuard enforces path match). */
   agentId?: string;
@@ -61,13 +60,12 @@ export interface SessionPayload {
 export interface EntityRegistration {
   organizationId: string;
   projectId: string;
+  environmentId?: string;
   entityId: string; // human-readable slug e.g. "fandesk-main"
   displayName: string;
   mcpUrls: string[];
   serviceSecret: string;
-  // PIFSP-3: `customParams` field removed — the column was dropped from
-  // PlatosConnectedEntity (migration 20260424010000_*). Per-tool params
-  // now live on the agent editor as "MCP arguments" (agent-config ticket).
+  // Per-tool params live on the agent editor as "MCP arguments".
 
   // MCP-connected-entity (design Commit 5 / §1.5a). Default "wire" — the
   // classic inbound platools relationship. "mcp" = an OUTBOUND MCP client
@@ -91,9 +89,8 @@ export interface EntityRegistration {
 /**
  * AuthService — handles session tokens, HMAC verification, and entity registry.
  *
- * Session tokens: short-lived (5min), signed with each ENTITY'S own
- *   `serviceSecret`. Issued by the entity backend; Platos looks up the
- *   entity by claim → verifies with that entity's secret.
+ * Session tokens are short-lived platform-signed JWTs. Entity end-user mints
+ * are authorized by a clean McpBearerToken and remain bound to its lifecycle.
  *
  * HMAC: used for Platos→entity tool calls (service-to-service auth).
  *   Each entity has a serviceSecret. Platos signs requests, entity verifies.
@@ -103,15 +100,16 @@ export interface EntityRegistration {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private prisma: any;
+  private prisma: ControlDatabaseClient;
 
   constructor(
-    @Inject(PRISMA_TOKEN) prisma: any,
+    @Inject(PRISMA_TOKEN) prisma: ControlDatabaseClient,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
     // Optional so focused test modules that never touch entity deletion do not
     // have to pull the whole tool gateway in. ToolGatewayModule has no edge
     // back into AuthModule, so this import direction introduces no cycle.
     @Optional() private readonly toolRegistry?: ToolRegistryService,
+    @Optional() private readonly secretsService?: SecretsService,
   ) {
     this.prisma = prisma;
   }
@@ -122,15 +120,10 @@ export class AuthService {
    * updates SESSION_SECRET + restarts nothing, and the next
    * validate / mint call picks up the new value.
    *
-   * Live WS sessions authed under the old secret stay connected until
-   * the socket closes; that's acceptable for routine rotation. For
-   * revocation use cases, restart the process.
+   * Existing sockets revalidate the signed token before each client event, so
+   * rotating the secret invalidates their next operation without a restart.
    *
-   * Shared secret for platform-issued session tokens
-   * (iss: "platos-platform"). Used by the Platos webapp to auth browser
-   * Socket.IO connections to the agent. Also serves as a dev-mode
-   * fallback for entity-signed tokens when PLATOS_TEST_MODE=true.
-   * Must be set in production.
+   * Shared secret for all scoped session tokens. Must be set in production.
    */
   private get platformSigningSecret(): string | undefined {
     const secret = process.env.SESSION_SECRET?.trim();
@@ -142,134 +135,120 @@ export class AuthService {
   // ═══════════════════════════════════════════════════════
 
   /**
-   * Validate a session token against the claim's entity's serviceSecret.
+   * Validate a standard platform-signed scoped JWT.
    *
-   * Returns the payload if the HMAC verifies AND the entity exists AND the
-   * token hasn't expired. Returns null otherwise.
-   *
-   * Token format: base64url(JSON payload).base64url(HMAC-SHA256 signature)
-   *
-   * Verification flow:
-   *   1. Parse claims (unsigned — trust nothing yet)
-   *   2. Look up entity by (organizationId, projectId, entityId) from claims
-   *   3. Decrypt-or-read entity.serviceSecret
-   *   4. Recompute HMAC(payloadB64, entity.serviceSecret)
-   *   5. Timing-safe compare with the token's signature
-   *   6. Check expiry
+   * Entity end-user tokens are accepted only while their persisted
+   * McpBearerToken remains active and its Entity/Project/Environment ancestry
+   * exactly matches the signed claims. This single method is shared by the
+   * HTTP ScopeGuard and WebSocket gateway.
    */
   async validateSessionToken(token: string): Promise<SessionPayload | null> {
     try {
-      // EOBD.1 — accept both formats for one release:
-      //   3-part: `base64url(header).base64url(payload).base64url(sig)` — standard HS256 JWT (new).
-      //   2-part: `base64url(payload).base64url(sig)`                   — legacy custom (pre-EOBD.1).
-      // The signing input is the full dotted prefix before the last `.`.
-      // For 3-part that's `header.payload`; for 2-part that's just `payload`.
       const parts = token.split(".");
-      if (parts.length !== 2 && parts.length !== 3) return null;
+      if (parts.length !== 3) return null;
+      const [headerB64, payloadB64, signatureB64] = parts;
+      if (!headerB64 || !payloadB64 || !signatureB64) return null;
 
-      let payloadB64: string;
-      let signatureB64: string;
-      let signingInput: string;
-
-      if (parts.length === 3) {
-        const [headerB64, p, s] = parts;
-        payloadB64 = p;
-        signatureB64 = s;
-        signingInput = `${headerB64}.${payloadB64}`;
-        // Sanity-check the header — reject non-HS256.
-        try {
-          const header = JSON.parse(Buffer.from(headerB64, "base64url").toString("utf-8"));
-          if (header?.alg !== "HS256") return null;
-        } catch {
-          return null;
-        }
-      } else {
-        [payloadB64, signatureB64] = parts;
-        signingInput = payloadB64;
-      }
-
-      // Step 1 — parse claims (still untrusted)
+      let header: unknown;
       let claims: SessionPayload;
       try {
-        claims = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf-8"));
+        header = JSON.parse(Buffer.from(headerB64, "base64url").toString("utf8"));
+        claims = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
       } catch {
         return null;
       }
       if (
+        !header ||
+        typeof header !== "object" ||
+        (header as { alg?: unknown }).alg !== "HS256" ||
         !claims ||
+        claims.iss !== "platos-platform" ||
         typeof claims.organizationId !== "string" ||
         typeof claims.projectId !== "string" ||
         typeof claims.environmentId !== "string" ||
-        typeof claims.userId !== "string"
+        typeof claims.userId !== "string" ||
+        typeof claims.iat !== "number" ||
+        !Number.isFinite(claims.iat) ||
+        typeof claims.exp !== "number" ||
+        !Number.isFinite(claims.exp)
       ) {
         return null;
       }
 
-      // Step 2 — pick signing secret based on issuer.
-      let serviceSecret: string | undefined;
-      if (claims.iss === "platos-platform") {
-        // Platform-signed token — minted by the Platos webapp for browser WS
-        // connections to the agent. Verified against SESSION_SECRET.
-        // entityId is absent; no DB lookup.
-        if (!this.platformSigningSecret) {
-          this.logger.warn(
-            "validateSessionToken: platform token received but SESSION_SECRET not set — rejecting.",
-          );
-          return null;
-        }
-        serviceSecret = this.platformSigningSecret;
-      } else {
-        // Entity-signed token — default path for external integrators.
-        if (typeof claims.entityId !== "string") {
-          return null;
-        }
-        try {
-          const entity = await this.prisma.platosConnectedEntity.findUnique({
-            where: {
-              organizationId_projectId_entityId: {
-                organizationId: claims.organizationId,
-                projectId: claims.projectId,
-                entityId: claims.entityId,
-              },
-            },
-            select: { serviceSecret: true },
-          });
-          serviceSecret = entity?.serviceSecret;
-        } catch (err) {
-          this.logger.warn(`validateSessionToken DB lookup failed: ${(err as Error).message}`);
-          return null;
-        }
-
-        // Dev-mode fallback: if no entity row AND a platform secret is set
-        // AND PLATOS_TEST_MODE is true, fall back. Production should never
-        // hit this branch; the platform-issued path above is the prod route
-        // for webapp-sourced tokens.
-        if (!serviceSecret) {
-          if (this.platformSigningSecret && env.PLATOS_TEST_MODE === true) {
-            serviceSecret = this.platformSigningSecret;
-          } else {
-            return null;
-          }
-        }
+      const signingSecret = this.platformSigningSecret;
+      if (!signingSecret) {
+        this.logger.warn(
+          "validateSessionToken: SESSION_SECRET not set — rejecting scoped token.",
+        );
+        return null;
       }
-
-      // Step 3 — verify HMAC (timing-safe). `signingInput` is the full
-      // dotted prefix before the signature: `header.payload` for 3-part
-      // JWTs, just `payload` for the legacy 2-part format.
-      const expectedSig = crypto
-        .createHmac("sha256", serviceSecret)
+      const signingInput = `${headerB64}.${payloadB64}`;
+      const expected = crypto
+        .createHmac("sha256", signingSecret)
         .update(signingInput)
         .digest("base64url");
-      if (expectedSig.length !== signatureB64.length) return null;
-      if (!crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signatureB64))) {
+      if (expected.length !== signatureB64.length) return null;
+      if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureB64))) {
         return null;
       }
 
-      // Step 4 — expiry check. EOBD.2: `exp` is mandatory. A token
-      // without a numeric, in-the-future `exp` is rejected. Every internal
-      // mint path sets exp, so no legitimate caller omits it.
-      if (typeof claims.exp !== "number" || !Number.isFinite(claims.exp)) return null;
-      if (Date.now() > claims.exp * 1000) return null;
+      const now = new Date();
+      if (claims.exp * 1000 <= now.getTime()) return null;
+      if (claims.iat > Math.floor(now.getTime() / 1000) + 60) return null;
+
+      if (claims.authorizationId !== undefined) {
+        if (typeof claims.authorizationId !== "string" || typeof claims.entityId !== "string") {
+          return null;
+        }
+        const authorization = await this.prisma.mcpBearerToken.findUnique({
+          where: { id: claims.authorizationId },
+          select: {
+            id: true,
+            revokedAt: true,
+            expiresAt: true,
+            entity: {
+              select: {
+                externalId: true,
+                project: { select: { id: true, organizationId: true } },
+              },
+            },
+          },
+        });
+        if (
+          !authorization ||
+          authorization.revokedAt ||
+          (authorization.expiresAt && authorization.expiresAt.getTime() <= now.getTime()) ||
+          authorization.entity.externalId !== claims.entityId ||
+          authorization.entity.project.id !== claims.projectId ||
+          authorization.entity.project.organizationId !== claims.organizationId
+        ) {
+          return null;
+        }
+
+        const environment = await this.prisma.environment.findUnique({
+          where: { id: claims.environmentId },
+          select: { project: { select: { id: true, organizationId: true } } },
+        });
+        if (
+          !environment ||
+          environment.project.id !== authorization.entity.project.id ||
+          environment.project.organizationId !== authorization.entity.project.organizationId
+        ) {
+          return null;
+        }
+
+        // Close the lookup→use revocation race. A revoke/expiry that wins here
+        // invalidates the session instead of allowing one unaudited request.
+        const active = await this.prisma.mcpBearerToken.updateMany({
+          where: {
+            id: authorization.id,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+          data: { lastUsedAt: now },
+        });
+        if (active.count !== 1) return null;
+      }
 
       return claims;
     } catch (err) {
@@ -278,17 +257,35 @@ export class AuthService {
     }
   }
 
-  /**
-   * Mint a platform-issued session token (iss: "platos-platform"). Signed
-   * with SESSION_SECRET — NOT an entity's serviceSecret. Used by the
-   * Platos webapp to auth browser Socket.IO connections to the agent.
-   *
-   * The webapp is expected to mint in its Remix loader (authenticated via
-   * the existing user session cookie) and pass to the browser as the `token`
-   * in the Socket.IO handshake auth.
-   *
-   * Returns null if SESSION_SECRET is not set.
-   */
+  private mintPlatformToken(
+    claims: Omit<SessionPayload, "iss" | "iat" | "exp"> & Record<string, unknown>,
+    ttlSeconds: number,
+  ): string | null {
+    const signingSecret = this.platformSigningSecret;
+    if (!signingSecret) {
+      this.logger.warn("SESSION_SECRET not set — cannot mint scoped token.");
+      return null;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const full: SessionPayload & Record<string, unknown> = {
+      ...claims,
+      iss: "platos-platform",
+      iat: now,
+      exp: now + ttlSeconds,
+    };
+    const headerB64 = Buffer.from(
+      JSON.stringify({ alg: "HS256", typ: "JWT" }),
+    ).toString("base64url");
+    const payloadB64 = Buffer.from(JSON.stringify(full)).toString("base64url");
+    const signingInput = `${headerB64}.${payloadB64}`;
+    const signature = crypto
+      .createHmac("sha256", signingSecret)
+      .update(signingInput)
+      .digest("base64url");
+    return `${signingInput}.${signature}`;
+  }
+
+  /** Mint an operator or guest platform token with no entity bearer binding. */
   async createPlatformSessionToken(
     claims: {
       organizationId: string;
@@ -297,80 +294,34 @@ export class AuthService {
       userId: string;
       userToken?: string;
       permissions?: string[];
-      /**
-       * EOBD.102 — extra claims merged into the JWT payload. Used by
-       * the public guest-token flow (EOBD.89) to stamp `isGuest: true`
-       * + `agentId` without adding each new field to the core claim
-       * shape. Caller-provided keys override core claims last-writer-wins
-       * except for `iss`/`iat`/`exp` which are always server-set.
-       */
       extraClaims?: Record<string, unknown>;
     },
     ttlSeconds: number = 3600,
   ): Promise<string | null> {
-    if (!this.platformSigningSecret) {
-      this.logger.warn(
-        "createPlatformSessionToken: SESSION_SECRET not set — cannot mint.",
-      );
-      return null;
-    }
-    const now = Math.floor(Date.now() / 1000);
     const { extraClaims, ...coreClaims } = claims;
-    const full: SessionPayload & Record<string, unknown> = {
-      ...(extraClaims ?? {}),
-      ...coreClaims,
-      iss: "platos-platform",
-      iat: now,
-      exp: now + ttlSeconds,
-    };
-    // EOBD.1 — emit standard 3-part HS256 JWT (matches webapp mint
-    // helper and works with jsonwebtoken / jose / PyJWT etc.).
-    const headerB64 = Buffer.from(
-      JSON.stringify({ alg: "HS256", typ: "JWT" }),
-    ).toString("base64url");
-    const payloadB64 = Buffer.from(JSON.stringify(full)).toString("base64url");
-    const signingInput = `${headerB64}.${payloadB64}`;
-    const signature = crypto
-      .createHmac("sha256", this.platformSigningSecret)
-      .update(signingInput)
-      .digest("base64url");
-    return `${signingInput}.${signature}`;
+    return this.mintPlatformToken(
+      {
+        ...(extraClaims ?? {}),
+        ...coreClaims,
+      } as Omit<SessionPayload, "iss" | "iat" | "exp"> & Record<string, unknown>,
+      ttlSeconds,
+    );
   }
 
   /**
-   * Mint a session token signed by the given entity's serviceSecret.
-   *
-   * In production, entity backends mint tokens themselves (they have the
-   * shared secret). This helper is for tests + dev workflows + admin CLIs.
+   * Mint an entity end-user token authorized by a persisted McpBearerToken.
+   * The authorization ID is signed into the JWT and revalidated on every HTTP
+   * request and WebSocket connection.
    */
-  async createSessionToken(
-    claims: Omit<SessionPayload, "exp">,
-    ttlSeconds: number = 300,
+  async createEntitySessionToken(
+    claims: Omit<SessionPayload, "iss" | "iat" | "exp" | "authorizationId">,
+    authorizationId: string,
+    ttlSeconds: number = 3600,
   ): Promise<string | null> {
-    const entity = await this.prisma.platosConnectedEntity.findUnique({
-      where: {
-        organizationId_projectId_entityId: {
-          organizationId: claims.organizationId,
-          projectId: claims.projectId,
-          entityId: claims.entityId,
-        },
-      },
-      select: { serviceSecret: true },
-    });
-    if (!entity?.serviceSecret) return null;
-
-    const full: SessionPayload = { ...claims, exp: Math.floor(Date.now() / 1000) + ttlSeconds };
-    // TODO(EOBD.1 follow-up) — this entity-signed helper still emits the
-    // legacy 2-part format so existing tests and admin CLIs continue to
-    // work. Migrate to 3-part HS256 when the legacy-accept window in
-    // validateSessionToken is removed (next major release after
-    // downstream integrators have rotated their tokens).
-    const payloadB64 = Buffer.from(JSON.stringify(full)).toString("base64url");
-    const signature = crypto
-      .createHmac("sha256", entity.serviceSecret)
-      .update(payloadB64)
-      .digest("base64url");
-    return `${payloadB64}.${signature}`;
+    return this.mintPlatformToken(
+      { ...claims, authorizationId },
+      ttlSeconds,
+    );
   }
 
   // ═══════════════════════════════════════════════════════
@@ -404,21 +355,6 @@ export class AuthService {
    * The secret is shown ONCE at creation — if lost, use regenerateServiceSecret.
    */
   async registerEntity(data: EntityRegistration): Promise<any> {
-    // Strict create — duplicate entityId per (org, project) throws so the
-    // caller gets a clear 409. The previous upsert path silently overwrote
-    // mutable fields on the existing row AND returned a freshly-generated
-    // `plaintextSecret` that was NEVER written — callers then handed that
-    // fake secret to their backend, which failed to authenticate against
-    // the old hash in the DB. To rotate a secret, use
-    // `POST /entities/:id/regenerate-secret` (existing endpoint).
-    // §1.5a — the mcp kind satisfies the wire-only `serviceSecret` column via
-    // the same generate-and-ignore path (a valid-but-unused secret keeps
-    // provision/rotate/list working; nothing on the mcp dispatch path ever
-    // signs with it).
-    const secret = !data.serviceSecret || data.serviceSecret === "auto"
-      ? crypto.randomBytes(32).toString("hex")
-      : data.serviceSecret;
-
     const connectionKind = data.connectionKind === "mcp" ? "mcp" : "wire";
     if (connectionKind === "mcp" && (!data.mcpClient || !data.mcpClient.transport)) {
       const bad: any = new Error(
@@ -428,46 +364,130 @@ export class AuthService {
       throw bad;
     }
 
-    try {
-      const entity = await this.prisma.platosConnectedEntity.create({
-        data: {
-          organizationId: data.organizationId,
-          projectId: data.projectId,
-          entityId: data.entityId,
-          displayName: data.displayName,
-          mcpUrls: data.mcpUrls,
-          serviceSecret: secret,
-          // PIFSP-3: `customParams` removed — column dropped in this release.
-          connectionKind,
-          connectionStatus: "disconnected",
-          // Create the 1:1 outbound transport row in the SAME insert (design
-          // §1.3/§1.5a). The endpoint arrives as `mcpClient.url`, never on
-          // `mcpUrls`. Discovery (kicked by the caller) flips connectionStatus
-          // to "connected" on a successful tools/list.
-          ...(connectionKind === "mcp" && data.mcpClient
-            ? {
-                mcpClient: {
-                  create: {
-                    transport: data.mcpClient.transport,
-                    url: data.mcpClient.url ?? null,
-                    credsSecretKey: data.mcpClient.credsSecretKey ?? null,
-                    // OMIT the field when absent rather than passing a plain
-                    // `null`: Prisma rejects raw null for `Json?` write args
-                    // (it demands Prisma.JsonNull/DbNull), so `?? null` would
-                    // make every template-less mcp registration (the common
-                    // bearer-token case) throw at runtime. Omission leaves the
-                    // column at its NULL default — same end state, no sentinel.
-                    ...(data.mcpClient.headersTemplate != null
-                      ? { headersTemplate: data.mcpClient.headersTemplate as any }
-                      : {}),
-                  },
-                },
-              }
-            : {}),
+    const project = await this.prisma.project.findFirst({
+      where: { id: data.projectId, organizationId: data.organizationId },
+      select: {
+        id: true,
+        organizationId: true,
+        environments: {
+          where: { archivedAt: null },
+          select: { id: true },
+          orderBy: { createdAt: "asc" },
         },
-        include: { mcpClient: true },
+      },
+    });
+    if (!project) {
+      const bad: any = new Error("Project not found in organization scope");
+      bad.statusCode = 404;
+      throw bad;
+    }
+    if (
+      data.environmentId &&
+      !project.environments.some((environment) => environment.id === data.environmentId)
+    ) {
+      const bad: any = new Error("Environment not found in project scope");
+      bad.statusCode = 400;
+      throw bad;
+    }
+    if (connectionKind === "wire" && project.environments.length === 0) {
+      const bad: any = new Error("Wire entities require an active project environment");
+      bad.statusCode = 400;
+      throw bad;
+    }
+
+    const secret =
+      connectionKind === "wire"
+        ? !data.serviceSecret || data.serviceSecret === "auto"
+          ? crypto.randomBytes(32).toString("hex")
+          : data.serviceSecret
+        : null;
+    if (secret && !this.secretsService) {
+      throw new Error("Entity credential encryption is unavailable");
+    }
+    const secretHash = secret
+      ? crypto.createHash("sha256").update(secret).digest("hex")
+      : null;
+
+    const credentialEnvironmentId =
+      data.environmentId ?? project.environments[0]?.id;
+    let outboundCredentialId: string | null = null;
+    if (connectionKind === "mcp" && data.mcpClient?.credsSecretKey) {
+      if (!credentialEnvironmentId) {
+        const bad: any = new Error("MCP credential requires an active project environment");
+        bad.statusCode = 400;
+        throw bad;
+      }
+      const credential = await this.prisma.credential.findFirst({
+        where: {
+          environmentId: credentialEnvironmentId,
+          name: data.mcpClient.credsSecretKey,
+          revokedAt: null,
+          environment: {
+            projectId: data.projectId,
+            project: { organizationId: data.organizationId },
+          },
+        },
+        select: { id: true },
       });
-      return { ...entity, plaintextSecret: secret };
+      if (!credential) {
+        const bad: any = new Error("MCP credential not found in environment scope");
+        bad.statusCode = 400;
+        throw bad;
+      }
+      outboundCredentialId = credential.id;
+    }
+
+    try {
+      const entity = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.entity.create({
+          data: {
+            projectId: data.projectId,
+            externalId: data.entityId,
+            displayName: data.displayName,
+            mcpUrls: data.mcpUrls,
+            connectionKind,
+            connectionStatus: "disconnected",
+            ...(connectionKind === "mcp" && data.mcpClient
+              ? {
+                  mcpClient: {
+                    create: {
+                      transport: data.mcpClient.transport,
+                      url: data.mcpClient.url ?? null,
+                      credentialId: outboundCredentialId,
+                      headersTemplate:
+                        data.mcpClient.headersTemplate != null
+                          ? (data.mcpClient.headersTemplate as any)
+                          : {},
+                    },
+                  },
+                }
+              : {}),
+          },
+        });
+        if (secret && secretHash) {
+          for (const environment of project.environments) {
+            await tx.credential.create({
+              data: {
+                environmentId: environment.id,
+                kind: CredentialKind.ENTITY_SECRET,
+                name: data.entityId,
+                prefix: secret.slice(0, 8),
+                secretHash,
+                encryptedReference: this.secretsService!.encrypt(secret),
+                permissions: ["entity:wire"],
+              },
+            });
+          }
+        }
+        return tx.entity.findUniqueOrThrow({
+          where: { id: created.id },
+          select: AuthService.ENTITY_SAFE_SELECT,
+        });
+      });
+      return {
+        ...AuthService.projectEntity(entity),
+        ...(secret ? { plaintextSecret: secret } : {}),
+      };
     } catch (err: any) {
       if (err?.code === "P2002") {
         const conflict: any = new Error(
@@ -481,38 +501,53 @@ export class AuthService {
     }
   }
 
-  /** Safe columns returned by getEntity / listEntities — serviceSecret and
-   * serviceSecretHash are intentionally excluded from list/get responses.
-   * BUG-2: never leak serviceSecret via REST endpoints. */
+  /** Safe columns returned by getEntity / listEntities. Credential secret
+   * material is intentionally outside this graph. */
   private static readonly ENTITY_SAFE_SELECT = {
     id: true,
-    entityId: true,
+    externalId: true,
     displayName: true,
     mcpUrls: true,
-    organizationId: true,
     projectId: true,
     connectionStatus: true,
     lastConnectedAt: true,
-    // MCP-connected-entity (design Commit 5) — surface the transport
-    // discriminator so list/get/census can tell mcp entities from wire, and
-    // so the manual-refresh path can gate on it without a second read.
     connectionKind: true,
-    linkedAgentIds: true,
     allowedOrigins: true,
-    testCredentials: true,
     mcpConfig: true,
-    // MCP consumption (Surface 2 / UNIT D) — surface the OUTBOUND transport
-    // config (transport/url/credsSecretKey/headersTemplate) + discovery
-    // status (lastDiscoveryAt/discoveryError) so the dashboard can render +
-    // edit an mcp entity and show a "Refresh discovery" result. Present iff
-    // connectionKind === "mcp"; null for wire entities. credsSecretKey is a
-    // bare SecretStore var NAME (never the raw secret) and headersTemplate
-    // values embed {{secret}}/{{endUserId}} TEMPLATES (never resolved secrets),
-    // so this is safe to return alongside the other safe columns.
-    mcpClient: true,
+    mcpClient: {
+      select: {
+        entityId: true,
+        transport: true,
+        url: true,
+        headersTemplate: true,
+        lastDiscoveryAt: true,
+        discoveryError: true,
+        createdAt: true,
+        updatedAt: true,
+        credential: { select: { name: true } },
+      },
+    },
+    project: { select: { organizationId: true } },
     createdAt: true,
     updatedAt: true,
   } as const;
+
+  private static projectEntity(row: any): any {
+    const { externalId, project, mcpClient, ...entity } = row;
+    return {
+      ...entity,
+      entityId: externalId,
+      organizationId: project.organizationId,
+      linkedAgentIds: [],
+      mcpClient: mcpClient
+        ? {
+            ...mcpClient,
+            credsSecretKey: mcpClient.credential?.name ?? null,
+            credential: undefined,
+          }
+        : null,
+    };
+  }
 
   // ═══════════════════════════════════════════════════════
   // Multi-tenant CORS — allowedOrigins aggregation cache
@@ -547,7 +582,7 @@ export class AuthService {
     }
     if (this.originCacheRefreshing) return this.originCacheRefreshing;
     this.originCacheRefreshing = (async () => {
-      const rows = await this.prisma.platosConnectedEntity.findMany({
+      const rows = await this.prisma.entity.findMany({
         select: { allowedOrigins: true },
       });
       const set = new Set<string>();
@@ -571,22 +606,24 @@ export class AuthService {
   }
 
   async getEntity(organizationId: string, projectId: string, entityId: string): Promise<any> {
-    return this.prisma.platosConnectedEntity.findUnique({
+    const entity = await this.prisma.entity.findFirst({
       where: {
-        organizationId_projectId_entityId: { organizationId, projectId, entityId },
+        projectId,
+        externalId: entityId,
+        project: { organizationId },
       },
-      // BUG-2: exclude serviceSecret and serviceSecretHash from API responses.
       select: AuthService.ENTITY_SAFE_SELECT,
     });
+    return entity ? AuthService.projectEntity(entity) : null;
   }
 
   async listEntities(organizationId: string, projectId: string): Promise<any[]> {
-    return this.prisma.platosConnectedEntity.findMany({
-      where: { organizationId, projectId },
+    const entities = await this.prisma.entity.findMany({
+      where: { projectId, project: { organizationId } },
       orderBy: { createdAt: "desc" },
-      // BUG-2: exclude serviceSecret and serviceSecretHash from API responses.
       select: AuthService.ENTITY_SAFE_SELECT,
     });
+    return entities.map(AuthService.projectEntity);
   }
 
   /**
@@ -604,8 +641,8 @@ export class AuthService {
    * correct if that order ever changes.
    */
   async deleteEntity(organizationId: string, projectId: string, entityId: string): Promise<boolean> {
-    const entity = await this.prisma.platosConnectedEntity.findFirst({
-      where: { organizationId, projectId, entityId },
+    const entity = await this.prisma.entity.findFirst({
+      where: { projectId, externalId: entityId, project: { organizationId } },
       select: { id: true },
     });
 
@@ -625,8 +662,21 @@ export class AuthService {
       }
     }
 
-    const result = await this.prisma.platosConnectedEntity.deleteMany({
-      where: { organizationId, projectId, entityId },
+    if (!entity) return false;
+    const now = new Date();
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.credential.updateMany({
+        where: {
+          kind: CredentialKind.ENTITY_SECRET,
+          name: entityId,
+          revokedAt: null,
+          environment: { projectId, project: { organizationId } },
+        },
+        data: { revokedAt: now },
+      });
+      return tx.entity.deleteMany({
+        where: { id: entity.id, projectId, project: { organizationId } },
+      });
     });
     return result.count > 0;
   }
@@ -679,17 +729,15 @@ export class AuthService {
       data["allowedOrigins"] = normalized;
     }
     if (Object.keys(data).length === 0) {
-      return this.prisma.platosConnectedEntity.findUnique({
-        where: {
-          organizationId_projectId_entityId: { organizationId, projectId, entityId },
-        },
-        select: AuthService.ENTITY_SAFE_SELECT,
-      });
+      return this.getEntity(organizationId, projectId, entityId);
     }
-    const updated = await this.prisma.platosConnectedEntity.update({
-      where: {
-        organizationId_projectId_entityId: { organizationId, projectId, entityId },
-      },
+    const existing = await this.prisma.entity.findFirst({
+      where: { projectId, externalId: entityId, project: { organizationId } },
+      select: { id: true },
+    });
+    if (!existing) return null;
+    const updated = await this.prisma.entity.update({
+      where: { id: existing.id },
       data,
       select: AuthService.ENTITY_SAFE_SELECT,
     });
@@ -697,30 +745,69 @@ export class AuthService {
     // CORS preflight sees the new value within ms instead of waiting
     // out the 30s TTL.
     if (Array.isArray(patch.allowedOrigins)) this.invalidateOriginCache();
-    return updated;
+    return AuthService.projectEntity(updated);
   }
 
   // ═══════════════════════════════════════════════════════
   // Access Keys
   // ═══════════════════════════════════════════════════════
 
+  private async resolveEnvironmentScope(scope: {
+    organizationId: string;
+    projectId: string;
+    environmentId: string;
+  }): Promise<{ organizationId: string; projectId: string; environmentId: string } | null> {
+    const environment = await this.prisma.environment.findUnique({
+      where: { id: scope.environmentId },
+      select: {
+        id: true,
+        project: { select: { id: true, organizationId: true } },
+      },
+    });
+    if (
+      !environment ||
+      environment.project.id !== scope.projectId ||
+      environment.project.organizationId !== scope.organizationId
+    ) {
+      return null;
+    }
+    return {
+      organizationId: environment.project.organizationId,
+      projectId: environment.project.id,
+      environmentId: environment.id,
+    };
+  }
+
   /** Generate a new scoped access key. Returns the raw key (shown once) + the DB record. */
   async generateAccessKey(scope: { organizationId: string; projectId: string; environmentId: string }): Promise<{ rawKey: string; keyPrefix: string }> {
+    const canonical = await this.resolveEnvironmentScope(scope);
+    if (!canonical) throw new Error("Environment not found in scope");
     const raw = `platos_live_${crypto.randomBytes(24).toString("hex")}`;
     const hash = crypto.createHash("sha256").update(raw).digest("hex");
     const prefix = raw.slice(0, 16);
-    await this.prisma.platosAccessKey.upsert({
-      where: { platos_access_key_scope_uniq: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId } },
-      update: { keyHash: hash, keyPrefix: prefix, updatedAt: new Date() },
-      create: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId, keyHash: hash, keyPrefix: prefix },
+    const now = new Date();
+    await this.prisma.$transaction(async (tx: any) => {
+      await tx.accessKey.updateMany({
+        where: { environmentId: canonical.environmentId, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      await tx.accessKey.create({
+        data: {
+          environmentId: canonical.environmentId,
+          keyHash: hash,
+          keyPrefix: prefix,
+        },
+      });
     });
     return { rawKey: raw, keyPrefix: prefix };
   }
 
   /** Update allowed origins for a scope's access key. */
   async setAllowedOrigins(scope: { organizationId: string; projectId: string; environmentId: string }, origins: string[]): Promise<void> {
-    await this.prisma.platosAccessKey.updateMany({
-      where: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
+    const canonical = await this.resolveEnvironmentScope(scope);
+    if (!canonical) throw new Error("Environment not found in scope");
+    await this.prisma.accessKey.updateMany({
+      where: { environmentId: canonical.environmentId, revokedAt: null },
       data: { allowedOrigins: origins },
     });
   }
@@ -731,9 +818,12 @@ export class AuthService {
     providedKey: string | undefined,
     origin: string | undefined,
   ): Promise<boolean | null> {
-    const record = await this.prisma.platosAccessKey.findFirst({
-      where: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
+    const canonical = await this.resolveEnvironmentScope(scope);
+    if (!canonical) return false;
+    const record = await this.prisma.accessKey.findFirst({
+      where: { environmentId: canonical.environmentId, revokedAt: null },
       select: { keyHash: true, allowedOrigins: true, id: true },
+      orderBy: { createdAt: "desc" },
     });
     if (!record) return null; // no key configured — pass through
     if (!providedKey) return false;
@@ -756,8 +846,8 @@ export class AuthService {
       if (!allowed) return false;
     }
     // Update lastUsedAt asynchronously — don't block the request
-    this.prisma.platosAccessKey.updateMany({
-      where: { id: record.id },
+    void this.prisma.accessKey.updateMany({
+      where: { id: record.id, revokedAt: null },
       data: { lastUsedAt: new Date() },
     }).catch(() => undefined);
     return true;
@@ -765,16 +855,22 @@ export class AuthService {
 
   /** Get the access key record (without keyHash) for display. */
   async getAccessKey(scope: { organizationId: string; projectId: string; environmentId: string }) {
-    return this.prisma.platosAccessKey.findFirst({
-      where: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
+    const canonical = await this.resolveEnvironmentScope(scope);
+    if (!canonical) return null;
+    return this.prisma.accessKey.findFirst({
+      where: { environmentId: canonical.environmentId, revokedAt: null },
       select: { keyPrefix: true, allowedOrigins: true, lastUsedAt: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
     });
   }
 
-  /** Delete the access key for a scope. */
+  /** Revoke the active access key for a scope. */
   async deleteAccessKey(scope: { organizationId: string; projectId: string; environmentId: string }): Promise<void> {
-    await this.prisma.platosAccessKey.deleteMany({
-      where: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
+    const canonical = await this.resolveEnvironmentScope(scope);
+    if (!canonical) throw new Error("Environment not found in scope");
+    await this.prisma.accessKey.updateMany({
+      where: { environmentId: canonical.environmentId, revokedAt: null },
+      data: { revokedAt: new Date() },
     });
   }
 
@@ -787,16 +883,102 @@ export class AuthService {
     projectId: string,
     entityId: string,
   ): Promise<{ organizationId: string; projectId: string; entityId: string; serviceSecret: string } | null> {
-    const newSecret = crypto.randomBytes(32).toString("hex");
-    const updated = await this.prisma.platosConnectedEntity
-      .update({
-        where: {
-          organizationId_projectId_entityId: { organizationId, projectId, entityId },
+    if (!this.secretsService) {
+      throw new Error("Entity credential encryption is unavailable");
+    }
+    const entity = await this.prisma.entity.findFirst({
+      where: {
+        projectId,
+        externalId: entityId,
+        connectionKind: "wire",
+        project: { organizationId },
+      },
+      select: {
+        id: true,
+        project: {
+          select: {
+            environments: {
+              where: { archivedAt: null },
+              select: { id: true },
+            },
+          },
         },
-        data: { serviceSecret: newSecret },
-      })
-      .catch(() => null);
-    if (!updated) return null;
+      },
+    });
+    if (!entity || entity.project.environments.length === 0) return null;
+
+    const newSecret = crypto.randomBytes(32).toString("hex");
+    const secretHash = crypto.createHash("sha256").update(newSecret).digest("hex");
+    await this.prisma.$transaction(async (tx) => {
+      for (const environment of entity.project.environments) {
+        const encryptedReference = this.secretsService!.encrypt(newSecret);
+        await tx.credential.upsert({
+          where: {
+            environmentId_kind_name: {
+              environmentId: environment.id,
+              kind: CredentialKind.ENTITY_SECRET,
+              name: entityId,
+            },
+          },
+          create: {
+            environmentId: environment.id,
+            kind: CredentialKind.ENTITY_SECRET,
+            name: entityId,
+            prefix: newSecret.slice(0, 8),
+            secretHash,
+            encryptedReference,
+            permissions: ["entity:wire"],
+          },
+          update: {
+            prefix: newSecret.slice(0, 8),
+            secretHash,
+            encryptedReference,
+            revokedAt: null,
+            lastUsedAt: null,
+          },
+        });
+      }
+    });
     return { organizationId, projectId, entityId, serviceSecret: newSecret };
+  }
+
+  /** Resolve a wire entity's Environment-owned signing secret for an internal
+   * transport call. This method never returns credential rows or ciphertext. */
+  async resolveEntityServiceSecret(scope: {
+    organizationId: string;
+    projectId: string;
+    environmentId: string;
+    entityId: string;
+  }): Promise<string | null> {
+    if (!this.secretsService) return null;
+    const credential = await this.prisma.credential.findFirst({
+      where: {
+        environmentId: scope.environmentId,
+        kind: CredentialKind.ENTITY_SECRET,
+        name: scope.entityId,
+        revokedAt: null,
+        environment: {
+          projectId: scope.projectId,
+          project: {
+            organizationId: scope.organizationId,
+            entities: {
+              some: { externalId: scope.entityId, connectionKind: "wire" },
+            },
+          },
+        },
+      },
+      select: { id: true, encryptedReference: true },
+    });
+    if (!credential?.encryptedReference) return null;
+    try {
+      const secret = this.secretsService.decrypt(credential.encryptedReference);
+      await this.prisma.credential.updateMany({
+        where: { id: credential.id, revokedAt: null },
+        data: { lastUsedAt: new Date() },
+      });
+      return secret;
+    } catch {
+      return null;
+    }
   }
 }

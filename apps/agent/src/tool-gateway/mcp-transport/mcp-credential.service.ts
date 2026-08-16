@@ -7,8 +7,8 @@ import { ScopedEnvService, type ScopeTuple } from "../../providers/scoped-env.se
  * registered third-party MCP server (Phase 1).
  *
  * A server row carries a `headersTemplate` ({ header → value-template } map)
- * and an optional `credsSecretKey` (a BARE SecretStore var name — never the
- * raw secret). This service resolves the template into the concrete outbound
+ * and an optional Credential relation (safe metadata/reference, never raw
+ * secret material). This service resolves the template into the concrete outbound
  * header set the transport should send, interpolating the decrypted secret
  * into any `{{secret}}` placeholder.
  *
@@ -37,15 +37,15 @@ import { ScopedEnvService, type ScopeTuple } from "../../providers/scoped-env.se
  */
 
 /**
- * The subset of a `PlatosEntityMcpClient` row this service reads. Structural —
+ * The subset of an EntityMcpClient row this service reads. Structural —
  * any object carrying these two fields satisfies it (the entity's 1:1 client
  * row does, unchanged).
  */
 export interface CredentialServerSlice {
   /** `Json?` column — a { header: valueTemplate } map, or null. */
   headersTemplate?: unknown;
-  /** BARE SecretStore var name (passed straight to ScopedEnvService.get). */
-  credsSecretKey?: string | null;
+  /** Safe Credential metadata; `name` remains the bare scoped reference. */
+  credential?: { name: string } | null;
 }
 
 /**
@@ -95,7 +95,7 @@ export class McpCredentialService {
    * Resolve the outbound header set for a server.
    *
    * The secret is fetched LAZILY — only when some header value references
-   * `{{secret}}`. If a `{{secret}}` reference exists but `credsSecretKey` is
+   * `{{secret}}`. If a `{{secret}}` reference exists but no Credential is
    * unset or unresolvable, a structured `McpCredentialError` is thrown.
    *
    * Per-user (`{{endUserId}}`) FAIL-CLOSED: if any header value references
@@ -129,15 +129,16 @@ export class McpCredentialService {
 
     let secret: string | undefined;
     if (needsSecret) {
-      if (!server.credsSecretKey) {
+      const credentialName = server.credential?.name;
+      if (!credentialName) {
         throw new McpCredentialError(
-          "MCP header template references {{secret}} but the server has no credsSecretKey configured",
+          "MCP header template references {{secret}} but the server has no credential configured",
         );
       }
-      secret = await this.scopedEnv.get(scope, server.credsSecretKey);
+      secret = await this.resolveCredentialReference(scope, credentialName);
       if (secret === undefined) {
         throw new McpCredentialError(
-          "MCP server credsSecretKey could not be resolved from the secret store (missing or undecryptable)",
+          "MCP credential reference could not be resolved (missing or unreadable)",
         );
       }
     }
@@ -191,16 +192,24 @@ export class McpCredentialService {
     return createHash("sha256").update(canonical).digest("hex");
   }
 
+  /** Resolve a safe same-Environment credential name at the transport edge. */
+  async resolveCredentialReference(
+    scope: ScopeTuple,
+    credentialName: string,
+  ): Promise<string | undefined> {
+    return this.scopedEnv.get(scope, credentialName);
+  }
+
   /**
    * Coerce `server.headersTemplate` (a `Json?` column) into a
    * { header: valueTemplate } string map.
    *
    * Robust against the JSON-column-shape footgun (a string scalar can land in
    * a `Json?` column) and against non-object / array shapes. When NO template
-   * is configured but a `credsSecretKey` IS set, defaults to a single
+   * is configured but a Credential IS set, defaults to a single
    * `Authorization: Bearer {{secret}}` header so the overwhelmingly-common
    * bearer-token case works without the operator also authoring a template.
-   * Returns `{}` when neither a usable template nor a credsSecretKey exists.
+   * Returns `{}` when neither a usable template nor a Credential exists.
    */
   private normalizeTemplate(
     server: CredentialServerSlice,
@@ -223,7 +232,7 @@ export class McpCredentialService {
       }
     }
 
-    if (Object.keys(out).length === 0 && server.credsSecretKey) {
+    if (Object.keys(out).length === 0 && server.credential?.name) {
       out["Authorization"] = `Bearer ${SECRET_TOKEN}`;
     }
     return out;

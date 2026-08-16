@@ -1,148 +1,114 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ConversationService } from "./conversation.service";
 
-/**
- * CURSOR-ANCHORED HISTORY.
- *
- * The window was a pure slide (`orderBy desc, take: limit`), which broke two
- * things at once:
- *
- *  1. Compaction was ADDITIVE. Messages between the compaction cursor and the
- *     start of the sliding window appeared in the summary AND again in the
- *     loaded history, so compacting a thread INCREASED its token cost.
- *  2. It defeated cross-turn prompt caching. Anthropic matches an exact prefix,
- *     so the moment the oldest message slid off, messages[0] changed and the
- *     entire cached prefix died — every turn, on every thread past contextLimit.
- *
- * The anchor (`compactedUpToMessageId`) was already being WRITTEN by the
- * compaction path and read by nothing. Honouring it makes the window stepped:
- * fixed between compactions, moving once per cycle.
- */
+type Turn = {
+  id: string;
+  threadId: string;
+  sequence: number;
+  inputText: string;
+  outputText: string;
+  status: "SUCCEEDED";
+  parentTurnId: null;
+};
 
-type Msg = { id: string; role: "user" | "assistant"; content: string; createdAt: Date; encKeyVersion: null };
-
-function makeMessages(n: number): Msg[] {
-  return Array.from({ length: n }, (_, i) => ({
-    id: `m${i}`,
-    role: (i % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
-    content: `msg-${i}`,
-    createdAt: new Date(2026, 0, 1, 0, i),
-    encKeyVersion: null,
+function makeTurns(count: number): Turn[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+    threadId: "thread-1",
+    sequence: index + 1,
+    inputText: `user-${index}`,
+    outputText: `assistant-${index}`,
+    status: "SUCCEEDED",
+    parentTurnId: null,
   }));
 }
 
-/** Prisma stub that honours the where/orderBy/take the loader actually uses. */
-function stubPrisma(messages: Msg[], cursorId: string | null) {
+function stubPrisma(turns: Turn[]) {
   return {
-    platosAgentThread: {
-      findFirst: async () => ({ compactedUpToMessageId: cursorId }),
-    },
-    platosAgentMessage: {
-      findFirst: async ({ where }: any) => messages.find((m) => m.id === where.id) ?? null,
+    turn: {
+      findUnique: async ({ where }: any) => {
+        const turn = turns.find((candidate) => candidate.id === where.id);
+        return turn ? { sequence: turn.sequence } : null;
+      },
+      findFirst: async ({ where }: any) => turns.find((turn) => turn.id === where.id) ?? null,
       findMany: async ({ where, orderBy, take }: any) => {
-        let rows = [...messages];
-        const gt = where?.createdAt?.gt as Date | undefined;
-        if (gt) rows = rows.filter((m) => m.createdAt > gt);
-        rows.sort((a, b) =>
-          orderBy?.createdAt === "desc"
-            ? b.createdAt.getTime() - a.createdAt.getTime()
-            : a.createdAt.getTime() - b.createdAt.getTime(),
-        );
+        let rows = turns.filter((turn) => turn.threadId === where.threadId);
+        if (where.sequence?.gt !== undefined) {
+          rows = rows.filter((turn) => turn.sequence > where.sequence.gt);
+        }
+        rows.sort((left, right) => orderBy.sequence === "desc"
+          ? right.sequence - left.sequence
+          : left.sequence - right.sequence);
         return rows.slice(0, take);
       },
     },
   };
 }
 
-function svc(messages: Msg[], cursorId: string | null) {
-  const s = new ConversationService(stubPrisma(messages, cursorId) as any, {} as any);
-  // getThread does scope/ownership work irrelevant to windowing.
-  (s as any).getThread = async () => ({ id: "t1", compactedSummary: null });
-  return s;
+function service(turns: Turn[], cursorId: string | null) {
+  const instance = new ConversationService(stubPrisma(turns) as any);
+  (instance as any).getThread = async () => ({
+    id: "thread-1",
+    compactedSummary: cursorId ? "summary" : null,
+    compactedUpToTurnId: cursorId,
+  });
+  return instance;
 }
 
 const scope = {
-  organizationId: "o", projectId: "p", environmentId: "e", userId: "u",
+  organizationId: "org",
+  projectId: "project",
+  environmentId: "environment",
+  userId: "user",
 } as any;
 
-describe("no cursor — behaviour is unchanged", () => {
-  it("still returns the last N in chronological order", async () => {
-    const msgs = makeMessages(50);
-    const out = await svc(msgs, null).loadHistory("t1", scope, 10);
-    expect(out).toHaveLength(10);
-    expect(out[0].content).toBe("msg-40");
-    expect(out[9].content).toBe("msg-49");
+describe("cursor-anchored clean Turn history", () => {
+  it("keeps the legacy sliding limit before the first compaction", async () => {
+    const history = await service(makeTurns(25), null).loadHistory("thread-1", scope, 10);
+    expect(history.map((message) => message.content)).toEqual([
+      "user-20", "assistant-20",
+      "user-21", "assistant-21",
+      "user-22", "assistant-22",
+      "user-23", "assistant-23",
+      "user-24", "assistant-24",
+    ]);
   });
 
-  it("returns everything when the thread is shorter than the limit", async () => {
-    const out = await svc(makeMessages(4), null).loadHistory("t1", scope, 30);
-    expect(out.map((m) => m.content)).toEqual(["msg-0", "msg-1", "msg-2", "msg-3"]);
-  });
-});
-
-describe("with a cursor — the window is anchored, not sliding", () => {
-  it("returns only messages AFTER the cursor", async () => {
-    const msgs = makeMessages(50);
-    const out = await svc(msgs, "m29").loadHistory("t1", scope, 10);
-    // Everything up to and including m29 is represented by the summary.
-    expect(out[0].content).toBe("msg-30");
-    expect(out.at(-1)!.content).toBe("msg-49");
-    expect(out).toHaveLength(20);
+  it("returns only Turn sides after the durable cursor", async () => {
+    const turns = makeTurns(25);
+    const history = await service(turns, turns[14]!.id).loadHistory("thread-1", scope, 10);
+    expect(history[0]?.content).toBe("user-15");
+    expect(history.at(-1)?.content).toBe("assistant-24");
+    expect(history.some((message) => message.content === "assistant-14")).toBe(false);
   });
 
-  it("does NOT re-include messages the summary already covers", async () => {
-    // The additive-compaction bug: msg-0..29 are in the summary, so seeing any
-    // of them here means we are paying for them twice.
-    const out = await svc(makeMessages(50), "m29").loadHistory("t1", scope, 10);
-    for (let i = 0; i <= 29; i++) {
-      expect(out.some((m) => m.content === `msg-${i}`)).toBe(false);
-    }
+  it("keeps the cached prefix stable until compaction advances", async () => {
+    const turns = makeTurns(25);
+    const cursor = turns[14]!.id;
+    const before = await service(turns, cursor).loadHistory("thread-1", scope, 10);
+    const after = await service(makeTurns(26), cursor).loadHistory("thread-1", scope, 10);
+    expect(after.slice(0, before.length)).toEqual(before);
   });
 
-  /**
-   * THE CACHE REGRESSION. Turn N and turn N+1 must share a byte-identical
-   * prefix; only the tail may grow.
-   */
-  it("keeps the prefix stable as the thread grows", async () => {
-    const turnN = await svc(makeMessages(50), "m29").loadHistory("t1", scope, 10);
-    const turnN1 = await svc(makeMessages(51), "m29").loadHistory("t1", scope, 10);
-
-    expect(turnN1).toHaveLength(turnN.length + 1);
-    // Every message of the earlier turn appears, unchanged, at the same index.
-    expect(turnN1.slice(0, turnN.length)).toEqual(turnN);
+  it("steps the live prefix forward exactly when the cursor advances", async () => {
+    const turns = makeTurns(30);
+    const before = await service(turns, turns[14]!.id).loadHistory("thread-1", scope, 10);
+    const after = await service(turns, turns[24]!.id).loadHistory("thread-1", scope, 10);
+    expect(before[0]?.content).toBe("user-15");
+    expect(after[0]?.content).toBe("user-25");
   });
 
-  it("WITHOUT the anchor the same two turns shift — proves the bug was real", async () => {
-    const turnN = await svc(makeMessages(50), null).loadHistory("t1", scope, 10);
-    const turnN1 = await svc(makeMessages(51), null).loadHistory("t1", scope, 10);
-    // Same length, but every element moved: messages[0] changed, so the whole
-    // cached prefix is invalidated.
-    expect(turnN1).toHaveLength(turnN.length);
-    expect(turnN1[0]).not.toEqual(turnN[0]);
+  it("falls back to the sliding window when no cursor row can be read", async () => {
+    const history = await service(makeTurns(25), "00000000-0000-4000-8000-999999999999")
+      .loadHistory("thread-1", scope, 10);
+    expect(history).toHaveLength(10);
+    expect(history[0]?.content).toBe("user-20");
   });
 
-  it("steps forward exactly once when the cursor advances", async () => {
-    const msgs = makeMessages(60);
-    const before = await svc(msgs, "m29").loadHistory("t1", scope, 10);
-    const after = await svc(msgs, "m49").loadHistory("t1", scope, 10);
-    expect(before[0].content).toBe("msg-30");
-    expect(after[0].content).toBe("msg-50");
-    expect(after.length).toBeLessThan(before.length);
-  });
-});
-
-describe("safety", () => {
-  it("falls back to the sliding window when the cursor points at a deleted message", async () => {
-    // A dangling cursor must not wipe the history.
-    const out = await svc(makeMessages(50), "does-not-exist").loadHistory("t1", scope, 10);
-    expect(out).toHaveLength(10);
-    expect(out.at(-1)!.content).toBe("msg-49");
-  });
-
-  it("caps an anchored window so stalled compaction cannot blow the context", async () => {
-    // 500 messages after the cursor, limit 10 → cap is max(40, 50) = 50.
-    const out = await svc(makeMessages(500), "m0").loadHistory("t1", scope, 10);
-    expect(out.length).toBeLessThanOrEqual(50);
-    expect(out[0].content).toBe("msg-1"); // oldest-after-cursor, still a stable prefix
+  it("caps an anchored window if compaction stalls", async () => {
+    const turns = makeTurns(300);
+    const history = await service(turns, turns[0]!.id).loadHistory("thread-1", scope, 10);
+    expect(history.length).toBeLessThanOrEqual(50);
+    expect(history[0]?.content).toBe("user-1");
   });
 });

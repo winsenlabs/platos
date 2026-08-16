@@ -35,155 +35,243 @@ export interface UpdateClusterDto {
 export class AgentClusterService {
   constructor(@Inject(PRISMA_TOKEN) private readonly prisma: any) {}
 
+  private scopeWhere(scope: RequestScope) {
+    return {
+      environmentId: scope.environmentId,
+      environment: {
+        project: {
+          id: scope.projectId,
+          organizationId: scope.organizationId,
+        },
+      },
+    };
+  }
+
+  private includeGraph() {
+    return {
+      environment: { include: { project: true } },
+      bindings: { include: { agent: { select: { id: true, name: true, slug: true } } } },
+    };
+  }
+
+  private projectCluster(cluster: any): ClusterRecord {
+    return {
+      id: cluster.id,
+      organizationId: cluster.environment.project.organizationId,
+      projectId: cluster.environment.projectId,
+      environmentId: cluster.environmentId,
+      name: cluster.name,
+      slug: cluster.slug,
+      description: cluster.description ?? null,
+      metadata: (cluster.metadata as Record<string, unknown> | null) ?? null,
+      createdAt: cluster.createdAt,
+      updatedAt: cluster.updatedAt,
+      agents: (cluster.bindings ?? []).map((binding: any) => binding.agent),
+    };
+  }
+
+  private async getRaw(clusterId: string, scope: RequestScope): Promise<any | null> {
+    return this.prisma.agentCluster.findFirst({
+      where: { id: clusterId, ...this.scopeWhere(scope) },
+      include: this.includeGraph(),
+    });
+  }
+
   async create(scope: RequestScope, dto: CreateClusterDto): Promise<ClusterRecord> {
     const metadata: Record<string, unknown> = {};
     if (dto.primaryAgentId) metadata.primaryAgentId = dto.primaryAgentId;
 
-    const cluster = await this.prisma.platosAgentCluster.create({
-      data: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        name: dto.name,
-        slug: dto.slug,
-        description: dto.description ?? null,
-        metadata: Object.keys(metadata).length ? metadata : null,
-      },
-      include: { agents: { select: { id: true, name: true, slug: true } } },
+    const cluster = await this.prisma.$transaction(async (tx: any) => {
+      const environment = await tx.environment.findFirst({
+        where: {
+          id: scope.environmentId,
+          project: { id: scope.projectId, organizationId: scope.organizationId },
+        },
+        select: { id: true },
+      });
+      if (!environment) throw new Error("Environment not found or access denied");
+      if (dto.primaryAgentId) {
+        const primary = await tx.agentBinding.findFirst({
+          where: {
+            agentId: dto.primaryAgentId,
+            environmentId: environment.id,
+            agent: { projectId: scope.projectId },
+          },
+          select: { id: true },
+        });
+        if (!primary) throw new Error("Primary agent not found or access denied");
+      }
+
+      const created = await tx.agentCluster.create({
+        data: {
+          environmentId: environment.id,
+          name: dto.name,
+          slug: dto.slug,
+          description: dto.description ?? null,
+          metadata: Object.keys(metadata).length ? metadata : undefined,
+        },
+      });
+
+      if (dto.agentIds?.length) {
+        await tx.agentBinding.updateMany({
+          where: {
+            agentId: { in: dto.agentIds },
+            environmentId: environment.id,
+            agent: { projectId: scope.projectId },
+          },
+          data: { clusterId: created.id },
+        });
+      }
+
+      return tx.agentCluster.findUnique({
+        where: { id: created.id },
+        include: this.includeGraph(),
+      });
     });
 
-    // Assign initial agents if provided.
-    if (dto.agentIds && dto.agentIds.length > 0) {
-      await this.prisma.platosAgent.updateMany({
-        where: {
-          id: { in: dto.agentIds },
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        },
-        data: { clusteringId: cluster.id },
-      });
-    }
-
-    return cluster as ClusterRecord;
+    return this.projectCluster(cluster);
   }
 
   async get(clusterId: string, scope: RequestScope): Promise<ClusterRecord | null> {
-    const cluster = await this.prisma.platosAgentCluster.findFirst({
-      where: {
-        id: clusterId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-      },
-      include: { agents: { select: { id: true, name: true, slug: true } } },
-    });
-    return cluster as ClusterRecord | null;
+    const cluster = await this.getRaw(clusterId, scope);
+    return cluster ? this.projectCluster(cluster) : null;
   }
 
   async list(scope: RequestScope): Promise<ClusterRecord[]> {
-    const clusters = await this.prisma.platosAgentCluster.findMany({
-      where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-      },
-      include: { agents: { select: { id: true, name: true, slug: true } } },
+    const clusters = await this.prisma.agentCluster.findMany({
+      where: this.scopeWhere(scope),
+      include: this.includeGraph(),
       orderBy: { createdAt: "desc" },
     });
-    return clusters as ClusterRecord[];
+    return clusters.map((cluster: any) => this.projectCluster(cluster));
   }
 
   async update(clusterId: string, scope: RequestScope, dto: UpdateClusterDto): Promise<ClusterRecord> {
-    const existing = await this.get(clusterId, scope);
+    const existing = await this.getRaw(clusterId, scope);
     if (!existing) throw new Error("Cluster not found or access denied");
+    if (dto.primaryAgentId) {
+      const primary = await this.prisma.agentBinding.findFirst({
+        where: {
+          agentId: dto.primaryAgentId,
+          environmentId: scope.environmentId,
+          agent: { projectId: scope.projectId },
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
+        },
+        select: { id: true },
+      });
+      if (!primary) throw new Error("Primary agent not found or access denied");
+    }
 
-    const metadata = (existing.metadata ?? {}) as Record<string, unknown>;
-    if (dto.primaryAgentId !== undefined) metadata.primaryAgentId = dto.primaryAgentId;
+    const metadata = { ...((existing.metadata as Record<string, unknown> | null) ?? {}) };
+    if (dto.primaryAgentId !== undefined) {
+      if (dto.primaryAgentId) metadata.primaryAgentId = dto.primaryAgentId;
+      else delete metadata.primaryAgentId;
+    }
 
-    const cluster = await this.prisma.platosAgentCluster.update({
+    const cluster = await this.prisma.agentCluster.update({
       where: { id: clusterId },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
         ...(dto.slug !== undefined && { slug: dto.slug }),
         ...(dto.description !== undefined && { description: dto.description }),
-        ...(dto.primaryAgentId !== undefined && { metadata }),
+        ...(dto.primaryAgentId !== undefined && {
+          metadata,
+        }),
       },
-      include: { agents: { select: { id: true, name: true, slug: true } } },
+      include: this.includeGraph(),
     });
-    return cluster as ClusterRecord;
+    return this.projectCluster(cluster);
   }
 
-  async delete(clusterId: string, scope: RequestScope): Promise<void> {
-    const existing = await this.get(clusterId, scope);
-    if (!existing) throw new Error("Cluster not found or access denied");
-
-    // Remove all agents from cluster before deleting.
-    await this.prisma.platosAgent.updateMany({
-      where: { clusteringId: clusterId },
-      data: { clusteringId: null },
-    });
-
-    await this.prisma.platosAgentCluster.delete({ where: { id: clusterId } });
-  }
-
-  async addAgent(clusterId: string, agentId: string, scope: RequestScope, role?: string): Promise<void> {
-    const cluster = await this.get(clusterId, scope);
-    if (!cluster) throw new Error("Cluster not found or access denied");
-
-    const agent = await this.prisma.platosAgent.findFirst({
-      where: { id: agentId, organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
-      select: { id: true },
-    });
-    if (!agent) throw new Error("Agent not found or access denied");
-
-    // Update role in metadata if provided.
-    const updates: Record<string, unknown> = {};
-    if (role) {
-      const metadata = (cluster.metadata ?? {}) as Record<string, unknown>;
-      const roles = (metadata.roles ?? {}) as Record<string, string>;
-      roles[agentId] = role;
-      metadata.roles = roles;
-      updates.metadata = metadata;
-    }
+  async delete(clusterId: string, scope: RequestScope): Promise<boolean> {
+    const existing = await this.getRaw(clusterId, scope);
+    if (!existing) return false;
 
     await this.prisma.$transaction([
-      this.prisma.platosAgent.update({ where: { id: agentId }, data: { clusteringId: clusterId } }),
-      ...(Object.keys(updates).length
-        ? [this.prisma.platosAgentCluster.update({ where: { id: clusterId }, data: updates })]
-        : []),
+      this.prisma.agentBinding.updateMany({
+        where: { clusterId, environmentId: scope.environmentId },
+        data: { clusterId: null },
+      }),
+      this.prisma.agentCluster.delete({ where: { id: clusterId } }),
     ]);
+    return true;
   }
 
-  async removeAgent(clusterId: string, agentId: string, scope: RequestScope): Promise<void> {
-    const cluster = await this.get(clusterId, scope);
+  async addAgent(
+    clusterId: string,
+    agentId: string,
+    scope: RequestScope,
+    _role?: string,
+  ): Promise<ClusterRecord> {
+    const cluster = await this.getRaw(clusterId, scope);
     if (!cluster) throw new Error("Cluster not found or access denied");
 
-    await this.prisma.platosAgent.updateMany({
+    const binding = await this.prisma.agentBinding.findFirst({
       where: {
-        id: agentId,
-        clusteringId: clusterId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
+        agentId,
         environmentId: scope.environmentId,
+        agent: { projectId: scope.projectId },
+        environment: { project: { id: scope.projectId, organizationId: scope.organizationId } },
       },
-      data: { clusteringId: null },
+      select: { id: true },
     });
+    if (!binding) throw new Error("Agent not found or access denied");
+
+    const primaryAgentId = (cluster.metadata as Record<string, unknown> | null)?.primaryAgentId;
+    const updates = !primaryAgentId
+      ? { metadata: { ...((cluster.metadata as object | null) ?? {}), primaryAgentId: agentId } }
+      : undefined;
+
+    await this.prisma.$transaction([
+      this.prisma.agentBinding.update({ where: { id: binding.id }, data: { clusterId } }),
+      ...(updates
+        ? [this.prisma.agentCluster.update({ where: { id: clusterId }, data: updates })]
+        : []),
+    ]);
+    return (await this.get(clusterId, scope))!;
   }
 
-  async getMembers(clusterId: string, scope: RequestScope): Promise<Array<{ id: string; name: string; slug: string }>> {
-    const cluster = await this.get(clusterId, scope);
-    if (!cluster) return [];
-    return cluster.agents ?? [];
+  async removeAgent(clusterId: string, agentId: string, scope: RequestScope): Promise<ClusterRecord> {
+    const cluster = await this.getRaw(clusterId, scope);
+    if (!cluster) throw new Error("Cluster not found or access denied");
+
+    await this.prisma.agentBinding.updateMany({
+      where: {
+        agentId,
+        clusterId,
+        environmentId: scope.environmentId,
+        agent: { projectId: scope.projectId },
+      },
+      data: { clusterId: null },
+    });
+
+    const metadata = { ...((cluster.metadata as Record<string, unknown> | null) ?? {}) };
+    if (metadata.primaryAgentId === agentId) {
+      const next = cluster.bindings.find((binding: any) => binding.agentId !== agentId);
+      if (next) metadata.primaryAgentId = next.agentId;
+      else delete metadata.primaryAgentId;
+      await this.prisma.agentCluster.update({
+        where: { id: clusterId },
+        data: { metadata },
+      });
+    }
+
+    return (await this.get(clusterId, scope))!;
   }
 
-  /** Resolve the cluster (if any) that an agent belongs to. */
-  async resolveClusterForAgent(agentId: string, scope: RequestScope): Promise<ClusterRecord | null> {
-    const agent = await this.prisma.platosAgent.findFirst({
-      where: { id: agentId, organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
-      select: { clusteringId: true },
+  async getClusterForAgent(agentId: string, scope: RequestScope): Promise<ClusterRecord | null> {
+    const binding = await this.prisma.agentBinding.findFirst({
+      where: {
+        agentId,
+        environmentId: scope.environmentId,
+        agent: { projectId: scope.projectId },
+        environment: { project: { id: scope.projectId, organizationId: scope.organizationId } },
+      },
+      select: { clusterId: true },
     });
-    if (!agent?.clusteringId) return null;
-    return this.get(agent.clusteringId, scope);
+    if (!binding?.clusterId) return null;
+    return this.get(binding.clusterId, scope);
   }
 }

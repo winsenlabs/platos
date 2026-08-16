@@ -48,12 +48,11 @@ export interface ToolRouteMatch {
   ok: true;
   entityPk: string;
   entityId: string;        // human-readable slug
-  toolId: string;          // PlatosToolDefinition.id
+  toolId: string;
   toolName: string;
   callbackUrl: string;
   paramSchema: Record<string, unknown>;
   category: string | null;
-  linkedAgentIds: string[];
   /**
    * Number of candidate mappings that matched before disambiguation.
    * 1 = unambiguous, N>1 = ambiguous-but-resolved-by-strategy.
@@ -185,7 +184,6 @@ export class ToolRouterService {
       callbackUrl: entry.callbackUrl,
       paramSchema: entry.paramSchema,
       category: entry.category,
-      linkedAgentIds: entry.linkedAgentIds,
       matched,
     };
   }

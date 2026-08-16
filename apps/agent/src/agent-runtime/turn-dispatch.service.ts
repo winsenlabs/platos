@@ -217,8 +217,8 @@ export class TurnDispatchService {
   }
 
   /**
-   * (a) THE single dispatch decision. Reads `executionMode` off `PlatosAgent`
-   * scoped to the full `(org, project, env, id)` tuple — the ONLY place it is
+   * (a) THE single dispatch decision. Reads `executionMode` from the active
+   * AgentVersion selected by the canonically scoped AgentBinding — the ONLY place it is
    * read for dispatch across the whole agent service. Returns "direct" (never
    * "durable") when managed trigger is unconfigured or the lookup fails
    * (fail-open), so a turn is never wedged onto an unreachable substrate.
@@ -230,16 +230,24 @@ export class TurnDispatchService {
     if (!this.triggerReady()) return "direct";
     let executionMode = "direct";
     try {
-      const agent = await this.prisma.platosAgent.findFirst({
+      const binding = await this.prisma.agentBinding.findFirst({
         where: {
-          id: agentId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
+          agentId,
           environmentId: scope.environmentId,
+          agent: { projectId: scope.projectId },
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
         },
-        select: { executionMode: true },
+        select: { activeAgentVersion: { select: { memoryConfig: true } } },
       });
-      executionMode = agent?.executionMode ?? "direct";
+      const memoryConfig = binding?.activeAgentVersion?.memoryConfig;
+      const runtime = memoryConfig && typeof memoryConfig === "object" && !Array.isArray(memoryConfig)
+        ? (memoryConfig as Record<string, unknown>).__runtime
+        : null;
+      executionMode = runtime && typeof runtime === "object" && !Array.isArray(runtime)
+        ? String((runtime as Record<string, unknown>).executionMode ?? "direct")
+        : "direct";
     } catch {
       return "direct"; // fail-open on any DB error — never block the turn
     }
@@ -766,7 +774,10 @@ export class TurnDispatchService {
     }
     if (timedOut) {
       try {
-        await iterator.return?.();
+        // A hung Session stream can also hang its iterator's cleanup. This is
+        // best-effort cancellation only; awaiting it defeats the wall-clock
+        // timeout and leaves the HTTP caller blocked indefinitely.
+        void iterator.return?.().catch(() => undefined);
       } catch {
         /* ignore */
       }

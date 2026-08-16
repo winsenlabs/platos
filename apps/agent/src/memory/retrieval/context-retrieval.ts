@@ -29,11 +29,17 @@ export interface RetrievalDeps {
   graph?: {
     searchEntities(
       scope: ScopeTuple,
-      input: { userId: string; query: string; limit?: number },
+      input: {
+        userId: string;
+        query: string;
+        limit?: number;
+        agentId?: string | null;
+        agentIds?: string[];
+      },
     ): Promise<Array<{ entity: EntityRow; score: number }>>;
     getRelationships(
       scope: ScopeTuple,
-      input: { entityId: string },
+      input: { entityId: string; agentId?: string | null; agentIds?: string[] },
       userId?: string,
     ): Promise<{
       entity: EntityRow;
@@ -159,7 +165,16 @@ async function resolveGraphSlice(
   if (!deps.graph) return empty;
 
   const hits = await deps.graph
-    .searchEntities(scope, { userId: input.userId, query: input.query, limit: 6 })
+    .searchEntities(scope, {
+      userId: input.userId,
+      query: input.query,
+      limit: 6,
+      ...(input.agentIds?.length
+        ? { agentIds: input.agentIds }
+        : input.agentId
+          ? { agentId: input.agentId }
+          : {}),
+    })
     .catch(() => [] as Array<{ entity: EntityRow; score: number }>);
   const seeds = hits.map((x) => x.entity);
   if (seeds.length === 0) return empty;
@@ -169,7 +184,14 @@ async function resolveGraphSlice(
   const relationships: RelationshipEdge[] = [];
 
   const expansions = await Promise.all(
-    seeds.slice(0, 6).map((e) => deps.graph!.getRelationships(scope, { entityId: e.id }, input.userId).catch(() => null)),
+    seeds.slice(0, 6).map((e) => deps.graph!.getRelationships(scope, {
+      entityId: e.id,
+      ...(input.agentIds?.length
+        ? { agentIds: input.agentIds }
+        : input.agentId
+          ? { agentId: input.agentId }
+          : {}),
+    }, input.userId).catch(() => null)),
   );
   for (const r of expansions) {
     if (!r) continue;

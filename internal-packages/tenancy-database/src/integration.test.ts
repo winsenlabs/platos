@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import {
   ApprovalStatus,
   AgentToolDefaultPolicy,
+  AgentVersionBucket,
   AuthorizationScopeKind,
   CredentialKind,
   OrganizationRole,
@@ -11,6 +12,7 @@ import {
   PrismaClient,
   PrincipalTier,
   ProjectRole,
+  ThreadCompactionState,
   ToolKind,
   WorkStatus,
   AuthRateLimitAction,
@@ -33,7 +35,7 @@ describe("domain schema integration", () => {
   let seeded: Awaited<ReturnType<typeof seedEveryModel>>;
 
   beforeAll(async () => {
-    container = await new PostgreSqlContainer("postgres:16-alpine").start();
+    container = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
     const databaseUrl = container.getConnectionUri();
 
     execFileSync(resolve(process.cwd(), "node_modules/.bin/prisma"), [
@@ -210,6 +212,7 @@ describe("domain schema integration", () => {
       data: {
         environmentId: seeded.environment.id,
         endUserId: sameOrganizationSubject.id,
+        agentId: seeded.agent.id,
         entityKey: "other-subject-entity",
         entityType: "person",
         label: "Other",
@@ -219,6 +222,491 @@ describe("domain schema integration", () => {
       where: { id: seeded.memoryEntityA.id },
       data: { endUserId: sameSubjectEntity.endUserId },
     })).rejects.toThrow(/immutable/);
+  });
+
+  test("enforces one provider default under real concurrent PostgreSQL writes", async () => {
+    const direct = await Promise.allSettled(
+      Array.from({ length: 8 }, (_, index) => control.providerKey.create({
+        data: {
+          environmentId: seeded.environment.id,
+          provider: "concurrent-direct",
+          label: `direct-${index}`,
+          environmentKeyName: `DIRECT_${index}`,
+          isDefault: true,
+          createdBy: seeded.user.id,
+        },
+      })),
+    );
+    expect(direct.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
+    await expect(control.providerKey.count({
+      where: {
+        environmentId: seeded.environment.id,
+        provider: "concurrent-direct",
+        isDefault: true,
+      },
+    })).resolves.toBe(1);
+
+    const replaceDefault = (index: number) => control.$transaction(async (tx) => {
+      await tx.$queryRawUnsafe(
+        "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))::text AS locked",
+        `${seeded.environment.id}:concurrent-serialized`,
+      );
+      await tx.providerKey.updateMany({
+        where: {
+          environmentId: seeded.environment.id,
+          provider: "concurrent-serialized",
+          isDefault: true,
+        },
+        data: { isDefault: false },
+      });
+      return tx.providerKey.create({
+        data: {
+          environmentId: seeded.environment.id,
+          provider: "concurrent-serialized",
+          label: `serialized-${index}`,
+          environmentKeyName: `SERIALIZED_${index}`,
+          isDefault: true,
+          createdBy: seeded.user.id,
+        },
+      });
+    });
+    const serialized = await Promise.allSettled(Array.from({ length: 8 }, (_, index) => replaceDefault(index)));
+    expect(serialized.flatMap((result) => result.status === "rejected"
+      ? [{ code: result.reason?.code, message: result.reason?.message }]
+      : [])).toEqual([]);
+    await expect(control.providerKey.count({
+      where: {
+        environmentId: seeded.environment.id,
+        provider: "concurrent-serialized",
+        isDefault: true,
+      },
+    })).resolves.toBe(1);
+  });
+
+  test("rejects deletion for every provider-key path reachable by an executable version", async () => {
+    const createKey = (provider: string, label: string) => control.providerKey.create({
+      data: {
+        environmentId: seeded.environment.id,
+        provider,
+        label,
+        environmentKeyName: `${label.toUpperCase()}_KEY`,
+        createdBy: seeded.user.id,
+      },
+    });
+    const [runtimeKey, canaryKey, lockedKey, fallbackKey, compactionKey, wrongProviderKey] = await Promise.all([
+      createKey("openai", "runtime-reference"),
+      createKey("anthropic", "canary-reference"),
+      createKey("mistral", "locked-reference"),
+      createKey("together", "fallback-reference"),
+      createKey("google", "compaction-reference"),
+      createKey("anthropic", "wrong-provider-reference"),
+    ]);
+    const agent = await control.agent.create({
+      data: { projectId: seeded.project.id, name: "Provider references", slug: "provider-references" },
+    });
+    const historical = await control.agentVersion.create({
+      data: {
+        agentId: agent.id,
+        versionNumber: 1,
+        model: "mistral:historical",
+        modelRoutes: [{
+          label: "default",
+          model: "mistral:historical",
+          providerKeyId: lockedKey.id,
+          isDefault: true,
+        }],
+        createdBy: seeded.user.id,
+      },
+    });
+    const active = await control.agentVersion.create({
+      data: {
+        agentId: agent.id,
+        versionNumber: 2,
+        model: "openai:active",
+        memoryConfig: { __runtime: { providerKeyId: runtimeKey.id } },
+        modelRoutes: [
+          { label: "default", model: "openai:active", isDefault: true },
+          {
+            label: "fallback",
+            model: "together:fallback",
+            providerCredentialId: fallbackKey.id,
+            isDefault: false,
+          },
+          {
+            label: "compaction",
+            model: "google:compaction",
+            providerKeyId: compactionKey.id,
+            isDefault: false,
+          },
+          {
+            label: "wrong-provider",
+            model: "openai:mismatch",
+            providerKeyId: wrongProviderKey.id,
+            isDefault: false,
+          },
+        ],
+        createdBy: seeded.user.id,
+      },
+    });
+    const canary = await control.agentVersion.create({
+      data: {
+        agentId: agent.id,
+        versionNumber: 3,
+        model: "anthropic:canary",
+        modelRoutes: [{
+          label: "default",
+          model: "anthropic:canary",
+          providerCredentialId: canaryKey.id,
+          isDefault: true,
+        }],
+        createdBy: seeded.user.id,
+      },
+    });
+    await control.agentBinding.create({
+      data: {
+        environmentId: seeded.environment.id,
+        agentId: agent.id,
+        activeAgentVersionId: active.id,
+        canaryAgentVersionId: canary.id,
+        canaryPercent: 25,
+      },
+    });
+
+    expect(historical.id).not.toBe(active.id);
+    for (const key of [runtimeKey, canaryKey, lockedKey, fallbackKey, compactionKey]) {
+      await expect(control.providerKey.delete({ where: { id: key.id } }))
+        .rejects.toMatchObject({ code: "P2003" });
+    }
+    await expect(control.providerKey.delete({ where: { id: wrongProviderKey.id } }))
+      .resolves.toMatchObject({ id: wrongProviderKey.id });
+
+    const otherEnvironment = await control.environment.create({
+      data: { projectId: seeded.project.id, slug: "provider-reference-other", name: "Provider reference other" },
+    });
+    const crossEnvironmentKey = await createKey("cohere", "cross-environment-reference");
+    const otherAgent = await control.agent.create({
+      data: { projectId: seeded.project.id, name: "Other environment provider", slug: "other-environment-provider" },
+    });
+    const otherVersion = await control.agentVersion.create({
+      data: {
+        agentId: otherAgent.id,
+        versionNumber: 1,
+        model: "cohere:other",
+        memoryConfig: { __runtime: { providerKeyId: crossEnvironmentKey.id } },
+        createdBy: seeded.user.id,
+      },
+    });
+    await control.agentBinding.create({
+      data: {
+        environmentId: otherEnvironment.id,
+        agentId: otherAgent.id,
+        activeAgentVersionId: otherVersion.id,
+      },
+    });
+    await expect(control.providerKey.delete({ where: { id: crossEnvironmentKey.id } }))
+      .resolves.toMatchObject({ id: crossEnvironmentKey.id });
+  });
+
+  test("persists immutable Turn attribution and detailed non-negative Step usage", async () => {
+    expect(seeded.turn).toMatchObject({
+      agentVersionId: seeded.agentVersion.id,
+      versionBucket: AgentVersionBucket.CURRENT,
+      latencyMs: 120,
+    });
+    expect(Number(seeded.turn.costCents)).toBe(0.25);
+    expect(seeded.step).toMatchObject({
+      inputTokens: 30,
+      outputTokens: 12,
+      cacheCreationInputTokens: 10,
+      cacheReadInputTokens: 5,
+      reasoningTokens: 4,
+      latencyMs: 100,
+    });
+    expect(Number(seeded.step.costCents)).toBe(0.2);
+
+    const otherAgent = await control.agent.create({
+      data: { projectId: seeded.project.id, name: "Other agent", slug: "other-agent" },
+    });
+    const otherVersion = await control.agentVersion.create({
+      data: {
+        agentId: otherAgent.id,
+        versionNumber: 1,
+        model: "test:other",
+        createdBy: seeded.user.id,
+      },
+    });
+    await expect(control.turn.create({
+      data: {
+        threadId: seeded.thread.id,
+        agentVersionId: otherVersion.id,
+        versionBucket: AgentVersionBucket.CURRENT,
+        sequence: 20,
+      },
+    })).rejects.toThrow(/ancestry/);
+
+    await expect(control.turn.update({
+      where: { id: seeded.turn.id },
+      data: { versionBucket: AgentVersionBucket.CANARY },
+    })).rejects.toThrow(/immutable/);
+    await expect(control.step.create({
+      data: {
+        turnId: seeded.turn.id,
+        sequence: 20,
+        model: "test:model",
+        inputTokens: 5,
+        cacheCreationInputTokens: 4,
+        cacheReadInputTokens: 2,
+      },
+    })).rejects.toThrow();
+  });
+
+  test("acquires and advances the durable compaction cursor atomically", async () => {
+    const attempts = await Promise.all(
+      Array.from({ length: 8 }, () => control.thread.updateMany({
+        where: { id: seeded.thread.id, compactionState: ThreadCompactionState.IDLE },
+        data: { compactionState: ThreadCompactionState.IN_PROGRESS },
+      }))
+    );
+    expect(attempts.reduce((total, attempt) => total + attempt.count, 0)).toBe(1);
+
+    const compactedAt = new Date();
+    await control.$transaction(async (tx) => {
+      const advanced = await tx.thread.updateMany({
+        where: {
+          id: seeded.thread.id,
+          compactionState: ThreadCompactionState.IN_PROGRESS,
+        },
+        data: {
+          summary: "Compacted summary",
+          compactedUpToTurnId: seeded.turn.id,
+          compactedAt,
+          compactionState: ThreadCompactionState.IDLE,
+        },
+      });
+      expect(advanced.count).toBe(1);
+    });
+    await expect(control.thread.findUnique({ where: { id: seeded.thread.id } })).resolves.toMatchObject({
+      summary: "Compacted summary",
+      compactedUpToTurnId: seeded.turn.id,
+      compactedAt,
+      compactionState: ThreadCompactionState.IDLE,
+    });
+
+    const otherThread = await control.thread.create({
+      data: {
+        environmentId: seeded.environment.id,
+        agentId: seeded.agent.id,
+        endUserId: seeded.endUser.id,
+        clusterId: seeded.cluster.id,
+      },
+    });
+    const otherTurn = await control.turn.create({
+      data: {
+        threadId: otherThread.id,
+        agentVersionId: seeded.agentVersion.id,
+        versionBucket: AgentVersionBucket.CURRENT,
+        sequence: 1,
+      },
+    });
+    await expect(control.thread.update({
+      where: { id: seeded.thread.id },
+      data: { compactedUpToTurnId: otherTurn.id },
+    })).rejects.toThrow(/ancestry/);
+  });
+
+  test("supports pgvector cosine search with HNSW indexes", async () => {
+    const second = await control.memory.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: seeded.agent.id,
+        clusterId: seeded.cluster.id,
+        kind: "fact",
+        content: "Orthogonal fact",
+        visibility: "subject",
+        source: "manual",
+      },
+    });
+    const firstVector = vectorLiteral(0);
+    const secondVector = vectorLiteral(1);
+    await control.$executeRawUnsafe(
+      'UPDATE "Memory" SET "embedding" = $1::vector WHERE "id" = $2::uuid',
+      firstVector,
+      seeded.memory.id
+    );
+    await control.$executeRawUnsafe(
+      'UPDATE "Memory" SET "embedding" = $1::vector WHERE "id" = $2::uuid',
+      secondVector,
+      second.id
+    );
+    await control.$executeRawUnsafe(
+      'UPDATE "MemoryEntity" SET "embedding" = $1::vector WHERE "id" = $2::uuid',
+      firstVector,
+      seeded.memoryEntityA.id
+    );
+
+    const nearest = await control.$queryRawUnsafe<Array<{ id: string }>>(
+      'SELECT "id" FROM "Memory" WHERE "embedding" IS NOT NULL ORDER BY "embedding" <=> $1::vector LIMIT 2',
+      firstVector
+    );
+    expect(nearest.map(({ id }) => id)).toEqual([seeded.memory.id, second.id]);
+
+    const indexes = await control.$queryRaw<Array<{ indexname: string; indexdef: string }>>`
+      SELECT indexname, indexdef
+      FROM pg_indexes
+      WHERE schemaname = 'public'
+        AND indexname IN ('Memory_embedding_hnsw_cosine_idx', 'MemoryEntity_embedding_hnsw_cosine_idx')
+      ORDER BY indexname
+    `;
+    expect(indexes).toHaveLength(2);
+    for (const index of indexes) {
+      expect(index.indexdef).toContain("USING hnsw");
+      expect(index.indexdef).toContain("vector_cosine_ops");
+    }
+  });
+
+  test("permits cross-agent memory access only through an Environment cluster", async () => {
+    const clusteredAgent = await createBoundAgent(control, seeded, "clustered", seeded.cluster.id);
+    const privateAgent = await createBoundAgent(control, seeded, "private", null);
+
+    const privateMemory = await control.memory.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: seeded.agent.id,
+        kind: "fact",
+        content: "Private to the owner",
+        visibility: "subject",
+        source: "manual",
+      },
+    });
+    const shared = await control.memory.findMany({
+      where: memoryAccessWhere(
+        seeded.environment.id,
+        seeded.endUser.id,
+        clusteredAgent.id
+      ),
+      select: { id: true },
+    });
+    expect(shared.map(({ id }) => id)).toContain(seeded.memory.id);
+    expect(shared.map(({ id }) => id)).not.toContain(privateMemory.id);
+    await expect(control.memory.findMany({
+      where: memoryAccessWhere(seeded.environment.id, seeded.endUser.id, privateAgent.id),
+      select: { id: true },
+    })).resolves.not.toContainEqual({ id: seeded.memory.id });
+
+    const clusteredEntity = await control.memoryEntity.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: clusteredAgent.id,
+        clusterId: seeded.cluster.id,
+        entityKey: "clustered-agent-entity",
+        entityType: "person",
+        label: "Clustered",
+      },
+    });
+    await expect(control.memoryEntity.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: clusteredAgent.id,
+        clusterId: seeded.cluster.id,
+        entityKey: seeded.memoryEntityA.entityKey,
+        entityType: "person",
+        label: "Duplicate shared key",
+      },
+    })).rejects.toThrow();
+    await expect(control.memoryRelationship.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: clusteredAgent.id,
+        clusterId: seeded.cluster.id,
+        fromEntityId: seeded.memoryEntityA.id,
+        toEntityId: clusteredEntity.id,
+        relationshipType: "shared-with",
+        sourceMemoryId: seeded.memory.id,
+      },
+    })).resolves.toMatchObject({ clusterId: seeded.cluster.id });
+
+    const privateEntity = await control.memoryEntity.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: privateAgent.id,
+        entityKey: "private-agent-entity",
+        entityType: "person",
+        label: "Private",
+      },
+    });
+    await expect(control.memoryRelationship.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: seeded.agent.id,
+        fromEntityId: seeded.memoryEntityA.id,
+        toEntityId: privateEntity.id,
+        relationshipType: "must-not-leak",
+      },
+    })).rejects.toThrow(/ancestry/);
+    await expect(control.memoryEntity.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: privateAgent.id,
+        clusterId: seeded.cluster.id,
+        entityKey: "forged-cluster-share",
+        entityType: "person",
+        label: "Forged",
+      },
+    })).rejects.toThrow(/ancestry/);
+  });
+
+  test("deduplicates concurrent extraction writes and validates provenance", async () => {
+    const contentHash = "b".repeat(64);
+    const writes = await Promise.allSettled(
+      Array.from({ length: 8 }, () => control.memory.create({
+        data: {
+          environmentId: seeded.environment.id,
+          endUserId: seeded.endUser.id,
+          agentId: seeded.agent.id,
+          clusterId: seeded.cluster.id,
+          kind: "fact",
+          content: "Concurrently extracted fact",
+          visibility: "subject",
+          source: "extracted",
+          sourceThreadId: seeded.thread.id,
+          sourceTurnIds: [seeded.turn.id],
+          extractorVersion: "extractor-v2",
+          contentHash,
+        },
+      }))
+    );
+    expect(writes.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
+    await expect(control.memory.count({
+      where: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        sourceThreadId: seeded.thread.id,
+        contentHash,
+      },
+    })).resolves.toBe(1);
+
+    await expect(control.memory.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: seeded.agent.id,
+        kind: "fact",
+        content: "Missing extraction version",
+        visibility: "subject",
+        source: "extracted",
+        sourceThreadId: seeded.thread.id,
+        sourceTurnIds: [seeded.turn.id],
+        contentHash: "c".repeat(64),
+      },
+    })).rejects.toThrow();
   });
 
   test("represents global PAT, OAuth principal/rotation, and entity bearer semantics", async () => {
@@ -340,12 +828,19 @@ describe("domain schema integration", () => {
       },
     });
     const turn = await control.turn.create({
-      data: { threadId: thread.id, sequence: 1, inputText: "private" },
+      data: {
+        threadId: thread.id,
+        agentVersionId: seeded.agentVersion.id,
+        versionBucket: AgentVersionBucket.CURRENT,
+        sequence: 1,
+        inputText: "private",
+      },
     });
     const memory = await control.memory.create({
       data: {
         environmentId: seeded.environment.id,
         endUserId: subject.id,
+        agentId: seeded.agent.id,
         kind: "fact",
         content: "private",
         visibility: "subject",
@@ -605,10 +1100,31 @@ async function seedEveryModel(control: PrismaClient) {
     },
   }));
   const turn = track("Turn", await control.turn.create({
-    data: { threadId: thread.id, sequence: 1, inputText: "hello", output: { text: "hi" } },
+    data: {
+      threadId: thread.id,
+      agentVersionId: agentVersion.id,
+      versionBucket: AgentVersionBucket.CURRENT,
+      sequence: 1,
+      inputText: "hello",
+      output: { text: "hi" },
+      costCents: 0.25,
+      latencyMs: 120,
+    },
   }));
   const step = track("Step", await control.step.create({
-    data: { turnId: turn.id, sequence: 1, model: "test:model", status: WorkStatus.SUCCEEDED },
+    data: {
+      turnId: turn.id,
+      sequence: 1,
+      model: "test:model",
+      status: WorkStatus.SUCCEEDED,
+      inputTokens: 30,
+      outputTokens: 12,
+      cacheCreationInputTokens: 10,
+      cacheReadInputTokens: 5,
+      reasoningTokens: 4,
+      costCents: 0.2,
+      latencyMs: 100,
+    },
   }));
   const tool = track("Tool", await control.tool.create({
     data: {
@@ -847,23 +1363,29 @@ async function seedEveryModel(control: PrismaClient) {
   track("AgentToolPolicy", await control.agentToolPolicy.create({
     data: { agentVersionId: agentVersion.id, toolId: tool.id, effect: PolicyEffect.ALLOW },
   }));
-  track("Memory", await control.memory.create({
+  const memory = track("Memory", await control.memory.create({
     data: {
       environmentId: environment.id,
       endUserId: endUser.id,
       agentId: agent.id,
+      clusterId: cluster.id,
       kind: "fact",
       content: "Likes tests",
       metadata: {},
       visibility: "subject",
       source: "turn",
+      sourceThreadId: thread.id,
       sourceTurnIds: [turn.id],
+      extractorVersion: "test-extractor-v1",
+      contentHash: "a".repeat(64),
     },
   }));
   const memoryEntityA = track("MemoryEntity", await control.memoryEntity.create({
     data: {
       environmentId: environment.id,
       endUserId: endUser.id,
+      agentId: agent.id,
+      clusterId: cluster.id,
       entityKey: "person",
       entityType: "person",
       label: "Person",
@@ -874,6 +1396,8 @@ async function seedEveryModel(control: PrismaClient) {
     data: {
       environmentId: environment.id,
       endUserId: endUser.id,
+      agentId: agent.id,
+      clusterId: cluster.id,
       entityKey: "place",
       entityType: "place",
       label: "Place",
@@ -883,6 +1407,8 @@ async function seedEveryModel(control: PrismaClient) {
     data: {
       environmentId: environment.id,
       endUserId: endUser.id,
+      agentId: agent.id,
+      clusterId: cluster.id,
       fromEntityId: memoryEntityA.id,
       toEntityId: memoryEntityB.id,
       relationshipType: "visited",
@@ -1021,7 +1547,11 @@ async function seedEveryModel(control: PrismaClient) {
     endUserIdentity,
     agent,
     agentVersion,
+    cluster,
     thread,
+    turn,
+    step,
+    memory,
     installation,
     oauthClient,
     memoryEntityA,
@@ -1030,5 +1560,60 @@ async function seedEveryModel(control: PrismaClient) {
     oauthRefreshToken,
     rotatedRefreshToken,
     mcpBearerToken,
+  };
+}
+
+function vectorLiteral(hotIndex: number): string {
+  return `[${Array.from({ length: 1536 }, (_, index) => index === hotIndex ? 1 : 0).join(",")}]`;
+}
+
+async function createBoundAgent(
+  control: PrismaClient,
+  seeded: {
+    project: { id: string };
+    environment: { id: string };
+    user: { id: string };
+  },
+  slug: string,
+  clusterId: string | null,
+) {
+  const agent = await control.agent.create({
+    data: { projectId: seeded.project.id, name: slug, slug },
+  });
+  const version = await control.agentVersion.create({
+    data: {
+      agentId: agent.id,
+      versionNumber: 1,
+      model: `test:${slug}`,
+      createdBy: seeded.user.id,
+    },
+  });
+  await control.agentBinding.create({
+    data: {
+      environmentId: seeded.environment.id,
+      agentId: agent.id,
+      activeAgentVersionId: version.id,
+      clusterId,
+    },
+  });
+  return agent;
+}
+
+function memoryAccessWhere(
+  environmentId: string,
+  endUserId: string,
+  agentId: string,
+): Prisma.MemoryWhereInput {
+  return {
+    environmentId,
+    endUserId,
+    OR: [
+      { agentId },
+      {
+        cluster: {
+          bindings: { some: { environmentId, agentId } },
+        },
+      },
+    ],
   };
 }

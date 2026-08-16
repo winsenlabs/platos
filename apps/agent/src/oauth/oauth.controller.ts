@@ -15,9 +15,13 @@ import {
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
+import { CredentialKind } from "@platos/tenancy-database";
 import { OAuthError, OAuthService, OAUTH_ACCESS_TOKEN_TTL_SEC } from "./oauth.service";
 import { env } from "../shared/env";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import {
+  type ControlDatabaseClient,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import { validatePublicUrl, describeUrlValidationError } from "../shared/url-validator";
 import { SecretsService } from "../auth/secrets.service";
 
@@ -51,7 +55,7 @@ function getEntityTokenSecrets(): SecretsService {
 export class OAuthController {
   constructor(
     private readonly oauth: OAuthService,
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
   ) {}
 
   private get issuerUrl(): string {
@@ -69,27 +73,50 @@ export class OAuthController {
   private async resolveEntityForMcp(
     entityIdSlug: string,
   ): Promise<
-    | { entityPk: string; organizationId: string; projectId: string; displayName: string; config: any }
+    | {
+        entityPk: string;
+        organizationId: string;
+        projectId: string;
+        environmentId: string;
+        displayName: string;
+        config: any;
+      }
     | null
   > {
     if (!entityIdSlug || typeof entityIdSlug !== "string") return null;
-    const ent = await this.prisma.platosConnectedEntity.findFirst({
-      where: { entityId: entityIdSlug },
+    const ent = await this.prisma.entity.findFirst({
+      where: { externalId: entityIdSlug, project: { archivedAt: null } },
       select: {
         id: true,
-        organizationId: true,
         projectId: true,
         displayName: true,
         mcpConfig: true,
+        project: {
+          select: {
+            organizationId: true,
+            environments: {
+              where: { archivedAt: null },
+              select: { id: true, slug: true },
+              orderBy: { createdAt: "asc" },
+            },
+          },
+        },
       },
     });
     if (!ent) return null;
     if (!ent.mcpConfig) return null;
     if (!ent.mcpConfig.enabled) return null;
+    const environments = ent.project.environments;
+    const environment =
+      environments.find((candidate) =>
+        ["prod", "production"].includes(candidate.slug.toLowerCase()),
+      ) ?? environments[0];
+    if (!environment) return null;
     return {
       entityPk: ent.id,
-      organizationId: ent.organizationId,
+      organizationId: ent.project.organizationId,
       projectId: ent.projectId,
+      environmentId: environment.id,
       displayName: ent.displayName,
       config: ent.mcpConfig,
     };
@@ -135,6 +162,8 @@ export class OAuthController {
       token_endpoint_auth_method?: "client_secret_basic" | "client_secret_post" | "none";
       grant_types?: string[];
       scope?: string;
+      organization_id?: string;
+      registered_by_user_id?: string;
     },
   ) {
     try {
@@ -145,7 +174,11 @@ export class OAuthController {
           ? { tokenEndpointAuthMethod: body.token_endpoint_auth_method }
           : {}),
         ...(body?.grant_types ? { grantTypes: body.grant_types } : {}),
-        ...(body?.scope ? { scope: body.scope } : {}),
+        scope: body?.scope ?? "mcp:read mcp:write",
+        ...(body?.organization_id ? { organizationId: body.organization_id } : {}),
+        ...(body?.registered_by_user_id
+          ? { registeredByUserId: body.registered_by_user_id }
+          : {}),
       });
       return result;
     } catch (err) {
@@ -583,7 +616,7 @@ export class OAuthController {
     // RFC 7009 §2.2 — endpoint responds 200 whether or not the token was
     // recognized. Leaks nothing on unknown tokens.
     if (body?.token) {
-      await this.oauth.revokeToken(body.token);
+      await this.oauth.revokeToken(body.token, clientId);
     }
     // Reference expires_in for parity with /token responses during dev
     // probing — harmless, not part of the spec.
@@ -687,7 +720,7 @@ export class OAuthController {
           ? { tokenEndpointAuthMethod: body.token_endpoint_auth_method }
           : {}),
         ...(body?.grant_types ? { grantTypes: body.grant_types } : {}),
-        ...(body?.scope ? { scope: body.scope } : {}),
+        scope: body?.scope ?? "mcp:tools",
         organizationId: ent.organizationId,
         entityPk: ent.entityPk,
       });
@@ -827,8 +860,8 @@ export class OAuthController {
     }
 
     // Verify entity allows anonymous identity mode
-    const mcpConfig = await this.prisma.platosEntityMcpConfig.findFirst({
-      where: { entityPk: ent.entityPk },
+    const mcpConfig = await this.prisma.entityMcpConfig.findUnique({
+      where: { entityId: ent.entityPk },
       select: { identityMode: true, enabled: true },
     });
     if (!mcpConfig?.enabled) {
@@ -867,9 +900,10 @@ export class OAuthController {
     // Mint anon session
     // BUG-19: use the static top-level crypto import instead of dynamic require().
     const mcpUserId = `mcp:anon:${crypto.randomUUID().replace(/-/g, "")}`;
-    await this.prisma.platosMcpAnonSession.create({
+    const anonymousSession = await this.prisma.mcpAnonymousSession.create({
       data: {
-        entityPk: ent.entityPk,
+        entityId: ent.entityPk,
+        environmentId: ent.environmentId,
         mcpUserId,
         firstSeenIp: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? (req.socket?.remoteAddress ?? null),
         userAgent: req.headers["user-agent"] ?? null,
@@ -879,13 +913,18 @@ export class OAuthController {
     // Issue authcode for the anon user
     const { code } = await this.oauth.issueAuthCode({
       clientId: client_id,
-      userId: mcpUserId,
-      scopeTuple: { organizationId: ent.organizationId, projectId: ent.projectId, environmentId: "mcp" },
+      userId: anonClient.registeredByUserId,
+      scopeTuple: {
+        organizationId: ent.organizationId,
+        projectId: ent.projectId,
+        environmentId: ent.environmentId,
+      },
       codeChallenge: code_challenge,
       codeChallengeMethod: "S256",
       redirectUri: redirect_uri,
       scopes: (body.scope ?? "mcp:tools").split(" "),
       entityPk: ent.entityPk,
+      mcpIdentity: { kind: "anonymous", sessionId: anonymousSession.id },
     });
 
     const redirectUrl = new URL(redirect_uri);
@@ -1066,7 +1105,7 @@ export class OAuthController {
       }
     }
     if (body?.token) {
-      await this.oauth.revokeToken(body.token);
+      await this.oauth.revokeToken(body.token, clientId);
     }
     return { ok: true };
   }
@@ -1318,17 +1357,18 @@ export class OAuthController {
       rawSub = `${entityTokenData.access_token.slice(0, 16)}`;
     }
 
-    // BUG-12: scope-salt with entityPk so a sub from entity A can never
-    // collide with a sub from entity B in the mcpUserId namespace.
-    const externalSub = `${ent.entityPk}:${rawSub}`;
-
-    // Derive the stable mcpUserId from the externalSub.
-    const mcpUserId = `mcp:oidc:${entityIdSlug}:${externalSub}`.slice(0, 255);
+    const externalSubject = rawSub;
+    const provider = providerCfg.type ?? "oauth2_pkce";
+    const identityHash = crypto
+      .createHash("sha256")
+      .update(`${ent.entityPk}:${provider}:${externalSubject}`)
+      .digest("hex");
+    const mcpUserId = `mcp:oidc:${provider}:${identityHash.slice(0, 32)}`;
 
     // Encrypt tokens for at-rest storage via SecretsService (M3). Fail-CLOSED:
     // in production a missing PLATOS_ENCRYPTION_KEY throws rather than storing
     // plaintext.
-    const { encryptedAccess, encryptedRefresh } = this.encryptEntityTokens(
+    const encryptedReference = this.encryptEntityTokens(
       entityTokenData.access_token,
       entityTokenData.refresh_token,
     );
@@ -1336,54 +1376,88 @@ export class OAuthController {
       ? new Date(Date.now() + entityTokenData.expires_in * 1000)
       : null;
 
-    // Upsert OIDC session row.
-    await this.prisma.platosMcpOidcSession.upsert({
-      where: { mcpUserId },
-      create: {
-        entityPk: ent.entityPk,
-        mcpUserId,
-        provider: providerCfg.type ?? "oauth2_pkce",
-        email: email ?? null,
-        emailVerified: !!email,
-        externalSub,
-        name: name ?? null,
-        entityAccessToken: encryptedAccess,
-        entityRefreshToken: encryptedRefresh ?? null,
-        entityTokenExpiresAt: expiresAt,
-        lastLoginAt: new Date(),
-      },
-      update: {
-        entityAccessToken: encryptedAccess,
-        entityRefreshToken: encryptedRefresh ?? null,
-        entityTokenExpiresAt: expiresAt,
-        email: email ?? undefined,
-        name: name ?? undefined,
-        lastLoginAt: new Date(),
-        revokedAt: null, // un-revoke on re-login
-      },
-    });
-
-    // Issue a Platos auth code for the original MCP client, carrying the
-    // OIDC session user as the mcpUserId (userId in the code row).
     const client = await this.oauth.findClient(sp.clientId);
-    if (!client) {
+    if (!client || client.entityPk !== ent.entityPk) {
       res.status(400).json({ error: "invalid_client" });
       return;
     }
 
+    // Persist entity-issued token material only through the clean Credential
+    // relation. McpOidcSession remains canonical identity metadata.
+    const credentialName = `mcp-oidc-${identityHash}`;
+    const oidcSession = await this.prisma.$transaction(async (tx) => {
+      const credential = await tx.credential.upsert({
+        where: {
+          environmentId_kind_name: {
+            environmentId: ent.environmentId,
+            kind: CredentialKind.ENTITY_SECRET,
+            name: credentialName,
+          },
+        },
+        create: {
+          environmentId: ent.environmentId,
+          kind: CredentialKind.ENTITY_SECRET,
+          name: credentialName,
+          encryptedReference,
+          permissions: ["entity:oauth"],
+          expiresAt,
+          createdBy: client.registeredByUserId,
+        },
+        update: {
+          encryptedReference,
+          expiresAt,
+          revokedAt: null,
+          lastUsedAt: new Date(),
+        },
+        select: { id: true },
+      });
+      return tx.mcpOidcSession.upsert({
+        where: {
+          environmentId_entityId_provider_externalSubject: {
+            environmentId: ent.environmentId,
+            entityId: ent.entityPk,
+            provider,
+            externalSubject,
+          },
+        },
+        create: {
+          environmentId: ent.environmentId,
+          entityId: ent.entityPk,
+          mcpUserId,
+          provider,
+          email: email ?? null,
+          emailVerified: !!email,
+          externalSubject,
+          displayName: name ?? null,
+          credentialId: credential.id,
+          lastLoginAt: new Date(),
+        },
+        update: {
+          mcpUserId,
+          credentialId: credential.id,
+          email: email ?? undefined,
+          emailVerified: !!email,
+          displayName: name ?? undefined,
+          lastLoginAt: new Date(),
+          revokedAt: null,
+        },
+      });
+    });
+
     const { code: platosCode } = await this.oauth.issueAuthCode({
       clientId: sp.clientId,
-      userId: mcpUserId,
+      userId: client.registeredByUserId,
       scopeTuple: {
         organizationId: ent.organizationId,
         projectId: ent.projectId,
-        environmentId: "mcp",
+        environmentId: ent.environmentId,
       },
       codeChallenge: sp.codeChallenge,
       codeChallengeMethod: "S256",
       redirectUri: sp.redirectUri,
       scopes: sp.scope.split(" ").filter(Boolean),
       entityPk: ent.entityPk,
+      mcpIdentity: { kind: "oidc", sessionId: oidcSession.id },
     });
 
     const finalRedirect = new URL(sp.redirectUri);
@@ -1456,56 +1530,23 @@ export class OAuthController {
   private encryptEntityTokens(
     accessToken: string,
     refreshToken?: string,
-  ): { encryptedAccess: string; encryptedRefresh?: string } {
+  ): string {
     // M3 — encrypt at rest with PLATOS_ENCRYPTION_KEY via SecretsService.
     // No plaintext fallback: in production SecretsService throws when the key
     // is missing/malformed, so tokens are never persisted unencrypted.
     const secrets = getEntityTokenSecrets();
-    return {
-      encryptedAccess: secrets.encrypt(accessToken),
-      encryptedRefresh: refreshToken ? secrets.encrypt(refreshToken) : undefined,
-    };
+    return secrets.encrypt(JSON.stringify({
+      accessToken,
+      refreshToken: refreshToken ?? null,
+    }));
   }
 
   /** Decrypt a token that was stored by encryptEntityTokens. */
   static decryptEntityToken(ciphertext: string): string {
-    // M3 — primary path: current key via SecretsService (PLATOS_ENCRYPTION_KEY).
-    try {
-      return getEntityTokenSecrets().decrypt(ciphertext);
-    } catch {
-      // Backward-compat dual-read for legacy rows written before M3 under
-      // PLATOS_MESSAGE_ENCRYPTION_KEY. Read-only: new writes always use the
-      // PLATOS_ENCRYPTION_KEY path above, so these rows re-encrypt on next
-      // login. DELETE this fallback after a re-encrypt migration window.
-      return OAuthController.legacyDecryptEntityTokenWithMessageKey(ciphertext);
-    }
-  }
-
-  /**
-   * M3 legacy read path — decrypt rows encrypted (pre-M3) with
-   * PLATOS_MESSAGE_ENCRYPTION_KEY. Returns the input unchanged when no legacy
-   * key is configured or decryption fails (covers rows that were stored as
-   * plaintext under the old fail-open behaviour). Remove after migration.
-   */
-  private static legacyDecryptEntityTokenWithMessageKey(ciphertext: string): string {
-    const keyHex = process.env.PLATOS_MESSAGE_ENCRYPTION_KEY;
-    if (!keyHex) return ciphertext;
-    const key = keyHex.length === 64
-      ? Buffer.from(keyHex, "hex")
-      : Buffer.byteLength(keyHex, "utf8") === 32
-        ? Buffer.from(keyHex, "utf8")
-        : null;
-    if (!key) return ciphertext;
-    try {
-      const packed = Buffer.from(ciphertext, "base64");
-      const iv = packed.subarray(0, 16);
-      const tag = packed.subarray(16, 32);
-      const enc = packed.subarray(32);
-      const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-      decipher.setAuthTag(tag);
-      return Buffer.concat([decipher.update(enc), decipher.final()]).toString("utf8");
-    } catch {
-      return ciphertext; // Graceful fallback: return as-is (plaintext stored)
-    }
+    const payload = JSON.parse(getEntityTokenSecrets().decrypt(ciphertext)) as {
+      accessToken: string;
+    };
+    if (!payload.accessToken) throw new Error("Entity OAuth credential is malformed");
+    return payload.accessToken;
   }
 }

@@ -1,6 +1,6 @@
 import { task, metadata, logger } from "@trigger.dev/sdk";
+import type { PrismaClient } from "@platos/tenancy-database";
 import { runInNewContext } from "node:vm";
-const env = process.env;
 
 /**
  * PIFSP-12 — Platos custom task executor.
@@ -65,40 +65,54 @@ export const platosCustomTask = task({
     // Dynamic Prisma import — the agent container generates Prisma at startup.
     // We import directly rather than going through NestJS DI since trigger tasks
     // run outside the NestJS container lifecycle.
-    let prisma: any;
+    let prisma: PrismaClient;
     try {
-      const { PrismaClient } = await import("@platos/database");
-      prisma = new PrismaClient();
-    } catch (err: any) {
-      logger.error("[platos-custom-task] Failed to create Prisma client", { error: err?.message });
+      const { PrismaClient: ControlPrismaClient } = await import(
+        "@platos/tenancy-database"
+      );
+      prisma = new ControlPrismaClient({
+        datasourceUrl: process.env.DATABASE_URL,
+      });
+    } catch (err: unknown) {
+      logger.error("[platos-custom-task] Failed to create Prisma client", {
+        error: err instanceof Error ? err.message : String(err),
+      });
       return { status: "failed", error: "DB client unavailable", durationMs: Date.now() - startMs };
     }
 
     try {
       // 1. Load the task row.
       await metadata.set("stage", "loading");
-      const row = await prisma.platosTask.findFirst({
+      const row = await prisma.job.findFirst({
         where: {
           id: payload.taskRowId,
-          organizationId: payload.scope.organizationId,
-          projectId: payload.scope.projectId,
           environmentId: payload.scope.environmentId,
-          isActive: true,
+          environment: {
+            projectId: payload.scope.projectId,
+            project: { organizationId: payload.scope.organizationId },
+          },
+          status: "ACTIVE",
         },
-        select: { compiledHandler: true, handler: true, taskId: true, timeout: true, displayName: true },
+        select: {
+          handler: true,
+          externalId: true,
+          timeoutSeconds: true,
+          displayName: true,
+        },
       });
 
       if (!row) {
         return { status: "failed", error: "Task not found or inactive", durationMs: Date.now() - startMs };
       }
 
-      const source: string = row.compiledHandler ?? row.handler;
+      const source = row.handler;
       if (!source?.trim()) {
         return { status: "failed", error: "Task has no handler code", durationMs: Date.now() - startMs };
       }
 
       await metadata.set("stage", "executing");
-      await metadata.set("taskId", row.taskId);
+      const taskId = row.externalId ?? payload.taskRowId;
+      await metadata.set("taskId", taskId);
 
       // 2. Build sandbox context — expose only safe primitives.
       let sandboxOutput: unknown = undefined;
@@ -106,9 +120,9 @@ export const platosCustomTask = task({
         // Platos ctx helpers (operator API surface)
         ctx: {
           logger: {
-            info: (msg: string, data?: unknown) => logger.info(`[task:${row.taskId}] ${msg}`, data as any),
-            warn: (msg: string, data?: unknown) => logger.warn(`[task:${row.taskId}] ${msg}`, data as any),
-            error: (msg: string, data?: unknown) => logger.error(`[task:${row.taskId}] ${msg}`, data as any),
+            info: (msg: string, data?: unknown) => logger.info(`[task:${taskId}] ${msg}`, data as any),
+            warn: (msg: string, data?: unknown) => logger.warn(`[task:${taskId}] ${msg}`, data as any),
+            error: (msg: string, data?: unknown) => logger.error(`[task:${taskId}] ${msg}`, data as any),
           },
           metadata: {
             set: async (key: string, value: unknown) => metadata.set(key, value as any),
@@ -121,9 +135,9 @@ export const platosCustomTask = task({
         payload: payload.payload ?? {},
         // Standard JS globals — no Node-specific globals
         console: {
-          log: (...args: unknown[]) => logger.info(`[task:${row.taskId}]`, { args }),
-          warn: (...args: unknown[]) => logger.warn(`[task:${row.taskId}]`, { args }),
-          error: (...args: unknown[]) => logger.error(`[task:${row.taskId}]`, { args }),
+          log: (...args: unknown[]) => logger.info(`[task:${taskId}]`, { args }),
+          warn: (...args: unknown[]) => logger.warn(`[task:${taskId}]`, { args }),
+          error: (...args: unknown[]) => logger.error(`[task:${taskId}]`, { args }),
         },
         JSON,
         Math,
@@ -151,28 +165,28 @@ export const platosCustomTask = task({
         })()
       `;
 
-      const timeoutMs = Math.min(row.timeout * 1000, 3600_000);
+      const timeoutMs = Math.min(row.timeoutSeconds * 1000, 3600_000);
       const resultPromise = runInNewContext(wrappedSource, sandbox) as Promise<unknown>;
 
       // Enforce timeout
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Handler timed out after ${row.timeout}s`)), timeoutMs)
+        setTimeout(() => reject(new Error(`Handler timed out after ${row.timeoutSeconds}s`)), timeoutMs)
       );
 
       const result = await Promise.race([resultPromise, timeoutPromise]);
       const finalResult = sandboxOutput !== undefined ? sandboxOutput : result;
 
       // 4. Bump lastRunAt
-      await prisma.platosTask.updateMany({
+      await prisma.job.updateMany({
         where: { id: payload.taskRowId },
-        data: { lastRunAt: new Date() },
+        data: { lastStartedAt: new Date() },
       }).catch(() => {});
 
       await metadata.set("stage", "completed");
       return { status: "completed", result: finalResult, durationMs: Date.now() - startMs };
 
-    } catch (err: any) {
-      const errorMsg = err?.message ?? String(err);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
       logger.error("[platos-custom-task] Handler error", {
         taskRowId: payload.taskRowId,
         error: errorMsg,

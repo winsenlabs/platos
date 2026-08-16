@@ -43,93 +43,55 @@ const CANARY_VERSION_ID = "ver_canary";
 
 /**
  * In-memory prisma shim modelling the critical race-sensitive surface of
- * PlatosAgentThread.updateMany. The invariant: only the FIRST caller whose
- * `where` guard (`lockedVersionId: null`) still matches gets `count: 1`;
- * every subsequent caller gets `count: 0` even if they pass the same
- * candidate version. Postgres gives us this via row-level locking — we
- * simulate with a mutex + atomic JS compare-and-swap.
+ * Redis SET NX. The invariant: only the FIRST caller writes the scoped
+ * thread/version lock; every subsequent caller reads the winner.
  */
-function makePrismaShim(initialThread: {
-  id: string;
-  lockedVersionId: string | null;
-  organizationId: string;
-  projectId: string;
-  environmentId: string;
-}) {
-  const threadStore = new Map<string, typeof initialThread>();
-  threadStore.set(initialThread.id, { ...initialThread });
-
-  const agentRow = {
-    id: AGENT_ID,
-    organizationId: SCOPE.organizationId,
-    projectId: SCOPE.projectId,
+function makePrismaShim() {
+  const binding: any = {
+    id: "binding_1",
+    agentId: AGENT_ID,
     environmentId: SCOPE.environmentId,
-    currentVersionId: CURRENT_VERSION_ID,
-    canaryVersionId: CANARY_VERSION_ID,
+    activeAgentVersionId: CURRENT_VERSION_ID,
+    canaryAgentVersionId: CANARY_VERSION_ID,
     canaryPercent: 50,
-    featureFlags: null,
-    name: "test",
-    slug: "test",
-    model: "anthropic:claude-sonnet-4-6",
-    systemPrompt: "",
-    promptBlocks: null,
-    dynamicBlocks: null,
-    maxSteps: 20,
-    contextLimit: 20,
-    historyMode: "rolling",
-    compactThreshold: 40,
-    enableUserProfiling: false,
-    toolsBlockConfig: null,
-    subAgentConfig: null,
-    memoryConfig: null,
-    metaTools: null,
-    isActive: true,
-    outputSchema: null,
   };
 
-  const versions = new Map<string, { id: string; agentId: string; snapshot: any }>();
+  const versions = new Map<string, any>();
   versions.set(CURRENT_VERSION_ID, {
     id: CURRENT_VERSION_ID,
     agentId: AGENT_ID,
-    snapshot: { model: "anthropic:claude-sonnet-4-6", systemPrompt: "CURRENT" },
+    model: "anthropic:claude-sonnet-4-6",
+    systemPrompt: "CURRENT",
+    promptBlocks: [],
+    dynamicBlocks: [],
+    toolsBlockConfig: {},
+    modelRoutes: [],
+    memoryConfig: {},
+    maxSteps: 20,
+    contextLimit: 20,
   });
   versions.set(CANARY_VERSION_ID, {
     id: CANARY_VERSION_ID,
     agentId: AGENT_ID,
-    snapshot: { model: "anthropic:claude-sonnet-4-6", systemPrompt: "CANARY" },
+    model: "anthropic:claude-sonnet-4-6",
+    systemPrompt: "CANARY",
+    promptBlocks: [],
+    dynamicBlocks: [],
+    toolsBlockConfig: {},
+    modelRoutes: [],
+    memoryConfig: {},
+    maxSteps: 20,
+    contextLimit: 20,
   });
+  binding.activeAgentVersion = versions.get(CURRENT_VERSION_ID);
+  binding.canaryAgentVersion = versions.get(CANARY_VERSION_ID);
 
   return {
-    state: { threadStore, agentRow, versions },
-    platosAgent: {
-      findFirst: async (_args: any) => ({ ...agentRow }),
+    state: { binding, versions },
+    agentBinding: {
+      findFirst: async () => ({ ...binding }),
     },
-    platosAgentThread: {
-      findFirst: async (args: any) => {
-        const id = args.where.id;
-        const t = threadStore.get(id);
-        if (!t) return null;
-        // Scope check
-        if (args.where.organizationId && args.where.organizationId !== t.organizationId) return null;
-        return { id: t.id, lockedVersionId: t.lockedVersionId };
-      },
-      updateMany: async (args: any) => {
-        const id = args.where.id;
-        const t = threadStore.get(id);
-        if (!t) return { count: 0 };
-        // Atomic compare-and-swap: only update if guard matches.
-        if (
-          "lockedVersionId" in args.where &&
-          args.where.lockedVersionId === null &&
-          t.lockedVersionId !== null
-        ) {
-          return { count: 0 };
-        }
-        t.lockedVersionId = args.data.lockedVersionId ?? t.lockedVersionId;
-        return { count: 1 };
-      },
-    },
-    platosAgentVersion: {
+    agentVersion: {
       findFirst: async (args: any) => {
         const v = versions.get(args.where.id);
         if (!v) return null;
@@ -143,8 +105,10 @@ function makePrismaShim(initialThread: {
 function makeRedisShim() {
   const store = new Map<string, string>();
   return {
+    state: store,
     get: async (k: string) => store.get(k) ?? null,
-    set: async (k: string, v: string) => {
+    set: async (k: string, v: string, mode?: string) => {
+      if (mode === "NX" && store.has(k)) return null;
       store.set(k, v);
       return "OK";
     },
@@ -169,29 +133,24 @@ describe("AgentService.resolveConfigForThread — version-lock race (PPR-42)", (
   let prisma: ReturnType<typeof makePrismaShim>;
 
   beforeEach(() => {
-    prisma = makePrismaShim({
-      id: THREAD_ID,
-      lockedVersionId: null,
-      organizationId: SCOPE.organizationId,
-      projectId: SCOPE.projectId,
-      environmentId: SCOPE.environmentId,
-    });
+    prisma = makePrismaShim();
   });
 
   it("single turn: picks a version and persists lockedVersionId", async () => {
-    const svc = new AgentService(makeRedisShim(), prisma, makeScopedEnv(), { get: () => null } as any);
+    const redis = makeRedisShim();
+    const svc = new AgentService(redis, prisma, makeScopedEnv(), { get: () => null } as any);
     const res = await svc.resolveConfigForThread(AGENT_ID, THREAD_ID, SCOPE);
     expect([CURRENT_VERSION_ID, CANARY_VERSION_ID]).toContain(res.versionIdUsed);
-    // Thread row now has the lock stamped.
-    const locked = prisma.state.threadStore.get(THREAD_ID)!.lockedVersionId;
+    const locked = [...redis.state.values()][0];
     expect(locked).toBe(res.versionIdUsed);
   });
 
   it("thread with pre-existing lock: returns LOCKED bucket, ignores canary roll", async () => {
-    prisma.state.threadStore.get(THREAD_ID)!.lockedVersionId = CURRENT_VERSION_ID;
-    const svc = new AgentService(makeRedisShim(), prisma, makeScopedEnv(), { get: () => null } as any);
+    const redis = makeRedisShim();
+    await redis.set(`agent-version-lock:${SCOPE.organizationId}:${SCOPE.projectId}:${SCOPE.environmentId}:${THREAD_ID}`, CURRENT_VERSION_ID);
+    const svc = new AgentService(redis, prisma, makeScopedEnv(), { get: () => null } as any);
     // Force canaryPercent to 100 via direct mutation; lock must still win.
-    prisma.state.agentRow.canaryPercent = 100;
+    prisma.state.binding.canaryPercent = 100;
     const res = await svc.resolveConfigForThread(AGENT_ID, THREAD_ID, SCOPE);
     expect(res.bucket).toBe("locked");
     expect(res.versionIdUsed).toBe(CURRENT_VERSION_ID);
@@ -205,7 +164,8 @@ describe("AgentService.resolveConfigForThread — version-lock race (PPR-42)", (
     const rolls = [0.1, 0.9]; // 10% → canary; 90% → current (canaryPercent=50)
     Math.random = () => rolls[rollIndex++ % rolls.length];
     try {
-      const svc = new AgentService(makeRedisShim(), prisma, makeScopedEnv(), { get: () => null } as any);
+      const redis = makeRedisShim();
+      const svc = new AgentService(redis, prisma, makeScopedEnv(), { get: () => null } as any);
       const [a, b] = await Promise.all([
         svc.resolveConfigForThread(AGENT_ID, THREAD_ID, SCOPE),
         svc.resolveConfigForThread(AGENT_ID, THREAD_ID, SCOPE),
@@ -213,7 +173,7 @@ describe("AgentService.resolveConfigForThread — version-lock race (PPR-42)", (
       // INVARIANT: both turns serve under the same locked version.
       expect(a.versionIdUsed).toBe(b.versionIdUsed);
       // AND: whatever they agreed on matches what's now in the DB.
-      const persisted = prisma.state.threadStore.get(THREAD_ID)!.lockedVersionId;
+      const persisted = [...redis.state.values()][0];
       expect(a.versionIdUsed).toBe(persisted);
     } finally {
       Math.random = origRandom;
@@ -223,16 +183,15 @@ describe("AgentService.resolveConfigForThread — version-lock race (PPR-42)", (
   it("concurrent race with canaryPercent=50: exactly one write, one re-read", async () => {
     // Same test but with 10 parallel calls — any divergence means we
     // serve turns under different versions while the thread is 'locked'.
-    const svc = new AgentService(makeRedisShim(), prisma, makeScopedEnv(), { get: () => null } as any);
+    const redis = makeRedisShim();
+    const svc = new AgentService(redis, prisma, makeScopedEnv(), { get: () => null } as any);
     const calls = Array.from({ length: 10 }).map(() =>
       svc.resolveConfigForThread(AGENT_ID, THREAD_ID, SCOPE),
     );
     const results = await Promise.all(calls);
     const versions = new Set(results.map((r) => r.versionIdUsed));
     expect(versions.size).toBe(1);
-    expect(prisma.state.threadStore.get(THREAD_ID)!.lockedVersionId).toBe(
-      [...versions][0],
-    );
+    expect([...redis.state.values()][0]).toBe([...versions][0]);
   });
 
   it("null threadId → falls through to getAgentConfig (no lock path)", async () => {
@@ -242,11 +201,11 @@ describe("AgentService.resolveConfigForThread — version-lock race (PPR-42)", (
   });
 
   it("missing agent row → returns fallback bucket", async () => {
-    const orig = prisma.platosAgent.findFirst;
-    prisma.platosAgent.findFirst = async () => null;
+    const orig = prisma.agentBinding.findFirst;
+    prisma.agentBinding.findFirst = async () => null;
     const svc = new AgentService(makeRedisShim(), prisma, makeScopedEnv(), { get: () => null } as any);
     const res = await svc.resolveConfigForThread("unknown_agent", THREAD_ID, SCOPE);
     expect(res.bucket).toBe("fallback");
-    prisma.platosAgent.findFirst = orig;
+    prisma.agentBinding.findFirst = orig;
   });
 });

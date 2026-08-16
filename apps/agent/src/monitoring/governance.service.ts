@@ -153,16 +153,20 @@ export class GovernanceService {
   private async computeAgentRisk(scope: ScopeTuple, sinceDays: number) {
     const since = new Date(Date.now() - sinceDays * 86400_000);
 
-    // Per-agent turn counts (rows in PlatosAgentMessage whose role=user).
+    // A clean Turn is already one complete user/assistant exchange, so each
+    // row contributes exactly one turn to the governance denominator.
     const turnRows: Array<{ thread: { agentId: string } | null }> =
-      await this.prisma.platosAgentMessage.findMany({
+      await this.prisma.turn.findMany({
         where: {
-          role: "user",
           createdAt: { gte: since },
           thread: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
             environmentId: scope.environmentId,
+            environment: {
+              project: {
+                id: scope.projectId,
+                organizationId: scope.organizationId,
+              },
+            },
           },
         },
         select: { thread: { select: { agentId: true } } },
@@ -176,11 +180,15 @@ export class GovernanceService {
 
     // Per-agent safety events by detector.
     const safetyRows: Array<{ agentId: string | null; detector: string }> =
-      await this.prisma.platosSafetyEvent.findMany({
+      await this.prisma.safetyEvent.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          environment: {
+            project: {
+              id: scope.projectId,
+              organizationId: scope.organizationId,
+            },
+          },
           createdAt: { gte: since },
         },
         select: { agentId: true, detector: true },
@@ -197,11 +205,15 @@ export class GovernanceService {
 
     // Per-agent tool errors.
     const toolRows: Array<{ agentId: string | null; status: string }> =
-      await this.prisma.platosToolCallAudit.findMany({
+      await this.prisma.toolCallAudit.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          environment: {
+            project: {
+              id: scope.projectId,
+              organizationId: scope.organizationId,
+            },
+          },
           createdAt: { gte: since },
         },
         select: { agentId: true, status: true },
@@ -210,18 +222,22 @@ export class GovernanceService {
     for (const r of toolRows) {
       const id = r.agentId;
       if (!id) continue;
-      if (r.status === "failed" || r.status === "timeout") {
+      if (r.status === "FAILED" || r.status === "CANCELLED") {
         toolErrorsByAgent.set(id, (toolErrorsByAgent.get(id) ?? 0) + 1);
       }
     }
 
     // Per-agent approval counts.
     const approvalRows: Array<{ agentId: string | null }> =
-      await this.prisma.platosAgentApproval.findMany({
+      await this.prisma.agentApproval.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          environment: {
+            project: {
+              id: scope.projectId,
+              organizationId: scope.organizationId,
+            },
+          },
           createdAt: { gte: since },
         },
         select: { agentId: true },
@@ -241,12 +257,12 @@ export class GovernanceService {
       ...approvalsByAgent.keys(),
     ]);
     const agentRows: Array<{ id: string; name: string }> = agentIds.size
-      ? await this.prisma.platosAgent.findMany({
+      ? await this.prisma.agent.findMany({
           where: {
             id: { in: Array.from(agentIds) },
-            organizationId: scope.organizationId,
             projectId: scope.projectId,
-            environmentId: scope.environmentId,
+            project: { organizationId: scope.organizationId },
+            bindings: { some: { environmentId: scope.environmentId } },
           },
           select: { id: true, name: true },
         })

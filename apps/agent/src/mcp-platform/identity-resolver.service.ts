@@ -1,5 +1,8 @@
 import { Injectable, Inject } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import {
+  type ControlDatabaseClient,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import { McpBearerTokenService } from "./mcp-bearer-token.service";
 import type { Request } from "express";
 import { randomUUID } from "crypto";
@@ -27,7 +30,7 @@ export interface McpIdentityRejectReason {
 @Injectable()
 export class McpIdentityResolverService {
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     private readonly bearerTokenService: McpBearerTokenService,
   ) {}
 
@@ -36,8 +39,8 @@ export class McpIdentityResolverService {
     entityPk: string,
   ): Promise<McpIdentityResult | McpIdentityRejectReason> {
     const authHeader = req.headers["authorization"] as string | undefined;
-    const entityConfig = await this.prisma.platosEntityMcpConfig.findFirst({
-      where: { entityPk },
+    const entityConfig = await this.prisma.entityMcpConfig.findUnique({
+      where: { entityId: entityPk },
       select: { identityMode: true, enabled: true },
     });
 
@@ -98,12 +101,12 @@ export class McpIdentityResolverService {
     // Check for existing anon session cookie/header
     const existingId = req.headers["x-mcp-anon-session"] as string | undefined;
     if (existingId) {
-      const existing = await this.prisma.platosMcpAnonSession.findFirst({
-        where: { mcpUserId: existingId, entityPk, revokedAt: null },
+      const existing = await this.prisma.mcpAnonymousSession.findFirst({
+        where: { mcpUserId: existingId, entityId: entityPk, revokedAt: null },
         select: { id: true, mcpUserId: true },
       });
       if (existing) {
-        this.prisma.platosMcpAnonSession.update({
+        void this.prisma.mcpAnonymousSession.update({
           where: { id: existing.id },
           data: { lastUsedAt: new Date() },
         }).catch(() => undefined);
@@ -113,9 +116,29 @@ export class McpIdentityResolverService {
 
     // Create new anon session
     const mcpUserId = `mcp:anon:${randomUUID().replace(/-/g, "")}`;
-    const session = await this.prisma.platosMcpAnonSession.create({
+    const entity = await this.prisma.entity.findUnique({
+      where: { id: entityPk },
+      select: {
+        project: {
+          select: {
+            environments: {
+              where: { archivedAt: null },
+              select: { id: true },
+              orderBy: { createdAt: "asc" },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+    const environmentId = entity?.project.environments[0]?.id;
+    if (!environmentId) {
+      throw new Error("Entity is not attached to an active environment");
+    }
+    const session = await this.prisma.mcpAnonymousSession.create({
       data: {
-        entityPk,
+        entityId: entityPk,
+        environmentId,
         mcpUserId,
         firstSeenIp: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? (req.socket.remoteAddress ?? null),
         userAgent: req.headers["user-agent"] ?? null,

@@ -12,22 +12,35 @@ import {
   Inject,
 } from "@nestjs/common";
 import { type Request } from "express";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import { PRISMA_TOKEN, environmentScopeWhere } from "../shared/database.provider";
 import { ProviderRegistryService } from "./provider-registry.service";
-import { ScopedEnvService } from "./scoped-env.service";
+import { ScopedEnvService, credentialReference } from "./scoped-env.service";
 import { ModelCatalogService } from "./model-catalog.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { requireOperator } from "../auth/scope.guard";
 
-/**
- * PIFSP-14 — Provider key management endpoints.
- *
- *   GET    /api/v1/agent/providers                       — list provider states
- *   GET    /api/v1/agent/providers/keys                  — list all provider keys in scope
- *   POST   /api/v1/agent/providers/keys                  — create a key
- *   PATCH  /api/v1/agent/providers/keys/:id              — rename / set default
- *   DELETE /api/v1/agent/providers/keys/:id              — delete (fails if agents pinned)
- */
+const SAFE_KEY_SELECT = {
+  id: true,
+  provider: true,
+  label: true,
+  environmentKeyName: true,
+  isDefault: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+  lastUsedAt: true,
+} as const;
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return !!error && typeof error === "object" && "code" in error
+    && (error as { code?: unknown }).code === "P2002";
+}
+
+function isReferenceConstraintError(error: unknown): boolean {
+  return !!error && typeof error === "object" && "code" in error
+    && (error as { code?: unknown }).code === "P2003";
+}
+
 @Controller("api/v1/agent/providers")
 export class ProvidersController {
   constructor(
@@ -46,53 +59,81 @@ export class ProvidersController {
     };
   }
 
+  private keyResult(row: any) {
+    const { environmentKeyName, ...safe } = row;
+    return { ...safe, envVarName: environmentKeyName };
+  }
+
+  private async lockProviderDefaults(tx: any, environmentId: string, provider: string): Promise<void> {
+    await tx.$queryRawUnsafe(
+      "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))::text AS locked",
+      `${environmentId}:${provider}`,
+    );
+  }
+
+  private async hasExecutableReference(
+    tx: any,
+    scope: RequestScope,
+    key: { id: string; provider: string },
+  ): Promise<boolean> {
+    const rows = await tx.$queryRawUnsafe(
+      `SELECT version.id
+         FROM "ProviderKey" provider_key
+         JOIN "Environment" environment ON environment.id = provider_key."environmentId"
+         JOIN "Project" project ON project.id = environment."projectId"
+         JOIN "AgentBinding" binding ON binding."environmentId" = environment.id
+         JOIN "Agent" agent ON agent.id = binding."agentId" AND agent."projectId" = project.id
+         JOIN "AgentVersion" version ON version."agentId" = agent.id
+        WHERE provider_key.id = $1::uuid
+          AND provider_key."environmentId" = $2::uuid
+          AND provider_key.provider = $3
+          AND project.id = $4::uuid
+          AND project."organizationId" = $5::uuid
+          AND (
+            (
+              version."memoryConfig" #>> '{__runtime,providerKeyId}' = provider_key.id::text
+              AND split_part(version.model, ':', 1) = provider_key.provider
+            )
+            OR EXISTS (
+              SELECT 1
+                FROM jsonb_array_elements(version."modelRoutes") route
+               WHERE split_part(COALESCE(route ->> 'model', ''), ':', 1) = provider_key.provider
+                 AND (
+                   route ->> 'providerCredentialId' = provider_key.id::text
+                   OR route ->> 'providerKeyId' = provider_key.id::text
+                 )
+            )
+          )
+        LIMIT 1`,
+      key.id,
+      scope.environmentId,
+      key.provider,
+      scope.projectId,
+      scope.organizationId,
+    );
+    return Array.isArray(rows) && rows.length > 0;
+  }
+
   @Get()
   async listProviders(@Req() req: Request) {
     const scope = this.getScope(req);
-    const providers = await this.registry.list({
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
-    });
-    return { providers };
+    return { providers: await this.registry.list(scope) };
   }
 
   @Get("keys")
   async listKeys(@Req() req: Request) {
     const scope = this.getScope(req);
-    // SECURITY (audit authz-2026-07-22 F7) — BYOK key inventory is operator-only
-    // (mirrors FilesController). No secret material, but scope-wide config metadata.
     requireOperator(scope);
-    const keys = await this.prisma.platosProviderKey.findMany({
-      where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-      },
+    const rows = await this.prisma.providerKey.findMany({
+      where: environmentScopeWhere(scope),
       orderBy: [{ provider: "asc" }, { isDefault: "desc" }, { createdAt: "asc" }],
-      select: {
-        id: true,
-        provider: true,
-        label: true,
-        envVarName: true,
-        isDefault: true,
-        createdBy: true,
-        createdAt: true,
-        updatedAt: true,
-        lastUsedAt: true,
-      },
+      select: SAFE_KEY_SELECT,
     });
-    // Enrich each key with whether the env var is actually set in SecretStore.
-    const enriched = await Promise.all(
-      keys.map(async (k: any) => ({
-        ...k,
-        envVarSet: !!(await this.scopedEnv.get(
-          { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
-          k.envVarName,
-        )),
-      })),
-    );
-    return { keys: enriched };
+    const keys = await Promise.all(rows.map(async (row: any) => ({
+      ...this.keyResult(row),
+      envVarSet: (await this.scopedEnv.test(scope, row.environmentKeyName)).ok,
+    })));
+    return { keys };
   }
 
   @Post("keys")
@@ -101,51 +142,50 @@ export class ProvidersController {
     @Body() body: { provider: string; label: string; envVarName: string; isDefault?: boolean },
   ) {
     const scope = this.getScope(req);
-    // SECURITY (audit authz-2026-07-22 F7) — provider-key config mutation is operator-only.
     requireOperator(scope);
     if (!body.provider || !body.label || !body.envVarName) {
       throw new HttpException("provider, label, and envVarName are required", HttpStatus.BAD_REQUEST);
     }
-
-    // If isDefault requested, clear any existing default for this provider.
-    if (body.isDefault) {
-      await this.prisma.platosProviderKey.updateMany({
-        where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          provider: body.provider,
-          isDefault: true,
-        },
-        data: { isDefault: false },
-      });
+    const credential = await this.scopedEnv.findCredentialMetadata(scope, body.envVarName, body.provider);
+    if (!credential) {
+      throw new HttpException("Credential not found", HttpStatus.NOT_FOUND);
     }
 
-    const key = await this.prisma.platosProviderKey.create({
-      data: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        provider: body.provider,
-        label: body.label,
-        envVarName: body.envVarName,
-        isDefault: body.isDefault ?? false,
-        createdBy: scope.userId,
-      },
-      select: {
-        id: true,
-        provider: true,
-        label: true,
-        envVarName: true,
-        isDefault: true,
-        createdAt: true,
-      },
-    });
-    // New key may unlock a different upstream catalog (e.g. a Together
-    // enterprise account vs. trial). Drop the in-memory cache so the next
-    // picker load fetches /v1/models with the new credential.
+    let key: any;
+    try {
+      key = await this.prisma.$transaction(async (tx: any) => {
+        if (body.isDefault) {
+          await this.lockProviderDefaults(tx, scope.environmentId, body.provider);
+          await tx.providerKey.updateMany({
+            where: {
+              ...environmentScopeWhere(scope),
+              provider: body.provider,
+              isDefault: true,
+            },
+            data: { isDefault: false },
+          });
+        }
+        return tx.providerKey.create({
+          data: {
+            environmentId: scope.environmentId,
+            provider: body.provider,
+            label: body.label,
+            environmentKeyName: credential.name,
+            encryptedReference: credentialReference(credential.id),
+            isDefault: body.isDefault ?? false,
+            createdBy: scope.userId,
+          },
+          select: SAFE_KEY_SELECT,
+        });
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new HttpException("Provider key already exists", HttpStatus.CONFLICT);
+      }
+      throw error;
+    }
     this.modelCatalog.invalidate(body.provider);
-    return { key };
+    return { key: this.keyResult(key) };
   }
 
   @Patch("keys/:id")
@@ -155,65 +195,77 @@ export class ProvidersController {
     @Body() body: { label?: string; isDefault?: boolean },
   ) {
     const scope = this.getScope(req);
-    // SECURITY (audit authz-2026-07-22 F7) — provider-key config mutation is operator-only.
     requireOperator(scope);
-    const existing = await this.prisma.platosProviderKey.findFirst({
-      where: { id, organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
-    });
-    if (!existing) throw new HttpException("Key not found", HttpStatus.NOT_FOUND);
-
-    if (body.isDefault) {
-      await this.prisma.platosProviderKey.updateMany({
-        where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          provider: existing.provider,
-          isDefault: true,
-          id: { not: id },
-        },
-        data: { isDefault: false },
+    let updated: any;
+    try {
+      updated = await this.prisma.$transaction(async (tx: any) => {
+        const existing = await tx.providerKey.findFirst({
+          where: { id, ...environmentScopeWhere(scope) },
+          select: { id: true, provider: true },
+        });
+        if (!existing) throw new HttpException("Key not found", HttpStatus.NOT_FOUND);
+        if (body.isDefault) {
+          await this.lockProviderDefaults(tx, scope.environmentId, existing.provider);
+          await tx.providerKey.updateMany({
+            where: {
+              ...environmentScopeWhere(scope),
+              provider: existing.provider,
+              isDefault: true,
+              id: { not: id },
+            },
+            data: { isDefault: false },
+          });
+        }
+        return tx.providerKey.update({
+          where: { id },
+          data: {
+            ...(body.label !== undefined ? { label: body.label } : {}),
+            ...(body.isDefault !== undefined ? { isDefault: body.isDefault } : {}),
+          },
+          select: SAFE_KEY_SELECT,
+        });
       });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new HttpException("Provider key already exists", HttpStatus.CONFLICT);
+      }
+      throw error;
     }
-
-    const updated = await this.prisma.platosProviderKey.update({
-      where: { id },
-      data: {
-        ...(body.label !== undefined ? { label: body.label } : {}),
-        ...(body.isDefault !== undefined ? { isDefault: body.isDefault } : {}),
-      },
-      select: { id: true, provider: true, label: true, envVarName: true, isDefault: true, updatedAt: true },
-    });
-    return { key: updated };
+    this.modelCatalog.invalidate(updated.provider);
+    return { key: this.keyResult(updated) };
   }
 
   @Delete("keys/:id")
   async deleteKey(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
-    // SECURITY (audit authz-2026-07-22 F7) — provider-key deletion is operator-only.
     requireOperator(scope);
-    const existing = await this.prisma.platosProviderKey.findFirst({
-      where: { id, organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
-    });
-    if (!existing) throw new HttpException("Key not found", HttpStatus.NOT_FOUND);
-
-    // Block deletion if any agents are pinned to this key.
-    const pinnedCount = await this.prisma.platosAgent.count({
-      where: {
-        providerKeyId: id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-      },
-    });
-    if (pinnedCount > 0) {
-      throw new HttpException(
-        `Cannot delete — ${pinnedCount} agent(s) are pinned to this key. Update them first.`,
-        HttpStatus.CONFLICT,
-      );
+    let existing: { id: string; provider: string };
+    try {
+      existing = await this.prisma.$transaction(async (tx: any) => {
+        const row = await tx.providerKey.findFirst({
+          where: { id, ...environmentScopeWhere(scope) },
+          select: { id: true, provider: true },
+        });
+        if (!row) throw new HttpException("Key not found", HttpStatus.NOT_FOUND);
+        await this.lockProviderDefaults(tx, scope.environmentId, row.provider);
+        if (await this.hasExecutableReference(tx, scope, row)) {
+          throw new HttpException(
+            "Cannot delete a provider key referenced by an executable agent version",
+            HttpStatus.CONFLICT,
+          );
+        }
+        await tx.providerKey.delete({ where: { id: row.id } });
+        return row;
+      });
+    } catch (error) {
+      if (isReferenceConstraintError(error)) {
+        throw new HttpException(
+          "Cannot delete a provider key referenced by an executable agent version",
+          HttpStatus.CONFLICT,
+        );
+      }
+      throw error;
     }
-
-    await this.prisma.platosProviderKey.delete({ where: { id } });
     this.modelCatalog.invalidate(existing.provider);
     return { deleted: true };
   }

@@ -58,28 +58,44 @@ export class PublicGuestTokenController {
   ) {}
 
   @Post("guest-token")
-  async mint(@Req() req: Request, @Body() body: { agentId: string }) {
+  async mint(@Req() req: Request, @Body() body: { agentId: string; environmentId?: string }) {
     if (!body?.agentId || typeof body.agentId !== "string") {
       throw new HttpException("agentId is required", HttpStatus.BAD_REQUEST);
     }
 
-    // Scope the agent lookup to a single row by primary key. If the
-    // agent's visibility isn't `public-guest`, surface 404 (not 403)
-    // so an attacker can't enumerate private agent ids.
-    const agent = await this.prisma.platosAgent.findUnique({
-      where: { id: body.agentId },
-      select: {
-        id: true,
-        organizationId: true,
-        projectId: true,
-        environmentId: true,
-        visibility: true,
-        isActive: true,
+    // Agent is project-owned and may be deployed into more than one
+    // Environment. Resolve the binding first, then derive Project and
+    // Organization through the database relation graph. An omitted
+    // environmentId is accepted only when exactly one public deployment exists.
+    const bindings = await this.prisma.agentBinding.findMany({
+      where: {
+        agentId: body.agentId,
+        ...(typeof body.environmentId === "string" && body.environmentId
+          ? { environmentId: body.environmentId }
+          : {}),
+      },
+      include: {
+        agent: true,
+        environment: { include: { project: true } },
+        activeAgentVersion: { select: { memoryConfig: true, toolsBlockConfig: true } },
       },
     });
-    if (!agent || agent.visibility !== "public-guest" || !agent.isActive) {
+    const publicBindings = bindings.filter((binding: any) => {
+      const memory = binding.activeAgentVersion?.memoryConfig;
+      const runtime = memory && typeof memory === "object" && !Array.isArray(memory)
+        ? (memory as Record<string, unknown>).__runtime
+        : null;
+      const runtimeVisibility = runtime && typeof runtime === "object" && !Array.isArray(runtime)
+        ? (runtime as Record<string, unknown>).visibility
+        : undefined;
+      const toolsVisibility = binding.activeAgentVersion?.toolsBlockConfig?.visibility;
+      return binding.agent.isActive && (runtimeVisibility ?? toolsVisibility) === "public-guest";
+    });
+    if (publicBindings.length !== 1) {
       throw new HttpException("Agent not found", HttpStatus.NOT_FOUND);
     }
+    const binding = publicBindings[0];
+    const agent = binding.agent;
 
     const clientIp = extractClientIp(req);
     const ipLimit = env.PLATOS_PUBLIC_GUEST_IP_LIMIT ?? 20;
@@ -123,9 +139,9 @@ export class PublicGuestTokenController {
     const iat = Math.floor(Date.now() / 1000);
     const token = await this.authService.createPlatformSessionToken(
       {
-        organizationId: agent.organizationId,
-        projectId: agent.projectId,
-        environmentId: agent.environmentId,
+        organizationId: binding.environment.project.organizationId,
+        projectId: binding.environment.projectId,
+        environmentId: binding.environmentId,
         userId: guestId,
         extraClaims: {
           agentId: agent.id,

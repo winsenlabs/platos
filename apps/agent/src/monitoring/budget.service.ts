@@ -1,5 +1,10 @@
 import { Injectable, Inject, Optional } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import type { Budget, Prisma } from "@platos/tenancy-database";
+import {
+  type ControlDatabaseClient,
+  environmentScopeWhere,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import type { RequestScope } from "../auth/scope.guard";
@@ -71,6 +76,16 @@ export interface BudgetStatus {
   overrideActive: boolean;
 }
 
+interface PersistedBudgetScope {
+  scopeType: BudgetScopeType;
+  targetId: string;
+  tier: BudgetTier;
+  skillSlug: string | null;
+  alertWebhookUrl: string | null;
+  alertEmails: string | null;
+  overrideBy: string | null;
+}
+
 /**
  * Theme H.5 + H.6 + H.7 — Budget caps.
  *
@@ -87,42 +102,34 @@ export interface BudgetStatus {
  */
 @Injectable()
 export class BudgetService {
-  private prisma: any;
-
   constructor(
-    @Inject(PRISMA_TOKEN) prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
     @Optional() private readonly rateLimitService?: RateLimitService,
-  ) {
-    this.prisma = prisma;
-  }
+  ) {}
 
   // ═══════════════════════════════════════════════════════
   // CRUD
   // ═══════════════════════════════════════════════════════
 
   async list(scope: ScopeTuple): Promise<BudgetCap[]> {
-    const rows = await this.prisma.platosBudgetCap.findMany({
+    const rows = await this.prisma.budget.findMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
       },
-      orderBy: [{ scopeType: "asc" }, { targetId: "asc" }, { period: "asc" }],
+      orderBy: [{ scope: "asc" }, { period: "asc" }],
     });
-    return rows.map((r: any) => this.row(r));
+    return rows.map((row) => this.row(scope, row));
   }
 
   async getById(scope: ScopeTuple, id: string): Promise<BudgetCap | null> {
-    const row = await this.prisma.platosBudgetCap.findFirst({
+    const row = await this.prisma.budget.findFirst({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
       },
     });
-    return row ? this.row(row) : null;
+    return row ? this.row(scope, row) : null;
   }
 
   async upsert(
@@ -188,61 +195,59 @@ export class BudgetService {
     const tier = data.tier ?? "llm";
     const skillSlug = data.skillSlug ?? null;
     const agentId = data.agentId ?? null;
-    const existing = await this.prisma.platosBudgetCap.findFirst({
-      where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        scopeType: data.scopeType,
-        targetId,
-        period: data.period,
-        tier,
-        skillSlug,
-        agentId,
-      },
-    });
-    const payload: Record<string, unknown> = {
-      limitCents: data.limitCents,
-      runsLimit: data.runsLimit ?? 0,
-      alertThresholds: (data.alertThresholds ?? [50, 80, 100]) as any,
-      alertWebhookUrl: data.alertWebhookUrl ?? null,
-      alertEmails: data.alertEmails ?? null,
-      enabled: data.enabled ?? true,
-      // Theme SM.3 — new fields (tier, skillSlug, agentId) are written
-      // unconditionally so updates can transition an existing row from
-      // llm → skill without leaving stale filters.
+    const existing = (await this.list(scope)).find(
+      (cap) =>
+        cap.scopeType === data.scopeType &&
+        cap.targetId === targetId &&
+        cap.period === data.period &&
+        cap.tier === tier &&
+        cap.skillSlug === skillSlug &&
+        cap.agentId === agentId,
+    );
+    const persistedScope: PersistedBudgetScope = {
+      scopeType: data.scopeType,
+      targetId,
       tier,
       skillSlug,
+      alertWebhookUrl: data.alertWebhookUrl ?? null,
+      alertEmails: data.alertEmails ?? null,
+      overrideBy: existing?.overrideBy ?? null,
+    };
+    const payload: Prisma.BudgetUncheckedUpdateInput = {
+      scope: this.encodeScope(persistedScope),
+      limitCents: data.limitCents,
+      turnsLimit: data.runsLimit ?? 0,
+      alertThresholds: (data.alertThresholds ?? [50, 80, 100]) as Prisma.InputJsonValue,
+      enabled: data.enabled ?? true,
       agentId,
     };
     if (existing) {
-      const updated = await this.prisma.platosBudgetCap.update({
+      const updated = await this.prisma.budget.update({
         where: { id: existing.id },
         data: payload,
       });
-      return this.row(updated);
+      return this.row(scope, updated);
     }
-    const created = await this.prisma.platosBudgetCap.create({
+    const created = await this.prisma.budget.create({
       data: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
-        scopeType: data.scopeType,
-        targetId,
+        scope: this.encodeScope(persistedScope),
         period: data.period,
-        ...payload,
+        limitCents: data.limitCents,
+        turnsLimit: data.runsLimit ?? 0,
+        alertThresholds: (data.alertThresholds ?? [50, 80, 100]) as Prisma.InputJsonValue,
+        enabled: data.enabled ?? true,
+        agentId,
       },
     });
-    return this.row(created);
+    return this.row(scope, created);
   }
 
   async delete(scope: ScopeTuple, id: string): Promise<boolean> {
-    const res = await this.prisma.platosBudgetCap.deleteMany({
+    const res = await this.prisma.budget.deleteMany({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
       },
     });
     return res.count > 0;
@@ -260,11 +265,26 @@ export class BudgetService {
     const cap = await this.getById(scope, id);
     if (!cap) return null;
     const until = options.minutes > 0 ? new Date(Date.now() + options.minutes * 60_000) : null;
-    const updated = await this.prisma.platosBudgetCap.update({
+    const metadata: PersistedBudgetScope = {
+      scopeType: cap.scopeType,
+      targetId: cap.targetId,
+      tier: cap.tier,
+      skillSlug: cap.skillSlug,
+      alertWebhookUrl: cap.alertWebhookUrl,
+      alertEmails: cap.alertEmails,
+      overrideBy: cap.overrideBy,
+    };
+    const updated = await this.prisma.budget.update({
       where: { id },
-      data: { overrideUntil: until, overrideBy: until ? options.userId : null },
+      data: {
+        overrideUntil: until,
+        scope: this.encodeScope({
+          ...metadata,
+          overrideBy: until ? options.userId : null,
+        }),
+      },
     });
-    return this.row(updated);
+    return this.row(scope, updated);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -518,33 +538,72 @@ export class BudgetService {
     }
   }
 
-  private row(r: any): BudgetCap {
+  private row(scope: ScopeTuple, r: Budget): BudgetCap {
+    const metadata = this.decodeScope(r);
     return {
       id: r.id,
-      organizationId: r.organizationId,
-      projectId: r.projectId,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
       environmentId: r.environmentId,
-      scopeType: r.scopeType,
-      targetId: r.targetId,
-      period: r.period,
+      scopeType: metadata.scopeType,
+      targetId: metadata.targetId,
+      period: r.period as BudgetPeriod,
       limitCents: r.limitCents,
-      runsLimit: r.runsLimit,
+      runsLimit: r.turnsLimit ?? 0,
       alertThresholds: Array.isArray(r.alertThresholds)
-        ? r.alertThresholds
+        ? r.alertThresholds.filter(
+            (threshold): threshold is number => typeof threshold === "number",
+          )
         : [50, 80, 100],
-      alertWebhookUrl: r.alertWebhookUrl,
-      alertEmails: r.alertEmails,
+      alertWebhookUrl: metadata.alertWebhookUrl,
+      alertEmails: metadata.alertEmails,
       overrideUntil: r.overrideUntil,
-      overrideBy: r.overrideBy,
+      overrideBy: metadata.overrideBy,
       enabled: r.enabled,
       // Theme SM.3 — new columns default at the schema level but we handle
       // pre-migration reads defensively so unit tests running against an
       // older DB don't blow up.
-      tier: (r.tier as BudgetTier | undefined) ?? "llm",
-      skillSlug: r.skillSlug ?? null,
+      tier: metadata.tier,
+      skillSlug: metadata.skillSlug,
       agentId: r.agentId ?? null,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
+    };
+  }
+
+  private encodeScope(scope: PersistedBudgetScope): string {
+    return JSON.stringify(scope);
+  }
+
+  private decodeScope(row: Pick<Budget, "scope">): PersistedBudgetScope {
+    try {
+      const parsed = JSON.parse(row.scope) as Partial<PersistedBudgetScope>;
+      if (
+        parsed.scopeType === "scope" ||
+        parsed.scopeType === "agent" ||
+        parsed.scopeType === "user"
+      ) {
+        return {
+          scopeType: parsed.scopeType,
+          targetId: parsed.targetId ?? "",
+          tier: parsed.tier === "skill" ? "skill" : "llm",
+          skillSlug: parsed.skillSlug ?? null,
+          alertWebhookUrl: parsed.alertWebhookUrl ?? null,
+          alertEmails: parsed.alertEmails ?? null,
+          overrideBy: parsed.overrideBy ?? null,
+        };
+      }
+    } catch {
+      // Canonical rows written outside this adapter use the scope string itself.
+    }
+    return {
+      scopeType: "scope",
+      targetId: "",
+      tier: "llm",
+      skillSlug: null,
+      alertWebhookUrl: null,
+      alertEmails: null,
+      overrideBy: null,
     };
   }
 
@@ -578,17 +637,15 @@ export class BudgetService {
     amountCents: number,
   ): Promise<BudgetCheckResult> {
     try {
-      const rows: any[] = await this.prisma.platosBudgetCap.findMany({
+      const rows = await this.prisma.budget.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          // Defensively default missing tier to "llm" for pre-migration rows.
-          OR: [{ tier: filters.tier }, ...(filters.tier === "llm" ? [{ tier: null }] : [])],
+          ...environmentScopeWhere(scope),
           enabled: true,
         },
       });
-      const caps = rows.map((r: any) => this.row(r));
+      const caps = rows
+        .map((row) => this.row(scope, row))
+        .filter((cap) => cap.tier === filters.tier);
       const agentId = filters.agentId ?? null;
       const skillSlug = filters.skillSlug ?? null;
 

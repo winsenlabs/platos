@@ -17,8 +17,10 @@ import {
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
-import { PRISMA_TOKEN } from "../shared/database.provider";
-import { pickExternalId } from "../shared/end-user-id";
+import {
+  type ControlDatabaseClient,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { OAuthService } from "../oauth/oauth.service";
@@ -60,7 +62,7 @@ export class McpEntityController {
     private readonly oauth: OAuthService,
     private readonly toolExecutor: ToolExecutorService,
     private readonly toolRouter: ToolRouterService,
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
     private readonly bearerTokenService: McpBearerTokenService,
     private readonly identityResolver: McpIdentityResolverService,
@@ -109,29 +111,29 @@ export class McpEntityController {
     | null
   > {
     if (!entityIdSlug || typeof entityIdSlug !== "string") return null;
-    const where: Record<string, unknown> = { entityId: entityIdSlug };
+    const where: Record<string, unknown> = { externalId: entityIdSlug };
     // BUG-1: add org/project filters when scope is available so slug lookup
     // cannot cross tenant boundaries.
     if (scope) {
-      where.organizationId = scope.organizationId;
       where.projectId = scope.projectId;
+      where.project = { organizationId: scope.organizationId };
     }
-    const ent = await this.prisma.platosConnectedEntity.findFirst({
+    const ent = await this.prisma.entity.findFirst({
       where,
       select: {
         id: true,
-        entityId: true,
-        organizationId: true,
+        externalId: true,
         projectId: true,
         displayName: true,
         mcpConfig: true,
+        project: { select: { organizationId: true } },
       },
     });
     if (!ent || !ent.mcpConfig) return null;
     return {
       entityPk: ent.id,
-      entityId: ent.entityId,
-      organizationId: ent.organizationId,
+      entityId: ent.externalId,
+      organizationId: ent.project.organizationId,
       projectId: ent.projectId,
       displayName: ent.displayName,
       config: {
@@ -149,7 +151,8 @@ export class McpEntityController {
    */
   private async authenticate(
     entityIdSlug: string,
-    bearer: string,
+    bearer?: string,
+    req?: Request,
   ): Promise<
     | {
         entity: Awaited<ReturnType<McpEntityController["loadEntity"]>>;
@@ -192,11 +195,12 @@ export class McpEntityController {
       entityPk: string;
       environmentId: string;
       organizationId: string;
+      projectId: string;
       identityMode: string;
       scopes: string[];
     } | null = null;
 
-    if (bearer.startsWith("plt_ent_")) {
+    if (bearer?.startsWith("plt_ent_")) {
       const patRow = await this.bearerTokenService.validate(bearer);
       if (patRow) {
         // PATs have no environmentId — they are entity-scoped only. Resolve
@@ -207,14 +211,18 @@ export class McpEntityController {
         // PRODUCTION row (very unusual — projects ship with PROD by default).
         let environmentId = "";
         try {
-          const prod = await this.prisma.runtimeEnvironment.findFirst({
-            where: { projectId: entity.projectId, type: "PRODUCTION" },
+          const prod = await this.prisma.environment.findFirst({
+            where: {
+              projectId: entity.projectId,
+              archivedAt: null,
+              slug: { in: ["prod", "production"] },
+            },
             select: { id: true },
           });
           if (prod) environmentId = prod.id;
           if (!environmentId) {
-            const any = await this.prisma.runtimeEnvironment.findFirst({
-              where: { projectId: entity.projectId },
+            const any = await this.prisma.environment.findFirst({
+              where: { projectId: entity.projectId, archivedAt: null },
               select: { id: true },
               orderBy: { createdAt: "asc" },
             });
@@ -235,6 +243,7 @@ export class McpEntityController {
           entityPk: patRow.entityPk,
           environmentId,
           organizationId: entity.organizationId,
+          projectId: entity.projectId,
           identityMode: "bearer",
           scopes: patRow.scopes ?? [],
         };
@@ -247,25 +256,62 @@ export class McpEntityController {
         verified = {
           tokenHash: oauthVerified.tokenHash,
           clientId: oauthVerified.clientId,
-          mcpUserId: oauthVerified.userId,
+          mcpUserId: oauthVerified.mcpUserId,
           entityPk: oauthVerified.entityPk ?? "",
           environmentId: oauthVerified.scope.environmentId,
           organizationId: oauthVerified.scope.organizationId,
+          projectId: oauthVerified.scope.projectId,
           // FINDING H12a — the anonymous "continue without signing in" flow
           // (oauth.controller.ts entityAnonAuthorize) mints a normal OAuth
           // token whose userId is prefixed `mcp:anon:`. Labeling it "oidc"
           // would let an anonymous visitor clear a tool's `minIdentityMode:
           // "oidc"` gate (which is meant to require a signed-in user). Map
           // anonymous tokens to the "anonymous" identity tier.
-          identityMode: oauthVerified.userId?.startsWith("mcp:anon:")
-            ? "anonymous"
-            : "oidc",
+          identityMode: oauthVerified.identityMode,
           scopes: oauthVerified.scopes ?? [],
         };
       }
     }
 
+    if (!verified && !bearer && req) {
+      const identity = await this.identityResolver.resolve(req, entity.entityPk);
+      if ("error" in identity) return identity;
+      if (identity.identityMode !== "anonymous") {
+        return { error: "invalid anonymous identity", status: 401 };
+      }
+      const sessionId = String(identity.metadata.sessionId ?? "");
+      const session = await this.prisma.mcpAnonymousSession.findFirst({
+        where: {
+          id: sessionId,
+          entityId: entity.entityPk,
+          revokedAt: null,
+          environment: {
+            projectId: entity.projectId,
+            project: { organizationId: entity.organizationId },
+          },
+        },
+        select: { id: true, environmentId: true },
+      });
+      if (!session) return { error: "invalid anonymous session", status: 401 };
+      verified = {
+        tokenHash: `anonymous:${session.id}`,
+        clientId: "anonymous",
+        mcpUserId: identity.mcpUserId,
+        entityPk: entity.entityPk,
+        environmentId: session.environmentId,
+        organizationId: entity.organizationId,
+        projectId: entity.projectId,
+        identityMode: "anonymous",
+        scopes: ["mcp:tools"],
+      };
+    }
+
     if (!verified) return { error: "invalid or expired token", status: 401 };
+
+    const allowedModes = entity.config.identityMode.split("+");
+    if (!allowedModes.includes(verified.identityMode)) {
+      return { error: `${verified.identityMode} identity is not enabled for this entity`, status: 403 };
+    }
 
     // PIFSP-21 — cross-entity tokens are rejected. Tokens minted via the
     // platform `/oauth/authorize` path have no entityPk and are not
@@ -288,6 +334,9 @@ export class McpEntityController {
         error: "token organization does not match entity — re-authorize against the entity's MCP endpoint",
         status: 403,
       };
+    }
+    if (verified.projectId !== entity.projectId) {
+      return { error: "token project does not match entity", status: 403 };
     }
     return {
       entity,
@@ -372,23 +421,31 @@ export class McpEntityController {
     scope: RequestScope,
   ): Promise<string | undefined> {
     try {
-      const endUser = await this.prisma.platosEndUser.findFirst({
+      const oidcSession = await this.prisma.mcpOidcSession.findFirst({
+        where: {
+          environmentId: scope.environmentId,
+          mcpUserId: scope.userId,
+          revokedAt: null,
+          entity: {
+            externalId: scope.entityId,
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
+        },
+        select: { externalSubject: true },
+      });
+      if (oidcSession?.externalSubject) return oidcSession.externalSubject;
+
+      const identity = await this.prisma.endUserIdentity.findFirst({
         where: {
           organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          externalUserId: scope.userId,
+          subject: scope.userId,
+          disabledAt: null,
+          endUser: { disabledAt: null },
         },
-        select: { linkedExternalId: true, externalUserId: true },
+        select: { subject: true },
       });
-      if (!endUser) return undefined;
-      // §A.2 frozen rule: prefer the adopted linkedExternalId; empty-string
-      // guarded. Coerce the helper's `null` (unresolved) to `undefined` for
-      // this path's string|undefined contract — both fail closed downstream.
-      return (
-        pickExternalId(endUser.linkedExternalId, endUser.externalUserId) ??
-        undefined
-      );
+      return identity?.subject || undefined;
     } catch {
       return undefined;
     }
@@ -408,16 +465,11 @@ export class McpEntityController {
     @Param("entityId") entityIdSlug: string,
     @Headers("authorization") authorization: string | undefined,
     @Body() body: JsonRpcRequest,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<JsonRpcResponse> {
     const bearer = this.extractBearer(authorization);
-    if (!bearer) {
-      throw new HttpException(
-        "Authorization: Bearer <OAuth access token> required",
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
-    const auth = await this.authenticate(entityIdSlug, bearer);
+    const auth = await this.authenticate(entityIdSlug, bearer ?? undefined, req);
     if ("error" in auth) {
       throw new HttpException(auth.error, auth.status);
     }
@@ -448,11 +500,7 @@ export class McpEntityController {
     @Headers("authorization") authorization: string | undefined,
   ): Promise<void> {
     const bearer = this.extractBearer(authorization);
-    if (!bearer) {
-      res.status(401).send("Authorization: Bearer required");
-      return;
-    }
-    const auth = await this.authenticate(entityIdSlug, bearer);
+    const auth = await this.authenticate(entityIdSlug, bearer ?? undefined, req);
     if ("error" in auth) {
       res.status(auth.status).send(auth.error);
       return;
@@ -474,6 +522,7 @@ export class McpEntityController {
       JSON.stringify({
         entityIdSlug,
         tokenHash: auth.token.tokenHash,
+        token: auth.token,
       }),
       "EX",
       3600,
@@ -543,7 +592,19 @@ export class McpEntityController {
       res.status(404).send("unknown or expired sessionId");
       return;
     }
-    let parsed: { entityIdSlug: string; tokenHash: string };
+    let parsed: {
+      entityIdSlug: string;
+      tokenHash: string;
+      token: {
+        tokenHash: string;
+        clientId: string;
+        mcpUserId: string;
+        entityPk: string;
+        environmentId: string;
+        identityMode: string;
+        scopes: string[];
+      };
+    };
     try {
       parsed = JSON.parse(raw);
     } catch {
@@ -559,8 +620,9 @@ export class McpEntityController {
     // hashing); we reconstruct the token metadata via the DB. Try the
     // OAuth access-token table first, then fall back to PlatosMcpBearerToken
     // (PAT path) so SSE clients using `plt_ent_*` tokens also work.
-    const oauthRow = await this.prisma.platosOAuthAccessToken.findUnique({
+    const oauthRow = await this.prisma.oAuthAccessToken.findUnique({
       where: { tokenHash: parsed.tokenHash },
+      include: { client: { select: { clientId: true, entityId: true, deletedAt: true } } },
     });
     const entity = await this.loadEntity(entityIdSlug);
     if (!entity || !entity.config.enabled) {
@@ -578,26 +640,34 @@ export class McpEntityController {
       scopes: string[];
     } | null = null;
 
-    if (oauthRow && !oauthRow.revokedAt && oauthRow.expiresAt.getTime() >= Date.now()) {
-      if (oauthRow.entityPk !== entity.entityPk) {
+    if (parsed.tokenHash.startsWith("anonymous:")) {
+      const anonymousSession = await this.prisma.mcpAnonymousSession.findFirst({
+        where: {
+          id: parsed.tokenHash.slice("anonymous:".length),
+          entityId: entity.entityPk,
+          environmentId: parsed.token.environmentId,
+          revokedAt: null,
+        },
+        select: { id: true },
+      });
+      if (!anonymousSession || parsed.token.identityMode !== "anonymous") {
+        res.status(401).send("anonymous session revoked or expired");
+        return;
+      }
+      token = parsed.token;
+    } else if (oauthRow && !oauthRow.revokedAt && oauthRow.expiresAt.getTime() >= Date.now()) {
+      if (
+        oauthRow.client.deletedAt ||
+        oauthRow.client.entityId !== entity.entityPk ||
+        oauthRow.environmentId !== parsed.token.environmentId
+      ) {
         res.status(403).send("token not valid for this entity");
         return;
       }
-      token = {
-        tokenHash: oauthRow.tokenHash,
-        clientId: oauthRow.clientId,
-        mcpUserId: oauthRow.userId,
-        entityPk: entity.entityPk,
-        environmentId: (oauthRow.scopeTuple as { environmentId: string }).environmentId,
-        // FINDING H12a — anonymous (`mcp:anon:`) tokens must not read as "oidc".
-        identityMode: (oauthRow.userId as string | undefined)?.startsWith("mcp:anon:")
-          ? "anonymous"
-          : "oidc",
-        scopes: (oauthRow.scopes as string[] | undefined) ?? [],
-      };
+      token = { ...parsed.token, clientId: oauthRow.client.clientId };
     } else {
       // PAT path — look up by tokenHash in PlatosMcpBearerToken.
-      const patRow = await this.prisma.platosMcpBearerToken.findFirst({
+      const patRow = await this.prisma.mcpBearerToken.findFirst({
         where: {
           tokenHash: parsed.tokenHash,
           revokedAt: null,
@@ -608,19 +678,23 @@ export class McpEntityController {
         res.status(401).send("session token revoked or expired");
         return;
       }
-      if (patRow.entityPk !== entity.entityPk) {
+      if (patRow.entityId !== entity.entityPk) {
         res.status(403).send("token not valid for this entity");
         return;
       }
       // Resolve PROD env (mirrors the PAT branch in authenticate()).
-      const prod = await this.prisma.runtimeEnvironment.findFirst({
-        where: { projectId: entity.projectId, type: "PRODUCTION" },
+      const prod = await this.prisma.environment.findFirst({
+        where: {
+          projectId: entity.projectId,
+          archivedAt: null,
+          slug: { in: ["prod", "production"] },
+        },
         select: { id: true },
       });
       const fallback = prod
         ? null
-        : await this.prisma.runtimeEnvironment.findFirst({
-            where: { projectId: entity.projectId },
+        : await this.prisma.environment.findFirst({
+            where: { projectId: entity.projectId, archivedAt: null },
             select: { id: true },
             orderBy: { createdAt: "asc" },
           });
@@ -631,7 +705,7 @@ export class McpEntityController {
       }
       // Stamp lastUsedAt — same fire-and-forget pattern as
       // McpBearerTokenService.validate.
-      this.prisma.platosMcpBearerToken
+      this.prisma.mcpBearerToken
         .update({ where: { id: patRow.id }, data: { lastUsedAt: new Date() } })
         .catch(() => undefined);
       token = {
@@ -685,11 +759,7 @@ export class McpEntityController {
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    if (!tokenParam) {
-      res.status(401).send("token query param required");
-      return;
-    }
-    const auth = await this.authenticate(entityIdSlug, tokenParam);
+    const auth = await this.authenticate(entityIdSlug, tokenParam, req);
     if ("error" in auth) {
       res.status(auth.status).send(auth.error);
       return;
@@ -822,9 +892,9 @@ export class McpEntityController {
       mcpUserId: token.mcpUserId,
       scopes: token.scopes,
     };
-    const aclRows = await this.prisma.platosEntityMcpToolAcl.findMany({
-      where: { entityPk: entity.entityPk, exposed: true },
-    });
+    const aclRows = await this.toolAclService.getExposedPoliciesByName(
+      entity.entityPk,
+    );
     // FINDING H12 (residual) — the ACL uniqueness key is (entityPk, toolId), so
     // ONE entity can hold several exposed rows for the SAME toolName. The old
     // `new Map(rows.map(...))` let the LAST row win while handleToolsCall's
@@ -944,9 +1014,10 @@ export class McpEntityController {
     // two paths could apply different gates to one tool name. Load ALL exposed
     // rows for the name and require every one of them to admit the caller
     // (most-restrictive wins) — same rule, same result, no ordering assumed.
-    const aclRowsForName = await this.prisma.platosEntityMcpToolAcl.findMany({
-      where: { entityPk: entity.entityPk, toolName: name, exposed: true },
-    });
+    const aclRowsForName = await this.toolAclService.getExposedPoliciesByName(
+      entity.entityPk,
+      name,
+    );
     const effectiveAcls: any[] =
       aclRowsForName.length > 0
         ? aclRowsForName
@@ -1171,14 +1242,15 @@ export class McpEntityController {
     // PlatosEntityToolMapping.id. PlatosEntityToolMapping uses `entityId`
     // (FK → PlatosConnectedEntity.id) — NOT `entityPk` — and the
     // human-readable name lives on the joined PlatosToolDefinition.
-    const toolReg = await this.prisma.platosEntityToolMapping.findFirst({
+    const toolReg = await this.prisma.environmentEntityTool.findFirst({
       where: { id: toolId, entityId: entity.entityPk },
-      select: { tool: { select: { name: true } } },
+      select: { toolId: true, tool: { select: { name: true } } },
     });
+    if (!toolReg) throw new HttpException("Tool not found", HttpStatus.NOT_FOUND);
     const row = await this.toolAclService.upsert(
       entity.entityPk,
-      toolId,
-      toolReg?.tool?.name ?? toolId,
+      toolReg.toolId,
+      toolReg.tool.name,
       scope.userId,
       body,
     );
@@ -1212,31 +1284,30 @@ export class McpEntityController {
   @Get()
   async listMcps(@Req() req: Request) {
     const scope = this.getScope(req);
-    // BUG-9: PlatosConnectedEntity has no environmentId column — scope is
-    // (organizationId, projectId) only. Querying by environmentId silently
-    // returns nothing because Prisma ignores unknown where fields in some
-    // versions, or throws. Removed environmentId from the where clause.
-    const entities = await this.prisma.platosConnectedEntity.findMany({
+    // Entity ownership is canonical through Project. Environment-specific
+    // enablement is represented by tool mappings rather than an Entity column.
+    const entities = await this.prisma.entity.findMany({
       where: {
-        organizationId: scope.organizationId,
         projectId: scope.projectId,
+        project: { organizationId: scope.organizationId },
       },
       select: {
         id: true,
-        entityId: true,
+        externalId: true,
         displayName: true,
         mcpConfig: true,
+        _count: { select: { mcpBearerTokens: true } },
       },
     });
     return {
       entities: entities.map((e: any) => ({
-        entityId: e.entityId,
+        entityId: e.externalId,
         entityPk: e.id,
         displayName: e.displayName,
         mcpEnabled: e.mcpConfig?.enabled ?? false,
         identityMode: e.mcpConfig?.identityMode ?? "anonymous",
         toolCount: (e.mcpConfig?.toolAllowlist ?? []).length,
-        bearerTokenCount: e.mcpConfig?.bearerTokenCount ?? 0,
+        bearerTokenCount: e._count.mcpBearerTokens,
       })),
     };
   }
@@ -1249,8 +1320,8 @@ export class McpEntityController {
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
-    const config = await this.prisma.platosEntityMcpConfig.findFirst({
-      where: { entityPk: entity.entityPk },
+    const config = await this.prisma.entityMcpConfig.findUnique({
+      where: { entityId: entity.entityPk },
     });
     return { entityId, entityPk: entity.entityPk, config };
   }
@@ -1267,17 +1338,16 @@ export class McpEntityController {
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
-    await this.prisma.platosEntityMcpConfig.upsert({
-      where: { entityPk: entity.entityPk },
+    await this.prisma.entityMcpConfig.upsert({
+      where: { entityId: entity.entityPk },
       create: {
-        entityPk: entity.entityPk,
+        entityId: entity.entityPk,
         enabled: false,
         branding: branding as any,
         identityMode: "anonymous",
+        identityProviders: [],
         toolAllowlist: [],
-        bearerTokenCount: 0,
         rateLimitPerMinute: 60,
-        consentCopy: null,
         redirectUriAllowlist: [],
       },
       update: { branding: branding as any },
@@ -1300,8 +1370,8 @@ export class McpEntityController {
     const updateData: Record<string, unknown> = {};
     if (body.identityMode !== undefined) updateData.identityMode = body.identityMode;
     if (body.identityProviders !== undefined) updateData.identityProviders = body.identityProviders;
-    await this.prisma.platosEntityMcpConfig.updateMany({
-      where: { entityPk: entity.entityPk },
+    await this.prisma.entityMcpConfig.updateMany({
+      where: { entityId: entity.entityPk },
       data: updateData,
     });
     return { ok: true };
@@ -1316,22 +1386,26 @@ export class McpEntityController {
   ) {
     // BUG-1: scope the lookup to (organizationId, projectId) to prevent cross-tenant discovery.
     const scope = this.getScope(req);
-    const ent = await this.prisma.platosConnectedEntity.findFirst({
-      where: { entityId, organizationId: scope.organizationId, projectId: scope.projectId },
-      select: { id: true, organizationId: true },
+    const ent = await this.prisma.entity.findFirst({
+      where: {
+        externalId: entityId,
+        projectId: scope.projectId,
+        project: { organizationId: scope.organizationId },
+      },
+      select: { id: true, project: { select: { organizationId: true } } },
     });
     if (!ent) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
-    if (ent.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
-    await this.prisma.platosEntityMcpConfig.upsert({
-      where: { entityPk: ent.id },
+    if (ent.project.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
+    await this.prisma.entityMcpConfig.upsert({
+      where: { entityId: ent.id },
       create: {
-        entityPk: ent.id,
+        entityId: ent.id,
         enabled: body.enabled,
         identityMode: "bearer",
+        identityProviders: [],
+        branding: {},
         toolAllowlist: [],
-        bearerTokenCount: 0,
         rateLimitPerMinute: 60,
-        consentCopy: null,
         redirectUriAllowlist: [],
       },
       update: { enabled: body.enabled },
@@ -1353,23 +1427,27 @@ export class McpEntityController {
     @Body() body: { injectMcpContext: boolean },
   ) {
     const scope = this.getScope(req);
-    const ent = await this.prisma.platosConnectedEntity.findFirst({
-      where: { entityId, organizationId: scope.organizationId, projectId: scope.projectId },
-      select: { id: true, organizationId: true },
+    const ent = await this.prisma.entity.findFirst({
+      where: {
+        externalId: entityId,
+        projectId: scope.projectId,
+        project: { organizationId: scope.organizationId },
+      },
+      select: { id: true, project: { select: { organizationId: true } } },
     });
     if (!ent) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
-    if (ent.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
+    if (ent.project.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
     const inject = body.injectMcpContext === true;
-    await this.prisma.platosEntityMcpConfig.upsert({
-      where: { entityPk: ent.id },
+    await this.prisma.entityMcpConfig.upsert({
+      where: { entityId: ent.id },
       create: {
-        entityPk: ent.id,
+        entityId: ent.id,
         enabled: false,
         identityMode: "bearer",
+        identityProviders: [],
+        branding: {},
         toolAllowlist: [],
-        bearerTokenCount: 0,
         rateLimitPerMinute: 60,
-        consentCopy: null,
         redirectUriAllowlist: [],
         injectMcpContext: inject,
       },

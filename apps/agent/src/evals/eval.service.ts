@@ -177,7 +177,7 @@ function parseJudgeResponse(
  * `runJudge` is the core entry point — given (agentId, threadId, criterionId),
  * it loads the conversation transcript, resolves the criterion's judge model
  * (or falls back to Haiku), verifies the no-self-evaluation invariant, asks
- * the judge to score, and writes a `PlatosAgentEval` row.
+ * the judge to score, and writes an `AgentEval` row.
  *
  * `list` / `getById` / `aggregate` cover the query API (J.5) and dashboard
  * rollups (J.6 / J.7).
@@ -191,7 +191,7 @@ export class EvalService {
     private readonly scopedEnv: ScopedEnvService,
     private readonly criterionService: CriterionService,
     // EOBD.34 — inject optional CostService so judge-LLM cost flows
-    // into the central cost table, not just PlatosAgentEval.costCents.
+    // into the central cost table, not just AgentEval.costCents.
     @Optional() private readonly costService?: CostService,
   ) {
     this.prisma = prisma;
@@ -210,17 +210,32 @@ export class EvalService {
 
     // Resolve thread + agent to cross-check scope AND derive the agent's
     // model for self-evaluation guarding.
-    const thread = await this.prisma.platosAgentThread.findFirst({
+    const thread = await this.prisma.thread.findFirst({
       where: {
         id: input.threadId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
+        environment: {
+          project: {
+            id: scope.projectId,
+            organizationId: scope.organizationId,
+          },
+        },
       },
       select: {
         id: true,
         agentId: true,
-        lockedVersionId: true,
+        agent: {
+          select: {
+            bindings: {
+              where: { environmentId: scope.environmentId },
+              take: 1,
+              select: {
+                activeAgentVersionId: true,
+                activeAgentVersion: { select: { model: true } },
+              },
+            },
+          },
+        },
       },
     });
     if (!thread) throw new Error("Thread not found");
@@ -228,45 +243,66 @@ export class EvalService {
       throw new Error("Thread does not belong to the specified agent");
     }
 
-    const agent = await this.prisma.platosAgent.findFirst({
+    const binding = thread.agent.bindings[0];
+    if (!binding) throw new Error("Agent is not bound to this environment");
+
+    const agent = await this.prisma.agent.findFirst({
       where: {
         id: input.agentId,
-        organizationId: scope.organizationId,
         projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        project: { organizationId: scope.organizationId },
+        bindings: { some: { environmentId: scope.environmentId } },
       },
-      select: { id: true, model: true, currentVersionId: true },
+      select: { id: true },
     });
     if (!agent) throw new Error("Agent not found");
+
+    if (input.runId || input.baselineVersionId) {
+      // The clean AgentEval schema intentionally has no regression-run columns.
+      // Failing loudly avoids claiming that a run was grouped when its identity
+      // could not be persisted losslessly.
+      throw new Error(
+        "Eval run grouping is not supported by the clean AgentEval model",
+      );
+    }
 
     const judgeModelString = criterion.judgeModel || DEFAULT_JUDGE_MODEL;
 
     // Theme J invariant §5 — no self-evaluation.
-    if (judgeModelString === agent.model) {
-      throw new SelfEvaluationError(judgeModelString, agent.model);
+    const agentModel = binding.activeAgentVersion.model;
+    if (judgeModelString === agentModel) {
+      throw new SelfEvaluationError(judgeModelString, agentModel);
     }
 
-    // Load conversation transcript (active messages only).
-    const messagesWhere: Record<string, unknown> = {
+    // A clean Turn is the complete user/assistant exchange. Do not recreate
+    // legacy message rows or hide split semantics in JSON.
+    const turnsWhere: Record<string, unknown> = {
       threadId: input.threadId,
-      status: "active",
+      status: { not: "CANCELLED" },
     };
-    if (input.messageId) messagesWhere.id = input.messageId;
+    if (input.messageId) turnsWhere.id = input.messageId;
 
-    const messages: Array<{
+    const turns: Array<{
       id: string;
-      role: string;
-      content: string | null;
+      inputText: string | null;
+      outputText: string | null;
       createdAt: Date;
-    }> = await this.prisma.platosAgentMessage.findMany({
-      where: messagesWhere,
-      select: { id: true, role: true, content: true, createdAt: true },
-      orderBy: { createdAt: "asc" },
+    }> = await this.prisma.turn.findMany({
+      where: turnsWhere,
+      select: { id: true, inputText: true, outputText: true, createdAt: true },
+      orderBy: { sequence: "asc" },
     });
 
-    const transcript = messages
-      .filter((m) => m.content)
-      .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+    if (input.messageId && turns.length === 0) {
+      throw new Error("Turn not found");
+    }
+
+    const transcript = turns
+      .flatMap((turn) => [
+        turn.inputText ? `USER: ${turn.inputText}` : null,
+        turn.outputText ? `ASSISTANT: ${turn.outputText}` : null,
+      ])
+      .filter((line): line is string => line !== null)
       .join("\n\n");
 
     // Assemble judge prompt. `{conversation}` in judgePrompt is substituted.
@@ -398,15 +434,13 @@ export class EvalService {
         .catch(() => undefined);
     }
 
-    const row = await this.prisma.platosAgentEval.create({
+    const row = await this.prisma.agentEval.create({
       data: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
         agentId: input.agentId,
-        agentVersionId: thread.lockedVersionId ?? agent.currentVersionId ?? null,
+        agentVersionId: binding.activeAgentVersionId,
         threadId: input.threadId,
-        messageId: input.messageId ?? null,
+        turnId: input.messageId ?? null,
         criterionId: criterion.id,
         criterionSnapshot: {
           name: criterion.name,
@@ -423,14 +457,12 @@ export class EvalService {
         score: parsed.score,
         rationale: parsed.rationale,
         passed: parsed.passed,
-        runId: input.runId ?? null,
-        baselineVersionId: input.baselineVersionId ?? null,
         costCents,
         latencyMs,
       },
     });
 
-    return this.toRecord(row);
+    return this.toRecord(row, scope);
   }
 
   async list(
@@ -441,21 +473,28 @@ export class EvalService {
     const offset = Math.max(filters.offset ?? 0, 0);
     const sinceDays = filters.sinceDays ?? 30;
 
+    if (filters.runId) {
+      throw new Error("Eval run filtering is not supported by the clean AgentEval model");
+    }
+
     const where: Record<string, unknown> = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
       environmentId: scope.environmentId,
+      environment: {
+        project: {
+          id: scope.projectId,
+          organizationId: scope.organizationId,
+        },
+      },
       createdAt: { gte: new Date(Date.now() - sinceDays * 86400_000) },
     };
     if (filters.agentId) where.agentId = filters.agentId;
     if (filters.agentVersionId) where.agentVersionId = filters.agentVersionId;
     if (filters.criterionId) where.criterionId = filters.criterionId;
     if (filters.threadId) where.threadId = filters.threadId;
-    if (filters.runId) where.runId = filters.runId;
 
     const [total, rows] = await Promise.all([
-      this.prisma.platosAgentEval.count({ where }),
-      this.prisma.platosAgentEval.findMany({
+      this.prisma.agentEval.count({ where }),
+      this.prisma.agentEval.findMany({
         where,
         orderBy: { createdAt: "desc" },
         take: limit,
@@ -464,7 +503,7 @@ export class EvalService {
     ]);
 
     return {
-      rows: (rows as any[]).map((r) => this.toRecord(r)),
+      rows: (rows as any[]).map((r) => this.toRecord(r, scope)),
       total,
       limit,
       offset,
@@ -472,15 +511,19 @@ export class EvalService {
   }
 
   async getById(scope: ScopeTuple, id: string): Promise<AgentEvalRecord | null> {
-    const row = await this.prisma.platosAgentEval.findFirst({
+    const row = await this.prisma.agentEval.findFirst({
       where: {
         id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
+        environment: {
+          project: {
+            id: scope.projectId,
+            organizationId: scope.organizationId,
+          },
+        },
       },
     });
-    return row ? this.toRecord(row) : null;
+    return row ? this.toRecord(row, scope) : null;
   }
 
   /**
@@ -508,9 +551,13 @@ export class EvalService {
     const since = new Date(Date.now() - days * 86400_000);
 
     const where: Record<string, unknown> = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
       environmentId: scope.environmentId,
+      environment: {
+        project: {
+          id: scope.projectId,
+          organizationId: scope.organizationId,
+        },
+      },
       agentId,
       createdAt: { gte: since },
     };
@@ -524,7 +571,7 @@ export class EvalService {
       score: number;
       passed: boolean;
       criterion?: { name: string } | null;
-    }> = await this.prisma.platosAgentEval.findMany({
+    }> = await this.prisma.agentEval.findMany({
       where,
       select: {
         criterionId: true,
@@ -536,7 +583,7 @@ export class EvalService {
     });
 
     const versions: Array<{ id: string; versionNumber: number }> =
-      await this.prisma.platosAgentVersion.findMany({
+      await this.prisma.agentVersion.findMany({
         where: { agentId },
         select: { id: true, versionNumber: true },
       });
@@ -585,16 +632,16 @@ export class EvalService {
     return { days, rows: out };
   }
 
-  private toRecord(r: any): AgentEvalRecord {
+  private toRecord(r: any, scope: ScopeTuple): AgentEvalRecord {
     return {
       id: r.id,
-      organizationId: r.organizationId,
-      projectId: r.projectId,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
       environmentId: r.environmentId,
       agentId: r.agentId,
       agentVersionId: r.agentVersionId ?? null,
       threadId: r.threadId,
-      messageId: r.messageId ?? null,
+      messageId: r.turnId ?? null,
       criterionId: r.criterionId,
       criterionSnapshot: r.criterionSnapshot ?? {},
       judgeModel: r.judgeModel,
@@ -603,8 +650,8 @@ export class EvalService {
       score: r.score,
       rationale: r.rationale ?? null,
       passed: r.passed,
-      runId: r.runId ?? null,
-      baselineVersionId: r.baselineVersionId ?? null,
+      runId: null,
+      baselineVersionId: null,
       costCents: r.costCents ?? null,
       latencyMs: r.latencyMs ?? null,
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),

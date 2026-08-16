@@ -3,7 +3,7 @@
  * truth, shared by the channels.* MCP tools, the dashboard REST controller, and
  * the inbound RUNTIME slice).
  *
- * A `PlatosChannelConnection.agentId` is the DEFAULT agent for a channel. The
+ * A `ChannelConnection.defaultAgentId` is the DEFAULT agent for a channel. The
  * optional `agentRouting` column (`Json?`) is an ORDERED rule list that lets one
  * connection fan out to MANY agents:
  *
@@ -80,7 +80,7 @@ function fail(message: string, error = "invalid_agent_routing"): AgentRoutingVal
 export async function validateAgentRouting(
   prisma: any,
   scope: ChannelRoutingScope,
-  raw: unknown,
+  raw: unknown
 ): Promise<AgentRoutingValidation> {
   if (!Array.isArray(raw)) {
     return fail("agentRouting must be an array of rules");
@@ -131,12 +131,21 @@ export async function validateAgentRouting(
   // batched query covers all distinct ids (≤32), mirroring the default-agentId
   // check in channels.create / channels.update.
   if (agentIds.size > 0) {
-    const found = await prisma.platosAgent.findMany({
+    const found = await prisma.agent.findMany({
       where: {
         id: { in: [...agentIds] },
-        organizationId: scope.organizationId,
         projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        bindings: {
+          some: {
+            environmentId: scope.environmentId,
+            environment: {
+              project: {
+                id: scope.projectId,
+                organizationId: scope.organizationId,
+              },
+            },
+          },
+        },
       },
       select: { id: true },
     });
