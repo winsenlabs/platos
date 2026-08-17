@@ -1,3 +1,5 @@
+import type { ExternalCutoverReportFragment } from "./cutover-external";
+
 export type CutoverMode = "DRY_RUN" | "CORE_REHEARSAL_ROLLBACK" | "FULL_EXECUTE";
 
 export type CutoverState =
@@ -63,6 +65,7 @@ export interface CutoverReport {
   readonly checks: readonly CutoverCheck[];
   readonly phases: readonly CutoverPhaseResult[];
   readonly sourceDigests: readonly SourceDigest[];
+  readonly external?: ExternalCutoverReportFragment;
   readonly incompletePhaseIds: readonly string[];
   readonly backupAttestationRef?: string;
   readonly backupRestoreTestRef?: string;

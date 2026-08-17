@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { assertExternalCutoverReportFragment } from "./cutover-external";
 import type { CutoverReport } from "./cutover-types";
 
 function stable(value: unknown): unknown {
@@ -17,6 +18,7 @@ function stable(value: unknown): unknown {
 }
 
 export function serializeCutoverReport(report: CutoverReport): string {
+  if (report.external !== undefined) assertExternalCutoverReportFragment(report.external);
   const unsigned = { ...report, reportSha256: undefined };
   const canonical = JSON.stringify(stable(unsigned));
   const reportSha256 = createHash("sha256").update(canonical).digest("hex");

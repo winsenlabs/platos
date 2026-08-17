@@ -81,13 +81,14 @@ acceptance values, backup and restore-test references, a capacity record, a
 writer-fence record, the well-known advisory lock, and zero non-cutover client
 sessions.
 
-Phase 3 currently implements only the User/OperatorIdentity, Organization,
-OrganizationMembership, Project/ProjectMembership, and Environment data phase.
-Every remaining retained/export/cryptographic/external-store phase is listed as
-a machine-readable `INCOMPLETE` blocker, so full `--execute` cannot reach DDL.
-The executable core path is rehearsal-only and additionally requires
+Phase 3 currently implements the User/OperatorIdentity, Organization,
+OrganizationMembership, Project/ProjectMembership, and Environment data phase,
+plus retained-domain Batch 1 for Tool, Agent/AgentBinding, AgentVersion, and
+AgentCluster. Every other retained/export/cryptographic/external-store phase is
+listed as a machine-readable `INCOMPLETE` blocker, so full `--execute` cannot
+reach DDL. The executable path is rehearsal-only and additionally requires
 `--core-rehearsal --force-rollback-before-commit`; it creates the clean catalog,
-materializes the UUID map, backfills and validates the core phase, compares the
+materializes the UUID map, backfills and validates both implemented phases, compares the
 application catalog with a fresh clean reference, exports evidence, and always
 rolls the transaction back. This is not authorization to run against production.
 
@@ -104,7 +105,7 @@ RUN_DATABASE_CUTOVER_HARNESS=1 pnpm --filter @platos/database exec vitest run \
 ```
 
 It starts disposable pgvector PostgreSQL containers, invokes the exact
-`db:migrate:deploy` and `db:cutover` scripts, and proves the core rehearsal
+`db:migrate:deploy` and `db:cutover` scripts, and proves the implemented rehearsal
 rolls back before commit. It never reads the repository `DATABASE_URL`.
 
 ## Credential operations

@@ -28,7 +28,17 @@ describe("cutover command safety contracts", () => {
   test("keeps all unimplemented domain phases machine-readable and exhaustive", () => {
     expect(() => assertCutoverPhaseLedgerIsExhaustive()).not.toThrow();
     expect(cutoverDomainPhases.filter((phase) => phase.implementation === "IMPLEMENTED"))
-      .toHaveLength(1);
+      .toHaveLength(2);
+    expect(cutoverDomainPhases.find((phase) => phase.id === "retained-agent-tool-batch-1"))
+      .toMatchObject({
+        implementation: "IMPLEMENTED",
+        sourceModels: [
+          "PlatosToolDefinition",
+          "PlatosAgent",
+          "PlatosAgentVersion",
+          "PlatosAgentCluster",
+        ],
+      });
     expect(incompleteCutoverPhaseIds).toEqual([
       "remaining-retained-backfill",
       "unsupported-trigger-export",

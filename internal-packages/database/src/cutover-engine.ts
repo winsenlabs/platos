@@ -12,6 +12,11 @@ import {
   validateCoreTenancyBackfill,
 } from "./cutover-backfill";
 import { compareApplicationCatalogs, readApplicationCatalog } from "./cutover-catalog";
+import { createStubExternalCutoverReportFragment } from "./cutover-external";
+import {
+  backfillRetainedAgentToolBatch1,
+  validateRetainedAgentToolBatch1,
+} from "./cutover-agent-tool-batch1";
 import { CUTOVER_ID_MAPPING_VERSION, CUTOVER_ID_NAMESPACE } from "./cutover-id";
 import { incompleteCutoverPhaseIds } from "./cutover-phases";
 import { CUTOVER_ADVISORY_LOCK, runCutoverPreflight } from "./cutover-preflight";
@@ -141,6 +146,27 @@ export async function runCutover(
         phases.push(phase("core-tenancy-auth", "SUCCEEDED", "core tenancy/auth backfill and conservation checks passed", backfillStarted));
         failIfRequested(options, "core-tenancy-auth");
 
+        const retainedBatchStarted = new Date().toISOString();
+        await backfillRetainedAgentToolBatch1(database);
+        await validateRetainedAgentToolBatch1(database);
+        await appendCutoverJournal(database, runId, "retained-agent-tool-batch-1", "SUCCEEDED", {
+          sourceModels: [
+            "PlatosToolDefinition",
+            "PlatosAgent",
+            "PlatosAgentVersion",
+            "PlatosAgentCluster",
+          ],
+        });
+        phases.push(
+          phase(
+            "retained-agent-tool-batch-1",
+            "SUCCEEDED",
+            "retained Tool and Agent-domain backfill validations passed",
+            retainedBatchStarted
+          )
+        );
+        failIfRequested(options, "retained-agent-tool-batch-1");
+
         const reference = new Client({
           connectionString: options.freshCatalogDatabaseUrl,
           application_name: "platos-cutover-fresh-catalog-reference",
@@ -238,6 +264,7 @@ export async function runCutover(
     checks,
     phases,
     sourceDigests,
+    external: createStubExternalCutoverReportFragment(),
     incompletePhaseIds: incompleteCutoverPhaseIds,
     backupAttestationRef: options.attestations.backupAttestationRef,
     backupRestoreTestRef: options.attestations.backupRestoreTestRef,

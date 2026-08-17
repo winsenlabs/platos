@@ -1,4 +1,5 @@
 import { legacyModelDispositionLedger } from "./cutover-ledger";
+import { retainedAgentToolBatch1SourceModels } from "./cutover-agent-tool-batch1";
 
 export type CutoverPhaseImplementation = "IMPLEMENTED" | "STUB";
 
@@ -18,10 +19,16 @@ const coreSourceModels = [
 ] as const;
 
 const coreSet = new Set<string>(coreSourceModels);
+const implementedRetainedSet = new Set<string>(retainedAgentToolBatch1SourceModels);
 
 const sourceModelsFor = (disposition: "BACKFILL" | "EXPORT_DROP" | "EPHEMERAL_DROP") =>
   legacyModelDispositionLedger
-    .filter((entry) => entry.disposition === disposition && !coreSet.has(entry.sourceModel))
+    .filter(
+      (entry) =>
+        entry.disposition === disposition &&
+        !coreSet.has(entry.sourceModel) &&
+        !implementedRetainedSet.has(entry.sourceModel)
+    )
     .map((entry) => entry.sourceModel);
 
 /**
@@ -35,6 +42,12 @@ export const cutoverDomainPhases = [
     implementation: "IMPLEMENTED",
     sourceModels: coreSourceModels,
     summary: "User, operator identity, organization, membership, project, project access, and Environment",
+  },
+  {
+    id: "retained-agent-tool-batch-1",
+    implementation: "IMPLEMENTED",
+    sourceModels: retainedAgentToolBatch1SourceModels,
+    summary: "Tool, Agent, AgentBinding, AgentVersion, and AgentCluster retained-domain cutover",
   },
   {
     id: "remaining-retained-backfill",

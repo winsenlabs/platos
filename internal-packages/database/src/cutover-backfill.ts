@@ -44,6 +44,8 @@ export async function createCleanCatalog(database: CutoverDatabase, packageRoot:
   const migrationDirectories = [
     "00000000000000_initial",
     "20260817000000_add_upload_reservations",
+    "20260817010000_add_token_lifecycle_audit",
+    "20260817020000_add_attachment_byte_reconciliation",
   ] as const;
   for (const migration of migrationDirectories) {
     const sql = readFileSync(resolve(packageRoot, "prisma/migrations", migration, "migration.sql"), "utf8");
