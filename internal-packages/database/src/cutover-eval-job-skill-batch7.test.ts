@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   backfillBatch7AgentEvals,
   backfillBatch7Jobs,
+  backfillBatch7Macros,
   backfillBatch7MessageRatings,
   backfillRetainedEvalJobSkillBatch7,
   normalizeBatch7CostCents,
@@ -24,6 +25,7 @@ describe("retained evaluation/job/skill cutover Batch 7", () => {
       "PlatosTask",
       "PlatosSkill",
       "PlatosAgentSkill",
+      "PlatosMacro",
     ]);
     expect(retainedEvalJobSkillBatch7MappingTargets).toContainEqual({
       sourceModel: "PlatosSkill",
@@ -34,6 +36,11 @@ describe("retained evaluation/job/skill cutover Batch 7", () => {
       sourceModel: "PlatosSkill",
       targetModel: "EnvironmentSkill",
       stableSuffix: "environment-skill",
+    });
+    expect(retainedEvalJobSkillBatch7MappingTargets).toContainEqual({
+      sourceModel: "PlatosMacro",
+      targetModel: "Macro",
+      stableSuffix: "",
     });
   });
 
@@ -169,6 +176,43 @@ describe("retained evaluation/job/skill cutover Batch 7", () => {
     await expect(backfillBatch7Jobs(jobDatabase, 1)).rejects.toMatchObject({
       code: "BATCH7_ARRAY_INVALID",
     });
+  });
+
+  test("writes macros insert-only with strict array and object JSON roots", async () => {
+    const queries: Array<{ sql: string; values?: readonly unknown[] }> = [];
+    const database: CutoverDatabase = {
+      async query<Row extends Record<string, unknown>>(
+        sql: string,
+        values?: readonly unknown[]
+      ): Promise<QueryResultLike<Row>> {
+        queries.push({ sql, values });
+        if (sql.includes('FROM cutover_legacy."PlatosMacro" source')) {
+          const rows = values?.[0] === ""
+            ? [{
+                source_id: "macro-a",
+                target_id: "00000000-0000-5000-8000-000000000001",
+                environment_id: "00000000-0000-5000-8000-000000000002",
+                name: "Fixture macro",
+                description: null,
+                steps: [{ tool: "fixture", params: {} }],
+                param_schema: { type: "object" },
+                shared_with_organization: true,
+                created_by: "user-a",
+                created_at: new Date(0),
+                updated_at: new Date(0),
+              }]
+            : [];
+          return { rows: rows as unknown as Row[], rowCount: rows.length };
+        }
+        return { rows: [], rowCount: 1 };
+      },
+    };
+
+    await expect(backfillBatch7Macros(database, 1)).resolves.toBe(1);
+    const insert = queries.find((query) => query.sql.includes('INSERT INTO public."Macro"'));
+    expect(insert?.sql).not.toMatch(/\bUPDATE\b|\bDELETE\b|\bON CONFLICT\b/);
+    expect(JSON.parse(String(insert?.values?.[4]))).toEqual([{ tool: "fixture", params: {} }]);
+    expect(JSON.parse(String(insert?.values?.[5]))).toEqual({ type: "object" });
   });
 
   test("fails closed on missing mappings, cross-scope associations, and duplicate slugs", async () => {

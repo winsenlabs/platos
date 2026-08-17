@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { retainedMemoryBatch8DeferredTargetChecks } from "./cutover-memory-batch8";
 
 const runHarness = process.env.RUN_DATABASE_CUTOVER_HARNESS === "1";
 const describeHarness = runHarness ? describe : describe.skip;
@@ -27,6 +28,8 @@ const combinedFixtureFiles = [
   "legacy-provider-oauth-batch4-seed.sql",
   "legacy-channel-batch5-seed.sql",
   "legacy-operational-batch6-seed.sql",
+  "legacy-eval-job-skill-batch7-seed.sql",
+  "legacy-memory-batch8-seed.sql",
   "legacy-combined-cutover-replay.sql",
 ] as const;
 
@@ -136,7 +139,6 @@ describeHarness("production database command Testcontainers harness", () => {
       state: "ROLLED_BACK",
       incompletePhaseIds: expect.arrayContaining([
         "final-message-re-encryption-read-probes",
-        "remaining-retained-backfill",
         "unsupported-trigger-export",
         "clean-trigger-defer-install",
         "cryptographic-read-probes",
@@ -157,6 +159,9 @@ describeHarness("production database command Testcontainers harness", () => {
           "retained-provider-oauth-batch-4",
           "retained-channel-batch-5",
           "retained-operational-batch-6",
+          "retained-eval-job-skill-batch-7",
+          "retained-memory-batch-8",
+          "remaining-retained-backfill",
         ].includes(phase.phase))
         .map((phase) => ({ phase: phase.phase, status: phase.status }))
     ).toEqual([
@@ -168,6 +173,9 @@ describeHarness("production database command Testcontainers harness", () => {
       { phase: "retained-provider-oauth-batch-4", status: "SUCCEEDED" },
       { phase: "retained-channel-batch-5", status: "SUCCEEDED" },
       { phase: "retained-operational-batch-6", status: "SUCCEEDED" },
+      { phase: "retained-eval-job-skill-batch-7", status: "SUCCEEDED" },
+      { phase: "retained-memory-batch-8", status: "SUCCEEDED" },
+      { phase: "remaining-retained-backfill", status: "SUCCEEDED" },
     ]);
     expect(report.phases).toEqual(expect.arrayContaining([
       {
@@ -175,11 +183,6 @@ describeHarness("production database command Testcontainers harness", () => {
         status: "NOT_RUN",
         summary: expect.stringContaining("message re-encryption"),
       },
-      expect.objectContaining({
-        phase: "remaining-retained-backfill",
-        status: "NOT_RUN",
-        summary: expect.stringContaining("Batch 7/8"),
-      }),
       expect.objectContaining({ phase: "unsupported-trigger-export", status: "NOT_RUN" }),
       expect.objectContaining({ phase: "clean-trigger-defer-install", status: "NOT_RUN" }),
       expect.objectContaining({ phase: "external-analytics-object-rekey", status: "NOT_RUN" }),
@@ -285,6 +288,24 @@ describeHarness("production database command Testcontainers harness", () => {
         target_model: "ErasureOperation",
         stable_suffix: "",
       }),
+      expect.objectContaining({
+        source_model: "PlatosSkill",
+        source_id: "cllegacyskill0001",
+        target_model: "EnvironmentSkill",
+        stable_suffix: "environment-skill",
+      }),
+      expect.objectContaining({
+        source_model: "PlatosMacro",
+        source_id: "cllegacymacro0001",
+        target_model: "Macro",
+        stable_suffix: "",
+      }),
+      expect.objectContaining({
+        source_model: "PlatosMemoryRelationship",
+        source_id: "cllegacymemoryrelationship0001",
+        target_model: "MemoryRelationship",
+        stable_suffix: "",
+      }),
     ]));
 
     const journalFile = readdirSync(exportDirectory).find((name) => name.startsWith("cutover-journal-"));
@@ -302,6 +323,9 @@ describeHarness("production database command Testcontainers harness", () => {
       "retained-provider-oauth-batch-4",
       "retained-channel-batch-5",
       "retained-operational-batch-6",
+      "retained-eval-job-skill-batch-7",
+      "retained-memory-batch-8",
+      "remaining-retained-backfill",
     ]));
     expect(
       journal.filter((entry) => [
@@ -313,6 +337,9 @@ describeHarness("production database command Testcontainers harness", () => {
         "retained-provider-oauth-batch-4",
         "retained-channel-batch-5",
         "retained-operational-batch-6",
+        "retained-eval-job-skill-batch-7",
+        "retained-memory-batch-8",
+        "remaining-retained-backfill",
       ].includes(entry.phase)).map((entry) => entry.phase)
     ).toEqual([
       "core-tenancy-auth",
@@ -323,6 +350,9 @@ describeHarness("production database command Testcontainers harness", () => {
       "retained-provider-oauth-batch-4",
       "retained-channel-batch-5",
       "retained-operational-batch-6",
+      "retained-eval-job-skill-batch-7",
+      "retained-memory-batch-8",
+      "remaining-retained-backfill",
     ]);
     expect(JSON.stringify(journal)).not.toContain("fixture-invite-token");
     expect(JSON.stringify(journal)).not.toContain("A1B2C3D4E5F6G7H8I9J0K1L2");
@@ -337,6 +367,8 @@ describeHarness("production database command Testcontainers harness", () => {
       retainedBatch3MappingCount: 4,
       retainedProviderOauthBatch4MappingCount: 4,
       retainedChannelBatch5MappingCount: 8,
+      retainedEvalJobSkillBatch7MappingCount: 10,
+      retainedMemoryBatch8MappingCount: 5,
     });
     expect(
       journal.find((entry) => entry.phase === "retained-conversation-batch-2")?.evidence
@@ -400,6 +432,51 @@ describeHarness("production database command Testcontainers harness", () => {
       finalTargetReEncryptionReadProbes: "INCOMPLETE",
     });
     expect(
+      journal.find((entry) => entry.phase === "retained-eval-job-skill-batch-7")?.evidence
+    ).toMatchObject({
+      batch: "retained-eval-job-skill-batch7",
+      sourceModels: expect.arrayContaining(["PlatosMessageRating", "PlatosSkill", "PlatosMacro"]),
+      sourceRows: {
+        messageRatings: 1,
+        evalCriteria: 1,
+        agentEvals: 1,
+        goldenSets: 1,
+        jobs: 1,
+        skills: 1,
+        agentSkills: 1,
+        macros: 1,
+      },
+      splitCounts: {
+        skillSources: 1,
+        skillTargets: 1,
+        projectSkillTargets: 1,
+        environmentSkillTargets: 1,
+        totalSplitTargets: 3,
+      },
+    });
+    expect(
+      journal.find((entry) => entry.phase === "retained-memory-batch-8")?.evidence
+    ).toMatchObject({
+      batch: "retained-memory-batch8",
+      sourceModels: ["PlatosMemory", "PlatosMemoryEntity", "PlatosMemoryRelationship"],
+      sourceRows: { memories: 2, entities: 2, relationships: 1 },
+      graphCounts: {
+        directedEdges: 1,
+        fromEndpoints: 1,
+        toEndpoints: 1,
+        sourcedEdges: 1,
+      },
+      retainedEncryptedRepresentations: retainedMemoryBatch8DeferredTargetChecks,
+      finalTargetReEncryptionReadProbes: "INCOMPLETE",
+    });
+    expect(
+      journal.find((entry) => entry.phase === "remaining-retained-backfill")?.evidence
+    ).toEqual({
+      retainedPlatosSourceModelCount: 55,
+      supplementalRetainedSourceModelCount: 4,
+      implementedRetainedSourceModelCount: 59,
+    });
+    expect(
       journal.find((entry) => entry.phase === "retained-provider-oauth-batch-4")?.evidence
     ).toMatchObject({
       batch: "retained-provider-oauth-batch4",
@@ -412,7 +489,6 @@ describeHarness("production database command Testcontainers harness", () => {
     ).toMatchObject({
       incompletePhaseIds: expect.arrayContaining([
         "final-message-re-encryption-read-probes",
-        "remaining-retained-backfill",
         "unsupported-trigger-export",
         "clean-trigger-defer-install",
         "cryptographic-read-probes",

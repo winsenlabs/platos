@@ -4,6 +4,7 @@ import pg from "pg";
 import {
   appendCutoverJournal,
   backfillCoreTenancy,
+  countMaterializedCutoverMappings,
   createCleanCatalog,
   createCutoverJournal,
   exportTransactionArtifacts,
@@ -29,6 +30,17 @@ import {
   validateRetainedConversationBatch2,
 } from "./cutover-conversation-batch2";
 import {
+  backfillRetainedEvalJobSkillBatch7,
+  retainedEvalJobSkillBatch7MappingTargets,
+  retainedEvalJobSkillBatch7SourceModels,
+} from "./cutover-eval-job-skill-batch7";
+import {
+  backfillRetainedMemoryBatch8,
+  retainedMemoryBatch8DeferredTargetChecks,
+  retainedMemoryBatch8MappingTargets,
+  retainedMemoryBatch8SourceModels,
+} from "./cutover-memory-batch8";
+import {
   backfillRetainedChannelBatch5,
   materializeRetainedChannelBatch5Mappings,
   retainedChannelBatch5SourceModels,
@@ -50,7 +62,11 @@ import {
   validateRetainedBatch3,
 } from "./cutover-retained-batch3";
 import { CUTOVER_ID_MAPPING_VERSION, CUTOVER_ID_NAMESPACE } from "./cutover-id";
-import { cutoverDomainPhases, incompleteCutoverPhaseIds } from "./cutover-phases";
+import {
+  cutoverDomainPhases,
+  implementedRetainedSourceCoverage,
+  incompleteCutoverPhaseIds,
+} from "./cutover-phases";
 import { CUTOVER_ADVISORY_LOCK, runCutoverPreflight } from "./cutover-preflight";
 import { writeCutoverReport, writeJsonExport } from "./cutover-report";
 import type {
@@ -178,6 +194,15 @@ export async function runCutover(
           await materializeRetainedProviderOauthBatch4Mappings(database);
         const retainedChannelBatch5MappingCount =
           await materializeRetainedChannelBatch5Mappings(database);
+        const retainedEvalJobSkillBatch7MappingCount =
+          await countMaterializedCutoverMappings(
+            database,
+            retainedEvalJobSkillBatch7MappingTargets
+          );
+        const retainedMemoryBatch8MappingCount = await countMaterializedCutoverMappings(
+          database,
+          retainedMemoryBatch8MappingTargets
+        );
         const mappingResult = await database.query<{ mapping_count: string }>(
           "SELECT count(*)::text AS mapping_count FROM cutover_legacy.cutover_id_map"
         );
@@ -191,6 +216,8 @@ export async function runCutover(
           retainedBatch3MappingCount,
           retainedProviderOauthBatch4MappingCount,
           retainedChannelBatch5MappingCount,
+          retainedEvalJobSkillBatch7MappingCount,
+          retainedMemoryBatch8MappingCount,
         });
         phases.push(phase("materialize-id-map", "SUCCEEDED", `${mappingCount} deterministic UUID mappings materialized`, mapStarted));
         failIfRequested(options, "materialize-id-map");
@@ -366,6 +393,65 @@ export async function runCutover(
         );
         failIfRequested(options, "retained-operational-batch-6");
 
+        const retainedEvalJobSkillBatch7Started = new Date().toISOString();
+        const retainedEvalJobSkillBatch7Evidence =
+          await backfillRetainedEvalJobSkillBatch7(database);
+        await appendCutoverJournal(
+          database,
+          runId,
+          "retained-eval-job-skill-batch-7",
+          "SUCCEEDED",
+          {
+            sourceModels: retainedEvalJobSkillBatch7SourceModels,
+            ...retainedEvalJobSkillBatch7Evidence,
+          }
+        );
+        phases.push(
+          phase(
+            "retained-eval-job-skill-batch-7",
+            "SUCCEEDED",
+            "evaluation, job, skill, and macro Batch 7 backfill validations passed",
+            retainedEvalJobSkillBatch7Started
+          )
+        );
+        failIfRequested(options, "retained-eval-job-skill-batch-7");
+
+        const retainedMemoryBatch8Started = new Date().toISOString();
+        const retainedMemoryBatch8Evidence = await backfillRetainedMemoryBatch8(database, {
+          messageEncryptionKeys: keyMaterial.messageEncryptionKeys,
+        });
+        await appendCutoverJournal(database, runId, "retained-memory-batch-8", "SUCCEEDED", {
+          sourceModels: retainedMemoryBatch8SourceModels,
+          ...retainedMemoryBatch8Evidence,
+          retainedEncryptedRepresentations: retainedMemoryBatch8DeferredTargetChecks,
+          finalTargetReEncryptionReadProbes: "INCOMPLETE",
+        });
+        phases.push(
+          phase(
+            "retained-memory-batch-8",
+            "SUCCEEDED",
+            "memory Batch 8 retained-representation and graph validations passed",
+            retainedMemoryBatch8Started
+          )
+        );
+        failIfRequested(options, "retained-memory-batch-8");
+
+        await appendCutoverJournal(
+          database,
+          runId,
+          "remaining-retained-backfill",
+          "SUCCEEDED",
+          { ...implementedRetainedSourceCoverage }
+        );
+        phases.push(
+          phase(
+            "remaining-retained-backfill",
+            "SUCCEEDED",
+            "executable manifest coverage proved all retained row-level backfills are implemented"
+          )
+        );
+        failIfRequested(options, "remaining-retained-backfill");
+
         const reference = new Client({
           connectionString: options.freshCatalogDatabaseUrl,
           application_name: "platos-cutover-fresh-catalog-reference",
@@ -495,7 +581,7 @@ function requiredCutoverKeyMaterial(options: CutoverOptions): {
   ) {
     throw new CutoverFailure(
       "CUTOVER_KEY_MATERIAL_REQUIRED",
-      "implemented auth, conversation, entity, provider, channel, and audit phases require all declared cutover key domains"
+      "implemented auth, conversation, entity, provider, channel, audit, and memory phases require all declared cutover key domains"
     );
   }
   return {

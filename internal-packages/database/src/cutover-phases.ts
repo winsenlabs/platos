@@ -2,9 +2,12 @@ import { legacyModelDispositionLedger } from "./cutover-ledger";
 import { retainedAgentToolBatch1SourceModels } from "./cutover-agent-tool-batch1";
 import { retainedChannelBatch5SourceModels } from "./cutover-channel-batch5";
 import { retainedConversationBatch2SourceModels } from "./cutover-conversation-batch2";
+import { retainedEvalJobSkillBatch7SourceModels } from "./cutover-eval-job-skill-batch7";
+import { retainedMemoryBatch8SourceModels } from "./cutover-memory-batch8";
 import { retainedOperationalBatch6SourceModels } from "./cutover-operational-batch6";
 import { retainedProviderOauthBatch4SourceModels } from "./cutover-provider-oauth-batch4";
 import { retainedBatch3SourceModels } from "./cutover-retained-batch3";
+import { sourceModelManifest } from "./source-model-manifest";
 
 export type CutoverPhaseImplementation = "IMPLEMENTED" | "STUB";
 
@@ -24,16 +27,79 @@ const coreSourceModels = [
 ] as const;
 
 const coreSet = new Set<string>(coreSourceModels);
-const supplementalAuthOwnedSourceModels = ["OrgMemberInvite", "ImpersonationAuditLog"] as const;
-const implementedRetainedSet = new Set<string>([
-  ...supplementalAuthOwnedSourceModels,
+export const supplementalRetainedSourceModels = [
+  "OrgMemberInvite",
+  "SecretReference",
+  "SecretStore",
+  "ImpersonationAuditLog",
+] as const;
+const implementedRetainedBackfillSourceModels = [
+  ...supplementalRetainedSourceModels,
   ...retainedAgentToolBatch1SourceModels,
   ...retainedConversationBatch2SourceModels,
   ...retainedBatch3SourceModels,
   ...retainedProviderOauthBatch4SourceModels,
   ...retainedChannelBatch5SourceModels,
   ...retainedOperationalBatch6SourceModels,
-]);
+  ...retainedEvalJobSkillBatch7SourceModels,
+  ...retainedMemoryBatch8SourceModels,
+] as const;
+const implementedRetainedSet = new Set<string>(implementedRetainedBackfillSourceModels);
+
+export interface ImplementedRetainedSourceCoverage {
+  readonly retainedPlatosSourceModelCount: number;
+  readonly supplementalRetainedSourceModelCount: number;
+  readonly implementedRetainedSourceModelCount: number;
+}
+
+/** Fails module loading and the production command if any retained source is unassigned. */
+export function assertImplementedRetainedSourceCoverage(): ImplementedRetainedSourceCoverage {
+  const expectedPlatos = sourceModelManifest.map((entry) => entry.source);
+  const assignedPlatos = implementedRetainedBackfillSourceModels.filter((sourceModel) =>
+    sourceModel.startsWith("Platos")
+  );
+  const expectedRetained = [...supplementalRetainedSourceModels, ...expectedPlatos];
+  const assigned = [...implementedRetainedBackfillSourceModels];
+  const expectedRetainedSet = new Set<string>(expectedRetained);
+  const assignedSet = new Set<string>(assigned);
+  const expectedLedgerRetained = legacyModelDispositionLedger
+    .filter((entry) => entry.disposition === "BACKFILL" && !coreSet.has(entry.sourceModel))
+    .map((entry) => entry.sourceModel);
+  const expectedLedgerRetainedSet = new Set<string>(expectedLedgerRetained);
+  const duplicates = assigned.filter((sourceModel, index) => assigned.indexOf(sourceModel) !== index);
+  const missing = expectedRetained.filter((sourceModel) => !assignedSet.has(sourceModel));
+  const unexpected = assigned.filter((sourceModel) => !expectedRetainedSet.has(sourceModel));
+  const ledgerMissing = expectedLedgerRetained.filter((sourceModel) => !assignedSet.has(sourceModel));
+  const ledgerUnexpected = assigned.filter(
+    (sourceModel) => !expectedLedgerRetainedSet.has(sourceModel)
+  );
+
+  if (
+    expectedPlatos.length !== 55 ||
+    assignedPlatos.length !== expectedPlatos.length ||
+    duplicates.length > 0 ||
+    missing.length > 0 ||
+    unexpected.length > 0 ||
+    ledgerMissing.length > 0 ||
+    ledgerUnexpected.length > 0
+  ) {
+    throw new Error(
+      `implemented retained-source coverage is incomplete (missing: ${[
+        ...new Set([...missing, ...ledgerMissing]),
+      ].join(", ") || "none"}; unexpected: ${[
+        ...new Set([...unexpected, ...ledgerUnexpected]),
+      ].join(", ") || "none"}; duplicates: ${[...new Set(duplicates)].join(", ") || "none"})`
+    );
+  }
+
+  return Object.freeze({
+    retainedPlatosSourceModelCount: expectedPlatos.length,
+    supplementalRetainedSourceModelCount: supplementalRetainedSourceModels.length,
+    implementedRetainedSourceModelCount: assigned.length,
+  });
+}
+
+export const implementedRetainedSourceCoverage = assertImplementedRetainedSourceCoverage();
 
 const sourceModelsFor = (disposition: "BACKFILL" | "EXPORT_DROP" | "EPHEMERAL_DROP") =>
   legacyModelDispositionLedger
@@ -47,8 +113,8 @@ const sourceModelsFor = (disposition: "BACKFILL" | "EXPORT_DROP" | "EPHEMERAL_DR
 
 /**
  * Exhaustive implementation ledger. A STUB is an operational blocker, never a
- * successful no-op. The only executable data phase in Phase 3 core is the
- * initial tenancy/auth slice requested for rehearsal.
+ * successful no-op. Implemented retained rows are executable only in the
+ * mandatory pre-commit rollback rehearsal while any later gate remains a STUB.
  */
 export const cutoverDomainPhases = [
   {
@@ -60,8 +126,8 @@ export const cutoverDomainPhases = [
   {
     id: "supplemental-auth-mfa",
     implementation: "IMPLEMENTED",
-    sourceModels: supplementalAuthOwnedSourceModels,
-    summary: "Organization invitations, impersonation history, and User-owned operator MFA",
+    sourceModels: supplementalRetainedSourceModels,
+    summary: "Organization invitations, impersonation history, retained secret sources, and User-owned operator MFA",
   },
   {
     id: "retained-agent-tool-batch-1",
@@ -100,16 +166,28 @@ export const cutoverDomainPhases = [
     summary: "Operational, audit, approval, budget, safety, event, notification, and erasure cutover",
   },
   {
+    id: "retained-eval-job-skill-batch-7",
+    implementation: "IMPLEMENTED",
+    sourceModels: retainedEvalJobSkillBatch7SourceModels,
+    summary: "Evaluation, rating, job, skill, macro, and agent-skill retained-domain cutover",
+  },
+  {
+    id: "retained-memory-batch-8",
+    implementation: "IMPLEMENTED",
+    sourceModels: retainedMemoryBatch8SourceModels,
+    summary: "Memory, memory-entity, and directed memory-relationship retained-domain cutover",
+  },
+  {
     id: "final-message-re-encryption-read-probes",
     implementation: "STUB",
     sourceModels: [],
-    summary: "Final target message re-encryption and Batch 6 retained-audit re-encryption plus target-reader semantic probes",
+    summary: "Final target message re-encryption and Batch 6 audit/Batch 8 memory re-encryption plus target-reader semantic probes",
   },
   {
     id: "remaining-retained-backfill",
-    implementation: "STUB",
+    implementation: "IMPLEMENTED",
     sourceModels: sourceModelsFor("BACKFILL"),
-    summary: "Later retained secret, policy, evaluation, skill, and memory Batch 7/8 backfills",
+    summary: "All 55 retained Platos models and supplemental retained sources have implemented row-level backfills",
   },
   {
     id: "unsupported-trigger-export",

@@ -79,3 +79,13 @@ VALUES
   ('cllegacyagentskill0001', 'cllegacyagent0001', 'cllegacyskill0001',
    'cllegacyorg0001', 'cllegacyproject0001', 'cllegacyenv0001', true,
    '{"maxResults":3}'::jsonb, '2025-01-05T00:00:06Z', '2025-01-05T00:00:06Z');
+
+INSERT INTO "PlatosMacro"
+  (id, "organizationId", "projectId", "environmentId", name, description, steps,
+   "paramSchema", "sharedWithOrg", "createdBy", "createdAt", "updatedAt")
+VALUES
+  ('cllegacymacro0001', 'cllegacyorg0001', 'cllegacyproject0001', 'cllegacyenv0001',
+   'Fixture lookup sequence', 'Runs the retained fixture lookup tool',
+   '[{"tool":"fixture_lookup","params":{"query":"${input.query}"}}]'::jsonb,
+   '{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}'::jsonb,
+   true, 'cllegacyuser0001', '2025-01-05T00:00:07Z', '2025-01-05T00:00:07Z');

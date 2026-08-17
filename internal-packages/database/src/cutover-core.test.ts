@@ -7,11 +7,14 @@ import {
   resolveCutoverMessageEncryptionKeys,
 } from "./cutover-cli";
 import {
+  assertImplementedRetainedSourceCoverage,
   assertCutoverPhaseLedgerIsExhaustive,
   cutoverDomainPhases,
+  implementedRetainedSourceCoverage,
   incompleteCutoverPhaseIds,
 } from "./cutover-phases";
 import { serializeCutoverReport } from "./cutover-report";
+import { sourceModelManifest } from "./source-model-manifest";
 
 describe("cutover command safety contracts", () => {
   test("defaults to dry-run and requires mandatory rollback for core rehearsal", () => {
@@ -31,8 +34,9 @@ describe("cutover command safety contracts", () => {
 
   test("keeps all unimplemented domain phases machine-readable and exhaustive", () => {
     expect(() => assertCutoverPhaseLedgerIsExhaustive()).not.toThrow();
+    expect(() => assertImplementedRetainedSourceCoverage()).not.toThrow();
     expect(cutoverDomainPhases.filter((phase) => phase.implementation === "IMPLEMENTED"))
-      .toHaveLength(8);
+      .toHaveLength(11);
     expect(
       cutoverDomainPhases
         .filter((phase) => phase.implementation === "IMPLEMENTED")
@@ -46,11 +50,19 @@ describe("cutover command safety contracts", () => {
       "retained-provider-oauth-batch-4",
       "retained-channel-batch-5",
       "retained-operational-batch-6",
+      "retained-eval-job-skill-batch-7",
+      "retained-memory-batch-8",
+      "remaining-retained-backfill",
     ]);
     expect(cutoverDomainPhases.find((phase) => phase.id === "supplemental-auth-mfa"))
       .toMatchObject({
         implementation: "IMPLEMENTED",
-        sourceModels: ["OrgMemberInvite", "ImpersonationAuditLog"],
+        sourceModels: [
+          "OrgMemberInvite",
+          "SecretReference",
+          "SecretStore",
+          "ImpersonationAuditLog",
+        ],
       });
     expect(cutoverDomainPhases.find((phase) => phase.id === "retained-agent-tool-batch-1"))
       .toMatchObject({
@@ -114,34 +126,64 @@ describe("cutover command safety contracts", () => {
           "PlatosErasureOperation",
         ]),
       });
+    expect(cutoverDomainPhases.find((phase) => phase.id === "retained-eval-job-skill-batch-7"))
+      .toMatchObject({
+        implementation: "IMPLEMENTED",
+        sourceModels: expect.arrayContaining([
+          "PlatosMessageRating",
+          "PlatosSkill",
+          "PlatosMacro",
+        ]),
+      });
+    expect(cutoverDomainPhases.find((phase) => phase.id === "retained-memory-batch-8"))
+      .toMatchObject({
+        implementation: "IMPLEMENTED",
+        sourceModels: ["PlatosMemory", "PlatosMemoryEntity", "PlatosMemoryRelationship"],
+      });
     expect(
       cutoverDomainPhases.find((phase) => phase.id === "final-message-re-encryption-read-probes")
     ).toMatchObject({
       implementation: "STUB",
-      summary: expect.stringContaining("Batch 6 retained-audit re-encryption"),
+      summary: expect.stringContaining("Batch 8 memory re-encryption"),
     });
     expect(cutoverDomainPhases.find((phase) => phase.id === "remaining-retained-backfill"))
       .toMatchObject({
-        implementation: "STUB",
-        sourceModels: expect.arrayContaining([
-          "SecretReference",
-          "SecretStore",
-          "PlatosEvalCriterion",
-          "PlatosMemory",
-        ]),
-        summary: expect.stringContaining("Batch 7/8"),
+        implementation: "IMPLEMENTED",
+        sourceModels: [],
+        summary: expect.stringContaining("All 55 retained Platos models"),
       });
     expect(cutoverDomainPhases.find((phase) => phase.id === "cryptographic-read-probes"))
       .toMatchObject({ implementation: "STUB", summary: expect.stringContaining("Batch 6 audit") });
     expect(incompleteCutoverPhaseIds).toEqual([
       "final-message-re-encryption-read-probes",
-      "remaining-retained-backfill",
       "unsupported-trigger-export",
       "ephemeral-session-recovery-disposition",
       "clean-trigger-defer-install",
       "cryptographic-read-probes",
       "external-analytics-object-rekey",
     ]);
+    expect(implementedRetainedSourceCoverage).toEqual({
+      retainedPlatosSourceModelCount: 55,
+      supplementalRetainedSourceModelCount: 4,
+      implementedRetainedSourceModelCount: 59,
+    });
+    const assignedPlatosSources = cutoverDomainPhases
+      .filter((phase) => phase.implementation === "IMPLEMENTED")
+      .flatMap((phase) => phase.sourceModels)
+      .filter((sourceModel) => sourceModel.startsWith("Platos"));
+    expect(assignedPlatosSources).toHaveLength(55);
+    expect(new Set(assignedPlatosSources)).toEqual(
+      new Set(sourceModelManifest.map((entry) => entry.source))
+    );
+    for (const blockedPhase of [
+      "unsupported-trigger-export",
+      "clean-trigger-defer-install",
+      "cryptographic-read-probes",
+      "external-analytics-object-rekey",
+    ]) {
+      expect(cutoverDomainPhases.find((phase) => phase.id === blockedPhase))
+        .toMatchObject({ implementation: "STUB" });
+    }
   });
 
   test("resolves the active and historical message key ring without exposing aliases", () => {

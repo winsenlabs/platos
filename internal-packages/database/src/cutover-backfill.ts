@@ -7,7 +7,7 @@ import {
   legacyModelDispositionLedger,
   sourceValidationManifest,
 } from "./cutover-ledger";
-import type { CutoverDatabase } from "./cutover-types";
+import { CutoverFailure, type CutoverDatabase } from "./cutover-types";
 
 const quoteIdentifier = (value: string) => `"${value.replaceAll('"', '""')}"`;
 export const CUTOVER_CHUNK_SIZE = 500;
@@ -17,6 +17,44 @@ export function deterministicChunks<T>(rows: readonly T[], size = CUTOVER_CHUNK_
   const chunks: T[][] = [];
   for (let offset = 0; offset < rows.length; offset += size) chunks.push(rows.slice(offset, offset + size));
   return chunks;
+}
+
+export interface MaterializedCutoverMappingTarget {
+  readonly sourceModel: string;
+  readonly targetModel: string;
+  readonly stableSuffix: string;
+}
+
+export async function countMaterializedCutoverMappings(
+  database: CutoverDatabase,
+  targets: readonly MaterializedCutoverMappingTarget[]
+): Promise<number> {
+  if (targets.length === 0) return 0;
+  const values = targets.flatMap((target) => [
+    target.sourceModel,
+    target.targetModel,
+    target.stableSuffix,
+  ]);
+  const expected = targets.map((_, index) => {
+    const offset = index * 3;
+    return `($${offset + 1}::text,$${offset + 2}::text,$${offset + 3}::text)`;
+  });
+  const result = await database.query<{ mapping_count: string }>(
+    `WITH expected(source_model,target_model,stable_suffix) AS (VALUES ${expected.join(",")})
+     SELECT count(*)::text AS mapping_count
+       FROM cutover_legacy.cutover_id_map map
+       JOIN expected USING (source_model,target_model,stable_suffix)
+      WHERE map.mapping_version=1`,
+    values
+  );
+  const count = Number(result.rows[0]?.mapping_count);
+  if (!Number.isSafeInteger(count) || count < 0) {
+    throw new CutoverFailure(
+      "ID_MAPPING_COUNT_INVALID",
+      "materialized retained mapping count is invalid"
+    );
+  }
+  return count;
 }
 
 function stableSuffixForTarget(target: string): string {

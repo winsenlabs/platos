@@ -8,6 +8,8 @@
 --   legacy-provider-oauth-batch4-seed.sql
 --   legacy-channel-batch5-seed.sql
 --   legacy-operational-batch6-seed.sql
+--   legacy-eval-job-skill-batch7-seed.sql
+--   legacy-memory-batch8-seed.sql
 --
 -- The supplemental fixture deliberately retains negative fail-closed vectors
 -- for its individual tests. The combined production-command replay removes

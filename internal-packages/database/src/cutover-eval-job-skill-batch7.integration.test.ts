@@ -147,6 +147,7 @@ describeHarness("retained evaluation/job/skill Batch 7 PostgreSQL replay", () =>
         jobs: 1,
         skills: 1,
         agentSkills: 1,
+        macros: 1,
       });
       expect(evidence.splitCounts).toEqual({
         skillSources: 1,
@@ -205,6 +206,20 @@ describeHarness("retained evaluation/job/skill Batch 7 PostgreSQL replay", () =>
       expect(skillChain.rows[0]?.agentSkillVersionId).toBe(skillChain.rows[0]?.currentVersionId);
       expect(skillChain.rows[0]?.skillId).not.toBe(skillChain.rows[0]?.projectSkillId);
       expect(skillChain.rows[0]?.projectSkillId).not.toBe(skillChain.rows[0]?.environmentSkillId);
+
+      const macros = await database.query<{
+        stepsRoot: string;
+        paramSchemaRoot: string;
+        sharedWithOrganization: boolean;
+      }>(`SELECT jsonb_typeof(steps) AS "stepsRoot",
+                 jsonb_typeof("paramSchema") AS "paramSchemaRoot",
+                 "sharedWithOrganization"
+            FROM public."Macro"`);
+      expect(macros.rows).toEqual([{
+        stepsRoot: "array",
+        paramSchemaRoot: "object",
+        sharedWithOrganization: true,
+      }]);
     } finally {
       await database.query("ROLLBACK");
     }

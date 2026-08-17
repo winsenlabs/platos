@@ -1,0 +1,245 @@
+{
+  "fixtureVersion": 1,
+  "sourceKeys": {
+    "1": "1111111111111111111111111111111111111111111111111111111111111111",
+    "2": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "target": {
+    "version": 3,
+    "key": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "cases": [
+    {
+      "id": "Turn.outputText-plaintext",
+      "field": "Turn.outputText",
+      "variant": "PLAINTEXT",
+      "sourceValue": "fixture assistant output",
+      "sourceKeyVersion": null
+    },
+    {
+      "id": "Turn.outputText-historical-v2",
+      "field": "Turn.outputText",
+      "variant": "ENVELOPE",
+      "sourceValue": "ICAgICAgICAgICAgICAgIPxZgICwYPYP6FsHa91/NoWRw8ypOdIPWmDzR65TnvqjxIBZ/tdJ8Y0=",
+      "sourceKeyVersion": 2
+    },
+    {
+      "id": "Turn.thinkingContent-plaintext",
+      "field": "Turn.thinkingContent",
+      "variant": "PLAINTEXT",
+      "sourceValue": "fixture private reasoning",
+      "sourceKeyVersion": null
+    },
+    {
+      "id": "Turn.thinkingContent-historical-v2",
+      "field": "Turn.thinkingContent",
+      "variant": "ENVELOPE",
+      "sourceValue": "ISEhISEhISEhISEhISEhISvfAEX0th8qy/7DpAxTz++ex021LQypzmC7p5065yhfek6STzCyM2Ji",
+      "sourceKeyVersion": 2
+    },
+    {
+      "id": "ToolCallAudit.arguments-plaintext",
+      "field": "ToolCallAudit.arguments",
+      "variant": "PLAINTEXT",
+      "sourceValue": {
+        "query": "fixture argument",
+        "nested": {
+          "limit": 2
+        }
+      }
+    },
+    {
+      "id": "ToolCallAudit.arguments-historical-v2",
+      "field": "ToolCallAudit.arguments",
+      "variant": "ENVELOPE",
+      "sourceValue": {
+        "__platos_enc": 1,
+        "v": 2,
+        "ct": "IiIiIiIiIiIiIiIiIiIiIg3S1ZEmeovGTNE1xp2pTcK+Lnd9q9yOYtanqGjiwTjg9VX2Gksqv7JZkYIZfa8Adp0QSAV6azuLSDNtksQPPnI1"
+      }
+    },
+    {
+      "id": "ToolCallAudit.result-plaintext",
+      "field": "ToolCallAudit.result",
+      "variant": "PLAINTEXT",
+      "sourceValue": [
+        {
+          "id": "fixture-result",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "id": "ToolCallAudit.result-historical-v2",
+      "field": "ToolCallAudit.result",
+      "variant": "ENVELOPE",
+      "sourceValue": {
+        "__platos_enc": 1,
+        "v": 2,
+        "ct": "IyMjIyMjIyMjIyMjIyMjI28v3wWVdM1OQA5pylyoEkgfzYJt2TsadomFftB4PfI9N9DrXY9oQAD0SKQgbfLarz0xYQ=="
+      }
+    },
+    {
+      "id": "SafetyEvent.detail-plaintext",
+      "field": "SafetyEvent.detail",
+      "variant": "PLAINTEXT",
+      "sourceValue": "fixture safety detail"
+    },
+    {
+      "id": "SafetyEvent.detail-historical-v2",
+      "field": "SafetyEvent.detail",
+      "variant": "ENVELOPE",
+      "sourceValue": "{\"__platos_enc\":1,\"v\":2,\"ct\":\"JCQkJCQkJCQkJCQkJCQkJKtBU72U1vkNChIG/ALWTGKTTAVGCavVhoeOIk7H6YFJWN0N3nxH7w==\"}"
+    },
+    {
+      "id": "SafetyEvent.metadata-plaintext",
+      "field": "SafetyEvent.metadata",
+      "variant": "PLAINTEXT",
+      "sourceValue": {
+        "detector": "fixture",
+        "score": 0.75
+      }
+    },
+    {
+      "id": "SafetyEvent.metadata-historical-v1",
+      "field": "SafetyEvent.metadata",
+      "variant": "ENVELOPE",
+      "sourceValue": {
+        "__platos_enc": 1,
+        "v": 1,
+        "ct": "JSUlJSUlJSUlJSUlJSUlJeR+dWkbtG5ex2Gt7TNMLRa48eDYYLnrgtNN8qTw76n8BEWIM3n9iXuEKnxEJmtO5Ulj8g=="
+      }
+    },
+    {
+      "id": "Memory.content-plaintext",
+      "field": "Memory.content",
+      "variant": "PLAINTEXT",
+      "sourceValue": "fixture retained memory"
+    },
+    {
+      "id": "Memory.content-historical-v2",
+      "field": "Memory.content",
+      "variant": "ENVELOPE",
+      "sourceValue": "{\"__platos_enc\":1,\"v\":2,\"ct\":\"JiYmJiYmJiYmJiYmJiYmJkqwgfkG/95LGt4bWWgSCFwMqe2QBrzgWZ2VFHaknGding99AykE92ng\"}"
+    },
+    {
+      "id": "Memory.metadata-plaintext",
+      "field": "Memory.metadata",
+      "variant": "PLAINTEXT",
+      "sourceValue": {
+        "source": "fixture-thread",
+        "ordinal": 1
+      }
+    },
+    {
+      "id": "Memory.metadata-historical-v1",
+      "field": "Memory.metadata",
+      "variant": "ENVELOPE",
+      "sourceValue": {
+        "__platos_enc": 1,
+        "v": 1,
+        "ct": "JycnJycnJycnJycnJycnJ4dB5/fWDbjnzi2k9+zMubk34QTFsj4+KTEa/frFDr/VVevTNzsE89N8nMvIlpFytAmcyCt7J+8="
+      }
+    },
+    {
+      "id": "MemoryEntity.label-plaintext",
+      "field": "MemoryEntity.label",
+      "variant": "PLAINTEXT",
+      "sourceValue": "Fixture Entity"
+    },
+    {
+      "id": "MemoryEntity.label-historical-v2",
+      "field": "MemoryEntity.label",
+      "variant": "ENVELOPE",
+      "sourceValue": "{\"__platos_enc\":1,\"v\":2,\"ct\":\"KCgoKCgoKCgoKCgoKCgoKDprPkqZvgD4PTKfaNaORJmsJsBdVfpKlqV4qbwN7zal\"}"
+    },
+    {
+      "id": "MemoryEntity.metadata-plaintext",
+      "field": "MemoryEntity.metadata",
+      "variant": "PLAINTEXT",
+      "sourceValue": {
+        "kind": "organization",
+        "canonical": true
+      }
+    },
+    {
+      "id": "MemoryEntity.metadata-historical-v1",
+      "field": "MemoryEntity.metadata",
+      "variant": "ENVELOPE",
+      "sourceValue": {
+        "__platos_enc": 1,
+        "v": 1,
+        "ct": "KSkpKSkpKSkpKSkpKSkpKZ0sYaGdzPh2OfwSYDS/zM49tIpsvFdQirZe1v5QHNxU03dbgFYGmkn32/+fdh6RcJ9UE9ASbQkw"
+      }
+    },
+    {
+      "id": "MemoryRelationship.metadata-plaintext",
+      "field": "MemoryRelationship.metadata",
+      "variant": "PLAINTEXT",
+      "sourceValue": {
+        "evidence": "fixture-memory",
+        "confidence": 0.9
+      }
+    },
+    {
+      "id": "MemoryRelationship.metadata-historical-v1",
+      "field": "MemoryRelationship.metadata",
+      "variant": "ENVELOPE",
+      "sourceValue": {
+        "__platos_enc": 1,
+        "v": 1,
+        "ct": "KioqKioqKioqKioqKioqKrXJCLrvnbXZMnfssSq3Rc75V/Em/lJzZAGNHZ2BmyzgiIslgy/4EATB9sMUNCdR3dpPl9SMPYqIUjo3zdZx"
+      }
+    }
+  ],
+  "malformed": [
+    {
+      "id": "turn-recognized-malformed",
+      "field": "Turn.outputText",
+      "variant": "MALFORMED",
+      "sourceValue": "plaintext-looking-fixture",
+      "sourceKeyVersion": 1,
+      "expectedCode": "CUTOVER_CRYPTO_SOURCE_ENVELOPE_INVALID"
+    },
+    {
+      "id": "json-marker-unsupported",
+      "field": "ToolCallAudit.arguments",
+      "variant": "MALFORMED",
+      "sourceValue": {
+        "__platos_enc": 2,
+        "v": 1,
+        "ct": "plaintext-looking-fixture"
+      },
+      "expectedCode": "CUTOVER_CRYPTO_SOURCE_ENVELOPE_INVALID"
+    },
+    {
+      "id": "text-marker-extra-key",
+      "field": "SafetyEvent.detail",
+      "variant": "MALFORMED",
+      "sourceValue": "{\"__platos_enc\":1,\"v\":1,\"ct\":\"KysrKysrKysrKysrKysrK9HP+fxkMlrO/hTCOyppIEa1Rxs7Vu/LNy0=\",\"extra\":true}",
+      "expectedCode": "CUTOVER_CRYPTO_SOURCE_ENVELOPE_INVALID"
+    },
+    {
+      "id": "historical-version-key-missing",
+      "field": "Memory.metadata",
+      "variant": "MALFORMED",
+      "sourceValue": {
+        "__platos_enc": 1,
+        "v": 9,
+        "ct": "LCwsLCwsLCwsLCwsLCwsLJJxclIW5dvFcKxF4bj5zljAHfgZMTg1Rm7tBCxbI+YBKRz8aQ=="
+      },
+      "expectedCode": "CUTOVER_CRYPTO_SOURCE_ENVELOPE_INVALID"
+    },
+    {
+      "id": "decrypted-json-root-invalid",
+      "field": "MemoryEntity.metadata",
+      "variant": "MALFORMED",
+      "sourceValue": {
+        "__platos_enc": 1,
+        "v": 1,
+        "ct": "LS0tLS0tLS0tLS0tLS0tLVGZutKvS3vUtN+jHGV/uAd6EGGRyJ5WfIRMH197U2m/gQ=="
+      },
+      "expectedCode": "CUTOVER_CRYPTO_SOURCE_SHAPE_INVALID"
+    }
+  ]
+}

@@ -12,6 +12,7 @@ export const retainedEvalJobSkillBatch7SourceModels = [
   "PlatosTask",
   "PlatosSkill",
   "PlatosAgentSkill",
+  "PlatosMacro",
 ] as const;
 
 export const retainedEvalJobSkillBatch7MappingTargets = [
@@ -28,6 +29,7 @@ export const retainedEvalJobSkillBatch7MappingTargets = [
     stableSuffix: "environment-skill",
   },
   { sourceModel: "PlatosAgentSkill", targetModel: "AgentSkill", stableSuffix: "" },
+  { sourceModel: "PlatosMacro", targetModel: "Macro", stableSuffix: "" },
 ] as const;
 
 export interface RetainedEvalJobSkillBatch7Evidence {
@@ -188,7 +190,8 @@ const sourceAndMappingValidationSql = `
     ('PlatosSkill','Skill',''),
     ('PlatosSkill','ProjectSkill','project-skill'),
     ('PlatosSkill','EnvironmentSkill','environment-skill'),
-    ('PlatosAgentSkill','AgentSkill','')
+    ('PlatosAgentSkill','AgentSkill',''),
+    ('PlatosMacro','Macro','')
   ), source_ids(source_model, source_id) AS (
     SELECT 'PlatosMessageRating', id FROM cutover_legacy."PlatosMessageRating"
     UNION ALL SELECT 'PlatosEvalCriterion', id FROM cutover_legacy."PlatosEvalCriterion"
@@ -197,6 +200,7 @@ const sourceAndMappingValidationSql = `
     UNION ALL SELECT 'PlatosTask', id FROM cutover_legacy."PlatosTask"
     UNION ALL SELECT 'PlatosSkill', id FROM cutover_legacy."PlatosSkill"
     UNION ALL SELECT 'PlatosAgentSkill', id FROM cutover_legacy."PlatosAgentSkill"
+    UNION ALL SELECT 'PlatosMacro', id FROM cutover_legacy."PlatosMacro"
   ), scoped(source_model, source_id, organization_id, project_id, environment_id) AS (
     SELECT 'PlatosMessageRating', id, "organizationId", "projectId", "environmentId" FROM cutover_legacy."PlatosMessageRating"
     UNION ALL SELECT 'PlatosEvalCriterion', id, "organizationId", "projectId", "environmentId" FROM cutover_legacy."PlatosEvalCriterion"
@@ -205,6 +209,7 @@ const sourceAndMappingValidationSql = `
     UNION ALL SELECT 'PlatosTask', id, "organizationId", "projectId", "environmentId" FROM cutover_legacy."PlatosTask"
     UNION ALL SELECT 'PlatosSkill', id, "organizationId", "projectId", "environmentId" FROM cutover_legacy."PlatosSkill"
     UNION ALL SELECT 'PlatosAgentSkill', id, "organizationId", "projectId", "environmentId" FROM cutover_legacy."PlatosAgentSkill"
+    UNION ALL SELECT 'PlatosMacro', id, "organizationId", "projectId", "environmentId" FROM cutover_legacy."PlatosMacro"
   ), issues AS (
     SELECT 'missing-or-duplicate-id-map' AS issue WHERE EXISTS (
       SELECT 1 FROM source_ids source JOIN expected USING (source_model)
@@ -301,13 +306,16 @@ const sourceAndMappingValidationSql = `
       SELECT 1 FROM cutover_legacy."PlatosSkill" GROUP BY "organizationId","skillId",version HAVING count(*)>1)
     UNION ALL SELECT 'target-unique-collision' WHERE EXISTS (
       SELECT 1 FROM cutover_legacy."PlatosEvalCriterion" GROUP BY "environmentId",name HAVING count(*)>1
-      UNION ALL SELECT 1 FROM cutover_legacy."PlatosGoldenSet" GROUP BY "environmentId","agentId",name HAVING count(*)>1)
+      UNION ALL SELECT 1 FROM cutover_legacy."PlatosGoldenSet" GROUP BY "environmentId","agentId",name HAVING count(*)>1
+      UNION ALL SELECT 1 FROM cutover_legacy."PlatosMacro" GROUP BY "environmentId",name HAVING count(*)>1)
     UNION ALL SELECT 'json-root' WHERE EXISTS (
       SELECT 1 FROM cutover_legacy."PlatosAgentEval" WHERE jsonb_typeof("criterionSnapshot")<>'object'
       UNION ALL SELECT 1 FROM cutover_legacy."PlatosTask" WHERE "payloadSchema" IS NOT NULL AND jsonb_typeof("payloadSchema")<>'object'
       UNION ALL SELECT 1 FROM cutover_legacy."PlatosSkill" WHERE jsonb_typeof(manifest)<>'object'
         OR ("providesTools" IS NOT NULL AND jsonb_typeof("providesTools")<>'array')
-      UNION ALL SELECT 1 FROM cutover_legacy."PlatosAgentSkill" WHERE config IS NOT NULL AND jsonb_typeof(config)<>'object')
+      UNION ALL SELECT 1 FROM cutover_legacy."PlatosAgentSkill" WHERE config IS NOT NULL AND jsonb_typeof(config)<>'object'
+      UNION ALL SELECT 1 FROM cutover_legacy."PlatosMacro" WHERE jsonb_typeof(steps)<>'array'
+        OR ("paramSchema" IS NOT NULL AND jsonb_typeof("paramSchema")<>'object'))
     UNION ALL SELECT 'unrepresentable-scalar' WHERE EXISTS (
       SELECT 1 FROM cutover_legacy."PlatosMessageRating" WHERE rating NOT IN (-1,1)
       UNION ALL SELECT 1 FROM cutover_legacy."PlatosEvalCriterion" WHERE "scoreScaleMin">="scoreScaleMax"
@@ -834,6 +842,61 @@ export async function backfillBatch7AgentSkills(
   );
 }
 
+interface MacroRow extends Record<string, unknown> {
+  source_id: string;
+  target_id: string;
+  environment_id: string;
+  name: string;
+  description: string | null;
+  steps: unknown;
+  param_schema: unknown;
+  shared_with_organization: boolean;
+  created_by: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export async function backfillBatch7Macros(
+  database: CutoverDatabase,
+  chunkSize = CUTOVER_CHUNK_SIZE
+): Promise<number> {
+  return forEachBatch7SourceChunk<MacroRow>(
+    database,
+    `SELECT source.id::text AS source_id,target_map.target_id::text AS target_id,
+            environment_map.target_id::text AS environment_id,source.name,source.description,
+            source.steps,source."paramSchema" AS param_schema,
+            source."sharedWithOrg" AS shared_with_organization,source."createdBy" AS created_by,
+            source."createdAt" AS created_at,source."updatedAt" AS updated_at
+       FROM cutover_legacy."PlatosMacro" source
+       JOIN cutover_legacy.cutover_id_map target_map ON target_map.mapping_version=1 AND target_map.source_model='PlatosMacro' AND target_map.source_id=source.id AND target_map.target_model='Macro' AND target_map.stable_suffix=''
+       JOIN cutover_legacy.cutover_id_map environment_map ON environment_map.mapping_version=1 AND environment_map.source_model='RuntimeEnvironment' AND environment_map.source_id=source."environmentId" AND environment_map.target_model='Environment' AND environment_map.stable_suffix=''
+      WHERE source.id>$1 ORDER BY source.id LIMIT $2`,
+    async (rows) => {
+      await database.query(
+        `INSERT INTO public."Macro" (id,"environmentId",name,description,steps,"paramSchema","sharedWithOrganization","createdBy","createdAt","updatedAt") VALUES ${parameterTuples(
+          rows.length,
+          10
+        )}`,
+        rows.flatMap((row) => [
+          row.target_id,
+          row.environment_id,
+          nonEmptyString(row.name, "PlatosMacro.name"),
+          nullableString(row.description, "PlatosMacro.description"),
+          JSON.stringify(normalizeBatch7Json("Macro.steps", row.steps)),
+          row.param_schema === null
+            ? null
+            : JSON.stringify(normalizeNullableBatch7Json("Macro.paramSchema", row.param_schema)),
+          row.shared_with_organization,
+          nonEmptyString(row.created_by, "PlatosMacro.createdBy"),
+          row.created_at,
+          row.updated_at,
+        ])
+      );
+    },
+    chunkSize
+  );
+}
+
 const conservationValidationSql = `
   WITH equations(id,source_count,target_count) AS (VALUES
     ('message-ratings',(SELECT count(*) FROM cutover_legacy."PlatosMessageRating"),(SELECT count(*) FROM public."MessageRating" target JOIN cutover_legacy.cutover_id_map map ON map.mapping_version=1 AND map.source_model='PlatosMessageRating' AND map.target_model='MessageRating' AND map.target_id=target.id)),
@@ -845,6 +908,7 @@ const conservationValidationSql = `
     ('project-skills',(SELECT count(*) FROM cutover_legacy."PlatosSkill"),(SELECT count(*) FROM public."ProjectSkill" target JOIN cutover_legacy.cutover_id_map map ON map.mapping_version=1 AND map.source_model='PlatosSkill' AND map.target_model='ProjectSkill' AND map.stable_suffix='project-skill' AND map.target_id=target.id)),
     ('environment-skills',(SELECT count(*) FROM cutover_legacy."PlatosSkill"),(SELECT count(*) FROM public."EnvironmentSkill" target JOIN cutover_legacy.cutover_id_map map ON map.mapping_version=1 AND map.source_model='PlatosSkill' AND map.target_model='EnvironmentSkill' AND map.stable_suffix='environment-skill' AND map.target_id=target.id)),
     ('agent-skills',(SELECT count(*) FROM cutover_legacy."PlatosAgentSkill"),(SELECT count(*) FROM public."AgentSkill" target JOIN cutover_legacy.cutover_id_map map ON map.mapping_version=1 AND map.source_model='PlatosAgentSkill' AND map.target_model='AgentSkill' AND map.target_id=target.id)),
+    ('macros',(SELECT count(*) FROM cutover_legacy."PlatosMacro"),(SELECT count(*) FROM public."Macro" target JOIN cutover_legacy.cutover_id_map map ON map.mapping_version=1 AND map.source_model='PlatosMacro' AND map.target_model='Macro' AND map.target_id=target.id)),
     ('skill-split-total',(SELECT count(*)*3 FROM cutover_legacy."PlatosSkill"),
       (SELECT count(*) FROM (SELECT id FROM public."Skill" UNION ALL SELECT id FROM public."ProjectSkill" UNION ALL SELECT id FROM public."EnvironmentSkill") target
         JOIN cutover_legacy.cutover_id_map map ON map.mapping_version=1 AND map.source_model='PlatosSkill' AND map.target_id=target.id))
@@ -872,6 +936,10 @@ const ancestryValidationSql = `
       JOIN public."AgentVersion" version ON version.id=target."agentVersionId" JOIN public."Agent" agent ON agent.id=version."agentId"
       JOIN public."EnvironmentSkill" environment_skill ON environment_skill.id=target."environmentSkillId" JOIN public."Environment" environment ON environment.id=environment_skill."environmentId"
       WHERE agent."projectId"<>environment."projectId"
+    UNION ALL SELECT 'macro' FROM public."Macro" target JOIN cutover_legacy.cutover_id_map map ON map.mapping_version=1 AND map.source_model='PlatosMacro' AND map.target_model='Macro' AND map.target_id=target.id
+      JOIN cutover_legacy."PlatosMacro" source ON source.id=map.source_id
+      JOIN cutover_legacy.cutover_id_map environment_map ON environment_map.mapping_version=1 AND environment_map.source_model='RuntimeEnvironment' AND environment_map.source_id=source."environmentId" AND environment_map.target_model='Environment'
+      WHERE target."environmentId"<>environment_map.target_id
   ) SELECT DISTINCT issue FROM issues ORDER BY issue`;
 
 const semanticValidationSql = `
@@ -895,6 +963,12 @@ const semanticValidationSql = `
       JOIN cutover_legacy.cutover_id_map version_map ON version_map.mapping_version=1 AND version_map.source_model='PlatosAgentVersion' AND version_map.source_id=agent."currentVersionId" AND version_map.target_model='AgentVersion'
       JOIN cutover_legacy.cutover_id_map skill_map ON skill_map.mapping_version=1 AND skill_map.source_model='PlatosSkill' AND skill_map.source_id=source."skillId" AND skill_map.target_model='EnvironmentSkill' AND skill_map.stable_suffix='environment-skill'
       WHERE target."agentVersionId"<>version_map.target_id OR target."environmentSkillId"<>skill_map.target_id OR jsonb_typeof(target.config)<>'object'
+    UNION ALL SELECT 'macro-json-or-fields' FROM public."Macro" target JOIN cutover_legacy.cutover_id_map map ON map.mapping_version=1 AND map.source_model='PlatosMacro' AND map.target_model='Macro' AND map.target_id=target.id
+      JOIN cutover_legacy."PlatosMacro" source ON source.id=map.source_id
+      WHERE jsonb_typeof(target.steps)<>'array'
+         OR (target."paramSchema" IS NOT NULL AND jsonb_typeof(target."paramSchema")<>'object')
+         OR target.steps<>source.steps OR target."paramSchema" IS DISTINCT FROM source."paramSchema"
+         OR target."sharedWithOrganization"<>source."sharedWithOrg"
   ) SELECT DISTINCT issue FROM issues ORDER BY issue`;
 
 async function assertBatch7ValidationQuery(
@@ -946,6 +1020,7 @@ export async function backfillRetainedEvalJobSkillBatch7(
   const projectSkills = await backfillBatch7ProjectSkills(database, chunkSize);
   const environmentSkills = await backfillBatch7EnvironmentSkills(database, chunkSize);
   const agentSkills = await backfillBatch7AgentSkills(database, chunkSize);
+  const macros = await backfillBatch7Macros(database, chunkSize);
   await validateRetainedEvalJobSkillBatch7(database);
   const evidence: RetainedEvalJobSkillBatch7Evidence = {
     batch: "retained-eval-job-skill-batch7",
@@ -957,6 +1032,7 @@ export async function backfillRetainedEvalJobSkillBatch7(
       jobs,
       skills,
       agentSkills,
+      macros,
     }),
     targetRows: Object.freeze({
       messageRatings,
@@ -968,6 +1044,7 @@ export async function backfillRetainedEvalJobSkillBatch7(
       projectSkills,
       environmentSkills,
       agentSkills,
+      macros,
     }),
     splitCounts: Object.freeze({
       skillSources: skills,

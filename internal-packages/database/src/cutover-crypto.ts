@@ -1,4 +1,4 @@
-import { createDecipheriv, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from "node:crypto";
 import { inspect } from "node:util";
 import type { AggregateCredentialPayloadContract } from "./cutover-ledger";
 
@@ -54,6 +54,57 @@ export interface DecodedCutoverValue<T> {
 export interface SecretStoreSourceRow {
   readonly version: unknown;
   readonly value: unknown;
+}
+
+export interface TargetMessageEnvelope {
+  readonly __platos_enc: 1;
+  readonly v: number;
+  readonly ct: string;
+}
+
+/** Validate the active target writer configuration without exposing key bytes. */
+export function assertTargetMessageEncryptionConfig(
+  activeKeyVersion: number,
+  activeKeyHex: string
+): void {
+  positiveVersion(activeKeyVersion);
+  decodeHexKey(activeKeyHex);
+}
+
+/**
+ * Write the exact packed envelope emitted by MessageCryptoService.encrypt.
+ * Cutover callers must supply the active PLATOS_MESSAGE_ENCRYPTION_KEY version;
+ * historical ring entries are read-only and are never selected implicitly.
+ */
+export function encryptTargetMessage(
+  plaintext: string,
+  activeKeyVersion: number,
+  activeKeyHex: string
+): Readonly<{ ciphertext: string; keyVersion: number }> {
+  assertTargetMessageEncryptionConfig(activeKeyVersion, activeKeyHex);
+  const keyVersion = activeKeyVersion;
+  const key = Buffer.from(activeKeyHex, "hex");
+  const iv = randomBytes(LEGACY_IV_BYTES);
+  const cipher = createCipheriv(AES_256_GCM, key, iv);
+  const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  return Object.freeze({
+    ciphertext: Buffer.concat([iv, cipher.getAuthTag(), ciphertext]).toString("base64"),
+    keyVersion,
+  });
+}
+
+/** Write the exact self-describing JSON envelope emitted by encryptJsonField. */
+export function encryptTargetJsonMessage(
+  value: CutoverJsonValue,
+  activeKeyVersion: number,
+  activeKeyHex: string
+): TargetMessageEnvelope {
+  const encrypted = encryptTargetMessage(JSON.stringify(value), activeKeyVersion, activeKeyHex);
+  return Object.freeze({
+    __platos_enc: 1,
+    v: encrypted.keyVersion,
+    ct: encrypted.ciphertext,
+  });
 }
 
 /**
