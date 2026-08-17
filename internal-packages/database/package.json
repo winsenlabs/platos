@@ -1,28 +1,31 @@
 {
   "name": "@platos/database",
   "private": true,
-  "version": "0.0.2",
+  "version": "0.0.1",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "generated"
+  ],
   "dependencies": {
-    "@prisma/client": "6.14.0",
-    "decimal.js": "^10.6.0"
+    "@prisma/client": "6.14.0"
   },
   "devDependencies": {
-    "@types/decimal.js": "^7.4.3",
+    "@testcontainers/postgresql": "^10.28.0",
+    "@types/node": "20.14.14",
     "prisma": "6.14.0",
-    "rimraf": "6.0.1"
+    "rimraf": "6.0.1",
+    "vitest": "3.1.4"
   },
   "scripts": {
     "clean": "rimraf dist",
-    "generate": "prisma generate",
-    "db:migrate:dev:create": "prisma migrate dev --create-only",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "db:push": "prisma db push",
-    "db:studio": "prisma studio",
-    "db:reset": "prisma migrate reset",
+    "generate": "DATABASE_URL=postgresql://generate:generate@localhost:5432/generate prisma generate --schema prisma/schema.prisma && DATABASE_URL=postgresql://generate:generate@localhost:5432/generate prisma generate --schema prisma/end-user.prisma",
+    "pretypecheck": "pnpm run generate",
     "typecheck": "tsc --noEmit",
-    "build": "pnpm run clean && tsc --noEmit false --outDir dist --declaration",
-    "dev": "tsc --noEmit false --outDir dist --declaration --watch"
+    "prebuild": "pnpm run generate",
+    "build": "pnpm run clean && tsc --project tsconfig.build.json",
+    "pretest": "pnpm run generate",
+    "test": "vitest --sequence.concurrent=false --no-file-parallelism"
   }
 }
