@@ -329,7 +329,17 @@ async function validateAndExchange(input: {
     input.container,
     `EXCHANGE TABLES ${DATABASE}.${SOURCE_TABLE} AND ${DATABASE}.${SHADOW_TABLE}`
   );
-  return { table: SOURCE_TABLE, sourceRowCount, targetRowCount, sourceSha256, targetSha256 };
+  return {
+    table: SOURCE_TABLE,
+    sourceSchemaSha256: "1".repeat(64),
+    sourceRowCount,
+    targetRowCount,
+    sourceSha256,
+    targetSha256,
+    identitySha256: targetSha256,
+    payloadSha256: targetSha256,
+    rollbackOutcome: "ROLLED_BACK",
+  };
 }
 
 type ObjectHeadOutcome =
@@ -509,10 +519,14 @@ describeHarness("external cutover contract Testcontainers harness", () => {
     });
     expect(evidence).toEqual({
       table: SOURCE_TABLE,
+      sourceSchemaSha256: "1".repeat(64),
       sourceRowCount: "2",
       targetRowCount: "2",
       sourceSha256: expectedSourceSha256,
       targetSha256: expectedTargetSha256,
+      identitySha256: expectedTargetSha256,
+      payloadSha256: expectedTargetSha256,
+      rollbackOutcome: "ROLLED_BACK",
     });
     expect(await tableSchema(clickhouse, SOURCE_TABLE)).toEqual(targetSchema);
     expect(await tableChecksum(clickhouse, SOURCE_TABLE)).toBe(expectedTargetSha256);

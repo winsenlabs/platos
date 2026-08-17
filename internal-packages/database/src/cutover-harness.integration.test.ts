@@ -96,6 +96,9 @@ describeHarness("production database command Testcontainers harness", () => {
       "20260817010000_add_token_lifecycle_audit",
       "20260817020000_add_attachment_byte_reconciliation",
       "20260817030000_add_external_cutover_reconciliation",
+      "20260817040000_enable_disposable_external_rehearsal_report",
+      "20260817050000_allow_duplicate_external_object_references",
+      "20260817060000_add_external_writer_fence_plan",
     ]);
     expect(legacyMarker.rows[0].name).toBeNull();
   }, 120_000);
@@ -239,9 +242,9 @@ describeHarness("production database command Testcontainers harness", () => {
     );
     expect(cleanTriggerPhase?.evidence).toMatchObject({
       deferredTriggers: ["MessageAttachment.MessageAttachment_claimed_lifecycle"],
-      deferredCatalog: { objectCount: 121, functionCount: 21, triggerCount: 100 },
-      installedCatalog: { objectCount: 122, functionCount: 21, triggerCount: 101 },
-      freshReferenceCatalog: { objectCount: 122, functionCount: 21, triggerCount: 101 },
+      deferredCatalog: { objectCount: 126, functionCount: 23, triggerCount: 103 },
+      installedCatalog: { objectCount: 127, functionCount: 23, triggerCount: 104 },
+      freshReferenceCatalog: { objectCount: 127, functionCount: 23, triggerCount: 104 },
     });
     const cleanTriggerEvidence = cleanTriggerPhase?.evidence as {
       deferredCatalog: { manifestDigest: string };
@@ -626,9 +629,9 @@ describeHarness("production database command Testcontainers harness", () => {
         evidence: expect.objectContaining({
           deferredTriggers: ["MessageAttachment.MessageAttachment_claimed_lifecycle"],
           deferredCatalog: expect.objectContaining({
-            objectCount: 121,
-            functionCount: 21,
-            triggerCount: 100,
+            objectCount: 126,
+            functionCount: 23,
+            triggerCount: 103,
           }),
         }),
       }),
@@ -636,14 +639,14 @@ describeHarness("production database command Testcontainers harness", () => {
         status: "SUCCEEDED",
         evidence: expect.objectContaining({
           installedCatalog: expect.objectContaining({
-            objectCount: 122,
-            functionCount: 21,
-            triggerCount: 101,
+            objectCount: 127,
+            functionCount: 23,
+            triggerCount: 104,
           }),
           freshReferenceCatalog: expect.objectContaining({
-            objectCount: 122,
-            functionCount: 21,
-            triggerCount: 101,
+            objectCount: 127,
+            functionCount: 23,
+            triggerCount: 104,
           }),
         }),
       }),
@@ -687,9 +690,7 @@ describeHarness("production database command Testcontainers harness", () => {
     expect(
       journal.find((entry) => entry.phase === "forced-pre-commit-rollback")?.evidence
     ).toMatchObject({
-      incompletePhaseIds: expect.arrayContaining([
-        "external-analytics-object-rekey",
-      ]),
+      incompletePhaseIds: ["external-analytics-object-rekey"],
     });
 
     const verify = new pg.Client({ connectionString: legacy.getConnectionUri() });

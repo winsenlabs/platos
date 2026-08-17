@@ -108,6 +108,34 @@ It starts disposable pgvector PostgreSQL containers, invokes the exact
 `db:migrate:deploy` and `db:cutover` scripts, and proves the implemented rehearsal
 rolls back before commit. It never reads the repository `DATABASE_URL`.
 
+Disposable external rehearsal additionally requires
+`--enable-external-rehearsal --external-rehearsal-operation-id <lower-case-uuid>`.
+The operation ID is the engine report ID, ClickHouse shadow namespace, and
+immutable ledger idempotency key. An interrupted operation can be adopted only
+with the same ID and `--resume-external-rehearsal`; an ordinary invocation or a
+different ID cannot adopt its intents.
+
+Before any external mutation, the executor persists every direct ClickHouse
+`INSERT` grant and reconciles it with `system.role_grants` plus `SHOW GRANTS
+FINAL`, including nested roles. It then revokes and verifies every ordinary
+source-table writer. The only exception is one operation-scoped maintenance
+role granted solely to the configured executor. The role is non-default and is
+activated through ClickHouse's per-request `role` parameter only for EXCHANGE
+and exact grant restoration requests. Immutable evidence records maintenance
+enable/disable and writer-plan restore lifecycle. Safe rollback restores the
+exact grant edges and removes the maintenance role; `RESTORE_REQUIRED` keeps
+ordinary writers fenced and removes maintenance access. This contract is valid
+only for endpoints carrying the disposable rehearsal markers.
+
+The coordinated external harnesses are also opt-in:
+
+```bash
+RUN_DATABASE_CUTOVER_EXTERNAL_HARNESS=1 pnpm --filter @platos/database exec vitest run \
+  src/cutover-external-executor.integration.test.ts --no-file-parallelism
+RUN_DATABASE_CUTOVER_EXTERNAL_CLI_HARNESS=1 pnpm --filter @platos/database exec vitest run \
+  src/cutover-external-cli.integration.test.ts --no-file-parallelism
+```
+
 ## Credential operations
 
 - Project ADMIN and Organization OWNER/ADMIN operators may create, rotate,

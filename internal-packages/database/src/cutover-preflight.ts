@@ -239,8 +239,10 @@ export async function runCutoverPreflight(
     checks.push(
       check(
         "domain-phase-implementation",
-        "INCOMPLETE",
-        "remaining domain phases are fail-closed stubs",
+        incompleteCutoverPhaseIds.length === 0 ? "PASS" : "INCOMPLETE",
+        incompleteCutoverPhaseIds.length === 0
+          ? "all domain phases have static implementations"
+          : "remaining domain phases are fail-closed stubs",
         {
           incompletePhaseIds: incompleteCutoverPhaseIds,
           phases: cutoverDomainPhases.map((phase) => ({

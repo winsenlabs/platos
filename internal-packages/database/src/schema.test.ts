@@ -37,7 +37,19 @@ const externalCutoverReconciliationMigration = readFileSync(
   resolve(packageRoot, "prisma/migrations/20260817030000_add_external_cutover_reconciliation/migration.sql"),
   "utf8"
 );
-const migration = `${initialMigration}\n${uploadReservationMigration}\n${tokenLifecycleAuditMigration}\n${attachmentByteReconciliationMigration}\n${externalCutoverReconciliationMigration}`;
+const disposableExternalRehearsalMigration = readFileSync(
+  resolve(packageRoot, "prisma/migrations/20260817040000_enable_disposable_external_rehearsal_report/migration.sql"),
+  "utf8"
+);
+const duplicateExternalObjectReferenceMigration = readFileSync(
+  resolve(packageRoot, "prisma/migrations/20260817050000_allow_duplicate_external_object_references/migration.sql"),
+  "utf8"
+);
+const externalWriterFencePlanMigration = readFileSync(
+  resolve(packageRoot, "prisma/migrations/20260817060000_add_external_writer_fence_plan/migration.sql"),
+  "utf8"
+);
+const migration = `${initialMigration}\n${uploadReservationMigration}\n${tokenLifecycleAuditMigration}\n${attachmentByteReconciliationMigration}\n${externalCutoverReconciliationMigration}\n${disposableExternalRehearsalMigration}\n${duplicateExternalObjectReferenceMigration}\n${externalWriterFencePlanMigration}`;
 
 const tenancyOnlyModels = [
   "User",
@@ -79,9 +91,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(84);
-    expect(domainModelNames).toHaveLength(67);
-    expect(new Set(domainModelNames).size).toBe(67);
+    expect(models).toHaveLength(85);
+    expect(domainModelNames).toHaveLength(68);
+    expect(new Set(domainModelNames).size).toBe(68);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");
@@ -260,6 +272,18 @@ describe("clean-slate domain schema", () => {
     expect(externalCutoverReconciliationMigration).toContain(
       'CONSTRAINT "ExternalCutoverRun_report_check"'
     );
+    expect(disposableExternalRehearsalMigration).toContain(
+      'CREATE FUNCTION "public"."external_cutover_disposable_rehearsal_report_is_valid"'
+    );
+    expect(duplicateExternalObjectReferenceMigration).toContain(
+      'DROP INDEX "public"."ObjectKeyReconciliation_runId_sourceObjectKeySha256_targetO_key"'
+    );
+    expect(disposableExternalRehearsalMigration).toContain(
+      '"status" = \'ROLLED_BACK\' AND "report" ->> \'implementation\' = \'DISPOSABLE_REHEARSAL\''
+    );
+    expect(disposableExternalRehearsalMigration).toContain(
+      'REVOKE UPDATE, DELETE, TRUNCATE\nON TABLE "public"."ExternalCutoverRun", "public"."ExternalCutoverEvidence", "public"."ObjectKeyReconciliation"'
+    );
     expect(externalCutoverReconciliationMigration).not.toMatch(
       /"sourceObjectKey"\s+TEXT|"targetObjectKey"\s+TEXT|"storageKey"\s+TEXT/
     );
@@ -336,7 +360,7 @@ describe("clean-slate domain schema", () => {
     ]) {
       expect(migration).toContain(expected);
     }
-    expect(migration).not.toContain("ClickHouse");
+    expect(initialMigration).not.toContain("ClickHouse");
   });
 
   test("documents and registers every retained Json field", () => {
@@ -366,7 +390,13 @@ describe("clean-slate domain schema", () => {
       "20260817010000_add_token_lifecycle_audit",
       "20260817020000_add_attachment_byte_reconciliation",
       "20260817030000_add_external_cutover_reconciliation",
+      "20260817040000_enable_disposable_external_rehearsal_report",
+      "20260817050000_allow_duplicate_external_object_references",
+      "20260817060000_add_external_writer_fence_plan",
     ]);
+    expect(externalWriterFencePlanMigration).toContain(
+      'CREATE TABLE "public"."ExternalClickHouseWriterGrant"'
+    );
     expect(createHash("sha256").update(initialMigration).digest("hex"))
       .toBe("ef1675ae7a79e3a426829892201a96c809cc2700a16426c24d69a14036dc383a");
     expect(uploadReservationMigration).toContain('CREATE TABLE "public"."AttachmentUploadReservation"');

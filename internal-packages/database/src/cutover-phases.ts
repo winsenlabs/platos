@@ -215,14 +215,14 @@ export const cutoverDomainPhases = [
   },
   {
     id: "external-analytics-object-rekey",
-    implementation: "STUB",
+    implementation: "IMPLEMENTED",
     sourceModels: [],
-    summary: "ClickHouse UUID re-key/swap and object-store reconciliation contracts",
+    summary: "Disposable-rehearsal-only ClickHouse UUID re-key/exchange rollback and opaque object-store reconciliation",
   },
 ] as const satisfies readonly CutoverDomainPhase[];
 
 export const incompleteCutoverPhaseIds = cutoverDomainPhases
-  .filter((phase) => phase.implementation === "STUB")
+  .filter((phase: CutoverDomainPhase) => phase.implementation === "STUB")
   .map((phase) => phase.id);
 
 export function assertCutoverPhaseLedgerIsExhaustive(): void {

@@ -7,6 +7,7 @@ import type {
   RetainedCryptoCutoverEvidence,
 } from "./cutover-crypto-probes";
 import type { CredentialRootKeyRing } from "./secrets";
+import type { CutoverRehearsalConfig } from "./cutover-external-executor";
 
 export type CutoverMode = "DRY_RUN" | "CORE_REHEARSAL_ROLLBACK" | "FULL_EXECUTE";
 
@@ -55,6 +56,7 @@ export interface CutoverOptions {
     readonly exportSealingKeyHex?: string;
   };
   readonly forcedFailurePhase?: string;
+  readonly externalRehearsalConfig?: CutoverRehearsalConfig;
 }
 
 export interface CutoverPhaseResult {

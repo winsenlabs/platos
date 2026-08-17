@@ -123,6 +123,9 @@ enum ExternalCutoverDomain {
 enum ExternalCutoverAction {
   PLAN
   FENCE_WRITERS
+  MAINTENANCE_ENABLE
+  MAINTENANCE_DISABLE
+  RESTORE_WRITERS
   COPY
   VERIFY
   SWAP
@@ -132,6 +135,7 @@ enum ExternalCutoverAction {
 }
 
 enum ExternalCutoverOutcome {
+  STARTED
   SUCCEEDED
   BLOCKED
   FAILED
@@ -898,6 +902,7 @@ model ExternalCutoverRun {
 
   evidence                 ExternalCutoverEvidence[]
   objectKeyReconciliations ObjectKeyReconciliation[]
+  writerFenceGrants        ExternalClickHouseWriterGrant[]
 
   @@unique([id, attempt])
   @@unique([idempotencyKey, attempt])
@@ -951,10 +956,30 @@ model ObjectKeyReconciliation {
   run ExternalCutoverRun @relation(fields: [runId, runAttempt], references: [id, attempt], onDelete: Restrict)
 
   @@unique([runId, metadataModel, metadataRowId, attempt])
-  @@unique([runId, sourceObjectKeySha256, targetObjectKeySha256, attempt])
   @@index([runId, outcome, createdAt])
   @@index([metadataModel, metadataRowId, createdAt])
   @@index([targetObjectKeySha256])
+}
+
+/// Immutable exact ClickHouse INSERT grant restoration plan captured before a
+/// disposable rehearsal fence revokes any direct user or role grant.
+model ExternalClickHouseWriterGrant {
+  id              String   @id @default(uuid()) @db.Uuid
+  runId           String   @db.Uuid
+  runAttempt      Int
+  sequence        Int
+  principalKind   String
+  principalName   String
+  databaseName    String?
+  tableName       String?
+  columnName      String?
+  grantOption     Boolean
+  createdAt       DateTime @default(now())
+
+  run ExternalCutoverRun @relation(fields: [runId, runAttempt], references: [id, attempt], onDelete: Restrict)
+
+  @@unique([runId, sequence])
+  @@index([principalKind, principalName, createdAt])
 }
 
 model OAuthAccessToken {

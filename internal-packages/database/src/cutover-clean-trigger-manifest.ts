@@ -95,6 +95,24 @@ export const cleanTriggerFunctionManifest = [
   },
   {
     kind: "function",
+    name: "external_cutover_disposable_rehearsal_report_is_valid(report jsonb)",
+    migration: "20260817040000_enable_disposable_external_rehearsal_report",
+    classification: "MANDATORY_ALWAYS_ON",
+    fingerprint: "801cba971c05a24c3186686a0a1d4136605a52e0c0bb1ed6b7f649a026351a60",
+    definition:
+      "CREATE OR REPLACE FUNCTION public.external_cutover_disposable_rehearsal_report_is_valid(report jsonb)\n RETURNS boolean\n LANGUAGE sql\n IMMUTABLE STRICT\nAS $function$\n  SELECT\n    jsonb_typeof(report) = 'object' AND\n    (SELECT count(*) FROM jsonb_object_keys(report)) = 7 AND\n    report ?& ARRAY[\n      'contractVersion', 'implementation', 'targetKind', 'state',\n      'manifestSha256', 'clickHouseTables', 'objectStoreObjects'\n    ] AND\n    report -> 'contractVersion' = '1'::jsonb AND\n    report ->> 'implementation' = 'DISPOSABLE_REHEARSAL' AND\n    report ->> 'targetKind' = 'DISPOSABLE_REHEARSAL' AND\n    report ->> 'state' = 'ROLLED_BACK' AND\n    report ->> 'manifestSha256' ~ '^[0-9a-f]{64}$' AND\n    jsonb_typeof(report -> 'clickHouseTables') = 'array' AND\n    jsonb_array_length(report -> 'clickHouseTables') = 12 AND\n    (\n      SELECT count(DISTINCT entry ->> 'table') = 12 AND bool_and(\n        jsonb_typeof(entry) = 'object' AND\n        (SELECT count(*) FROM jsonb_object_keys(entry)) = 9 AND\n        entry ?& ARRAY[\n          'table', 'sourceSchemaSha256', 'sourceRowCount', 'targetRowCount',\n          'sourceSha256', 'targetSha256', 'identitySha256', 'payloadSha256',\n          'rollbackOutcome'\n        ] AND\n        entry ->> 'table' IN (\n          'error_occurrences_v1', 'errors_v1', 'llm_metrics_v1', 'metrics_v1',\n          'platos_spans_v1', 'task_event_usage_by_hour_v1',\n          'task_event_usage_by_minute_v1', 'task_events_search_v1',\n          'task_events_v1', 'task_events_v2', 'task_runs_v1', 'task_runs_v2'\n        ) AND\n        entry ->> 'sourceSchemaSha256' ~ '^[0-9a-f]{64}$' AND\n        entry ->> 'sourceRowCount' ~ '^(0|[1-9][0-9]*)$' AND\n        entry ->> 'targetRowCount' ~ '^(0|[1-9][0-9]*)$' AND\n        entry ->> 'sourceRowCount' = entry ->> 'targetRowCount' AND\n        entry ->> 'sourceSha256' ~ '^[0-9a-f]{64}$' AND\n        entry ->> 'targetSha256' ~ '^[0-9a-f]{64}$' AND\n        entry ->> 'identitySha256' ~ '^[0-9a-f]{64}$' AND\n        entry ->> 'payloadSha256' ~ '^[0-9a-f]{64}$' AND\n        entry ->> 'targetSha256' = entry ->> 'payloadSha256' AND\n        entry ->> 'rollbackOutcome' = 'ROLLED_BACK'\n      )\n      FROM jsonb_array_elements(report -> 'clickHouseTables') entry\n    ) AND\n    jsonb_typeof(report -> 'objectStoreObjects') = 'array' AND\n    NOT EXISTS (\n      SELECT 1\n      FROM jsonb_array_elements(report -> 'objectStoreObjects') entry\n      WHERE\n        jsonb_typeof(entry) <> 'object' OR\n        (SELECT count(*) FROM jsonb_object_keys(entry)) <> 7 OR\n        NOT entry ?& ARRAY[\n          'metadataModel', 'metadataRowIdSha256', 'outcome',\n          'sourceObjectKeySha256', 'targetObjectKeySha256',\n          'expectedByteLength', 'observedByteLength'\n        ] OR\n        entry ->> 'metadataModel' <> 'MessageAttachment' OR\n        entry ->> 'metadataRowIdSha256' !~ '^[0-9a-f]{64}$' OR\n        entry ->> 'outcome' <> 'MATCH' OR\n        entry ->> 'sourceObjectKeySha256' !~ '^[0-9a-f]{64}$' OR\n        entry ->> 'targetObjectKeySha256' !~ '^[0-9a-f]{64}$' OR\n        entry ->> 'sourceObjectKeySha256' <> entry ->> 'targetObjectKeySha256' OR\n        entry ->> 'expectedByteLength' !~ '^(0|[1-9][0-9]*)$' OR\n        entry ->> 'observedByteLength' !~ '^(0|[1-9][0-9]*)$' OR\n        entry ->> 'expectedByteLength' <> entry ->> 'observedByteLength'\n    );\n$function$",
+  },
+  {
+    kind: "function",
+    name: "external_cutover_report_is_valid(report jsonb)",
+    migration: "20260817040000_enable_disposable_external_rehearsal_report",
+    classification: "MANDATORY_ALWAYS_ON",
+    fingerprint: "18622b2112327f2c3c7cd8a797a3405e2c11a18b8b99ad69d9b6a733a70f1b0a",
+    definition:
+      "CREATE OR REPLACE FUNCTION public.external_cutover_report_is_valid(report jsonb)\n RETURNS boolean\n LANGUAGE sql\n IMMUTABLE STRICT\nAS $function$\n  SELECT\n    \"public\".\"external_cutover_stub_report_is_valid\"(report) OR\n    \"public\".\"external_cutover_disposable_rehearsal_report_is_valid\"(report);\n$function$",
+  },
+  {
+    kind: "function",
     name: "external_cutover_metadata_is_safe(metadata jsonb)",
     migration: "20260817030000_add_external_cutover_reconciliation",
     classification: "MANDATORY_ALWAYS_ON",
@@ -515,6 +533,33 @@ export const cleanTriggerFunctionManifest = [
     fingerprint: "8535b6f156a6bcd852994a3a6779ca7e821e24a4282244bcf39075b675adeb0f",
     definition:
       'CREATE TRIGGER "EvalCriterion_ancestry" BEFORE INSERT OR UPDATE ON "EvalCriterion" FOR EACH ROW EXECUTE FUNCTION enforce_domain_ancestry()',
+  },
+  {
+    kind: "trigger",
+    name: "ExternalClickHouseWriterGrant.ExternalClickHouseWriterGrant_immutable_delete",
+    migration: "20260817060000_add_external_writer_fence_plan",
+    classification: "MANDATORY_ALWAYS_ON",
+    fingerprint: "84499245d81bf8fb97b87561a648b03f2cfbf9defb956b37e11760d2e4c14961",
+    definition:
+      'CREATE TRIGGER "ExternalClickHouseWriterGrant_immutable_delete" BEFORE DELETE ON "ExternalClickHouseWriterGrant" FOR EACH ROW EXECUTE FUNCTION reject_external_cutover_ledger_mutation()',
+  },
+  {
+    kind: "trigger",
+    name: "ExternalClickHouseWriterGrant.ExternalClickHouseWriterGrant_immutable_truncate",
+    migration: "20260817060000_add_external_writer_fence_plan",
+    classification: "MANDATORY_ALWAYS_ON",
+    fingerprint: "f170a4c13213efc55fd7dfbf50d35399d7192fbc8117fac1ce54376a2076bcfe",
+    definition:
+      'CREATE TRIGGER "ExternalClickHouseWriterGrant_immutable_truncate" BEFORE TRUNCATE ON "ExternalClickHouseWriterGrant" FOR EACH STATEMENT EXECUTE FUNCTION reject_external_cutover_ledger_mutation()',
+  },
+  {
+    kind: "trigger",
+    name: "ExternalClickHouseWriterGrant.ExternalClickHouseWriterGrant_immutable_update",
+    migration: "20260817060000_add_external_writer_fence_plan",
+    classification: "MANDATORY_ALWAYS_ON",
+    fingerprint: "98d611615c37ee4ea365e1a02e191edc6aa872761381a615dd2f9a4bb39f8f51",
+    definition:
+      'CREATE TRIGGER "ExternalClickHouseWriterGrant_immutable_update" BEFORE UPDATE ON "ExternalClickHouseWriterGrant" FOR EACH ROW EXECUTE FUNCTION reject_external_cutover_ledger_mutation()',
   },
   {
     kind: "trigger",

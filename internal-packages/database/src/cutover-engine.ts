@@ -21,7 +21,14 @@ import {
   readCleanTriggerCatalog,
   type CleanTriggerCatalogSnapshot,
 } from "./cutover-clean-triggers";
-import { createStubExternalCutoverReportFragment } from "./cutover-external";
+import {
+  createStubExternalCutoverReportFragment,
+  type ExternalCutoverReportFragment,
+} from "./cutover-external";
+import {
+  executeDisposableExternalRehearsal,
+  externalRehearsalFailureCheck,
+} from "./cutover-external-executor";
 import {
   probeRetainedCredentialTargets,
   reencryptAndProbeRetainedCryptoTargets,
@@ -134,7 +141,7 @@ export async function runCutover(
   packageRoot = resolve(__dirname, "..")
 ): Promise<CutoverReport> {
   const startedAt = new Date().toISOString();
-  const runId = randomUUID();
+  const runId = options.externalRehearsalConfig?.operationId ?? randomUUID();
   const phases: CutoverPhaseResult[] = [];
   const database = new Client({
     connectionString: options.databaseUrl,
@@ -151,6 +158,7 @@ export async function runCutover(
   let retainedCryptoEvidence: RetainedCryptoCutoverEvidence | undefined;
   let credentialProbeEvidence: RetainedCredentialProbeEvidence | undefined;
   let exportReport: CutoverExportReport | undefined;
+  let externalReport: ExternalCutoverReportFragment = createStubExternalCutoverReportFragment();
 
   try {
     await database.query("SET statement_timeout = '60s'");
@@ -184,8 +192,8 @@ export async function runCutover(
       } else {
         if (options.mode !== "CORE_REHEARSAL_ROLLBACK") {
           throw new CutoverFailure(
-            "INCOMPLETE_DOMAIN_PHASES",
-            "full cutover cannot execute while domain phases are incomplete"
+            "FULL_EXECUTE_DISABLED",
+            "full cutover execution is disabled; only the mandatory forced-rollback rehearsal may mutate"
           );
         }
         if (!options.freshCatalogDatabaseUrl) {
@@ -214,6 +222,33 @@ export async function runCutover(
             resolve(
               packageRoot,
               "prisma/migrations/20260817030000_add_external_cutover_reconciliation/migration.sql"
+            ),
+            "utf8"
+          )
+        );
+        await database.query(
+          readFileSync(
+            resolve(
+              packageRoot,
+              "prisma/migrations/20260817040000_enable_disposable_external_rehearsal_report/migration.sql"
+            ),
+            "utf8"
+          )
+        );
+        await database.query(
+          readFileSync(
+            resolve(
+              packageRoot,
+              "prisma/migrations/20260817050000_allow_duplicate_external_object_references/migration.sql"
+            ),
+            "utf8"
+          )
+        );
+        await database.query(
+          readFileSync(
+            resolve(
+              packageRoot,
+              "prisma/migrations/20260817060000_add_external_writer_fence_plan/migration.sql"
             ),
             "utf8"
           )
@@ -707,9 +742,53 @@ export async function runCutover(
         );
         failIfRequested(options, "ephemeral-session-recovery-disposition");
 
+        if (options.externalRehearsalConfig) {
+          const externalStarted = new Date().toISOString();
+          externalReport = await executeDisposableExternalRehearsal({
+            runId,
+            targetDatabase: database,
+            config: options.externalRehearsalConfig,
+          });
+          await appendCutoverJournal(
+            database,
+            runId,
+            "external-analytics-object-rekey",
+            "ROLLED_BACK",
+            {
+              targetKind: externalReport.targetKind,
+              clickHouseTableCount: externalReport.clickHouseTables.length,
+              objectStoreObjectCount: externalReport.objectStoreObjects.length,
+              manifestSha256: externalReport.manifestSha256,
+            }
+          );
+          phases.push(
+            phase(
+              "external-analytics-object-rekey",
+              "ROLLED_BACK",
+              "disposable ClickHouse exchanges were verified and inversely exchanged after exact opaque-key reconciliation",
+              externalStarted,
+              {
+                clickHouseTableCount: externalReport.clickHouseTables.length,
+                objectStoreObjectCount: externalReport.objectStoreObjects.length,
+                manifestSha256: externalReport.manifestSha256,
+              }
+            )
+          );
+        } else {
+          phases.push(
+            incompletePhase(
+              "external-analytics-object-rekey",
+              "disposable external rehearsal was not explicitly enabled"
+            )
+          );
+        }
+
         await appendCutoverJournal(database, runId, "forced-pre-commit-rollback", "ROLLED_BACK", {
-          reason: "cutover rehearsal cannot commit while domain phases are incomplete",
-          incompletePhaseIds: incompleteCutoverPhaseIds,
+          reason: "cutover rehearsal cannot commit by mandatory forced-rollback contract",
+          incompletePhaseIds: [...new Set([
+            ...incompleteCutoverPhaseIds,
+            ...phases.filter((entry) => entry.status === "NOT_RUN").map((entry) => entry.phase),
+          ])].sort(),
         });
         if (options.exportDirectory) {
           const artifacts = await exportTransactionArtifacts(database);
@@ -749,7 +828,8 @@ export async function runCutover(
         transactionOpen = false;
       }
     }
-    state = error instanceof CutoverFailure && error.restoreRequired
+    const safeExternalFailure = externalRehearsalFailureCheck(error);
+    state = (error instanceof CutoverFailure && error.restoreRequired) || safeExternalFailure?.restoreRequired
       ? "RESTORE_REQUIRED"
       : rolledBackAfterExecutionFailure
         ? "ROLLED_BACK"
@@ -757,9 +837,13 @@ export async function runCutover(
     checks = [
       ...checks,
       {
-        id: error instanceof CutoverFailure ? error.code : "CUTOVER_EXECUTION_FAILED",
+        id: error instanceof CutoverFailure
+          ? error.code
+          : safeExternalFailure?.id ?? "CUTOVER_EXECUTION_FAILED",
         status: "BLOCK" as const,
-        summary: error instanceof Error ? error.message : "cutover execution failed",
+        summary: error instanceof CutoverFailure
+          ? error.message
+          : safeExternalFailure?.summary ?? "cutover execution failed",
       },
     ];
   } finally {
@@ -773,8 +857,16 @@ export async function runCutover(
 
   const reportedPhaseIds = new Set(phases.map((entry) => entry.phase));
   const incompletePhases = cutoverDomainPhases
-    .filter((entry) => entry.implementation === "STUB" && !reportedPhaseIds.has(entry.id))
+    .filter((entry: (typeof cutoverDomainPhases)[number] | import("./cutover-phases").CutoverDomainPhase) =>
+      entry.implementation === "STUB" && !reportedPhaseIds.has(entry.id)
+    )
     .map((entry) => incompletePhase(entry.id, entry.summary));
+  const runtimeIncompletePhaseIds = [...new Set([
+    ...incompleteCutoverPhaseIds,
+    ...[...phases, ...incompletePhases]
+      .filter((entry) => entry.status === "NOT_RUN" || entry.status === "BLOCKED" || entry.status === "FAILED")
+      .map((entry) => entry.phase),
+  ])].sort();
   const report: CutoverReport = {
     reportVersion: 1,
     runId,
@@ -787,13 +879,13 @@ export async function runCutover(
     checks,
     phases: [...phases, ...incompletePhases],
     sourceDigests,
-    external: createStubExternalCutoverReportFragment(),
+    external: externalReport,
     cryptoEvidence:
       retainedCryptoEvidence && credentialProbeEvidence
         ? { retainedFields: retainedCryptoEvidence, credentials: credentialProbeEvidence }
         : undefined,
     exportReport,
-    incompletePhaseIds: incompleteCutoverPhaseIds,
+    incompletePhaseIds: runtimeIncompletePhaseIds,
     backupAttestationRef: options.attestations.backupAttestationRef,
     backupRestoreTestRef: options.attestations.backupRestoreTestRef,
     writerFenceAttestationRef: options.attestations.writerFenceAttestationRef,

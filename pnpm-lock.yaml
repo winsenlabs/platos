@@ -1129,6 +1129,12 @@ importers:
 
   internal-packages/database:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.940.0
+        version: 3.940.0
+      '@clickhouse/client':
+        specifier: ^1.12.1
+        version: 1.12.1
       '@prisma/client':
         specifier: 6.14.0
         version: 6.14.0(prisma@6.14.0(magicast@0.3.5)(typescript@5.5.4))(typescript@5.5.4)

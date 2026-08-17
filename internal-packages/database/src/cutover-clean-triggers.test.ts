@@ -30,12 +30,12 @@ function without(name: string): CleanTriggerCatalogSnapshot {
 
 describe("clean trigger/function cutover manifest", () => {
   test("inventories every current clean migration and defers only the safe claimed-attachment update guard", () => {
-    expect(cleanTriggerFunctionManifest).toHaveLength(122);
+    expect(cleanTriggerFunctionManifest).toHaveLength(127);
     expect(cleanTriggerFunctionManifest.filter((entry) => entry.kind === "function")).toHaveLength(
-      21
+      23
     );
     expect(cleanTriggerFunctionManifest.filter((entry) => entry.kind === "trigger")).toHaveLength(
-      101
+      104
     );
     expect(new Set(cleanTriggerFunctionManifest.map((entry) => entry.migration))).toEqual(
       new Set([
@@ -44,6 +44,8 @@ describe("clean trigger/function cutover manifest", () => {
         "20260817010000_add_token_lifecycle_audit",
         "20260817020000_add_attachment_byte_reconciliation",
         "20260817030000_add_external_cutover_reconciliation",
+        "20260817040000_enable_disposable_external_rehearsal_report",
+        "20260817060000_add_external_writer_fence_plan",
       ])
     );
     expect(deferredCleanTriggerManifest.map((entry) => entry.name)).toEqual([

@@ -69,7 +69,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(84);
+    expect(modelNames).toHaveLength(85);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -358,6 +358,19 @@ describe("domain schema integration", () => {
         observedMetadata: { rowCount: "2", rowsSha256: "8".repeat(64) },
       },
     });
+    const writerGrant = await control.externalClickHouseWriterGrant.create({
+      data: {
+        runId: run.id,
+        runAttempt: run.attempt,
+        sequence: 1,
+        principalKind: "ROLE",
+        principalName: "ingestion_writer",
+        databaseName: "default",
+        tableName: "platos_spans_v1",
+        columnName: null,
+        grantOption: false,
+      },
+    });
     await expect(control.externalCutoverEvidence.create({
       data: {
         runId: run.id,
@@ -394,6 +407,22 @@ describe("domain schema integration", () => {
         targetObjectKeySha256: "a".repeat(64),
         expectedMetadata: { byteLength: "2" },
       },
+    });
+    await expect(control.objectKeyReconciliation.create({
+      data: {
+        runId: run.id,
+        runAttempt: run.attempt,
+        metadataModel: "MessageAttachment",
+        metadataRowId: "00000000-0000-4000-8000-000000000001",
+        attempt: 1,
+        outcome: ExternalCutoverOutcome.INDETERMINATE,
+        sourceObjectKeySha256: "9".repeat(64),
+        targetObjectKeySha256: "a".repeat(64),
+        expectedMetadata: { byteLength: "2" },
+      },
+    })).resolves.toMatchObject({
+      sourceObjectKeySha256: objectEvidence.sourceObjectKeySha256,
+      targetObjectKeySha256: objectEvidence.targetObjectKeySha256,
     });
     await expect(control.objectKeyReconciliation.create({
       data: {
@@ -438,6 +467,68 @@ describe("domain schema integration", () => {
       },
     })).rejects.toThrow();
 
+    const rehearsalReport = {
+      contractVersion: 1,
+      implementation: "DISPOSABLE_REHEARSAL",
+      targetKind: "DISPOSABLE_REHEARSAL",
+      state: "ROLLED_BACK",
+      manifestSha256,
+      clickHouseTables: [
+        "error_occurrences_v1",
+        "errors_v1",
+        "llm_metrics_v1",
+        "metrics_v1",
+        "platos_spans_v1",
+        "task_event_usage_by_hour_v1",
+        "task_event_usage_by_minute_v1",
+        "task_events_search_v1",
+        "task_events_v1",
+        "task_events_v2",
+        "task_runs_v1",
+        "task_runs_v2",
+      ].map((table) => ({
+        table,
+        sourceSchemaSha256: "1".repeat(64),
+        sourceRowCount: "1",
+        targetRowCount: "1",
+        sourceSha256: "2".repeat(64),
+        targetSha256: "3".repeat(64),
+        identitySha256: "4".repeat(64),
+        payloadSha256: "3".repeat(64),
+        rollbackOutcome: "ROLLED_BACK",
+      })),
+      objectStoreObjects: [{
+        metadataModel: "MessageAttachment",
+        metadataRowIdSha256: "6".repeat(64),
+        outcome: "MATCH",
+        sourceObjectKeySha256: "9".repeat(64),
+        targetObjectKeySha256: "9".repeat(64),
+        expectedByteLength: "2",
+        observedByteLength: "2",
+      }],
+    };
+    await expect(control.externalCutoverRun.create({
+      data: {
+        idempotencyKey: "external-ledger-disposable-report",
+        attempt: 1,
+        status: ExternalCutoverStatus.ROLLED_BACK,
+        manifestSha256,
+        report: rehearsalReport,
+      },
+    })).resolves.toMatchObject({ status: ExternalCutoverStatus.ROLLED_BACK });
+    await expect(control.externalCutoverRun.create({
+      data: {
+        idempotencyKey: "external-ledger-nonmatch-report",
+        attempt: 1,
+        status: ExternalCutoverStatus.ROLLED_BACK,
+        manifestSha256,
+        report: {
+          ...rehearsalReport,
+          objectStoreObjects: [{ ...rehearsalReport.objectStoreObjects[0], outcome: "MISSING" }],
+        },
+      },
+    })).rejects.toThrow();
+
     const invalidReport = {
       contractVersion: 1,
       implementation: "STUB",
@@ -474,13 +565,24 @@ describe("domain schema integration", () => {
     })).rejects.toThrow(/immutable/);
     await expect(control.objectKeyReconciliation.delete({ where: { id: objectEvidence.id } }))
       .rejects.toThrow(/immutable/);
-    for (const table of ["ExternalCutoverEvidence", "ObjectKeyReconciliation"]) {
+    await expect(control.externalClickHouseWriterGrant.update({
+      where: { id: writerGrant.id },
+      data: { grantOption: true },
+    })).rejects.toThrow(/immutable/);
+    await expect(control.externalClickHouseWriterGrant.delete({ where: { id: writerGrant.id } }))
+      .rejects.toThrow(/immutable/);
+    for (const table of [
+      "ExternalCutoverEvidence",
+      "ObjectKeyReconciliation",
+      "ExternalClickHouseWriterGrant",
+    ]) {
       await expect(control.$executeRawUnsafe(`TRUNCATE TABLE "public"."${table}"`))
         .rejects.toThrow(/immutable/);
     }
     await expect(control.$executeRawUnsafe(
       'TRUNCATE TABLE "public"."ExternalCutoverEvidence", ' +
-      '"public"."ObjectKeyReconciliation", "public"."ExternalCutoverRun"'
+      '"public"."ObjectKeyReconciliation", "public"."ExternalClickHouseWriterGrant", ' +
+      '"public"."ExternalCutoverRun"'
     )).rejects.toThrow(/immutable/);
   });
 
@@ -1525,6 +1627,18 @@ async function seedEveryModel(control: PrismaClient) {
         clickHouseTables: [],
         objectStoreObjects: [],
       },
+    },
+  }));
+  track("ExternalClickHouseWriterGrant", await control.externalClickHouseWriterGrant.create({
+    data: {
+      runId: externalCutoverRun.id,
+      runAttempt: externalCutoverRun.attempt,
+      sequence: 1,
+      principalKind: "USER",
+      principalName: "round_trip_writer",
+      databaseName: "default",
+      tableName: "platos_spans_v1",
+      grantOption: false,
     },
   }));
   track("ExternalCutoverEvidence", await control.externalCutoverEvidence.create({

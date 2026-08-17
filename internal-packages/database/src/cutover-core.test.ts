@@ -7,6 +7,7 @@ import {
   resolveCutoverMessageEncryptionKeyVersion,
   resolveCutoverMessageEncryptionKeys,
 } from "./cutover-cli";
+import { parseCutoverRehearsalConfig } from "./cutover-external-executor";
 import {
   assertImplementedRetainedSourceCoverage,
   assertCutoverPhaseLedgerIsExhaustive,
@@ -78,6 +79,7 @@ describe("cutover command safety contracts", () => {
       "ephemeral-session-recovery-disposition",
       "clean-trigger-defer-install",
       "cryptographic-read-probes",
+      "external-analytics-object-rekey",
     ]);
     expect(cutoverDomainPhases.find((phase) => phase.id === "supplemental-auth-mfa"))
       .toMatchObject({
@@ -181,7 +183,7 @@ describe("cutover command safety contracts", () => {
       .toMatchObject({ implementation: "IMPLEMENTED", summary: expect.stringContaining("Batch 6 audit") });
     expect(cutoverDomainPhases.find((phase) => phase.id === "clean-trigger-defer-install"))
       .toMatchObject({ implementation: "IMPLEMENTED", sourceModels: [] });
-    expect(incompleteCutoverPhaseIds).toEqual(["external-analytics-object-rekey"]);
+    expect(incompleteCutoverPhaseIds).toEqual([]);
     expect(implementedRetainedSourceCoverage).toEqual({
       retainedPlatosSourceModelCount: 55,
       supplementalRetainedSourceModelCount: 4,
@@ -195,10 +197,76 @@ describe("cutover command safety contracts", () => {
     expect(new Set(assignedPlatosSources)).toEqual(
       new Set(sourceModelManifest.map((entry) => entry.source))
     );
-    for (const blockedPhase of ["external-analytics-object-rekey"]) {
-      expect(cutoverDomainPhases.find((phase) => phase.id === blockedPhase))
-        .toMatchObject({ implementation: "STUB" });
-    }
+    expect(cutoverDomainPhases.find((phase) => phase.id === "external-analytics-object-rekey"))
+      .toMatchObject({ implementation: "IMPLEMENTED", sourceModels: [] });
+  });
+
+  test("requires explicit forced-rollback CLI and dedicated disposable rehearsal configuration", () => {
+    expect(() => parseCutoverArguments(["--enable-external-rehearsal"]))
+      .toThrow("restricted to the forced-rollback core rehearsal");
+    expect(() => parseCutoverArguments(["--execute", "--enable-external-rehearsal"]))
+      .toThrow("restricted to the forced-rollback core rehearsal");
+    expect(parseCutoverArguments([
+      "--execute",
+      "--core-rehearsal",
+      "--force-rollback-before-commit",
+      "--enable-external-rehearsal",
+      "--external-rehearsal-operation-id",
+      "03125bd3-8e2e-5500-8942-574db43e9203",
+    ]).enableExternalRehearsal).toBe(true);
+    expect(() => parseCutoverArguments([
+      "--execute", "--core-rehearsal", "--force-rollback-before-commit",
+      "--enable-external-rehearsal",
+    ])).toThrow("requires --external-rehearsal-operation-id");
+    expect(() => parseCutoverArguments(["--resume-external-rehearsal"]))
+      .toThrow("require --enable-external-rehearsal");
+    expect(() => parseCutoverArguments([
+      "--execute", "--core-rehearsal", "--force-rollback-before-commit",
+      "--enable-external-rehearsal", "--external-rehearsal-operation-id", "NOT-CANONICAL",
+    ])).toThrow("canonical lower-case UUID");
+
+    const dedicated = {
+      CUTOVER_REHEARSAL_EXTERNAL_ENABLED: "1",
+      CUTOVER_REHEARSAL_TARGET_KIND: "DISPOSABLE_REHEARSAL",
+      CUTOVER_REHEARSAL_PROOF: "WIN123_DISPOSABLE_REHEARSAL_V1",
+      CUTOVER_REHEARSAL_INSTANCE_ID: "94d497c4-56ad-4b6f-b3d8-2582276c5d46",
+      CUTOVER_REHEARSAL_TARGET_DATABASE_URL: "postgresql://rehearsal@127.0.0.1:15431/target",
+      CUTOVER_REHEARSAL_TARGET_POSTGRES_ENDPOINT_ID: "target-postgres-1",
+      CUTOVER_REHEARSAL_LEDGER_POSTGRES_ENDPOINT_ID: "ledger-postgres-1",
+      CUTOVER_REHEARSAL_CLICKHOUSE_ENDPOINT_ID: "clickhouse-1",
+      CUTOVER_REHEARSAL_OBJECT_STORE_ENDPOINT_ID: "object-store-1",
+      CUTOVER_REHEARSAL_CLICKHOUSE_URL: "http://127.0.0.1:18123",
+      CUTOVER_REHEARSAL_CLICKHOUSE_USERNAME: "rehearsal-user",
+      CUTOVER_REHEARSAL_CLICKHOUSE_PASSWORD: "rehearsal-password",
+      CUTOVER_REHEARSAL_S3_ENDPOINT: "http://127.0.0.1:19000",
+      CUTOVER_REHEARSAL_S3_REGION: "us-east-1",
+      CUTOVER_REHEARSAL_S3_BUCKET: "rehearsal-bucket",
+      CUTOVER_REHEARSAL_S3_ACCESS_KEY_ID: "rehearsal-access",
+      CUTOVER_REHEARSAL_S3_SECRET_ACCESS_KEY: "rehearsal-secret",
+      CUTOVER_REHEARSAL_LEDGER_DATABASE_URL: "postgresql://rehearsal@127.0.0.1:15432/ledger",
+    };
+    const operation = { operationId: "03125bd3-8e2e-5500-8942-574db43e9203", resume: false };
+    expect(parseCutoverRehearsalConfig(dedicated, operation)).toMatchObject({
+      enabled: true,
+      targetKind: "DISPOSABLE_REHEARSAL",
+    });
+    expect(parseCutoverRehearsalConfig({
+      CLICKHOUSE_URL: dedicated.CUTOVER_REHEARSAL_CLICKHOUSE_URL,
+      OBJECT_STORE_BASE_URL: dedicated.CUTOVER_REHEARSAL_S3_ENDPOINT,
+      DATABASE_URL: dedicated.CUTOVER_REHEARSAL_LEDGER_DATABASE_URL,
+    }, operation)).toBeUndefined();
+    expect(() => parseCutoverRehearsalConfig({
+      ...dedicated,
+      CUTOVER_REHEARSAL_TARGET_KIND: "PRODUCTION",
+    }, operation)).toThrow("marker configuration is invalid");
+    expect(() => parseCutoverRehearsalConfig({
+      ...dedicated,
+      DATABASE_URL: dedicated.CUTOVER_REHEARSAL_TARGET_DATABASE_URL,
+    }, operation)).toThrow("matches a configured normal runtime endpoint");
+    expect(() => parseCutoverRehearsalConfig(dedicated, {
+      operationId: "not-canonical",
+      resume: false,
+    })).toThrow("operation identity is invalid");
   });
 
   test("resolves the active and historical message key ring without exposing aliases", () => {

@@ -58,7 +58,7 @@ export const jsonShapeRegistry = {
   "ToolCallAudit.result": objectOrArray("Redacted structured tool result."),
   "AdminAudit.before": object("Redacted previous state."),
   "AdminAudit.after": object("Redacted resulting state."),
-  "ExternalCutoverRun.report": object("Validated redacted STUB external cutover report."),
+  "ExternalCutoverRun.report": object("Validated redacted STUB or disposable-rehearsal external cutover report."),
   "ExternalCutoverEvidence.expectedMetadata": object("Expected external counts and SHA-256 digests."),
   "ExternalCutoverEvidence.observedMetadata": object("Observed external counts and SHA-256 digests."),
   "ObjectKeyReconciliation.expectedMetadata": object("Expected object byte count and content digest."),

@@ -7,6 +7,7 @@ import {
 import { serializeCutoverReport } from "./cutover-report";
 import { CredentialRootKeyRing } from "./secrets";
 import type { CutoverMode, CutoverOptions } from "./cutover-types";
+import { parseCutoverRehearsalConfig } from "./cutover-external-executor";
 
 export interface ParsedCutoverArguments {
   readonly mode: CutoverMode;
@@ -22,10 +23,14 @@ export interface ParsedCutoverArguments {
   readonly exportKeyReference?: string;
   readonly freshCatalogDatabaseUrlEnvironment: string;
   readonly forcedFailurePhase?: string;
+  readonly enableExternalRehearsal: boolean;
+  readonly externalRehearsalOperationId?: string;
+  readonly resumeExternalRehearsal: boolean;
 }
 
 const EXPORT_KEY_ENVIRONMENT = /^[A-Z_][A-Z0-9_]*$/;
 const EXPORT_KEY_REFERENCE = /^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,254}$/;
+const EXTERNAL_REHEARSAL_OPERATION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 export function resolveCutoverMessageEncryptionKeyVersion(
   environment: Readonly<Record<string, string | undefined>>
@@ -50,6 +55,7 @@ export function parseCutoverArguments(argv: readonly string[]): ParsedCutoverArg
     "--export-key-reference",
     "--fresh-catalog-database-url-env",
     "--force-failure-after-phase",
+    "--external-rehearsal-operation-id",
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index]!;
@@ -60,7 +66,7 @@ export function parseCutoverArguments(argv: readonly string[]): ParsedCutoverArg
       if (!value || value.startsWith("--")) throw new Error(`${argument} requires a value`);
       values.set(argument, value);
       index += 1;
-    } else if (["--execute", "--core-rehearsal", "--force-rollback-before-commit"].includes(argument)) {
+    } else if (["--execute", "--core-rehearsal", "--force-rollback-before-commit", "--enable-external-rehearsal", "--resume-external-rehearsal"].includes(argument)) {
       flags.add(argument);
     } else {
       throw new Error(`unknown db:cutover argument: ${argument}`);
@@ -72,6 +78,19 @@ export function parseCutoverArguments(argv: readonly string[]): ParsedCutoverArg
   }
   if (flags.has("--core-rehearsal") && !flags.has("--execute")) {
     throw new Error("core rehearsal requires the explicit --execute flag and all mutation attestations");
+  }
+  if (flags.has("--enable-external-rehearsal") && !flags.has("--core-rehearsal")) {
+    throw new Error("external rehearsal is restricted to the forced-rollback core rehearsal");
+  }
+  const externalRehearsalOperationId = values.get("--external-rehearsal-operation-id");
+  if (flags.has("--enable-external-rehearsal") && !externalRehearsalOperationId) {
+    throw new Error("external rehearsal requires --external-rehearsal-operation-id");
+  }
+  if (externalRehearsalOperationId && !EXTERNAL_REHEARSAL_OPERATION_ID.test(externalRehearsalOperationId)) {
+    throw new Error("--external-rehearsal-operation-id must be a canonical lower-case UUID");
+  }
+  if (!flags.has("--enable-external-rehearsal") && (externalRehearsalOperationId || flags.has("--resume-external-rehearsal"))) {
+    throw new Error("external rehearsal operation and resume options require --enable-external-rehearsal");
   }
 
   const mode: CutoverMode = flags.has("--core-rehearsal")
@@ -103,6 +122,9 @@ export function parseCutoverArguments(argv: readonly string[]): ParsedCutoverArg
     freshCatalogDatabaseUrlEnvironment:
       values.get("--fresh-catalog-database-url-env") ?? "CUTOVER_FRESH_DATABASE_URL",
     forcedFailurePhase: values.get("--force-failure-after-phase"),
+    enableExternalRehearsal: flags.has("--enable-external-rehearsal"),
+    externalRehearsalOperationId,
+    resumeExternalRehearsal: flags.has("--resume-external-rehearsal"),
   };
 }
 
@@ -147,9 +169,18 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   const parsed = parseCutoverArguments(argv);
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is required");
+  const externalRehearsalConfig = parsed.enableExternalRehearsal
+    ? parseCutoverRehearsalConfig(process.env, {
+      operationId: parsed.externalRehearsalOperationId!,
+      resume: parsed.resumeExternalRehearsal,
+    })
+    : undefined;
+  if (parsed.enableExternalRehearsal && !externalRehearsalConfig) {
+    throw new Error("external rehearsal requires CUTOVER_REHEARSAL_EXTERNAL_ENABLED=1");
+  }
 
   const options: CutoverOptions = {
-    databaseUrl,
+    databaseUrl: externalRehearsalConfig?.targetDatabaseUrl ?? databaseUrl,
     mode: parsed.mode,
     attestations: {
       executeAcceptance: parsed.executeAcceptance,
@@ -181,6 +212,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       exportSealingKeyHex: process.env[parsed.exportKeyEnvironment],
     },
     forcedFailurePhase: parsed.forcedFailurePhase,
+    externalRehearsalConfig,
   };
   const report = await runCutover(options);
   process.stdout.write(serializeCutoverReport(report));

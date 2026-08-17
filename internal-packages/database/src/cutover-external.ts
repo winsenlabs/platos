@@ -314,13 +314,27 @@ export function assertExternalPhaseTransition(input: {
 
 export interface ClickHouseTableRekeyEvidence {
   readonly table: string;
+  readonly sourceSchemaSha256: string;
   readonly sourceRowCount: string;
   readonly targetRowCount: string;
   readonly sourceSha256: string;
   readonly targetSha256: string;
+  readonly identitySha256: string;
+  readonly payloadSha256: string;
+  readonly rollbackOutcome: "ROLLED_BACK";
 }
 
-export interface ExternalCutoverReportFragment {
+export interface ObjectReconciliationReportEvidence {
+  readonly metadataModel: "MessageAttachment";
+  readonly metadataRowIdSha256: string;
+  readonly outcome: "MATCH";
+  readonly sourceObjectKeySha256: string;
+  readonly targetObjectKeySha256: string;
+  readonly expectedByteLength: string;
+  readonly observedByteLength: string;
+}
+
+export interface StubExternalCutoverReportFragment {
   readonly contractVersion: 1;
   readonly implementation: "STUB";
   readonly state: "STUB_BLOCKED";
@@ -328,6 +342,20 @@ export interface ExternalCutoverReportFragment {
   readonly clickHouseTables: readonly ClickHouseTableRekeyEvidence[];
   readonly objectStoreObjects: readonly ObjectRekeyEvidence[];
 }
+
+export interface DisposableRehearsalExternalCutoverReportFragment {
+  readonly contractVersion: 1;
+  readonly implementation: "DISPOSABLE_REHEARSAL";
+  readonly targetKind: "DISPOSABLE_REHEARSAL";
+  readonly state: "ROLLED_BACK";
+  readonly manifestSha256: string;
+  readonly clickHouseTables: readonly ClickHouseTableRekeyEvidence[];
+  readonly objectStoreObjects: readonly ObjectReconciliationReportEvidence[];
+}
+
+export type ExternalCutoverReportFragment =
+  | StubExternalCutoverReportFragment
+  | DisposableRehearsalExternalCutoverReportFragment;
 
 function assertCount(value: unknown): asserts value is string {
   if (typeof value !== "string" || !/^(?:0|[1-9][0-9]*)$/.test(value)) {
@@ -342,13 +370,19 @@ export function assertExternalCutoverReportFragment(
     throw new TypeError("external cutover report fragment must be an object");
   }
   const report = value as Record<string, unknown>;
-  if (!exactKeys(report, ["contractVersion", "implementation", "state", "manifestSha256", "clickHouseTables", "objectStoreObjects"])) {
+  const reportKeys = report.implementation === "DISPOSABLE_REHEARSAL"
+    ? ["contractVersion", "implementation", "targetKind", "state", "manifestSha256", "clickHouseTables", "objectStoreObjects"]
+    : ["contractVersion", "implementation", "state", "manifestSha256", "clickHouseTables", "objectStoreObjects"];
+  if (!exactKeys(report, reportKeys)) {
     throw new TypeError("external cutover report fragment has unknown or missing fields");
   }
+  const stub = report.implementation === "STUB";
+  const rehearsal = report.implementation === "DISPOSABLE_REHEARSAL";
   if (
     report.contractVersion !== 1 ||
-    report.implementation !== "STUB" ||
-    report.state !== "STUB_BLOCKED" ||
+    (!stub && !rehearsal) ||
+    (stub && report.state !== "STUB_BLOCKED") ||
+    (rehearsal && (report.targetKind !== "DISPOSABLE_REHEARSAL" || report.state !== "ROLLED_BACK")) ||
     typeof report.manifestSha256 !== "string" ||
     !SHA256.test(report.manifestSha256) ||
     !Array.isArray(report.clickHouseTables) ||
@@ -360,8 +394,11 @@ export function assertExternalCutoverReportFragment(
   if (report.manifestSha256 !== clickHouseRekeyManifestSha256()) {
     throw new TypeError("external cutover report fragment manifest digest is not current");
   }
-  if (report.clickHouseTables.length !== 0 || report.objectStoreObjects.length !== 0) {
+  if (stub && (report.clickHouseTables.length !== 0 || report.objectStoreObjects.length !== 0)) {
     throw new TypeError("external cutover STUB report cannot claim execution evidence");
+  }
+  if (rehearsal && report.clickHouseTables.length !== Object.keys(currentClickHouseRekeyCatalog).length) {
+    throw new TypeError("external cutover rehearsal report must cover every ClickHouse table");
   }
 
   const seenTables = new Set<string>();
@@ -370,17 +407,29 @@ export function assertExternalCutoverReportFragment(
       throw new TypeError("ClickHouse report evidence must be an object");
     }
     const evidence = rawEvidence as Record<string, unknown>;
-    if (!exactKeys(evidence, ["table", "sourceRowCount", "targetRowCount", "sourceSha256", "targetSha256"])) {
+    if (!exactKeys(evidence, [
+      "table", "sourceSchemaSha256", "sourceRowCount", "targetRowCount", "sourceSha256",
+      "targetSha256", "identitySha256", "payloadSha256", "rollbackOutcome",
+    ])) {
       throw new TypeError("ClickHouse report evidence has unknown or missing fields");
     }
     if (
       typeof evidence.table !== "string" ||
       !Object.hasOwn(currentClickHouseRekeyCatalog, evidence.table) ||
       seenTables.has(evidence.table) ||
+      typeof evidence.sourceSchemaSha256 !== "string" ||
+      !SHA256.test(evidence.sourceSchemaSha256) ||
       typeof evidence.sourceSha256 !== "string" ||
       !SHA256.test(evidence.sourceSha256) ||
       typeof evidence.targetSha256 !== "string" ||
-      !SHA256.test(evidence.targetSha256)
+      !SHA256.test(evidence.targetSha256) ||
+      typeof evidence.identitySha256 !== "string" ||
+      !SHA256.test(evidence.identitySha256) ||
+      typeof evidence.payloadSha256 !== "string" ||
+      !SHA256.test(evidence.payloadSha256) ||
+      evidence.sourceRowCount !== evidence.targetRowCount ||
+      evidence.targetSha256 !== evidence.payloadSha256 ||
+      evidence.rollbackOutcome !== "ROLLED_BACK"
     ) {
       throw new TypeError("ClickHouse report evidence is invalid");
     }
@@ -393,6 +442,29 @@ export function assertExternalCutoverReportFragment(
       throw new TypeError("object-store report evidence must be an object");
     }
     const evidence = rawEvidence as Record<string, unknown>;
+    if (rehearsal) {
+      if (
+        !exactKeys(evidence, [
+          "metadataModel", "metadataRowIdSha256", "outcome", "sourceObjectKeySha256",
+          "targetObjectKeySha256", "expectedByteLength", "observedByteLength",
+        ]) ||
+        evidence.metadataModel !== "MessageAttachment" ||
+        typeof evidence.metadataRowIdSha256 !== "string" ||
+        !SHA256.test(evidence.metadataRowIdSha256) ||
+        evidence.outcome !== "MATCH" ||
+        typeof evidence.sourceObjectKeySha256 !== "string" ||
+        !SHA256.test(evidence.sourceObjectKeySha256) ||
+        typeof evidence.targetObjectKeySha256 !== "string" ||
+        !SHA256.test(evidence.targetObjectKeySha256) ||
+        evidence.sourceObjectKeySha256 !== evidence.targetObjectKeySha256 ||
+        evidence.expectedByteLength !== evidence.observedByteLength
+      ) {
+        throw new TypeError("object-store rehearsal report evidence is invalid");
+      }
+      assertCount(evidence.expectedByteLength);
+      assertCount(evidence.observedByteLength);
+      continue;
+    }
     const keys = evidence.contentSha256 === undefined
       ? ["sourceObjectKeySha256", "targetObjectKeySha256", "byteLength"]
       : ["sourceObjectKeySha256", "targetObjectKeySha256", "byteLength", "contentSha256"];
@@ -411,7 +483,7 @@ export function assertExternalCutoverReportFragment(
   }
 }
 
-export function createStubExternalCutoverReportFragment(): ExternalCutoverReportFragment {
+export function createStubExternalCutoverReportFragment(): StubExternalCutoverReportFragment {
   return {
     contractVersion: 1,
     implementation: "STUB",
