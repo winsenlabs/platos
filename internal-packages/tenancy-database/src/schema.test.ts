@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { Prisma as ControlPrisma } from "../generated/control";
@@ -17,11 +17,15 @@ const packageRoot = resolve(__dirname, "..");
 const schemaPath = resolve(packageRoot, "prisma/schema.prisma");
 const schema = readFileSync(schemaPath, "utf8");
 const sourceSchema = readFileSync(resolve(packageRoot, "../database/prisma/schema.prisma"), "utf8");
-const migration = readFileSync(
+const initialMigration = readFileSync(
   resolve(packageRoot, "prisma/migrations/00000000000000_initial/migration.sql"),
   "utf8"
 );
-const customMigrationMarker = "-- Prisma-inexpressible value constraints.";
+const uploadReservationMigration = readFileSync(
+  resolve(packageRoot, "prisma/migrations/20260817000000_add_upload_reservations/migration.sql"),
+  "utf8"
+);
+const migration = `${initialMigration}\n${uploadReservationMigration}`;
 
 const tenancyOnlyModels = [
   "User",
@@ -40,6 +44,7 @@ const tenancyOnlyModels = [
   "Environment",
   "EnvironmentSession",
   "EndUserSession",
+  "AttachmentUploadReservation",
 ] as const;
 
 const expectedEndUserModels = [
@@ -62,7 +67,7 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(79);
+    expect(models).toHaveLength(80);
     expect(domainModelNames).toHaveLength(63);
     expect(new Set(domainModelNames).size).toBe(63);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
@@ -124,6 +129,15 @@ describe("clean-slate domain schema", () => {
     const fields = (name: string) => new Set(model(name).fields.map((field) => field.name));
 
     for (const [name, expected] of Object.entries({
+      User: ["avatarUrl", "dashboardPreferences"],
+      AttachmentUploadReservation: [
+        "environmentId",
+        "uploadedByUserId",
+        "uploadedByEndUserId",
+        "messageAttachmentId",
+        "expiresAt",
+        "claimedAt",
+      ],
       AccessKey: ["environmentId", "keyPrefix", "keyHash", "allowedOrigins"],
       ProviderKey: ["environmentId", "credentialId", "provider", "environmentKeyName", "isDefault"],
       Credential: ["environmentId", "activeSecretVersionId"],
@@ -170,6 +184,10 @@ describe("clean-slate domain schema", () => {
     expect(migration).toContain('CREATE UNIQUE INDEX "ProviderKey_one_default_per_environment_provider"');
     expect(migration).toContain('WHERE "isDefault" = TRUE');
     expect(migration).toContain('CREATE TRIGGER "ProviderKey_executable_reference"');
+    expect(migration).toContain('CREATE TRIGGER "AttachmentUploadReservation_lifecycle"');
+    expect(migration).toContain('CREATE TRIGGER "MessageAttachment_claimed_lifecycle"');
+    expect(fields("AttachmentUploadReservation").has("organizationId")).toBe(false);
+    expect(fields("AttachmentUploadReservation").has("projectId")).toBe(false);
     expect(migration).toContain('version."memoryConfig" #>> \'{__runtime,providerKeyId}\'');
     expect(migration).toContain("route ->> 'providerCredentialId'");
     expect(migration).toContain("route ->> 'providerKeyId'");
@@ -231,25 +249,18 @@ describe("clean-slate domain schema", () => {
     }
   });
 
-  test("generates one migration from empty before custom checks and triggers", () => {
+  test("preserves the clean initial migration and appends one sequential migration", () => {
     const migrationDirectories = readdirSync(resolve(packageRoot, "prisma/migrations"), {
       withFileTypes: true,
     }).filter((entry) => entry.isDirectory());
-    expect(migrationDirectories.map((entry) => entry.name)).toEqual(["00000000000000_initial"]);
-
-    const generated = execFileSync(resolve(packageRoot, "node_modules/.bin/prisma"), [
-      "migrate",
-      "diff",
-      "--from-empty",
-      "--to-schema-datamodel",
-      schemaPath,
-      "--script",
-    ], {
-      cwd: packageRoot,
-      env: { ...process.env, DATABASE_URL: "postgresql://generate:generate@localhost:5432/generate" },
-      encoding: "utf8",
-    });
-    expect(migration.split(customMigrationMarker)[0].trim()).toBe(generated.trim());
+    expect(migrationDirectories.map((entry) => entry.name)).toEqual([
+      "00000000000000_initial",
+      "20260817000000_add_upload_reservations",
+    ]);
+    expect(createHash("sha256").update(initialMigration).digest("hex"))
+      .toBe("ef1675ae7a79e3a426829892201a96c809cc2700a16426c24d69a14036dc383a");
+    expect(uploadReservationMigration).toContain('CREATE TABLE "public"."AttachmentUploadReservation"');
+    expect(uploadReservationMigration).not.toMatch(/"organizationId" UUID|"projectId" UUID/);
     expect(migration).toContain('CREATE FUNCTION "public"."enforce_domain_ancestry"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_canonical_owner_change"()');
     expect(migration).toContain('CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()');

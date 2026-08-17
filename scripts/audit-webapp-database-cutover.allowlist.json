@@ -1,0 +1,709 @@
+{
+  "version": 1,
+  "phases": [
+    "inventory",
+    "webapp-cutover",
+    "mode-c-removal",
+    "final"
+  ],
+  "policies": {
+    "legacy-import": {
+      "allowedThrough": "inventory",
+      "reason": "Existing inherited webapp database ownership scheduled for cutover in revised WIN-123 phases 5-6."
+    },
+    "legacy-delegate": {
+      "allowedThrough": "inventory",
+      "reason": "Existing inherited webapp database ownership scheduled for cutover in revised WIN-123 phases 5-6."
+    },
+    "legacy-raw-table": {
+      "allowedThrough": "inventory",
+      "reason": "Existing inherited webapp database ownership scheduled for cutover in revised WIN-123 phases 5-6."
+    },
+    "local-engine-route": {
+      "allowedThrough": "webapp-cutover",
+      "reason": "Existing local Mode-C/run-engine surface scheduled for removal in revised WIN-123 phase 7."
+    },
+    "local-engine-surface": {
+      "allowedThrough": "webapp-cutover",
+      "reason": "Existing local Mode-C/run-engine surface scheduled for removal in revised WIN-123 phase 7."
+    },
+    "local-worker-surface": {
+      "allowedThrough": "webapp-cutover",
+      "reason": "Existing local Mode-C/run-engine surface scheduled for removal in revised WIN-123 phase 7."
+    }
+  },
+  "entries": [
+    {
+      "category": "legacy-delegate",
+      "token": "backgroundWorker",
+      "count": 10,
+      "pathDigest": "f3a56ea453677dadd545c577ea0c951b35dc885accd1c60ff18a445b991d28de"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "backgroundWorkerFile",
+      "count": 2,
+      "pathDigest": "ccbd8c9943fc4f8dc634cc3b0a2063909440c02b857cb2ae203d779cc49251b8"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "backgroundWorkerTask",
+      "count": 16,
+      "pathDigest": "21dbf0a71c7cb85f591b5ff206d0292d6c6621e74438365b084dc45cceac8786"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "batchTaskRun",
+      "count": 19,
+      "pathDigest": "1ed24f8e4475a226d0881903cc984dfc31853c442a10db8b74218c127fc46a18"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "batchTaskRunError",
+      "count": 2,
+      "pathDigest": "5a09e5f8b0dbf2f78d22129bc948dd1c809b8013a4afb9a18c3f76e5bcb0db13"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "bulkActionGroup",
+      "count": 14,
+      "pathDigest": "6f683aab89e32fa656025eccb11f157ee5040d33593c66adbfe9fbfad7759b12"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "bulkActionItem",
+      "count": 6,
+      "pathDigest": "601d5bab0fbe5f730db4544995b19842091ac16924c45ff7b43212756308b48b"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "connectedGithubRepository",
+      "count": 9,
+      "pathDigest": "66747454b31a1528b48424e00f8681f8869b8f65beb1cbcf89489a790ded872f"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "customerQuery",
+      "count": 3,
+      "pathDigest": "26ec16756c9aa4b7df034760deed0e2b4b4b6c362cec24f726159e3ff5f94a75"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "environmentVariable",
+      "count": 9,
+      "pathDigest": "6fa570a495ec7facdc180458a175ebbad2bc1f003508a56feeceb6b5d159b25b"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "environmentVariableValue",
+      "count": 12,
+      "pathDigest": "d923419955cceb800e983d9920ed6c9125ed8685f7cfc84c0abd0303e3446e60"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "errorGroupState",
+      "count": 10,
+      "pathDigest": "2a930c4a94ed39c30dea9d02eb53441682526aad9710f1fab018eb96b695678e"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "featureFlag",
+      "count": 5,
+      "pathDigest": "43e1753e1a08591f6042f1849740e888db80b16a3daa30e5e105208dce6044a9"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "githubAppInstallation",
+      "count": 6,
+      "pathDigest": "c27fdb69e6305a04d22d5068935abf43407821354515b86afccb39653f897396"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "githubRepository",
+      "count": 1,
+      "pathDigest": "3cad42cd26e0510e60bbcd66f875e3e4dd373d4a6876220d8fff81cbf4b63035"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "impersonationAuditLog",
+      "count": 2,
+      "pathDigest": "d87fb75a7a392f85ba0540bec5eb104beee9220bc9ccacffa6715ceb3fdd4c95"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "integrationDeployment",
+      "count": 2,
+      "pathDigest": "2278569fdbc0830802c4c88ca4e3038d06729adc0c67b8c1d36fc651d8cf15d2"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "llmModel",
+      "count": 19,
+      "pathDigest": "a5a07060310c12d684be1cfc2dd60d7714838828575d41eca28c5b0a57561e13"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "llmPricingTier",
+      "count": 6,
+      "pathDigest": "baf30b2d9ac26c4e8874cbc5d88825c13af193d43089083f72272bcac34e666d"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "metricsDashboard",
+      "count": 7,
+      "pathDigest": "aa227d969cf80d79690fd746ec5260988d6b7e28250752c8b1289c85f1cc29b1"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "mfaBackupCode",
+      "count": 6,
+      "pathDigest": "b0a4f87583f801f4c2929075a6ab06f50b6dee0c57b03d0b1e2c4153956769ce"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "organizationAccessToken",
+      "count": 5,
+      "pathDigest": "8be5c8c528c200a3add2794a50e0ddaf8cfc039cbc51389ed995f8199c1e56e5"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "organizationIntegration",
+      "count": 20,
+      "pathDigest": "d9aaeab9d4cc77b039dbaa6072d859c27c1de66a5f99e2eb6b531ec4e0be48ff"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "organizationProjectIntegration",
+      "count": 23,
+      "pathDigest": "021975269cd5c3d71515533d7666e964cd0361b4b2cefca4877d26ea755c315c"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "orgMember",
+      "count": 12,
+      "pathDigest": "4c2bab187591aa5996e2f0eabead6497b955d2f31edd115cebeebc8756677faf"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "orgMemberInvite",
+      "count": 12,
+      "pathDigest": "7fd5c53d3eef0721ea97431d822c08301fad2d8e46938b4b54951479c4e985b0"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platformNotification",
+      "count": 10,
+      "pathDigest": "f7fe303497d1ff3740a9480edffcc292be76293e990e3dbd740b47bbd24ba7eb"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platformNotificationInteraction",
+      "count": 3,
+      "pathDigest": "61617e9fa8bb176400bc3c5e508926d63f24d4c64d76d04233120037a5e5ab06"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosAdminAudit",
+      "count": 1,
+      "pathDigest": "a5ea0671280d910295789239601741b96cc7b69330a594314b1e7bad4cd0121d"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosAgent",
+      "count": 11,
+      "pathDigest": "89b33779e8ec5c9c3476739845d7cb1c8cb54e045411d9c83ca53bd538ec311a"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosAgentMessage",
+      "count": 2,
+      "pathDigest": "e6d541b8ed085119bf2bd05bb12e3642024a8c82950f145927c0e3ac65433779"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosAgentThread",
+      "count": 8,
+      "pathDigest": "df4ce0f0d04a40f8dda53f410788bf936382fc9815a1c4feb6518630297b8ea1"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosConnectedEntity",
+      "count": 3,
+      "pathDigest": "ea3b057d26c37a4ea21ae3031266764e8061d6d1b31897a63043852c6a6d8992"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosCredentialAudit",
+      "count": 4,
+      "pathDigest": "651efcbd89afb0bf7f03d51bfc536c7856a0b6bc2b56b5f6559169aac25000af"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosEndUser",
+      "count": 1,
+      "pathDigest": "230a17f82c622b620e5c9231782ec558c37ae1a45acb19f7831a0c4e27aaf798"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosEntityToolMapping",
+      "count": 1,
+      "pathDigest": "b6c8ada01059435a7b1eaeedec6239453a86597942e1860c860edbf72011a507"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosMCPToken",
+      "count": 2,
+      "pathDigest": "92021084a853fcc59d094109f47e69e524494f54d9efcace39e9e2f8fffa6cfb"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosMemory",
+      "count": 2,
+      "pathDigest": "e6d541b8ed085119bf2bd05bb12e3642024a8c82950f145927c0e3ac65433779"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosMemoryEntity",
+      "count": 2,
+      "pathDigest": "e6d541b8ed085119bf2bd05bb12e3642024a8c82950f145927c0e3ac65433779"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosMemoryRelationship",
+      "count": 2,
+      "pathDigest": "e6d541b8ed085119bf2bd05bb12e3642024a8c82950f145927c0e3ac65433779"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosMessageAttachment",
+      "count": 11,
+      "pathDigest": "14d4730e490921ab8d8d367fd354d9abb6e90bcace950a002a94b6439c131875"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosMessageRating",
+      "count": 2,
+      "pathDigest": "e6d541b8ed085119bf2bd05bb12e3642024a8c82950f145927c0e3ac65433779"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosOAuthClient",
+      "count": 1,
+      "pathDigest": "1ad3b706c08281c26bbaf6aab7245ed179ec142c89f9ae22cf6ecf6cbd5c0b67"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosPAT",
+      "count": 6,
+      "pathDigest": "bb1548ebcada8dfca068e16224d69e647d12119a6d67ebc290fe58476b7eb801"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "platosToolCallAudit",
+      "count": 1,
+      "pathDigest": "a5ea0671280d910295789239601741b96cc7b69330a594314b1e7bad4cd0121d"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "projectAlert",
+      "count": 3,
+      "pathDigest": "9496b870eba40f6eb76036440d86c1b9cea129efde402215974d4c277eaecc95"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "projectAlertChannel",
+      "count": 12,
+      "pathDigest": "0c207cdaef74ae7ecdc5a7b79c71099f9cba0204194b58231f84d5706f8ee3d9"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "projectAlertStorage",
+      "count": 3,
+      "pathDigest": "9496b870eba40f6eb76036440d86c1b9cea129efde402215974d4c277eaecc95"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "prompt",
+      "count": 9,
+      "pathDigest": "3ead7b0ec0c634f7eee2d55abf5f1c9edc85515c0015cf790b47b04637f50b56"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "promptVersion",
+      "count": 16,
+      "pathDigest": "b2d722070c7cce813137682f04ee661ce328805107b2d846d7c5b88a36940779"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "runtimeEnvironment",
+      "count": 75,
+      "pathDigest": "763815ed57b41320d4f908c76cabea45cd57690489c8ffb1eac959bbcf81e78a"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "runtimeEnvironmentSession",
+      "count": 4,
+      "pathDigest": "c12af5d383dab62baed7e59f8bc63e2ea28d7e5efd8ba1441621ff7b27b36072"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "secretReference",
+      "count": 7,
+      "pathDigest": "9c69f2b661a64665a6964f347b4a8ff032a83e48edd76101f3de090bccb601b5"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "secretStore",
+      "count": 4,
+      "pathDigest": "7ca8cf40680a79fb78c684ca9a61a0b504dc554b26af329535fbe48307e7f118"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "taskEvent",
+      "count": 4,
+      "pathDigest": "f9246451bda6b91fd4cc5d38e751262679483bfc62521c472c1eff88647cc92c"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "taskEventPartitioned",
+      "count": 3,
+      "pathDigest": "1057ec2ca2662b40d79db16ed0cd0a32ad9633f171920388483366c296374a0c"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "taskQueue",
+      "count": 20,
+      "pathDigest": "f35235f94c555259b59265ccb80490ce0e0386a871b2f5b9979d15fe7b4ac391"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "taskRun",
+      "count": 83,
+      "pathDigest": "daaac6128f01bc667e0e879f67e306d26689f6f814d505561f1f767c4f163ae7"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "taskRunAttempt",
+      "count": 1,
+      "pathDigest": "780806720842fc9d181d28a2187df414b5596e4269a5efc4d437903d4750f76c"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "taskRunTemplate",
+      "count": 4,
+      "pathDigest": "f9c7bfb810702b3a7b816c7d78100dec6967e3041c0b3a68b1444a8f912c6f08"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "taskSchedule",
+      "count": 26,
+      "pathDigest": "95cedf74e2895bf429b3d1f4ffc211ae9a46496579d00592698d9372ea17a11c"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "taskScheduleInstance",
+      "count": 7,
+      "pathDigest": "373724cf0e232801a0a04d19a4416a0dee99e64fba39ba58fc8c2883af42d085"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "waitpoint",
+      "count": 7,
+      "pathDigest": "3511b5ecc2f2b6ef9a1dd8ade0e975439462f094518c5e8d7e31f758b63b1665"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "waitpointTag",
+      "count": 2,
+      "pathDigest": "27c43ce168090f6818efbea93228dbdb5c2634b3813456919a3b90c8ce1f5d80"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "workerDeployment",
+      "count": 34,
+      "pathDigest": "3d91369d9ba42e0c69d3e66318d79da89767def01f90411ce87ca60b797a259c"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "workerDeploymentPromotion",
+      "count": 6,
+      "pathDigest": "124f4a42c92deb32ab0431f672a295936eacd781caba84867b41a8ff7558532f"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "workerGroupToken",
+      "count": 2,
+      "pathDigest": "3559e477cf98bf71469722fab48a7a40edb947e162bbb90897349e81f96f724b"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "workerInstance",
+      "count": 5,
+      "pathDigest": "491258e097d8aa58d912ceeef08b287a3e540e8c578ddb90a091940d7be24340"
+    },
+    {
+      "category": "legacy-delegate",
+      "token": "workerInstanceGroup",
+      "count": 22,
+      "pathDigest": "b497a5704427cd5d6fe889ae5d64fd442842a7834b8f22b76795989202869b58"
+    },
+    {
+      "category": "legacy-import",
+      "token": "@platos/database",
+      "count": 159,
+      "pathDigest": "2af2b84d88ca1fb05b9bd59fda54b5e11f37af441a8f74f466a02bf43225780d"
+    },
+    {
+      "category": "legacy-import",
+      "token": "@platos/database dependency",
+      "count": 1,
+      "pathDigest": "cbcad10e93f4aca098d22e3a0dcc11809554ffa938bb035b441b91c8a62a9bbf"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "BackgroundWorker",
+      "count": 1,
+      "pathDigest": "065587f11248f8c555a98d86d098cae2a0faf94f9a05545703c89c17646b8d80"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "BackgroundWorkerTask",
+      "count": 3,
+      "pathDigest": "622a7572e6ca51f34aa319e0a497f590f8a9bafbd226eeb805a075e7ed05e56d"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "BatchTaskRun",
+      "count": 2,
+      "pathDigest": "be90ba4ac5435bafb5532c23052718fb163289930bda88efdbd7cddcbff1ef37"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "IntegrationDeployment",
+      "count": 1,
+      "pathDigest": "72d39441822662325559655282b6c485c8c689be67fe0d8f506b4d201cc8db4b"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "PlatosMessageAttachment",
+      "count": 2,
+      "pathDigest": "82232229b9c85989d783989de900f4a1778e9c5bac49fcc0088437373147726a"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "prompt_versions",
+      "count": 8,
+      "pathDigest": "d175d0d1f84a1b314cb24ff56bec8e29ffa4ca76b26fb40e6361acca98ed2271"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "prompts",
+      "count": 1,
+      "pathDigest": "82b49c51025a6c9051f7effdb7a684469f9935fff2e7206a09953f70806ef3e5"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "TaskEvent",
+      "count": 2,
+      "pathDigest": "950e19dbd79a97812a02c45c9b8988a3d4764635621edba59da0b56360ede9fd"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "TaskEventPartitioned",
+      "count": 2,
+      "pathDigest": "950e19dbd79a97812a02c45c9b8988a3d4764635621edba59da0b56360ede9fd"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "Waitpoint",
+      "count": 1,
+      "pathDigest": "4a2269021d1aa13049787e3bc1a3282f500176e6e022322c83282d33f3d08d8d"
+    },
+    {
+      "category": "legacy-raw-table",
+      "token": "WorkerDeployment",
+      "count": 2,
+      "pathDigest": "8666c8534d783821cf3d201ab6eeade977086b022d059bdd24c4fd607c3baee5"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.dev.config.ts",
+      "count": 1,
+      "pathDigest": "8b142484f2a2fa323fe1ae98ea342204ae3e182294ffb13e4651d01da19cea20"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.dev.dequeue.ts",
+      "count": 1,
+      "pathDigest": "cd7f2cfc36e4ddf8e5d8355443425df32754bf9149c941d9627c871ffcb60c23"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.dev.disconnect.ts",
+      "count": 1,
+      "pathDigest": "682e5c99bdd07e2d062f8746d4b399d691eb70cd3d8e469c6783253c5c3cb2cd"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.dev.presence.ts",
+      "count": 1,
+      "pathDigest": "f660505340aa0c6e34d5077aea6c585f3bcffc111b0b5eb8ad0a509542c72825"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.dev.runs.$runFriendlyId.logs.debug.ts",
+      "count": 1,
+      "pathDigest": "88055528f054e283611b6125793abd2c153d61860697eee6cfaf68e63a19a09f"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.dev.runs.$runFriendlyId.snapshots.$snapshotFriendlyId.attempts.complete.ts",
+      "count": 1,
+      "pathDigest": "3f6b28060557d57d6402d2f6a5d98792867d51c66b8f566c4ea54df4f4ee4e6e"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.dev.runs.$runFriendlyId.snapshots.$snapshotFriendlyId.attempts.start.ts",
+      "count": 1,
+      "pathDigest": "67eaa110d8ba43a4018556f94bb5f7864ee15f64ebf63d69daa08ee98aa5a7c3"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.dev.runs.$runFriendlyId.snapshots.$snapshotFriendlyId.heartbeat.ts",
+      "count": 1,
+      "pathDigest": "0c0dfac4ece2f58c990da81ead33b920983063b0e8f2791cbc22290499dc1c57"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.dev.runs.$runFriendlyId.snapshots.latest.ts",
+      "count": 1,
+      "pathDigest": "2607f8b30fcdb35f2700437a57aa8be4b2f67842dfde2109c7068c5533c016ff"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.runs.$runFriendlyId.wait.duration.ts",
+      "count": 1,
+      "pathDigest": "62a1a0c5ad9827e6cdeaf6cb1266f61668b3a72ea15508dde2f2278b5d2bfe37"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.runs.$runFriendlyId.waitpoints.tokens.$waitpointFriendlyId.wait.ts",
+      "count": 1,
+      "pathDigest": "5bf318aee24bf7f5412d194d89fed4e872f1c87899269104427f3400968c8a61"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.connect.ts",
+      "count": 1,
+      "pathDigest": "79cfc5b0a05c87dd68f60bb3b53da3adef7156d1bb172f6c9b0c99d189388429"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.deployments.$deploymentFriendlyId.dequeue.ts",
+      "count": 1,
+      "pathDigest": "d6b6e02d10f7c1f405b5540d8041aa9002e93ccd18382d83d787d32a153fc022"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.dequeue.ts",
+      "count": 1,
+      "pathDigest": "4fb8284bad60caa7e39b3565f282e7ca882a3745e2ae06de8f5699501f2463e5"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.heartbeat.ts",
+      "count": 1,
+      "pathDigest": "6c5bdc552381ec605a53b8f4ab48e566dcee278b6e1e673b43283953815e6201"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.runs.$runFriendlyId.logs.debug.ts",
+      "count": 1,
+      "pathDigest": "7e3af191a174a96c4cfe52d415b39406fafcdc50ce4f0838f9b8001901e58e5e"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.runs.$runFriendlyId.snapshots.$snapshotFriendlyId.attempts.complete.ts",
+      "count": 1,
+      "pathDigest": "78041ed13124b55d0e62234f494cba82c1401cb096407e475fa314d4ba34480d"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.runs.$runFriendlyId.snapshots.$snapshotFriendlyId.attempts.start.ts",
+      "count": 1,
+      "pathDigest": "7d4be370e093cf93b8d922d42ab61a351a20d1ec90c80a7d1746e33f31a7bcd0"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.runs.$runFriendlyId.snapshots.$snapshotFriendlyId.continue.ts",
+      "count": 1,
+      "pathDigest": "b7086693268a899af092bbfc694a11aa39dcb12c767b9a9f73dc5303045cb735"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.runs.$runFriendlyId.snapshots.$snapshotFriendlyId.heartbeat.ts",
+      "count": 1,
+      "pathDigest": "b2636f0dd8f643d7eac74ccda2a2cf555beb1fd66c5fc92bba3eab158c6184af"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.runs.$runFriendlyId.snapshots.$snapshotFriendlyId.suspend.ts",
+      "count": 1,
+      "pathDigest": "851c797a36a63b14060fc22ffbd29cef8c4343c20d7f41c78e67c89db79b44c6"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.runs.$runFriendlyId.snapshots.latest.ts",
+      "count": 1,
+      "pathDigest": "78016b8d03eba43f4db6492844ac7bfa7a8ec794ee41a8d66986db8c7318fd9f"
+    },
+    {
+      "category": "local-engine-route",
+      "token": "engine.v1.worker-actions.runs.$runFriendlyId.snapshots.since.$snapshotId.ts",
+      "count": 1,
+      "pathDigest": "28092ed93adb7b358316bbfe4e31e73b469919a4ae81d91a5c6f495165edb617"
+    },
+    {
+      "category": "local-engine-surface",
+      "token": "@internal/run-engine",
+      "count": 12,
+      "pathDigest": "a6cddb5ecd933e20b89852293210c3161d5a49b04eb28cd9ffde2f0e5914001b"
+    },
+    {
+      "category": "local-engine-surface",
+      "token": "@internal/schedule-engine",
+      "count": 3,
+      "pathDigest": "e30b852fb6d466f2a28450c4c49e41266ab8ef085e56e52f907b5b8e9b0813ba"
+    },
+    {
+      "category": "local-engine-surface",
+      "token": "apps/webapp/app/runEngine",
+      "count": 15,
+      "pathDigest": "299cebb32feeee9e182ab7ac8d7c88a1bfa2c5aa458f377429e3beddde0c8f09"
+    },
+    {
+      "category": "local-worker-surface",
+      "token": "file-exists",
+      "count": 2,
+      "pathDigest": "fda417e16b23525f43632fcd6e839e5d437bca3ba7b78d16d07824c04e2a6b46"
+    },
+    {
+      "category": "local-worker-surface",
+      "token": "MANAGED_WORKER_SECRET",
+      "count": 7,
+      "pathDigest": "3ad3d7c56884154c65129f6b760eac04f8f70cfc72a62fcf1faf8848ea452964"
+    },
+    {
+      "category": "local-worker-surface",
+      "token": "worker service",
+      "count": 1,
+      "pathDigest": "e7876ac7bdd5468f826aaaa0ad6a20bbf43efb0aa8f1d2bec5f0d3a11d417be1"
+    },
+    {
+      "category": "local-worker-surface",
+      "token": "WORKER_MODE",
+      "count": 2,
+      "pathDigest": "e5871fe4bc73f30060c756436e2d07831712b489e2dcee9675cd81d703097d3f"
+    }
+  ]
+}

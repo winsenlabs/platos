@@ -22,6 +22,16 @@ data. It does not import, migrate, or modify the inherited database schema.
   typed agent-tool policy boundaries. The final schema therefore has 63
   domain/capability models plus 16 tenancy/auth models, for 79 generated
   control-plane models.
+- `src/cutover-ledger.ts` classifies all 124 inherited source models, 130
+  physical tables, 44 enums, 458 replayed indexes, the vector extension, and
+  Prisma migration history exactly once. It also provides field-addressable
+  cryptographic transforms and post-cutover read probes. The companion
+  `src/cutover-id.ts` pins UUID mapping version 1, its namespace, split-target
+  suffix grammar, and cross-language golden vectors.
+- Field-level identity, ownership, bounded JSON normalization,
+  required/default, and validation-query descriptors live beside the source
+  model manifest. Unlisted or malformed retained JSON is not copied by
+  implication; the offline cutover must add a descriptor or block/export it.
 - `src/json.ts` documents and validates every retained Json field. Values are
   persisted with native object/array roots; only `promptBlocks`,
   `dynamicBlocks`, `modelRoutes`, and `toolsBlockConfig` accept one legacy
@@ -73,7 +83,8 @@ directly to Prisma. They do not read the repository `DATABASE_URL`.
   `credsSecretKey` values are bare same-Environment references, never raw
   secrets. Scoped resolution is dashboard-only with no provider
   `process.env` fallback.
-- This is a clean-slate schema and initial migration. There is no inherited
+- This remains a clean-slate schema and initial migration. The checked-in
+  Phase 1 cutover ledgers are offline contracts only; there is no runtime
   SecretStore dual-write, fallback, or legacy backfill path.
 
 ## Credential root-key rotation

@@ -62,7 +62,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(79);
+    expect(modelNames).toHaveLength(80);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -1226,6 +1226,19 @@ async function seedEveryModel(control: PrismaClient) {
       mimeType: "text/plain",
       bytes: 2,
       storageKey: "attachment",
+    },
+  }));
+  const reservationCreatedAt = new Date();
+  track("AttachmentUploadReservation", await control.attachmentUploadReservation.create({
+    data: {
+      environmentId: environment.id,
+      uploadedByUserId: user.id,
+      kind: "document",
+      mimeType: "text/plain",
+      bytes: 1,
+      storageKey: "reserved-attachment",
+      createdAt: reservationCreatedAt,
+      expiresAt: new Date(reservationCreatedAt.getTime() + 7 * 24 * 60 * 60 * 1000),
     },
   }));
   const entity = track("Entity", await control.entity.create({

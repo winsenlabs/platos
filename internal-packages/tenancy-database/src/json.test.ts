@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   JsonShapeError,
   normalizeAgentVersionJson,
+  normalizeDashboardPreferences,
   normalizeDynamicBlocks,
   normalizeJsonField,
   normalizeModelRoutes,
@@ -29,6 +30,58 @@ const modelRoutes = [
 ];
 
 describe("Json write boundaries", () => {
+  test("validates and normalizes versioned dashboard preferences", () => {
+    expect(normalizeDashboardPreferences({
+      version: "1",
+      currentProjectId: "project-a",
+      projects: {
+        "project-a": { currentEnvironment: { id: "environment-a" }, ignored: true },
+      },
+      sideMenu: {
+        isCollapsed: true,
+        collapsedSections: { agents: false },
+        organizations: {
+          "organization-a": { orderedItems: { agents: ["agent-b", "agent-a"] } },
+        },
+      },
+      ignored: "removed",
+    })).toEqual({
+      version: "1",
+      currentProjectId: "project-a",
+      projects: {
+        "project-a": { currentEnvironment: { id: "environment-a" } },
+      },
+      sideMenu: {
+        isCollapsed: true,
+        collapsedSections: { agents: false },
+        organizations: {
+          "organization-a": { orderedItems: { agents: ["agent-b", "agent-a"] } },
+        },
+      },
+    });
+  });
+
+  test("rejects malformed dashboard preference fields", () => {
+    expect(() => normalizeDashboardPreferences({ version: "2", projects: {} }))
+      .toThrow(/version/);
+    expect(() => normalizeDashboardPreferences({ version: "1", projects: [] }))
+      .toThrow(/projects/);
+    expect(() => normalizeDashboardPreferences({
+      version: "1",
+      projects: { project: { currentEnvironment: { id: "" } } },
+    })).toThrow(/currentEnvironment.id/);
+    expect(() => normalizeDashboardPreferences({
+      version: "1",
+      projects: {},
+      sideMenu: { collapsedSections: { agents: "yes" } },
+    })).toThrow(/must be a boolean/);
+    expect(() => normalizeDashboardPreferences({
+      version: "1",
+      projects: {},
+      sideMenu: { organizations: { org: { orderedItems: { agents: [1] } } } },
+    })).toThrow(/array of strings/);
+  });
+
   test("persists native expected roots for a complete agent version", () => {
     const value = normalizeAgentVersionJson({
       promptBlocks,

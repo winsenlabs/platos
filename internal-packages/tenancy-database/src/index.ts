@@ -1,6 +1,10 @@
 export * from "../generated/control";
 export * from "./access-key";
+export * from "./attachments";
 export * from "./auth";
+export * from "./cutover-id";
+export * from "./cutover-ledger";
+export * from "./legacy-index-catalog";
 export { createEndUserClient, type EndUserClient } from "./end-user";
 export * from "./json";
 export * from "./secrets";

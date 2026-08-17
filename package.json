@@ -24,6 +24,8 @@
     "lint": "turbo run lint",
     "audit:scope": "node scripts/audit-scope.mjs",
     "audit:platos-build": "node scripts/audit-platos-build.mjs",
+    "audit:webapp-database-cutover": "node scripts/audit-webapp-database-cutover.mjs",
+    "test:audit:webapp-database-cutover": "node --test scripts/audit-webapp-database-cutover.test.mjs",
     "docker": "docker compose -p triggerdotdev-docker -f docker/docker-compose.yml up -d --build --remove-orphans",
     "docker:stop": "docker compose -p triggerdotdev-docker -f docker/docker-compose.yml stop",
     "dev:docker": "docker compose -p triggerdotdev-dev-docker -f docker/dev-compose.yml up -d --build --remove-orphans",

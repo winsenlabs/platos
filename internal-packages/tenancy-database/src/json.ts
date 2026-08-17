@@ -31,6 +31,7 @@ const objectOrArray = (description: string): JsonShapeDefinition => ({
  * one encoded JSON layer.
  */
 export const jsonShapeRegistry = {
+  "User.dashboardPreferences": object("Versioned dashboard navigation preferences."),
   "EndUserIdentity.profile": object("Verified identity profile attributes."),
   "AgentCluster.metadata": object("Non-secret cluster labels."),
   "AgentVersion.promptBlocks": array("PromptBlock objects.", true),
@@ -183,6 +184,129 @@ export interface ToolsBlockConfig {
   pinnedTools?: string[];
   enabledCategories?: string[];
   entityIdsRequired?: boolean;
+}
+
+export type DashboardPreferences = Prisma.InputJsonObject & {
+  version: "1";
+  currentProjectId?: string;
+  projects: Record<string, { currentEnvironment: { id: string } }>;
+  sideMenu?: {
+    isCollapsed?: boolean;
+    collapsedSections?: Record<string, boolean>;
+    organizations?: Record<string, { orderedItems: Record<string, string[]> }>;
+  };
+};
+
+function requireNonEmptyString(field: JsonField, value: unknown, path: string): string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new JsonShapeError(field, `${path} must be a non-empty string`);
+  }
+  return value;
+}
+
+function requireRecord(field: JsonField, value: unknown, path: string): Record<string, unknown> {
+  if (!isObject(value)) throw new JsonShapeError(field, `${path} must be an object`);
+  return value;
+}
+
+/** Normalizes the inherited version-1 dashboard preference contract. */
+export function normalizeDashboardPreferences(input: unknown): DashboardPreferences {
+  const field = "User.dashboardPreferences" as const;
+  const root = normalizeJsonField(field, input) as Record<string, unknown>;
+  if (root.version !== "1") throw new JsonShapeError(field, "version must be \"1\"");
+
+  const projectsInput = requireRecord(field, root.projects, "projects");
+  const projects = Object.fromEntries(Object.entries(projectsInput).map(([projectId, value]) => {
+    requireNonEmptyString(field, projectId, "projects key");
+    const project = requireRecord(field, value, `projects.${projectId}`);
+    const currentEnvironment = requireRecord(
+      field,
+      project.currentEnvironment,
+      `projects.${projectId}.currentEnvironment`
+    );
+    return [projectId, {
+      currentEnvironment: {
+        id: requireNonEmptyString(
+          field,
+          currentEnvironment.id,
+          `projects.${projectId}.currentEnvironment.id`
+        ),
+      },
+    }];
+  }));
+
+  const normalized: DashboardPreferences = { version: "1", projects };
+  if (root.currentProjectId !== undefined) {
+    normalized.currentProjectId = requireNonEmptyString(
+      field,
+      root.currentProjectId,
+      "currentProjectId"
+    );
+  }
+
+  if (root.sideMenu !== undefined) {
+    const sideMenuInput = requireRecord(field, root.sideMenu, "sideMenu");
+    const sideMenu: NonNullable<DashboardPreferences["sideMenu"]> = {};
+    if (sideMenuInput.isCollapsed !== undefined) {
+      if (typeof sideMenuInput.isCollapsed !== "boolean") {
+        throw new JsonShapeError(field, "sideMenu.isCollapsed must be a boolean");
+      }
+      sideMenu.isCollapsed = sideMenuInput.isCollapsed;
+    }
+    if (sideMenuInput.collapsedSections !== undefined) {
+      const sections = requireRecord(
+        field,
+        sideMenuInput.collapsedSections,
+        "sideMenu.collapsedSections"
+      );
+      for (const [section, collapsed] of Object.entries(sections)) {
+        requireNonEmptyString(field, section, "sideMenu.collapsedSections key");
+        if (typeof collapsed !== "boolean") {
+          throw new JsonShapeError(
+            field,
+            `sideMenu.collapsedSections.${section} must be a boolean`
+          );
+        }
+      }
+      sideMenu.collapsedSections = sections as Record<string, boolean>;
+    }
+    if (sideMenuInput.organizations !== undefined) {
+      const organizations = requireRecord(
+        field,
+        sideMenuInput.organizations,
+        "sideMenu.organizations"
+      );
+      sideMenu.organizations = Object.fromEntries(Object.entries(organizations).map(
+        ([organizationId, value]) => {
+          requireNonEmptyString(field, organizationId, "sideMenu.organizations key");
+          const organization = requireRecord(
+            field,
+            value,
+            `sideMenu.organizations.${organizationId}`
+          );
+          const orderedItems = requireRecord(
+            field,
+            organization.orderedItems,
+            `sideMenu.organizations.${organizationId}.orderedItems`
+          );
+          for (const [listId, order] of Object.entries(orderedItems)) {
+            requireNonEmptyString(field, listId, "sideMenu orderedItems key");
+            if (!Array.isArray(order) || order.some((entry) => typeof entry !== "string")) {
+              throw new JsonShapeError(
+                field,
+                `sideMenu.organizations.${organizationId}.orderedItems.${listId} must be an array of strings`
+              );
+            }
+          }
+          return [organizationId, {
+            orderedItems: orderedItems as Record<string, string[]>,
+          }];
+        }
+      ));
+    }
+    normalized.sideMenu = sideMenu;
+  }
+  return normalized;
 }
 
 function requireObjectEntries(field: JsonField, value: Prisma.InputJsonValue): Record<string, unknown>[] {
