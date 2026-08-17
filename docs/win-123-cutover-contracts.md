@@ -51,13 +51,15 @@ it does not imply that the source table or its indexes remain after cutover.
 - name bytes: UTF-8 `<source-model>:<source-id>`;
 - split bytes: UTF-8 `<source-model>:<source-id>:<stable-suffix>`.
 
-Source IDs are not trimmed or case-folded. Empty IDs, colons in source IDs, and
-non-canonical suffixes are rejected. Split child suffixes are fixed in
-`sourceIdentityTransformManifest`; repeated message children use zero-based
-`step:<ordinal>` and `tool-call:<ordinal>` suffixes. Shared-primary-key MCP
-configuration rows reuse the `PlatosConnectedEntity` mapping rather than minting
-a second UUID. Checked-in vectors cover ordinary and split mappings and are
-intended for every language implementation of the offline cutover.
+Source IDs are preserved byte-for-byte without trimming, case-folding, Unicode
+normalization, or delimiter parsing. Empty IDs, PostgreSQL-inexpressible NUL or
+ill-formed Unicode values, and non-canonical model/suffix grammar are rejected.
+Split child suffixes are fixed in `sourceIdentityTransformManifest`; repeated
+message children use zero-based `step:<ordinal>` and `tool-call:<ordinal>`
+suffixes. Shared-primary-key MCP configuration rows reuse the
+`PlatosConnectedEntity` mapping rather than minting a second UUID. Checked-in
+vectors cover ordinary and split mappings and are intended for every language
+implementation of the offline cutover.
 
 ## Field transformation boundary
 

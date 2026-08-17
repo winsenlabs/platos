@@ -20,13 +20,32 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 const SOURCE_MODEL_PATTERN = /^[A-Z][A-Za-z0-9]*$/;
 const SUFFIX_PATTERN = /^[a-z0-9]+(?:[._:-][a-z0-9]+)*$/;
 
+function isWellFormedUnicode(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const codeUnit = value.charCodeAt(index);
+    if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) return false;
+      index += 1;
+    } else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /** Exact UTF-8 UUIDv5 name: `<source-model>:<source-id>[:<suffix>]`. */
 export function cutoverIdName(input: CutoverIdInput): string {
   if (!SOURCE_MODEL_PATTERN.test(input.sourceModel)) {
     throw new TypeError("sourceModel must be a non-empty Prisma model name");
   }
-  if (!input.sourceId || input.sourceId.includes(":")) {
-    throw new TypeError("sourceId must be non-empty and must not contain ':'");
+  if (
+    typeof input.sourceId !== "string" ||
+    input.sourceId.length === 0 ||
+    input.sourceId.includes("\0") ||
+    !isWellFormedUnicode(input.sourceId)
+  ) {
+    throw new TypeError("sourceId must be a non-empty, well-formed PostgreSQL text value");
   }
   if (input.suffix !== undefined && !SUFFIX_PATTERN.test(input.suffix)) {
     throw new TypeError("suffix must use stable lower-case identifier segments");
@@ -108,5 +127,25 @@ export const cutoverIdGoldenVectors = [
     sourceId: "cllegacyskill0001",
     suffix: "environment-skill",
     expected: "41ee3f10-0a69-546e-9219-8b701ea10c6c",
+  },
+  {
+    sourceModel: "SecretStore",
+    sourceId: "mfa:fixture:enabled-v1",
+    expected: "bd278e22-4d9f-5602-87e1-5ef1a3ecb2e7",
+  },
+  {
+    sourceModel: "SecretStore",
+    sourceId: "秘密:Δοκιμή",
+    expected: "02a8adaa-92a5-5c51-ba81-3848f4548578",
+  },
+  {
+    sourceModel: "SecretStore",
+    sourceId: "  padded identity  ",
+    expected: "fc415df2-8706-5064-acb2-3864b118b7b2",
+  },
+  {
+    sourceModel: "SecretStore",
+    sourceId: "CaseSensitiveKey",
+    expected: "2fa3165a-72e2-567e-b702-3a836aa60cf4",
   },
 ] as const;
