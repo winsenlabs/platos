@@ -1,11 +1,6 @@
 import {
   Prisma,
   PrismaClient,
-  $transaction as transac,
-  type PrismaClientOrTransaction,
-  type PrismaReplicaClient,
-  type PrismaTransactionClient,
-  type PrismaTransactionOptions,
 } from "@platos/database";
 import invariant from "tiny-invariant";
 import { z } from "zod";
@@ -17,11 +12,14 @@ import { startActiveSpan } from "./v3/tracer.server";
 import { Span } from "@opentelemetry/api";
 import { queryPerformanceMonitor } from "./utils/queryPerformanceMonitor.server";
 
-export type {
-  PrismaTransactionClient,
-  PrismaClientOrTransaction,
-  PrismaTransactionOptions,
-  PrismaReplicaClient,
+export type PrismaTransactionClient = Prisma.TransactionClient;
+export type PrismaClientOrTransaction = PrismaClient | PrismaTransactionClient;
+export type PrismaReplicaClient = PrismaClient;
+export type PrismaTransactionOptions = {
+  isolationLevel?: Prisma.TransactionIsolationLevel;
+  maxWait?: number;
+  timeout?: number;
+  swallowPrismaErrors?: boolean;
 };
 
 export async function $transaction<R>(
@@ -63,10 +61,14 @@ export async function $transaction<R>(
 
       const fn = fnOrOptions as (prisma: PrismaTransactionClient, span: Span) => Promise<R>;
 
-      return transac(
-        prisma,
-        (client) => fn(client, span),
-        (error) => {
+      if (!("$transaction" in prisma)) {
+        return fn(prisma, span);
+      }
+
+      try {
+        return await prisma.$transaction((client) => fn(client, span), options);
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
           logger.error("prisma.$transaction error", {
             code: error.code,
             meta: error.meta,
@@ -74,15 +76,20 @@ export async function $transaction<R>(
             message: error.message,
             name: error.name,
           });
-        },
-        options
-      );
+        }
+        if (options?.swallowPrismaErrors) return undefined;
+        throw error;
+      }
     });
   } else {
-    return transac(
-      prisma,
-      fnOrName,
-      (error) => {
+    if (!("$transaction" in prisma)) {
+      return fnOrName(prisma);
+    }
+    const transactionOptions = typeof fnOrOptions === "function" ? undefined : fnOrOptions;
+    try {
+      return await prisma.$transaction(fnOrName, transactionOptions);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
         logger.error("prisma.$transaction error", {
           code: error.code,
           meta: error.meta,
@@ -90,9 +97,10 @@ export async function $transaction<R>(
           message: error.message,
           name: error.name,
         });
-      },
-      typeof fnOrOptions === "function" ? undefined : fnOrOptions
-    );
+      }
+      if (transactionOptions?.swallowPrismaErrors) return undefined;
+      throw error;
+    }
   }
 }
 

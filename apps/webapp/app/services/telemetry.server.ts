@@ -42,9 +42,8 @@ class Telemetry {
       if (this.#posthogClient) {
         const properties: Record<string, any> = {
           email: user.email,
-          name: user.name,
-          authenticationMethod: user.authenticationMethod,
-          admin: user.admin,
+          displayName: user.displayName,
+          platformOperator: user.platformOperator,
           createdAt: user.createdAt,
           isNewUser,
         };
@@ -64,9 +63,8 @@ class Telemetry {
           event: "user created",
           eventProperties: {
             email: user.email,
-            name: user.name,
-            authenticationMethod: user.authenticationMethod,
-            admin: user.admin,
+            displayName: user.displayName,
+            platformOperator: user.platformOperator,
             createdAt: user.createdAt,
           },
         });
@@ -74,7 +72,7 @@ class Telemetry {
         loopsClient?.userCreated({
           userId: user.id,
           email: user.email,
-          name: user.name,
+          name: user.displayName,
         });
       }
     },
@@ -87,7 +85,7 @@ class Telemetry {
         groupType: "organization",
         groupKey: organization.id,
         properties: {
-          name: organization.title,
+          name: organization.name,
           slug: organization.slug,
         },
       });
@@ -109,7 +107,7 @@ class Telemetry {
         eventProperties: {
           id: organization.id,
           slug: organization.slug,
-          title: organization.title,
+          name: organization.name,
           createdAt: organization.createdAt,
           updatedAt: organization.updatedAt,
         },

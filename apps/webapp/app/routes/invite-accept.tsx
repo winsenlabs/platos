@@ -1,7 +1,9 @@
 import type { LoaderFunctionArgs } from "@remix-run/server-runtime";
-import { getInviteFromToken } from "~/models/member.server";
+import { acceptInvite, getInviteFromToken } from "~/models/member.server";
 import { redirectWithErrorMessage, redirectWithSuccessMessage } from "~/models/message.server";
 import { getUser } from "~/services/session.server";
+import { redirect } from "@remix-run/server-runtime";
+import { organizationPath } from "~/utils/pathBuilder";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await getUser(request);
@@ -19,9 +21,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   if (!user) {
-    return redirectWithSuccessMessage("/", request, "Please log in to accept the invite.", {
-      ephemeral: false,
-    });
+    return redirect(`/login?redirectTo=${encodeURIComponent(url.pathname + url.search)}`);
   }
 
   const invite = await getInviteFromToken({ token });
@@ -43,5 +43,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     );
   }
 
-  return redirectWithSuccessMessage("/", request, "Invite retrieved");
+  const { organization } = await acceptInvite({ user, token, request });
+  return redirectWithSuccessMessage(
+    organizationPath(organization),
+    request,
+    `You joined ${organization.name}`
+  );
 }

@@ -44,17 +44,25 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 
 ## Trigger SDK (durable task spawning)
 
+Trigger is an optional, separately deployed application. Platos never defaults
+these values to its own webapp and does not run Trigger workers locally.
+
 | Variable | Default | Required | Purpose |
 |---|---|---|---|
 | `TRIGGER_SECRET_KEY` | — | No | Project key (`tr_dev_...` or `tr_prod_...`) used by `@trigger.dev/sdk` to call an external Trigger service. Durable agent dispatch requires this and `TRIGGER_API_URL`; with neither set, turns dispatch direct and BGOs use their existing Redis fallback. |
 | `TRIGGER_API_URL` | — | No | Explicit origin of an external Trigger Cloud or separately deployed self-hosted Trigger.dev service. There is intentionally no Cloud, localhost, or Platos-webapp default. Setting only this variable (or only the secret) logs an incomplete-config warning and disables durable dispatch. |
 | `TRIGGER_PROJECT_REF` | — | No | `proj_...` project ref, required if `TRIGGER_SECRET_KEY` is set and you have multiple projects. |
+| `EXTERNAL_TRIGGER_DASHBOARD_URL` | — | No | Explicit external Trigger dashboard URL. When configured, the webapp renders an external side-menu link. |
 | `TRIGGER_INTERNAL_SECRET` | — | No | Shared secret for privileged agent↔webapp calls (run metadata, realtime subscribe). Required if you split agent and webapp across processes/hosts. |
 | `TRIGGER_INTERNAL_BASE_URL` | `$TRIGGER_API_URL` | No | Agent-side base URL for privileged calls; can point to an internal DNS name. |
 
 ## Provider keys
 
-These are **seed** keys for bootstrap / local dev. Platos does NOT have a separate encrypted provider-credential store. In production, add provider keys via the dashboard's **Side menu → Providers** page (route: `/agent-providers`). Each provider manifest declares `required_env`; clicking **[Link env]** redirects to `/environment-variables/new?key=<KEY>`, where the value is stored in trigger.dev's Environment Variables table, encrypted at rest, and scoped per `(org, project, env)`. See [quickstart.md §4](./quickstart.md#4-link-a-provider-api-key).
+These are optional bootstrap/local-development inputs. In production, add
+provider keys through the dashboard's **Providers** page. Platos stores them in
+its Environment-owned encrypted credential store; they are not Trigger
+environment variables and scoped reads do not fall back to deployment provider
+variables.
 
 | Variable | Default | Required | Purpose |
 |---|---|---|---|
@@ -87,30 +95,21 @@ These are read by the webapp image and set as defaults in `docker-compose.platos
 
 | Variable | Default | Required | Purpose |
 |---|---|---|---|
-| `DATABASE_HOST` | — | No | Host:port for the Postgres instance used by the internal trigger.dev run engine (webapp reads this separately from `DATABASE_URL`). Compose sets `postgres:5432`. |
-| `CLICKHOUSE_URL` | — | Yes (webapp) | ClickHouse HTTP URL for run/queue/batch telemetry. Compose form: `http://default:${CLICKHOUSE_PASSWORD}@clickhouse:8123?secure=false`. |
+| `CLICKHOUSE_URL` | — | Yes (webapp) | ClickHouse HTTP URL for retained Platos analytics. Compose form: `http://default:${CLICKHOUSE_PASSWORD}@clickhouse:8123?secure=false`. |
 | `CLICKHOUSE_LOG_LEVEL` | `info` | No | Webapp-side log level for the ClickHouse client. |
-| `RUN_REPLICATION_ENABLED` | `0` | No | `1` enables the webapp → ClickHouse run-replication worker. Compose sets `1`. |
-| `RUN_REPLICATION_CLICKHOUSE_URL` | `$CLICKHOUSE_URL` | No | Separate URL for the replication worker if you want a dedicated ClickHouse role. |
-| `RUN_REPLICATION_LOG_LEVEL` | `info` | No | Log level for the replication worker. |
 | `SKIP_POSTGRES_MIGRATIONS` | `0` | No | `1` = webapp container does NOT run Prisma migrations at boot. Compose sets `1` because the guarded `migrations-init` one-shot owns clean migration deploy before app startup. |
 | `SKIP_CLICKHOUSE_MIGRATIONS` | `0` | No | `1` = webapp container does NOT run ClickHouse goose migrations at boot. Compose sets `1` — run the one-shot goose container from the host. |
 | `WEBAPP_NODE_MAX_OLD_SPACE_SIZE_MB` | `1536` | No | Runtime V8 old-space ceiling in MiB. Startup enforces that it remains at or below 75% of the effective container limit and leaves at least 512 MiB outside old-space. With compose's default `WEBAPP_MEM_LIMIT=2g`, 1536 is the maximum accepted value. |
 | `WEBAPP_BUILD_MAX_OLD_SPACE_SIZE_MB` | `1536` | No | Build-only V8 old-space ceiling in MiB. The guarded build also requires another 2048 MiB of currently available memory and refuses to run otherwise. Build production images off-box. |
 | `WEBAPP_BUILD_SOURCEMAPS` | `false` | No | Enables Remix production source maps and Sentry upload. Map generation materially increases peak memory; enable only on an off-box builder with additional measured headroom. |
 
-## Webapp — trigger.dev run engine internals
+## Webapp — object storage
 
-Upstream trigger.dev plumbing that Platos inherits. Required when the webapp boots a worker group or issues managed-worker deploys.
+Platos owns its attachment and retained analytics object storage. External
+Trigger artifact storage is configured in the separate Trigger deployment.
 
 | Variable | Default | Required | Purpose |
 |---|---|---|---|
-| `MANAGED_WORKER_SECRET` | — (no default) | **Yes** | Shared secret for managed-worker JWT auth between webapp and supervisor/coordinator. Must be at least 16 characters. Generate with `openssl rand -hex 32`. EOBD.52 removed the prior silent `managed-worker-secret-dev` fallback — compose + webapp both fail-fast on missing value. |
-| `DEPLOY_REGISTRY_HOST` | `localhost:5000` | No | Docker registry host for worker image deploys (v3). Override to your OCI registry. |
-| `V4_DEPLOY_REGISTRY_HOST` | `localhost:5000` | No | Same as above, for the v4 deploy pipeline. |
-| `DEPLOY_REGISTRY_NAMESPACE` | `trigger` | No | Namespace (repository prefix) under the registry host. |
-| `TRIGGER_BOOTSTRAP_ENABLED` | `0` | No | `1` bootstraps a default worker group on first boot. Compose sets `1`. |
-| `TRIGGER_BOOTSTRAP_WORKER_GROUP_NAME` | `bootstrap` | No | Name of the auto-created worker group. |
 | `OBJECT_STORE_BASE_URL` | — | No | S3-compatible endpoint for run-artifact storage (build caches, large payloads). Leave blank to disable artifact offload. |
 | `OBJECT_STORE_ACCESS_KEY_ID` | — | No | Access key for the artifact store. |
 | `OBJECT_STORE_SECRET_ACCESS_KEY` | — | No | Secret key for the artifact store. |

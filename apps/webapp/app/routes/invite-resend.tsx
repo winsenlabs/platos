@@ -32,8 +32,8 @@ export const action: ActionFunction = async ({ request }) => {
       await scheduleEmail({
         email: "invite",
         to: invite.email,
-        orgName: invite.organization.title,
-        inviterName: invite.inviter.name ?? undefined,
+        orgName: invite.organization.name,
+        inviterName: invite.inviter.displayName ?? undefined,
         inviterEmail: invite.inviter.email,
         inviteLink: `${env.LOGIN_ORIGIN}${acceptInvitePath(invite.token)}`,
       });

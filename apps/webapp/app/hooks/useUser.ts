@@ -34,5 +34,5 @@ export function useHasAdminAccess(matches?: UIMatch[]): boolean {
   const user = useOptionalUser(matches);
   const isImpersonating = useIsImpersonating(matches);
 
-  return Boolean(user?.admin) || isImpersonating;
+  return Boolean(user?.platformOperator) || isImpersonating;
 }

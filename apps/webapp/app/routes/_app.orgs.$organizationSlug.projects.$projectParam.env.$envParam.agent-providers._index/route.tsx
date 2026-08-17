@@ -18,7 +18,7 @@ import { NavBar, PageAccessories, PageTitle } from "~/components/primitives/Page
 import { DocsLink } from "~/components/primitives/DocsLink";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import {
   sanitizeProviderKeysPayload,
@@ -201,7 +201,7 @@ async function scopeFromRequest(
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }

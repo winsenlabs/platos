@@ -5,7 +5,7 @@ import { requireUserId } from "~/services/session.server";
 import { EnvironmentParamSchema } from "~/utils/pathBuilder";
 import { parsePeriodToMs } from "~/utils/periods";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { clickhouseClient } from "~/services/clickhouseInstance.server";
 import {
   PromptPresenter,
@@ -28,7 +28,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response("Project not found", { status: 404 });
 
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response("Environment not found", { status: 404 });
 
   const url = new URL(request.url);

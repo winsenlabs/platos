@@ -28,14 +28,6 @@ if [ ! -f ./node_modules/@platos/database/generated/control/index.js ]; then
   exit 1
 fi
 
-# Worker mode: WORKER_MODE=true runs the trigger.dev task worker instead of
-# the NestJS HTTP server. Both use the same compiled bundle — the worker
-# registers the tasks in src/trigger-tasks/ with the webapp's run engine.
-if [ "${WORKER_MODE:-false}" = "true" ]; then
-  echo "[1/1] Starting trigger.dev task worker (WORKER_MODE=true)..."
-  exec node dist/trigger-worker.js
-fi
-
 echo "[1/2] Initializing database..."
 echo "[2/2] Starting agent service..."
 exec node dist/main.js

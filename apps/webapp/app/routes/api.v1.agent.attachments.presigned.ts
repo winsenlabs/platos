@@ -45,7 +45,7 @@ import {
   scopeErrorStatus,
 } from "~/services/platos/scopeVerify.server";
 
-// Callers may send raw IDs OR slugs (organizationSlug/projectSlug/envSlug).
+// Callers may send raw IDs OR organization/project slugs with an Environment UUID.
 // Raw IDs win when both present.
 const PresignSchema = z
   .object({
@@ -54,7 +54,6 @@ const PresignSchema = z
     environmentId: z.string().optional(),
     organizationSlug: z.string().optional(),
     projectSlug: z.string().optional(),
-    envSlug: z.string().optional(),
     filename: z.string().max(256).optional(),
     mimeType: z.string().min(1).max(128),
     bytes: z.number().int().positive(),
@@ -67,10 +66,10 @@ const PresignSchema = z
   .refine(
     (v) =>
       (v.organizationId && v.projectId && v.environmentId) ||
-      (v.organizationSlug && v.projectSlug && v.envSlug),
+      (v.organizationSlug && v.projectSlug && v.environmentId),
     {
       message:
-        "Must provide either (organizationId + projectId + environmentId) or (organizationSlug + projectSlug + envSlug)",
+        "Must provide either (organizationId + projectId + environmentId) or (organizationSlug + projectSlug + environmentId)",
     }
   );
 
@@ -108,7 +107,6 @@ export async function action({ request }: ActionFunctionArgs) {
       environmentId: parsed.data.environmentId,
       organizationSlug: parsed.data.organizationSlug,
       projectSlug: parsed.data.projectSlug,
-      envSlug: parsed.data.envSlug,
     },
     userId,
   );

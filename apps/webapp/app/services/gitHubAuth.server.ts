@@ -1,10 +1,10 @@
 import type { Authenticator } from "remix-auth";
 import { GitHubStrategy } from "remix-auth-github";
 import { env } from "~/env.server";
-import { findOrCreateUser } from "~/models/user.server";
 import type { AuthUser } from "./authUser";
 import { logger } from "./logger.server";
-import { postAuthentication } from "./postAuth.server";
+import { platosAuth } from "./platosAuth.server";
+import { OperatorIdentityProvider } from "@platos/database";
 
 export function addGitHubStrategy(
   authenticator: Authenticator<AuthUser>,
@@ -31,17 +31,17 @@ export function addGitHubStrategy(
           extraParams,
         });
 
-        const { user, isNewUser } = await findOrCreateUser({
+        const login = await platosAuth.completeOAuthLogin({
+          provider: OperatorIdentityProvider.GITHUB,
+          subject: profile.id,
           email: emails[0].value,
-          authenticationMethod: "GITHUB",
-          authenticationProfile: profile,
-          authenticationExtraParams: extraParams,
+          emailVerified: true,
+          rateLimitIdentifier: `github:${profile.id}`,
         });
-
-        await postAuthentication({ user, isNewUser, loginMethod: "GITHUB" });
-
         return {
-          userId: user.id,
+          userId: login.userId,
+          sessionToken: login.token,
+          expiresAt: login.expiresAt.toISOString(),
         };
       } catch (error) {
         logger.error("GitHub login failed", { error: JSON.stringify(error) });

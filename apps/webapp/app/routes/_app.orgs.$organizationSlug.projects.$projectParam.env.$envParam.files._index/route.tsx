@@ -34,7 +34,7 @@ import { useEnvironment } from "~/hooks/useEnvironment";
 import { useOrganization } from "~/hooks/useOrganizations";
 import { useProject } from "~/hooks/useProject";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import {
   agentConversationPath,
@@ -77,7 +77,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404, statusText: "Project not found" });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404, statusText: "Environment not found" });
 
   const scope = {
@@ -112,7 +112,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     threadId: threadId as string | null,
     org: { slug: organizationSlug },
     project: { slug: projectParam },
-    environment: { slug: envParam },
+    environment: { id: envParam },
   };
 
   try {
@@ -194,7 +194,7 @@ export default function FilesPage() {
   const filesBase = agentFilesPath(
     { slug: data.org.slug },
     { slug: data.project.slug },
-    { slug: data.environment.slug },
+    { id: data.environment.id },
   );
 
   // Breadcrumb
@@ -429,7 +429,7 @@ export default function FilesPage() {
                             to={agentConversationPath(
                               { slug: data.org.slug },
                               { slug: data.project.slug },
-                              { slug: data.environment.slug },
+                              { id: data.environment.id },
                               data.agentId,
                               data.threadId!,
                             )}

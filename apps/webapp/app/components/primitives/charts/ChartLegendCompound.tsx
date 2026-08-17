@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import type { AggregationType } from "~/components/metrics/QueryWidget";
+import type { AggregationType } from "./types";
 import { useActivePayload, useChartContext } from "./ChartContext";
 import { useSeriesTotal } from "./ChartRoot";
 import { aggregateValues } from "./aggregation";

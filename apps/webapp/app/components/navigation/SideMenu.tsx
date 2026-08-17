@@ -5,10 +5,8 @@ import {
   ArrowTopRightOnSquareIcon,
   AcademicCapIcon,
   BeakerIcon,
-  BellAlertIcon,
   BookOpenIcon,
   BuildingOffice2Icon,
-  ChartBarIcon,
   ClipboardDocumentCheckIcon,
   CpuChipIcon,
   ChevronRightIcon,
@@ -20,7 +18,6 @@ import {
   FolderIcon,
   FolderOpenIcon,
   GlobeAmericasIcon,
-  IdentificationIcon,
   KeyIcon,
   LightBulbIcon,
   PencilSquareIcon,
@@ -39,66 +36,39 @@ import { Link, useFetcher, useNavigation } from "@remix-run/react";
 import { IconBugFilled } from "@tabler/icons-react";
 import { LayoutGroup, motion } from "framer-motion";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { useTypedRouteLoaderData } from "remix-typedjson";
 import simplur from "simplur";
 import { AIMetricsIcon } from "~/assets/icons/AIMetricsIcon";
 import { AIPromptsIcon } from "~/assets/icons/AIPromptsIcon";
-import { ConcurrencyIcon } from "~/assets/icons/ConcurrencyIcon";
 import { DropdownIcon } from "~/assets/icons/DropdownIcon";
 import { BranchEnvironmentIconSmall } from "~/assets/icons/EnvironmentIcons";
 import { ListCheckedIcon } from "~/assets/icons/ListCheckedIcon";
 import { LogsIcon } from "~/assets/icons/LogsIcon";
-import { RunsIconExtraSmall } from "~/assets/icons/RunsIcon";
-import { TaskIconSmall } from "~/assets/icons/TaskIcon";
-import { WaitpointTokenIcon } from "~/assets/icons/WaitpointTokenIcon";
-import { Avatar } from "~/components/primitives/Avatar";
+import { Avatar, defaultAvatar } from "~/components/primitives/Avatar";
 import { type MatchedEnvironment } from "~/hooks/useEnvironment";
-import { useFeatureFlags } from "~/hooks/useFeatureFlags";
-import { useFeatures } from "~/hooks/useFeatures";
 import { type MatchedOrganization } from "~/hooks/useOrganizations";
 import { type MatchedProject } from "~/hooks/useProject";
 import { useShortcutKeys } from "~/hooks/useShortcutKeys";
 import { useHasAdminAccess } from "~/hooks/useUser";
 import { type UserWithDashboardPreferences } from "~/models/user.server";
-import { useCurrentPlan } from "~/routes/_app.orgs.$organizationSlug/route";
+import { type loader as rootLoader } from "~/root";
 import { IncidentStatusPanel, useIncidentStatus } from "~/routes/resources.incidents";
 import { NotificationPanel } from "./NotificationPanel";
 import { cn } from "~/utils/cn";
 import {
   accountPath,
   adminPath,
-  branchesPath,
-  concurrencyPath,
-  limitsPath,
   logoutPath,
   newOrganizationPath,
   newProjectPath,
   organizationPath,
   organizationSettingsPath,
   organizationTeamPath,
-  queryPath,
-  regionsPath,
   v3ApiKeysPath,
-  v3BatchesPath,
-  v3BillingPath,
-  v3BuiltInDashboardPath,
-  v3BulkActionsPath,
-  v3DeploymentsPath,
   v3EnvironmentPath,
-  v3EnvironmentVariablesPath,
-  v3ErrorsPath,
-  v3LogsPath,
-  v3PromptsPath,
-  v3ModelsPath,
-  v3ProjectAlertsPath,
   v3ProjectPath,
   v3ProjectSettingsGeneralPath,
   v3ProjectSettingsIntegrationsPath,
-  v3QueuesPath,
-  v3RunsPath,
-  v3SchedulesPath,
-  v3TestPath,
-  v3UsagePath,
-  v3WaitpointTokensPath,
   agentsPath,
   agentToolsPath,
   agentEntitiesPath,
@@ -120,11 +90,8 @@ import {
 } from "~/utils/pathBuilder";
 import { AlphaBadge } from "../AlphaBadge";
 import { AskAI } from "../AskAI";
-import { FreePlanUsage } from "../billing/FreePlanUsage";
-import { ConnectionIcon, DevPresencePanel, useDevPresence } from "../DevPresence";
 import { ImpersonationBanner } from "../ImpersonationBanner";
 import { Button, ButtonContent, LinkButton } from "../primitives/Buttons";
-import { Dialog, DialogTrigger } from "../primitives/Dialog";
 import { Paragraph } from "../primitives/Paragraph";
 import { Popover, PopoverContent, PopoverMenuItem, PopoverTrigger } from "../primitives/Popover";
 import { ShortcutKey } from "../primitives/ShortcutKey";
@@ -138,8 +105,6 @@ import {
 } from "../primitives/Tooltip";
 import { ShortcutsAutoOpen } from "../Shortcuts";
 import { UserProfilePhoto } from "../UserProfilePhoto";
-import { CreateDashboardButton } from "./DashboardDialogs";
-import { DashboardList } from "./DashboardList";
 import { EnvironmentSelector } from "./EnvironmentSelector";
 import { SideMenuHeader } from "./SideMenuHeader";
 import { SideMenuItem } from "./SideMenuItem";
@@ -156,13 +121,13 @@ function getSectionCollapsed(
 
 type SideMenuUser = Pick<
   UserWithDashboardPreferences,
-  "email" | "admin" | "dashboardPreferences"
+  "email" | "platformOperator" | "dashboardPreferences"
 > & {
   isImpersonating: boolean;
 };
 export type SideMenuProject = Pick<
   MatchedProject,
-  "id" | "name" | "slug" | "version" | "environments" | "engine" | "createdAt"
+  "id" | "name" | "slug" | "environments" | "createdAt"
 >;
 export type SideMenuEnvironment = MatchedEnvironment;
 
@@ -194,13 +159,10 @@ export function SideMenu({
     sectionCollapsed?: boolean;
   }>({});
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const currentPlan = useCurrentPlan();
-  const { isConnected } = useDevPresence();
-  const isFreeUser = currentPlan?.v3Subscription?.isPaying === false;
   const isAdmin = useHasAdminAccess();
-  const { isManagedCloud } = useFeatures();
-  const featureFlags = useFeatureFlags();
   const incidentStatus = useIncidentStatus();
+  const externalTriggerDashboardUrl = useTypedRouteLoaderData<typeof rootLoader>("root")
+    ?.externalTriggerDashboardUrl;
   const isV3Project = false;
 
   // Agents are now env-scoped — switching environment must refetch agent
@@ -381,35 +343,6 @@ export function SideMenu({
                   className="w-full"
                   isCollapsed={isCollapsed}
                 />
-                {environment.type === "DEVELOPMENT" && project.engine === "V2" && (
-                  <CollapsibleElement isCollapsed={isCollapsed}>
-                    <Dialog>
-                      <TooltipProvider disableHoverableContent={true}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="inline-flex">
-                              <DialogTrigger asChild>
-                                <Button
-                                  variant="minimal/small"
-                                  className="aspect-square h-7 p-1"
-                                  LeadingIcon={<ConnectionIcon isConnected={isConnected} />}
-                                />
-                              </DialogTrigger>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className={"text-xs"}>
-                            {isConnected === undefined
-                              ? "Checking connection..."
-                              : isConnected
-                              ? "Your dev server is connected"
-                              : "Your dev server is not connected"}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <DevPresencePanel isConnected={isConnected} />
-                    </Dialog>
-                  </CollapsibleElement>
-                )}
               </div>
             </div>
 
@@ -590,17 +523,6 @@ export function SideMenu({
                 data-action="agent-connect"
                 isCollapsed={isCollapsed}
               />
-              {/* Platos-repurposed: scoped secrets for skills (E2B/Tavily/…)
-                  + env-based provider config, and API keys. */}
-              <SideMenuItem
-                name="Environment variables"
-                icon={IdentificationIcon}
-                activeIconColor="text-emerald-400"
-                inactiveIconColor="text-emerald-400"
-                to={v3EnvironmentVariablesPath(organization, project, environment)}
-                data-action="environment variables"
-                isCollapsed={isCollapsed}
-              />
               <SideMenuItem
                 name="API keys"
                 icon={KeyIcon}
@@ -630,6 +552,19 @@ export function SideMenu({
                 data-action="platos-tasks"
                 isCollapsed={isCollapsed}
               />
+              {externalTriggerDashboardUrl ? (
+                <SideMenuItem
+                  name="External Trigger"
+                  icon={ArrowTopRightOnSquareIcon}
+                  trailingIcon={ArrowTopRightOnSquareIcon}
+                  activeIconColor="text-blue-400"
+                  inactiveIconColor="text-blue-400"
+                  to={externalTriggerDashboardUrl}
+                  target="_blank"
+                  data-action="external-trigger"
+                  isCollapsed={isCollapsed}
+                />
+              ) : null}
               {/* Platos-only: trigger Runs/Batches/Schedules/Queues/Waitpoint tokens/Deployments/Test stripped from the nav. */}
             </SideMenuSection>
 
@@ -695,14 +630,6 @@ export function SideMenu({
             )}
           >
             <HelpAndAI isCollapsed={isCollapsed} />
-            {isFreeUser && (
-              <CollapsibleHeight isCollapsed={isCollapsed}>
-                <FreePlanUsage
-                  to={v3BillingPath(organization)}
-                  percentage={currentPlan.v3Usage.usagePercentage}
-                />
-              </CollapsibleHeight>
-            )}
           </motion.div>
         </div>
       </div>
@@ -819,17 +746,8 @@ function ProjectSelector({
   user: SideMenuUser;
   isCollapsed?: boolean;
 }) {
-  const currentPlan = useCurrentPlan();
   const [isOrgMenuOpen, setOrgMenuOpen] = useState(false);
   const navigation = useNavigation();
-  const { isManagedCloud } = useFeatures();
-
-  let plan: string | undefined = undefined;
-  if (currentPlan?.v3Subscription?.isPaying === false) {
-    plan = "Free";
-  } else if (currentPlan?.v3Subscription?.isPaying === true) {
-    plan = currentPlan.v3Subscription.plan?.title;
-  }
 
   useEffect(() => {
     setOrgMenuOpen(false);
@@ -846,7 +764,7 @@ function ProjectSelector({
             )}
           >
             <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-              <Avatar avatar={organization.avatar} size={1.25} orgName={organization.title} />
+              <Avatar avatar={defaultAvatar} size={1.25} orgName={organization.name} />
               <span
                 className={cn(
                   "flex min-w-0 items-center gap-1.5 overflow-hidden transition-all duration-200",
@@ -869,7 +787,7 @@ function ProjectSelector({
             </span>
           </PopoverTrigger>
         }
-        content={`${organization.title} / ${project.name ?? "Select a project"}`}
+        content={`${organization.name} / ${project.name ?? "Select a project"}`}
         side="right"
         sideOffset={8}
         hidden={!isCollapsed}
@@ -890,23 +808,14 @@ function ProjectSelector({
               to={organizationSettingsPath(organization)}
               className="group relative box-content size-10 overflow-clip rounded-sm bg-charcoal-800"
             >
-              <Avatar avatar={organization.avatar} size={2.5} orgName={organization.title} />
+              <Avatar avatar={defaultAvatar} size={2.5} orgName={organization.name} />
               <div className="absolute inset-0 z-10 grid h-full w-full place-items-center bg-black/50 opacity-0 transition group-hover:opacity-100">
                 <PencilSquareIcon className="size-5 text-text-bright" />
               </div>
             </Link>
             <div className="space-y-0.5">
-              <Paragraph variant="small/bright">{organization.title}</Paragraph>
+              <Paragraph variant="small/bright">{organization.name}</Paragraph>
               <div className="flex items-baseline gap-2">
-                {plan && (
-                  <TextLink
-                    variant="secondary"
-                    className="text-xs"
-                    to={v3BillingPath(organization)}
-                  >
-                    {plan} plan
-                  </TextLink>
-                )}
                 <TextLink
                   variant="secondary"
                   className="text-xs"
@@ -926,18 +835,6 @@ function ProjectSelector({
               <CogIcon className="size-4 text-text-dimmed" />
               <span className="text-text-bright">Settings</span>
             </LinkButton>
-            {isManagedCloud && (
-              <LinkButton
-                variant="secondary/small"
-                to={v3UsagePath(organization)}
-                fullWidth
-                iconSpacing="gap-1.5"
-                className="group-hover/button:border-charcoal-500"
-              >
-                <ChartBarIcon className="size-4 text-text-dimmed" />
-                <span className="text-text-bright">Usage</span>
-              </LinkButton>
-            )}
           </div>
         </div>
         <div className="flex flex-col gap-1 p-1">
@@ -1064,8 +961,8 @@ function SwitchOrganizations({
               <PopoverMenuItem
                 key={org.id}
                 to={organizationPath(org)}
-                title={org.title}
-                icon={<Avatar size={1} avatar={org.avatar} orgName={org.title} />}
+                title={org.name}
+                icon={<Avatar size={1} avatar={defaultAvatar} orgName={org.name} />}
                 leadingIconClassName="text-text-dimmed"
                 isSelected={org.id === organization.id}
               />
@@ -1119,29 +1016,6 @@ function CollapsibleElement({
       )}
     >
       {children}
-    </div>
-  );
-}
-
-/** Helper component that fades out and collapses height completely */
-function CollapsibleHeight({
-  isCollapsed,
-  children,
-  className,
-}: {
-  isCollapsed: boolean;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "grid transition-all duration-200 ease-in-out",
-        isCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
-        className
-      )}
-    >
-      <div className="overflow-hidden">{children}</div>
     </div>
   );
 }

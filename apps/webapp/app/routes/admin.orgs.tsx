@@ -2,9 +2,7 @@ import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Form } from "@remix-run/react";
 import type { LoaderFunctionArgs } from "@remix-run/server-runtime";
 import { redirect, typedjson, useTypedLoaderData } from "remix-typedjson";
-import { useState } from "react";
 import { z } from "zod";
-import { FeatureFlagsDialog } from "~/components/admin/FeatureFlagsDialog";
 import { Button, LinkButton } from "~/components/primitives/Buttons";
 import { CopyableText } from "~/components/primitives/CopyableText";
 import { Input } from "~/components/primitives/Input";
@@ -20,7 +18,7 @@ import {
   TableRow,
 } from "~/components/primitives/Table";
 import { adminGetOrganizations } from "~/models/admin.server";
-import { requireUser, requireUserId } from "~/services/session.server";
+import { requireUser } from "~/services/session.server";
 import { createSearchParams } from "~/utils/searchParams";
 
 export const SearchParams = z.object({
@@ -32,7 +30,7 @@ export type SearchParams = z.infer<typeof SearchParams>;
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const user = await requireUser(request);
-  if (!user.admin) {
+  if (!user.platformOperator) {
     return redirect("/");
   }
 
@@ -47,15 +45,6 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 
 export default function AdminDashboardRoute() {
   const { organizations, filters, page, pageCount } = useTypedLoaderData<typeof loader>();
-
-  const [flagsOrgId, setFlagsOrgId] = useState<string | null>(null);
-  const [flagsOpen, setFlagsOpen] = useState(false);
-  const flagsOrgTitle = organizations.find((o) => o.id === flagsOrgId)?.title ?? "";
-
-  const openFlagsDialog = (orgId: string) => {
-    setFlagsOrgId(orgId);
-    setFlagsOpen(true);
-  };
 
   return (
     <main
@@ -85,15 +74,13 @@ export default function AdminDashboardRoute() {
               <TableHeaderCell>Slug</TableHeaderCell>
               <TableHeaderCell>Members</TableHeaderCell>
               <TableHeaderCell>id</TableHeaderCell>
-              <TableHeaderCell>v2?</TableHeaderCell>
-              <TableHeaderCell>v3?</TableHeaderCell>
-              <TableHeaderCell>Deleted?</TableHeaderCell>
+              <TableHeaderCell>Archived?</TableHeaderCell>
               <TableHeaderCell>Actions</TableHeaderCell>
             </TableRow>
           </TableHeader>
           <TableBody>
             {organizations.length === 0 ? (
-              <TableBlankRow colSpan={9}>
+              <TableBlankRow colSpan={6}>
                 <Paragraph>No orgs found for search</Paragraph>
               </TableBlankRow>
             ) : (
@@ -101,13 +88,13 @@ export default function AdminDashboardRoute() {
                 return (
                   <TableRow key={org.id}>
                     <TableCell>
-                      <CopyableText value={org.title} />
+                      <CopyableText value={org.name} />
                     </TableCell>
                     <TableCell>
                       <CopyableText value={org.slug} />
                     </TableCell>
                     <TableCell>
-                      {org.members.map((member) => (
+                      {org.memberships.map((member) => (
                         <LinkButton
                           key={member.user.email}
                           variant="minimal/small"
@@ -120,17 +107,9 @@ export default function AdminDashboardRoute() {
                     <TableCell>
                       <CopyableText value={org.id} />
                     </TableCell>
-                    <TableCell>{org.v2Enabled ? "✅" : ""}</TableCell>
-                    <TableCell>{org.v3Enabled ? "✅" : ""}</TableCell>
-                    <TableCell>{org.deletedAt ? "☠️" : ""}</TableCell>
+                    <TableCell>{org.archivedAt ? "Yes" : "No"}</TableCell>
                     <TableCell isSticky={true}>
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="tertiary/small"
-                          onClick={() => openFlagsDialog(org.id)}
-                        >
-                          Flags
-                        </Button>
                         <LinkButton
                           to={`/@/orgs/${org.slug}`}
                           variant="tertiary/small"
@@ -153,12 +132,6 @@ export default function AdminDashboardRoute() {
 
         <PaginationControls currentPage={page} totalPages={pageCount} />
       </div>
-      <FeatureFlagsDialog
-        orgId={flagsOrgId}
-        orgTitle={flagsOrgTitle}
-        open={flagsOpen}
-        onOpenChange={setFlagsOpen}
-      />
     </main>
   );
 }

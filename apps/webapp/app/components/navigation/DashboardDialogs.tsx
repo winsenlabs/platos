@@ -1,13 +1,10 @@
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Form, useNavigation } from "@remix-run/react";
 import { motion } from "framer-motion";
-import { ArrowUpCircleIcon } from "@heroicons/react/24/outline";
 import { PlusIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 import { type MatchedOrganization, useDashboardLimits } from "~/hooks/useOrganizations";
-import { useCurrentPlan } from "~/routes/_app.orgs.$organizationSlug/route";
-import { Feedback } from "~/components/Feedback";
-import { Button, LinkButton } from "../primitives/Buttons";
+import { Button } from "../primitives/Buttons";
 import {
   Dialog,
   DialogContent,
@@ -21,9 +18,7 @@ import { Input } from "../primitives/Input";
 import { InputGroup } from "../primitives/InputGroup";
 import { Label } from "../primitives/Label";
 import { Paragraph } from "../primitives/Paragraph";
-import { TextLink } from "../primitives/TextLink";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../primitives/Tooltip";
-import { v3BillingPath } from "~/utils/pathBuilder";
 import { type SideMenuEnvironment, type SideMenuProject } from "./SideMenu";
 
 function useCreateDashboard({
@@ -33,20 +28,15 @@ function useCreateDashboard({
 }: {
   organization: { slug: string };
   project: { slug: string };
-  environment: { slug: string };
+  environment: { id: string };
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const navigation = useNavigation();
   const limits = useDashboardLimits();
-  const plan = useCurrentPlan();
 
   const isAtLimit = limits.used >= limits.limit;
-  const planLimits = (plan?.v3Subscription?.plan?.limits as any)?.metricDashboards;
-  const canExceed = typeof planLimits === "object" && planLimits.canExceed === true;
-  const canUpgrade = plan?.v3Subscription?.plan && !canExceed;
-  const isFreePlan = plan?.v3Subscription?.isPaying === false;
 
-  const formAction = `/resources/orgs/${organization.slug}/projects/${project.slug}/env/${environment.slug}/dashboards/create`;
+  const formAction = `/resources/orgs/${organization.slug}/projects/${project.slug}/env/${environment.id}/dashboards/create`;
 
   useEffect(() => {
     if (navigation.formAction === formAction && navigation.state === "loading") {
@@ -58,11 +48,8 @@ function useCreateDashboard({
     isOpen,
     setIsOpen,
     isAtLimit,
-    canUpgrade: !!canUpgrade,
-    isFreePlan,
     formAction,
     limits,
-    organization,
   };
 }
 
@@ -101,12 +88,7 @@ export function CreateDashboardButton({
         </Tooltip>
       </TooltipProvider>
       {dashboard.isAtLimit ? (
-        <CreateDashboardUpgradeDialog
-          limits={dashboard.limits}
-          canUpgrade={dashboard.canUpgrade}
-          isFreePlan={dashboard.isFreePlan}
-          organization={dashboard.organization}
-        />
+        <CreateDashboardLimitDialog limits={dashboard.limits} />
       ) : (
         <CreateDashboardDialog formAction={dashboard.formAction} limits={dashboard.limits} />
       )}
@@ -121,7 +103,7 @@ export function CreateDashboardPageButton({
 }: {
   organization: { slug: string };
   project: { slug: string };
-  environment: { slug: string };
+  environment: { id: string };
 }) {
   const dashboard = useCreateDashboard({ organization, project, environment });
 
@@ -133,12 +115,7 @@ export function CreateDashboardPageButton({
         </Button>
       </DialogTrigger>
       {dashboard.isAtLimit ? (
-        <CreateDashboardUpgradeDialog
-          limits={dashboard.limits}
-          canUpgrade={dashboard.canUpgrade}
-          isFreePlan={dashboard.isFreePlan}
-          organization={dashboard.organization}
-        />
+        <CreateDashboardLimitDialog limits={dashboard.limits} />
       ) : (
         <CreateDashboardDialog formAction={dashboard.formAction} limits={dashboard.limits} />
       )}
@@ -151,41 +128,7 @@ const PROGRESS_RING_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_R;
 const PROGRESS_COLOR_SUCCESS = "#28BF5C"; // mint-500 / success
 const PROGRESS_COLOR_ERROR = "#E11D48"; // rose-600 / error
 
-function CreateDashboardUpgradeDialog({
-  limits,
-  canUpgrade,
-  isFreePlan,
-  organization,
-}: {
-  limits: { used: number; limit: number };
-  canUpgrade: boolean;
-  isFreePlan: boolean;
-  organization: { slug: string };
-}) {
-
-  if (isFreePlan) {
-    return (
-      <DialogContent>
-        <DialogHeader>Upgrade to unlock dashboards</DialogHeader>
-        <div className="flex items-center gap-4 pt-3">
-          <ArrowUpCircleIcon className="ml-1 size-14 shrink-0 text-indigo-500" />
-          <DialogDescription className="pt-0">
-            Custom metric dashboards are available on paid plans. Upgrade to create dashboards and
-            track your task metrics.
-          </DialogDescription>
-        </div>
-        <DialogFooter className="flex justify-between">
-          <DialogClose asChild>
-            <Button variant="secondary/medium">Cancel</Button>
-          </DialogClose>
-          <LinkButton variant="primary/medium" to={v3BillingPath(organization)}>
-            Upgrade plan
-          </LinkButton>
-        </DialogFooter>
-      </DialogContent>
-    );
-  }
-
+function CreateDashboardLimitDialog({ limits }: { limits: { used: number; limit: number } }) {
   const percentage = Math.min(limits.used / limits.limit, 1);
   const filled = percentage * PROGRESS_RING_CIRCUMFERENCE;
 
@@ -225,39 +168,16 @@ function CreateDashboardUpgradeDialog({
           </span>
         </div>
         <DialogDescription className="pt-0">
-          {canUpgrade ? (
-            <>
-              {limits.limit === 1
-                ? "Your plan includes 1 custom dashboard and it's already in use."
-                : `You've used all ${limits.limit} of your custom dashboards.`}{" "}
-              Upgrade your plan to create more.
-            </>
-          ) : (
-            <>
-              {limits.limit === 1
-                ? "Your plan includes 1 custom dashboard and it's already in use."
-                : `You've used all ${limits.limit} of your custom dashboards.`}{" "}
-              To create more, request a limit increase or visit the{" "}
-              <TextLink to={v3BillingPath(organization)}>billing page</TextLink> for pricing
-              details.
-            </>
-          )}
+          {limits.limit === 1
+            ? "The single custom dashboard for this organization is already in use."
+            : `All ${limits.limit} custom dashboards for this organization are already in use.`}{" "}
+          Contact a platform operator if this limit needs to change.
         </DialogDescription>
       </div>
-      <DialogFooter className="flex justify-between">
+      <DialogFooter>
         <DialogClose asChild>
-          <Button variant="secondary/medium">Cancel</Button>
+          <Button variant="secondary/medium">Close</Button>
         </DialogClose>
-        {canUpgrade ? (
-          <LinkButton variant="primary/medium" to={v3BillingPath(organization)}>
-            Upgrade plan
-          </LinkButton>
-        ) : (
-          <Feedback
-            button={<Button variant="primary/medium">Request more…</Button>}
-            defaultValue="help"
-          />
-        )}
       </DialogFooter>
     </DialogContent>
   );

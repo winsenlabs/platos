@@ -24,7 +24,7 @@
 
 import { json, type ActionFunctionArgs } from "@remix-run/server-runtime";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { EnvironmentParamSchema } from "~/utils/pathBuilder";
 
@@ -61,7 +61,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) return json({ error: "Project not found" }, { status: 404 });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) return json({ error: "Environment not found" }, { status: 404 });
 
   const scope: Scope = {

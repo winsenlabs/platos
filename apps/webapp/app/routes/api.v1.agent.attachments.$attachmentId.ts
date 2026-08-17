@@ -2,7 +2,7 @@
  * GET /api/v1/agent/attachments/:attachmentId
  *
  * Returns a scope-gated presigned GET URL for an existing multimodal attachment.
- * Scope IDs must be passed either on the query string or resolved via slugs,
+ * Scope IDs must be passed either on the query string or resolved via parent slugs,
  * exactly like the presign upload endpoint. The lookup filters by
  * (organizationId, projectId, environmentId) — cross-scope requests 404 and
  * never leak the presigned URL.
@@ -10,7 +10,7 @@
  * Query params (one set required):
  *   organizationId, projectId, environmentId
  *   — or —
- *   organizationSlug, projectSlug, envSlug
+ *   organizationSlug, projectSlug, environmentId
  *
  * Response:
  *   200  { attachmentId, downloadUrl, mimeType, kind, bytes, originalName, expiresAt }
@@ -58,7 +58,6 @@ async function resolveScope(
       environmentId: url.searchParams.get("environmentId"),
       organizationSlug: url.searchParams.get("organizationSlug"),
       projectSlug: url.searchParams.get("projectSlug"),
-      envSlug: url.searchParams.get("envSlug"),
     },
     userId,
   );

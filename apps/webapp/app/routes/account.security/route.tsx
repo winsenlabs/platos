@@ -8,8 +8,9 @@ import { Header2 } from "~/components/primitives/Headers";
 import { NavBar, PageTitle } from "~/components/primitives/PageHeader";
 import { MfaSetup } from "../resources.account.mfa.setup/route";
 import { LoaderFunctionArgs } from "@remix-run/server-runtime";
-import { requireUser } from "~/services/session.server";
+import { requireUserId } from "~/services/session.server";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
+import { prisma } from "~/db.server";
 
 export const meta: MetaFunction = () => {
   return [
@@ -20,15 +21,19 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const user = await requireUser(request);
+  const userId = await requireUserId(request);
+  const mfa = await prisma.operatorMfaTotp.findUnique({
+    where: { userId },
+    select: { enabledAt: true },
+  });
 
   return typedjson({
-    user,
+    isEnabled: Boolean(mfa?.enabledAt),
   });
 }
 
 export default function Page() {
-  const { user } = useTypedLoaderData<typeof loader>();
+  const { isEnabled } = useTypedLoaderData<typeof loader>();
 
   return (
     <PageContainer>
@@ -41,7 +46,7 @@ export default function Page() {
           <div className="mb-3 w-full border-b border-grid-dimmed pb-3">
             <Header2>Security</Header2>
           </div>
-          <MfaSetup isEnabled={!!user.mfaEnabledAt} />
+          <MfaSetup isEnabled={isEnabled} />
         </MainHorizontallyCenteredContainer>
       </PageBody>
     </PageContainer>

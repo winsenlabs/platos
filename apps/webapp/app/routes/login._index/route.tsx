@@ -80,6 +80,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         showGoogleAuth: isGoogleAuthSupported,
         lastAuthMethod,
         authError: null,
+        sessionReset: url.searchParams.get("sessionReset") === "1",
         isVercelMarketplace: redirectTo.startsWith("/vercel/callback"),
       },
       {
@@ -107,6 +108,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       showGoogleAuth: isGoogleAuthSupported,
       lastAuthMethod,
       authError,
+      sessionReset: url.searchParams.get("sessionReset") === "1",
       isVercelMarketplace: false,
     });
   }
@@ -124,6 +126,15 @@ export default function LoginPage() {
         <Paragraph variant="base" className="mb-6">
           Create an account or login
         </Paragraph>
+        {data.sessionReset ? (
+          <div className="mb-5 w-full rounded border border-blue-700 bg-blue-950/40 px-4 py-3">
+            <Paragraph variant="small" className="text-text-bright">
+              Your previous session can’t be used after the security upgrade. Sign in again to
+              create a new protected session. If MFA was reset during maintenance, ask a platform
+              operator to confirm whether you need to enroll again.
+            </Paragraph>
+          </div>
+        ) : null}
         <Fieldset className="w-full">
           <div className="flex flex-col items-center gap-y-3">
             {data.showGithubAuth && (

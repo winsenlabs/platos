@@ -20,24 +20,13 @@ import { InputGroup } from "~/components/primitives/InputGroup";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { Spinner } from "~/components/primitives/Spinner";
 import { TextLink } from "~/components/primitives/TextLink";
-import { authenticator } from "~/services/auth.server";
-import { commitSession, getUserSession } from "~/services/sessionStorage.server";
 import { setRedirectTo, commitSession as commitRedirectSession } from "~/services/redirectTo.server";
-import {
-  checkMagicLinkEmailRateLimit,
-  checkMagicLinkEmailDailyRateLimit,
-  MagicLinkRateLimitError,
-  checkMagicLinkIpRateLimit,
-} from "~/services/magicLinkRateLimiter.server";
-// `logger` from `@platos/core/v3` is the TASK-scoped LoggerAPI — it
-// delegates to a NoopTaskLogger outside a trigger.dev task run, so every
-// `logger.info()` silently no-ops in webapp request handlers. Use the
-// webapp's own logger (pino-backed, singleton) instead. `tryCatch` stays
-// on the core import — that helper is pure.
-import { tryCatch } from "@platos/core/v3";
 import { logger } from "~/services/logger.server";
 import { env } from "~/env.server";
-import { extractClientIp } from "~/utils/extractClientIp.server";
+import { getUserId } from "~/services/session.server";
+import { platosAuth, requestRateLimitIdentifier } from "~/services/platosAuth.server";
+import { sendEmail } from "~/services/email.server";
+import { PlatosAuthError } from "@platos/database";
 
 export const meta: MetaFunction = ({ matches }) => {
   const parentMeta = matches
@@ -59,38 +48,22 @@ export const meta: MetaFunction = ({ matches }) => {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  await authenticator.isAuthenticated(request, {
-    successRedirect: "/",
-  });
-
-  const session = await getUserSession(request);
-  const error = session.get("auth:error");
+  if (await getUserId(request)) throw redirect("/");
 
   // Get redirectTo from URL params and store in session if present
   const url = new URL(request.url);
   const redirectTo = url.searchParams.get("redirectTo");
   const headers = new Headers();
-  
+
   if (redirectTo) {
     const redirectSession = await setRedirectTo(request, redirectTo);
     headers.append("Set-Cookie", await commitRedirectSession(redirectSession));
   }
 
-  let magicLinkError: string | undefined;
-  if (error) {
-    if ("message" in error) {
-      magicLinkError = error.message;
-    } else {
-      magicLinkError = JSON.stringify(error, null, 2);
-    }
-  }
-
-  headers.append("Set-Cookie", await commitSession(session));
-
   return typedjson(
     {
-      magicLinkSent: session.has("triggerdotdev:magiclink"),
-      magicLinkError,
+      magicLinkSent: url.searchParams.get("sent") === "1",
+      magicLinkError: url.searchParams.get("error") ?? undefined,
     },
     {
       headers,
@@ -117,103 +90,28 @@ export async function action({ request }: ActionFunctionArgs) {
 
   switch (data.action) {
     case "send": {
-      if (!env.LOGIN_RATE_LIMITS_ENABLED) {
-        logger.info("Magic link: invoking authenticator.authenticate", {
-          email: data.email,
-          hasRedirectTo: new URL(request.url).searchParams.has("redirectTo"),
-        });
-        try {
-          return await authenticator.authenticate("email-link", request, {
-            successRedirect: "/login/magic",
-            failureRedirect: "/login/magic",
-          });
-        } catch (err: any) {
-          // `authenticator.authenticate` throws a Response for redirects
-          // (both success + failure) — re-throw those as-is. Only log when
-          // it throws a real Error (strategy-internal bug, signing failure,
-          // DB hiccup in the verify callback, etc.). Without this wrapper
-          // the error is silently swallowed into the failureRedirect and
-          // "auth:error" session message, leaving operators chasing ghosts.
-          if (err instanceof Response) {
-            throw err;
-          }
-          logger.error("Magic link: authenticator.authenticate threw", {
-            email: data.email,
-            error:
-              err instanceof Error
-                ? { name: err.name, message: err.message, stack: err.stack }
-                : JSON.stringify(err),
-          });
-          throw err;
-        }
-      }
-
-      const { email } = data;
-      const xff = request.headers.get("x-forwarded-for");
-      const clientIp = extractClientIp(xff);
-
-      const [error] = await tryCatch(
-        Promise.all([
-          clientIp ? checkMagicLinkIpRateLimit(clientIp) : Promise.resolve(),
-          checkMagicLinkEmailRateLimit(email),
-          checkMagicLinkEmailDailyRateLimit(email),
-        ])
-      );
-
-      if (error) {
-        if (error instanceof MagicLinkRateLimitError) {
-          logger.warn("Login magic link rate limit exceeded", {
-            clientIp,
-            email,
-            error,
-          });
-        } else {
-          logger.error("Failed sending login magic link", {
-            clientIp,
-            email,
-            error,
-          });
-        }
-
-        const errorMessage =
-          error instanceof MagicLinkRateLimitError
-            ? "Too many magic link requests. Please try again shortly."
-            : "Failed sending magic link. Please try again shortly.";
-
-        const session = await getUserSession(request);
-        session.set("auth:error", {
-          message: errorMessage,
-        });
-
-        const headers = new Headers();
-        headers.append("Set-Cookie", await commitSession(session));
-        return redirect("/login/magic", { headers });
-      }
-
       try {
-        return await authenticator.authenticate("email-link", request, {
-          successRedirect: "/login/magic",
-          failureRedirect: "/login/magic",
+        const issued = await platosAuth.issueMagicLink({
+          email: data.email,
+          rateLimitIdentifier: requestRateLimitIdentifier(request, data.email),
         });
-      } catch (err: any) {
-        if (err instanceof Response) {
-          throw err;
+        const magicLink = `${env.LOGIN_ORIGIN}/magic?token=${encodeURIComponent(issued.token)}`;
+        if (env.NODE_ENV === "development") return redirect(magicLink);
+        await sendEmail({ email: "magic_link", to: data.email, magicLink });
+        return redirect("/login/magic?sent=1");
+      } catch (error) {
+        logger.warn("Magic link request failed", { error, email: data.email });
+        if (error instanceof PlatosAuthError && error.code === "rate_limited") {
+          return redirect("/login/magic?error=Too%20many%20requests.%20Please%20try%20again%20shortly.");
         }
-        throw err;
+        return redirect("/login/magic?error=Unable%20to%20send%20a%20login%20link.");
       }
     }
     case "reset":
     default: {
       data.action satisfies "reset";
 
-      const session = await getUserSession(request);
-      session.unset("triggerdotdev:magiclink");
-
-      return redirect("/login/magic", {
-        headers: {
-          "Set-Cookie": await commitSession(session),
-        },
-      });
+      return redirect("/login/magic");
     }
   }
 }

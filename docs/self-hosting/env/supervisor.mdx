@@ -1,14 +1,18 @@
 ---
 title: "Supervisor"
-description: "Environment variables for the supervisor container."
+description: "Environment variables for an external Trigger supervisor container."
 sidebarTitle: "Supervisor"
 mode: "wide"
 ---
 
+> The supervisor belongs to a separately deployed Trigger application. Platos
+> does not run this container locally; configure it only within the external
+> Trigger deployment.
+
 | Name                                        | Required | Default     | Description                                                 |
 | :------------------------------------------ | :------- | :---------- | :---------------------------------------------------------- |
 | **Required settings**                       |          |             |                                                             |
-| `TRIGGER_API_URL`                           | Yes      | —           | Trigger.dev API URL. Should point at the webapp.            |
+| `TRIGGER_API_URL`                           | Yes      | —           | Trigger.dev API URL. Should point at the external Trigger webapp. |
 | `TRIGGER_WORKER_TOKEN`                      | Yes      | —           | Worker token (can be a file path with file://).             |
 | `MANAGED_WORKER_SECRET`                     | Yes      | —           | Managed worker secret. Needs to match webapp value.         |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`               | Yes      | —           | OTel exporter endpoint. Point at: `<webapp-url>/otel`       |

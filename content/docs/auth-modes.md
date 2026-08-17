@@ -98,7 +98,10 @@ X-Platos-Internal-Auth: <PLATOS_INTERNAL_AUTH_TOKEN>
 
 This deployment secret is restricted to dedicated service callbacks such as compaction, durable turns, retention, reconciliation, and sweeps. Comparisons are length-checked and use `crypto.timingSafeEqual`. It must never be accepted as operator authorization for hard erasure.
 
-`TRIGGER_INTERNAL_SECRET`, `PLATOS_DOCS_MCP_BRIDGE_SECRET`, and `MANAGED_WORKER_SECRET` remain separate because they protect different service boundaries. `MANAGED_WORKER_SECRET` and mode-C worker behavior are unchanged here and are owned by WIN-132.
+`TRIGGER_INTERNAL_SECRET` and `PLATOS_DOCS_MCP_BRIDGE_SECRET` remain separate
+because they protect different service boundaries. Trigger itself is an
+external application; Platos does not authenticate or run a local Trigger
+worker.
 
 ## Examples
 

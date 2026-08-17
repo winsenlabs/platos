@@ -37,7 +37,7 @@ import { useProject } from "~/hooks/useProject";
 import { prisma } from "~/db.server";
 import { env } from "~/env.server";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { isAgentServiceAvailable, listEntities } from "~/services/platosAgent.server";
 import { requireUserId } from "~/services/session.server";
 import { cn } from "~/utils/cn";
@@ -110,7 +110,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }
@@ -430,7 +430,7 @@ function WebCard({
 }: {
   organization: { slug: string };
   project: { slug: string };
-  environment: { slug: string };
+  environment: { id: string };
   agent: AgentSummary;
   embedUrl: string;
 }) {
@@ -1248,7 +1248,7 @@ function McpCard({
 }: {
   organization: { slug: string };
   project: { slug: string };
-  environment: { slug: string };
+  environment: { id: string };
   entities: McpEntitySummary[];
   agentServiceAvailable: boolean;
 }) {

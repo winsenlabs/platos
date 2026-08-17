@@ -15,7 +15,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 
   // Only admins can impersonate
-  if (!user.admin) {
+  if (!user.platformOperator) {
     return redirect("/");
   }
 
@@ -32,15 +32,15 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const org = await $replica.organization.findFirst({
     where: {
       slug: organizationSlug,
-      deletedAt: null,
+      archivedAt: null,
     },
     select: {
-      members: {
+      memberships: {
+        where: { deactivatedAt: null },
         select: {
           user: {
             select: {
               id: true,
-              confirmedBasicDetails: true,
             },
           },
         },
@@ -53,7 +53,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     return clearImpersonation(request, "/admin");
   }
 
-  const firstValidMember = org.members.find((m) => m.user.confirmedBasicDetails);
+  const firstValidMember = org.memberships[0];
 
   if (!firstValidMember) {
     logger.debug("No valid members found", { organizationSlug });

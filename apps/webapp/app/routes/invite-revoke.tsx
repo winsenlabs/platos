@@ -8,7 +8,7 @@ import { organizationTeamPath } from "~/utils/pathBuilder";
 
 export const revokeSchema = z.object({
   inviteId: z.string(),
-  slug: z.string(),
+  organizationId: z.string().uuid(),
 });
 
 export const action: ActionFunction = async ({ request }) => {
@@ -24,7 +24,7 @@ export const action: ActionFunction = async ({ request }) => {
   try {
     const { email, organization } = await revokeInvite({
       userId,
-      orgSlug: submission.value.slug,
+      organizationId: submission.value.organizationId,
       inviteId: submission.value.inviteId,
     });
 

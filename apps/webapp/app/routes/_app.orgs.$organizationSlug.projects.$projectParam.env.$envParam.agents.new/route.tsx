@@ -41,7 +41,7 @@ import { NavBar, PageAccessories, PageTitle } from "~/components/primitives/Page
 import { DocsLink } from "~/components/primitives/DocsLink";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { EnvironmentParamSchema, v3EnvironmentPath } from "~/utils/pathBuilder";
 
@@ -74,7 +74,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }
@@ -119,7 +119,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const providersPath = `${v3EnvironmentPath(
     { slug: organizationSlug },
     { slug: projectParam },
-    { slug: envParam },
+    { id: envParam },
   )}/agent-providers`;
 
   let providerKeys: Array<{ id: string; provider: string; label: string; envVarName: string }> = [];
@@ -146,7 +146,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }

@@ -1,10 +1,10 @@
 import type { Authenticator } from "remix-auth";
 import { GoogleStrategy } from "remix-auth-google";
 import { env } from "~/env.server";
-import { findOrCreateUser } from "~/models/user.server";
 import type { AuthUser } from "./authUser";
 import { logger } from "./logger.server";
-import { postAuthentication } from "./postAuth.server";
+import { platosAuth } from "./platosAuth.server";
+import { OperatorIdentityProvider } from "@platos/database";
 
 export function addGoogleStrategy(
   authenticator: Authenticator<AuthUser>,
@@ -31,17 +31,17 @@ export function addGoogleStrategy(
           extraParams,
         });
 
-        const { user, isNewUser } = await findOrCreateUser({
+        const login = await platosAuth.completeOAuthLogin({
+          provider: OperatorIdentityProvider.GOOGLE,
+          subject: profile.id,
           email: emails[0].value,
-          authenticationMethod: "GOOGLE",
-          authenticationProfile: profile,
-          authenticationExtraParams: extraParams,
+          emailVerified: profile._json.email_verified !== false,
+          rateLimitIdentifier: `google:${profile.id}`,
         });
-
-        await postAuthentication({ user, isNewUser, loginMethod: "GOOGLE" });
-
         return {
-          userId: user.id,
+          userId: login.userId,
+          sessionToken: login.token,
+          expiresAt: login.expiresAt.toISOString(),
         };
       } catch (error) {
         logger.error("Google login failed", { error: JSON.stringify(error) });

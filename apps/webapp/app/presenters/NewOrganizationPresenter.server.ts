@@ -1,4 +1,4 @@
-import { PrismaClient, User } from "@platos/database";
+import type { PrismaClient, User } from "@platos/database";
 import { prisma } from "~/db.server";
 
 export class NewOrganizationPresenter {
@@ -8,18 +8,10 @@ export class NewOrganizationPresenter {
     this.#prismaClient = prismaClient;
   }
 
-  public async call({ userId }: { userId: User["id"] }) {
-    const organizations = await this.#prismaClient.organization.findMany({
-      select: {
-        projects: {
-          where: { deletedAt: null },
-        },
-      },
-      where: { members: { some: { userId } } },
+  async call({ userId }: { userId: User["id"] }) {
+    const count = await this.#prismaClient.organizationMembership.count({
+      where: { userId, deactivatedAt: null, organization: { archivedAt: null } },
     });
-
-    return {
-      hasOrganizations: organizations.filter((o) => o.projects.length > 0).length > 0,
-    };
+    return { hasOrganizations: count > 0 };
   }
 }

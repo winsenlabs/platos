@@ -77,6 +77,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       appEnv: env.APP_ENV,
       appOrigin: env.APP_ORIGIN,
       triggerCliTag: env.TRIGGER_CLI_TAG,
+      externalTriggerDashboardUrl: env.EXTERNAL_TRIGGER_DASHBOARD_URL,
       kapa,
       timezone,
     },

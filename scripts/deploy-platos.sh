@@ -22,7 +22,7 @@ export PLATOS_IMAGE_TAG="$TAG"
 export PLATOS_IMAGE_NAMESPACE="${PLATOS_IMAGE_NAMESPACE:-winsenlabs}"
 
 COMPOSE_FILES="${COMPOSE_FILES:--f docker-compose.platos.yml -f docker-compose.deploy.yml}"
-SERVICES="agent webapp worker"
+SERVICES="agent webapp"
 MIN_IDLE="${DEPLOY_MIN_IDLE_PCT:-20}"
 
 say() { printf '\n\033[1;36m== %s\033[0m\n' "$*"; }

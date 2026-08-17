@@ -11,7 +11,7 @@ import { Header3 } from "~/components/primitives/Headers";
 import { NavBar, PageAccessories, PageTitle } from "~/components/primitives/PageHeader";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import {
   agentPath as agentDetailPath,
@@ -58,7 +58,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     EnvironmentParamSchema.parse(params);
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404 });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404 });
 
   const scope = {
@@ -112,7 +112,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const backPath = agentDetailPath(
     { slug: organizationSlug },
     { slug: projectParam },
-    { slug: envParam },
+    { id: envParam },
     agentId,
   );
 

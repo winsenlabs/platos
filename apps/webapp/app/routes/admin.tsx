@@ -7,7 +7,7 @@ import { requireUser } from "~/services/session.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
-  if (!user.admin) {
+  if (!user.platformOperator) {
     return redirect("/");
   }
 

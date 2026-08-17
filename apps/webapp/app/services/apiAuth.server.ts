@@ -1,22 +1,14 @@
 import { json } from "@remix-run/server-runtime";
-import { type Prettify } from "@platos/core";
+import type { Environment, Organization, Project } from "@platos/database";
 import { SignJWT, errors, jwtVerify } from "jose";
 import { z } from "zod";
 
-import { $replica } from "~/db.server";
 import { env } from "~/env.server";
-import { findProjectByRef } from "~/models/project.server";
-import {
-  findEnvironmentByApiKey,
-  findEnvironmentByPublicApiKey,
-} from "~/models/runtimeEnvironment.server";
-import { type RuntimeEnvironmentForEnvRepo } from "~/v3/environmentVariables/environmentVariablesRepository.server";
 import { logger } from "./logger.server";
 import {
   type PATAuthenticationResult,
   authenticateApiRequestWithPAT,
   isPlatosPAT,
-  patAllowsScope,
   patCapabilityForMethod,
   patHasCapability,
   type PATCapability,
@@ -30,7 +22,6 @@ import {
   isOrganizationAccessToken,
 } from "./organizationAccessToken.server";
 import { isPublicJWT, validatePublicJwtKey } from "./realtime/jwtAuth.server";
-import { sanitizeBranchName } from "~/v3/gitBranch";
 
 const ClaimsSchema = z.object({
   scopes: z.array(z.string()).optional(),
@@ -43,12 +34,12 @@ const ClaimsSchema = z.object({
     .optional(),
 });
 
-type Optional<T, K extends keyof T> = Prettify<Omit<T, K> & Partial<Pick<T, K>>>;
-
-export type AuthenticatedEnvironment = Optional<
-  NonNullable<Awaited<ReturnType<typeof findEnvironmentByApiKey>>>,
-  "orgMember"
->;
+export type AuthenticatedEnvironment = Environment & {
+  apiKey: string;
+  organizationId: string;
+  project: Project & { organization: Organization };
+  organization: Organization;
+};
 
 export type ApiAuthenticationResult =
   | ApiAuthenticationResultSuccess
@@ -134,28 +125,10 @@ export async function authenticateApiKey(
 
   switch (result.type) {
     case "PUBLIC": {
-      const environment = await findEnvironmentByPublicApiKey(result.apiKey, options.branchName);
-      if (!environment) {
-        return;
-      }
-
-      return {
-        ok: true,
-        ...result,
-        environment,
-      };
+      return;
     }
     case "PRIVATE": {
-      const environment = await findEnvironmentByApiKey(result.apiKey, options.branchName);
-      if (!environment) {
-        return;
-      }
-
-      return {
-        ok: true,
-        ...result,
-        environment,
-      };
+      return;
     }
     case "PUBLIC_JWT": {
       const validationResults = await validatePublicJwtKey(result.apiKey);
@@ -211,33 +184,15 @@ async function authenticateApiKeyWithFailure(
 
   switch (result.type) {
     case "PUBLIC": {
-      const environment = await findEnvironmentByPublicApiKey(result.apiKey, options.branchName);
-      if (!environment) {
-        return {
-          ok: false,
-          error: "Invalid API Key",
-        };
-      }
-
       return {
-        ok: true,
-        ...result,
-        environment,
+        ok: false,
+        error: "Invalid API Key",
       };
     }
     case "PRIVATE": {
-      const environment = await findEnvironmentByApiKey(result.apiKey, options.branchName);
-      if (!environment) {
-        return {
-          ok: false,
-          error: "Invalid API Key",
-        };
-      }
-
       return {
-        ok: true,
-        ...result,
-        environment,
+        ok: false,
+        error: "Invalid API Key",
       };
     }
     case "PUBLIC_JWT": {
@@ -449,220 +404,15 @@ export async function authenticateRequest<
 }
 
 export async function authenticatedEnvironmentForAuthentication(
-  auth: AuthenticationResult,
-  projectRef: string,
-  slug: string,
-  branch?: string
+  _auth: AuthenticationResult,
+  _projectId: string,
+  _environmentId: string,
+  _branch?: string
 ): Promise<AuthenticatedEnvironment> {
-  if (slug === "staging") {
-    slug = "stg";
-  }
-
-  switch (auth.type) {
-    case "apiKey": {
-      if (!auth.result.ok) {
-        throw json({ error: auth.result.error }, { status: 401 });
-      }
-
-      if (auth.result.environment.project.externalRef !== projectRef) {
-        throw json(
-          {
-            error:
-              "Invalid project ref for this API key. Make sure you are using an API key associated with that project.",
-          },
-          { status: 400 }
-        );
-      }
-
-      if (auth.result.environment.slug !== slug && auth.result.environment.branchName !== branch) {
-        throw json(
-          {
-            error:
-              "Invalid environment slug for this API key. Make sure you are using an API key associated with that environment.",
-          },
-          { status: 400 }
-        );
-      }
-
-      return auth.result.environment;
-    }
-    case "personalAccessToken": {
-      const user = await $replica.user.findUnique({
-        where: {
-          id: auth.result.userId,
-        },
-      });
-
-      if (!user) {
-        throw json({ error: "Invalid or missing personal access token" }, { status: 401 });
-      }
-
-      const project = await findProjectByRef(projectRef, user.id);
-
-      if (!project) {
-        throw json({ error: "Project not found" }, { status: 404 });
-      }
-
-      const sanitizedBranch = sanitizeBranchName(branch);
-
-      if (!sanitizedBranch) {
-        const environment = await $replica.runtimeEnvironment.findFirst({
-          where: {
-            projectId: project.id,
-            slug: slug,
-            ...(slug === "dev"
-              ? {
-                  orgMember: {
-                    userId: user.id,
-                  },
-                }
-              : {}),
-          },
-          include: {
-            project: true,
-            organization: true,
-          },
-        });
-
-        if (!environment) {
-          throw json({ error: "Environment not found" }, { status: 404 });
-        }
-
-        if (
-          !patAllowsScope(auth.result, {
-            organizationId: environment.organizationId,
-            projectId: environment.projectId,
-            environmentId: environment.id,
-          })
-        ) {
-          throw json(
-            { error: "Personal access token scope does not permit this environment" },
-            { status: 403 }
-          );
-        }
-
-        return environment;
-      }
-
-      const environment = await $replica.runtimeEnvironment.findFirst({
-        where: {
-          projectId: project.id,
-          type: "PREVIEW",
-          branchName: sanitizedBranch,
-          archivedAt: null,
-        },
-        include: {
-          project: true,
-          organization: true,
-          parentEnvironment: true,
-        },
-      });
-
-      if (!environment) {
-        throw json({ error: "Branch not found" }, { status: 404 });
-      }
-
-      if (!environment.parentEnvironment) {
-        throw json({ error: "Branch not associated with a preview environment" }, { status: 400 });
-      }
-
-      if (
-        !patAllowsScope(auth.result, {
-          organizationId: environment.organizationId,
-          projectId: environment.projectId,
-          environmentId: environment.id,
-        })
-      ) {
-        throw json(
-          { error: "Personal access token scope does not permit this environment" },
-          { status: 403 }
-        );
-      }
-
-      return {
-        ...environment,
-        apiKey: environment.parentEnvironment.apiKey,
-        organization: environment.organization,
-        project: environment.project,
-      };
-    }
-    case "organizationAccessToken": {
-      const organization = await $replica.organization.findUnique({
-        where: {
-          id: auth.result.organizationId,
-        },
-      });
-
-      if (!organization) {
-        throw json({ error: "Invalid or missing organization access token" }, { status: 401 });
-      }
-
-      const project = await $replica.project.findFirst({
-        where: {
-          organizationId: organization.id,
-          externalRef: projectRef,
-        },
-      });
-
-      if (!project) {
-        throw json({ error: "Project not found" }, { status: 404 });
-      }
-
-      const sanitizedBranch = sanitizeBranchName(branch);
-
-      if (!sanitizedBranch) {
-        const environment = await $replica.runtimeEnvironment.findFirst({
-          where: {
-            projectId: project.id,
-            slug: slug,
-          },
-          include: {
-            project: true,
-            organization: true,
-          },
-        });
-
-        if (!environment) {
-          throw json({ error: "Environment not found" }, { status: 404 });
-        }
-
-        return environment;
-      }
-
-      const environment = await $replica.runtimeEnvironment.findFirst({
-        where: {
-          projectId: project.id,
-          type: "PREVIEW",
-          branchName: sanitizedBranch,
-          archivedAt: null,
-        },
-        include: {
-          project: true,
-          organization: true,
-          parentEnvironment: true,
-        },
-      });
-
-      if (!environment) {
-        throw json({ error: "Branch not found" }, { status: 404 });
-      }
-
-      if (!environment.parentEnvironment) {
-        throw json({ error: "Branch not associated with a preview environment" }, { status: 400 });
-      }
-
-      return {
-        ...environment,
-        apiKey: environment.parentEnvironment.apiKey,
-        organization: environment.organization,
-        project: environment.project,
-      };
-    }
-    default: {
-      auth satisfies never;
-      throw json({ error: "Invalid authentication result" }, { status: 401 });
-    }
-  }
+  throw json(
+    { error: "Legacy project environment API authentication is no longer available" },
+    { status: 410 }
+  );
 }
 
 const JWT_SECRET = new TextEncoder().encode(env.SESSION_SECRET);
@@ -670,7 +420,7 @@ const JWT_ALGORITHM = "HS256";
 const DEFAULT_JWT_EXPIRATION_IN_MS = 1000 * 60 * 60; // 1 hour
 
 export async function generateJWTTokenForEnvironment(
-  environment: RuntimeEnvironmentForEnvRepo,
+  environment: { id: string; organizationId: string; projectId: string },
   payload: Record<string, string>
 ) {
   const jwt = await new SignJWT({

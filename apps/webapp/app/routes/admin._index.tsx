@@ -1,12 +1,10 @@
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Form } from "@remix-run/react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/server-runtime";
-import { redirect } from "@remix-run/server-runtime";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import { z } from "zod";
 import { Button, LinkButton } from "~/components/primitives/Buttons";
 import { CopyableText } from "~/components/primitives/CopyableText";
-import { Header1 } from "~/components/primitives/Headers";
 import { Input } from "~/components/primitives/Input";
 import { PaginationControls } from "~/components/primitives/Pagination";
 import { Paragraph } from "~/components/primitives/Paragraph";
@@ -19,9 +17,7 @@ import {
   TableHeaderCell,
   TableRow,
 } from "~/components/primitives/Table";
-import { useUser } from "~/hooks/useUser";
 import { adminGetUsers, redirectWithImpersonation } from "~/models/admin.server";
-import { commitImpersonationSession, setImpersonationId } from "~/services/impersonation.server";
 import { requireUserId } from "~/services/session.server";
 import { createSearchParams } from "~/utils/searchParams";
 
@@ -58,7 +54,6 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function AdminDashboardRoute() {
-  const user = useUser();
   const { users, filters, page, pageCount } = useTypedLoaderData<typeof loader>();
 
   return (
@@ -87,10 +82,10 @@ export default function AdminDashboardRoute() {
             <TableRow>
               <TableHeaderCell>Email</TableHeaderCell>
               <TableHeaderCell>Orgs</TableHeaderCell>
-              <TableHeaderCell>GitHub</TableHeaderCell>
+              <TableHeaderCell>Name</TableHeaderCell>
               <TableHeaderCell>id</TableHeaderCell>
               <TableHeaderCell>Created</TableHeaderCell>
-              <TableHeaderCell>Admin?</TableHeaderCell>
+              <TableHeaderCell>Platform operator?</TableHeaderCell>
               <TableHeaderCell>Actions</TableHeaderCell>
             </TableRow>
           </TableHeader>
@@ -107,26 +102,19 @@ export default function AdminDashboardRoute() {
                       <CopyableText value={user.email} />
                     </TableCell>
                     <TableCell>
-                      {user.orgMemberships.map((org) => (
+                      {user.organizationMemberships.map((membership) => (
                         <LinkButton
-                          key={org.organization.slug}
+                          key={membership.organization.slug}
                           variant="minimal/small"
-                          to={`/admin/orgs?search=${encodeURIComponent(org.organization.slug)}`}
+                          to={`/admin/orgs?search=${encodeURIComponent(membership.organization.slug)}`}
                         >
-                          {org.organization.title} ({org.organization.slug})
-                          {org.organization.deletedAt ? " (☠️)" : ""}
+                          {membership.organization.name} ({membership.organization.slug})
+                          {membership.organization.archivedAt ? " (archived)" : ""}
                         </LinkButton>
                       ))}
                     </TableCell>
                     <TableCell>
-                      <a
-                        href={`https://github.com/${user.displayName}`}
-                        target="_blank"
-                        className="text-indigo-500 underline"
-                        rel="noreferrer"
-                      >
-                        {user.displayName}
-                      </a>
+                      {user.displayName ?? "—"}
                     </TableCell>
                     <TableCell>
                       <CopyableText value={user.id} />
@@ -134,7 +122,7 @@ export default function AdminDashboardRoute() {
                     <TableCell>
                       <CopyableText value={user.createdAt.toISOString()} />
                     </TableCell>
-                    <TableCell>{user.admin ? "✅" : ""}</TableCell>
+                    <TableCell>{user.platformOperator ? "Yes" : "No"}</TableCell>
                     <TableCell isSticky={true}>
                       <Form method="post" reloadDocument>
                         <input type="hidden" name="id" value={user.id} />

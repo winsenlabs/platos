@@ -5,6 +5,10 @@ description: "You can self-host Trigger.dev in Kubernetes using our official Hel
 
 The following instructions will help you deploy Trigger.dev to Kubernetes using our official Helm chart. Make sure to read the self-hosting [overview](/self-hosting/overview) first.
 
+> This chart deploys **external Trigger infrastructure**. It is not installed
+> into, or owned by, the Platos application stack. Keep its workers, secrets,
+> queues, schedules, and PostgreSQL data independent from Platos.
+
 As self-hosted deployments tend to have unique requirements and configurations, we don't provide specific advice for securing your deployment, scaling up, or improving reliability.
 
 Should the burden ever get too much, we'd be happy to see you on [Trigger.dev cloud](https://trigger.dev/pricing) where we deal with these concerns for you.

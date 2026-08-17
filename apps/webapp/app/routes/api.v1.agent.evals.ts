@@ -11,8 +11,8 @@
  * cross-scope reads are structurally blocked.
  *
  * Accepts scope as EITHER (organizationId, projectId, environmentId)
- * query params (raw IDs) OR (organizationSlug, projectSlug, envSlug)
- * which the webapp resolves before forwarding.
+ * query params (raw IDs) OR (organizationSlug, projectSlug, environmentId)
+ * which the webapp resolves before forwarding. Environments are UUID-only.
  */
 import { type LoaderFunctionArgs, json } from "@remix-run/server-runtime";
 import { requireUserId } from "~/services/session.server";
@@ -33,7 +33,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
       environmentId: url.searchParams.get("environmentId"),
       organizationSlug: url.searchParams.get("organizationSlug"),
       projectSlug: url.searchParams.get("projectSlug"),
-      envSlug: url.searchParams.get("envSlug"),
     },
     userId,
   );

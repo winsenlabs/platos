@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
@@ -14,6 +14,13 @@ function check(description, condition) {
 
 function read(path) {
   return readFileSync(join(root, path), "utf8");
+}
+
+function walk(relativePath) {
+  const absolutePath = join(root, relativePath);
+  if (!existsSync(absolutePath)) return [];
+  if (statSync(absolutePath).isFile()) return [relativePath];
+  return readdirSync(absolutePath).flatMap((entry) => walk(join(relativePath, entry)));
 }
 
 const packageJson = JSON.parse(read("package.json"));
@@ -90,12 +97,100 @@ for (const path of [
   check(`${path} uses the explicit external Trigger gate`, source.includes("configureExternalTriggerSdk"));
 }
 
-// WIN-132 owns the destructive mode-C extraction. These assertions prevent a
-// "green" WIN-120 build from silently pretending the deferred closure is gone.
-check("deferred run-engine package remains present", existsSync(join(root, "internal-packages/run-engine/package.json")));
-check("deferred trigger worker remains present", existsSync(join(root, "apps/agent/src/trigger-worker.ts")));
-check("deferred worker compose service remains present", /^  worker:/m.test(compose));
-check("deferred engine routes remain present", existsSync(join(root, "apps/webapp/app/routes/engine.v1.worker-actions.connect.ts")));
+check(
+  "local run-engine package is absent",
+  !existsSync(join(root, "internal-packages/run-engine/package.json"))
+);
+check(
+  "local schedule-engine package is absent",
+  !existsSync(join(root, "internal-packages/schedule-engine/package.json"))
+);
+check(
+  "local Trigger worker is absent",
+  !existsSync(join(root, "apps/agent/src/trigger-worker.ts"))
+);
+check("local worker compose service is absent", !/^  worker:/m.test(compose));
+const remixRoutes = walk("apps/webapp/app/routes");
+check(
+  "local engine routes are absent",
+  !remixRoutes.some((path) => /(?:^|\/)engine\.v\d+\./.test(path))
+);
+check(
+  "representative local Trigger routes are absent",
+  [
+    "apps/webapp/app/routes/api.v1.runs.ts",
+    "apps/webapp/app/routes/api.v1.deployments.ts",
+    "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.runs._index/route.tsx",
+  ].every((path) => !existsSync(join(root, path)))
+);
+check(
+  "local TaskRun realtime transport is absent",
+  [
+    "apps/webapp/app/services/realtimeClient.server.ts",
+    "apps/webapp/app/services/realtimeClientGlobal.server.ts",
+  ].every((path) => !existsSync(join(root, path)))
+);
+check(
+  "local worker region surfaces are absent",
+  [
+    "apps/webapp/app/presenters/v3/RegionsPresenter.server.ts",
+    "apps/webapp/app/v3/services/setDefaultRegion.server.ts",
+  ].every((path) => !existsSync(join(root, path)))
+);
+check(
+  "local waitpoint callback helper is absent",
+  !existsSync(join(root, "apps/webapp/app/services/httpCallback.server.ts"))
+);
+check(
+  "hosted GitHub deployment integration is absent",
+  [
+    "apps/webapp/app/routes/_app.github.install/route.tsx",
+    "apps/webapp/app/routes/_app.github.callback/route.tsx",
+    "apps/webapp/app/services/gitHub.server.ts",
+    "apps/webapp/app/services/gitHubSession.server.ts",
+    "apps/webapp/app/services/projectSettings.server.ts",
+    "apps/webapp/app/services/projectSettingsPresenter.server.ts",
+  ].every((path) => !existsSync(join(root, path))) &&
+    !/\bGITHUB_APP_ENABLED\b/.test(read("apps/webapp/app/env.server.ts"))
+);
+check(
+  "Platos-native custom task routes remain registered",
+  [
+    "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx",
+    "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx",
+    "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx",
+  ].every((path) => existsSync(join(root, path)))
+);
+check(
+  "webapp does not depend on local engine packages",
+  !webappPackage.dependencies?.["@internal/run-engine"] &&
+    !webappPackage.dependencies?.["@internal/schedule-engine"]
+);
+
+const forbiddenModeCSource = [
+  "apps/agent/entrypoint.sh",
+  "apps/agent/src/shared/env.ts",
+  "apps/webapp/app/env.server.ts",
+  "docker-compose.platos.yml",
+  "docker-compose.deploy.yml",
+]
+  .filter((path) => existsSync(join(root, path)))
+  .map(read)
+  .join("\n");
+check(
+  "Mode-C worker configuration is absent",
+  !/\b(?:WORKER_MODE|MANAGED_WORKER_SECRET|TRIGGER_WORKER_TOKEN|TRIGGER_BOOTSTRAP_[A-Z_]+)\b/.test(
+    forbiddenModeCSource
+  )
+);
+
+const cleanSchema = read("internal-packages/database/prisma/schema.prisma");
+check(
+  "clean schema has no Trigger-owned runtime models",
+  !/^model\s+(?:RuntimeEnvironment|TaskRun\w*|BatchTaskRun\w*|Worker\w*|TaskSchedule\w*|TaskQueue|Waitpoint\w*|EnvironmentVariable\w*)\s*\{/m.test(
+    cleanSchema
+  )
+);
 
 console.log(`platos-build-audit: ${checks.length} checks`);
 if (failures.length) {

@@ -2,7 +2,6 @@ import type {
   ActionFunctionArgs,
   LoaderFunctionArgs,
   MetaFunction,
-  Session,
 } from "@remix-run/node";
 import { redirect } from "@remix-run/node";
 import { Form, useNavigation } from "@remix-run/react";
@@ -20,14 +19,11 @@ import { InputGroup } from "~/components/primitives/InputGroup";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "~/components/primitives/InputOTP";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { Spinner } from "~/components/primitives/Spinner";
-import { authenticator } from "~/services/auth.server";
-import { commitSession, getUserSession } from "~/services/sessionStorage.server";
+import { getOperatorSessionToken } from "~/services/sessionStorage.server";
 import { getSession as getMessageSession } from "~/models/message.server";
-import { MultiFactorAuthenticationService } from "~/services/mfa/multiFactorAuthentication.server";
 import { redirectWithErrorMessage, redirectBackWithErrorMessage } from "~/models/message.server";
-import { ServiceValidationError } from "~/v3/services/baseService.server";
-import { checkMfaRateLimit, MfaRateLimitError } from "~/services/mfa/mfaRateLimiter.server";
-import { trackAndClearReferralSource } from "~/services/referralSource.server";
+import { platosAuth, requestRateLimitIdentifier } from "~/services/platosAuth.server";
+import { PlatosAuthError } from "@platos/database";
 
 export const meta: MetaFunction = ({ matches }) => {
   const parentMeta = matches
@@ -49,18 +45,15 @@ export const meta: MetaFunction = ({ matches }) => {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // Check if user is already fully authenticated
-  await authenticator.isAuthenticated(request, {
-    successRedirect: "/",
-  });
-
-  const session = await getUserSession(request);
-
-  // Check if there's a pending MFA user ID
-  const pendingUserId = session.get("pending-mfa-user-id");
-  if (!pendingUserId) {
-    // No pending MFA, redirect to login
-    return redirect("/login");
+  const sessionToken = await getOperatorSessionToken(request);
+  if (!sessionToken) return redirect("/login?sessionReset=1");
+  try {
+    await platosAuth.authorizeOperatorSession(sessionToken);
+    return redirect("/");
+  } catch (error) {
+    if (!(error instanceof PlatosAuthError) || error.code !== "mfa_required") {
+      return redirect("/login?sessionReset=1");
+    }
   }
 
   // Get flash message for MFA errors
@@ -76,20 +69,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
     {
       mfaError,
     },
-    {
-      headers: { "Set-Cookie": await commitSession(session) },
-    }
+    {}
   );
 }
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
-    const session = await getUserSession(request);
-    const pendingUserId = session.get("pending-mfa-user-id");
-
-    if (!pendingUserId) {
-      return redirect("/login");
-    }
+    const sessionToken = await getOperatorSessionToken(request);
+    if (!sessionToken) return redirect("/login?sessionReset=1");
 
     const payload = Object.fromEntries(await request.formData());
 
@@ -99,8 +86,6 @@ export async function action({ request }: ActionFunctionArgs) {
       })
       .parse(payload);
 
-    const mfaService = new MultiFactorAuthenticationService();
-
     if (action === "verify-recovery") {
       const recoveryCode = payload.recoveryCode as string;
 
@@ -108,16 +93,12 @@ export async function action({ request }: ActionFunctionArgs) {
         return redirectBackWithErrorMessage(request, "Recovery code is required");
       }
 
-      // Rate limit MFA verification attempts
-      await checkMfaRateLimit(pendingUserId);
-
-      const result = await mfaService.verifyRecoveryCodeForLogin(pendingUserId, recoveryCode);
-
-      if (!result.success) {
-        return redirectBackWithErrorMessage(request, result.error || "Invalid authentication code");
-      }
-      // Recovery code verified - complete the login
-      return await completeLogin(request, session, pendingUserId);
+      await platosAuth.verifyMfaForSession({
+        sessionToken,
+        recoveryCode,
+        rateLimitIdentifier: requestRateLimitIdentifier(request, "mfa"),
+      });
+      return redirect("/");
     } else if (action === "verify-mfa") {
       const mfaCode = payload.mfaCode as string;
 
@@ -125,49 +106,26 @@ export async function action({ request }: ActionFunctionArgs) {
         return redirectBackWithErrorMessage(request, "Valid 6-digit code is required");
       }
 
-      // Rate limit MFA verification attempts
-      await checkMfaRateLimit(pendingUserId);
-
-      const result = await mfaService.verifyTotpForLogin(pendingUserId, mfaCode);
-
-      if (!result.success) {
-        return redirectBackWithErrorMessage(request, result.error || "Invalid authentication code");
-      }
-
-      // TOTP code verified - complete the login
-      return await completeLogin(request, session, pendingUserId);
+      await platosAuth.verifyMfaForSession({
+        sessionToken,
+        totpCode: mfaCode,
+        rateLimitIdentifier: requestRateLimitIdentifier(request, "mfa"),
+      });
+      return redirect("/");
     }
 
     return redirect("/login");
   } catch (error) {
-    if (error instanceof ServiceValidationError) {
-      return redirectWithErrorMessage("/login", request, error.message);
-    }
-
-    if (error instanceof MfaRateLimitError) {
-      return redirectBackWithErrorMessage(request, error.message);
+    if (error instanceof PlatosAuthError) {
+      const message =
+        error.code === "rate_limited"
+          ? "Too many attempts. Wait a few minutes, then try again."
+          : "Invalid authentication code";
+      return redirectBackWithErrorMessage(request, message);
     }
 
     throw error;
   }
-}
-
-async function completeLogin(request: Request, session: Session, userId: string) {
-  // Set the auth key on the same session object to avoid conflicting Set-Cookie headers
-  // (both authSession and session share the same __session cookie name)
-  session.set(authenticator.sessionKey, { userId });
-
-  // Get the redirect URL and clean up pending MFA data
-  const redirectTo = session.get("pending-mfa-redirect-to") ?? "/";
-  session.unset("pending-mfa-user-id");
-  session.unset("pending-mfa-redirect-to");
-
-  const headers = new Headers();
-  headers.append("Set-Cookie", await commitSession(session));
-
-  await trackAndClearReferralSource(request, userId, headers);
-
-  return redirect(redirectTo, { headers });
 }
 
 export default function LoginMfaPage() {

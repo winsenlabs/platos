@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type {
   BigNumberAggregationType,
   BigNumberConfiguration,
-} from "~/components/metrics/QueryWidget";
+} from "./types";
 import { createValueFormatter } from "~/utils/columnFormat";
 import { AnimatedNumber } from "../AnimatedNumber";
 import { ChartBlankState } from "./ChartBlankState";

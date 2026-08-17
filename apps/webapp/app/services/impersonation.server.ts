@@ -1,44 +1,40 @@
-import { createCookieSessionStorage, type Session } from "@remix-run/node";
-import { env } from "~/env.server";
+import { platosAuth } from "./platosAuth.server";
+import { commitOperatorSession, getOperatorSessionToken } from "./sessionStorage.server";
+import { extractClientIp } from "~/utils/extractClientIp.server";
 
-export const impersonationSessionStorage = createCookieSessionStorage({
-  cookie: {
-    name: "__impersonate", // use any name you want here
-    sameSite: "lax", // this helps with CSRF
-    path: "/", // remember to add this so the cookie will work in all routes
-    httpOnly: true, // for security reasons, make this cookie http only
-    secrets: [env.SESSION_SECRET],
-    secure: env.NODE_ENV === "production", // enable this in prod only
-    maxAge: 60 * 60 * 24, // 1 day
-  },
-});
-
-export function getImpersonationSession(request: Request) {
-  return impersonationSessionStorage.getSession(request.headers.get("Cookie"));
-}
-
-export function commitImpersonationSession(session: Session) {
-  return impersonationSessionStorage.commitSession(session);
+function requestAuditContext(request: Request) {
+  return {
+    ipAddress: extractClientIp(request.headers.get("x-forwarded-for")) ?? undefined,
+    userAgent: request.headers.get("user-agent") ?? undefined,
+  };
 }
 
 export async function getImpersonationId(request: Request) {
-  const session = await getImpersonationSession(request);
-
-  return session.get("impersonatedUserId") as string | undefined;
+  const token = await getOperatorSessionToken(request);
+  if (!token) return undefined;
+  try {
+    const authorization = await platosAuth.authorizeOperatorSession(token);
+    return authorization.impersonation?.targetUserId;
+  } catch {
+    return undefined;
+  }
 }
 
-export async function setImpersonationId(userId: string, request: Request) {
-  const session = await getImpersonationSession(request);
-
-  session.set("impersonatedUserId", userId);
-
-  return session;
+export async function startImpersonation(userId: string, request: Request) {
+  const sessionToken = await getOperatorSessionToken(request);
+  const issued = await platosAuth.startImpersonation({
+    sessionToken: sessionToken ?? "",
+    targetUserId: userId,
+    ...requestAuditContext(request),
+  });
+  return commitOperatorSession(issued.token, issued.expiresAt);
 }
 
-export async function clearImpersonationId(request: Request) {
-  const session = await getImpersonationSession(request);
-
-  session.unset("impersonatedUserId");
-
-  return session;
+export async function stopImpersonation(request: Request) {
+  const sessionToken = await getOperatorSessionToken(request);
+  const issued = await platosAuth.stopImpersonation({
+    sessionToken: sessionToken ?? "",
+    ...requestAuditContext(request),
+  });
+  return commitOperatorSession(issued.token, issued.expiresAt);
 }

@@ -1,4 +1,4 @@
-import type { AggregationType } from "~/components/metrics/QueryWidget";
+import type { AggregationType } from "./types";
 
 /**
  * Aggregate an array of numbers using the specified aggregation function.

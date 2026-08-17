@@ -53,32 +53,16 @@ function Content({ children }: { children: React.ReactNode }) {
           </Property.Item>
         )}
         {project && (
-          <>
-            <Property.Item>
-              <Property.Label>Project ID</Property.Label>
-              <Property.Value>{project.id}</Property.Value>
-            </Property.Item>
-            <Property.Item>
-              <Property.Label>Project ref</Property.Label>
-              <Property.Value>{project.externalRef}</Property.Value>
-            </Property.Item>
-          </>
+          <Property.Item>
+            <Property.Label>Project ID</Property.Label>
+            <Property.Value>{project.id}</Property.Value>
+          </Property.Item>
         )}
         {environment && (
-          <>
-            <Property.Item>
-              <Property.Label>Environment ID</Property.Label>
-              <Property.Value>{environment.id}</Property.Value>
-            </Property.Item>
-            <Property.Item>
-              <Property.Label>Environment type</Property.Label>
-              <Property.Value>{environment.type}</Property.Value>
-            </Property.Item>
-            <Property.Item>
-              <Property.Label>Environment paused</Property.Label>
-              <Property.Value>{environment.paused ? "Yes" : "No"}</Property.Value>
-            </Property.Item>
-          </>
+          <Property.Item>
+            <Property.Label>Environment ID</Property.Label>
+            <Property.Value>{environment.id}</Property.Value>
+          </Property.Item>
         )}
       </Property.Table>
       <div className="pt-2">{children}</div>

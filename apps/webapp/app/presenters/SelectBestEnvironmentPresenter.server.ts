@@ -1,17 +1,8 @@
-import {
-  type RuntimeEnvironment,
-  type PrismaClient,
-  RuntimeEnvironmentType,
-} from "@platos/database";
+import type { Environment, PrismaClient, Project } from "@platos/database";
 import { prisma } from "~/db.server";
-import { logger } from "~/services/logger.server";
-import { type UserFromSession } from "~/services/session.server";
+import type { UserFromSession } from "~/services/session.server";
 
-export type MinimumEnvironment = Pick<RuntimeEnvironment, "id" | "type" | "slug" | "paused"> & {
-  orgMember: null | {
-    userId: string | undefined;
-  };
-};
+export type MinimumEnvironment = Pick<Environment, "id" | "name" | "slug" | "archivedAt">;
 
 export class SelectBestEnvironmentPresenter {
   #prismaClient: PrismaClient;
@@ -20,151 +11,72 @@ export class SelectBestEnvironmentPresenter {
     this.#prismaClient = prismaClient;
   }
 
-  public async call({ user }: { user: UserFromSession }) {
-    const { project, organization } = await this.getBestProject(user);
+  async call({ user }: { user: UserFromSession }) {
+    const project = await this.getBestProject(user);
     const environment = await this.selectBestEnvironment(project.id, user, project.environments);
-
-    return {
-      project,
-      organization,
-      environment,
-    };
+    return { project, organization: project.organization, environment };
   }
 
   async getBestProject(user: UserFromSession) {
-    //try get current project from cookie
-    const projectId = user.dashboardPreferences.currentProjectId;
-
-    if (projectId) {
-      const project = await this.#prismaClient.project.findFirst({
-        where: {
-          id: projectId,
-          deletedAt: null,
-          organization: { members: { some: { userId: user.id } } },
-        },
-        include: {
-          organization: true,
-          environments: {
-            select: {
-              id: true,
-              type: true,
-              slug: true,
-              paused: true,
-              orgMember: {
-                select: {
-                  userId: true,
-                },
-              },
-            },
-          },
-        },
+    const currentProjectId = user.dashboardPreferences.currentProjectId;
+    const where = {
+      archivedAt: null,
+      organization: {
+        archivedAt: null,
+        memberships: { some: { userId: user.id, deactivatedAt: null } },
+      },
+    } as const;
+    const include = {
+      organization: true,
+      environments: { where: { archivedAt: null }, orderBy: { name: "asc" as const } },
+    };
+    if (currentProjectId) {
+      const current = await this.#prismaClient.project.findFirst({
+        where: { ...where, id: currentProjectId },
+        include,
       });
-      if (project) {
-        return { project, organization: project.organization };
-      }
+      if (current) return current;
     }
-
-    //failing that, we pick the most recently modified project
-    const projects = await this.#prismaClient.project.findMany({
-      include: {
-        organization: true,
-        environments: {
-          select: {
-            id: true,
-            type: true,
-            slug: true,
-            paused: true,
-            orgMember: {
-              select: {
-                userId: true,
-              },
-            },
-          },
-        },
-      },
-      where: {
-        deletedAt: null,
-        organization: {
-          members: { some: { userId: user.id } },
-        },
-      },
-      orderBy: {
-        updatedAt: "desc",
-      },
-      take: 1,
+    const project = await this.#prismaClient.project.findFirst({
+      where,
+      include,
+      orderBy: { updatedAt: "desc" },
     });
-
-    if (projects.length === 0) {
-      throw new Response("Not Found", { status: 404 });
-    }
-
-    return { project: projects[0], organization: projects[0].organization };
+    if (!project) throw new Response("No accessible project", { status: 404 });
+    return project;
   }
 
-  async selectBestProjectFromProjects({
+  async selectBestProjectFromProjects<T extends Pick<Project, "id" | "slug" | "updatedAt">>({
     user,
     projectSlug,
     projects,
   }: {
     user: UserFromSession;
-    projectSlug: string | undefined;
-    projects: {
-      id: string;
-      slug: string;
-      name: string;
-      updatedAt: Date;
-    }[];
-  }) {
+    projectSlug?: string;
+    projects: T[];
+  }): Promise<T | undefined> {
     if (projectSlug) {
-      const proj = projects.find((p) => p.slug === projectSlug);
-      if (proj) {
-        return proj;
-      }
-
-      if (!proj) {
-        logger.info("Not Found: project", {
-          projectSlug,
-          projects,
-        });
-      }
+      const requested = projects.find((project) => project.slug === projectSlug);
+      if (requested) return requested;
     }
-
     const currentProjectId = user.dashboardPreferences.currentProjectId;
-    const project = projects.find((p) => p.id === currentProjectId);
-    if (project) {
-      return project;
-    }
-
-    //most recently updated
-    return projects.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).at(0);
+    return (
+      projects.find((project) => project.id === currentProjectId) ??
+      [...projects].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0]
+    );
   }
 
-  async selectBestEnvironment<
-    T extends { id: string; type: RuntimeEnvironmentType; orgMember: { userId: string } | null }
-  >(projectId: string, user: UserFromSession, environments: T[]): Promise<T> {
-    //try get current environment from prefs
-    const currentEnvironmentId: string | undefined =
+  async selectBestEnvironment<T extends MinimumEnvironment>(
+    projectId: string,
+    user: UserFromSession,
+    environments: T[]
+  ): Promise<T> {
+    const currentEnvironmentId =
       user.dashboardPreferences.projects[projectId]?.currentEnvironment.id;
-
-    const currentEnvironment = environments.find((env) => env.id === currentEnvironmentId);
-    if (currentEnvironment) {
-      return currentEnvironment;
-    }
-
-    //otherwise show their dev environment
-    const yourDevEnvironment = environments.find(
-      (env) => env.type === "DEVELOPMENT" && env.orgMember?.userId === user.id
-    );
-    if (yourDevEnvironment) {
-      return yourDevEnvironment;
-    }
-
-    //otherwise show their prod environment
-    const prodEnvironment = environments.find((env) => env.type === "PRODUCTION");
-    if (prodEnvironment) {
-      return prodEnvironment;
-    }
-
-    throw new Error("No environments found");
+    const selected =
+      environments.find((environment) => environment.id === currentEnvironmentId) ??
+      [...environments].sort((a, b) => a.name.localeCompare(b.name))[0];
+    if (!selected) throw new Response("Project has no active environments", { status: 404 });
+    return selected;
   }
 }

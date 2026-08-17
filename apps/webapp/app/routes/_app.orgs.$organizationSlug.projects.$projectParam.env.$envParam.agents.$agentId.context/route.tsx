@@ -32,7 +32,7 @@ import { Header3 } from "~/components/primitives/Headers";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { DynamicBlocksEditor } from "~/components/agents/DynamicBlocksEditor";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { EnvironmentParamSchema } from "~/utils/pathBuilder";
 
@@ -84,7 +84,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404, statusText: "Project not found" });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404, statusText: "Environment not found" });
 
   const agentRow = await prisma.platosAgent.findFirst({
@@ -117,7 +117,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404, statusText: "Project not found" });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404, statusText: "Environment not found" });
 
   const formData = await request.formData();

@@ -1,279 +1,120 @@
 import { redirect } from "@remix-run/server-runtime";
 import { prisma } from "~/db.server";
-import { logger } from "~/services/logger.server";
-import { SearchParams } from "~/routes/admin._index";
-import {
-  clearImpersonationId,
-  commitImpersonationSession,
-  getImpersonationId,
-  setImpersonationId,
-} from "~/services/impersonation.server";
-import { authenticator } from "~/services/auth.server";
+import type { SearchParams } from "~/routes/admin._index";
+import { startImpersonation, stopImpersonation } from "~/services/impersonation.server";
 import { requireUser } from "~/services/session.server";
-import { extractClientIp } from "~/utils/extractClientIp.server";
 
 const pageSize = 20;
 
-export async function adminGetUsers(userId: string, { page, search }: SearchParams) {
-  page = page || 1;
+async function requirePlatformOperator(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user?.platformOperator) throw new Response("Unauthorized", { status: 403 });
+}
 
-  search = search ? decodeURIComponent(search) : undefined;
-
-  const user = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
-  });
-
-  if (user?.admin !== true) {
-    throw new Error("Unauthorized");
-  }
-
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      admin: true,
-      createdAt: true,
-      displayName: true,
-      orgMemberships: {
-        select: {
-          organization: {
-            select: {
-              title: true,
-              slug: true,
-              deletedAt: true,
+export async function adminGetUsers(userId: string, { page = 1, search }: SearchParams) {
+  await requirePlatformOperator(userId);
+  const decodedSearch = search ? decodeURIComponent(search) : undefined;
+  const where = decodedSearch
+    ? {
+        OR: [
+          { displayName: { contains: decodedSearch, mode: "insensitive" as const } },
+          { email: { contains: decodedSearch, mode: "insensitive" as const } },
+          {
+            organizationMemberships: {
+              some: {
+                organization: {
+                  OR: [
+                    { name: { contains: decodedSearch, mode: "insensitive" as const } },
+                    { slug: { contains: decodedSearch, mode: "insensitive" as const } },
+                  ],
+                },
+              },
             },
+          },
+        ],
+      }
+    : undefined;
+  const [users, totalUsers] = await Promise.all([
+    prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        platformOperator: true,
+        createdAt: true,
+        displayName: true,
+        organizationMemberships: {
+          where: { deactivatedAt: null },
+          select: {
+            organization: { select: { name: true, slug: true, archivedAt: true } },
           },
         },
       },
-    },
-    where: search
-      ? {
-          OR: [
-            {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-            {
-              email: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-            {
-              orgMemberships: {
-                some: {
-                  organization: {
-                    title: {
-                      contains: search,
-                      mode: "insensitive",
-                    },
-                  },
-                },
-              },
-            },
-            {
-              orgMemberships: {
-                some: {
-                  organization: {
-                    slug: {
-                      contains: search,
-                      mode: "insensitive",
-                    },
-                  },
-                },
-              },
-            },
-          ],
-        }
-      : undefined,
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: pageSize,
-    skip: (page - 1) * pageSize,
-  });
-
-  const totalUsers = await prisma.user.count();
-
+      where,
+      orderBy: { createdAt: "desc" },
+      take: pageSize,
+      skip: (page - 1) * pageSize,
+    }),
+    prisma.user.count({ where }),
+  ]);
   return {
     users,
     page,
     pageCount: Math.ceil(totalUsers / pageSize),
-    filters: {
-      search,
-    },
+    filters: { search: decodedSearch },
   };
 }
 
-export async function adminGetOrganizations(userId: string, { page, search }: SearchParams) {
-  page = page || 1;
-
-  search = search ? decodeURIComponent(search) : undefined;
-
-  const user = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
-  });
-
-  if (user?.admin !== true) {
-    throw new Error("Unauthorized");
-  }
-
-  const organizations = await prisma.organization.findMany({
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      v2Enabled: true,
-      v3Enabled: true,
-      deletedAt: true,
-      members: {
-        select: {
-          user: {
-            select: {
-              email: true,
+export async function adminGetOrganizations(userId: string, { page = 1, search }: SearchParams) {
+  await requirePlatformOperator(userId);
+  const decodedSearch = search ? decodeURIComponent(search) : undefined;
+  const where = decodedSearch
+    ? {
+        OR: [
+          { name: { contains: decodedSearch, mode: "insensitive" as const } },
+          { slug: { contains: decodedSearch, mode: "insensitive" as const } },
+          {
+            memberships: {
+              some: { user: { email: { contains: decodedSearch, mode: "insensitive" as const } } },
             },
           },
+        ],
+      }
+    : undefined;
+  const [organizations, totalOrgs] = await Promise.all([
+    prisma.organization.findMany({
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        archivedAt: true,
+        memberships: {
+          where: { deactivatedAt: null },
+          select: { user: { select: { email: true } } },
         },
       },
-    },
-    where: search
-      ? {
-          OR: [
-            {
-              members: {
-                some: {
-                  user: {
-                    name: {
-                      contains: search,
-                      mode: "insensitive",
-                    },
-                  },
-                },
-              },
-            },
-            {
-              members: {
-                some: {
-                  user: {
-                    email: {
-                      contains: search,
-                      mode: "insensitive",
-                    },
-                  },
-                },
-              },
-            },
-            {
-              slug: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-            {
-              title: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-            {
-              id: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-          ],
-        }
-      : undefined,
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: pageSize,
-    skip: (page - 1) * pageSize,
-  });
-
-  const totalOrgs = await prisma.organization.count();
-
+      where,
+      orderBy: { createdAt: "desc" },
+      take: pageSize,
+      skip: (page - 1) * pageSize,
+    }),
+    prisma.organization.count({ where }),
+  ]);
   return {
     organizations,
     page,
     pageCount: Math.ceil(totalOrgs / pageSize),
-    filters: {
-      search,
-    },
+    filters: { search: decodedSearch },
   };
 }
 
 export async function redirectWithImpersonation(request: Request, userId: string, path: string) {
   const user = await requireUser(request);
-  if (!user.admin) {
-    throw new Error("Unauthorized");
-  }
-
-  const xff = request.headers.get("x-forwarded-for");
-  const ipAddress = extractClientIp(xff);
-
-  try {
-    await prisma.impersonationAuditLog.create({
-      data: {
-        action: "START",
-        adminId: user.id,
-        targetId: userId,
-        ipAddress,
-      },
-    });
-  } catch (error) {
-    logger.error("Failed to create impersonation audit log", {
-      error,
-      adminId: user.id,
-      targetId: userId,
-    });
-  }
-
-  const session = await setImpersonationId(userId, request);
-
-  return redirect(path, {
-    headers: { "Set-Cookie": await commitImpersonationSession(session) },
-  });
+  if (!user.platformOperator) throw new Response("Unauthorized", { status: 403 });
+  const cookie = await startImpersonation(userId, request);
+  return redirect(path, { headers: { "Set-Cookie": cookie } });
 }
 
 export async function clearImpersonation(request: Request, path: string) {
-  const authUser = await authenticator.isAuthenticated(request);
-  const targetId = await getImpersonationId(request);
-
-  if (targetId && authUser?.userId) {
-    const xff = request.headers.get("x-forwarded-for");
-    const ipAddress = extractClientIp(xff);
-
-    try {
-      await prisma.impersonationAuditLog.create({
-        data: {
-          action: "STOP",
-          adminId: authUser.userId,
-          targetId,
-          ipAddress,
-        },
-      });
-    } catch (error) {
-      logger.error("Failed to create impersonation audit log", {
-        error,
-        adminId: authUser.userId,
-        targetId,
-      });
-    }
-  }
-
-  const session = await clearImpersonationId(request);
-
-  return redirect(path, {
-    headers: {
-      "Set-Cookie": await commitImpersonationSession(session),
-    },
-  });
+  const cookie = await stopImpersonation(request);
+  return redirect(path, { headers: { "Set-Cookie": cookie } });
 }

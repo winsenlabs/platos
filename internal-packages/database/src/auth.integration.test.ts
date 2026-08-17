@@ -284,6 +284,40 @@ describe("Platos-native auth integration", () => {
     ).rejects.toEqual(expectAuthError("rate_limited"));
   });
 
+  test("requires MFA proof to disable TOTP and revokes other sessions", async () => {
+    const user = await database.user.create({ data: { email: "mfa-disable@example.test" } });
+    const enrollment = await auth.beginTotpEnrollment(user.id);
+    await auth.confirmTotpEnrollment(
+      user.id,
+      generateTotp(enrollment.secret, now),
+      "mfa-disable-enrollment:127.0.0.1"
+    );
+    const current = await auth.issueOperatorSession({ userId: user.id });
+    const other = await auth.issueOperatorSession({ userId: user.id });
+    now = new Date(now.getTime() + 30_000);
+
+    await expect(
+      auth.disableTotpForSession({
+        sessionToken: current.token,
+        rateLimitIdentifier: "mfa-disable-invalid:127.0.0.1",
+        totpCode: "000000",
+      })
+    ).rejects.toEqual(expectAuthError("invalid_mfa"));
+    await auth.disableTotpForSession({
+      sessionToken: current.token,
+      rateLimitIdentifier: "mfa-disable-valid:127.0.0.1",
+      totpCode: generateTotp(enrollment.secret, now),
+    });
+
+    await expect(auth.authorizeOperatorSession(current.token)).resolves.toMatchObject({
+      effectiveUserId: user.id,
+    });
+    await expect(auth.authorizeOperatorSession(other.token)).rejects.toEqual(
+      expectAuthError("revoked")
+    );
+    await expect(database.operatorMfaTotp.findUnique({ where: { userId: user.id } })).resolves.toBeNull();
+  });
+
   test("binds invitation tokens to normalized email and prevents replay", async () => {
     const inviter = await database.user.create({ data: { email: "inviter@example.test" } });
     const invitee = await database.user.create({ data: { email: "invitee@example.test" } });

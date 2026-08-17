@@ -61,7 +61,7 @@ import {
   TableRow,
 } from "~/components/primitives/Table";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { cn } from "~/utils/cn";
 import {
@@ -71,7 +71,6 @@ import {
   agentProvidersPath,
   agentsPath,
   EnvironmentParamSchema,
-  v3RunsPath,
 } from "~/utils/pathBuilder";
 
 export const meta: MetaFunction = () => [{ title: "Plato Central | Platos" }];
@@ -240,7 +239,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404 });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404 });
 
   const url = new URL(request.url);
@@ -689,7 +688,7 @@ export default function PlatoCentral() {
 
   const organization = { slug: data.organizationSlug };
   const project = { slug: data.projectParam };
-  const environment = { slug: data.envParam };
+  const environment = { id: data.envParam };
   const days = rangeDays(data.range);
   const rangeLabel = data.range === "24h" ? "last 24h" : `last ${days}d`;
 
@@ -1167,10 +1166,9 @@ export default function PlatoCentral() {
         </div>
 
         {/* ── Quick links ──────────────────────────────────────────── */}
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {[
             { label: "Agents", to: agentsPath(organization, project, environment) },
-            { label: "Runs", to: v3RunsPath(organization, project, environment) },
             { label: "Monitoring", to: agentMonitoringPath(organization, project, environment) },
             { label: "Providers", to: agentProvidersPath(organization, project, environment) },
           ].map(({ label, to }) => (

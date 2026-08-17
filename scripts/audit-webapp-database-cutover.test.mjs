@@ -81,11 +81,6 @@ test("baseline inventory is deterministic and excludes inactive fixture paths", 
         path: "apps/webapp/app/active.server.ts",
         token: "runtimeEnvironment",
       },
-      {
-        category: "legacy-import",
-        path: "apps/webapp/app/active.server.ts",
-        token: "@platos/database",
-      },
       { category: "legacy-raw-table", path: "apps/webapp/app/active.server.ts", token: "TaskRun" },
     ]
   );
@@ -99,7 +94,7 @@ test("new forbidden ownership surfaces fail while external integrations remain a
   write(
     root,
     "apps/webapp/app/new-legacy.server.ts",
-    `import { PrismaClient } from "@platos/database";
+    `import { PrismaClient } from "@platos/database/legacy-prisma/client";
      const prisma = new PrismaClient();
      prisma.taskRun.findMany();
      prisma.$queryRaw\`SELECT * FROM "TaskRun"\`;
@@ -238,7 +233,11 @@ test("allowances must shrink and expire by execution phase", (t) => {
   const root = fixture();
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const legacyPath = "apps/webapp/app/legacy.server.ts";
-  write(root, legacyPath, `import type { TaskRun } from "@platos/database";`);
+  write(
+    root,
+    legacyPath,
+    `import type { TaskRun } from "@platos/database/legacy-prisma/client";`
+  );
   write(root, "apps/webapp/app/routes/engine.v1.baseline.ts", "export const loader = () => null;");
 
   const originalInventory = inventoryRepository(root);
@@ -256,7 +255,11 @@ test("allowances must shrink and expire by execution phase", (t) => {
 
   const shrunkBaseline = baselineForInventory(shrunkInventory);
   assert.equal(evaluateInventory(shrunkInventory, shrunkBaseline, "inventory").ok, true);
-  write(root, legacyPath, `import type { TaskRun } from "@platos/database";`);
+  write(
+    root,
+    legacyPath,
+    `import type { TaskRun } from "@platos/database/legacy-prisma/client";`
+  );
   assert.equal(
     evaluateInventory(inventoryRepository(root), shrunkBaseline, "inventory").violations.some(
       (entry) => entry.category === "legacy-import"
@@ -278,5 +281,48 @@ test("allowances must shrink and expire by execution phase", (t) => {
   assert.equal(
     modeCRemoval.violations.some((entry) => entry.category === "local-engine-route"),
     true
+  );
+});
+
+test("Mode-C package and worker configuration surfaces are detected explicitly", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const baseline = baselineForInventory(inventoryRepository(root));
+
+  write(
+    root,
+    "apps/agent/src/mode-c.ts",
+    `import "@internal/run-engine";
+     export const mode = {
+       WORKER_MODE: true,
+       MANAGED_WORKER_SECRET: "managed",
+       TRIGGER_WORKER_TOKEN: "worker",
+       TRIGGER_BOOTSTRAP_ENABLED: true,
+     };`
+  );
+  write(root, "docker-compose.platos.yml", "services:\n  worker:\n    image: worker\n");
+
+  const result = evaluateInventory(inventoryRepository(root), baseline, "inventory");
+  const localEngineTokens = new Set(
+    result.violations
+      .filter((entry) => entry.category === "local-engine-surface")
+      .map((entry) => entry.token)
+  );
+  const localWorkerTokens = new Set(
+    result.violations
+      .filter((entry) => entry.category === "local-worker-surface")
+      .map((entry) => entry.token)
+  );
+
+  assert.deepEqual(localEngineTokens, new Set(["@internal/run-engine"]));
+  assert.deepEqual(
+    localWorkerTokens,
+    new Set([
+      "MANAGED_WORKER_SECRET",
+      "TRIGGER_BOOTSTRAP_ENABLED",
+      "TRIGGER_WORKER_TOKEN",
+      "WORKER_MODE",
+      "worker service",
+    ])
   );
 });

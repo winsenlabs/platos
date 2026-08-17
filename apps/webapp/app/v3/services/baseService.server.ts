@@ -2,7 +2,6 @@ import { Span, SpanKind } from "@opentelemetry/api";
 import { $replica, PrismaClientOrTransaction, prisma } from "~/db.server";
 import { AuthenticatedEnvironment } from "~/services/apiAuth.server";
 import { attributesFromAuthenticatedEnv, tracer } from "../tracer.server";
-import { engine, RunEngine } from "../runEngine.server";
 import { ServiceValidationError } from "./common.server";
 
 export { ServiceValidationError };
@@ -41,19 +40,5 @@ export abstract class BaseService {
         }
       }
     );
-  }
-}
-
-export type WithRunEngineOptions<T> = T & {
-  prisma?: PrismaClientOrTransaction;
-  engine?: RunEngine;
-};
-
-export class WithRunEngine extends BaseService {
-  protected readonly _engine: RunEngine;
-
-  constructor(opts: { prisma?: PrismaClientOrTransaction; engine?: RunEngine } = {}) {
-    super(opts.prisma);
-    this._engine = opts.engine ?? engine;
   }
 }

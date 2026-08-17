@@ -17,19 +17,17 @@ import { Badge } from "~/components/primitives/Badge";
 import { Button, LinkButton } from "~/components/primitives/Buttons";
 import { NavBar, PageAccessories, PageTitle } from "~/components/primitives/PageHeader";
 import { Paragraph } from "~/components/primitives/Paragraph";
-import { $replica } from "~/db.server";
 import { useEnvironment } from "~/hooks/useEnvironment";
 import { useOrganization } from "~/hooks/useOrganizations";
 import { useProject } from "~/hooks/useProject";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { mintPlatosSessionToken } from "~/services/platosSessionToken.server";
 import {
   agentConversationPath,
   agentConversationsPath,
   agentTracePath,
-  v3RunPath,
   EnvironmentParamSchema,
 } from "~/utils/pathBuilder";
 
@@ -54,7 +52,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }
@@ -132,60 +130,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   // survives the agent's viaProxy check (Caddy stamps X-Forwarded-For).
   const sessionToken = mintPlatosSessionToken(scope, 3600);
 
-  // K.3 — load all durable runs spawned from this thread (spawn_bgo,
-  // agent-tool-block, agent-batch — anything the agent runtime spawned with
-  // `metadata.set("threadId", threadId)`). Scoped to (project, env), then
-  // JSON-parsed per row to confirm the threadId matches exactly (the DB
-  // column is a `String` — we use `contains` as a cheap pre-filter and
-  // verify after). Missing metadata / parse failures silently drop out.
-  let spawnedRuns: Array<{
-    friendlyId: string;
-    taskIdentifier: string;
-    status: string;
-    createdAt: string;
-    startedAt: string | null;
-    completedAt: string | null;
-  }> = [];
-  try {
-    const candidates = await $replica.taskRun.findMany({
-      where: {
-        projectId: project.id,
-        runtimeEnvironmentId: environment.id,
-        metadata: { contains: `"threadId":"${threadId}"` },
-      },
-      select: {
-        friendlyId: true,
-        taskIdentifier: true,
-        status: true,
-        createdAt: true,
-        startedAt: true,
-        completedAt: true,
-        metadata: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 25,
-    });
-    spawnedRuns = candidates
-      .filter((r) => {
-        if (!r.metadata) return false;
-        try {
-          const parsed = JSON.parse(r.metadata);
-          return parsed && typeof parsed === "object" && (parsed as Record<string, unknown>).threadId === threadId;
-        } catch {
-          return false;
-        }
-      })
-      .map((r) => ({
-        friendlyId: r.friendlyId,
-        taskIdentifier: r.taskIdentifier,
-        status: r.status,
-        createdAt: r.createdAt.toISOString(),
-        startedAt: r.startedAt ? r.startedAt.toISOString() : null,
-        completedAt: r.completedAt ? r.completedAt.toISOString() : null,
-      }));
-  } catch {
-    spawnedRuns = [];
-  }
 
   return typedjson({
     thread,
@@ -202,7 +146,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     // (see the chat route). Null → default path.
     wsPath: process.env.PLATOS_AGENT_WS_PATH || null,
     sessionToken: sessionToken?.token ?? null,
-    spawnedRuns,
   });
 }
 
@@ -220,7 +163,6 @@ export default function ConversationViewerPage() {
     wsUrl,
     wsPath,
     sessionToken,
-    spawnedRuns,
   } = useTypedLoaderData<typeof loader>();
   const organization = useOrganization();
   const project = useProject();
@@ -622,79 +564,6 @@ export default function ConversationViewerPage() {
               </span>
             </div>
           )}
-
-          {/*
-            K.3 — Spawned runs. Surfaces the durable trigger.dev runs that
-            this thread kicked off (spawn_bgo, agent-tool-block, agent-batch)
-            so an operator can walk from Agent > Thread > Run without
-            digging through the global run list. Collapsed by default to
-            keep the chat viewport tall. Empty list still renders the
-            disclosure so it's discoverable.
-          */}
-          <details className="mb-4 rounded border border-charcoal-700 bg-charcoal-850 overflow-hidden">
-            <summary className="flex items-center justify-between px-3 py-2 text-xs cursor-pointer hover:bg-charcoal-750 select-none">
-              <span className="text-text-bright font-medium">
-                Spawned runs{" "}
-                <span className="text-text-dimmed font-normal">({spawnedRuns.length})</span>
-              </span>
-              <span className="text-text-dimmed">Click to expand</span>
-            </summary>
-            <div className="border-t border-charcoal-700">
-              {spawnedRuns.length === 0 ? (
-                <div className="px-3 py-4 text-xs text-text-dimmed text-center">
-                  No durable runs spawned from this thread yet.
-                </div>
-              ) : (
-                <ul className="divide-y divide-charcoal-700">
-                  {spawnedRuns.map((r) => {
-                    const startedAt = r.startedAt ? new Date(r.startedAt) : null;
-                    const completedAt = r.completedAt ? new Date(r.completedAt) : null;
-                    const durationMs =
-                      startedAt && completedAt ? completedAt.getTime() - startedAt.getTime() : null;
-                    const durationLabel =
-                      durationMs === null
-                        ? "\u2014"
-                        : durationMs < 1000
-                          ? `${durationMs}ms`
-                          : `${(durationMs / 1000).toFixed(2)}s`;
-                    const statusClass =
-                      r.status === "COMPLETED_SUCCESSFULLY"
-                        ? "text-green-400"
-                        : r.status === "COMPLETED_WITH_ERRORS" ||
-                            r.status === "CRASHED" ||
-                            r.status === "SYSTEM_FAILURE" ||
-                            r.status === "TIMED_OUT"
-                          ? "text-red-400"
-                          : r.status === "CANCELED" || r.status === "EXPIRED"
-                            ? "text-text-dimmed"
-                            : "text-amber-400";
-                    const href = v3RunPath(organization, project, environment, {
-                      friendlyId: r.friendlyId,
-                    });
-                    return (
-                      <li key={r.friendlyId}>
-                        <a
-                          href={href}
-                          className="flex items-center gap-3 px-3 py-2 hover:bg-charcoal-800"
-                        >
-                          <span className="font-mono text-xs text-text-bright truncate flex-1 min-w-0">
-                            {r.taskIdentifier}
-                          </span>
-                          <span className={`text-xs shrink-0 ${statusClass}`}>{r.status}</span>
-                          <span className="text-xs text-text-dimmed shrink-0 w-14 text-right">
-                            {durationLabel}
-                          </span>
-                          <span className="font-mono text-xs text-text-dimmed shrink-0">
-                            {r.friendlyId}
-                          </span>
-                        </a>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </details>
 
           {/* Messages (scrollable) */}
           <div className="flex-1 overflow-y-auto">

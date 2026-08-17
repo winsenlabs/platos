@@ -1,8 +1,10 @@
 import { conform, useForm } from "@conform-to/react";
 import { parse } from "@conform-to/zod";
+import { OrganizationRole, ProjectRole } from "@platos/database";
 import { ExclamationTriangleIcon, FolderIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { type ActionFunctionArgs, json } from "@remix-run/node";
 import { Form, useActionData, useNavigation } from "@remix-run/react";
-import { type ActionFunction, json } from "@remix-run/server-runtime";
+import { useState } from "react";
 import { z } from "zod";
 import { InlineCode } from "~/components/code/InlineCode";
 import { MainHorizontallyCenteredContainer } from "~/components/layout/AppLayout";
@@ -17,16 +19,11 @@ import { Input } from "~/components/primitives/Input";
 import { InputGroup } from "~/components/primitives/InputGroup";
 import { Label } from "~/components/primitives/Label";
 import { SpinnerWhite } from "~/components/primitives/Spinner";
+import { prisma } from "~/db.server";
 import { useProject } from "~/hooks/useProject";
-import {
-  redirectWithErrorMessage,
-  redirectWithSuccessMessage,
-} from "~/models/message.server";
-import { ProjectSettingsService } from "~/services/projectSettings.server";
-import { logger } from "~/services/logger.server";
+import { redirectWithSuccessMessage } from "~/models/message.server";
 import { requireUserId } from "~/services/session.server";
 import { organizationPath, v3ProjectPath } from "~/utils/pathBuilder";
-import { useState } from "react";
 
 function createSchema(
   constraints: {
@@ -36,25 +33,20 @@ function createSchema(
   return z.discriminatedUnion("action", [
     z.object({
       action: z.literal("rename"),
-      projectName: z.string().min(3, "Project name must have at least 3 characters").max(50),
+      projectName: z.string().trim().min(3, "Project name must have at least 3 characters").max(50),
     }),
     z.object({
-      action: z.literal("delete"),
+      action: z.literal("archive"),
       projectSlug: z.string().superRefine((slug, ctx) => {
-        if (constraints.getSlugMatch === undefined) {
+        if (!constraints.getSlugMatch) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: conform.VALIDATION_UNDEFINED });
+          return;
+        }
+        const match = constraints.getSlugMatch(slug);
+        if (!match.isMatch) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: conform.VALIDATION_UNDEFINED,
-          });
-        } else {
-          const { isMatch, projectSlug } = constraints.getSlugMatch(slug);
-          if (isMatch) {
-            return;
-          }
-
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `The slug must match ${projectSlug}`,
+            message: `The slug must match ${match.projectSlug}`,
           });
         }
       }),
@@ -62,139 +54,107 @@ function createSchema(
   ]);
 }
 
-export const action: ActionFunction = async ({ request, params }) => {
+async function requireProjectAdmin(organizationSlug: string, projectSlug: string, userId: string) {
+  const project = await prisma.project.findFirst({
+    where: {
+      slug: projectSlug,
+      archivedAt: null,
+      organization: { slug: organizationSlug, archivedAt: null },
+    },
+  });
+  if (!project) throw new Response("Project not found", { status: 404 });
+
+  const membership = await prisma.organizationMembership.findUnique({
+    where: { organizationId_userId: { organizationId: project.organizationId, userId } },
+    include: {
+      projectMemberships: { where: { projectId: project.id }, select: { role: true } },
+    },
+  });
+  const organizationAdmin =
+    membership &&
+    !membership.deactivatedAt &&
+    [OrganizationRole.OWNER, OrganizationRole.ADMIN].includes(membership.role);
+  const projectAdmin =
+    membership &&
+    !membership.deactivatedAt &&
+    membership.projectMemberships.some(({ role }) => role === ProjectRole.ADMIN);
+  if (!organizationAdmin && !projectAdmin) throw new Response("Forbidden", { status: 403 });
+  return project;
+}
+
+export const action = async ({ request, params }: ActionFunctionArgs) => {
   const userId = await requireUserId(request);
   const { organizationSlug, projectParam } = params;
   if (!organizationSlug || !projectParam) {
-    return json({ errors: { body: "organizationSlug and projectParam are required" } }, { status: 400 });
+    return json(
+      { errors: { body: "organizationSlug and projectParam are required" } },
+      { status: 400 }
+    );
   }
-
   const formData = await request.formData();
-
-  const schema = createSchema({
-    getSlugMatch: (slug) => {
-      return { isMatch: slug === projectParam, projectSlug: projectParam };
-    },
+  const submission = parse(formData, {
+    schema: createSchema({
+      getSlugMatch: (slug) => ({ isMatch: slug === projectParam, projectSlug: projectParam }),
+    }),
   });
-  const submission = parse(formData, { schema });
+  if (!submission.value || submission.intent !== "submit") return json(submission);
 
-  if (!submission.value || submission.intent !== "submit") {
-    return json(submission);
+  const project = await requireProjectAdmin(organizationSlug, projectParam, userId);
+  if (submission.value.action === "rename") {
+    await prisma.project.update({
+      where: { id: project.id },
+      data: { name: submission.value.projectName },
+    });
+    return redirectWithSuccessMessage(
+      v3ProjectPath({ slug: organizationSlug }, { slug: projectParam }),
+      request,
+      `Project renamed to ${submission.value.projectName}`
+    );
   }
 
-  const projectSettingsService = new ProjectSettingsService();
-  const membershipResultOrFail = await projectSettingsService.verifyProjectMembership(
-    organizationSlug,
-    projectParam,
-    userId
+  const archivedAt = new Date();
+  await prisma.$transaction(async (tx) => {
+    await tx.environment.updateMany({
+      where: { projectId: project.id },
+      data: { archivedAt },
+    });
+    await tx.project.update({ where: { id: project.id }, data: { archivedAt } });
+  });
+  return redirectWithSuccessMessage(
+    organizationPath({ slug: organizationSlug }),
+    request,
+    "Project archived"
   );
-
-  if (membershipResultOrFail.isErr()) {
-    return json({ errors: { body: membershipResultOrFail.error.type } }, { status: 404 });
-  }
-
-  const { projectId } = membershipResultOrFail.value;
-
-  switch (submission.value.action) {
-    case "rename": {
-      const resultOrFail = await projectSettingsService.renameProject(
-        projectId,
-        submission.value.projectName
-      );
-
-      if (resultOrFail.isErr()) {
-        switch (resultOrFail.error.type) {
-          case "other":
-          default: {
-            resultOrFail.error.type satisfies "other";
-
-            logger.error("Failed to rename project", {
-              error: resultOrFail.error,
-            });
-            return json({ errors: { body: "Failed to rename project" } }, { status: 400 });
-          }
-        }
-      }
-
-      return redirectWithSuccessMessage(
-        v3ProjectPath({ slug: organizationSlug }, { slug: projectParam }),
-        request,
-        `Project renamed to ${submission.value.projectName}`
-      );
-    }
-    case "delete": {
-      const resultOrFail = await projectSettingsService.deleteProject(projectId, userId);
-
-      if (resultOrFail.isErr()) {
-        switch (resultOrFail.error.type) {
-          case "other":
-          default: {
-            resultOrFail.error.type satisfies "other";
-
-            logger.error("Failed to delete project", {
-              error: resultOrFail.error,
-            });
-            return redirectWithErrorMessage(
-              v3ProjectPath({ slug: organizationSlug }, { slug: projectParam }),
-              request,
-              `Project ${projectParam} could not be deleted`
-            );
-          }
-        }
-      }
-
-      return redirectWithSuccessMessage(
-        organizationPath({ slug: organizationSlug }),
-        request,
-        "Project deleted"
-      );
-    }
-  }
 };
 
 export default function GeneralSettingsPage() {
   const project = useProject();
-  const lastSubmission = useActionData();
+  const lastSubmission = useActionData<typeof action>();
   const navigation = useNavigation();
-
   const [hasRenameFormChanges, setHasRenameFormChanges] = useState(false);
-
   const [renameForm, { projectName }] = useForm({
     id: "rename-project",
-    // TODO: type this
     lastSubmission: lastSubmission as any,
     shouldRevalidate: "onSubmit",
-    onValidate({ formData }) {
-      return parse(formData, {
-        schema: createSchema(),
-      });
-    },
+    onValidate: ({ formData }) => parse(formData, { schema: createSchema() }),
   });
-
-  const isRenameLoading =
-    navigation.formData?.get("action") === "rename" &&
-    (navigation.state === "submitting" || navigation.state === "loading");
-
-  const [deleteForm, { projectSlug }] = useForm({
-    id: "delete-project",
-    // TODO: type this
+  const [archiveForm, { projectSlug }] = useForm({
+    id: "archive-project",
     lastSubmission: lastSubmission as any,
     shouldValidate: "onInput",
     shouldRevalidate: "onSubmit",
-    onValidate({ formData }) {
-      return parse(formData, {
+    onValidate: ({ formData }) =>
+      parse(formData, {
         schema: createSchema({
           getSlugMatch: (slug) => ({ isMatch: slug === project.slug, projectSlug: project.slug }),
         }),
-      });
-    },
+      }),
   });
-
-  const isDeleteLoading =
-    navigation.formData?.get("action") === "delete" &&
-    (navigation.state === "submitting" || navigation.state === "loading");
-
-  const [deleteInputValue, setDeleteInputValue] = useState("");
+  const isRenameLoading =
+    navigation.formData?.get("action") === "rename" && navigation.state !== "idle";
+  const isArchiveLoading =
+    navigation.formData?.get("action") === "archive" && navigation.state !== "idle";
+  const [archiveInputValue, setArchiveInputValue] = useState("");
 
   return (
     <MainHorizontallyCenteredContainer className="md:mt-6">
@@ -204,12 +164,9 @@ export default function GeneralSettingsPage() {
           <div className="w-full rounded-sm border border-grid-dimmed p-4">
             <Fieldset className="mb-5">
               <InputGroup fullWidth>
-                <Label>Project ref</Label>
-                <ClipboardField value={project.externalRef} variant={"secondary/medium"} />
-                <Hint>
-                  This goes in your{" "}
-                  <InlineCode variant="extra-extra-small">trigger.config</InlineCode> file.
-                </Hint>
+                <Label>Project ID</Label>
+                <ClipboardField value={project.id} variant="secondary/medium" />
+                <Hint>This UUID identifies the project in Platos APIs and audit records.</Hint>
               </InputGroup>
             </Fieldset>
             <Form method="post" {...renameForm.props}>
@@ -222,9 +179,7 @@ export default function GeneralSettingsPage() {
                     placeholder="Project name"
                     icon={FolderIcon}
                     autoFocus
-                    onChange={(e) => {
-                      setHasRenameFormChanges(e.target.value !== project.name);
-                    }}
+                    onChange={(event) => setHasRenameFormChanges(event.target.value !== project.name)}
                   />
                   <FormError id={projectName.errorId}>{projectName.error}</FormError>
                 </InputGroup>
@@ -234,7 +189,7 @@ export default function GeneralSettingsPage() {
                       type="submit"
                       name="action"
                       value="rename"
-                      variant={"secondary/small"}
+                      variant="secondary/small"
                       disabled={isRenameLoading || !hasRenameFormChanges}
                       LeadingIcon={isRenameLoading ? SpinnerWhite : undefined}
                     >
@@ -250,22 +205,21 @@ export default function GeneralSettingsPage() {
         <div>
           <Header2 spacing>Danger zone</Header2>
           <div className="w-full rounded-sm border border-rose-500/40 p-4">
-            <Form method="post" {...deleteForm.props}>
+            <Form method="post" {...archiveForm.props}>
               <Fieldset>
                 <InputGroup fullWidth>
-                  <Label htmlFor={projectSlug.id}>Delete project</Label>
+                  <Label htmlFor={projectSlug.id}>Archive project</Label>
                   <Input
                     {...conform.input(projectSlug, { type: "text" })}
                     placeholder="Your project slug"
                     icon={ExclamationTriangleIcon}
-                    onChange={(e) => setDeleteInputValue(e.target.value)}
+                    onChange={(event) => setArchiveInputValue(event.target.value)}
                   />
                   <FormError id={projectSlug.errorId}>{projectSlug.error}</FormError>
-                  <FormError>{deleteForm.error}</FormError>
+                  <FormError>{archiveForm.error}</FormError>
                   <Hint>
-                    This change is irreversible, so please be certain. Type in the Project slug
-                    <InlineCode variant="extra-small">{project.slug}</InlineCode> and then press
-                    Delete.
+                    Archiving removes this project and its environments from active navigation. Type
+                    <InlineCode variant="extra-small">{project.slug}</InlineCode> to confirm.
                   </Hint>
                 </InputGroup>
                 <FormButtons
@@ -273,13 +227,13 @@ export default function GeneralSettingsPage() {
                     <Button
                       type="submit"
                       name="action"
-                      value="delete"
-                      variant={"danger/small"}
-                      LeadingIcon={isDeleteLoading ? SpinnerWhite : TrashIcon}
+                      value="archive"
+                      variant="danger/small"
+                      LeadingIcon={isArchiveLoading ? SpinnerWhite : TrashIcon}
                       leadingIconClassName="text-white"
-                      disabled={isDeleteLoading || deleteInputValue !== project.slug}
+                      disabled={isArchiveLoading || archiveInputValue !== project.slug}
                     >
-                      Delete
+                      Archive
                     </Button>
                   }
                 />

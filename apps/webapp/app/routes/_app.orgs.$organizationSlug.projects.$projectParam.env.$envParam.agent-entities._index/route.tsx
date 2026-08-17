@@ -23,7 +23,7 @@ import {
 } from "~/components/primitives/Table";
 import { prisma } from "~/db.server";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { agentMcpEntityPath, EnvironmentParamSchema } from "~/utils/pathBuilder";
 
@@ -45,7 +45,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }
@@ -189,7 +189,7 @@ export default function AgentEntitiesPage() {
   const { entities, nowMs, organizationSlug, projectParam, envParam } = useTypedLoaderData<typeof loader>();
   const org = { slug: organizationSlug };
   const project = { slug: projectParam };
-  const environment = { slug: envParam };
+  const environment = { id: envParam };
 
   return (
     <PageContainer>

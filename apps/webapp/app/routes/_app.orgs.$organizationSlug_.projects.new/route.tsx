@@ -3,9 +3,8 @@ import { parse } from "@conform-to/zod";
 import { CommandLineIcon, FolderIcon } from "@heroicons/react/20/solid";
 import { json, type ActionFunction, type LoaderFunctionArgs } from "@remix-run/node";
 import { Form, useActionData, useNavigation } from "@remix-run/react";
-import type { Prisma } from "@platos/database";
 import React, { useEffect, useState } from "react";
-import { redirect, typedjson, useTypedLoaderData } from "remix-typedjson";
+import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import invariant from "tiny-invariant";
 import { z } from "zod";
 import { BackgroundWrapper } from "~/components/BackgroundWrapper";
@@ -24,18 +23,10 @@ import { Label } from "~/components/primitives/Label";
 import { Select, SelectItem } from "~/components/primitives/Select";
 
 import { prisma } from "~/db.server";
-import { featuresForRequest } from "~/features.server";
 import { redirectWithErrorMessage, redirectWithSuccessMessage } from "~/models/message.server";
 import { createProject, ExceededProjectLimitError } from "~/models/project.server";
 import { requireUserId } from "~/services/session.server";
-import {
-  newProjectPath,
-  OrganizationParamsSchema,
-  organizationPath,
-  selectPlanPath,
-  v3ProjectPath,
-} from "~/utils/pathBuilder";
-import { generateVercelOAuthState } from "~/v3/vercel/vercelOAuthState.server";
+import { newProjectPath, OrganizationParamsSchema, organizationPath, v3ProjectPath } from "~/utils/pathBuilder";
 
 const WORKING_ON_OTHER = "Other/not sure yet";
 const GOALS_OTHER = "Other/not sure yet";
@@ -114,21 +105,16 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const { organizationSlug } = OrganizationParamsSchema.parse(params);
 
   const organization = await prisma.organization.findFirst({
-    where: { slug: organizationSlug, members: { some: { userId } } },
+    where: {
+      slug: organizationSlug,
+      archivedAt: null,
+      memberships: { some: { userId, deactivatedAt: null } },
+    },
     select: {
       id: true,
-      title: true,
-      v3Enabled: true,
-      v2Enabled: true,
-      hasRequestedV3: true,
+      name: true,
       _count: {
-        select: {
-          projects: {
-            where: {
-              deletedAt: null,
-            },
-          },
-        },
+        select: { projects: { where: { archivedAt: null } } },
       },
     },
   });
@@ -137,25 +123,17 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response(null, { status: 404, statusText: "Organization not found" });
   }
 
-  const { isManagedCloud } = featuresForRequest(request);
-  if (isManagedCloud && !organization.v3Enabled) {
-    return redirect(selectPlanPath({ slug: organizationSlug }));
-  }
-
   const url = new URL(request.url);
   const message = url.searchParams.get("message");
 
   return typedjson({
     organization: {
       id: organization.id,
-      title: organization.title,
+      name: organization.name,
       slug: organizationSlug,
       projectsCount: organization._count.projects,
-      v3Enabled: organization.v3Enabled,
-      v2Enabled: organization.v2Enabled,
-      hasRequestedV3: organization.hasRequestedV3,
     },
-    defaultVersion: url.searchParams.get("version") ?? "v2",
+    defaultVersion: "v3",
     message: message ? decodeURIComponent(message) : undefined,
   });
 }
@@ -185,109 +163,21 @@ export const action: ActionFunction = async ({ request, params }) => {
     return json(submission);
   }
 
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const configurationId = url.searchParams.get("configurationId");
-  const next = url.searchParams.get("next");
-
-  const stringArraySchema = z.array(z.string());
-
-  function safeParseStringArray(value: string | undefined): string[] | undefined {
-    if (!value) return undefined;
-    try {
-      const result = stringArraySchema.safeParse(JSON.parse(value));
-      return result.success && result.data.length > 0 ? result.data : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  const numberArraySchema = z.array(z.number());
-  function safeParseNumberArray(value: string | undefined): number[] | undefined {
-    if (!value) return undefined;
-    try {
-      const result = numberArraySchema.safeParse(JSON.parse(value));
-      return result.success && result.data.length > 0 ? result.data : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  const onboardingData: Record<string, Prisma.InputJsonValue> = {};
-
-  const workingOn = safeParseStringArray(submission.value.workingOn);
-  if (workingOn) {
-    onboardingData.workingOn = workingOn;
-    const workingOnPositions = safeParseNumberArray(submission.value.workingOnPositions);
-    if (workingOnPositions) onboardingData.workingOnPositions = workingOnPositions;
-  }
-
-  if (submission.value.workingOnOther) {
-    onboardingData.workingOnOther = submission.value.workingOnOther;
-  }
-
-  const technologies = safeParseStringArray(submission.value.technologies);
-  if (technologies) onboardingData.technologies = technologies;
-
-  const technologiesOther = safeParseStringArray(submission.value.technologiesOther);
-  if (technologiesOther) onboardingData.technologiesOther = technologiesOther;
-
-  const goals = safeParseStringArray(submission.value.goals);
-  if (goals) {
-    onboardingData.goals = goals;
-    const goalsPositions = safeParseNumberArray(submission.value.goalsPositions);
-    if (goalsPositions) onboardingData.goalsPositions = goalsPositions;
-  }
-
-  if (submission.value.goalsOther) {
-    onboardingData.goalsOther = submission.value.goalsOther;
-  }
-
   try {
+    const organization = await prisma.organization.findFirst({
+      where: {
+        slug: organizationSlug,
+        archivedAt: null,
+        memberships: { some: { userId, deactivatedAt: null } },
+      },
+      select: { id: true },
+    });
+    if (!organization) throw new Response("Organization not found", { status: 404 });
     const project = await createProject({
-      organizationSlug: organizationSlug,
+      organizationId: organization.id,
       name: submission.value.projectName,
       userId,
-      version: submission.value.projectVersion,
-      onboardingData: Object.keys(onboardingData).length > 0 ? onboardingData : undefined,
     });
-
-    if (code && configurationId) {
-      const environment = await prisma.runtimeEnvironment.findFirst({
-        where: {
-          projectId: project.id,
-          slug: "prod",
-          archivedAt: null,
-        },
-      });
-
-      if (!environment) {
-        return redirectWithErrorMessage(
-          newProjectPath({ slug: organizationSlug }),
-          request,
-          "Failed to find project environment."
-        );
-      }
-
-      const state = await generateVercelOAuthState({
-        organizationId: project.organization.id,
-        projectId: project.id,
-        environmentSlug: environment.slug,
-        organizationSlug: project.organization.slug,
-        projectSlug: project.slug,
-      });
-
-      const params = new URLSearchParams({
-        state,
-        code,
-        configurationId,
-        origin: "marketplace",
-      });
-      if (next) {
-        params.set("next", next);
-      }
-      return redirect(`/vercel/connect?${params.toString()}`);
-    }
 
     return redirectWithSuccessMessage(
       v3ProjectPath(project.organization, project),
@@ -324,7 +214,7 @@ export default function Page() {
   const { organization, message } = useTypedLoaderData<typeof loader>();
   const lastSubmission = useActionData();
 
-  const canCreateV3Projects = organization.v3Enabled;
+  const canCreateV3Projects = true;
 
   const [form, { projectName, projectVersion }] = useForm({
     id: "create-project",
@@ -366,7 +256,7 @@ export default function Page() {
             <FormTitle
               LeadingIcon={<FolderIcon className="size-7 text-indigo-500" />}
               title="Create a new project"
-              description={`This will create a new project in your "${organization.title}" organization.`}
+              description={`This will create a new project in your "${organization.name}" organization.`}
             />
             <Form method="post" {...form.props}>
               {message && (

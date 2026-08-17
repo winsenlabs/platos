@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import type * as RechartsPrimitive from "recharts";
-import type { AggregationType } from "~/components/metrics/QueryWidget";
+import type { AggregationType } from "./types";
 import { ChartContainer, type ChartConfig, type ChartState } from "./Chart";
 import { ChartProvider, useChartContext, type LabelFormatter } from "./ChartContext";
 import { ChartLegendCompound } from "./ChartLegendCompound";

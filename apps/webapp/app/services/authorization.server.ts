@@ -1,6 +1,6 @@
 export type AuthorizationAction = "read" | "write" | string; // Add more actions as needed
 
-const ResourceTypes = ["tasks", "tags", "runs", "batch", "waitpoints", "deployments", "inputStreams", "query", "prompts"] as const;
+const ResourceTypes = ["prompts"] as const;
 
 export type AuthorizationResources = {
   [key in (typeof ResourceTypes)[number]]?: string | string[];
@@ -26,13 +26,11 @@ export type AuthorizationEntity = {
  *
  * const entity = {
  *  type: "PUBLIC",
- *  scope: ["read:runs:run_1234", "read:tasks"]
+ *  scope: ["read:prompts:prompt_1234"]
  * };
  *
- * checkAuthorization(entity, "read", { runs: "run_1234" }); // Returns true
- * checkAuthorization(entity, "read", { runs: "run_5678" }); // Returns false
- * checkAuthorization(entity, "read", { tasks: "task_1234" }); // Returns true
- * checkAuthorization(entity, "read", { tasks: ["task_5678"] }); // Returns true
+ * checkAuthorization(entity, "read", { prompts: "prompt_1234" }); // Returns true
+ * checkAuthorization(entity, "read", { prompts: "prompt_5678" }); // Returns false
  * ```
  */
 export type AuthorizationResult = { authorized: true } | { authorized: false; reason: string };

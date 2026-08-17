@@ -31,16 +31,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   } catch (e) {
     const organization = await prisma.organization.findFirst({
       where: {
-        members: {
-          some: {
-            userId: user.id,
-          },
-        },
-        deletedAt: null,
+        archivedAt: null,
+        memberships: { some: { userId: user.id, deactivatedAt: null } },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
 
     if (organization) {

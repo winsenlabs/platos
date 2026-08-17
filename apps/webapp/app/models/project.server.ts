@@ -1,21 +1,12 @@
-import { nanoid, customAlphabet } from "nanoid";
+import { OrganizationRole, ProjectRole, type Project } from "@platos/database";
+import { customAlphabet } from "nanoid";
 import slug from "slug";
 import { $replica, prisma } from "~/db.server";
-import type { Prisma, Project } from "@platos/database";
-import { type Organization, createEnvironment } from "./organization.server";
-import { env } from "~/env.server";
-import { projectCreated } from "~/services/platform.v3.server";
+import { createEnvironment } from "./organization.server";
+
 export type { Project } from "@platos/database";
 
-const externalRefGenerator = customAlphabet("abcdefghijklmnopqrstuvwxyz", 20);
-
-type Options = {
-  organizationSlug: string;
-  name: string;
-  userId: string;
-  version: "v2" | "v3";
-  onboardingData?: Prisma.InputJsonValue;
-};
+const suffix = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 6);
 
 export class ExceededProjectLimitError extends Error {
   constructor(message: string) {
@@ -25,137 +16,68 @@ export class ExceededProjectLimitError extends Error {
 }
 
 export async function createProject(
-  { organizationSlug, name, userId, version, onboardingData }: Options,
+  { organizationId, name, userId }: { organizationId: string; name: string; userId: string },
   attemptCount = 0
-): Promise<Project & { organization: Organization }> {
-  //check the user has permissions to do this
-  const organization = await prisma.organization.findFirst({
-    select: {
-      id: true,
-      slug: true,
-      v3Enabled: true,
-      maximumConcurrencyLimit: true,
-      maximumProjectCount: true,
-    },
-    where: {
-      slug: organizationSlug,
-      members: { some: { userId } },
-    },
+) {
+  const membership = await prisma.organizationMembership.findUnique({
+    where: { organizationId_userId: { organizationId, userId } },
   });
-
-  if (!organization) {
-    throw new Error(
-      `User ${userId} does not have permission to create a project in organization ${organizationSlug}`
-    );
+  if (
+    !membership ||
+    membership.deactivatedAt ||
+    ![OrganizationRole.OWNER, OrganizationRole.ADMIN].includes(membership.role)
+  ) {
+    throw new Response("Forbidden", { status: 403 });
   }
+  if (attemptCount > 100) throw new Error("Unable to allocate a project slug");
 
-  if (version === "v3") {
-    if (!organization.v3Enabled) {
-      throw new Error(`Organization can't create v3 projects.`);
-    }
-  }
-
-  const projectCount = await prisma.project.count({
-    where: {
-      organizationId: organization.id,
-      deletedAt: null,
-    },
-  });
-
-  if (projectCount >= organization.maximumProjectCount) {
-    throw new ExceededProjectLimitError(
-      `This organization has reached the maximum number of projects (${organization.maximumProjectCount}).`
-    );
-  }
-
-  //ensure the slug is globally unique
-  const uniqueProjectSlug = `${slug(name)}-${nanoid(4)}`;
-  const projectWithSameSlug = await prisma.project.findFirst({
-    where: { slug: uniqueProjectSlug },
-  });
-
-  if (attemptCount > 100) {
-    throw new Error(`Unable to create project with slug ${uniqueProjectSlug} after 100 attempts`);
-  }
-
-  if (projectWithSameSlug) {
-    return createProject(
-      {
-        organizationSlug,
-        name,
-        userId,
-        version,
-        onboardingData,
+  const normalizedName = name.trim();
+  const projectSlug = `${slug(normalizedName)}-${suffix()}`;
+  return prisma.$transaction(async (tx) => {
+    const project = await tx.project.create({
+      data: {
+        organizationId,
+        name: normalizedName,
+        slug: projectSlug,
       },
-      attemptCount + 1
-    );
-  }
-
-  const project = await prisma.project.create({
-    data: {
-      name,
-      slug: uniqueProjectSlug,
-      organization: {
-        connect: {
-          slug: organizationSlug,
-        },
-      },
-      externalRef: `proj_${externalRefGenerator()}`,
-      version: version === "v3" ? "V3" : "V2",
-      onboardingData,
-    },
-    include: {
-      organization: {
-        include: {
-          members: true,
-        },
-      },
-    },
-  });
-
-  // Create the dev and prod environments
-  await createEnvironment({
-    organization,
-    project,
-    type: "PRODUCTION",
-    isBranchableEnvironment: false,
-  });
-
-  for (const member of project.organization.members) {
-    await createEnvironment({
-      organization,
-      project,
-      type: "DEVELOPMENT",
-      isBranchableEnvironment: false,
-      member,
+      include: { organization: true },
     });
-  }
+    await tx.projectMembership.create({
+      data: {
+        projectId: project.id,
+        organizationId,
+        organizationMembershipId: membership.id,
+        role: ProjectRole.ADMIN,
+      },
+    });
+    await createEnvironment({ project, name: "Development", slug: "dev", prismaClient: tx });
+    await createEnvironment({ project, name: "Production", slug: "prod", prismaClient: tx });
+    return project;
+  });
+}
 
-  await projectCreated(organization, project);
-
-  return project;
+export async function findProjectById(projectId: string, userId: string) {
+  return $replica.project.findFirst({
+    where: {
+      id: projectId,
+      archivedAt: null,
+      organization: {
+        archivedAt: null,
+        memberships: { some: { userId, deactivatedAt: null } },
+      },
+    },
+  });
 }
 
 export async function findProjectBySlug(orgSlug: string, projectSlug: string, userId: string) {
-  // Find the project scoped to the organization, making sure the user belongs to that org
-  return await $replica.project.findFirst({
+  return $replica.project.findFirst({
     where: {
       slug: projectSlug,
+      archivedAt: null,
       organization: {
         slug: orgSlug,
-        members: { some: { userId } },
-      },
-    },
-  });
-}
-
-export async function findProjectByRef(externalRef: string, userId: string) {
-  // Find the project scoped to the organization, making sure the user belongs to that org
-  return await $replica.project.findFirst({
-    where: {
-      externalRef,
-      organization: {
-        members: { some: { userId } },
+        archivedAt: null,
+        memberships: { some: { userId, deactivatedAt: null } },
       },
     },
   });

@@ -53,16 +53,12 @@ At runtime, compose defaults the webapp container to 2 GiB and V8 old-space to
 effective cgroup limit and refuses an override above 75% of that limit or one
 that leaves less than 512 MiB for native memory and request buffers.
 
-### WIN-132 deferred boundary
+### External Trigger boundary
 
-This build graph remains intentionally honest about the embedded mode-C
-closure. Until WIN-132 lands, the webapp graph still includes
-`@internal/run-engine`, `@internal/schedule-engine`, and their dependencies;
-the `/engine/v1/*` routes, agent `trigger-worker.ts`, `WORKER_MODE`, and compose
-`worker` service also remain. WIN-120 does not claim the repository-wide
-no-engine-reference/no-engine-route acceptance criteria. `pnpm
-audit:platos-build` asserts that these deferred surfaces still exist so an
-unrelated build change cannot partially delete them and leave a broken release.
+The Platos build graph contains only the webapp and agent application images.
+Trigger is deployed independently; Platos has no embedded run engine, local
+Trigger worker image, or worker service. `pnpm audit:platos-build` enforces this
+boundary while preserving explicit, optional outbound Trigger dispatch.
 
 ## Deploying
 
@@ -80,7 +76,7 @@ The script:
 1. **Refuses to deploy if 1-min load > 8.0** — never stack a recreate on an
    already-hot box.
 2. `git pull`s (for compose files + migrations only — *not* to build).
-3. `docker compose ... pull agent webapp worker` — fetches the off-box images.
+3. `docker compose ... pull agent webapp` — fetches the off-box images.
 4. Runs `migrations-init` one-shot.
 5. Recreates only the app services (`--no-deps`), leaving Postgres / ClickHouse
    / Redis / MinIO untouched.

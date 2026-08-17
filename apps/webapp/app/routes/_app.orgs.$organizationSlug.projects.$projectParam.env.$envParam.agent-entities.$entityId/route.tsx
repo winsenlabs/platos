@@ -28,7 +28,7 @@ import { DocsLink } from "~/components/primitives/DocsLink";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { Switch } from "~/components/primitives/Switch";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { EnvironmentParamSchema, agentMcpEntityPath } from "~/utils/pathBuilder";
 
@@ -66,7 +66,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }
@@ -211,7 +211,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }
@@ -447,7 +447,7 @@ export default function EntityDetailPage() {
   const mcpPath = agentMcpEntityPath(
     { slug: slugs.organizationSlug },
     { slug: slugs.projectParam },
-    { slug: slugs.envParam },
+    { id: slugs.envParam },
     entityIdentifier,
   );
 

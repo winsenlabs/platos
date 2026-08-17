@@ -1,11 +1,6 @@
 import { conform, list, requestIntent, useFieldList, useForm } from "@conform-to/react";
 import { parse } from "@conform-to/zod";
-import {
-  ArrowUpCircleIcon,
-  EnvelopeIcon,
-  LockOpenIcon,
-  UserPlusIcon,
-} from "@heroicons/react/20/solid";
+import { EnvelopeIcon, UserPlusIcon } from "@heroicons/react/20/solid";
 import type { ActionFunction, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
@@ -20,11 +15,9 @@ import { Fieldset } from "~/components/primitives/Fieldset";
 import { FormButtons } from "~/components/primitives/FormButtons";
 import { FormError } from "~/components/primitives/FormError";
 import { FormTitle } from "~/components/primitives/FormTitle";
-import { InfoPanel } from "~/components/primitives/InfoPanel";
 import { Input } from "~/components/primitives/Input";
 import { InputGroup } from "~/components/primitives/InputGroup";
 import { Label } from "~/components/primitives/Label";
-import { Paragraph } from "~/components/primitives/Paragraph";
 import { $replica } from "~/db.server";
 import { env } from "~/env.server";
 import { useOrganization } from "~/hooks/useOrganizations";
@@ -33,8 +26,7 @@ import { redirectWithSuccessMessage } from "~/models/message.server";
 import { TeamPresenter } from "~/presenters/TeamPresenter.server";
 import { scheduleEmail } from "~/services/email.server";
 import { requireUserId } from "~/services/session.server";
-import { acceptInvitePath, organizationTeamPath, v3BillingPath } from "~/utils/pathBuilder";
-import { PurchaseSeatsModal } from "../_app.orgs.$organizationSlug.settings.team/route";
+import { acceptInvitePath, organizationTeamPath } from "~/utils/pathBuilder";
 
 const Params = z.object({
   organizationSlug: z.string(),
@@ -95,8 +87,14 @@ export const action: ActionFunction = async ({ request, params }) => {
   }
 
   try {
+    const organization = await $replica.organization.findFirst({
+      where: { slug: organizationSlug, archivedAt: null },
+      select: { id: true },
+    });
+    if (!organization) throw new Response("Organization not found", { status: 404 });
+
     const invites = await inviteMembers({
-      slug: organizationSlug,
+      organizationId: organization.id,
       emails: submission.value.emails,
       userId,
     });
@@ -106,8 +104,8 @@ export const action: ActionFunction = async ({ request, params }) => {
         await scheduleEmail({
           email: "invite",
           to: invite.email,
-          orgName: invite.organization.title,
-          inviterName: invite.inviter.name ?? undefined,
+          orgName: invite.organization.name,
+          inviterName: invite.inviter.displayName ?? undefined,
           inviterEmail: invite.inviter.email,
           inviteLink: `${env.LOGIN_ORIGIN}${acceptInvitePath(invite.token)}`,
         });
@@ -138,8 +136,7 @@ export const action: ActionFunction = async ({ request, params }) => {
 };
 
 export default function Page() {
-  const { limits, canPurchaseSeats, seatPricing, extraSeats, maxSeatQuota, planSeatLimit } =
-    useTypedLoaderData<typeof loader>();
+  const { limits } = useTypedLoaderData<typeof loader>();
   const [total, setTotal] = useState(limits.used);
   const organization = useOrganization();
   const lastSubmission = useActionData<typeof action>();
@@ -174,56 +171,13 @@ export default function Page() {
         <FormTitle
           LeadingIcon={<UserPlusIcon className="size-6 text-indigo-500" />}
           title="Invite team members"
-          description={`Invite new team members to ${organization.title}.`}
+          description={`Invite new team members to ${organization.name}.`}
         />
-        {total > limits.limit &&
-          (canPurchaseSeats && seatPricing ? (
-            <InfoPanel
-              variant="upgrade"
-              icon={LockOpenIcon}
-              iconClassName="text-indigo-500"
-              title="Need more seats?"
-              accessory={
-                <PurchaseSeatsModal
-                  seatPricing={seatPricing}
-                  extraSeats={extraSeats}
-                  usedSeats={limits.used}
-                  maxQuota={maxSeatQuota}
-                  planSeatLimit={planSeatLimit}
-                  triggerButton={<Button variant="primary/small">Purchase more seats…</Button>}
-                />
-              }
-              panelClassName="mb-4"
-            >
-              <Paragraph variant="small">
-                You've used all {limits.limit} of your available team members. Purchase extra seats
-                to add more.
-              </Paragraph>
-            </InfoPanel>
-          ) : (
-            <InfoPanel
-              variant="upgrade"
-              icon={LockOpenIcon}
-              iconClassName="text-indigo-500"
-              title="Unlock more team members"
-              accessory={
-                <LinkButton
-                  to={v3BillingPath(organization)}
-                  variant="secondary/small"
-                  LeadingIcon={ArrowUpCircleIcon}
-                  leadingIconClassName="text-indigo-500"
-                >
-                  Upgrade
-                </LinkButton>
-              }
-              panelClassName="mb-4"
-            >
-              <Paragraph variant="small">
-                You've used all {limits.limit} of your available team members. Upgrade your plan to
-                add more.
-              </Paragraph>
-            </InfoPanel>
-          ))}
+        {total > limits.limit ? (
+          <FormError className="mb-4">
+            This organization is limited to {limits.limit} active members and pending invitations.
+          </FormError>
+        ) : null}
         <Form method="post" {...form.props}>
           <Fieldset>
             {submissionError ? (

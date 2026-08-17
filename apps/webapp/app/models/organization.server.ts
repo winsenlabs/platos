@@ -1,137 +1,51 @@
-import type {
-  Organization,
-  OrgMember,
-  Prisma,
-  Project,
-  RuntimeEnvironment,
-  User,
-} from "@platos/database";
+import { OrganizationRole, type Environment, type Organization, type Project, type User } from "@platos/database";
 import { customAlphabet } from "nanoid";
-import { generate } from "random-words";
 import slug from "slug";
 import { prisma, type PrismaClientOrTransaction } from "~/db.server";
-import { env } from "~/env.server";
-import { featuresForUrl } from "~/features.server";
-import { createApiKeyForEnv, createPkApiKeyForEnv, envSlug } from "./api-key.server";
-import { getDefaultEnvironmentConcurrencyLimit } from "~/services/platform.v3.server";
-export type { Organization };
 
-const nanoid = customAlphabet("1234567890abcdef", 4);
+export type { Organization } from "@platos/database";
+
+const suffix = customAlphabet("1234567890abcdef", 6);
 
 export async function createOrganization(
-  {
-    title,
-    userId,
-    companySize,
-    onboardingData,
-    avatar,
-  }: Pick<Organization, "title" | "companySize"> & {
-    userId: User["id"];
-    onboardingData?: Prisma.InputJsonValue;
-    avatar?: Prisma.InputJsonValue;
-  },
+  { name, userId }: { name: string; userId: User["id"] },
   attemptCount = 0
 ): Promise<Organization> {
-  if (typeof process.env.BLOCKED_USERS === "string" && process.env.BLOCKED_USERS.includes(userId)) {
-    throw new Error("Organization could not be created.");
-  }
-
-  const uniqueOrgSlug = `${slug(title)}-${nanoid(4)}`;
-
-  const orgWithSameSlug = await prisma.organization.findFirst({
-    where: { slug: uniqueOrgSlug },
-  });
-
-  if (attemptCount > 100) {
-    throw new Error(`Unable to create organization with slug ${uniqueOrgSlug} after 100 attempts`);
-  }
-
-  if (orgWithSameSlug) {
-    return createOrganization(
-      {
-        title,
-        userId,
-        companySize,
-        onboardingData,
-        avatar,
-      },
-      attemptCount + 1
-    );
-  }
-
-  const features = featuresForUrl(new URL(env.APP_ORIGIN));
-
-  const organization = await prisma.organization.create({
-    data: {
-      title,
-      slug: uniqueOrgSlug,
-      companySize,
-      onboardingData: onboardingData ?? undefined,
-      avatar: avatar ?? undefined,
-      maximumConcurrencyLimit: env.DEFAULT_ORG_EXECUTION_CONCURRENCY_LIMIT,
-      members: {
-        create: {
-          userId: userId,
-          role: "ADMIN",
+  if (attemptCount > 100) throw new Error("Unable to allocate an organization slug");
+  const normalizedName = name.trim();
+  const organizationSlug = `${slug(normalizedName)}-${suffix()}`;
+  try {
+    return await prisma.organization.create({
+      data: {
+        name: normalizedName,
+        slug: organizationSlug,
+        memberships: {
+          create: { userId, role: OrganizationRole.OWNER },
         },
       },
-      v3Enabled: true,
-    },
-    include: {
-      members: true,
-    },
-  });
-
-  return { ...organization };
+    });
+  } catch (error) {
+    if (attemptCount < 100) return createOrganization({ name: normalizedName, userId }, attemptCount + 1);
+    throw error;
+  }
 }
 
 export async function createEnvironment({
-  organization,
   project,
-  type,
-  isBranchableEnvironment = false,
-  member,
+  name,
+  slug: environmentSlug,
   prismaClient = prisma,
 }: {
-  organization: Pick<Organization, "id" | "maximumConcurrencyLimit">;
   project: Pick<Project, "id">;
-  type: RuntimeEnvironment["type"];
-  isBranchableEnvironment?: boolean;
-  member?: OrgMember;
+  name: string;
+  slug: string;
   prismaClient?: PrismaClientOrTransaction;
-}) {
-  const slug = envSlug(type);
-  const apiKey = createApiKeyForEnv(type);
-  const pkApiKey = createPkApiKeyForEnv(type);
-  const shortcode = createShortcode().join("-");
-
-  const limit = await getDefaultEnvironmentConcurrencyLimit(organization.id, type);
-
-  return await prismaClient.runtimeEnvironment.create({
+}): Promise<Environment> {
+  return prismaClient.environment.create({
     data: {
-      slug,
-      apiKey,
-      pkApiKey,
-      shortcode,
-      autoEnableInternalSources: type !== "DEVELOPMENT",
-      maximumConcurrencyLimit: limit,
-      organization: {
-        connect: {
-          id: organization.id,
-        },
-      },
-      project: {
-        connect: {
-          id: project.id,
-        },
-      },
-      orgMember: member ? { connect: { id: member.id } } : undefined,
-      type,
-      isBranchableEnvironment,
+      projectId: project.id,
+      name: name.trim(),
+      slug: slug(environmentSlug),
     },
   });
-}
-
-function createShortcode() {
-  return generate({ exactly: 2 });
 }

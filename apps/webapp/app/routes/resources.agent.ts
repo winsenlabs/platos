@@ -49,8 +49,6 @@ async function resolveScope(url: URL, userId: string): Promise<
       projectSlug:
         url.searchParams.get("projectSlug") ??
         url.searchParams.get("projectParam"),
-      envSlug:
-        url.searchParams.get("envSlug") ?? url.searchParams.get("envParam"),
     },
     userId,
   );

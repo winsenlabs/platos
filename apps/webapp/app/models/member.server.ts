@@ -1,339 +1,219 @@
-import { type Prisma, prisma } from "~/db.server";
+import { hashSecret, OrganizationRole } from "@platos/database";
+import { prisma } from "~/db.server";
 import { env } from "~/env.server";
-import { createEnvironment } from "./organization.server";
-import { customAlphabet } from "nanoid";
+import { platosAuth, requestRateLimitIdentifier } from "~/services/platosAuth.server";
 
-const tokenValueLength = 40;
-const tokenGenerator = customAlphabet("123456789abcdefghijkmnopqrstuvwxyz", tokenValueLength);
-
-/**
- * OSS launch: hard cap on org members + pending invites. Override via
- * `PLATOS_MAX_PROJECT_MEMBERS` (defaults to 2 to mirror the hosted demo).
- * Self-hosters set a large value to effectively disable. Throws when the
- * cap is reached so callers can surface the error in the UI.
- */
 export class MemberLimitReachedError extends Error {
   constructor(public readonly limit: number) {
-    super(
-      `Org has reached the OSS member limit of ${limit}. Set PLATOS_MAX_PROJECT_MEMBERS in the webapp environment to raise the cap.`
-    );
+    super(`Organization has reached the member limit of ${limit}.`);
     this.name = "MemberLimitReachedError";
   }
 }
 
-type MemberCapacityClient = Pick<typeof prisma, "orgMember" | "orgMemberInvite">;
+type MemberCapacityClient = Pick<typeof prisma, "organizationMembership" | "organizationInvitation">;
 
 export async function assertOrgMemberCapacity(
   organizationId: string,
   invitesAdded: number,
   prismaClient: MemberCapacityClient = prisma
-): Promise<void> {
+) {
   const limit = env.PLATOS_MAX_PROJECT_MEMBERS;
+  const now = new Date();
   const [memberCount, inviteCount] = await Promise.all([
-    prismaClient.orgMember.count({ where: { organizationId } }),
-    prismaClient.orgMemberInvite.count({ where: { organizationId } }),
+    prismaClient.organizationMembership.count({
+      where: { organizationId, deactivatedAt: null },
+    }),
+    prismaClient.organizationInvitation.count({
+      where: {
+        organizationId,
+        acceptedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: now },
+      },
+    }),
   ]);
-  if (memberCount + inviteCount + invitesAdded > limit) {
-    throw new MemberLimitReachedError(limit);
-  }
+  if (memberCount + inviteCount + invitesAdded > limit) throw new MemberLimitReachedError(limit);
 }
 
-export async function getTeamMembersAndInvites({
-  userId,
-  organizationId,
-}: {
-  userId: string;
-  organizationId: string;
-}) {
-  const org = await prisma.organization.findFirst({
-    where: { id: organizationId, members: { some: { userId } } },
+async function requireOrganizationAdmin(organizationId: string, userId: string) {
+  const membership = await prisma.organizationMembership.findUnique({
+    where: { organizationId_userId: { organizationId, userId } },
+  });
+  if (
+    !membership ||
+    membership.deactivatedAt ||
+    ![OrganizationRole.OWNER, OrganizationRole.ADMIN].includes(membership.role)
+  ) {
+    throw new Response("Forbidden", { status: 403 });
+  }
+  return membership;
+}
+
+export async function getTeamMembersAndInvites({ userId, organizationId }: { userId: string; organizationId: string }) {
+  await requireOrganizationAdmin(organizationId, userId);
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
     select: {
-      members: {
+      memberships: {
+        where: { deactivatedAt: null },
         select: {
           id: true,
           role: true,
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              avatarUrl: true,
-            },
-          },
+          user: { select: { id: true, displayName: true, email: true, avatarUrl: true } },
         },
       },
-      invites: {
+      invitations: {
+        where: { acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
         select: {
           id: true,
           email: true,
-          updatedAt: true,
-          inviter: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              avatarUrl: true,
-            },
-          },
+          role: true,
+          createdAt: true,
+          expiresAt: true,
+          inviter: { select: { id: true, displayName: true, email: true, avatarUrl: true } },
         },
       },
     },
   });
-
-  if (!org) {
-    return null;
-  }
-
-  return { members: org.members, invites: org.invites };
+  return organization
+    ? { members: organization.memberships, invites: organization.invitations }
+    : null;
 }
 
-export async function removeTeamMember({
+export async function removeTeamMember({ userId, organizationId, memberId }: { userId: string; organizationId: string; memberId: string }) {
+  const actorMembership = await requireOrganizationAdmin(organizationId, userId);
+  const membership = await prisma.organizationMembership.findFirst({
+    where: { id: memberId, organizationId, deactivatedAt: null },
+    include: { organization: true, user: true },
+  });
+  if (!membership) throw new Response("Member not found", { status: 404 });
+  if (membership.role === OrganizationRole.OWNER && actorMembership.role !== OrganizationRole.OWNER) {
+    throw new Response("Only an owner can remove another owner", { status: 403 });
+  }
+  await platosAuth.removeMembership(membership.id);
+  return membership;
+}
+
+export async function changeTeamMemberRole({
   userId,
-  slug,
+  organizationId,
   memberId,
+  role,
 }: {
   userId: string;
-  slug: string;
+  organizationId: string;
   memberId: string;
+  role: OrganizationRole;
 }) {
-  const org = await prisma.organization.findFirst({
-    where: { slug, members: { some: { userId } } },
+  const actorMembership = await requireOrganizationAdmin(organizationId, userId);
+  const membership = await prisma.organizationMembership.findFirst({
+    where: { id: memberId, organizationId, deactivatedAt: null },
+    include: { user: true },
   });
-
-  if (!org) {
-    throw new Error("User does not have access to this organization");
+  if (!membership) throw new Response("Member not found", { status: 404 });
+  if (
+    (membership.role === OrganizationRole.OWNER || role === OrganizationRole.OWNER) &&
+    actorMembership.role !== OrganizationRole.OWNER
+  ) {
+    throw new Response("Only an owner can change owner roles", { status: 403 });
   }
-
-  return prisma.orgMember.delete({
-    where: {
-      id: memberId,
-    },
-    include: {
-      organization: true,
-      user: true,
-    },
-  });
+  await platosAuth.changeMembershipRole(membership.id, role);
+  return { ...membership, role };
 }
 
-export async function inviteMembers({
-  slug,
-  emails,
-  userId,
-}: {
-  slug: string;
-  emails: string[];
-  userId: string;
-}) {
-  const org = await prisma.organization.findFirst({
-    where: { slug, members: { some: { userId } } },
-  });
-
-  if (!org) {
-    throw new Error("User does not have access to this organization");
-  }
-
-  const dedupedEmails = [...new Set(emails)];
-
-  // OSS member-cap enforcement (PLATOS_MAX_PROJECT_MEMBERS, default 2).
-  // Throws MemberLimitReachedError if active members + pending invites
-  // + this batch would exceed the cap. The route surfaces the message.
-  await assertOrgMemberCapacity(org.id, dedupedEmails.length);
-
-  const invites = dedupedEmails.map(
-    (email) =>
-      ({
-        email,
-        token: tokenGenerator(),
-        organizationId: org.id,
+export async function inviteMembers({ organizationId, emails, userId }: { organizationId: string; emails: string[]; userId: string }) {
+  await requireOrganizationAdmin(organizationId, userId);
+  const dedupedEmails = [...new Set(emails.map((email) => email.trim().toLowerCase()))];
+  await assertOrgMemberCapacity(organizationId, dedupedEmails.length);
+  const organization = await prisma.organization.findUniqueOrThrow({ where: { id: organizationId } });
+  const inviter = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  return Promise.all(
+    dedupedEmails.map(async (email) => {
+      const issued = await platosAuth.issueInvitation({
+        organizationId,
         inviterId: userId,
-        role: "MEMBER",
-      } satisfies Prisma.OrgMemberInviteCreateManyInput)
+        email,
+        role: OrganizationRole.MEMBER,
+      });
+      return { ...issued, email, organization, inviter };
+    })
   );
-
-  await prisma.orgMemberInvite.createMany({
-    data: invites,
-  });
-
-  return await prisma.orgMemberInvite.findMany({
-    where: {
-      organizationId: org.id,
-      inviterId: userId,
-      email: {
-        in: emails,
-      },
-    },
-    include: {
-      organization: true,
-      inviter: true,
-    },
-  });
 }
 
 export async function getInviteFromToken({ token }: { token: string }) {
-  return await prisma.orgMemberInvite.findFirst({
-    where: {
-      token,
-    },
-    include: {
-      organization: true,
-      inviter: true,
-    },
+  return prisma.organizationInvitation.findUnique({
+    where: { tokenHash: hashSecret(token) },
+    include: { organization: true, inviter: true },
   });
 }
 
 export async function getUsersInvites({ email }: { email: string }) {
-  return await prisma.orgMemberInvite.findMany({
+  return prisma.organizationInvitation.findMany({
     where: {
-      email,
-      organization: {
-        deletedAt: null,
-      },
+      email: email.trim().toLowerCase(),
+      acceptedAt: null,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+      organization: { archivedAt: null },
     },
-    include: {
-      organization: true,
-      inviter: true,
-    },
+    include: { organization: true, inviter: true },
   });
 }
 
-export async function acceptInvite({
-  user,
-  inviteId,
-}: {
-  user: { id: string; email: string };
-  inviteId: string;
-}) {
-  return await prisma.$transaction(async (tx) => {
-    // 1. Delete the invite and get the invite details
-    const invite = await tx.orgMemberInvite.delete({
-      where: {
-        id: inviteId,
-        email: user.email,
-      },
-      include: {
-        organization: {
-          include: {
-            projects: true,
-          },
-        },
-      },
-    });
-
-    // 2. Join the organization
-    const member = await tx.orgMember.create({
-      data: {
-        organizationId: invite.organizationId,
-        userId: user.id,
-        role: invite.role,
-      },
-    });
-
-    // 3. Create an environment for each project
-    for (const project of invite.organization.projects) {
-      await createEnvironment({
-        organization: invite.organization,
-        project,
-        type: "DEVELOPMENT",
-        isBranchableEnvironment: false,
-        member,
-        prismaClient: tx,
-      });
-    }
-
-    // 4. Check for other invites
-    const remainingInvites = await tx.orgMemberInvite.findMany({
-      where: {
-        email: user.email,
-      },
-    });
-
-    return { remainingInvites, organization: invite.organization };
+export async function acceptInvite({ user, token, request }: { user: { id: string; email: string }; token: string; request: Request }) {
+  const result = await platosAuth.acceptInvitation({
+    token,
+    userId: user.id,
+    email: user.email,
+    rateLimitIdentifier: requestRateLimitIdentifier(request, "invite-accept"),
   });
+  const organization = await prisma.organization.findUniqueOrThrow({
+    where: { id: result.organizationId },
+  });
+  return { organization };
 }
 
-export async function declineInvite({
-  user,
-  inviteId,
-}: {
-  user: { id: string; email: string };
-  inviteId: string;
-}) {
-  return await prisma.$transaction(async (tx) => {
-    //1. delete invite
-    const declinedInvite = await prisma.orgMemberInvite.delete({
-      where: {
-        id: inviteId,
-        email: user.email,
-      },
-      include: {
-        organization: true,
-      },
-    });
-
-    //2. check for other invites
-    const remainingInvites = await prisma.orgMemberInvite.findMany({
-      where: {
-        email: user.email,
-      },
-    });
-
-    return { remainingInvites, organization: declinedInvite.organization };
+export async function declineInvite({ user, inviteId }: { user: { id: string; email: string }; inviteId: string }) {
+  const invitation = await prisma.organizationInvitation.findFirst({
+    where: { id: inviteId, email: user.email.trim().toLowerCase(), acceptedAt: null, revokedAt: null },
+    include: { organization: true },
   });
+  if (!invitation) throw new Response("Invitation not found", { status: 404 });
+  await prisma.organizationInvitation.update({
+    where: { id: invitation.id },
+    data: { revokedAt: new Date() },
+  });
+  const remainingInvites = await getUsersInvites({ email: user.email });
+  return { remainingInvites, organization: invitation.organization };
 }
 
 export async function resendInvite({ inviteId, userId }: { inviteId: string; userId: string }) {
-  return await prisma.orgMemberInvite.update({
-    where: {
-      id: inviteId,
-      inviterId: userId,
-    },
-    data: {
-      updatedAt: new Date(),
-    },
-    include: {
-      inviter: true,
-      organization: true,
-    },
+  const invitation = await prisma.organizationInvitation.findUnique({
+    where: { id: inviteId },
+    include: { organization: true },
   });
+  if (!invitation) throw new Response("Invitation not found", { status: 404 });
+  await requireOrganizationAdmin(invitation.organizationId, userId);
+  const issued = await platosAuth.issueInvitation({
+    organizationId: invitation.organizationId,
+    inviterId: userId,
+    email: invitation.email,
+    role: invitation.role,
+  });
+  const inviter = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  return { ...issued, email: invitation.email, organization: invitation.organization, inviter };
 }
 
-export async function revokeInvite({
-  userId,
-  orgSlug,
-  inviteId,
-}: {
-  userId: string;
-  orgSlug: string;
-  inviteId: string;
-}) {
-  const invite = await prisma.orgMemberInvite.findFirst({
-    where: {
-      id: inviteId,
-      organization: {
-        slug: orgSlug,
-        members: {
-          some: {
-            userId,
-          },
-        },
-      },
-    },
-    select: {
-      id: true,
-      email: true,
-      organization: true,
-    },
+export async function revokeInvite({ userId, organizationId, inviteId }: { userId: string; organizationId: string; inviteId: string }) {
+  await requireOrganizationAdmin(organizationId, userId);
+  const invitation = await prisma.organizationInvitation.findFirst({
+    where: { id: inviteId, organizationId, acceptedAt: null, revokedAt: null },
+    include: { organization: true },
   });
-
-  if (!invite) {
-    throw new Error("Invite not found");
-  }
-
-  await prisma.orgMemberInvite.delete({
-    where: {
-      id: invite.id,
-    },
+  if (!invitation) throw new Response("Invitation not found", { status: 404 });
+  await prisma.organizationInvitation.update({
+    where: { id: invitation.id },
+    data: { revokedAt: new Date() },
   });
-
-  return { email: invite.email, organization: invite.organization };
+  return { email: invitation.email, organization: invitation.organization };
 }

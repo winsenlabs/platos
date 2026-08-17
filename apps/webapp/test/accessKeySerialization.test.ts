@@ -6,14 +6,14 @@ import {
 } from "../app/services/platosSecretPayloads.server";
 import { generateAccessKey } from "../app/utils/accessKey.client";
 
-const { findEnvironmentBySlug, findProjectBySlug, requireUserId } = vi.hoisted(() => ({
-  findEnvironmentBySlug: vi.fn(),
+const { findEnvironmentById, findProjectBySlug, requireUserId } = vi.hoisted(() => ({
+  findEnvironmentById: vi.fn(),
   findProjectBySlug: vi.fn(),
   requireUserId: vi.fn(),
 }));
 
 vi.mock("~/models/project.server", () => ({ findProjectBySlug }));
-vi.mock("~/models/runtimeEnvironment.server", () => ({ findEnvironmentBySlug }));
+vi.mock("~/models/runtimeEnvironment.server", () => ({ findEnvironmentById }));
 vi.mock("~/presenters/v3/ApiKeysPresenter.server", () => ({ ApiKeysPresenter: vi.fn() }));
 vi.mock("~/services/session.server", () => ({ requireUserId }));
 vi.mock("~/db.server", () => ({ prisma: {} }));
@@ -40,7 +40,7 @@ describe("AccessKey non-serialization", () => {
   it("posts the allowed-origins request to the agent endpoint contract", async () => {
     requireUserId.mockResolvedValue("user_1");
     findProjectBySlug.mockResolvedValue({ id: "project_1", organizationId: "org_1" });
-    findEnvironmentBySlug.mockResolvedValue({ id: "environment_1" });
+    findEnvironmentById.mockResolvedValue({ id: "4d73d9dc-9f10-43d3-a9c1-793b139bf5e9", projectId: "project_1" });
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ ok: true, origins: ["https://one.example"] }), {
         status: 200,
@@ -62,7 +62,7 @@ describe("AccessKey non-serialization", () => {
       params: {
         organizationSlug: "org",
         projectParam: "project",
-        envParam: "environment",
+        envParam: "4d73d9dc-9f10-43d3-a9c1-793b139bf5e9",
       },
       context: {},
     } as any);
@@ -89,7 +89,7 @@ describe("AccessKey non-serialization", () => {
   it("posts the browser-generated hash and prefix with one JSON content type", async () => {
     requireUserId.mockResolvedValue("user_1");
     findProjectBySlug.mockResolvedValue({ id: "project_1", organizationId: "org_1" });
-    findEnvironmentBySlug.mockResolvedValue({ id: "environment_1" });
+    findEnvironmentById.mockResolvedValue({ id: "4d73d9dc-9f10-43d3-a9c1-793b139bf5e9", projectId: "project_1" });
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -125,7 +125,7 @@ describe("AccessKey non-serialization", () => {
       params: {
         organizationSlug: "org",
         projectParam: "project",
-        envParam: "environment",
+        envParam: "4d73d9dc-9f10-43d3-a9c1-793b139bf5e9",
       },
       context: {},
     } as any);

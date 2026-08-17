@@ -12,7 +12,6 @@ import {
   PageContainer,
 } from "~/components/layout/AppLayout";
 import { Button } from "~/components/primitives/Buttons";
-import { CheckboxWithLabel } from "~/components/primitives/Checkbox";
 import { Fieldset } from "~/components/primitives/Fieldset";
 import { FormButtons } from "~/components/primitives/FormButtons";
 import { FormError } from "~/components/primitives/FormError";
@@ -43,7 +42,7 @@ function createSchema(
   } = {}
 ) {
   return z.object({
-    name: z
+    displayName: z
       .string({ required_error: "You must enter a name" })
       .min(2, "Your name must be at least 2 characters long")
       .max(50),
@@ -71,7 +70,6 @@ function createSchema(
           });
         }
       }),
-    marketingEmails: z.preprocess((value) => value === "on", z.boolean()),
   });
 }
 
@@ -109,9 +107,8 @@ export const action: ActionFunction = async ({ request }) => {
   try {
     const user = await updateUser({
       id: userId,
-      name: submission.value.name,
+      displayName: submission.value.displayName,
       email: submission.value.email,
-      marketingEmails: submission.value.marketingEmails,
     });
 
     return redirectWithSuccessMessage(
@@ -128,7 +125,7 @@ export default function Page() {
   const user = useUser();
   const lastSubmission = useActionData();
 
-  const [form, { name, email, marketingEmails }] = useForm({
+  const [form, { displayName, email }] = useForm({
     id: "account",
     // TODO: type this
     lastSubmission: lastSubmission as any,
@@ -150,20 +147,20 @@ export default function Page() {
           </div>
           <Form method="post" {...form.props} className="w-full">
             <InputGroup className="mb-4">
-              <Label htmlFor={name.id}>Profile picture</Label>
+              <Label htmlFor={displayName.id}>Profile picture</Label>
               <UserProfilePhoto className="size-24" />
             </InputGroup>
             <Fieldset>
               <InputGroup fullWidth>
-                <Label htmlFor={name.id}>Full name</Label>
+                <Label htmlFor={displayName.id}>Full name</Label>
                 <Input
-                  {...conform.input(name, { type: "text" })}
+                  {...conform.input(displayName, { type: "text" })}
                   placeholder="Your full name"
-                  defaultValue={user?.name ?? ""}
+                  defaultValue={user.displayName ?? ""}
                   icon={UserCircleIcon}
                 />
                 <Hint>Your teammates will see this</Hint>
-                <FormError id={name.errorId}>{name.error}</FormError>
+                <FormError id={displayName.errorId}>{displayName.error}</FormError>
               </InputGroup>
               <InputGroup fullWidth>
                 <Label htmlFor={email.id}>Email address</Label>
@@ -175,18 +172,6 @@ export default function Page() {
                 />
                 <FormError id={email.errorId}>{email.error}</FormError>
               </InputGroup>
-              <InputGroup>
-                <Label>Notifications</Label>
-                <CheckboxWithLabel
-                  id="marketingEmails"
-                  {...conform.input(marketingEmails, { type: "checkbox" })}
-                  label="Receive onboarding emails"
-                  variant="simple/small"
-                  defaultChecked={user.marketingEmails}
-                />
-                <FormError id={marketingEmails.errorId}>{marketingEmails.error}</FormError>
-              </InputGroup>
-
               <FormButtons
                 confirmButton={
                   <Button type="submit" variant={"secondary/small"}>

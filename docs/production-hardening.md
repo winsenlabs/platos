@@ -34,7 +34,6 @@ Compose defaults to `false`; verify your `.env` isn't overriding it.
 | `ENCRYPTION_KEY` (webapp/operator TOTP) | — | New values: `openssl rand -hex 32`. Existing exact 32-byte UTF-8 values remain supported and must not be replaced without re-encryption. |
 | `PLATOS_ENCRYPTION_KEY` (agent, 64 hex chars) | — | `openssl rand -hex 32`. Compose fails-fast if unset. |
 | `PLATOS_MESSAGE_ENCRYPTION_KEY` (message/audit content, 64 hex chars) | — | `openssl rand -hex 32`. Must differ from the other encryption keys; missing production configuration fails closed. |
-| `MANAGED_WORKER_SECRET` — (no default since EOBD.52) | `MANAGED_WORKER_SECRET` | `openssl rand -hex 32` (≥16 chars). Compose + webapp both fail-fast if unset. |
 | `PLATOS_INTERNAL_AUTH_TOKEN` empty | `PLATOS_INTERNAL_AUTH_TOKEN` | `openssl rand -hex 32`. Dedicated callback secret; set on every caller and receiver. |
 
 Minimum generation recipe:
@@ -51,7 +50,6 @@ MAGIC_LINK_SECRET=$(openssl rand -base64 24 | tr -d '\n')
 ENCRYPTION_KEY=$(openssl rand -hex 32)
 PLATOS_ENCRYPTION_KEY=$(openssl rand -hex 32)
 PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)
-MANAGED_WORKER_SECRET=$(openssl rand -hex 32)
 PLATOS_INTERNAL_AUTH_TOKEN=$(openssl rand -hex 32)
 EOF
 ```

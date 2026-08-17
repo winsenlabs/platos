@@ -77,7 +77,7 @@ export async function action({ request }: ActionFunctionArgs) {
         });
       }
       case "disable-mfa": {
-        const result = await mfaSetupService.disableTotp(userId, {
+        const result = await mfaSetupService.disableTotp(request, {
           totpCode: submission.data.totpCode,
           recoveryCode: submission.data.recoveryCode,
         });
@@ -100,7 +100,11 @@ export async function action({ request }: ActionFunctionArgs) {
         }
       }
       case "validate-totp": {
-        const result = await mfaSetupService.validateTotpSetup(userId, submission.data.totpCode);
+        const result = await mfaSetupService.validateTotpSetup(
+          userId,
+          submission.data.totpCode,
+          request
+        );
 
         if (result.success) {
           return typedjson({
@@ -113,8 +117,7 @@ export async function action({ request }: ActionFunctionArgs) {
             action: "validate-totp" as const,
             success: false as const,
             error: "Invalid code provided. Please try again.",
-            otpAuthUrl: result.otpAuthUrl,
-            secret: result.secret,
+            guidance: result.error,
           });
         }
       }

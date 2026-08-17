@@ -4,12 +4,16 @@ import {
   DevEnvironmentIconSmall,
   ProdEnvironmentIconSmall,
 } from "~/assets/icons/EnvironmentIcons";
-import type { RuntimeEnvironment } from "~/models/runtimeEnvironment.server";
 import { cn } from "~/utils/cn";
 import { SimpleTooltip } from "~/components/primitives/Tooltip";
 import { useEffect, useRef, useState } from "react";
 
-type Environment = Pick<RuntimeEnvironment, "type"> & { branchName?: string | null };
+type LegacyEnvironmentType = "DEVELOPMENT" | "PRODUCTION" | "STAGING" | "PREVIEW";
+type Environment = {
+  name?: string;
+  type?: LegacyEnvironmentType;
+  branchName?: string | null;
+};
 
 export function EnvironmentIcon({
   environment,
@@ -24,6 +28,10 @@ export function EnvironmentIcon({
         className={cn(environmentTextClassName(environment), className)}
       />
     );
+  }
+
+  if (!environment.type) {
+    return <DeployedEnvironmentIconSmall className={cn("text-indigo-400", className)} />;
   }
 
   switch (environment.type) {
@@ -90,7 +98,7 @@ export function EnvironmentLabel({
 }) {
   const spanRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
-  const text = environment.branchName ? environment.branchName : environmentFullTitle(environment);
+  const text = environment.name ?? environmentFullTitle(environment);
 
   useEffect(() => {
     const checkTruncation = () => {
@@ -162,6 +170,10 @@ export function environmentTitle(environment: Environment, username?: string) {
 }
 
 export function environmentFullTitle(environment: Environment) {
+  if (environment.name) {
+    return environment.name;
+  }
+
   if (environment.branchName) {
     return environment.branchName;
   }
@@ -188,5 +200,7 @@ export function environmentTextClassName(environment: Environment) {
       return "text-dev";
     case "PREVIEW":
       return "text-preview";
+    default:
+      return "text-indigo-400";
   }
 }

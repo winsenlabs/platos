@@ -80,7 +80,6 @@ Migrations are idempotent; re-running is safe.
 - `PLATOS_MESSAGE_ENCRYPTION_KEY`: 64 hex chars / 32 bytes.
 - `SESSION_SECRET`: one shared platform/session JWT secret for webapp and agent.
 - `MAGIC_LINK_SECRET`: a distinct login-link signing secret.
-- `MANAGED_WORKER_SECRET`: 64 hex chars (`openssl rand -hex 32`).
 - `TRIGGER_INTERNAL_SECRET`: 64 hex chars.
 - `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`: MinIO admin credentials.
 - `POSTGRES_PASSWORD`, `CLICKHOUSE_PASSWORD`: db credentials.
@@ -93,6 +92,8 @@ Migrations are idempotent; re-running is safe.
 Optional but commonly set:
 
 - `PLATOS_OTEL_CLICKHOUSE_URL`: enables ClickHouse-backed traces. Without it, falls back to Redis sorted-sets.
+- `TRIGGER_API_URL` and `TRIGGER_SECRET_KEY`: explicit connection to a separately deployed Trigger application. Leave both unset for direct-turn dispatch.
+- `EXTERNAL_TRIGGER_DASHBOARD_URL`: optional external dashboard link rendered by the webapp.
 - `PLATOS_TELEMETRY_DISABLED`: set to `true` to opt out of anonymised usage telemetry.
 - `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_JWKS_URL`: enables OIDC mode on MCP gateway.
 - `E2B_API_KEY`: enables `platos-code-runner` skill.

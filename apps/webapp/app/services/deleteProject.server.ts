@@ -1,6 +1,5 @@
 import { PrismaClient } from "@platos/database";
 import { prisma } from "~/db.server";
-import { engine } from "~/v3/runEngine.server";
 
 type Options = ({ projectId: string } | { projectSlug: string }) & {
   userId: string;
@@ -32,15 +31,6 @@ export class DeleteProjectService {
 
     if (project.deletedAt) {
       return;
-    }
-
-    // Delete all queues from the RunEngine prod master queues
-    for (const environment of project.environments) {
-      await engine.removeEnvironmentQueuesFromMasterQueue({
-        runtimeEnvironmentId: environment.id,
-        organizationId: project.organization.id,
-        projectId: project.id,
-      });
     }
 
     // Mark the project as deleted (do this last because it makes it impossible to try again)

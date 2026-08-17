@@ -130,7 +130,6 @@ For version 1 to version 2:
 | `PLATOS_INTERNAL_AUTH_TOKEN`    | Dedicated webapp/agent scheduled and durable callbacks | `X-Platos-Internal-Auth` with length check plus constant-time comparison | Mint a random replacement, update caller and receiver together, restart, verify one callback, then remove the old value. It never authorizes hard erasure. |
 | `PLATOS_DOCS_MCP_BRIDGE_SECRET` | Agent to docs MCP bridge                               | Bridge-specific secret                                                   | Rotate both bridge endpoints in a coordinated deployment and verify a docs lookup.                                                                         |
 | `TRIGGER_INTERNAL_SECRET`       | Trigger durable-execution internal API                 | Trigger-specific internal signature/secret                               | Follow the Trigger deployment rotation sequence and update every Trigger caller/receiver together.                                                         |
-| `MANAGED_WORKER_SECRET`         | Mode-C managed worker handshake                        | Worker-specific bearer/handshake                                         | Unchanged by WIN-122. Preserve until the run-engine work in WIN-132 owns removal or replacement.                                                           |
 
 `PLATOS_ADMIN_TOKEN` is retired. Operator-facing irreversible erasure uses an organization-bound, admin-tier `plt_mcp_` credential. Static service secrets must not impersonate an operator credential.
 

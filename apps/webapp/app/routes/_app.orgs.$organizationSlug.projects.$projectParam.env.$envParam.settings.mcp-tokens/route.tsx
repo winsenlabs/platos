@@ -18,7 +18,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
     v3ProjectSettingsIntegrationsMcpPath(
       { slug: organizationSlug },
       { slug: projectParam },
-      { slug: envParam },
+      { id: envParam },
     ),
     { status: 307 },
   );

@@ -43,7 +43,6 @@ import { redirectWithErrorMessage } from "~/models/message.server";
 import { logger } from "~/services/logger.server";
 import { setPlan } from "~/services/platform.v3.server";
 import { requireUser } from "~/services/session.server";
-import { engine } from "~/v3/runEngine.server";
 import { cn } from "~/utils/cn";
 import { sendToPlain } from "~/utils/plain.server";
 import { formatCurrency } from "~/utils/numberFormatter";
@@ -156,9 +155,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
   }
 
-  return await setPlan(organization, request, form.callerPath, payload, {
-    invalidateBillingCache: engine.invalidateBillingCache.bind(engine),
-  });
+  return await setPlan(organization, request, form.callerPath, payload);
 }
 
 const pricingDefinitions = {

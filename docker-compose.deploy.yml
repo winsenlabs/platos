@@ -2,7 +2,7 @@
 #
 # Usage on the VPS:
 #   docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
-#     --profile app pull agent webapp worker
+#     --profile app pull agent webapp
 #   docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
 #     --profile app up -d
 #
@@ -23,11 +23,6 @@ services:
     image: ghcr.io/${PLATOS_IMAGE_NAMESPACE:-winsenlabs}/platos-agent:${PLATOS_IMAGE_TAG:-latest}
     # Drop the build context so `docker compose build` is a no-op here and a
     # stray build can never compile on the prod box again.
-    build: !reset null
-    pull_policy: always
-
-  worker:
-    image: ghcr.io/${PLATOS_IMAGE_NAMESPACE:-winsenlabs}/platos-agent:${PLATOS_IMAGE_TAG:-latest}
     build: !reset null
     pull_policy: always
 

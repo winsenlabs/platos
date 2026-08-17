@@ -27,7 +27,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   if (url.pathname.endsWith("/settings") || url.pathname.endsWith("/settings/")) {
     const org = { slug: organizationSlug };
     const project = { slug: projectParam };
-    const env = { slug: envParam };
+    const env = { id: envParam };
 
     const basePath = url.searchParams.has("vercelOnboarding")
       ? v3ProjectSettingsIntegrationsPath(org, project, env)

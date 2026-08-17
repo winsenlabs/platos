@@ -33,7 +33,7 @@ import { Input } from "~/components/primitives/Input";
 import { NavBar, PageTitle } from "~/components/primitives/PageHeader";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { EnvironmentParamSchema } from "~/utils/pathBuilder";
 
@@ -145,7 +145,7 @@ async function scopeFrom(request: Request, params: Record<string, string | undef
   const { organizationSlug, projectParam, envParam, agentId } = ParamSchema.parse(params);
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404 });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404 });
   const scope: Scope = {
     organizationId: project.organizationId,

@@ -70,22 +70,24 @@ export async function updateCurrentProjectEnvironmentId({
     return;
   }
 
+  const preferences = getDashboardPreferences(user.dashboardPreferences);
+
   //only update if the existing preferences are different
   if (
-    user.dashboardPreferences.currentProjectId === projectId &&
-    user.dashboardPreferences.projects[projectId]?.currentEnvironment?.id === environmentId
+    preferences.currentProjectId === projectId &&
+    preferences.projects[projectId]?.currentEnvironment?.id === environmentId
   ) {
     return;
   }
 
   //ok we need to update the preferences
   const updatedPreferences: DashboardPreferences = {
-    ...user.dashboardPreferences,
+    ...preferences,
     currentProjectId: projectId,
     projects: {
-      ...user.dashboardPreferences.projects,
+      ...preferences.projects,
       [projectId]: {
-        ...user.dashboardPreferences.projects[projectId],
+        ...preferences.projects[projectId],
         currentEnvironment: { id: environmentId },
       },
     },
@@ -106,8 +108,9 @@ export async function clearCurrentProject({ user }: { user: UserFromSession }) {
     return;
   }
 
+  const preferences = getDashboardPreferences(user.dashboardPreferences);
   const updatedPreferences: DashboardPreferences = {
-    ...user.dashboardPreferences,
+    ...preferences,
     currentProjectId: undefined,
   };
 
@@ -135,8 +138,9 @@ export async function updateSideMenuPreferences({
     return;
   }
 
+  const preferences = getDashboardPreferences(user.dashboardPreferences);
   // Parse with schema to apply defaults, then overlay any new values
-  const currentSideMenu = SideMenuPreferences.parse(user.dashboardPreferences.sideMenu ?? {});
+  const currentSideMenu = SideMenuPreferences.parse(preferences.sideMenu ?? {});
 
   // Build the updated collapsedSections map
   let updatedCollapsedSections = { ...currentSideMenu.collapsedSections };
@@ -161,7 +165,7 @@ export async function updateSideMenuPreferences({
   }
 
   const updatedPreferences: DashboardPreferences = {
-    ...user.dashboardPreferences,
+    ...preferences,
     sideMenu: updatedSideMenu,
   };
 
@@ -199,7 +203,8 @@ export async function updateItemOrder({
     return;
   }
 
-  const currentSideMenu = SideMenuPreferences.parse(user.dashboardPreferences.sideMenu ?? {});
+  const preferences = getDashboardPreferences(user.dashboardPreferences);
+  const currentSideMenu = SideMenuPreferences.parse(preferences.sideMenu ?? {});
   const currentOrg = currentSideMenu.organizations?.[organizationId];
 
   const updatedSideMenu = SideMenuPreferences.parse({
@@ -217,7 +222,7 @@ export async function updateItemOrder({
   });
 
   const updatedPreferences: DashboardPreferences = {
-    ...user.dashboardPreferences,
+    ...preferences,
     sideMenu: updatedSideMenu,
   };
 

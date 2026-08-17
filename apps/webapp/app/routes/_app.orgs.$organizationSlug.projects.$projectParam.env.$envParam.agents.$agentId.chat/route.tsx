@@ -33,7 +33,7 @@ import { usePostHogTracking } from "~/hooks/usePostHog";
 import { Prisma } from "@platos/database";
 import { prisma } from "~/db.server";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { env as envServer } from "~/env.server";
 import { requireUserId } from "~/services/session.server";
 import { mintPlatosSessionToken } from "~/services/platosSessionToken.server";
@@ -168,7 +168,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }
@@ -313,7 +313,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) return { ok: false as const, error: "project not found" };
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) return { ok: false as const, error: "environment not found" };
 
   const fd = await request.formData();

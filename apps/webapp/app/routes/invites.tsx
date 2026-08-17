@@ -9,12 +9,12 @@ import { AppContainer, MainCenteredContainer } from "~/components/layout/AppLayo
 import { Button } from "~/components/primitives/Buttons";
 import { Fieldset } from "~/components/primitives/Fieldset";
 import { FormTitle } from "~/components/primitives/FormTitle";
-import { Header2, Header3 } from "~/components/primitives/Headers";
+import { Header2 } from "~/components/primitives/Headers";
 import { InputGroup } from "~/components/primitives/InputGroup";
 import { Paragraph } from "~/components/primitives/Paragraph";
-import { acceptInvite, declineInvite, getUsersInvites } from "~/models/member.server";
+import { declineInvite, getUsersInvites } from "~/models/member.server";
 import { redirectWithSuccessMessage } from "~/models/message.server";
-import { requireUser, requireUserId } from "~/services/session.server";
+import { requireUser } from "~/services/session.server";
 import { invitesPath, rootPath } from "~/utils/pathBuilder";
 import { EnvelopeIcon } from "@heroicons/react/20/solid";
 import { BackgroundWrapper } from "~/components/BackgroundWrapper";
@@ -46,22 +46,7 @@ export const action: ActionFunction = async ({ request }) => {
   }
 
   try {
-    if (submission.intent === "accept") {
-      const { remainingInvites, organization } = await acceptInvite({
-        inviteId: submission.value.inviteId,
-        user: { id: user.id, email: user.email },
-      });
-
-      if (remainingInvites.length === 0) {
-        return redirectWithSuccessMessage(rootPath(), request, `You joined ${organization.title}`);
-      } else {
-        return redirectWithSuccessMessage(
-          invitesPath(),
-          request,
-          `You joined ${organization.title}`
-        );
-      }
-    } else if (submission.intent === "decline") {
+    if (submission.intent === "decline") {
       const { remainingInvites, organization } = await declineInvite({
         inviteId: submission.value.inviteId,
         user: { id: user.id, email: user.email },
@@ -70,13 +55,13 @@ export const action: ActionFunction = async ({ request }) => {
         return redirectWithSuccessMessage(
           rootPath(),
           request,
-          `You declined the invite for ${organization.title}`
+          `You declined the invite for ${organization.name}`
         );
       } else {
         return redirectWithSuccessMessage(
           invitesPath(),
           request,
-          `You declined the invite for ${organization.title}`
+          `You declined the invite for ${organization.name}`
         );
       }
     }
@@ -113,21 +98,14 @@ export default function Page() {
                 <Fieldset>
                   <InputGroup className="flex items-center justify-between border-b border-charcoal-800 py-4">
                     <div className="flex flex-col gap-y-0.5 overflow-hidden">
-                      <Header2 className="truncate">{invite.organization.title}</Header2>
+                      <Header2 className="truncate">{invite.organization.name}</Header2>
                       <Paragraph variant="small" className="truncate">
-                        Invited by {invite.inviter.displayName ?? invite.inviter.email}
+                        Invited by {invite.inviter?.displayName ?? invite.inviter?.email ?? "a former member"}
                       </Paragraph>
                       <input name="inviteId" type="hidden" value={invite.id} />
                     </div>
                     <div className="flex flex-col gap-y-1">
-                      <Button
-                        type="submit"
-                        name={conform.INTENT}
-                        value="accept"
-                        variant={"primary/small"}
-                      >
-                        Accept
-                      </Button>
+                      <Paragraph variant="extra-small">Use the secure link in your invitation email to accept.</Paragraph>
                       <Button
                         type="submit"
                         name={conform.INTENT}

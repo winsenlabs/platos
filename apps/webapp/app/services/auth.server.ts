@@ -1,6 +1,5 @@
 import { Authenticator } from "remix-auth";
 import type { AuthUser } from "./authUser";
-import { addEmailLinkStrategy } from "./emailAuth.server";
 import { addGitHubStrategy } from "./gitHubAuth.server";
 import { addGoogleStrategy } from "./googleAuth.server";
 import { sessionStorage } from "./sessionStorage.server";
@@ -25,7 +24,5 @@ if (env.AUTH_GITHUB_CLIENT_ID && env.AUTH_GITHUB_CLIENT_SECRET) {
 if (env.AUTH_GOOGLE_CLIENT_ID && env.AUTH_GOOGLE_CLIENT_SECRET) {
   addGoogleStrategy(authenticator, env.AUTH_GOOGLE_CLIENT_ID, env.AUTH_GOOGLE_CLIENT_SECRET);
 }
-
-addEmailLinkStrategy(authenticator);
 
 export { authenticator, isGithubAuthSupported, isGoogleAuthSupported };

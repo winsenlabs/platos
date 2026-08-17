@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "~/components/primitives/Table";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { EnvironmentParamSchema } from "~/utils/pathBuilder";
 
@@ -73,7 +73,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404 });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404 });
   const scope: Scope = { organizationId: project.organizationId, projectId: project.id, environmentId: environment.id, userId };
 
@@ -86,7 +86,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404 });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404 });
   const scope: Scope = { organizationId: project.organizationId, projectId: project.id, environmentId: environment.id, userId };
 

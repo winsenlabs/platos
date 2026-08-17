@@ -1,5 +1,4 @@
 import { type Path, useMatches } from "@remix-run/react";
-import { type RuntimeEnvironment } from "@platos/database";
 import { useOptimisticLocation } from "./useOptimisticLocation";
 
 /**
@@ -10,11 +9,11 @@ export function useEnvironmentSwitcher() {
   const matches = useMatches();
   const location = useOptimisticLocation();
 
-  const urlForEnvironment = (newEnvironment: Pick<RuntimeEnvironment, "id" | "slug">) => {
+  const urlForEnvironment = (newEnvironment: { id: string }) => {
     return routeForEnvironmentSwitch({
       location,
       matchId: matches[matches.length - 1].id,
-      environmentSlug: newEnvironment.slug,
+      environmentId: newEnvironment.id,
     });
   };
 
@@ -27,17 +26,17 @@ export function useEnvironmentSwitcher() {
 export function routeForEnvironmentSwitch({
   location,
   matchId,
-  environmentSlug,
+  environmentId,
 }: {
   location: Path;
   matchId: string;
-  environmentSlug: string;
+  environmentId: string;
 }) {
   switch (matchId) {
     // Run page
     case "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.runs.$runParam": {
       const newLocation: Path = {
-        pathname: replaceEnvInPath(location.pathname, environmentSlug).replace(
+        pathname: replaceEnvInPath(location.pathname, environmentId).replace(
           /\/runs\/.*/,
           "/runs"
         ),
@@ -48,7 +47,7 @@ export function routeForEnvironmentSwitch({
     }
     case "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.deployments.$deploymentParam": {
       const newLocation: Path = {
-        pathname: replaceEnvInPath(location.pathname, environmentSlug).replace(
+        pathname: replaceEnvInPath(location.pathname, environmentId).replace(
           /\/deployments\/.*/,
           "/deployments"
         ),
@@ -60,7 +59,7 @@ export function routeForEnvironmentSwitch({
     case "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.schedules.$scheduleParam":
     case "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.schedules.edit.$scheduleParam": {
       const newLocation: Path = {
-        pathname: replaceEnvInPath(location.pathname, environmentSlug).replace(
+        pathname: replaceEnvInPath(location.pathname, environmentId).replace(
           /\/schedules\/.*/,
           "/schedules"
         ),
@@ -71,7 +70,7 @@ export function routeForEnvironmentSwitch({
     }
     default: {
       const newLocation: Path = {
-        pathname: replaceEnvInPath(location.pathname, environmentSlug),
+        pathname: replaceEnvInPath(location.pathname, environmentId),
         search: location.search,
         hash: location.hash,
       };
@@ -81,11 +80,11 @@ export function routeForEnvironmentSwitch({
 }
 
 /**
- * Replace the /env/<slug>/ in the path so it's /env/<environmentSlug>
+ * Replace the /env/<id>/ segment with a canonical UUID Environment id.
  */
-function replaceEnvInPath(path: string, environmentSlug: string) {
+function replaceEnvInPath(path: string, environmentId: string) {
   //allow anything except /
-  return path.replace(/env\/([^/]+)/, `env/${environmentSlug}`);
+  return path.replace(/env\/([^/]+)/, `env/${environmentId}`);
 }
 
 function fullPath(location: Path) {

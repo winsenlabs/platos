@@ -10,7 +10,7 @@ import { NavBar, PageAccessories, PageTitle } from "~/components/primitives/Page
 import { DocsLink } from "~/components/primitives/DocsLink";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { EnvironmentParamSchema, v3EnvironmentPath } from "~/utils/pathBuilder";
 
@@ -71,7 +71,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     EnvironmentParamSchema.parse(params);
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404 });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404 });
 
   const scope = {
@@ -121,7 +121,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const criteriaPath = `${v3EnvironmentPath(
     { slug: organizationSlug },
     { slug: projectParam },
-    { slug: envParam },
+    { id: envParam },
   )}/eval-criteria`;
 
   const payload: LoaderData = {

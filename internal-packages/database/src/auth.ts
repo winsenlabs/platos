@@ -647,6 +647,32 @@ export class PlatosAuthService {
     });
   }
 
+  async disableTotpForSession(params: {
+    sessionToken: string;
+    rateLimitIdentifier: string;
+    totpCode?: string;
+    recoveryCode?: string;
+  }): Promise<void> {
+    await this.verifyMfaForSession(params);
+    const authorization = await this.authorizeOperatorSession(params.sessionToken);
+    await this.#database.$transaction(async (tx) => {
+      await tx.operatorMfaRecoveryCode.deleteMany({
+        where: { userId: authorization.effectiveUserId },
+      });
+      await tx.operatorMfaTotp.deleteMany({
+        where: { userId: authorization.effectiveUserId },
+      });
+      await tx.operatorSession.updateMany({
+        where: {
+          userId: authorization.effectiveUserId,
+          id: { not: authorization.sessionId },
+          revokedAt: null,
+        },
+        data: { revokedAt: this.#now() },
+      });
+    });
+  }
+
   async issueInvitation(params: {
     organizationId: string;
     inviterId: string;

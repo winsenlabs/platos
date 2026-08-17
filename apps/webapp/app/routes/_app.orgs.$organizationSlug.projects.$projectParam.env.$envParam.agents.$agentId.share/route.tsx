@@ -16,7 +16,7 @@ import { Header2 } from "~/components/primitives/Headers";
 import { NavBar, PageTitle } from "~/components/primitives/PageHeader";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { prisma } from "~/db.server";
 import { env } from "~/env.server";
@@ -54,7 +54,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404 });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404 });
 
   const agentId = params.agentId;
@@ -83,7 +83,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
   const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) return { error: "project not found" };
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) return { error: "environment not found" };
 
   const agentId = params.agentId;

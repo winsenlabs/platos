@@ -3,28 +3,17 @@ import { useFetcher, type MetaFunction } from "@remix-run/react";
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/server-runtime";
 import { useEffect, useState } from "react";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
-import { AdminDebugTooltip } from "~/components/admin/debugTooltip";
-import { CodeBlock } from "~/components/code/CodeBlock";
 import { InlineCode } from "~/components/code/InlineCode";
 import {
   EnvironmentCombo,
-  environmentFullTitle,
   environmentTextClassName,
 } from "~/components/environments/EnvironmentLabel";
-import { RegenerateApiKeyModal } from "~/components/environments/RegenerateApiKeyModal";
 import {
   MainHorizontallyCenteredContainer,
   PageBody,
   PageContainer,
 } from "~/components/layout/AppLayout";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "~/components/primitives/Accordion";
 import { LinkButton } from "~/components/primitives/Buttons";
-import { Callout } from "~/components/primitives/Callout";
 import { ClipboardField } from "~/components/primitives/ClipboardField";
 import { Header2, Header3 } from "~/components/primitives/Headers";
 import { Hint } from "~/components/primitives/Hint";
@@ -32,11 +21,8 @@ import { InputGroup } from "~/components/primitives/InputGroup";
 import { Label } from "~/components/primitives/Label";
 import { NavBar, PageAccessories, PageTitle } from "~/components/primitives/PageHeader";
 import { DocsLink } from "~/components/primitives/DocsLink";
-import * as Property from "~/components/primitives/PropertyTable";
-import { useOrganization } from "~/hooks/useOrganizations";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
-import { ApiKeysPresenter } from "~/presenters/v3/ApiKeysPresenter.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import {
   safeMutationResult,
@@ -60,37 +46,30 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
 
   try {
-    const presenter = new ApiKeysPresenter();
-    const { environment, hasVercelIntegration } = await presenter.call({
-      userId,
-      projectSlug: projectParam,
-      environmentSlug: envParam,
-    });
+    const project = await findProjectBySlug(organizationSlug, projectParam, userId);
+    if (!project) throw new Response("Project not found", { status: 404 });
+    const environment = await findEnvironmentById(envParam, userId);
+    if (environment?.projectId !== project.id) throw new Response("Environment not found", { status: 404 });
+    if (!environment) throw new Response("Environment not found", { status: 404 });
 
     // Fetch Platos agent access key — non-fatal
     let platosKey: SafeAccessKey | null = null;
     let retiringPlatosKey: SafeAccessKey | null = null;
     try {
-      const project = await findProjectBySlug(organizationSlug, projectParam, userId);
-      if (project) {
-        const env = await findEnvironmentBySlug(project.id, envParam, userId);
-        if (env) {
-          const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
-          const res = await fetch(`${AGENT_API_URL}/api/v1/agent/access-key`, {
-            headers: {
-              "X-Platos-Organization-Id": project.organizationId,
-              "X-Platos-Project-Id": project.id,
-              "X-Platos-Environment-Id": env.id,
-              "X-Platos-User-Id": userId,
-            },
-            signal: AbortSignal.timeout(3000),
-          });
-          if (res.ok) {
-            const data = sanitizeAccessKeyPayload(await res.json());
-            platosKey = data.key;
-            retiringPlatosKey = data.retiringKey;
-          }
-        }
+      const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
+      const res = await fetch(`${AGENT_API_URL}/api/v1/agent/access-key`, {
+        headers: {
+          "X-Platos-Organization-Id": project.organizationId,
+          "X-Platos-Project-Id": project.id,
+          "X-Platos-Environment-Id": environment.id,
+          "X-Platos-User-Id": userId,
+        },
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const data = sanitizeAccessKeyPayload(await res.json());
+        platosKey = data.key;
+        retiringPlatosKey = data.retiringKey;
       }
     } catch {
       // agent service unavailable — show empty state
@@ -98,7 +77,6 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 
     return typedjson({
       environment,
-      hasVercelIntegration,
       platosKey,
       retiringPlatosKey,
     });
@@ -117,7 +95,8 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) return { ok: false as const, error: "Project not found" };
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId);
+  if (environment?.projectId !== project.id) return { ok: false as const, error: "Environment not found" };
   if (!environment) return { ok: false as const, error: "Environment not found" };
 
   const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
@@ -434,9 +413,7 @@ function formatKeyDate(value: string) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function Page() {
-  const { environment, hasVercelIntegration, platosKey, retiringPlatosKey } =
-    useTypedLoaderData<typeof loader>();
-  const organization = useOrganization();
+  const { environment, platosKey, retiringPlatosKey } = useTypedLoaderData<typeof loader>();
 
   if (!environment) {
     throw new Response(undefined, {
@@ -445,25 +422,11 @@ export default function Page() {
     });
   }
 
-  let envBlock = `TRIGGER_SECRET_KEY="${environment.apiKey}"`;
-  if (environment.branchName) {
-    envBlock += `\nTRIGGER_PREVIEW_BRANCH="${environment.branchName}"`;
-  }
-
   return (
     <PageContainer>
       <NavBar>
         <PageTitle title="API keys" />
         <PageAccessories>
-          <AdminDebugTooltip>
-            <Property.Table>
-              <Property.Item key={environment.id}>
-                <Property.Label>{environment.slug}</Property.Label>
-                <Property.Value>{environment.id}</Property.Value>
-              </Property.Item>
-            </Property.Table>
-          </AdminDebugTooltip>
-
           <DocsLink slug="auth-modes" />
         </PageAccessories>
       </NavBar>
@@ -485,69 +448,6 @@ export default function Page() {
             </Header2>
           </div>
           <div className="flex flex-col gap-6">
-            <InputGroup fullWidth>
-              <div className="flex w-full items-center justify-between">
-                <Label>Secret key</Label>
-                <RegenerateApiKeyModal
-                  id={environment.parentEnvironment?.id ?? environment.id}
-                  title={environmentFullTitle(environment)}
-                  hasVercelIntegration={hasVercelIntegration}
-                  isDevelopment={environment.type === "DEVELOPMENT"}
-                />
-              </div>
-              <ClipboardField
-                className="w-full max-w-none"
-                secure={`tr_${environment.apiKey.split("_")[1]}_••••••••`}
-                value={environment.apiKey}
-                variant={"secondary/small"}
-              />
-              <Hint>
-                Set this as your <InlineCode variant="extra-small">TRIGGER_SECRET_KEY</InlineCode>{" "}
-                env var in your backend.
-              </Hint>
-            </InputGroup>
-            {environment.branchName && (
-              <InputGroup fullWidth>
-                <Label>Branch name</Label>
-                <ClipboardField
-                  className="w-full max-w-none"
-                  value={environment.branchName}
-                  variant={"secondary/small"}
-                />
-                <Hint>
-                  Set this as your{" "}
-                  <InlineCode variant="extra-small">TRIGGER_PREVIEW_BRANCH</InlineCode> env var in
-                  your backend.
-                </Hint>
-              </InputGroup>
-            )}
-            {environment.type === "DEVELOPMENT" && (
-              <Callout variant="info">
-                Every team member gets their own dev Secret key. Make sure you're using the one
-                above otherwise you will trigger runs on your team member's machine.
-              </Callout>
-            )}
-
-            <Accordion type="single" collapsible>
-              <AccordionItem value="item-1">
-                <AccordionTrigger>How to set these environment variables</AccordionTrigger>
-                <AccordionContent>
-                  <div className="flex flex-col gap-2">
-                    <div>
-                      You need to set these environment variables in your backend. This allows the
-                      SDK to authenticate with Platos.
-                    </div>
-                    <CodeBlock
-                      language="javascript"
-                      code={envBlock}
-                      showOpenInModal={false}
-                      showLineNumbers={false}
-                    />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-
             {/* Platos Agent Access Key section */}
             <PlatosAccessKeySection initialKey={platosKey} retiringKey={retiringPlatosKey} />
           </div>

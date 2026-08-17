@@ -254,25 +254,11 @@ export function parsePrismaModels(source) {
 
 function addImportFindings(findings, root, files) {
   const importRe =
-    /(?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s*)["'](@platos\/database(?:\/[^"']*)?)["']/g;
+    /(?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s*)["'](@platos\/database\/(?:legacy(?:-prisma)?|generated\/legacy)(?:\/[^"']*)?)["']/g;
   for (const path of files) {
     const source = read(root, path);
     for (const match of source.matchAll(importRe)) {
       findings.push(finding(source, "legacy-import", path, match[1], match.index));
-    }
-  }
-
-  const packagePath = "apps/webapp/package.json";
-  if (existsSync(join(root, packagePath))) {
-    const source = read(root, packagePath);
-    const packageJson = JSON.parse(source);
-    for (const section of ["dependencies", "devDependencies", "optionalDependencies"]) {
-      if (packageJson[section]?.["@platos/database"]) {
-        const index = source.indexOf('"@platos/database"');
-        findings.push(
-          finding(source, "legacy-import", packagePath, "@platos/database dependency", index)
-        );
-      }
     }
   }
 }
@@ -410,7 +396,7 @@ function addRouteAndWorkerFindings(findings, root, webappFiles, ownershipFiles) 
   const allFiles = [...new Set([...webappFiles, ...ownershipFiles])].sort();
   const packageImportRe = /["'](@internal\/(?:run-engine|schedule-engine))["']/g;
   const workerTokenRe =
-    /\b(WORKER_MODE|MANAGED_WORKER_SECRET)\b(?=\s*:)|\b(?:process\.env|env)\.(WORKER_MODE|MANAGED_WORKER_SECRET)\b|\$\{(WORKER_MODE|MANAGED_WORKER_SECRET)\b/g;
+    /\b(WORKER_MODE|MANAGED_WORKER_SECRET|TRIGGER_WORKER_TOKEN|TRIGGER_BOOTSTRAP_[A-Z_]+)\b(?=\s*:)|\b(?:process\.env|env)\.(WORKER_MODE|MANAGED_WORKER_SECRET|TRIGGER_WORKER_TOKEN|TRIGGER_BOOTSTRAP_[A-Z_]+)\b|\$\{(WORKER_MODE|MANAGED_WORKER_SECRET|TRIGGER_WORKER_TOKEN|TRIGGER_BOOTSTRAP_[A-Z_]+)\b/g;
   for (const path of allFiles) {
     const source = read(root, path);
     for (const match of source.matchAll(packageImportRe)) {

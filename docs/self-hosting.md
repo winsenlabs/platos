@@ -159,7 +159,6 @@ Compose refuses to boot if any of these are missing or empty. Generate locally w
 | `ENCRYPTION_KEY` | New: **64 hex chars** (32 bytes); existing exact 32-byte UTF-8 is supported | `openssl rand -hex 32` |
 | `PLATOS_ENCRYPTION_KEY` | **64 hex chars** (32 bytes) | `openssl rand -hex 32` |
 | `PLATOS_MESSAGE_ENCRYPTION_KEY` | **64 hex chars** (32 bytes) | `openssl rand -hex 32` |
-| `MANAGED_WORKER_SECRET` | non-empty | `openssl rand -hex 32` |
 | `TRIGGER_INTERNAL_SECRET` | non-empty | `openssl rand -hex 32` |
 | `POSTGRES_PASSWORD` | non-empty | `openssl rand -hex 16` |
 | `CLICKHOUSE_PASSWORD` | non-empty | `openssl rand -hex 16` |
@@ -196,31 +195,14 @@ docker compose -f docker-compose.platos.yml up -d --no-deps \
 # Wait for healthchecks (~15-20s).
 docker compose -f docker-compose.platos.yml ps
 
-# 2. Webapp first (it bootstraps the worker token — see §4).
-docker compose -f docker-compose.platos.yml up -d --no-deps webapp
+# 2. Run the guarded clean-schema migration one-shot.
+docker compose -f docker-compose.platos.yml run --rm migrations-init
 
-# 3. Run Postgres migrations from inside the webapp container. The
-#    `migrations-init` sidecar uses goose from ghcr.io which is sometimes
-#    rate-limited on first pull — running migrations via Prisma directly
-#    is more reliable and produces identical schema.
-PG_PWD=$(grep ^POSTGRES_PASSWORD .env | cut -d= -f2)
-docker exec -e DIRECT_URL="postgresql://postgres:${PG_PWD}@postgres:5432/postgres?schema=public" \
-  platos-webapp-1 \
-  /triggerdotdev/node_modules/.bin/prisma migrate deploy \
-  --schema /triggerdotdev/internal-packages/database/prisma/schema.prisma
+# 3. Start Platos application services. Trigger is not part of this compose
+#    stack and must be deployed separately when durable dispatch is desired.
+docker compose -f docker-compose.platos.yml up -d --no-deps webapp agent
 
-# 4. Restart webapp so its bootstrap routine sees the full schema +
-#    creates the `bootstrap` worker group (see §4).
-docker compose -f docker-compose.platos.yml restart webapp
-
-# 5. Capture the worker token from webapp logs (see §4).
-docker logs platos-webapp-1 2>&1 | grep TRIGGER_WORKER_TOKEN
-
-# Append the token to .env, then bring up agent + worker.
-echo "TRIGGER_WORKER_TOKEN=tr_wgt_..." >> .env
-docker compose -f docker-compose.platos.yml up -d --no-deps agent worker
-
-# 6. Verify all services healthy.
+# 4. Verify all services healthy.
 docker compose -f docker-compose.platos.yml ps
 ```
 
@@ -261,26 +243,14 @@ minio.your.host {
 
 If you'd rather use external S3 (R2, GCS, AWS S3), set the `OBJECT_STORE_*` env vars instead and remove the `minio` service from your compose.
 
-### 4. The worker token bootstrap
+### 4. Optional external Trigger
 
-The `worker` service ships embedded inside the agent image (`WORKER_MODE=true`) but needs a `TRIGGER_WORKER_TOKEN` to authenticate against the run engine. The webapp generates this token automatically the first time it boots with `TRIGGER_BOOTSTRAP_ENABLED=1` (the default) — but it doesn't share the token with the worker via volume.
-
-You extract it once and feed it back through `.env`:
-
-```bash
-# After the webapp has booted with the full Postgres schema, find the token:
-docker logs platos-webapp-1 2>&1 | grep "TRIGGER_WORKER_TOKEN="
-# Outputs a line like:
-#   TRIGGER_WORKER_TOKEN=tr_wgt_rIGlI3WEGu8Hu3KrKFN88I5nSDqRwjgttWnZ3Uue
-
-# Append it to .env (one-time), then bring the worker up.
-echo "TRIGGER_WORKER_TOKEN=tr_wgt_..." >> .env
-docker compose -f docker-compose.platos.yml up -d --no-deps --force-recreate worker
-```
-
-Once written, the token never needs to rotate unless you wipe the database. If you do wipe and re-bootstrap, replace the value in `.env` and restart the worker.
-
-For multi-host worker scale-out: provision additional worker nodes pointed at the same `TRIGGER_API_URL` with the same `TRIGGER_WORKER_TOKEN`. The token is per-worker-group, not per-host.
+Trigger is a separate application and owns its own workers, queues, schedules,
+and dashboard. Set both `TRIGGER_API_URL` and `TRIGGER_SECRET_KEY` to enable
+explicit durable dispatch. Leave both unset to use direct-turn dispatch. Set
+`EXTERNAL_TRIGGER_DASHBOARD_URL` only when you want the Platos side menu to show
+an external dashboard link. Historical local Trigger data is export-only and is
+not imported into the external deployment automatically.
 
 ### 5. Email — sender domain authentication
 

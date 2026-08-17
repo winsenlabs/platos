@@ -14,7 +14,7 @@ import { Header3 } from "~/components/primitives/Headers";
 import { NavBar, PageAccessories, PageTitle } from "~/components/primitives/PageHeader";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import {
   EnvironmentParamSchema,
@@ -78,7 +78,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }
@@ -173,7 +173,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const backPath = agentDetailPath(
     { slug: organizationSlug },
     { slug: projectParam },
-    { slug: envParam },
+    { id: envParam },
     agentId,
   );
 
@@ -197,7 +197,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (!project) {
     throw new Response(undefined, { status: 404, statusText: "Project not found" });
   }
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) {
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }
@@ -284,7 +284,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         agentDetailPath(
           { slug: organizationSlug },
           { slug: projectParam },
-          { slug: envParam },
+          { id: envParam },
           agentId,
         ),
       );

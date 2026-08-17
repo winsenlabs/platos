@@ -4,7 +4,7 @@ import { Form, Link, useNavigation } from "@remix-run/react";
 import { useState } from "react";
 import { DocsLink } from "~/components/primitives/DocsLink";
 import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
+import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { agentClusterPath, EnvironmentParamSchema } from "~/utils/pathBuilder";
 import { useOrganization } from "~/hooks/useOrganizations";
@@ -16,7 +16,7 @@ async function getScopeAndApi(request: Request, params: Record<string, string | 
   const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
   const project = await findProjectBySlug(organizationSlug, projectParam, userId);
   if (!project) throw new Response(undefined, { status: 404 });
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
+  const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404 });
   const scope = { organizationId: project.organizationId, projectId: project.id, environmentId: environment.id, userId };
   const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";

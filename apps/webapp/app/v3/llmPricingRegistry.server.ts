@@ -3,7 +3,6 @@ import { prisma, $replica } from "~/db.server";
 import { env } from "~/env.server";
 import { signalsEmitter } from "~/services/signals.server";
 import { singleton } from "~/utils/singleton";
-import { setLlmPricingRegistry } from "./utils/enrichCreatableEvents.server";
 
 async function initRegistry(registry: ModelPricingRegistry) {
   if (env.LLM_PRICING_SEED_ON_STARTUP) {
@@ -19,9 +18,6 @@ export const llmPricingRegistry = singleton("llmPricingRegistry", () => {
   }
 
   const registry = new ModelPricingRegistry($replica);
-
-  // Wire up the registry so enrichCreatableEvents can use it
-  setLlmPricingRegistry(registry);
 
   initRegistry(registry).catch((err) => {
     console.error("Failed to initialize LLM pricing registry", err);
