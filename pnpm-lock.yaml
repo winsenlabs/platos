@@ -181,12 +181,6 @@ importers:
       '@platos/database':
         specifier: workspace:*
         version: link:../../internal-packages/database
-      '@platos/sdk':
-        specifier: workspace:*
-        version: link:../../packages/trigger-sdk
-      '@platos/tenancy-database':
-        specifier: workspace:*
-        version: link:../../internal-packages/tenancy-database
       '@prisma/client':
         specifier: 6.14.0
         version: 6.14.0(prisma@6.19.0(magicast@0.3.5)(typescript@5.5.4))(typescript@5.5.4)
@@ -476,9 +470,6 @@ importers:
       '@platos/sdk':
         specifier: workspace:*
         version: link:../../packages/trigger-sdk
-      '@platos/tenancy-database':
-        specifier: workspace:*
-        version: link:../../internal-packages/tenancy-database
       '@popperjs/core':
         specifier: ^2.11.8
         version: 2.11.8
@@ -1174,19 +1165,25 @@ importers:
       '@prisma/client':
         specifier: 6.14.0
         version: 6.14.0(prisma@6.14.0(magicast@0.3.5)(typescript@5.5.4))(typescript@5.5.4)
-      decimal.js:
-        specifier: ^10.6.0
-        version: 10.6.0
-    devDependencies:
-      '@types/decimal.js':
-        specifier: ^7.4.3
-        version: 7.4.3
+      pg:
+        specifier: ^8.13.0
+        version: 8.15.6
       prisma:
         specifier: 6.14.0
         version: 6.14.0(magicast@0.3.5)(typescript@5.5.4)
+    devDependencies:
+      '@testcontainers/postgresql':
+        specifier: ^10.28.0
+        version: 10.28.0
+      '@types/node':
+        specifier: 20.14.14
+        version: 20.14.14
       rimraf:
         specifier: 6.0.1
         version: 6.0.1
+      vitest:
+        specifier: 3.1.4
+        version: 3.1.4(@types/debug@4.1.12)(@types/node@20.14.14)(jsdom@28.1.0)(lightningcss@1.29.2)(terser@5.44.1)
 
   internal-packages/docs:
     dependencies:
@@ -1418,28 +1415,6 @@ importers:
         specifier: 3.1.4
         version: 3.1.4(@types/debug@4.1.12)(@types/node@20.14.14)(jsdom@28.1.0)(lightningcss@1.29.2)(terser@5.44.1)
 
-  internal-packages/tenancy-database:
-    dependencies:
-      '@prisma/client':
-        specifier: 6.14.0
-        version: 6.14.0(prisma@6.14.0(magicast@0.3.5)(typescript@5.5.4))(typescript@5.5.4)
-    devDependencies:
-      '@testcontainers/postgresql':
-        specifier: ^10.28.0
-        version: 10.28.0
-      '@types/node':
-        specifier: 20.14.14
-        version: 20.14.14
-      prisma:
-        specifier: 6.14.0
-        version: 6.14.0(magicast@0.3.5)(typescript@5.5.4)
-      rimraf:
-        specifier: 6.0.1
-        version: 6.0.1
-      vitest:
-        specifier: 3.1.4
-        version: 3.1.4(@types/debug@4.1.12)(@types/node@20.14.14)(jsdom@28.1.0)(lightningcss@1.29.2)(terser@5.44.1)
-
   internal-packages/testcontainers:
     dependencies:
       '@clickhouse/client':
@@ -1455,9 +1430,6 @@ importers:
         specifier: ^5.3.2
         version: 5.10.1
     devDependencies:
-      '@platos/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@testcontainers/postgresql':
         specifier: ^10.28.0
         version: 10.28.0
@@ -8592,10 +8564,6 @@ packages:
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
 
-  '@types/decimal.js@7.4.3':
-    resolution: {integrity: sha512-7MpxcJPHqQ637FCZwJLtJMaDZkcD/iyUxj0m8A+m06slFeqRiK9QtgEyuocWNRbEtCrOZOEbZPTSSR88hMZVsg==}
-    deprecated: This is a stub types definition. decimal.js provides its own type definitions, so you do not need this installed.
-
   '@types/docker-modem@3.0.6':
     resolution: {integrity: sha512-yKpAGEuKRSS8wwx0joknWxsmLha78wNMe9R2S3UNsVOkZded8UqOrV8KoeDXoXsjndxwyF3eIhyClGbO1SEhEg==}
 
@@ -14013,17 +13981,11 @@ packages:
   periscopic@3.1.0:
     resolution: {integrity: sha512-vKiQ8RRtkl9P+r/+oefh25C3fhybptkHKCZSPlcXiJux2tJF55GnEj3BVn4A5gKfq9NWWXXrxkHBwVPUfH0opw==}
 
-  pg-cloudflare@1.2.7:
-    resolution: {integrity: sha512-YgCtzMH0ptvZJslLM1ffsY4EuGaU0cx4XSdXLRFae8bPP4dS5xL1tNB3k2o/N64cHJpwU7dxKli/nZ2lUa5fLg==}
-
   pg-cloudflare@1.4.0:
     resolution: {integrity: sha512-Vo7z/6rrQYxpNRylp4Tlob2elzbh+N/MOQbxFVWCxS7oEx6jF53GTJFxK2WWpKuBRkmiin4Mt+xofFDjx09R0A==}
 
   pg-connection-string@2.14.0:
     resolution: {integrity: sha512-XwWDGcLRGCXAR8F/AM5bG7Q+A3Wm2s6QeEjlOKZLlH3UYcguiqCWKyWXVag5TLTIjR7oOJUY8kcADaZgWPyLeg==}
-
-  pg-connection-string@2.9.1:
-    resolution: {integrity: sha512-nkc6NpDcvPVpZXxrreI/FOtX3XemeLl8E0qFr6F2Lrm/I8WOnaWNhIPK2Z7OHpw7gh5XJThi6j6ppgNoaT1w4w==}
 
   pg-int8@1.0.1:
     resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==}
@@ -14032,11 +13994,6 @@ packages:
   pg-numeric@1.0.2:
     resolution: {integrity: sha512-BM/Thnrw5jm2kKLE5uJkXqqExRUY/toLHda65XgFTBTFYZyopbKjBe29Ii3RbkvlsMoFwD+tHeGaCjjv0gHlyw==}
     engines: {node: '>=4'}
-
-  pg-pool@3.10.1:
-    resolution: {integrity: sha512-Tu8jMlcX+9d8+QVzKIvM/uJtp07PKr82IUOYEphaWcoBhIYkoHpLXN3qO59nAI11ripznDsEzEv8nUxBVWajGg==}
-    peerDependencies:
-      pg: '>=8.0'
 
   pg-pool@3.14.0:
     resolution: {integrity: sha512-gKtPkFdQPU3DksooVLi9LsjZxrsBUZIpa+7aVx+LV5pNh0KzP4Zleud2po+ConrxbuXGBJ6Hfer6hdgpIBpBaw==}
@@ -25728,10 +25685,6 @@ snapshots:
     dependencies:
       '@types/ms': 0.7.31
 
-  '@types/decimal.js@7.4.3':
-    dependencies:
-      decimal.js: 10.6.0
-
   '@types/docker-modem@3.0.6':
     dependencies:
       '@types/node': 20.14.14
@@ -25890,7 +25843,7 @@ snapshots:
   '@types/pg@8.6.1':
     dependencies:
       '@types/node': 20.14.14
-      pg-protocol: 1.10.3
+      pg-protocol: 1.15.0
       pg-types: 2.2.0
 
   '@types/pg@8.6.6':
@@ -32368,21 +32321,16 @@ snapshots:
       estree-walker: 3.0.3
       is-reference: 3.0.3
 
-  pg-cloudflare@1.2.7:
-    optional: true
-
   pg-cloudflare@1.4.0:
     optional: true
 
   pg-connection-string@2.14.0: {}
 
-  pg-connection-string@2.9.1: {}
-
   pg-int8@1.0.1: {}
 
   pg-numeric@1.0.2: {}
 
-  pg-pool@3.10.1(pg@8.15.6):
+  pg-pool@3.14.0(pg@8.15.6):
     dependencies:
       pg: 8.15.6
 
@@ -32414,13 +32362,13 @@ snapshots:
 
   pg@8.15.6:
     dependencies:
-      pg-connection-string: 2.9.1
-      pg-pool: 3.10.1(pg@8.15.6)
-      pg-protocol: 1.10.3
+      pg-connection-string: 2.14.0
+      pg-pool: 3.14.0(pg@8.15.6)
+      pg-protocol: 1.15.0
       pg-types: 2.2.0
       pgpass: 1.0.5
     optionalDependencies:
-      pg-cloudflare: 1.2.7
+      pg-cloudflare: 1.4.0
 
   pg@8.22.0:
     dependencies:

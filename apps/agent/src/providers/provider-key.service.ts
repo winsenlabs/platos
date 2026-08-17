@@ -9,7 +9,7 @@ import {
   type EnvironmentOperatorAuthorization,
   type OperatorAuthorization,
   type PrismaClient,
-} from "@platos/tenancy-database";
+} from "@platos/database";
 import type { RequestScope } from "../auth/scope.guard";
 import {
   PLATOS_SECRET_STORE_TOKEN,

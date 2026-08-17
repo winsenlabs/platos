@@ -1,7 +1,7 @@
 # Inherited Prisma disposition
 
 The executable source of truth is
-`internal-packages/tenancy-database/src/cutover-ledger.ts`; this document does
+`internal-packages/database/src/cutover-ledger.ts`; this document does
 not duplicate the model list.
 
 The inherited Prisma schema currently contains **124 models**. Every model is
@@ -25,7 +25,7 @@ extension entry.
 Run the ownership gates with:
 
 ```sh
-pnpm --filter @platos/tenancy-database exec vitest run \
+pnpm --filter @platos/database exec vitest run \
   src/cutover-ledger.test.ts src/cutover-id.test.ts \
   --sequence.concurrent=false --no-file-parallelism
 ```

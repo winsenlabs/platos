@@ -1,6 +1,6 @@
 import { Injectable, Inject } from "@nestjs/common";
 import * as crypto from "node:crypto";
-import type { GoldenSet, Prisma } from "@platos/tenancy-database";
+import type { GoldenSet, Prisma } from "@platos/database";
 import {
   type ControlDatabaseClient,
   environmentScopeWhere,

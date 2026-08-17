@@ -3,9 +3,23 @@
 Phase 1 is an executable inventory and contract only. It does not run the
 cutover, change runtime reads/writes, or modify either Prisma schema.
 
+## Ordinary migration versus cutover
+
+`pnpm db:migrate` is only for an empty database or one already initialized by
+the clean `@platos/database` migration history. Its catalog guard refuses known
+inherited tables and migration IDs before `prisma migrate deploy` runs. Never
+baseline the clean initial migration over a legacy catalog and never point this
+command at `legacy-prisma`.
+
+Existing installations require a future, explicitly operator-gated
+`db:cutover` workflow that executes the contracts below. That command does not
+exist yet. Until it is implemented and reviewed, the guard's refusal is the
+required behavior; reset, manual migration-history edits, and ordinary migrate
+deploy are not substitutes.
+
 ## Source and physical-object ownership
 
-`internal-packages/tenancy-database/src/cutover-ledger.ts` owns the exhaustive
+`internal-packages/database/src/cutover-ledger.ts` owns the exhaustive
 source disposition:
 
 - 124 inherited Prisma models, each exactly once as `BACKFILL`, `EXPORT_DROP`,

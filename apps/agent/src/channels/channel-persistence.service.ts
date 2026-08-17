@@ -1,5 +1,5 @@
 import { Injectable, Inject } from "@nestjs/common";
-import { CredentialKind } from "@platos/tenancy-database";
+import { CredentialKind } from "@platos/database";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 

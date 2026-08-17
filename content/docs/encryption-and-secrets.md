@@ -18,7 +18,7 @@ related:
   - connected-entities
   - self-hosting
 source_files_referenced:
-  - internal-packages/tenancy-database/src/secrets.ts
+  - internal-packages/database/src/secrets.ts
   - apps/webapp/app/utils/encryptionKey.server.ts
   - apps/agent/src/monitoring/message-crypto.service.ts
   - apps/agent/src/auth/secrets.service.ts

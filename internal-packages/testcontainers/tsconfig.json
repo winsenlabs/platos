@@ -13,13 +13,7 @@
     "skipLibCheck": true,
     "noEmit": true,
     "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "paths": {
-      "@platos/core": ["../../packages/core/src/index"],
-      "@platos/core/*": ["../../packages/core/src/*"],
-      "@platos/database": ["../../internal-packages/database/src/index"],
-      "@platos/database/*": ["../../internal-packages/database/src/*"]
-    }
+    "noUncheckedIndexedAccess": true
   },
   "exclude": ["node_modules"]
 }

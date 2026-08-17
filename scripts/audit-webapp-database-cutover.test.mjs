@@ -40,8 +40,8 @@ function fixture() {
   const root = mkdtempSync(join(tmpdir(), "webapp-cutover-audit-"));
   write(root, "apps/webapp/package.json", JSON.stringify({ name: "fixture", dependencies: {} }));
   write(root, "apps/agent/package.json", JSON.stringify({ name: "agent-fixture" }));
-  write(root, "internal-packages/database/prisma/schema.prisma", LEGACY_SCHEMA);
-  write(root, "internal-packages/tenancy-database/prisma/schema.prisma", CLEAN_SCHEMA);
+  write(root, "internal-packages/database/legacy-prisma/schema.prisma", LEGACY_SCHEMA);
+  write(root, "internal-packages/database/prisma/schema.prisma", CLEAN_SCHEMA);
   return root;
 }
 
@@ -113,7 +113,7 @@ test("new forbidden ownership surfaces fail while external integrations remain a
   write(root, "apps/agent/src/trigger-worker.ts", "export const worker = true;");
   write(
     root,
-    "internal-packages/tenancy-database/prisma/schema.prisma",
+    "internal-packages/database/prisma/schema.prisma",
     `${CLEAN_SCHEMA}\nmodel TriggerRun {\n  id String @id\n}\n`
   );
 
@@ -149,7 +149,7 @@ test("new forbidden ownership surfaces fail while external integrations remain a
   rmSync(join(root, "apps/webapp/app/new-legacy.server.ts"));
   rmSync(join(root, "apps/webapp/app/routes/engine.v2.synthetic.ts"));
   rmSync(join(root, "apps/agent/src/trigger-worker.ts"));
-  write(root, "internal-packages/tenancy-database/prisma/schema.prisma", CLEAN_SCHEMA);
+  write(root, "internal-packages/database/prisma/schema.prisma", CLEAN_SCHEMA);
   write(
     root,
     "apps/agent/src/external-trigger.ts",

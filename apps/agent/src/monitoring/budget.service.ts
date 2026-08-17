@@ -1,5 +1,5 @@
 import { Injectable, Inject, Optional } from "@nestjs/common";
-import type { Budget, Prisma } from "@platos/tenancy-database";
+import type { Budget, Prisma } from "@platos/database";
 import {
   type ControlDatabaseClient,
   environmentScopeWhere,

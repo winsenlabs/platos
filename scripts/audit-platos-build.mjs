@@ -18,27 +18,55 @@ function read(path) {
 
 const packageJson = JSON.parse(read("package.json"));
 const agentPackage = JSON.parse(read("apps/agent/package.json"));
-const tenancyDatabasePackage = JSON.parse(read("internal-packages/tenancy-database/package.json"));
+const databasePackage = JSON.parse(read("internal-packages/database/package.json"));
 const webappPackage = JSON.parse(read("apps/webapp/package.json"));
 const agentDockerfile = read("apps/agent/Dockerfile");
 const webappDockerfile = read("apps/webapp/Dockerfile.platos");
 const compose = read("docker-compose.platos.yml");
+const retiredDatabaseName = ["tenancy", "database"].join("-");
 
 check("root exposes build:platos", Boolean(packageJson.scripts?.["build:platos"]));
 check("root exposes build:platos:agent", Boolean(packageJson.scripts?.["build:platos:agent"]));
 check("root exposes build:platos:webapp", Boolean(packageJson.scripts?.["build:platos:webapp"]));
 check(
-  "agent build compiles the clean tenancy database dependency",
-  /--filter @platos\/tenancy-database build/.test(packageJson.scripts?.["build:platos:agent"] ?? "")
+  "agent build compiles the promoted clean database dependency",
+  /--filter @platos\/database build/.test(packageJson.scripts?.["build:platos:agent"] ?? "")
 );
 check(
-  "tenancy database deploy includes compiled and generated runtime entries",
-  ["dist", "generated"].every((path) => tenancyDatabasePackage.files?.includes(path))
+  "database deploy includes compiled, generated, migration, and guard entries",
+  ["dist", "generated", "prisma", "scripts"].every((path) => databasePackage.files?.includes(path))
+);
+check("promoted package owns the canonical name", databasePackage.name === "@platos/database");
+check(
+  "temporary tenancy workspace package is absent",
+  !existsSync(join(root, "internal-packages", retiredDatabaseName, "package.json"))
+);
+check(
+  "agent has exactly one database workspace dependency",
+  agentPackage.dependencies?.["@platos/database"] === "workspace:*" &&
+    !Object.keys(agentPackage.dependencies ?? {}).some((name) => name.includes(retiredDatabaseName))
+);
+check(
+  "webapp has exactly one database workspace dependency",
+  webappPackage.dependencies?.["@platos/database"] === "workspace:*" &&
+    !Object.keys(webappPackage.dependencies ?? {}).some((name) => name.includes(retiredDatabaseName))
+);
+check(
+  "ordinary database migration runs the legacy-catalog guard first",
+  /db:migrate:check.*prisma migrate deploy/.test(databasePackage.scripts?.["db:migrate:deploy"] ?? "")
 );
 check("agent exposes strict declaration build", /--declaration/.test(agentPackage.scripts?.["build:strict"] ?? ""));
 check("webapp build is guarded by memory policy", /memory-policy\.mjs build/.test(webappPackage.scripts?.build ?? ""));
 check("agent image uses explicit Platos build graph", /build:platos:agent/.test(agentDockerfile));
 check("webapp image uses explicit Platos build graph", /build:platos:webapp/.test(webappDockerfile));
+check(
+  "webapp image generates the promoted database package",
+  /--filter @platos\/database generate/.test(webappDockerfile)
+);
+check(
+  "compose migrations use the guarded package entrypoint",
+  /npm run db:migrate:deploy/.test(compose) && /\.\/internal-packages\/database:\/work/.test(compose)
+);
 const webappCompose = compose.split(/^  (?=\S)/m).find((service) => service.startsWith("webapp:")) ?? "";
 check("webapp service receives the documented runtime heap variable", /WEBAPP_NODE_MAX_OLD_SPACE_SIZE_MB/.test(webappCompose));
 

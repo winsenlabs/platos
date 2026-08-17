@@ -7,7 +7,7 @@ import {
   CredentialRootKeyRing,
   PlatosSecretStore,
   PrismaClient,
-} from "@platos/tenancy-database";
+} from "@platos/database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ConversationService } from "../memory/conversation.service";
 import { ModelCatalogService } from "../providers/model-catalog.service";
@@ -111,7 +111,7 @@ describe("direct provider runtime on a clean database", () => {
 
     container = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
     const databaseUrl = container.getConnectionUri();
-    const schemaPath = resolve(process.cwd(), "../../internal-packages/tenancy-database/prisma/schema.prisma");
+    const schemaPath = resolve(process.cwd(), "../../internal-packages/database/prisma/schema.prisma");
     execFileSync(resolve(process.cwd(), "../../node_modules/.bin/prisma"), [
       "migrate",
       "deploy",

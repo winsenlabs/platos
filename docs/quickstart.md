@@ -59,15 +59,21 @@ This starts:
 - `webapp` (Remix) on 3030
 - `agent` (NestJS) on 3100
 
-### Run database migrations (required — not automatic)
+### Database migrations
 
-The prod images don't ship the Prisma CLI, so migrations run from the host:
+Compose runs the guarded `@platos/database` migration package automatically in
+the `migrations-init` one-shot before webapp and agent startup. For host-side
+development, the equivalent command is:
 
 ```bash
 pnpm install                           # hydrate deps
 pnpm run db:migrate                    # Postgres schema
 # ClickHouse migrations use a one-shot goose container — see docs/self-hosting.md
 ```
+
+Ordinary migration accepts only an empty or already-clean catalog. A legacy
+catalog is refused and must wait for the future operator-gated `db:cutover`
+workflow; do not baseline the clean migration over it.
 
 Expect ~90 seconds total between `up` and the first successful login.
 

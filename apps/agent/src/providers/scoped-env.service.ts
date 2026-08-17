@@ -6,7 +6,7 @@ import {
   authorizeEnvironmentRuntime,
   type EnvironmentRuntimeAuthorization,
   type PrismaClient,
-} from "@platos/tenancy-database";
+} from "@platos/database";
 import type { RequestScope } from "../auth/scope.guard";
 import { ProviderRuntimeError } from "./provider-runtime.error";
 import {

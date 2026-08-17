@@ -6,21 +6,26 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "generated"
+    "generated",
+    "prisma",
+    "scripts"
   ],
   "dependencies": {
-    "@prisma/client": "6.14.0"
+    "@prisma/client": "6.14.0",
+    "pg": "^8.13.0",
+    "prisma": "6.14.0"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^10.28.0",
     "@types/node": "20.14.14",
-    "prisma": "6.14.0",
     "rimraf": "6.0.1",
     "vitest": "3.1.4"
   },
   "scripts": {
     "clean": "rimraf dist",
     "generate": "DATABASE_URL=postgresql://generate:generate@localhost:5432/generate prisma generate --schema prisma/schema.prisma && DATABASE_URL=postgresql://generate:generate@localhost:5432/generate prisma generate --schema prisma/end-user.prisma",
+    "db:migrate:check": "node scripts/refuse-legacy-catalog.mjs",
+    "db:migrate:deploy": "pnpm run db:migrate:check && prisma migrate deploy --schema prisma/schema.prisma",
     "pretypecheck": "pnpm run generate",
     "typecheck": "tsc --noEmit",
     "prebuild": "pnpm run generate",

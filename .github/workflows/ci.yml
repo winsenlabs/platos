@@ -54,13 +54,10 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Generate and build database clients
-        # The inherited database package re-exports its generated client. The
-        # clean tenancy package is a compiled workspace dependency of the agent,
-        # so focused Vitest runs also need its package entry emitted from a fresh
-        # checkout before they import the agent graph.
-        run: |
-          pnpm --filter @platos/database generate
-          pnpm --filter @platos/tenancy-database build
+        # The promoted clean package is the agent's only Prisma client. Build it
+        # from a fresh checkout so both generated clients and dist entrypoints
+        # exist before focused Vitest imports the agent graph.
+        run: pnpm --filter @platos/database build
 
       - name: Audit Platos build and external-Trigger invariants
         run: pnpm audit:platos-build
@@ -68,11 +65,11 @@ jobs:
       - name: External Trigger configuration and direct-dispatch tests
         run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
 
-      - name: Platos tenancy and operator-auth tests
+      - name: Platos database and operator-auth tests
         # Runs the complete clean-slate schema/service suite, including its real
         # Postgres testcontainer boundaries. This protects the operator/end-user
         # tier separation added in WIN-121 rather than relying on sandbox-only runs.
-        run: pnpm --filter @platos/tenancy-database test
+        run: pnpm --filter @platos/database test
 
       - name: Webapp memory-policy tests
         run: pnpm --filter webapp exec vitest run test/memoryPolicy.test.ts
@@ -121,17 +118,12 @@ jobs:
         # `prisma db push` and the injected client rely on.
         run: pnpm --filter @platos/database generate
 
-      - name: Build testcontainers dependency graph
-        # @internal/testcontainers (the test's fixture source) imports workspace
-        # packages whose entry is ./dist/index.js (a tsc build), not TS source —
-        # @platos/database, @platos/core, etc. `prisma generate` leaves those
-        # dist/ dirs absent, so vitest's vite resolver fails one at a time
-        # ("Failed to resolve entry for package @platos/…"). Typecheck doesn't
-        # hit this (tsc resolves via source/paths; vite via the package `main`).
-        # `@internal/testcontainers...` (ellipsis = pkg + its dependencies)
-        # builds the whole graph in topological order, so every dist/ exists
-        # before vitest runs.
-        run: pnpm --filter "@internal/testcontainers..." build
+      - name: Build promoted database test dependency
+        # @internal/testcontainers resolves from source and now depends on only
+        # the promoted database package for a compiled workspace entrypoint.
+        # Do not pull the deferred Trigger/webapp compatibility graph into this
+        # clean-client isolation gate.
+        run: pnpm --filter @platos/database build
 
       - name: Cross-scope isolation suite (real Postgres testcontainer)
         run: pnpm --filter platos-agent exec vitest run src/auth/cross-scope-isolation.test.ts

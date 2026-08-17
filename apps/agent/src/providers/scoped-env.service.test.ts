@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { SecretMaterial } from "@platos/tenancy-database";
+import { SecretMaterial } from "@platos/database";
 import { ProviderRuntimeError } from "./provider-runtime.error";
 import { ScopedEnvService, type ScopeTuple } from "./scoped-env.service";
 

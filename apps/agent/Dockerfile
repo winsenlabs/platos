@@ -1,8 +1,8 @@
 # Platos Agent — multi-stage build using pnpm deploy for workspace bundling.
 #
-# Stage 1 (builder): install the full monorepo, build workspace deps (@platos/sdk
-# + its transitive deps), generate the Prisma client, compile the agent's own
-# TypeScript, then run `pnpm deploy` which produces a self-contained directory
+# Stage 1 (builder): install the full monorepo, build the promoted clean database
+# package and runtime-only agent dependencies, compile the agent's own TypeScript,
+# then run `pnpm deploy` which produces a self-contained directory
 # with only the prod dependency tree and no symlinks.
 #
 # Stage 2 (runtime): thin node image that just copies the deployed bundle +
@@ -36,8 +36,8 @@ RUN sed -i '/docs/d' pnpm-workspace.yaml
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --no-frozen-lockfile
 
-# Explicit Platos agent graph: generated database client, SDK/core/database,
-# runtime-only internal packages, then the agent's strict declaration build.
+# Explicit Platos agent graph: generated clean database client, runtime-only
+# internal packages, then the agent's strict declaration build.
 # This intentionally does not claim the deferred webapp/run-engine closure is
 # gone; WIN-132 owns that destructive extraction.
 RUN pnpm run build:platos:agent
@@ -56,7 +56,7 @@ RUN apt-get update && apt-get install -y openssl ca-certificates \
 
 WORKDIR /app
 
-# Deployed node_modules + package.json (has @platos/sdk as a real copy)
+# Deployed node_modules + package.json (workspace dependencies are real copies)
 COPY --from=builder /deploy/node_modules ./node_modules
 COPY --from=builder /deploy/package.json ./package.json
 

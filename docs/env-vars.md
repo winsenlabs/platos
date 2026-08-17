@@ -93,7 +93,7 @@ These are read by the webapp image and set as defaults in `docker-compose.platos
 | `RUN_REPLICATION_ENABLED` | `0` | No | `1` enables the webapp → ClickHouse run-replication worker. Compose sets `1`. |
 | `RUN_REPLICATION_CLICKHOUSE_URL` | `$CLICKHOUSE_URL` | No | Separate URL for the replication worker if you want a dedicated ClickHouse role. |
 | `RUN_REPLICATION_LOG_LEVEL` | `info` | No | Log level for the replication worker. |
-| `SKIP_POSTGRES_MIGRATIONS` | `0` | No | `1` = webapp container does NOT run Prisma migrations at boot. Compose sets `1` — prod images don't ship Prisma CLI, so run `pnpm run db:migrate` from the host. |
+| `SKIP_POSTGRES_MIGRATIONS` | `0` | No | `1` = webapp container does NOT run Prisma migrations at boot. Compose sets `1` because the guarded `migrations-init` one-shot owns clean migration deploy before app startup. |
 | `SKIP_CLICKHOUSE_MIGRATIONS` | `0` | No | `1` = webapp container does NOT run ClickHouse goose migrations at boot. Compose sets `1` — run the one-shot goose container from the host. |
 | `WEBAPP_NODE_MAX_OLD_SPACE_SIZE_MB` | `1536` | No | Runtime V8 old-space ceiling in MiB. Startup enforces that it remains at or below 75% of the effective container limit and leaves at least 512 MiB outside old-space. With compose's default `WEBAPP_MEM_LIMIT=2g`, 1536 is the maximum accepted value. |
 | `WEBAPP_BUILD_MAX_OLD_SPACE_SIZE_MB` | `1536` | No | Build-only V8 old-space ceiling in MiB. The guarded build also requires another 2048 MiB of currently available memory and refuses to run otherwise. Build production images off-box. |

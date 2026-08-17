@@ -6,7 +6,7 @@ import {
   authorizeEnvironmentOperator,
   type EnvironmentAuthorizationAccess,
   type OperatorAuthorization,
-} from "@platos/tenancy-database";
+} from "@platos/database";
 import { singleton } from "~/utils/singleton";
 
 const DEVELOPMENT_ROOT_KEY = "feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface";

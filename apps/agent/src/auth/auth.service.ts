@@ -9,7 +9,7 @@ import {
   type EnvironmentAuthorizationAccess,
   type EnvironmentOperatorAuthorization,
   type OperatorAuthorization,
-} from "@platos/tenancy-database";
+} from "@platos/database";
 import {
   type ControlDatabaseClient,
   PLATOS_SECRET_STORE_TOKEN,

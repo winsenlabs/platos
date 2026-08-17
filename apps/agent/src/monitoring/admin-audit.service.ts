@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from "@nestjs/common";
-import type { Prisma } from "@platos/tenancy-database";
+import type { Prisma } from "@platos/database";
 import {
   type ControlDatabaseClient,
   PRISMA_TOKEN,

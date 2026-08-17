@@ -3,7 +3,7 @@ import type {
   Prisma,
   ToolCallAudit,
   WorkStatus,
-} from "@platos/tenancy-database";
+} from "@platos/database";
 import {
   type ControlDatabaseClient,
   environmentScopeWhere,

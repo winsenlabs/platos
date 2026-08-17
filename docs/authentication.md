@@ -1,6 +1,6 @@
 # Dashboard authentication
 
-Platos owns dashboard authentication in `@platos/tenancy-database`; it does
+Platos owns dashboard authentication in `@platos/database`; it does
 not use trigger.dev session, membership, MFA, invitation, or impersonation
 models. Agent-facing `plt_`, `plt_ent_`, and entity-signed credentials are a
 separate boundary and are unchanged.

@@ -3,7 +3,7 @@ import type {
   AgentApproval,
   ApprovalStatus as DatabaseApprovalStatus,
   Prisma,
-} from "@platos/tenancy-database";
+} from "@platos/database";
 import { createHash, randomBytes } from "node:crypto";
 import {
   type ControlDatabaseClient,

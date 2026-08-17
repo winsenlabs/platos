@@ -19,7 +19,7 @@ import {
   CredentialKind,
   PlatosSecretStore,
   authorizeEnvironmentService,
-} from "@platos/tenancy-database";
+} from "@platos/database";
 import { OAuthError, OAuthService, OAUTH_ACCESS_TOKEN_TTL_SEC } from "./oauth.service";
 import { env } from "../shared/env";
 import {

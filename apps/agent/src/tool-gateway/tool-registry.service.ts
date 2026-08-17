@@ -1,5 +1,5 @@
 import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
-import { PolicyEffect, ToolKind } from "@platos/tenancy-database";
+import { PolicyEffect, ToolKind } from "@platos/database";
 import * as crypto from "node:crypto";
 import type { RequestScope } from "../auth/scope.guard";
 import {

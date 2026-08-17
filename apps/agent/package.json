@@ -38,8 +38,6 @@
     "@nestjs/schedule": "^6.1.3",
     "@nestjs/websockets": "^11.0.0",
     "@platos/database": "workspace:*",
-    "@platos/sdk": "workspace:*",
-    "@platos/tenancy-database": "workspace:*",
     "@prisma/client": "6.14.0",
     "@sentry/node": "^8.45.0",
     "@trigger.dev/core": "4.5.4",

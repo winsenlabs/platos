@@ -16,9 +16,7 @@
     "strict": true,
     "paths": {
       "@platos/core": ["../../packages/core/src/index"],
-      "@platos/core/*": ["../../packages/core/src/*"],
-      "@platos/database": ["../database/src/index"],
-      "@platos/database/*": ["../database/src/*"]
+      "@platos/core/*": ["../../packages/core/src/*"]
     }
   },
   "exclude": ["node_modules"]

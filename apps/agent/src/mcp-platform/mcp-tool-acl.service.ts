@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { PolicyEffect } from "@platos/tenancy-database";
+import { PolicyEffect } from "@platos/database";
 import {
   type ControlDatabaseClient,
   PRISMA_TOKEN,

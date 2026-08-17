@@ -267,10 +267,10 @@ services:
 
   # ─────────────────────────────────────────────────────────────
   # EOBD.55 — migrations-init. One-shot that runs
-  # `prisma migrate deploy` against the fresh Postgres before the
-  # webapp + agent start. The prod webapp image doesn't carry the
-  # Prisma CLI, so this uses a dedicated node + prisma image with
-  # the schema bind-mounted.
+  # the guarded @platos/database migrate deploy against fresh Postgres before the
+  # webapp + agent start. This dedicated node service installs the package-owned
+  # migration dependencies in an isolated volume and uses the bind-mounted
+  # clean schema plus catalog guard.
   #
   # Exits 0 on success (migrations applied / already in sync); the
   # webapp `depends_on` uses service_completed_successfully so it
@@ -287,16 +287,17 @@ services:
       DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
     volumes:
       - ./internal-packages/database:/work
+      - /work/node_modules
     working_dir: /work
     entrypoint:
       - /bin/sh
       - -c
       - |
         set -e
-        echo '[migrations-init] installing prisma...'
-        npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
-        echo '[migrations-init] running prisma migrate deploy...'
-        npx prisma migrate deploy
+        echo '[migrations-init] installing clean database package dependencies...'
+        npm install --no-audit --no-fund --silent
+        echo '[migrations-init] checking catalog and running clean migrate deploy...'
+        npm run db:migrate:deploy
         echo '[migrations-init] done'
     restart: "no"
 

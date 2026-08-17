@@ -6,23 +6,15 @@ const mocks = vi.hoisted(() => {
   const ControlPrismaClient = vi.fn(function (this: unknown) {
     return controlClient;
   });
-  const LegacyPrismaClient = vi.fn(function (this: unknown) {
-    throw new Error("legacy Prisma client must not be constructed");
-  });
   return {
     connect,
     controlClient,
     ControlPrismaClient,
-    LegacyPrismaClient,
   };
 });
 
-vi.mock("@platos/tenancy-database", () => ({
-  PrismaClient: mocks.ControlPrismaClient,
-}));
-
 vi.mock("@platos/database", () => ({
-  PrismaClient: mocks.LegacyPrismaClient,
+  PrismaClient: mocks.ControlPrismaClient,
 }));
 
 import { DatabaseModule, PRISMA_TOKEN } from "./database.provider";
@@ -33,7 +25,7 @@ describe("DatabaseModule runtime client boundary", () => {
     mocks.connect.mockResolvedValue(undefined);
   });
 
-  it("boots and connects the @platos/tenancy-database PrismaClient without a legacy fallback", async () => {
+  it("boots and connects the @platos/database PrismaClient without a legacy fallback", async () => {
     const providers = Reflect.getMetadata("providers", DatabaseModule) as Array<{
       provide?: string;
       useFactory?: () => Promise<unknown>;
@@ -47,6 +39,5 @@ describe("DatabaseModule runtime client boundary", () => {
       datasourceUrl: expect.any(String),
     });
     expect(mocks.connect).toHaveBeenCalledOnce();
-    expect(mocks.LegacyPrismaClient).not.toHaveBeenCalled();
   });
 });

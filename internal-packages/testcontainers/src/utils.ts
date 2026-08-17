@@ -1,7 +1,6 @@
 import { createClient } from "@clickhouse/client";
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { RedisContainer, StartedRedisContainer } from "@testcontainers/redis";
-import { tryCatch } from "@platos/core";
 import Redis from "ioredis";
 import path from "path";
 import { isDebug } from "std-env";
@@ -97,9 +96,9 @@ export async function createRedisContainer({
     .start();
 
   // Add a verification step
-  const [error] = await tryCatch(verifyRedisConnection(startedContainer));
-
-  if (error) {
+  try {
+    await verifyRedisConnection(startedContainer);
+  } catch (error) {
     await startedContainer.stop({ timeout: 30 });
     throw new Error("verifyRedisConnection error", { cause: error });
   }

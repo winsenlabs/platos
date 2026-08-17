@@ -17,7 +17,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { PutObjectCommand, S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { randomBytes, randomUUID } from "node:crypto";
-import { PrismaClient } from "@platos/tenancy-database";
+import { PrismaClient } from "@platos/database";
 import { AttachmentsService } from "./attachments.service";
 
 type AttachmentScope = {

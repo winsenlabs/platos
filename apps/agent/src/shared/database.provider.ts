@@ -3,7 +3,7 @@ import {
   CredentialRootKeyRing,
   PlatosSecretStore,
   PrismaClient,
-} from "@platos/tenancy-database";
+} from "@platos/database";
 import { env } from "./env";
 
 export const PRISMA_TOKEN = "PRISMA";

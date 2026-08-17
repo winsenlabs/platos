@@ -29,7 +29,7 @@ export const SCOPES = Object.freeze({
       "Package, agent, Compose, and deploy surfaces can keep local Mode-C workers or a second persistence owner active.",
   },
   cleanSchema: {
-    paths: ["internal-packages/tenancy-database/prisma/schema.prisma"],
+    paths: ["internal-packages/database/prisma/schema.prisma"],
     reason: "The clean tenancy schema is the only allowed PostgreSQL target contract.",
   },
   referenceSchema: {

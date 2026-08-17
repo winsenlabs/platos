@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import { PrismaClient } from "@platos/tenancy-database";
+import { PrismaClient } from "@platos/database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   CONVERSATION_REVISION_NOT_SUPPORTED,
@@ -41,7 +41,7 @@ describe("ConversationService PostgreSQL integrity", () => {
       "migrate",
       "deploy",
       "--schema",
-      resolve(process.cwd(), "../../internal-packages/tenancy-database/prisma/schema.prisma"),
+      resolve(process.cwd(), "../../internal-packages/database/prisma/schema.prisma"),
     ], {
       cwd: process.cwd(),
       env: { ...process.env, DATABASE_URL: databaseUrl },

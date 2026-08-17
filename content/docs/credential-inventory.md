@@ -16,8 +16,8 @@ related:
   - mcp-tokens-and-pat
   - encryption-and-secrets
 source_files_referenced:
-  - internal-packages/tenancy-database/prisma/schema.prisma
-  - internal-packages/tenancy-database/src/secrets.ts
+  - internal-packages/database/prisma/schema.prisma
+  - internal-packages/database/src/secrets.ts
   - apps/agent/src/shared/env.ts
   - apps/webapp/app/env.server.ts
   - apps/agent/src/mcp-platform/token.service.ts

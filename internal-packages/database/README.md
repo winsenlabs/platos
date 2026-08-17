@@ -64,6 +64,21 @@ data. It does not import, migrate, or modify the inherited database schema.
 Tests start one isolated PostgreSQL testcontainer and pass its connection URL
 directly to Prisma. They do not read the repository `DATABASE_URL`.
 
+## Migration safety
+
+`pnpm db:migrate` and `pnpm --filter @platos/database db:migrate:deploy` run a
+bounded catalog check before Prisma. The check permits an empty database or a
+catalog already owned by this clean migration history. It refuses inherited
+catalog markers such as `RuntimeEnvironment`, `TaskRun`, or the inherited
+initial migration, so ordinary deploys can never apply the clean baseline on
+top of a legacy installation.
+
+An inherited installation must eventually use the operator-gated
+`db:cutover` workflow described in `docs/win-123-cutover-contracts.md`. That
+workflow is intentionally not implemented by the ordinary migrate command;
+until it exists, a legacy-catalog refusal is a hard stop rather than an
+invitation to reset, baseline, or point Prisma at `legacy-prisma`.
+
 ## Credential operations
 
 - Project ADMIN and Organization OWNER/ADMIN operators may create, rotate,

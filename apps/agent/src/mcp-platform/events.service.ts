@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, OnModuleInit, OnModuleDestroy } from "@nestjs/common";
-import type { Prisma } from "@platos/tenancy-database";
+import type { Prisma } from "@platos/database";
 import type Redis from "ioredis";
 import {
   type ControlDatabaseClient,

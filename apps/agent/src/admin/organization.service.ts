@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
-import type { OrganizationRole } from "@platos/tenancy-database";
+import type { OrganizationRole } from "@platos/database";
 import {
   type ControlDatabaseClient,
   PRISMA_TOKEN,

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { AuthorizationScopeKind } from "@platos/tenancy-database";
+import { AuthorizationScopeKind } from "@platos/database";
 import * as crypto from "node:crypto";
 import {
   type ControlDatabaseClient,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PlatosSecretStoreError } from "@platos/tenancy-database";
+import { PlatosSecretStoreError } from "@platos/database";
 import { ProviderKeyError, ProviderKeyService } from "./provider-key.service";
 
 const scope = {
