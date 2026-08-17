@@ -5,7 +5,7 @@ ALTER TABLE "public"."User"
   ADD COLUMN "dashboardPreferences" JSONB;
 
 CREATE TABLE "public"."AttachmentUploadReservation" (
-  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+  "id" UUID NOT NULL,
   "environmentId" UUID NOT NULL,
   "uploadedByUserId" UUID,
   "uploadedByEndUserId" UUID,

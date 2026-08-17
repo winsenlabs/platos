@@ -15,6 +15,7 @@
     "build:platos:webapp": "pnpm --filter @platos/database generate && pnpm --filter @internal/llm-model-catalog generate && node apps/webapp/scripts/memory-policy.mjs build -- pnpm exec turbo run build --filter='webapp...' --concurrency=1",
     "build:db:seed": "turbo run build:db:seed",
     "db:migrate": "turbo run db:migrate:deploy generate",
+    "db:cutover": "pnpm --filter @platos/database db:cutover",
     "db:seed": "turbo run db:seed",
     "db:studio": "turbo run db:studio",
     "db:populate": "turbo run db:populate",

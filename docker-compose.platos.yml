@@ -301,72 +301,56 @@ services:
         echo '[migrations-init] done'
     restart: "no"
 
-  # ─────────────────────────────────────────────────────────────
-  # worker — dedicated trigger.dev task worker (optional).
-  #
-  # Runs the same platos-agent image in WORKER_MODE=true so task
-  # execution (spawn_bgo / agent_batch / custom tasks) is handled
-  # by separate processes rather than the API server. Horizontal
-  # scaling: increase `replicas` or add more worker services.
-  #
-  # Requires TRIGGER_WORKER_TOKEN — either:
-  #   a) Set explicitly in .env (generate from the webapp admin UI
-  #      under Settings → Worker Groups → bootstrap).
-  #   b) Mount the token volume written by the webapp on first boot
-  #      (TRIGGER_BOOTSTRAP_WORKER_TOKEN_PATH=/run/secrets/worker-token).
-  #
-  # The worker service is OPTIONAL for single-node deploys — the
-  # webapp's bootstrap worker already handles task execution when
-  # TRIGGER_BOOTSTRAP_ENABLED=1. Enable this service for dedicated
-  # task execution or horizontal scale-out.
-  # ─────────────────────────────────────────────────────────────
-  worker:
-    build:
-      context: .
-      dockerfile: apps/agent/Dockerfile
-    restart: unless-stopped
+  # Offline legacy upgrade entrypoint. This profile is never part of normal
+  # startup; operators must stop all writers and invoke it explicitly with
+  # backup/restore, capacity, writer-fence, and irreversible-effect records.
+  # It currently fails closed with machine-readable incomplete phase blockers.
+  cutover-init:
+    profiles: ["cutover"]
+    image: node:22-alpine
     logging: *default-logging
-    mem_limit: ${WORKER_MEM_LIMIT:-1g}
-    deploy:
-      replicas: 1
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-      webapp:
-        condition: service_healthy
-      migrations-init:
-        condition: service_completed_successfully
     environment:
-      WORKER_MODE: "true"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&connection_limit=30&pool_timeout=20"
-      REDIS_URL: "redis://redis:6379"
-      TRIGGER_API_URL: "http://webapp:3000"
-      TRIGGER_WORKER_TOKEN: "${TRIGGER_WORKER_TOKEN:-}"
-      TRIGGER_SECRET_KEY: "${TRIGGER_SECRET_KEY:-}"
-      TRIGGER_INTERNAL_SECRET: "${TRIGGER_INTERNAL_SECRET:?required — openssl rand -hex 32}"
-      PLATOS_WORKER_CONCURRENCY: "${PLATOS_WORKER_CONCURRENCY:-10}"
-      PLATOS_BATCH_CONCURRENCY: "${PLATOS_BATCH_CONCURRENCY:-5}"
-      PLATOS_PER_ORG_CONCURRENCY: "${PLATOS_PER_ORG_CONCURRENCY:-10}"
-      PLATOS_BATCH_ITEM_CONCURRENCY: "${PLATOS_BATCH_ITEM_CONCURRENCY:-3}"
-      PLATOS_MAX_BGOS_PER_TURN: "${PLATOS_MAX_BGOS_PER_TURN:-5}"
-      PLATOS_AGENT_API_URL: "http://agent:3100"
-      PLATOS_AGENT_HTTP_URL: "http://agent:3100"
-      PLATOS_ENCRYPTION_KEY: "${PLATOS_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
-      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 64 hex chars for new deployments}"
-      PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "${PLATOS_CREDENTIAL_ROOT_KEY_VERSION:?required — positive active credential root version}"
-      PLATOS_CREDENTIAL_ROOT_KEYS: "${PLATOS_CREDENTIAL_ROOT_KEYS:?required — JSON map of positive versions to 64-hex roots}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V:-1}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V1: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V1:-}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V2: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V2:-}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V3: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V3:-}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V4: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V4:-}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V5: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V5:-}"
-      SESSION_SECRET: "${SESSION_SECRET:?required — any non-empty string from openssl rand -base64 24}"
-      MANAGED_WORKER_SECRET: "${MANAGED_WORKER_SECRET:?required — generate with `openssl rand -hex 32`}"
-      NODE_ENV: "${NODE_ENV:-production}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=1&pool_timeout=20"
+      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=1&pool_timeout=20"
+      CUTOVER_FRESH_DATABASE_URL: "${CUTOVER_FRESH_DATABASE_URL:-}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required for retained legacy encrypted material}"
+      PLATOS_ENCRYPTION_KEY: "${PLATOS_ENCRYPTION_KEY:?required for retained Platos encrypted material}"
+      PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "${PLATOS_CREDENTIAL_ROOT_KEY_VERSION:?required}"
+      PLATOS_CREDENTIAL_ROOT_KEYS: "${PLATOS_CREDENTIAL_ROOT_KEYS:?required}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:?required}"
+      CUTOVER_EXECUTE_ACCEPTANCE: "${CUTOVER_EXECUTE_ACCEPTANCE:?must equal WIN123_EXECUTE_V1}"
+      CUTOVER_IRREVERSIBLE_EFFECTS_ACCEPTANCE: "${CUTOVER_IRREVERSIBLE_EFFECTS_ACCEPTANCE:?must equal WIN123_IRREVERSIBLE_EFFECTS_V1}"
+      CUTOVER_BACKUP_ATTESTATION_REF: "${CUTOVER_BACKUP_ATTESTATION_REF:?required}"
+      CUTOVER_BACKUP_RESTORE_TEST_REF: "${CUTOVER_BACKUP_RESTORE_TEST_REF:?required}"
+      CUTOVER_CAPACITY_ATTESTATION_REF: "${CUTOVER_CAPACITY_ATTESTATION_REF:?required}"
+      CUTOVER_WRITER_FENCE_ATTESTATION_REF: "${CUTOVER_WRITER_FENCE_ATTESTATION_REF:?required}"
+    volumes:
+      - ./internal-packages/database:/work:ro
+      - ${CUTOVER_ARTIFACT_DIRECTORY:-./.platos/cutover-artifacts}:/cutover-artifacts
+    working_dir: /work
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        mkdir -p /tmp/platos-database
+        tar -C /work --exclude=node_modules --exclude=dist -cf - . | tar -C /tmp/platos-database -xf -
+        cd /tmp/platos-database
+        npm install --no-audit --no-fund --silent
+        npm run db:cutover -- \
+          --execute \
+          --accept-execute "$$CUTOVER_EXECUTE_ACCEPTANCE" \
+          --accept-irreversible-effects "$$CUTOVER_IRREVERSIBLE_EFFECTS_ACCEPTANCE" \
+          --backup-attestation-ref "$$CUTOVER_BACKUP_ATTESTATION_REF" \
+          --backup-restore-test-ref "$$CUTOVER_BACKUP_RESTORE_TEST_REF" \
+          --capacity-attestation-ref "$$CUTOVER_CAPACITY_ATTESTATION_REF" \
+          --writer-fence-attestation-ref "$$CUTOVER_WRITER_FENCE_ATTESTATION_REF" \
+          --report-dir /cutover-artifacts/reports \
+          --export-dir /cutover-artifacts/exports
+    restart: "no"
 
   agent:
     build:
@@ -446,6 +430,7 @@ services:
       # fallback is inferred: set both values explicitly, or turns dispatch
       # direct. Self-hosted Trigger.dev URLs are supported.
       TRIGGER_API_URL: "${TRIGGER_API_URL:-}"
+      EXTERNAL_TRIGGER_DASHBOARD_URL: "${EXTERNAL_TRIGGER_DASHBOARD_URL:-}"
       TRIGGER_SECRET_KEY: "${TRIGGER_SECRET_KEY:-}"
       TRIGGER_INTERNAL_SECRET: "${TRIGGER_INTERNAL_SECRET:?required — openssl rand -hex 32}"
       # Trigger Sessions durable chat (Option 1 — Platos proxies). When true,
@@ -595,20 +580,12 @@ services:
       PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "${PLATOS_CREDENTIAL_ROOT_KEY_VERSION:?required — positive active credential root version}"
       PLATOS_CREDENTIAL_ROOT_KEYS: "${PLATOS_CREDENTIAL_ROOT_KEYS:?required — JSON map of positive versions to 64-hex roots}"
       # SESSION_SECRET above must match the agent container's value. The
-      # webapp mints platform-issued session tokens (iss: platos-platform)
-      # for browser WS handshakes to the agent (PPR-7).
-      # EOBD.52 — refuse silent dev-secret fallback. Operators must set an
-      # explicit value (generate with `openssl rand -hex 32`). Matches the
-      # ENCRYPTION_KEY / SESSION_SECRET fail-fast pattern.
-      MANAGED_WORKER_SECRET: "${MANAGED_WORKER_SECRET:?required — generate with `openssl rand -hex 32`}"
       DEPLOY_REGISTRY_HOST: "${DEPLOY_REGISTRY_HOST:-localhost:5000}"
       V4_DEPLOY_REGISTRY_HOST: "${V4_DEPLOY_REGISTRY_HOST:-localhost:5000}"
       DEPLOY_REGISTRY_NAMESPACE: "${DEPLOY_REGISTRY_NAMESPACE:-trigger}"
       OBJECT_STORE_BASE_URL: "${OBJECT_STORE_BASE_URL:-}"
       OBJECT_STORE_ACCESS_KEY_ID: "${OBJECT_STORE_ACCESS_KEY_ID:-}"
       OBJECT_STORE_SECRET_ACCESS_KEY: "${OBJECT_STORE_SECRET_ACCESS_KEY:-}"
-      TRIGGER_BOOTSTRAP_ENABLED: "1"
-      TRIGGER_BOOTSTRAP_WORKER_GROUP_NAME: bootstrap
       APP_LOG_LEVEL: info
       # EOBD.55 — migrations-init runs before webapp boot, but the
       # prod webapp image still doesn't carry Prisma, so keep these

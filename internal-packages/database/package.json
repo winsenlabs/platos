@@ -7,6 +7,7 @@
   "files": [
     "dist",
     "generated",
+    "legacy-prisma",
     "prisma",
     "scripts"
   ],
@@ -18,6 +19,7 @@
   "devDependencies": {
     "@testcontainers/postgresql": "^10.28.0",
     "@types/node": "20.14.14",
+    "@types/pg": "8.15.5",
     "rimraf": "6.0.1",
     "vitest": "3.1.4"
   },
@@ -25,12 +27,13 @@
     "clean": "rimraf dist",
     "generate": "DATABASE_URL=postgresql://generate:generate@localhost:5432/generate prisma generate --schema prisma/schema.prisma && DATABASE_URL=postgresql://generate:generate@localhost:5432/generate prisma generate --schema prisma/end-user.prisma",
     "db:migrate:check": "node scripts/refuse-legacy-catalog.mjs",
-    "db:migrate:deploy": "pnpm run db:migrate:check && prisma migrate deploy --schema prisma/schema.prisma",
-    "pretypecheck": "pnpm run generate",
+    "db:migrate:deploy": "npm run db:migrate:check && prisma migrate deploy --schema prisma/schema.prisma",
+    "db:cutover": "npm run build --silent >/dev/null && node dist/cutover-cli.js",
+    "pretypecheck": "npm run generate",
     "typecheck": "tsc --noEmit",
-    "prebuild": "pnpm run generate",
-    "build": "pnpm run clean && tsc --project tsconfig.build.json",
-    "pretest": "pnpm run generate",
+    "prebuild": "npm run generate",
+    "build": "npm run clean && tsc --project tsconfig.build.json",
+    "pretest": "npm run generate",
     "test": "vitest --sequence.concurrent=false --no-file-parallelism"
   }
 }

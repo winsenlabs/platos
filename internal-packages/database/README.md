@@ -73,11 +73,39 @@ catalog markers such as `RuntimeEnvironment`, `TaskRun`, or the inherited
 initial migration, so ordinary deploys can never apply the clean baseline on
 top of a legacy installation.
 
-An inherited installation must eventually use the operator-gated
-`db:cutover` workflow described in `docs/win-123-cutover-contracts.md`. That
-workflow is intentionally not implemented by the ordinary migrate command;
-until it exists, a legacy-catalog refusal is a hard stop rather than an
-invitation to reset, baseline, or point Prisma at `legacy-prisma`.
+An inherited installation uses the explicit operator-gated `db:cutover`
+workflow; ordinary migration deploy never redirects to it. `pnpm db:cutover`
+defaults to a read-only preflight and emits a checksummed JSON report. Durable
+mutation requires `--execute`, versioned execute/irreversible-effect
+acceptance values, backup and restore-test references, a capacity record, a
+writer-fence record, the well-known advisory lock, and zero non-cutover client
+sessions.
+
+Phase 3 currently implements only the User/OperatorIdentity, Organization,
+OrganizationMembership, Project/ProjectMembership, and Environment data phase.
+Every remaining retained/export/cryptographic/external-store phase is listed as
+a machine-readable `INCOMPLETE` blocker, so full `--execute` cannot reach DDL.
+The executable core path is rehearsal-only and additionally requires
+`--core-rehearsal --force-rollback-before-commit`; it creates the clean catalog,
+materializes the UUID map, backfills and validates the core phase, compares the
+application catalog with a fresh clean reference, exports evidence, and always
+rolls the transaction back. This is not authorization to run against production.
+
+The Compose `cutover-init` service is behind the opt-in `cutover` profile and
+invokes the same package command. It is intentionally fail-closed while the
+incomplete phase ledger is non-empty.
+
+Run read-only preflight with `pnpm --filter @platos/database db:cutover`; no
+mutation flag is implied. The isolated production-command harness is opt-in:
+
+```bash
+RUN_DATABASE_CUTOVER_HARNESS=1 pnpm --filter @platos/database exec vitest run \
+  src/cutover-harness.integration.test.ts --no-file-parallelism
+```
+
+It starts disposable pgvector PostgreSQL containers, invokes the exact
+`db:migrate:deploy` and `db:cutover` scripts, and proves the core rehearsal
+rolls back before commit. It never reads the repository `DATABASE_URL`.
 
 ## Credential operations
 
