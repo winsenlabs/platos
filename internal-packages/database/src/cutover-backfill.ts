@@ -361,8 +361,8 @@ export async function exportTransactionArtifacts(database: CutoverDatabase): Pro
       ORDER BY source_model, source_id, target_model, stable_suffix`
   );
   const journal = await database.query(
-    `SELECT sequence::text, run_id::text, phase, status, evidence, recorded_at
-       FROM cutover_legacy.cutover_journal ORDER BY sequence`
+    `SELECT journal.sequence::text, run_id::text, phase, status, evidence, recorded_at
+       FROM cutover_legacy.cutover_journal AS journal ORDER BY journal.sequence`
   );
   return { idMap: idMap.rows, journal: journal.rows };
 }

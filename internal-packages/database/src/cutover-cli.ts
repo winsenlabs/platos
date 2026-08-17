@@ -5,6 +5,7 @@ import {
   CUTOVER_REQUIRED_KEY_ENVIRONMENT,
 } from "./cutover-preflight";
 import { serializeCutoverReport } from "./cutover-report";
+import { CredentialRootKeyRing } from "./secrets";
 import type { CutoverMode, CutoverOptions } from "./cutover-types";
 
 export interface ParsedCutoverArguments {
@@ -99,6 +100,27 @@ export function resolveCutoverMessageEncryptionKeys(
   return Object.freeze(keys);
 }
 
+/** Mirrors the runtime's active-plus-prior credential root key-ring contract. */
+export function resolveCutoverCredentialRootKeyRing(
+  environment: Readonly<Record<string, string | undefined>>
+): CredentialRootKeyRing | undefined {
+  const activeVersionValue = environment.PLATOS_CREDENTIAL_ROOT_KEY_VERSION;
+  const keysValue = environment.PLATOS_CREDENTIAL_ROOT_KEYS;
+  if (!activeVersionValue || !keysValue) return undefined;
+
+  try {
+    const activeVersion = Number(activeVersionValue);
+    const keys = JSON.parse(keysValue) as unknown;
+    if (!keys || typeof keys !== "object" || Array.isArray(keys)) throw new Error();
+    return new CredentialRootKeyRing({
+      activeVersion,
+      keys: keys as Readonly<Record<number, string>>,
+    });
+  } catch {
+    throw new Error("credential root key ring configuration is invalid");
+  }
+}
+
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const parsed = parseCutoverArguments(argv);
   const databaseUrl = process.env.DATABASE_URL;
@@ -125,6 +147,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       legacyEncryptionKey: process.env.ENCRYPTION_KEY,
       targetAuthEncryptionKey: process.env.PLATOS_ENCRYPTION_KEY,
       messageEncryptionKeys: resolveCutoverMessageEncryptionKeys(process.env),
+      credentialRootKeyRing: resolveCutoverCredentialRootKeyRing(process.env),
     },
     forcedFailurePhase: parsed.forcedFailurePhase,
   };

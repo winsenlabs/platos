@@ -28,6 +28,17 @@ import {
   retainedConversationBatch2SourceModels,
   validateRetainedConversationBatch2,
 } from "./cutover-conversation-batch2";
+import {
+  backfillRetainedProviderOauthBatch4,
+  materializeRetainedProviderOauthBatch4Mappings,
+  retainedProviderOauthBatch4SourceModels,
+} from "./cutover-provider-oauth-batch4";
+import {
+  backfillRetainedBatch3,
+  materializeRetainedBatch3Checkpoint2Mappings,
+  retainedBatch3SourceModels,
+  validateRetainedBatch3,
+} from "./cutover-retained-batch3";
 import { CUTOVER_ID_MAPPING_VERSION, CUTOVER_ID_NAMESPACE } from "./cutover-id";
 import { cutoverDomainPhases, incompleteCutoverPhaseIds } from "./cutover-phases";
 import { CUTOVER_ADVISORY_LOCK, runCutoverPreflight } from "./cutover-preflight";
@@ -151,6 +162,10 @@ export async function runCutover(
         const mapStarted = new Date().toISOString();
         await materializeCutoverIdMap(database);
         const messageOrdinalMappingCount = await materializeBatch2MessageOrdinalMappings(database);
+        const retainedBatch3MappingCount =
+          await materializeRetainedBatch3Checkpoint2Mappings(database);
+        const retainedProviderOauthBatch4MappingCount =
+          await materializeRetainedProviderOauthBatch4Mappings(database);
         const mappingResult = await database.query<{ mapping_count: string }>(
           "SELECT count(*)::text AS mapping_count FROM cutover_legacy.cutover_id_map"
         );
@@ -161,6 +176,8 @@ export async function runCutover(
         await appendCutoverJournal(database, runId, "materialize-id-map", "SUCCEEDED", {
           mappingCount,
           messageOrdinalMappingCount,
+          retainedBatch3MappingCount,
+          retainedProviderOauthBatch4MappingCount,
         });
         phases.push(phase("materialize-id-map", "SUCCEEDED", `${mappingCount} deterministic UUID mappings materialized`, mapStarted));
         failIfRequested(options, "materialize-id-map");
@@ -235,6 +252,59 @@ export async function runCutover(
           )
         );
         failIfRequested(options, "retained-conversation-batch-2");
+
+        const retainedBatch3Started = new Date().toISOString();
+        const retainedBatch3Evidence = await backfillRetainedBatch3(database, {
+          legacyEncryptionKey: keyMaterial.legacyEncryptionKey,
+          platosEncryptionKey: keyMaterial.targetAuthEncryptionKey,
+          messageEncryptionKeys: keyMaterial.messageEncryptionKeys,
+          credentialRootKeyRing: keyMaterial.credentialRootKeyRing,
+        });
+        await validateRetainedBatch3(database);
+        await appendCutoverJournal(database, runId, "retained-entity-mcp-batch-3", "SUCCEEDED", {
+          sourceModels: retainedBatch3SourceModels,
+          ...retainedBatch3Evidence,
+          cryptographicReadProbes: "INCOMPLETE",
+        });
+        phases.push(
+          phase(
+            "retained-entity-mcp-batch-3",
+            "SUCCEEDED",
+            "entity and MCP Batch 3 normalized backfill validations passed",
+            retainedBatch3Started
+          )
+        );
+        failIfRequested(options, "retained-entity-mcp-batch-3");
+
+        const retainedProviderOauthBatch4Started = new Date().toISOString();
+        const retainedProviderOauthBatch4Evidence =
+          await backfillRetainedProviderOauthBatch4(database, {
+            legacyEncryptionKey: keyMaterial.legacyEncryptionKey,
+            credentialRootKeyVersion: keyMaterial.credentialRootKeyRing.activeVersion,
+            credentialRootKey: keyMaterial.credentialRootKeyRing.key(
+              keyMaterial.credentialRootKeyRing.activeVersion
+            ),
+          });
+        await appendCutoverJournal(
+          database,
+          runId,
+          "retained-provider-oauth-batch-4",
+          "SUCCEEDED",
+          {
+            sourceModels: retainedProviderOauthBatch4SourceModels,
+            ...retainedProviderOauthBatch4Evidence,
+            cryptographicReadProbes: "INCOMPLETE",
+          }
+        );
+        phases.push(
+          phase(
+            "retained-provider-oauth-batch-4",
+            "SUCCEEDED",
+            "provider and OAuth Batch 4 normalized backfill validations passed",
+            retainedProviderOauthBatch4Started
+          )
+        );
+        failIfRequested(options, "retained-provider-oauth-batch-4");
 
         const reference = new Client({
           connectionString: options.freshCatalogDatabaseUrl,
@@ -353,23 +423,26 @@ function requiredCutoverKeyMaterial(options: CutoverOptions): {
   readonly legacyEncryptionKey: string;
   readonly targetAuthEncryptionKey: string;
   readonly messageEncryptionKeys: Readonly<Record<string, string>>;
+  readonly credentialRootKeyRing: NonNullable<NonNullable<CutoverOptions["keyMaterial"]>["credentialRootKeyRing"]>;
 } {
   const material = options.keyMaterial;
   if (
     !material?.legacyEncryptionKey ||
     !material.targetAuthEncryptionKey ||
     !material.messageEncryptionKeys ||
-    Object.keys(material.messageEncryptionKeys).length === 0
+    Object.keys(material.messageEncryptionKeys).length === 0 ||
+    !material.credentialRootKeyRing
   ) {
     throw new CutoverFailure(
       "CUTOVER_KEY_MATERIAL_REQUIRED",
-      "implemented auth and conversation phases require all declared cutover key domains"
+      "implemented auth, conversation, entity, and provider phases require all declared cutover key domains"
     );
   }
   return {
     legacyEncryptionKey: material.legacyEncryptionKey,
     targetAuthEncryptionKey: material.targetAuthEncryptionKey,
     messageEncryptionKeys: material.messageEncryptionKeys,
+    credentialRootKeyRing: material.credentialRootKeyRing,
   };
 }
 

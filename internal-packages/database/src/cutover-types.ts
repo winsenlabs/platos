@@ -1,4 +1,5 @@
 import type { ExternalCutoverReportFragment } from "./cutover-external";
+import type { CredentialRootKeyRing } from "./secrets";
 
 export type CutoverMode = "DRY_RUN" | "CORE_REHEARSAL_ROLLBACK" | "FULL_EXECUTE";
 
@@ -40,6 +41,7 @@ export interface CutoverOptions {
     readonly legacyEncryptionKey?: string;
     readonly targetAuthEncryptionKey?: string;
     readonly messageEncryptionKeys?: Readonly<Record<string, string>>;
+    readonly credentialRootKeyRing?: CredentialRootKeyRing;
   };
   readonly forcedFailurePhase?: string;
 }

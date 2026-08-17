@@ -248,6 +248,55 @@ export function batch4ProviderCredentialIds(sourceId: string): {
   };
 }
 
+/** Adds the provider-key split mappings that are not present in the source manifest. */
+export async function materializeRetainedProviderOauthBatch4Mappings(
+  database: CutoverDatabase
+): Promise<number> {
+  await database.query(`DELETE FROM cutover_legacy.cutover_id_map
+    WHERE mapping_version = 1
+      AND source_model = 'PlatosProviderKey'
+      AND ((target_model = 'Credential' AND stable_suffix = 'credential')
+        OR (target_model = 'CredentialSecretVersion'
+          AND stable_suffix = 'credential-secret-version:1'))`);
+  const source = await database.query<{ source_id: string }>(
+    `SELECT id::text AS source_id
+       FROM cutover_legacy."PlatosProviderKey"
+      ORDER BY id::text`
+  );
+  const mappings = source.rows.flatMap((row) => {
+    const ids = batch4ProviderCredentialIds(row.source_id);
+    return [
+      {
+        sourceId: row.source_id,
+        targetModel: "Credential",
+        stableSuffix: "credential",
+        targetId: ids.credentialId,
+      },
+      {
+        sourceId: row.source_id,
+        targetModel: "CredentialSecretVersion",
+        stableSuffix: "credential-secret-version:1",
+        targetId: ids.secretVersionId,
+      },
+    ];
+  });
+  for (let offset = 0; offset < mappings.length; offset += CUTOVER_CHUNK_SIZE) {
+    const chunk = mappings.slice(offset, offset + CUTOVER_CHUNK_SIZE);
+    await database.query(
+      `INSERT INTO cutover_legacy.cutover_id_map
+        (mapping_version, source_model, source_id, target_model, stable_suffix, target_id)
+       VALUES ${chunk
+         .map((_, index) => {
+           const base = index * 4;
+           return `(1, 'PlatosProviderKey', $${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}::uuid)`;
+         })
+         .join(", ")}`,
+      chunk.flatMap((row) => [row.sourceId, row.targetModel, row.stableSuffix, row.targetId])
+    );
+  }
+  return mappings.length;
+}
+
 export function batch4OAuthRefreshFamilyId(sourceTokenHash: unknown): string {
   const tokenHash = validateBatch4Sha256Hash(sourceTokenHash);
   return mapCutoverId({
@@ -393,6 +442,18 @@ const sourceAndMappingValidationSql = `
                WHERE map.mapping_version = 1 AND map.source_model = 'PlatosProviderKey'
                  AND map.source_id = source.id AND map.target_model = 'ProviderKey'
                  AND map.stable_suffix = '') <> 1)
+    UNION ALL SELECT 'missing-provider-credential-map' WHERE EXISTS (
+      SELECT 1 FROM cutover_legacy."PlatosProviderKey" source
+       WHERE (SELECT count(*) FROM cutover_legacy.cutover_id_map map
+               WHERE map.mapping_version = 1 AND map.source_model = 'PlatosProviderKey'
+                 AND map.source_id = source.id AND map.target_model = 'Credential'
+                 AND map.stable_suffix = 'credential') <> 1)
+    UNION ALL SELECT 'missing-provider-credential-version-map' WHERE EXISTS (
+      SELECT 1 FROM cutover_legacy."PlatosProviderKey" source
+       WHERE (SELECT count(*) FROM cutover_legacy.cutover_id_map map
+               WHERE map.mapping_version = 1 AND map.source_model = 'PlatosProviderKey'
+                 AND map.source_id = source.id AND map.target_model = 'CredentialSecretVersion'
+                 AND map.stable_suffix = 'credential-secret-version:1') <> 1)
     UNION ALL SELECT 'missing-access-key-map' WHERE EXISTS (
       SELECT 1 FROM cutover_legacy."PlatosAccessKey" source
        WHERE NOT EXISTS (SELECT 1 FROM cutover_legacy.cutover_id_map map

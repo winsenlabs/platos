@@ -4,6 +4,8 @@
 --   legacy-auth-supplemental-seed.sql
 --   legacy-agent-tool-batch1-seed.sql
 --   legacy-conversation-batch2-seed.sql
+--   legacy-retained-batch3-seed.sql
+--   legacy-provider-oauth-batch4-seed.sql
 --
 -- The supplemental fixture deliberately retains negative fail-closed vectors
 -- for its individual tests. The combined production-command replay removes

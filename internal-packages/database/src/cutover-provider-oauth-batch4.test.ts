@@ -8,6 +8,7 @@ import {
   batch4ProviderCredentialIds,
   hashBatch4OAuthAuthorizationCode,
   mapBatch4OrganizationMcpPolicy,
+  materializeRetainedProviderOauthBatch4Mappings,
   normalizeBatch4ScopeTuple,
   retainedProviderOauthBatch4MappingTargets,
   retainedProviderOauthBatch4SourceModels,
@@ -85,6 +86,40 @@ describe("retained provider/OAuth cutover Batch 4", () => {
         suffix: "credential-secret-version:1",
       }),
     });
+  });
+
+  test("materializes the provider credential split with stable revision suffixes", async () => {
+    const queries: Array<{ sql: string; values?: readonly unknown[] }> = [];
+    const database: CutoverDatabase = {
+      async query<Row extends Record<string, unknown>>(
+        sql: string,
+        values?: readonly unknown[]
+      ): Promise<QueryResultLike<Row>> {
+        queries.push({ sql, values });
+        if (sql.includes('FROM cutover_legacy."PlatosProviderKey"')) {
+          return {
+            rows: [{ source_id: "cllegacyproviderkey0001" }] as unknown as Row[],
+            rowCount: 1,
+          };
+        }
+        return { rows: [], rowCount: 0 };
+      },
+    };
+
+    await expect(materializeRetainedProviderOauthBatch4Mappings(database)).resolves.toBe(2);
+    const insert = queries.find((query) =>
+      query.sql.includes("INSERT INTO cutover_legacy.cutover_id_map")
+    )!;
+    expect(insert.values).toEqual([
+      "cllegacyproviderkey0001",
+      "Credential",
+      "credential",
+      batch4ProviderCredentialIds("cllegacyproviderkey0001").credentialId,
+      "cllegacyproviderkey0001",
+      "CredentialSecretVersion",
+      "credential-secret-version:1",
+      batch4ProviderCredentialIds("cllegacyproviderkey0001").secretVersionId,
+    ]);
   });
 
   test("normalizes scope tuples to exactly one canonical owner", () => {

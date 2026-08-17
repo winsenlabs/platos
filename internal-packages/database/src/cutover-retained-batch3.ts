@@ -1220,7 +1220,7 @@ const checkpoint2SourceValidationSql = `
         FROM cutover_legacy."PlatosMcpAnonSession" session
        GROUP BY session."entityPk", session."mcpUserId" HAVING count(*) > 1
       UNION ALL
-      SELECT session."entityPk", session.provider || E'\\000' || session."externalSub"
+      SELECT session."entityPk", session.provider
         FROM cutover_legacy."PlatosMcpOidcSession" session
        GROUP BY session."entityPk", session.provider, session."externalSub" HAVING count(*) > 1)
     UNION ALL
@@ -1244,15 +1244,6 @@ const checkpoint2SourceValidationSql = `
               WHERE map.mapping_version = 1 AND map.source_model = source.source_model
                 AND map.source_id = source.source_id AND map.target_model = source.target_model
                 AND map.stable_suffix = '') <> 1)
-    UNION ALL
-    SELECT 'missing-dynamic-mapping' WHERE EXISTS (
-      SELECT 1 FROM cutover_legacy.cutover_id_map map
-      WHERE map.mapping_version = 1
-        AND map.source_model IN ('PlatosConnectedEntity', 'PlatosEntityMcpClient', 'PlatosMcpOidcSession')
-        AND map.target_model IN ('Credential', 'CredentialSecretVersion')
-        AND map.target_id <> uuid_generate_v5(
-          '75803f94-05d5-5eb3-b37d-65774e2aaa6c'::uuid,
-          map.source_model || ':' || map.source_id || ':' || map.stable_suffix))
   ) SELECT issue FROM issues ORDER BY issue`;
 
 export async function validateRetainedBatch3Checkpoint2Source(
@@ -1267,6 +1258,30 @@ export async function validateRetainedBatch3Checkpoint2Source(
       `retained Batch 3 checkpoint 2 source validation failed: ${issues.rows
         .map((row) => row.issue)
         .join(", ")}`
+    );
+  }
+
+  const dynamicMappings = await database.query<DynamicBatch3MappingRow & { target_id: string }>(`
+    SELECT source_model, source_id, target_model, stable_suffix, target_id::text
+      FROM cutover_legacy.cutover_id_map
+     WHERE mapping_version = 1
+       AND source_model IN ('PlatosConnectedEntity', 'PlatosEntityMcpClient', 'PlatosMcpOidcSession')
+       AND target_model IN ('Credential', 'CredentialSecretVersion')
+     ORDER BY source_model, source_id, target_model, stable_suffix`);
+  if (
+    dynamicMappings.rows.some(
+      (mapping) =>
+        mapping.target_id !==
+        mapCutoverId({
+          sourceModel: mapping.source_model,
+          sourceId: mapping.source_id,
+          suffix: mapping.stable_suffix,
+        })
+    )
+  ) {
+    throw batch3Failure(
+      "BATCH3_CHECKPOINT2_SOURCE_INVALID",
+      "retained Batch 3 checkpoint 2 deterministic mapping validation failed"
     );
   }
 
@@ -1406,7 +1421,7 @@ async function insertGeneratedBatch3Credentials(
   );
   await database.query(
     `UPDATE public."Credential" credential
-        SET "activeSecretVersionId" = supplied.version_id
+        SET "activeSecretVersionId" = supplied.version_id::uuid
        FROM (VALUES ${parameterTuples(credentials.length, 2)})
          AS supplied(credential_id, version_id)
       WHERE credential.id = supplied.credential_id::uuid`,

@@ -1,7 +1,11 @@
 import { describe, expect, test } from "vitest";
 import { compareApplicationCatalogs, type CatalogSnapshot } from "./cutover-catalog";
 import { deterministicChunks } from "./cutover-backfill";
-import { parseCutoverArguments, resolveCutoverMessageEncryptionKeys } from "./cutover-cli";
+import {
+  parseCutoverArguments,
+  resolveCutoverCredentialRootKeyRing,
+  resolveCutoverMessageEncryptionKeys,
+} from "./cutover-cli";
 import {
   assertCutoverPhaseLedgerIsExhaustive,
   cutoverDomainPhases,
@@ -28,7 +32,7 @@ describe("cutover command safety contracts", () => {
   test("keeps all unimplemented domain phases machine-readable and exhaustive", () => {
     expect(() => assertCutoverPhaseLedgerIsExhaustive()).not.toThrow();
     expect(cutoverDomainPhases.filter((phase) => phase.implementation === "IMPLEMENTED"))
-      .toHaveLength(4);
+      .toHaveLength(6);
     expect(
       cutoverDomainPhases
         .filter((phase) => phase.implementation === "IMPLEMENTED")
@@ -38,6 +42,8 @@ describe("cutover command safety contracts", () => {
       "supplemental-auth-mfa",
       "retained-agent-tool-batch-1",
       "retained-conversation-batch-2",
+      "retained-entity-mcp-batch-3",
+      "retained-provider-oauth-batch-4",
     ]);
     expect(cutoverDomainPhases.find((phase) => phase.id === "supplemental-auth-mfa"))
       .toMatchObject({
@@ -70,6 +76,24 @@ describe("cutover command safety contracts", () => {
     expect(
       cutoverDomainPhases.find((phase) => phase.id === "final-message-re-encryption-read-probes")
     ).toMatchObject({ implementation: "STUB", sourceModels: [] });
+    expect(cutoverDomainPhases.find((phase) => phase.id === "retained-entity-mcp-batch-3"))
+      .toMatchObject({
+        implementation: "IMPLEMENTED",
+        sourceModels: expect.arrayContaining([
+          "PlatosConnectedEntity",
+          "PlatosMcpOidcSession",
+          "PlatosMcpBearerToken",
+        ]),
+      });
+    expect(cutoverDomainPhases.find((phase) => phase.id === "retained-provider-oauth-batch-4"))
+      .toMatchObject({
+        implementation: "IMPLEMENTED",
+        sourceModels: expect.arrayContaining([
+          "PlatosProviderKey",
+          "PlatosAccessKey",
+          "PlatosOAuthRefreshToken",
+        ]),
+      });
     expect(cutoverDomainPhases.find((phase) => phase.id === "remaining-retained-backfill"))
       .toMatchObject({
         implementation: "STUB",
@@ -103,6 +127,23 @@ describe("cutover command safety contracts", () => {
       PLATOS_MESSAGE_ENCRYPTION_KEY: "default-active",
       PLATOS_MESSAGE_ENCRYPTION_KEY_V: "invalid",
     })).toEqual({ "1": "default-active" });
+  });
+
+  test("resolves the active and prior credential root ring from the runtime JSON contract", () => {
+    const ring = resolveCutoverCredentialRootKeyRing({
+      PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "2",
+      PLATOS_CREDENTIAL_ROOT_KEYS: JSON.stringify({
+        1: "1".repeat(64),
+        2: "2".repeat(64),
+      }),
+    });
+    expect(ring?.activeVersion).toBe(2);
+    expect(ring?.key(1)).toHaveLength(32);
+    expect(resolveCutoverCredentialRootKeyRing({})).toBeUndefined();
+    expect(() => resolveCutoverCredentialRootKeyRing({
+      PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "2",
+      PLATOS_CREDENTIAL_ROOT_KEYS: '{"2":"root-sentinel"}',
+    })).toThrow("credential root key ring configuration is invalid");
   });
 
   test("compares normalized application catalogs exactly", () => {

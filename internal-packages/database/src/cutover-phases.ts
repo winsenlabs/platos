@@ -1,6 +1,8 @@
 import { legacyModelDispositionLedger } from "./cutover-ledger";
 import { retainedAgentToolBatch1SourceModels } from "./cutover-agent-tool-batch1";
 import { retainedConversationBatch2SourceModels } from "./cutover-conversation-batch2";
+import { retainedProviderOauthBatch4SourceModels } from "./cutover-provider-oauth-batch4";
+import { retainedBatch3SourceModels } from "./cutover-retained-batch3";
 
 export type CutoverPhaseImplementation = "IMPLEMENTED" | "STUB";
 
@@ -25,6 +27,8 @@ const implementedRetainedSet = new Set<string>([
   ...supplementalAuthOwnedSourceModels,
   ...retainedAgentToolBatch1SourceModels,
   ...retainedConversationBatch2SourceModels,
+  ...retainedBatch3SourceModels,
+  ...retainedProviderOauthBatch4SourceModels,
 ]);
 
 const sourceModelsFor = (disposition: "BACKFILL" | "EXPORT_DROP" | "EPHEMERAL_DROP") =>
@@ -66,6 +70,18 @@ export const cutoverDomainPhases = [
     implementation: "IMPLEMENTED",
     sourceModels: retainedConversationBatch2SourceModels,
     summary: "End user, identity, thread, turn, step, tool-call, artifact, attachment, and Postman cutover",
+  },
+  {
+    id: "retained-entity-mcp-batch-3",
+    implementation: "IMPLEMENTED",
+    sourceModels: retainedBatch3SourceModels,
+    summary: "Entity, MCP configuration, credential, session, policy, and bearer-token cutover",
+  },
+  {
+    id: "retained-provider-oauth-batch-4",
+    implementation: "IMPLEMENTED",
+    sourceModels: retainedProviderOauthBatch4SourceModels,
+    summary: "Provider, access-key, MCP token, PAT, OAuth, and organization MCP-policy cutover",
   },
   {
     id: "final-message-re-encryption-read-probes",

@@ -23,6 +23,8 @@ const combinedFixtureFiles = [
   "legacy-auth-supplemental-seed.sql",
   "legacy-agent-tool-batch1-seed.sql",
   "legacy-conversation-batch2-seed.sql",
+  "legacy-retained-batch3-seed.sql",
+  "legacy-provider-oauth-batch4-seed.sql",
   "legacy-combined-cutover-replay.sql",
 ] as const;
 
@@ -83,6 +85,7 @@ describeHarness("production database command Testcontainers harness", () => {
     }
     await client.end();
 
+    const reportDirectory = resolve(packageRoot, ".cutover-test/reports");
     const result = spawnSync(
       pnpm,
       [
@@ -104,7 +107,7 @@ describeHarness("production database command Testcontainers harness", () => {
         "--writer-fence-attestation-ref",
         "fixture-writer-fence",
         "--report-dir",
-        resolve(packageRoot, ".cutover-test/reports"),
+        reportDirectory,
         "--export-dir",
         resolve(packageRoot, ".cutover-test/exports"),
       ],
@@ -119,9 +122,13 @@ describeHarness("production database command Testcontainers harness", () => {
         encoding: "utf8",
       }
     );
-    expect(result.status, result.stderr).toBe(0);
+    expect(result.status, `${result.stderr}\n${result.stdout}`).toBe(0);
     const reportStart = result.stdout.indexOf("{\n");
     expect(reportStart).toBeGreaterThanOrEqual(0);
+    expect(result.stdout).not.toContain("fixture-only-service-material");
+    expect(result.stdout).not.toContain("fixture-provider-secret-v1");
+    expect(result.stdout).not.toContain("fixture-provider-secret-v2");
+    expect(result.stdout).not.toContain(requiredKeys.PLATOS_CREDENTIAL_ROOT_KEYS);
     expect(JSON.parse(result.stdout.slice(reportStart))).toMatchObject({
       state: "ROLLED_BACK",
       incompletePhaseIds: expect.arrayContaining([
@@ -139,6 +146,8 @@ describeHarness("production database command Testcontainers harness", () => {
           "supplemental-auth-mfa",
           "retained-agent-tool-batch-1",
           "retained-conversation-batch-2",
+          "retained-entity-mcp-batch-3",
+          "retained-provider-oauth-batch-4",
         ].includes(phase.phase))
         .map((phase) => ({ phase: phase.phase, status: phase.status }))
     ).toEqual([
@@ -146,6 +155,8 @@ describeHarness("production database command Testcontainers harness", () => {
       { phase: "supplemental-auth-mfa", status: "SUCCEEDED" },
       { phase: "retained-agent-tool-batch-1", status: "SUCCEEDED" },
       { phase: "retained-conversation-batch-2", status: "SUCCEEDED" },
+      { phase: "retained-entity-mcp-batch-3", status: "SUCCEEDED" },
+      { phase: "retained-provider-oauth-batch-4", status: "SUCCEEDED" },
     ]);
     expect(report.phases).toEqual(expect.arrayContaining([
       {
@@ -214,6 +225,24 @@ describeHarness("production database command Testcontainers harness", () => {
         target_model: "ToolCall",
         stable_suffix: "tool-call:0",
       }),
+      expect.objectContaining({
+        source_model: "PlatosConnectedEntity",
+        source_id: "cllegacyentity0001",
+        target_model: "Credential",
+        stable_suffix: expect.stringMatching(/^entity-auth:/),
+      }),
+      expect.objectContaining({
+        source_model: "PlatosProviderKey",
+        source_id: "cllegacyproviderkey0001",
+        target_model: "Credential",
+        stable_suffix: "credential",
+      }),
+      expect.objectContaining({
+        source_model: "PlatosProviderKey",
+        source_id: "cllegacyproviderkey0001",
+        target_model: "CredentialSecretVersion",
+        stable_suffix: "credential-secret-version:1",
+      }),
     ]));
 
     const journalFile = readdirSync(exportDirectory).find((name) => name.startsWith("cutover-journal-"));
@@ -227,6 +256,8 @@ describeHarness("production database command Testcontainers harness", () => {
       "supplemental-auth-mfa",
       "retained-agent-tool-batch-1",
       "retained-conversation-batch-2",
+      "retained-entity-mcp-batch-3",
+      "retained-provider-oauth-batch-4",
     ]));
     expect(
       journal.filter((entry) => [
@@ -234,18 +265,48 @@ describeHarness("production database command Testcontainers harness", () => {
         "supplemental-auth-mfa",
         "retained-agent-tool-batch-1",
         "retained-conversation-batch-2",
+        "retained-entity-mcp-batch-3",
+        "retained-provider-oauth-batch-4",
       ].includes(entry.phase)).map((entry) => entry.phase)
     ).toEqual([
       "core-tenancy-auth",
       "supplemental-auth-mfa",
       "retained-agent-tool-batch-1",
       "retained-conversation-batch-2",
+      "retained-entity-mcp-batch-3",
+      "retained-provider-oauth-batch-4",
     ]);
     expect(JSON.stringify(journal)).not.toContain("fixture-invite-token");
     expect(JSON.stringify(journal)).not.toContain("A1B2C3D4E5F6G7H8I9J0K1L2");
+    expect(JSON.stringify(journal)).not.toContain("fixture-only-service-material");
+    expect(JSON.stringify(journal)).not.toContain("fixture-provider-secret-v1");
+    expect(JSON.stringify(journal)).not.toContain("fixture-provider-secret-v2");
+    expect(JSON.stringify(journal)).not.toContain(requiredKeys.PLATOS_CREDENTIAL_ROOT_KEYS);
+    expect(
+      journal.find((entry) => entry.phase === "materialize-id-map")?.evidence
+    ).toMatchObject({
+      retainedBatch3MappingCount: 4,
+      retainedProviderOauthBatch4MappingCount: 4,
+    });
     expect(
       journal.find((entry) => entry.phase === "retained-conversation-batch-2")?.evidence
     ).toMatchObject({ finalMessageReEncryptionReadProbes: "INCOMPLETE" });
+    expect(
+      journal.find((entry) => entry.phase === "retained-entity-mcp-batch-3")?.evidence
+    ).toMatchObject({
+      sourceModels: expect.arrayContaining(["PlatosConnectedEntity", "PlatosMcpBearerToken"]),
+      entityRows: 1,
+      entityAuthRows: 2,
+      cryptographicReadProbes: "INCOMPLETE",
+    });
+    expect(
+      journal.find((entry) => entry.phase === "retained-provider-oauth-batch-4")?.evidence
+    ).toMatchObject({
+      batch: "retained-provider-oauth-batch4",
+      sourceModels: expect.arrayContaining(["PlatosProviderKey", "PlatosOAuthRefreshToken"]),
+      sourceRows: { environmentProviders: 2, providerKeys: 2, oauthRefreshTokens: 1 },
+      cryptographicReadProbes: "INCOMPLETE",
+    });
     expect(
       journal.find((entry) => entry.phase === "forced-pre-commit-rollback")?.evidence
     ).toMatchObject({

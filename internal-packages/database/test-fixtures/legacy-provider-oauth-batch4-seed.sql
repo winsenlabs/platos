@@ -1,5 +1,6 @@
 -- Retained-domain provider/OAuth Batch 4 fixture. Apply after legacy-core-seed.sql.
--- SecretStore v2 uses the test-only ENCRYPTION_KEY hex "22" repeated 32 times.
+-- SecretStore v2 uses the test-only all-zero 64-hex ENCRYPTION_KEY shared by
+-- the combined forced-rollback replay.
 -- Values and bearer digests below are synthetic fixture material only.
 INSERT INTO "PlatosProviderEnabled"
   (id, "organizationId", "projectId", "environmentId", "providerId", enabled,
@@ -16,8 +17,8 @@ VALUES
    '{"secret":"fixture-provider-secret-v1"}'::jsonb, '1',
    '2025-01-01T00:00:00Z', '2025-01-02T00:00:00Z'),
   ('environmentvariable:cllegacyproject0001:cllegacyenv0001:OPENAI_API_KEY',
-   '{"ciphertext":"0de1b58f165e131c2ad7b9167ca979e757c446f72adf1f986eb25adbedea610fee9c8221c319a9",
-     "nonce":"333333333333333333333333","tag":"22136c0223fe624b391ae7412fca10c9"}'::jsonb,
+   '{"ciphertext":"7eccd4e527fe5477b4b904d79469ff708b19f688b6d07b588b5adb78599fa2bc587c806ab0b210",
+     "nonce":"333333333333333333333333","tag":"c3371435501da16615c208fd72911311"}'::jsonb,
    '2', '2025-01-01T00:00:00Z', '2025-01-02T00:00:00Z');
 
 INSERT INTO "PlatosProviderKey"
