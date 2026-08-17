@@ -31,6 +31,7 @@ export interface PlatosCustomTaskOutput {
 
 export type PlatosCustomTaskError =
   | InternalCallbackFailureCode
+  | "CALLBACK_INVALID_CONTEXT"
   | "CALLBACK_EXECUTION_FAILED";
 
 interface CallbackOutput {
@@ -53,15 +54,26 @@ export const platosCustomTask = task({
     minTimeoutInMs: 1000,
     maxTimeoutInMs: 10000,
   },
-  run: async (payload: PlatosCustomTaskPayload): Promise<PlatosCustomTaskOutput> => {
+  run: async (payload: PlatosCustomTaskPayload, context): Promise<PlatosCustomTaskOutput> => {
     const startMs = Date.now();
     await metadata.set("stage", "dispatching");
     await metadata.set("taskId", payload.taskRowId);
+
+    const requestId = context?.ctx?.run?.id;
+    if (typeof requestId !== "string" || requestId.length === 0) {
+      await metadata.set("stage", "failed");
+      return {
+        status: "failed",
+        error: "CALLBACK_INVALID_CONTEXT",
+        durationMs: Date.now() - startMs,
+      };
+    }
 
     const callback = await postInternalCallback<CallbackOutput>({
       path: CALLBACK_PATH,
       timeoutMs: CALLBACK_TIMEOUT_MS,
       body: {
+        requestId,
         taskRowId: payload.taskRowId,
         payload: payload.payload ?? {},
         scope: payload.scope,

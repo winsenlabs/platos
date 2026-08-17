@@ -11,7 +11,7 @@ import {
   Post,
   Req,
 } from "@nestjs/common";
-import type { Job, Prisma } from "@platos/tenancy-database";
+import type { Job, Prisma } from "@platos/database";
 import { type Request } from "express";
 import type { RequestScope } from "../auth/scope.guard";
 import {

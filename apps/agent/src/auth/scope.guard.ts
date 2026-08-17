@@ -346,6 +346,13 @@ export class ScopeGuard implements CanActivate {
     // verifies the HMAC before running the turn.
     if (url.startsWith("/internal/subagent-turn")) return true;
 
+    // WIN-123 — callback-only custom task execution. This route has no user
+    // session; its controller performs the timing-safe internal-token check and
+    // rejects every other auth path before parsing or executing the body.
+    if (url.split("?", 1)[0] === "/api/v1/agent/internal/platos-tasks/execute") {
+      return true;
+    }
+
     // Internal callbacks authenticated by PLATOS_INTERNAL_AUTH_TOKEN (e.g. the
     // LiteLLM cost-catalog ingest POSTed by the scheduled trigger.dev task).
     // The endpoint itself re-verifies the token — ScopeGuard just lets it

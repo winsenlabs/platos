@@ -33,6 +33,7 @@ const payload: PlatosCustomTaskPayload = {
 const originalAgentUrl = process.env.PLATOS_AGENT_HTTP_URL;
 const originalAgentApiUrl = process.env.PLATOS_AGENT_API_URL;
 const originalToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+const triggerContext = { ctx: { run: { id: "run-callback-a" } } };
 
 describe("platos custom task callback shell", () => {
   beforeEach(() => {
@@ -62,7 +63,7 @@ describe("platos custom task callback shell", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await (platosCustomTask as any).run(payload);
+    const result = await (platosCustomTask as any).run(payload, triggerContext);
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -76,7 +77,7 @@ describe("platos custom task callback shell", () => {
     expect(request.signal).toBeInstanceOf(AbortSignal);
 
     const callbackPayload = JSON.parse(String(request.body));
-    expect(callbackPayload).toEqual(payload);
+    expect(callbackPayload).toEqual({ requestId: "run-callback-a", ...payload });
     expect(JSON.stringify(callbackPayload)).not.toContain("internal-auth-sentinel");
     expect(JSON.stringify(callbackPayload)).not.toContain("DATABASE_URL");
     expect(result).toMatchObject({ status: "completed", result: { ok: true } });
@@ -90,7 +91,7 @@ describe("platos custom task callback shell", () => {
       vi.fn().mockResolvedValue(new Response(sensitiveFailure, { status: 503 })),
     );
 
-    const result = await (platosCustomTask as any).run(payload);
+    const result = await (platosCustomTask as any).run(payload, triggerContext);
     const serialized = JSON.stringify({ result, logs: mocks.loggerError.mock.calls });
 
     expect(result).toMatchObject({
@@ -107,7 +108,7 @@ describe("platos custom task callback shell", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await (platosCustomTask as any).run(payload);
+    const result = await (platosCustomTask as any).run(payload, triggerContext);
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result).toMatchObject({
@@ -121,7 +122,7 @@ describe("platos custom task callback shell", () => {
     timeout.name = "TimeoutError";
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(timeout));
 
-    const result = await (platosCustomTask as any).run(payload);
+    const result = await (platosCustomTask as any).run(payload, triggerContext);
 
     expect(result).toMatchObject({ status: "failed", error: "CALLBACK_TIMEOUT" });
     expect(JSON.stringify(mocks.loggerError.mock.calls)).not.toContain(timeout.message);
@@ -133,7 +134,7 @@ describe("platos custom task callback shell", () => {
     );
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(sensitiveFailure));
 
-    const result = await (platosCustomTask as any).run(payload);
+    const result = await (platosCustomTask as any).run(payload, triggerContext);
     const serialized = JSON.stringify({ result, logs: mocks.loggerError.mock.calls });
 
     expect(result).toMatchObject({
@@ -142,5 +143,18 @@ describe("platos custom task callback shell", () => {
     });
     expect(serialized).not.toContain(sensitiveFailure.message);
     expect(serialized).not.toContain("password");
+  });
+
+  it("fails closed when Trigger does not supply a run id", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await (platosCustomTask as any).run(payload, { ctx: { run: {} } });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      status: "failed",
+      error: "CALLBACK_INVALID_CONTEXT",
+    });
   });
 });

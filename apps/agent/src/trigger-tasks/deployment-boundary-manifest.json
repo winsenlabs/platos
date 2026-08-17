@@ -27,7 +27,6 @@
   ],
   "forbiddenRuntimeImports": [
     "@platos/database",
-    "@platos/tenancy-database",
     "@prisma/client",
     "@prisma/adapter-pg",
     "pg"
