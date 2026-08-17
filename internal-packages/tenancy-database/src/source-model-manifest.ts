@@ -1149,15 +1149,11 @@ export const sourceRequiredDefaultPolicyManifest: readonly SourceRequiredDefault
     missingRequiredTargetPolicy: "BLOCK_CUTOVER",
   }));
 
-/** Parameter-free row-equation validation SQL for each retained source model. */
-export const sourceValidationManifest = sourceModelManifest.map((entry) => ({
-  sourceModel: entry.source,
-  sourceCountSql: `SELECT count(*)::bigint AS source_count FROM cutover_legacy."${entry.source}"`,
-  mappedCountSql: `SELECT count(*)::bigint AS mapped_count FROM cutover_legacy.cutover_id_map WHERE mapping_version = 1 AND source_model = '${entry.source}'`,
-  duplicateTargetSql: `SELECT target_id, count(*)::bigint AS collision_count FROM cutover_legacy.cutover_id_map WHERE mapping_version = 1 AND source_model = '${entry.source}' GROUP BY target_id HAVING count(*) > 1 ORDER BY target_id`,
-})) as readonly {
-  readonly sourceModel: `Platos${string}`;
-  readonly sourceCountSql: string;
-  readonly mappedCountSql: string;
-  readonly duplicateTargetSql: string;
-}[];
+export {
+  auditFieldTransformationManifest,
+  requiredTargetFieldManifest,
+  sourceFieldTransformationManifest,
+  type RequiredTargetFieldContract,
+  type SourceFieldDisposition,
+  type SourceFieldTransformation,
+} from "./source-field-manifest";

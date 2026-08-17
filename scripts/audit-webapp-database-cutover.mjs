@@ -4,6 +4,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import ts from "typescript";
 
 export const PHASES = ["inventory", "webapp-cutover", "mode-c-removal", "final"];
 
@@ -32,9 +33,12 @@ export const SCOPES = Object.freeze({
     reason: "The clean tenancy schema is the only allowed PostgreSQL target contract.",
   },
   referenceSchema: {
-    paths: ["internal-packages/database/prisma/schema.prisma"],
+    paths: [
+      "internal-packages/database/legacy-prisma/schema.prisma",
+      "internal-packages/database/prisma/schema.prisma",
+    ],
     reason:
-      "The inherited schema is read only to derive legacy-only model delegates and physical table names; it is never audited as active code.",
+      "The non-runtime inherited fixture (or pre-promotion active schema) is read only to derive legacy-only model delegates and physical table names; neither path is scanned as active code.",
   },
 });
 
@@ -119,6 +123,13 @@ const ARCHITECTURE_PATTERNS = [
       /\b(?:(?:database|datastore|postgres(?:ql)?|prisma|schema)[-_ ]+bridge|bridge[-_ ]+(?:database|datastore|postgres(?:ql)?|prisma|schema|client|store))\b/gi,
   },
 ];
+const ALTERNATE_POSTGRES_MODULES = new Set([
+  "@prisma/adapter-pg",
+  "@prisma/client",
+  "pg",
+  "postgres",
+  "postgresql",
+]);
 
 function normalizePath(path) {
   return path.split(sep).join("/");
@@ -130,6 +141,54 @@ function escapeRegex(value) {
 
 function lowerFirst(value) {
   return value.charAt(0).toLowerCase() + value.slice(1);
+}
+
+function scriptKind(path) {
+  if (/\.tsx$/i.test(path)) return ts.ScriptKind.TSX;
+  if (/\.jsx$/i.test(path)) return ts.ScriptKind.JSX;
+  if (/\.(?:mjs|cjs|js)$/i.test(path)) return ts.ScriptKind.JS;
+  return ts.ScriptKind.TS;
+}
+
+function parseTypeScript(path, source) {
+  return ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, scriptKind(path));
+}
+
+function unwrapExpression(expression) {
+  let current = expression;
+  while (
+    current &&
+    (ts.isParenthesizedExpression(current) ||
+      ts.isAsExpression(current) ||
+      ts.isTypeAssertionExpression(current) ||
+      ts.isNonNullExpression(current) ||
+      ts.isSatisfiesExpression(current) ||
+      ts.isAwaitExpression(current))
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function staticPropertyName(node) {
+  const current = unwrapExpression(node);
+  if (ts.isPropertyAccessExpression(current)) return current.name.text;
+  if (ts.isElementAccessExpression(current)) {
+    const argument = unwrapExpression(current.argumentExpression);
+    if (ts.isStringLiteralLike(argument)) return argument.text;
+  }
+  return undefined;
+}
+
+function bindingName(node) {
+  if (ts.isIdentifier(node)) return node.text;
+  if (ts.isStringLiteralLike(node)) return node.text;
+  return undefined;
+}
+
+function walkTypeScript(node, visitor) {
+  visitor(node);
+  ts.forEachChild(node, (child) => walkTypeScript(child, visitor));
 }
 
 function isIgnoredPath(path) {
@@ -220,21 +279,83 @@ function addImportFindings(findings, root, files) {
 
 function addDelegateFindings(findings, root, files, legacyModels, cleanModels) {
   const cleanNames = new Set(cleanModels.map((model) => model.name));
-  const legacyOnly = legacyModels.filter((model) => !cleanNames.has(model.name));
-  const methods = PRISMA_METHODS.join("|");
+  const legacyDelegates = new Set(
+    legacyModels
+      .filter((model) => !cleanNames.has(model.name))
+      .map((model) => lowerFirst(model.name))
+  );
+  const methods = new Set(PRISMA_METHODS);
 
   for (const path of files) {
     const source = read(root, path);
-    for (const model of legacyOnly) {
-      const delegate = lowerFirst(model.name);
-      const delegateRe = new RegExp(
-        `(?:\\?\\.|\\.)${escapeRegex(delegate)}\\s*\\.\\s*(?:${methods})\\s*\\(`,
-        "g"
-      );
-      for (const match of source.matchAll(delegateRe)) {
-        findings.push(finding(source, "legacy-delegate", path, delegate, match.index));
-      }
+    const sourceFile = parseTypeScript(path, source);
+    const delegateBindings = new Map();
+
+    function resolveDelegate(expression) {
+      const current = unwrapExpression(expression);
+      if (!current) return undefined;
+      if (ts.isIdentifier(current)) return delegateBindings.get(current.text);
+      const property = staticPropertyName(current);
+      return legacyDelegates.has(property) ? property : undefined;
     }
+
+    // Bind delegate captures before inspecting calls. Iterate because aliases
+    // may reference another capture declared elsewhere in the same module.
+    let changed = true;
+    while (changed) {
+      changed = false;
+      walkTypeScript(sourceFile, (node) => {
+        if (ts.isVariableDeclaration(node)) {
+          if (ts.isIdentifier(node.name) && node.initializer) {
+            const delegate = resolveDelegate(node.initializer);
+            if (delegate && delegateBindings.get(node.name.text) !== delegate) {
+              delegateBindings.set(node.name.text, delegate);
+              changed = true;
+            }
+          } else if (ts.isObjectBindingPattern(node.name) && node.initializer) {
+            for (const element of node.name.elements) {
+              const property = bindingName(element.propertyName ?? element.name);
+              const local = bindingName(element.name);
+              if (
+                property &&
+                local &&
+                legacyDelegates.has(property) &&
+                delegateBindings.get(local) !== property
+              ) {
+                delegateBindings.set(local, property);
+                changed = true;
+              }
+            }
+          }
+        }
+        if (
+          ts.isBinaryExpression(node) &&
+          node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+          ts.isIdentifier(node.left)
+        ) {
+          const delegate = resolveDelegate(node.right);
+          if (delegate && delegateBindings.get(node.left.text) !== delegate) {
+            delegateBindings.set(node.left.text, delegate);
+            changed = true;
+          }
+        }
+      });
+    }
+
+    walkTypeScript(sourceFile, (node) => {
+      if (!ts.isCallExpression(node)) return;
+      const callable = unwrapExpression(node.expression);
+      const method = staticPropertyName(callable);
+      if (!method || !methods.has(method)) return;
+
+      const receiver = unwrapExpression(callable.expression);
+      const delegate = resolveDelegate(receiver);
+      if (delegate) {
+        findings.push(
+          finding(source, "legacy-delegate", path, delegate, receiver.getStart(sourceFile))
+        );
+      }
+    });
   }
 }
 
@@ -327,22 +448,177 @@ function addRouteAndWorkerFindings(findings, root, webappFiles, ownershipFiles) 
   }
 }
 
+function lineRangeAt(source, index) {
+  const start = source.lastIndexOf("\n", index - 1) + 1;
+  const nextLine = source.indexOf("\n", index);
+  return { start, end: nextLine === -1 ? source.length : nextLine };
+}
+
+function exactCommentAt(source, index) {
+  const scanner = ts.createScanner(
+    ts.ScriptTarget.Latest,
+    false,
+    ts.LanguageVariant.Standard,
+    source
+  );
+  let kind;
+  do {
+    kind = scanner.scan();
+    const start = scanner.getTokenPos();
+    const end = scanner.getTextPos();
+    if (end < index) continue;
+    if (start > index) return undefined;
+    if (kind === ts.SyntaxKind.MultiLineCommentTrivia) return source.slice(start, end);
+    if (kind !== ts.SyntaxKind.SingleLineCommentTrivia) return undefined;
+    break;
+  } while (kind !== ts.SyntaxKind.EndOfFileToken);
+
+  let range = lineRangeAt(source, index);
+  let start = range.start;
+  let end = range.end;
+  while (start > 0) {
+    const previousEnd = start - 1;
+    const previousStart = source.lastIndexOf("\n", previousEnd - 1) + 1;
+    if (!source.slice(previousStart, previousEnd).trimStart().startsWith("//")) break;
+    start = previousStart;
+  }
+  while (end < source.length) {
+    const nextStart = end + 1;
+    const nextEnd = source.indexOf("\n", nextStart);
+    const boundedEnd = nextEnd === -1 ? source.length : nextEnd;
+    if (!source.slice(nextStart, boundedEnd).trimStart().startsWith("//")) break;
+    end = boundedEnd;
+  }
+  return source.slice(start, end);
+}
+
+function exactArchitectureUnit(source, path, sourceFile, index, end) {
+  const isSource = SOURCE_EXTENSIONS.has(extname(path));
+  if (isSource) {
+    const comment = exactCommentAt(source, index);
+    if (comment !== undefined) return comment;
+  }
+  if (!isSource || !sourceFile) {
+    const range = lineRangeAt(source, index);
+    return source.slice(range.start, range.end);
+  }
+
+  let deepest;
+  walkTypeScript(sourceFile, (node) => {
+    if (
+      node.pos <= index &&
+      node.end >= end &&
+      (!deepest || node.end - node.pos < deepest.end - deepest.pos)
+    ) {
+      deepest = node;
+    }
+  });
+  if (!deepest) {
+    const range = lineRangeAt(source, index);
+    return source.slice(range.start, range.end);
+  }
+
+  let current = deepest;
+  while (current && !ts.isSourceFile(current)) {
+    if (
+      ts.isStringLiteralLike(current) ||
+      ts.isTemplateExpression(current) ||
+      ts.isImportDeclaration(current) ||
+      ts.isCallExpression(current) ||
+      ts.isNewExpression(current) ||
+      ts.isPropertyAssignment(current) ||
+      ts.isVariableDeclaration(current) ||
+      ts.isExpressionStatement(current)
+    ) {
+      return current.getText(sourceFile);
+    }
+    current = current.parent;
+  }
+
+  const range = lineRangeAt(source, index);
+  return source.slice(range.start, range.end);
+}
+
+function isExternalStorageExpression(unit, pattern, matchText) {
+  if (/\b[A-Z][A-Z0-9_]*(?:DATABASE|POSTGRES(?:QL)?)_URL\b/.test(matchText)) return false;
+  if (/\b(?:postgres(?:ql)?|prisma)\b/i.test(unit)) return false;
+  if (!ALLOWED_EXTERNAL_STORAGE_VOCABULARY.test(unit)) return false;
+
+  const normalized = unit
+    .replace(/clickhouse/gi, "clickhouse")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const external = "(?:clickhouse|object store|object storage|s3|minio)";
+  const forbidden = {
+    "second-database": "(?:second|secondary|parallel|additional) database",
+    "database-sync": "(?:database (?:sync|synchronization)|(?:sync|synchronization) database)",
+    "dual-write": "dual write",
+    "database-fallback": "(?:database fallback|fallback database)",
+    "database-bridge": "(?:database bridge|bridge database)",
+  }[pattern.token];
+  if (!forbidden) return false;
+  const connector = "(?: (?:to|from|for|into|as))? ";
+  return new RegExp(
+    `(?:${external}${connector}${forbidden}|${forbidden}${connector}${external})`
+  ).test(normalized);
+}
+
+function isNonDatabaseDualWriteExpression(unit) {
+  return (
+    ALLOWED_NON_DATABASE_DUAL_WRITE_VOCABULARY.test(unit) &&
+    !ALLOWED_EXTERNAL_STORAGE_VOCABULARY.test(unit) &&
+    !/\b(?:database|datastore|postgres(?:ql)?|prisma)\b|\b[A-Z][A-Z0-9_]*DATABASE_URL\b/i.test(unit)
+  );
+}
+
+function addAlternatePostgresClientFindings(findings, source, path, sourceFile) {
+  walkTypeScript(sourceFile, (node) => {
+    let moduleName;
+    let index;
+    if (ts.isImportDeclaration(node) && ts.isStringLiteralLike(node.moduleSpecifier)) {
+      moduleName = node.moduleSpecifier.text;
+      index = node.moduleSpecifier.getStart(sourceFile);
+    } else if (
+      ts.isCallExpression(node) &&
+      node.arguments.length === 1 &&
+      ts.isStringLiteralLike(node.arguments[0]) &&
+      ((ts.isIdentifier(node.expression) && ["require", "import"].includes(node.expression.text)) ||
+        node.expression.kind === ts.SyntaxKind.ImportKeyword)
+    ) {
+      moduleName = node.arguments[0].text;
+      index = node.arguments[0].getStart(sourceFile);
+    }
+    if (moduleName && ALTERNATE_POSTGRES_MODULES.has(moduleName)) {
+      findings.push(
+        finding(source, "forbidden-architecture", path, "alternate-postgres-client", index)
+      );
+    }
+  });
+}
+
 function addArchitectureFindings(findings, root, files) {
   for (const path of files) {
     const source = read(root, path);
+    const sourceFile = SOURCE_EXTENSIONS.has(extname(path))
+      ? parseTypeScript(path, source)
+      : undefined;
+    if (sourceFile) addAlternatePostgresClientFindings(findings, source, path, sourceFile);
     for (const pattern of ARCHITECTURE_PATTERNS) {
       pattern.regex.lastIndex = 0;
       let match;
       while ((match = pattern.regex.exec(source))) {
-        const context = source.slice(
-          Math.max(0, match.index - 240),
-          match.index + match[0].length + 240
+        const unit = exactArchitectureUnit(
+          source,
+          path,
+          sourceFile,
+          match.index,
+          match.index + match[0].length
         );
         if (
-          ALLOWED_EXTERNAL_STORAGE_VOCABULARY.test(context) ||
-          ALLOWED_EXTERNAL_STORAGE_VOCABULARY.test(path) ||
-          (pattern.token === "dual-write" &&
-            ALLOWED_NON_DATABASE_DUAL_WRITE_VOCABULARY.test(context))
+          isExternalStorageExpression(unit, pattern, match[0]) ||
+          (pattern.token === "dual-write" && isNonDatabaseDualWriteExpression(unit))
         ) {
           continue;
         }
@@ -384,11 +660,18 @@ export function inventoryRepository(root) {
     .filter((path, index, values) => values.indexOf(path) === index)
     .sort();
 
-  const legacySchemaPath = SCOPES.referenceSchema.paths[0];
+  const legacySchemaPath = SCOPES.referenceSchema.paths.find((path) => {
+    if (!existsSync(join(absoluteRoot, path))) return false;
+    const models = parsePrismaModels(read(absoluteRoot, path));
+    return models.some((model) =>
+      ["RuntimeEnvironment", "TaskRun", "OrgMember"].includes(model.name)
+    );
+  });
   const cleanSchemaPath = SCOPES.cleanSchema.paths[0];
-  const legacySchemaSource = existsSync(join(absoluteRoot, legacySchemaPath))
-    ? read(absoluteRoot, legacySchemaPath)
-    : "";
+  const legacySchemaSource =
+    legacySchemaPath && existsSync(join(absoluteRoot, legacySchemaPath))
+      ? read(absoluteRoot, legacySchemaPath)
+      : "";
   const cleanSchemaSource = existsSync(join(absoluteRoot, cleanSchemaPath))
     ? read(absoluteRoot, cleanSchemaPath)
     : "";

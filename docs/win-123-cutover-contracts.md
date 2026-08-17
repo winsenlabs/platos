@@ -47,17 +47,42 @@ intended for every language implementation of the offline cutover.
 
 ## Field transformation boundary
 
-`src/source-model-manifest.ts` now includes machine-addressable descriptors for:
+`src/source-model-manifest.ts` and `src/source-field-manifest.ts` include
+machine-addressable descriptors for:
 
 - the identity source and target(s) of all 55 retained `Platos*` models;
+- every scalar field of all 64 `BACKFILL` sources, including `User`,
+  `Organization`, `OrgMember`, `OrgMemberInvite`, `RuntimeEnvironment`,
+  `Project`, `SecretReference`, `SecretStore`, and `ImpersonationAuditLog`;
+- exactly one decision for each of 899 inherited scalar fields: 304
+  `TRANSFORM`, 335 `COPY`, 259 `EXPORT`, and one `DROP`, including explicit
+  transforms for `User.avatarUrl` and `User.dashboardPreferences`;
+- all 561 required scalar target fields, with one or more source transforms or
+  an explicit deterministic cutover default;
 - canonical ownership/ancestry derivation;
 - bounded JSON root normalization and JSON-to-column transforms;
-- required identity, timestamp, default, and invalid-data policy;
-- parameter-free source count, ID-map count, and collision queries.
+- required identity, timestamp, default, and invalid-data policy.
 
-Unlisted JSON is not implicitly copied. A later cutover implementation must add
-a bounded descriptor or export the unsupported field. Invalid retained JSON and
-missing required target values block the cutover.
+The sole field-level `DROP` is `User.mfaLastUsedCode`: the legacy code hash
+cannot derive a TOTP counter and is replaced by the cutover-timestep replay
+barrier. The field audit reports missing and duplicate source dispositions
+separately from missing and unsatisfied target requirements. Unlisted JSON is not
+implicitly copied. Invalid retained JSON and missing required target values
+block the cutover.
+
+## Row conservation and omitted identities
+
+`sourceValidationManifest` is generated from the 64 explicit `BACKFILL` ledger
+entries. Each descriptor counts rows from its quoted physical source table,
+counts distinct mapped source identities, and returns every omitted
+`source_model`/`source_id` through a source-to-`cutover_id_map` anti-join. It
+does not infer row counts from `information_schema`, and a missing mapping row
+cannot disappear inside an aggregate count.
+
+`cutoverConservationEquations` provides executable linear equations over named
+count queries. Contracts cover one-to-one rows, one-source-to-several-target
+splits, and joined-source merges. Every equation reports source count, target
+count, and signed delta so non-conservation is visible before commit.
 
 ## Cryptographic field ledger
 
@@ -79,3 +104,25 @@ A retained encrypted value is never copied as opaque ciphertext between key
 domains. It must decrypt under the declared source encoding, validate as the
 expected plaintext shape, re-encrypt under the target domain, and pass the
 ledger probe. Non-null unreadable material is a preflight blocker.
+
+`aggregateCredentialPayloadContracts` groups fields that feed one target
+Credential into canonical JSON payloads. Each component declares its payload
+key, `SET_IF_ABSENT` merge rule, and requiredness. This covers entity
+service/test material, channel connection credentials/webhook secret, channel
+app client/signing secrets, installation bot/refresh tokens, and MCP OIDC
+access/refresh tokens. Duplicate payload keys and missing required components
+block cutover rather than overwriting or dropping a value. An OIDC session with
+no access or refresh token emits no empty Credential and leaves its nullable FK
+unset. Project-owned entity credentials deterministically fan out to each
+project Environment because the clean Credential owner is Environment and bind
+through the declared deterministic Credential-name lookup; the other aggregate
+payloads bind through their declared clean foreign key.
+
+Historical message fields explicitly support mixed plaintext and envelopes.
+For version-column messages, a present version requires successful base64
+envelope decryption; only an absent version denotes plaintext. For JSON-marker
+families, the exact `__platos_enc` marker denotes an envelope and all other
+values are plaintext/plain JSON. Once an envelope is recognized, decryption
+failure blocks cutover and never falls back to plaintext. Every message probe
+must exercise both envelope and plaintext variants and return source-equivalent
+semantics through the target reader.

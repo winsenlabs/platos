@@ -3298,7 +3298,7 @@ export class AgentService {
           const [, payload] = result;
           const parsed = JSON.parse(payload);
           // The HTTP / socket resolver persists its own transition, but we
-          // double-write here too so the ledger is consistent even if the
+          // write the transition here too so the ledger is consistent even if the
           // resolver's persistence path fails (best-effort + idempotent).
           await this.approvalsService?.resolve({
             scope: {

@@ -24,14 +24,18 @@ data. It does not import, migrate, or modify the inherited database schema.
   control-plane models.
 - `src/cutover-ledger.ts` classifies all 124 inherited source models, 130
   physical tables, 44 enums, 458 replayed indexes, the vector extension, and
-  Prisma migration history exactly once. It also provides field-addressable
-  cryptographic transforms and post-cutover read probes. The companion
+  Prisma migration history exactly once. It also provides actual row-count and
+  omitted-ID anti-join queries for all 64 backfill sources, one-to-one/split/
+  merge conservation equations, aggregate credential payload contracts, and
+  mixed plaintext/envelope message probes. The companion
   `src/cutover-id.ts` pins UUID mapping version 1, its namespace, split-target
   suffix grammar, and cross-language golden vectors.
-- Field-level identity, ownership, bounded JSON normalization,
-  required/default, and validation-query descriptors live beside the source
-  model manifest. Unlisted or malformed retained JSON is not copied by
-  implication; the offline cutover must add a descriptor or block/export it.
+- `src/source-field-manifest.ts` gives every scalar field from every BACKFILL
+  source exactly one `COPY`, `TRANSFORM`, `EXPORT`, or `DROP` disposition and
+  gives every required target field source transforms or an explicit
+  deterministic default. Field-level identity, ownership, and bounded JSON
+  normalization remain beside the source-model manifest. Unlisted or malformed
+  retained JSON is not copied by implication.
 - `src/json.ts` documents and validates every retained Json field. Values are
   persisted with native object/array roots; only `promptBlocks`,
   `dynamicBlocks`, `modelRoutes`, and `toolsBlockConfig` accept one legacy

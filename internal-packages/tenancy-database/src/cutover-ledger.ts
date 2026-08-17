@@ -264,9 +264,11 @@ export interface CryptographicFieldLedgerEntry {
     | "PLAINTEXT_UTF8"
     | "SECRET_STORE_V1_PLAINTEXT_JSON_OR_V2_AES_256_GCM_HEX_JSON"
     | "SECRETS_BASE64_IV16_TAG16_CIPHERTEXT_OR_LEGACY_MESSAGE_OR_PLAINTEXT"
-    | "MESSAGE_BASE64_IV16_TAG16_CIPHERTEXT_WITH_VERSION_COLUMN"
+    | "MESSAGE_BASE64_IV16_TAG16_CIPHERTEXT_WITH_VERSION_COLUMN_OR_PLAINTEXT"
     | "MESSAGE_JSON_ENVELOPE_AS_JSONB"
-    | "MESSAGE_JSON_ENVELOPE_AS_TEXT";
+    | "MESSAGE_JSON_ENVELOPE_AS_TEXT"
+    | "MESSAGE_JSON_ENVELOPE_OR_PLAINTEXT_AS_JSONB"
+    | "MESSAGE_JSON_ENVELOPE_OR_PLAINTEXT_AS_TEXT";
   readonly targetFields: readonly string[];
   readonly targetKeyDomain:
     | "OPERATOR_AUTH_MFA_KEY"
@@ -464,7 +466,8 @@ export const cryptographicFieldLedger = [
     sourceFields: [sourceField!, "PlatosAgentMessage.encKeyVersion"],
     sourceKeyDomain: "PLATOS_MESSAGE_ENCRYPTION_KEY" as const,
     sourceKeyVersion: "PlatosAgentMessage.encKeyVersion" as const,
-    sourceEncoding: "MESSAGE_BASE64_IV16_TAG16_CIPHERTEXT_WITH_VERSION_COLUMN" as const,
+    sourceEncoding:
+      "MESSAGE_BASE64_IV16_TAG16_CIPHERTEXT_WITH_VERSION_COLUMN_OR_PLAINTEXT" as const,
     targetFields: [targetField!],
     targetKeyDomain: "PLATOS_MESSAGE_ENCRYPTION_KEY" as const,
     transform: "DECRYPT_VALIDATE_REENCRYPT" as const,
@@ -516,8 +519,8 @@ export const cryptographicFieldLedger = [
       sourceField!.endsWith(".content") ||
       sourceField!.endsWith(".label") ||
       sourceField!.endsWith(".detail")
-        ? ("MESSAGE_JSON_ENVELOPE_AS_TEXT" as const)
-        : ("MESSAGE_JSON_ENVELOPE_AS_JSONB" as const),
+        ? ("MESSAGE_JSON_ENVELOPE_OR_PLAINTEXT_AS_TEXT" as const)
+        : ("MESSAGE_JSON_ENVELOPE_OR_PLAINTEXT_AS_JSONB" as const),
     targetFields: [targetField!],
     targetKeyDomain: "PLATOS_MESSAGE_ENCRYPTION_KEY" as const,
     transform: "DECRYPT_VALIDATE_REENCRYPT" as const,
@@ -526,18 +529,417 @@ export const cryptographicFieldLedger = [
   })),
 ] as const satisfies readonly CryptographicFieldLedgerEntry[];
 
-/** Executable preflight validation descriptors shared by later cutover stages. */
+export interface CredentialPayloadComponent {
+  readonly cryptographicFieldId: string;
+  readonly sourceField: string;
+  readonly payloadKey: string;
+  readonly mergeRule: "SET_IF_ABSENT";
+  readonly requiredness: "REQUIRED" | "OPTIONAL";
+}
+
+export interface AggregateCredentialPayloadContract {
+  readonly id: string;
+  readonly targetCredentialNameSuffix: string;
+  readonly targetCredentialNameGrammar:
+    | "<source-model>:<source-id>:<suffix>"
+    | "<source-model>:<source-id>:<environment-id>:<suffix>";
+  readonly bindingRule: "FOREIGN_KEY" | "DETERMINISTIC_NAME_LOOKUP";
+  readonly ownerForeignKey: string | null;
+  readonly scopeRule:
+    | "SOURCE_ENVIRONMENT"
+    | "DERIVE_FROM_PARENT_APP"
+    | "DERIVE_FROM_ENTITY_SESSION"
+    | "FAN_OUT_TO_PROJECT_ENVIRONMENTS";
+  readonly payloadEncoding: "CANONICAL_JSON_OBJECT_UTF8";
+  readonly minimumPresentComponents: number;
+  readonly emptyPayloadPolicy: "BLOCK_CUTOVER" | "OMIT_CREDENTIAL";
+  readonly components: readonly CredentialPayloadComponent[];
+  readonly probe: CryptographicProbe;
+}
+
+/**
+ * Multi-field secrets are encrypted as one canonical JSON payload per target
+ * Credential. Distinct payload keys and SET_IF_ABSENT make overwrites a hard
+ * error rather than a last-write-wins data loss.
+ */
+export const aggregateCredentialPayloadContracts = [
+  {
+    id: "entity-service-and-test",
+    targetCredentialNameSuffix: "entity-auth",
+    targetCredentialNameGrammar: "<source-model>:<source-id>:<environment-id>:<suffix>",
+    bindingRule: "DETERMINISTIC_NAME_LOOKUP",
+    ownerForeignKey: null,
+    scopeRule: "FAN_OUT_TO_PROJECT_ENVIRONMENTS",
+    payloadEncoding: "CANONICAL_JSON_OBJECT_UTF8",
+    minimumPresentComponents: 1,
+    emptyPayloadPolicy: "BLOCK_CUTOVER",
+    components: [
+      {
+        cryptographicFieldId: "entity-service-secret",
+        sourceField: "PlatosConnectedEntity.serviceSecret",
+        payloadKey: "serviceSecret",
+        mergeRule: "SET_IF_ABSENT",
+        requiredness: "REQUIRED",
+      },
+      {
+        cryptographicFieldId: "entity-test-credentials",
+        sourceField: "PlatosConnectedEntity.testCredentials",
+        payloadKey: "testCredentials",
+        mergeRule: "SET_IF_ABSENT",
+        requiredness: "OPTIONAL",
+      },
+    ],
+    probe: "ENTITY_AUTH_HANDSHAKE",
+  },
+  {
+    id: "channel-connection-auth",
+    targetCredentialNameSuffix: "channel-connection-auth",
+    targetCredentialNameGrammar: "<source-model>:<source-id>:<suffix>",
+    bindingRule: "FOREIGN_KEY",
+    ownerForeignKey: "ChannelConnection.credentialId",
+    scopeRule: "SOURCE_ENVIRONMENT",
+    payloadEncoding: "CANONICAL_JSON_OBJECT_UTF8",
+    minimumPresentComponents: 1,
+    emptyPayloadPolicy: "BLOCK_CUTOVER",
+    components: [
+      {
+        cryptographicFieldId: "channel-connection-credentials",
+        sourceField: "PlatosChannelConnection.credentials",
+        payloadKey: "credentials",
+        mergeRule: "SET_IF_ABSENT",
+        requiredness: "OPTIONAL",
+      },
+      {
+        cryptographicFieldId: "channel-connection-webhook-secret",
+        sourceField: "PlatosChannelConnection.webhookSecret",
+        payloadKey: "webhookSecret",
+        mergeRule: "SET_IF_ABSENT",
+        requiredness: "REQUIRED",
+      },
+    ],
+    probe: "CHANNEL_CREDENTIAL_READ",
+  },
+  {
+    id: "channel-app-auth",
+    targetCredentialNameSuffix: "channel-app-auth",
+    targetCredentialNameGrammar: "<source-model>:<source-id>:<suffix>",
+    bindingRule: "FOREIGN_KEY",
+    ownerForeignKey: "ChannelApp.credentialId",
+    scopeRule: "SOURCE_ENVIRONMENT",
+    payloadEncoding: "CANONICAL_JSON_OBJECT_UTF8",
+    minimumPresentComponents: 2,
+    emptyPayloadPolicy: "BLOCK_CUTOVER",
+    components: [
+      {
+        cryptographicFieldId: "channel-app-client-secret",
+        sourceField: "PlatosChannelApp.clientSecret",
+        payloadKey: "clientSecret",
+        mergeRule: "SET_IF_ABSENT",
+        requiredness: "REQUIRED",
+      },
+      {
+        cryptographicFieldId: "channel-app-signing-secret",
+        sourceField: "PlatosChannelApp.signingSecret",
+        payloadKey: "signingSecret",
+        mergeRule: "SET_IF_ABSENT",
+        requiredness: "REQUIRED",
+      },
+    ],
+    probe: "CHANNEL_CREDENTIAL_READ",
+  },
+  {
+    id: "channel-installation-tokens",
+    targetCredentialNameSuffix: "channel-installation-tokens",
+    targetCredentialNameGrammar: "<source-model>:<source-id>:<suffix>",
+    bindingRule: "FOREIGN_KEY",
+    ownerForeignKey: "ChannelInstallation.credentialId",
+    scopeRule: "DERIVE_FROM_PARENT_APP",
+    payloadEncoding: "CANONICAL_JSON_OBJECT_UTF8",
+    minimumPresentComponents: 1,
+    emptyPayloadPolicy: "BLOCK_CUTOVER",
+    components: [
+      {
+        cryptographicFieldId: "channel-installation-bot-token",
+        sourceField: "PlatosChannelInstallation.botToken",
+        payloadKey: "botToken",
+        mergeRule: "SET_IF_ABSENT",
+        requiredness: "REQUIRED",
+      },
+      {
+        cryptographicFieldId: "channel-installation-refresh-token",
+        sourceField: "PlatosChannelInstallation.refreshToken",
+        payloadKey: "refreshToken",
+        mergeRule: "SET_IF_ABSENT",
+        requiredness: "OPTIONAL",
+      },
+    ],
+    probe: "CHANNEL_CREDENTIAL_READ",
+  },
+  {
+    id: "mcp-oidc-tokens",
+    targetCredentialNameSuffix: "mcp-oidc-tokens",
+    targetCredentialNameGrammar: "<source-model>:<source-id>:<suffix>",
+    bindingRule: "FOREIGN_KEY",
+    ownerForeignKey: "McpOidcSession.credentialId",
+    scopeRule: "DERIVE_FROM_ENTITY_SESSION",
+    payloadEncoding: "CANONICAL_JSON_OBJECT_UTF8",
+    minimumPresentComponents: 0,
+    emptyPayloadPolicy: "OMIT_CREDENTIAL",
+    components: [
+      {
+        cryptographicFieldId: "mcp-oidc-access-token",
+        sourceField: "PlatosMcpOidcSession.entityAccessToken",
+        payloadKey: "accessToken",
+        mergeRule: "SET_IF_ABSENT",
+        requiredness: "OPTIONAL",
+      },
+      {
+        cryptographicFieldId: "mcp-oidc-refresh-token",
+        sourceField: "PlatosMcpOidcSession.entityRefreshToken",
+        payloadKey: "refreshToken",
+        mergeRule: "SET_IF_ABSENT",
+        requiredness: "OPTIONAL",
+      },
+    ],
+    probe: "MCP_OIDC_TOKEN_READ",
+  },
+] as const satisfies readonly AggregateCredentialPayloadContract[];
+
+export function assembleCredentialPayload(
+  contract: AggregateCredentialPayloadContract,
+  decodedSourceValues: Readonly<Record<string, string | null | undefined>>
+): Readonly<Record<string, string>> {
+  const payload: Record<string, string> = {};
+  let present = 0;
+  for (const component of contract.components) {
+    const value = decodedSourceValues[component.sourceField];
+    if (value === null || value === undefined) {
+      if (component.requiredness === "REQUIRED") {
+        throw new Error(`Missing required credential component ${component.sourceField}`);
+      }
+      continue;
+    }
+    if (Object.hasOwn(payload, component.payloadKey)) {
+      throw new Error(`Credential payload key collision ${component.payloadKey}`);
+    }
+    payload[component.payloadKey] = value;
+    present += 1;
+  }
+  if (present === 0 && contract.emptyPayloadPolicy === "BLOCK_CUTOVER") {
+    throw new Error(`Credential payload ${contract.id} has no usable secret components`);
+  }
+  if (present < contract.minimumPresentComponents) {
+    throw new Error(`Credential payload ${contract.id} has no usable secret components`);
+  }
+  return Object.freeze(payload);
+}
+
+export interface MessageMixedEncodingContract {
+  readonly cryptographicFieldId: string;
+  readonly detectionRule:
+    | "VERSION_PRESENT_REQUIRES_BASE64_ENVELOPE_VERSION_ABSENT_IS_PLAINTEXT"
+    | "EXACT_JSON_MARKER_IS_ENVELOPE_OTHERWISE_PLAINTEXT";
+  readonly recognizedEnvelopeFailure: "BLOCK_CUTOVER_NO_PLAINTEXT_FALLBACK";
+  readonly plaintextTransform: "PRESERVE_UTF8_THEN_REENCRYPT" | "PRESERVE_JSON_THEN_REENCRYPT";
+  readonly probeVariants: readonly ["ENVELOPE", "PLAINTEXT"];
+  readonly probeAssertion: "TARGET_READER_RETURNS_SOURCE_SEMANTICS";
+}
+
+/** Mixed historical message columns must never treat a failed envelope as plaintext. */
+export const messageMixedEncodingContracts: readonly MessageMixedEncodingContract[] =
+  cryptographicFieldLedger
+    .filter((entry) => entry.family === "MESSAGE")
+    .map((entry) => ({
+      cryptographicFieldId: entry.id,
+      detectionRule: entry.sourceFields.includes("PlatosAgentMessage.encKeyVersion")
+        ? "VERSION_PRESENT_REQUIRES_BASE64_ENVELOPE_VERSION_ABSENT_IS_PLAINTEXT"
+        : "EXACT_JSON_MARKER_IS_ENVELOPE_OTHERWISE_PLAINTEXT",
+      recognizedEnvelopeFailure: "BLOCK_CUTOVER_NO_PLAINTEXT_FALLBACK",
+      plaintextTransform: entry.sourceEncoding.endsWith("AS_JSONB")
+        ? "PRESERVE_JSON_THEN_REENCRYPT"
+        : "PRESERVE_UTF8_THEN_REENCRYPT",
+      probeVariants: ["ENVELOPE", "PLAINTEXT"],
+      probeAssertion: "TARGET_READER_RETURNS_SOURCE_SEMANTICS",
+    }));
+
+const backfillIdentityFieldOverrides: Readonly<Record<string, string>> = Object.freeze({
+  PlatosEntityMcpConfig: "entityPk",
+  PlatosEntityMcpClient: "entityPk",
+  PlatosOAuthAuthCode: "code",
+  PlatosOAuthAccessToken: "tokenHash",
+  PlatosOAuthRefreshToken: "tokenHash",
+  SecretStore: "key",
+});
+
+export interface BackfillSourceValidation {
+  readonly sourceModel: string;
+  readonly physicalTable: string;
+  readonly identityField: string;
+  readonly sourceCountSql: string;
+  readonly mappedCountSql: string;
+  readonly omittedMappingsSql: string;
+}
+
+/** Actual row counts and anti-joins for every BACKFILL source in the explicit ledger. */
+export const sourceValidationManifest: readonly BackfillSourceValidation[] =
+  legacyModelDispositionLedger
+    .filter((entry) => entry.disposition === "BACKFILL")
+    .map((entry) => {
+      const identityField = backfillIdentityFieldOverrides[entry.sourceModel] ?? "id";
+      const sourceIdentity = `source."${identityField}"::text`;
+      return {
+        sourceModel: entry.sourceModel,
+        physicalTable: entry.physicalTable,
+        identityField,
+        sourceCountSql: `SELECT '${entry.sourceModel}'::text AS source_model, count(*)::bigint AS source_count FROM cutover_legacy."${entry.physicalTable}"`,
+        mappedCountSql: `SELECT '${entry.sourceModel}'::text AS source_model, count(DISTINCT ${sourceIdentity})::bigint AS mapped_count FROM cutover_legacy."${entry.physicalTable}" AS source JOIN cutover_legacy.cutover_id_map AS id_map ON id_map.mapping_version = 1 AND id_map.source_model = '${entry.sourceModel}' AND id_map.source_id = ${sourceIdentity}`,
+        omittedMappingsSql: `SELECT '${entry.sourceModel}'::text AS source_model, ${sourceIdentity} AS source_id FROM cutover_legacy."${entry.physicalTable}" AS source WHERE NOT EXISTS (SELECT 1 FROM cutover_legacy.cutover_id_map AS id_map WHERE id_map.mapping_version = 1 AND id_map.source_model = '${entry.sourceModel}' AND id_map.source_id = ${sourceIdentity}) ORDER BY source_id`,
+      };
+    });
+
+export interface CutoverIdMapIdentity {
+  readonly sourceModel: string;
+  readonly sourceId: string;
+}
+
+export function findOmittedSourceIdentities(
+  sourceModel: string,
+  sourceIds: readonly string[],
+  idMapRows: readonly CutoverIdMapIdentity[]
+): readonly string[] {
+  const mapped = new Set(
+    idMapRows.filter((row) => row.sourceModel === sourceModel).map((row) => row.sourceId)
+  );
+  return sourceIds.filter((sourceId) => !mapped.has(sourceId)).sort();
+}
+
+export interface ConservationMetric {
+  readonly id: string;
+  readonly sql: string;
+}
+
+export interface ConservationTerm {
+  readonly metricId: string;
+  readonly coefficient: number;
+}
+
+export interface CutoverConservationEquation {
+  readonly id: string;
+  readonly kind: "ONE_TO_ONE" | "SPLIT" | "MERGE";
+  readonly metrics: readonly ConservationMetric[];
+  readonly sourceTerms: readonly ConservationTerm[];
+  readonly targetTerms: readonly ConservationTerm[];
+  readonly sql: string;
+}
+
+function conservationExpression(terms: readonly ConservationTerm[]): string {
+  return terms
+    .map((term) => `${term.coefficient} * (SELECT row_count FROM "${term.metricId}")`)
+    .join(" + ");
+}
+
+export function buildConservationQuery(
+  metrics: readonly ConservationMetric[],
+  sourceTerms: readonly ConservationTerm[],
+  targetTerms: readonly ConservationTerm[]
+): string {
+  const ctes = metrics.map((metric) => `"${metric.id}" AS (${metric.sql})`).join(", ");
+  const source = conservationExpression(sourceTerms);
+  const target = conservationExpression(targetTerms);
+  return `WITH ${ctes} SELECT (${source})::bigint AS source_count, (${target})::bigint AS target_count, ((${source}) - (${target}))::bigint AS delta`;
+}
+
+export function evaluateConservationEquation(
+  equation: Pick<CutoverConservationEquation, "sourceTerms" | "targetTerms">,
+  metricCounts: Readonly<Record<string, bigint>>
+): { readonly sourceCount: bigint; readonly targetCount: bigint; readonly delta: bigint } {
+  const total = (terms: readonly ConservationTerm[]) =>
+    terms.reduce((sum, term) => {
+      const value = metricCounts[term.metricId];
+      if (value === undefined) throw new Error(`Missing conservation metric ${term.metricId}`);
+      return sum + BigInt(term.coefficient) * value;
+    }, 0n);
+  const sourceCount = total(equation.sourceTerms);
+  const targetCount = total(equation.targetTerms);
+  return { sourceCount, targetCount, delta: sourceCount - targetCount };
+}
+
+function equation(
+  id: string,
+  kind: CutoverConservationEquation["kind"],
+  metrics: readonly ConservationMetric[],
+  sourceTerms: readonly ConservationTerm[],
+  targetTerms: readonly ConservationTerm[]
+): CutoverConservationEquation {
+  return {
+    id,
+    kind,
+    metrics,
+    sourceTerms,
+    targetTerms,
+    sql: buildConservationQuery(metrics, sourceTerms, targetTerms),
+  };
+}
+
+export const cutoverConservationEquations = [
+  equation(
+    "organization-one-to-one",
+    "ONE_TO_ONE",
+    [
+      {
+        id: "source_organizations",
+        sql: `SELECT count(*)::bigint AS row_count FROM cutover_legacy."Organization"`,
+      },
+      {
+        id: "target_organizations",
+        sql: `SELECT count(*)::bigint AS row_count FROM public."Organization"`,
+      },
+    ],
+    [{ metricId: "source_organizations", coefficient: 1 }],
+    [{ metricId: "target_organizations", coefficient: 1 }]
+  ),
+  equation(
+    "agent-and-binding-split",
+    "SPLIT",
+    [
+      {
+        id: "source_agents",
+        sql: `SELECT count(*)::bigint AS row_count FROM cutover_legacy."PlatosAgent"`,
+      },
+      { id: "target_agents", sql: `SELECT count(*)::bigint AS row_count FROM public."Agent"` },
+      {
+        id: "target_agent_bindings",
+        sql: `SELECT count(*)::bigint AS row_count FROM public."AgentBinding"`,
+      },
+    ],
+    [{ metricId: "source_agents", coefficient: 2 }],
+    [
+      { metricId: "target_agents", coefficient: 1 },
+      { metricId: "target_agent_bindings", coefficient: 1 },
+    ]
+  ),
+  equation(
+    "secret-reference-store-merge",
+    "MERGE",
+    [
+      {
+        id: "source_joined_secrets",
+        sql: `SELECT count(*)::bigint AS row_count FROM cutover_legacy."SecretReference" AS reference JOIN cutover_legacy."SecretStore" AS secret ON secret."key" = reference."key"`,
+      },
+      {
+        id: "target_secret_versions",
+        sql: `SELECT count(DISTINCT target."id")::bigint AS row_count FROM public."CredentialSecretVersion" AS target JOIN cutover_legacy.cutover_id_map AS id_map ON id_map.mapping_version = 1 AND id_map.source_model = 'SecretReference' AND id_map.target_model = 'CredentialSecretVersion' AND id_map.target_id = target."id"`,
+      },
+    ],
+    [{ metricId: "source_joined_secrets", coefficient: 1 }],
+    [{ metricId: "target_secret_versions", coefficient: 1 }]
+  ),
+] as const satisfies readonly CutoverConservationEquation[];
+
+/** Executable global preflight validation descriptors shared by later stages. */
 export const cutoverValidationQueries = [
   {
-    id: "source-model-counts",
-    sql: `SELECT table_name, count(*)::bigint AS source_count FROM information_schema.tables CROSS JOIN LATERAL (SELECT 1) AS bounded WHERE table_schema = 'cutover_legacy' GROUP BY table_name ORDER BY table_name`,
-  },
-  {
-    id: "unmapped-backfill-identities",
-    sql: `SELECT source_model, count(*)::bigint AS unmapped_count FROM cutover_legacy.cutover_id_map WHERE mapping_version = 1 AND target_id IS NULL GROUP BY source_model ORDER BY source_model`,
-  },
-  {
-    id: "duplicate-target-identities",
-    sql: `SELECT target_id, count(*)::bigint AS collision_count FROM cutover_legacy.cutover_id_map WHERE mapping_version = 1 GROUP BY target_id HAVING count(*) > 1 ORDER BY target_id`,
+    id: "duplicate-id-map-source-identities",
+    sql: `SELECT source_model, source_id, target_model, stable_suffix, count(*)::bigint AS mapping_count FROM cutover_legacy.cutover_id_map WHERE mapping_version = 1 GROUP BY source_model, source_id, target_model, stable_suffix HAVING count(*) > 1 ORDER BY source_model, source_id, target_model, stable_suffix`,
   },
 ] as const;

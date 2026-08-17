@@ -16,7 +16,7 @@ import {
 const packageRoot = resolve(__dirname, "..");
 const schemaPath = resolve(packageRoot, "prisma/schema.prisma");
 const schema = readFileSync(schemaPath, "utf8");
-const sourceSchema = readFileSync(resolve(packageRoot, "../database/prisma/schema.prisma"), "utf8");
+const sourceSchema = readFileSync(resolve(packageRoot, "../database/legacy-prisma/schema.prisma"), "utf8");
 const initialMigration = readFileSync(
   resolve(packageRoot, "prisma/migrations/00000000000000_initial/migration.sql"),
   "utf8"

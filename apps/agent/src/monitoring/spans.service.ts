@@ -49,7 +49,7 @@ export class SpansService {
   /**
    * PPR-15 — ClickHouse HTTP endpoint for persistent span storage.
    * When unset, we remain Redis-only (pre-PPR-15 behaviour). When set,
-   * we dual-write every sampled span to `trigger_dev.platos_spans_v1`
+   * we use a ClickHouse dual-write for every sampled span in `trigger_dev.platos_spans_v1`
    * via the HTTP JSONEachRow interface. No new dep — node's `fetch`.
    *
    * Format: `http://default:pwd@host:8123` (basic-auth credentials baked

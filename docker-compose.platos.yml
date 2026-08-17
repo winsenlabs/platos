@@ -504,7 +504,7 @@ services:
       # When unset, spans stay Redis-only (short retention). When set, every
       # sampled span ALSO lands in ClickHouse for long-retention analytics
       # queries (cost rollups, per-user trace lookup, etc.). Default points
-      # at the in-cluster ClickHouse so an OSS `up -d` gets dual-write for
+      # at the in-cluster ClickHouse so an OSS `up -d` gets a ClickHouse dual-write for
       # free; override to "" to disable.
       PLATOS_OTEL_CLICKHOUSE_URL: "${PLATOS_OTEL_CLICKHOUSE_URL:-http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123}"
       PLATOS_OTEL_SAMPLE_RATE: "${PLATOS_OTEL_SAMPLE_RATE:-1}"

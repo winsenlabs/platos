@@ -313,7 +313,7 @@ export class ClickhouseEventRepository implements IEventRepository {
   async insertMany(events: CreateEventInput[]): Promise<void> {
     this.addToBatch(events.flatMap((event) => this.createEventToTaskEventV1Input(event)));
 
-    // Dual-write LLM metrics records for spans with cost enrichment
+    // ClickHouse dual-write LLM metrics records for spans with cost enrichment
     const llmMetricsRows = events
       .filter((e) => e._llmMetrics != null)
       .map((e) => this.#createLlmMetricsInput(e));

@@ -87,7 +87,7 @@ type UserCostBucket = {
  * See also: `docs/themes/THEME_S.md` SM.1 acceptance criteria. When
  * ClickHouse `cost_events` is introduced (post-K, alongside the
  * spans-store pattern), extend this event shape into a JSONEachRow
- * payload and dual-write — column set:
+ * payload and ClickHouse dual-write — column set:
  *   organization_id, project_id, environment_id, tier, model, skill_slug,
  *   tool_name, provider, input_units, output_units, cost_cents,
  *   agent_id, thread_id, latency_ms, inserted_at.

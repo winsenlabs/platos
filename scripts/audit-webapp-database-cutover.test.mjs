@@ -164,6 +164,76 @@ test("new forbidden ownership surfaces fail while external integrations remain a
   assert.equal(allowed.violations.length, 0);
 });
 
+test("external-store exemptions are exact and cannot hide mixed database ownership", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const baseline = baselineForInventory(inventoryRepository(root));
+
+  write(
+    root,
+    "apps/webapp/app/clickhouse-mixed.server.ts",
+    `export const clickhouseAnalytics = "ClickHouse dual-write";
+     export const alternateUrl = "ClickHouse and TENANCY_DATABASE_URL";
+     export const fallback = "ClickHouse and fallback database";
+     export const bridge = "object-store and database bridge";
+     export const sync = "ClickHouse and database synchronization";
+     export const postgresWrites = "ClickHouse approval ledger and PostgreSQL dual-write";
+     import { Pool } from "pg";`
+  );
+
+  const result = evaluateInventory(inventoryRepository(root), baseline, "inventory");
+  const architecture = result.violations.filter(
+    (finding) => finding.category === "forbidden-architecture"
+  );
+  assert.deepEqual(
+    new Set(architecture.map((finding) => finding.token)),
+    new Set([
+      "alternate-postgres-client",
+      "second-database",
+      "database-fallback",
+      "database-bridge",
+      "database-sync",
+      "dual-write",
+    ])
+  );
+  assert.equal(architecture.find((finding) => finding.token === "dual-write")?.count, 1);
+
+  rmSync(join(root, "apps/webapp/app/clickhouse-mixed.server.ts"));
+  write(
+    root,
+    "apps/webapp/app/safe-external.server.ts",
+    `export const analytics = "ClickHouse dual-write";
+     export const blobs = "object-store database fallback";`
+  );
+  assert.equal(evaluateInventory(inventoryRepository(root), baseline, "inventory").ok, true);
+});
+
+test("legacy delegates are detected through computed access, aliases, and destructuring", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const baseline = baselineForInventory(inventoryRepository(root));
+
+  write(
+    root,
+    "apps/webapp/app/delegate-bypasses.server.ts",
+    `prisma["taskRun"].findMany();
+     const runs = prisma.taskRun;
+     runs.findFirst();
+     const alias = runs;
+     alias.count();
+     const { taskRun } = prisma;
+     taskRun.updateMany({});
+     const { taskRun: renamedRuns } = prisma;
+     renamedRuns.deleteMany({});`
+  );
+
+  const result = evaluateInventory(inventoryRepository(root), baseline, "inventory");
+  const delegate = result.violations.find(
+    (finding) => finding.category === "legacy-delegate" && finding.token === "taskRun"
+  );
+  assert.equal(delegate?.count, 5);
+});
+
 test("allowances must shrink and expire by execution phase", (t) => {
   const root = fixture();
   t.after(() => rmSync(root, { recursive: true, force: true }));
