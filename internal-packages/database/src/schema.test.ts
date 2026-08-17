@@ -33,7 +33,11 @@ const attachmentByteReconciliationMigration = readFileSync(
   resolve(packageRoot, "prisma/migrations/20260817020000_add_attachment_byte_reconciliation/migration.sql"),
   "utf8"
 );
-const migration = `${initialMigration}\n${uploadReservationMigration}\n${tokenLifecycleAuditMigration}\n${attachmentByteReconciliationMigration}`;
+const externalCutoverReconciliationMigration = readFileSync(
+  resolve(packageRoot, "prisma/migrations/20260817030000_add_external_cutover_reconciliation/migration.sql"),
+  "utf8"
+);
+const migration = `${initialMigration}\n${uploadReservationMigration}\n${tokenLifecycleAuditMigration}\n${attachmentByteReconciliationMigration}\n${externalCutoverReconciliationMigration}`;
 
 const tenancyOnlyModels = [
   "User",
@@ -75,9 +79,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(81);
-    expect(domainModelNames).toHaveLength(64);
-    expect(new Set(domainModelNames).size).toBe(64);
+    expect(models).toHaveLength(84);
+    expect(domainModelNames).toHaveLength(67);
+    expect(new Set(domainModelNames).size).toBe(67);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");
@@ -160,6 +164,34 @@ describe("clean-slate domain schema", () => {
         "action",
         "outcome",
       ],
+      ExternalCutoverRun: [
+        "idempotencyKey",
+        "attempt",
+        "status",
+        "manifestSha256",
+        "report",
+      ],
+      ExternalCutoverEvidence: [
+        "runId",
+        "runAttempt",
+        "sequence",
+        "domain",
+        "action",
+        "outcome",
+        "expectedMetadata",
+        "observedMetadata",
+      ],
+      ObjectKeyReconciliation: [
+        "runId",
+        "runAttempt",
+        "metadataModel",
+        "metadataRowId",
+        "attempt",
+        "sourceObjectKeySha256",
+        "targetObjectKeySha256",
+        "expectedMetadata",
+        "observedMetadata",
+      ],
       McpToken: ["environmentId", "mintedByUserId", "permissions", "tier"],
       PersonalAccessToken: ["userId", "scopeKind", "organizationId", "projectId", "environmentId"],
       OAuthAuthorizationCode: ["clientId", "userId", "scopeKind", "organizationId", "projectId", "environmentId"],
@@ -206,6 +238,44 @@ describe("clean-slate domain schema", () => {
     expect(migration).toContain('REVOKE UPDATE, DELETE, TRUNCATE\nON TABLE "public"."TokenLifecycleAudit"');
     expect([...fields("TokenLifecycleAudit")]).not.toEqual(
       expect.arrayContaining(["token", "tokenHash", "ciphertext", "nonce", "authTag"])
+    );
+    expect([...fields("ObjectKeyReconciliation")]).not.toEqual(
+      expect.arrayContaining(["sourceObjectKey", "targetObjectKey", "storageKey", "rawKey"])
+    );
+    expect(externalCutoverReconciliationMigration).toContain(
+      'CREATE TYPE "public"."ExternalCutoverStatus"'
+    );
+    expect(externalCutoverReconciliationMigration).toContain(
+      'CREATE TYPE "public"."ExternalCutoverDomain"'
+    );
+    expect(externalCutoverReconciliationMigration).toContain(
+      'CREATE TYPE "public"."ExternalCutoverAction"'
+    );
+    expect(externalCutoverReconciliationMigration).toContain(
+      'CREATE TYPE "public"."ExternalCutoverOutcome"'
+    );
+    expect(externalCutoverReconciliationMigration).toContain(
+      'CONSTRAINT "ObjectKeyReconciliation_source_key_sha256_check"'
+    );
+    expect(externalCutoverReconciliationMigration).toContain(
+      'CONSTRAINT "ExternalCutoverRun_report_check"'
+    );
+    expect(externalCutoverReconciliationMigration).not.toMatch(
+      /"sourceObjectKey"\s+TEXT|"targetObjectKey"\s+TEXT|"storageKey"\s+TEXT/
+    );
+    for (const model of [
+      "ExternalCutoverRun",
+      "ExternalCutoverEvidence",
+      "ObjectKeyReconciliation",
+    ]) {
+      for (const operation of ["update", "delete", "truncate"]) {
+        expect(externalCutoverReconciliationMigration).toContain(
+          `CREATE TRIGGER \"${model}_immutable_${operation}\"`
+        );
+      }
+    }
+    expect(externalCutoverReconciliationMigration).toContain(
+      'ON TABLE "public"."ExternalCutoverRun", "public"."ExternalCutoverEvidence", "public"."ObjectKeyReconciliation"'
     );
     expect(migration).toContain('CONSTRAINT "OAuthRefreshToken_scope_shape_check"');
     expect(migration).toContain('CREATE UNIQUE INDEX "ProviderKey_one_default_per_environment_provider"');
@@ -295,6 +365,7 @@ describe("clean-slate domain schema", () => {
       "20260817000000_add_upload_reservations",
       "20260817010000_add_token_lifecycle_audit",
       "20260817020000_add_attachment_byte_reconciliation",
+      "20260817030000_add_external_cutover_reconciliation",
     ]);
     expect(createHash("sha256").update(initialMigration).digest("hex"))
       .toBe("ef1675ae7a79e3a426829892201a96c809cc2700a16426c24d69a14036dc383a");
@@ -302,6 +373,15 @@ describe("clean-slate domain schema", () => {
     expect(uploadReservationMigration).not.toMatch(/"organizationId" UUID|"projectId" UUID/);
     expect(tokenLifecycleAuditMigration).toContain('CREATE TABLE "public"."TokenLifecycleAudit"');
     expect(tokenLifecycleAuditMigration).not.toMatch(/"token"|"tokenHash"|"ciphertext"|"authTag"/);
+    expect(externalCutoverReconciliationMigration).toContain(
+      'CREATE TABLE "public"."ExternalCutoverRun"'
+    );
+    expect(externalCutoverReconciliationMigration).toContain(
+      'CREATE TABLE "public"."ExternalCutoverEvidence"'
+    );
+    expect(externalCutoverReconciliationMigration).toContain(
+      'CREATE TABLE "public"."ObjectKeyReconciliation"'
+    );
     expect(migration).toContain('CREATE FUNCTION "public"."enforce_domain_ancestry"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_canonical_owner_change"()');
     expect(migration).toContain('CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()');
@@ -346,6 +426,9 @@ describe("clean-slate domain schema", () => {
       "Tool",
       "AdminAudit",
       "TokenLifecycleAudit",
+      "ExternalCutoverRun",
+      "ExternalCutoverEvidence",
+      "ObjectKeyReconciliation",
       "ErasureOperation",
     ];
     for (const model of forbidden) expect(relationTargets.has(model)).toBe(false);

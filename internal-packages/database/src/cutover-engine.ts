@@ -1,4 +1,5 @@
 import { randomUUID, createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import pg from "pg";
 import {
@@ -14,6 +15,17 @@ import {
 } from "./cutover-backfill";
 import { compareApplicationCatalogs, readApplicationCatalog } from "./cutover-catalog";
 import { createStubExternalCutoverReportFragment } from "./cutover-external";
+import {
+  probeRetainedCredentialTargets,
+  reencryptAndProbeRetainedCryptoTargets,
+  type RetainedCredentialProbeEvidence,
+  type RetainedCryptoCutoverEvidence,
+} from "./cutover-crypto-probes";
+import {
+  collectCutoverExportSourceSnapshots,
+  createCutoverExport,
+  type CutoverExportReport,
+} from "./cutover-export";
 import {
   backfillRetainedAgentToolBatch1,
   validateRetainedAgentToolBatch1,
@@ -83,7 +95,8 @@ function phase(
   phaseName: string,
   status: CutoverPhaseResult["status"],
   summary: string,
-  startedAt?: string
+  startedAt?: string,
+  evidence?: Readonly<Record<string, unknown>>
 ): CutoverPhaseResult {
   return {
     phase: phaseName,
@@ -91,6 +104,7 @@ function phase(
     summary,
     startedAt,
     finishedAt: new Date().toISOString(),
+    evidence,
   };
 }
 
@@ -117,6 +131,9 @@ export async function runCutover(
   let state: CutoverState = "PREFLIGHT_BLOCKED";
   let transactionOpen = false;
   let rolledBackAfterExecutionFailure = false;
+  let retainedCryptoEvidence: RetainedCryptoCutoverEvidence | undefined;
+  let credentialProbeEvidence: RetainedCredentialProbeEvidence | undefined;
+  let exportReport: CutoverExportReport | undefined;
 
   try {
     await database.query("SET statement_timeout = '60s'");
@@ -160,12 +177,6 @@ export async function runCutover(
             "core rehearsal requires a fresh clean catalog comparison database"
           );
         }
-        if (!options.exportDirectory || !options.reportDirectory) {
-          throw new CutoverFailure(
-            "ARTIFACT_DIRECTORIES_REQUIRED",
-            "core rehearsal requires explicit export and report directories"
-          );
-        }
         phases.push(phase("read-only-preflight", "SUCCEEDED", "mutation preflight passed"));
         await database.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
         transactionOpen = true;
@@ -181,6 +192,15 @@ export async function runCutover(
 
         const createStarted = new Date().toISOString();
         await createCleanCatalog(database, packageRoot);
+        await database.query(
+          readFileSync(
+            resolve(
+              packageRoot,
+              "prisma/migrations/20260817030000_add_external_cutover_reconciliation/migration.sql"
+            ),
+            "utf8"
+          )
+        );
         await appendCutoverJournal(database, runId, "create-clean-catalog", "SUCCEEDED", {});
         phases.push(phase("create-clean-catalog", "SUCCEEDED", "clean migrations applied transactionally", createStarted));
         failIfRequested(options, "create-clean-catalog");
@@ -281,7 +301,7 @@ export async function runCutover(
         await validateRetainedConversationBatch2(database);
         await appendCutoverJournal(database, runId, "retained-conversation-batch-2", "SUCCEEDED", {
           sourceModels: retainedConversationBatch2SourceModels,
-          finalMessageReEncryptionReadProbes: "INCOMPLETE",
+          finalMessageReEncryptionReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
         });
         phases.push(
           phase(
@@ -304,7 +324,7 @@ export async function runCutover(
         await appendCutoverJournal(database, runId, "retained-entity-mcp-batch-3", "SUCCEEDED", {
           sourceModels: retainedBatch3SourceModels,
           ...retainedBatch3Evidence,
-          cryptographicReadProbes: "INCOMPLETE",
+          cryptographicReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
         });
         phases.push(
           phase(
@@ -333,7 +353,7 @@ export async function runCutover(
           {
             sourceModels: retainedProviderOauthBatch4SourceModels,
             ...retainedProviderOauthBatch4Evidence,
-            cryptographicReadProbes: "INCOMPLETE",
+            cryptographicReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
           }
         );
         phases.push(
@@ -354,7 +374,7 @@ export async function runCutover(
         await appendCutoverJournal(database, runId, "retained-channel-batch-5", "SUCCEEDED", {
           sourceModels: retainedChannelBatch5SourceModels,
           ...retainedChannelBatch5Evidence,
-          cryptographicReadProbes: "INCOMPLETE",
+          cryptographicReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
         });
         phases.push(
           phase(
@@ -380,7 +400,7 @@ export async function runCutover(
             sourceModels: retainedOperationalBatch6SourceModels,
             ...retainedOperationalBatch6Evidence,
             retainedEncryptedRepresentations: retainedOperationalBatch6DeferredTargetChecks,
-            finalTargetReEncryptionReadProbes: "INCOMPLETE",
+            finalTargetReEncryptionReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
           }
         );
         phases.push(
@@ -424,7 +444,7 @@ export async function runCutover(
           sourceModels: retainedMemoryBatch8SourceModels,
           ...retainedMemoryBatch8Evidence,
           retainedEncryptedRepresentations: retainedMemoryBatch8DeferredTargetChecks,
-          finalTargetReEncryptionReadProbes: "INCOMPLETE",
+          finalTargetReEncryptionReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
         });
         phases.push(
           phase(
@@ -452,6 +472,53 @@ export async function runCutover(
         );
         failIfRequested(options, "remaining-retained-backfill");
 
+        const cryptoStarted = new Date().toISOString();
+        retainedCryptoEvidence = await reencryptAndProbeRetainedCryptoTargets(database, {
+          sourceMessageEncryptionKeys: keyMaterial.messageEncryptionKeys,
+          targetMessageEncryptionKey: keyMaterial.targetMessageEncryptionKey,
+          targetMessageEncryptionKeyVersion: keyMaterial.targetMessageEncryptionKeyVersion,
+        });
+        await appendCutoverJournal(
+          database,
+          runId,
+          "final-message-re-encryption-read-probes",
+          "SUCCEEDED",
+          { ...retainedCryptoEvidence }
+        );
+        phases.push(
+          phase(
+            "final-message-re-encryption-read-probes",
+            "SUCCEEDED",
+            "retained message, audit, safety, memory, and graph fields were re-encrypted and read through the target contract",
+            cryptoStarted,
+            { ...retainedCryptoEvidence }
+          )
+        );
+        failIfRequested(options, "final-message-re-encryption-read-probes");
+
+        const credentialProbeStarted = new Date().toISOString();
+        credentialProbeEvidence = await probeRetainedCredentialTargets(
+          database,
+          keyMaterial.credentialRootKeyRing
+        );
+        await appendCutoverJournal(database, runId, "cryptographic-read-probes", "SUCCEEDED", {
+          ...credentialProbeEvidence,
+          retainedFieldCount: Object.values(retainedCryptoEvidence.fieldCounts).reduce(
+            (sum, count) => sum + count,
+            0
+          ),
+        });
+        phases.push(
+          phase(
+            "cryptographic-read-probes",
+            "SUCCEEDED",
+            "all mapped active credential envelopes and retained encrypted field families passed persisted target-reader probes",
+            credentialProbeStarted,
+            { ...credentialProbeEvidence }
+          )
+        );
+        failIfRequested(options, "cryptographic-read-probes");
+
         const reference = new Client({
           connectionString: options.freshCatalogDatabaseUrl,
           application_name: "platos-cutover-fresh-catalog-reference",
@@ -478,27 +545,120 @@ export async function runCutover(
         }
         failIfRequested(options, "application-catalog-parity");
 
+        const exportStarted = new Date().toISOString();
+        const sourceSnapshots = await collectCutoverExportSourceSnapshots(database);
+        const exportInput = {
+          runId,
+          sealingKey: {
+            reference: options.exportKeyReference ?? "",
+            keyHex: keyMaterial.exportSealingKeyHex,
+          },
+          sourceSnapshots,
+          migrationHistory: preflight.legacyHistoryRows,
+        } as const;
+        const firstValidation = createCutoverExport({ ...exportInput, mode: "DRY_RUN" });
+        const repeatedValidation = createCutoverExport({ ...exportInput, mode: "DRY_RUN" });
+        if (
+          firstValidation.report.payloadSha256 !== repeatedValidation.report.payloadSha256 ||
+          firstValidation.report.reportSha256 !== repeatedValidation.report.reportSha256
+        ) {
+          throw new CutoverFailure(
+            "CUTOVER_EXPORT_NONDETERMINISTIC",
+            "sealed cutover export validation is not deterministic"
+          );
+        }
+        if (options.exportDirectory) {
+          const written = createCutoverExport({
+            ...exportInput,
+            mode: "WRITE",
+            outputDirectory: options.exportDirectory,
+          });
+          if (written.report.payloadSha256 !== firstValidation.report.payloadSha256) {
+            throw new CutoverFailure(
+              "CUTOVER_EXPORT_WRITE_MISMATCH",
+              "sealed cutover export artifact differs from the validated payload"
+            );
+          }
+          exportReport = written.report;
+        } else {
+          exportReport = firstValidation.report;
+        }
+        const exportEvidence = {
+          mode: exportReport.mode,
+          keyReference: exportReport.keyReference,
+          externalTriggerPolicy: exportReport.externalTriggerPolicy,
+          payloadSha256: exportReport.payloadSha256,
+          objectCount: exportReport.objects.length,
+          exportOnlyObjectCount: exportReport.objects.filter(
+            (entry) => entry.handling === "SEALED_EXPORT_ONLY_NO_IMPORT"
+          ).length,
+          migrationHistory: exportReport.migrationHistory,
+          artifact: exportReport.artifact,
+          reportSha256: exportReport.reportSha256,
+        } as const;
+        await appendCutoverJournal(database, runId, "unsupported-trigger-export", "SUCCEEDED", {
+          ...exportEvidence,
+        });
+        phases.push(
+          phase(
+            "unsupported-trigger-export",
+            "SUCCEEDED",
+            "unsupported and Trigger-owned source data passed deterministic sealed export validation",
+            exportStarted,
+            { ...exportEvidence }
+          )
+        );
+        failIfRequested(options, "unsupported-trigger-export");
+
+        const ephemeralEvidence = {
+          dispositions: exportReport.ephemeral,
+          totalRowCount: exportReport.ephemeral
+            .reduce((sum, entry) => sum + BigInt(entry.rowCount), 0n)
+            .toString(10),
+        } as const;
+        await appendCutoverJournal(
+          database,
+          runId,
+          "ephemeral-session-recovery-disposition",
+          "SUCCEEDED",
+          { ...ephemeralEvidence }
+        );
+        phases.push(
+          phase(
+            "ephemeral-session-recovery-disposition",
+            "SUCCEEDED",
+            "legacy MFA recovery codes and runtime environment sessions were counted for invalidation",
+            exportStarted,
+            { ...ephemeralEvidence }
+          )
+        );
+        failIfRequested(options, "ephemeral-session-recovery-disposition");
+
         await appendCutoverJournal(database, runId, "forced-pre-commit-rollback", "ROLLED_BACK", {
           reason: "cutover rehearsal cannot commit while domain phases are incomplete",
           incompletePhaseIds: incompleteCutoverPhaseIds,
         });
-        const artifacts = await exportTransactionArtifacts(database);
-        writeJsonExport(options.exportDirectory, `cutover-id-map-${runId}.json`, artifacts.idMap);
-        writeJsonExport(options.exportDirectory, `cutover-journal-${runId}.json`, artifacts.journal);
-        writeJsonExport(
-          options.exportDirectory,
-          `legacy-history-${runId}.json`,
-          preflight.legacyHistoryRows.map((row) => ({
-            migrationName: row.migration_name,
-            checksum: row.checksum,
-            finishedAt: row.finished_at,
-            rolledBackAt: row.rolled_back_at,
-            appliedStepsCount: row.applied_steps_count,
-            logsPresent: Boolean(row.logs),
-            logsSha256: row.logs ? createHash("sha256").update(row.logs).digest("hex") : undefined,
-          }))
-        );
-        phases.push(phase("export-rehearsal-artifacts", "SUCCEEDED", "secret-free mapping, journal, and history evidence exported"));
+        if (options.exportDirectory) {
+          const artifacts = await exportTransactionArtifacts(database);
+          writeJsonExport(options.exportDirectory, `cutover-id-map-${runId}.json`, artifacts.idMap);
+          writeJsonExport(options.exportDirectory, `cutover-journal-${runId}.json`, artifacts.journal);
+          writeJsonExport(
+            options.exportDirectory,
+            `legacy-history-${runId}.json`,
+            preflight.legacyHistoryRows.map((row) => ({
+              migrationName: row.migration_name,
+              checksum: row.checksum,
+              finishedAt: row.finished_at,
+              rolledBackAt: row.rolled_back_at,
+              appliedStepsCount: row.applied_steps_count,
+              logsPresent: Boolean(row.logs),
+              logsSha256: row.logs ? createHash("sha256").update(row.logs).digest("hex") : undefined,
+            }))
+          );
+          phases.push(phase("export-rehearsal-artifacts", "SUCCEEDED", "owner-only sealed export, mapping, journal, and history evidence exported"));
+        } else {
+          phases.push(phase("export-rehearsal-artifacts", "SUCCEEDED", "sealed export was validated without writing rehearsal artifacts"));
+        }
 
         await database.query("ROLLBACK");
         transactionOpen = false;
@@ -555,6 +715,11 @@ export async function runCutover(
     phases: [...phases, ...incompletePhases],
     sourceDigests,
     external: createStubExternalCutoverReportFragment(),
+    cryptoEvidence:
+      retainedCryptoEvidence && credentialProbeEvidence
+        ? { retainedFields: retainedCryptoEvidence, credentials: credentialProbeEvidence }
+        : undefined,
+    exportReport,
     incompletePhaseIds: incompleteCutoverPhaseIds,
     backupAttestationRef: options.attestations.backupAttestationRef,
     backupRestoreTestRef: options.attestations.backupRestoreTestRef,
@@ -569,7 +734,10 @@ function requiredCutoverKeyMaterial(options: CutoverOptions): {
   readonly legacyEncryptionKey: string;
   readonly targetAuthEncryptionKey: string;
   readonly messageEncryptionKeys: Readonly<Record<string, string>>;
+  readonly targetMessageEncryptionKey: string;
+  readonly targetMessageEncryptionKeyVersion: number;
   readonly credentialRootKeyRing: NonNullable<NonNullable<CutoverOptions["keyMaterial"]>["credentialRootKeyRing"]>;
+  readonly exportSealingKeyHex: string;
 } {
   const material = options.keyMaterial;
   if (
@@ -577,18 +745,25 @@ function requiredCutoverKeyMaterial(options: CutoverOptions): {
     !material.targetAuthEncryptionKey ||
     !material.messageEncryptionKeys ||
     Object.keys(material.messageEncryptionKeys).length === 0 ||
-    !material.credentialRootKeyRing
+    !material.targetMessageEncryptionKey ||
+    !Number.isSafeInteger(material.targetMessageEncryptionKeyVersion) ||
+    material.targetMessageEncryptionKeyVersion! < 1 ||
+    !material.credentialRootKeyRing ||
+    !material.exportSealingKeyHex
   ) {
     throw new CutoverFailure(
       "CUTOVER_KEY_MATERIAL_REQUIRED",
-      "implemented auth, conversation, entity, provider, channel, audit, and memory phases require all declared cutover key domains"
+      "implemented auth, conversation, entity, provider, channel, audit, memory, and sealed export phases require all declared cutover key domains"
     );
   }
   return {
     legacyEncryptionKey: material.legacyEncryptionKey,
     targetAuthEncryptionKey: material.targetAuthEncryptionKey,
     messageEncryptionKeys: material.messageEncryptionKeys,
+    targetMessageEncryptionKey: material.targetMessageEncryptionKey,
+    targetMessageEncryptionKeyVersion: material.targetMessageEncryptionKeyVersion!,
     credentialRootKeyRing: material.credentialRootKeyRing,
+    exportSealingKeyHex: material.exportSealingKeyHex,
   };
 }
 

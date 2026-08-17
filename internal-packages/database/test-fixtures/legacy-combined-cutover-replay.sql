@@ -22,3 +22,22 @@ DELETE FROM "User"
    'cllegacyuser0006',
    'cllegacyuser0007'
  );
+
+-- Export-only Trigger/unsupported data must be present in the combined replay,
+-- including a value that may appear only after the sealed artifact is opened.
+INSERT INTO "DataMigration" (id, name, "createdAt", "updatedAt", "completedAt")
+VALUES ('cllegacydatamigration0001', 'fixture-trigger-export-row',
+        '2025-01-06T00:00:00Z', '2025-01-06T00:00:00Z', NULL);
+
+INSERT INTO "FeatureFlag" (id, key, value, "createdAt", "updatedAt")
+VALUES ('cllegacyfeatureflag0001', 'fixture-sealed-export-only',
+        '{"token":"fixture-trigger-export-secret-never-report"}'::jsonb,
+        '2025-01-06T00:00:00Z', '2025-01-06T00:00:00Z');
+
+-- Both EPHEMERAL_DROP families are deliberately non-empty. The rehearsal
+-- counts their invalidation disposition and then rolls the source transaction
+-- back; it never translates either row into the clean catalog.
+INSERT INTO "RuntimeEnvironmentSession"
+  (id, "ipAddress", "environmentId", "createdAt", "updatedAt", "disconnectedAt")
+VALUES ('cllegacysession0001', '192.0.2.44', 'cllegacyenv0001',
+        '2025-01-06T00:00:00Z', '2025-01-06T00:00:00Z', NULL);

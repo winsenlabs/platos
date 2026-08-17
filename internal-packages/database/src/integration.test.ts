@@ -6,6 +6,10 @@ import {
   AgentVersionBucket,
   AuthorizationScopeKind,
   CredentialKind,
+  ExternalCutoverAction,
+  ExternalCutoverDomain,
+  ExternalCutoverOutcome,
+  ExternalCutoverStatus,
   OrganizationRole,
   PolicyEffect,
   Prisma,
@@ -65,7 +69,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(81);
+    expect(modelNames).toHaveLength(84);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -302,6 +306,182 @@ describe("domain schema integration", () => {
     })).rejects.toThrow();
     await expect(control.mcpToken.findUnique({ where: { id: seeded.mcpToken.id } }))
       .resolves.toMatchObject({ lastUsedAt: null });
+  });
+
+  test("persists a hash-only immutable external cutover reconciliation ledger", async () => {
+    const manifestSha256 = "7".repeat(64);
+    const logicalRun = "external-ledger-integration";
+    const run = await control.externalCutoverRun.create({
+      data: {
+        idempotencyKey: logicalRun,
+        attempt: 1,
+        status: ExternalCutoverStatus.PLANNED,
+        manifestSha256,
+      },
+    });
+
+    await expect(control.externalCutoverRun.create({
+      data: {
+        idempotencyKey: logicalRun,
+        attempt: 3,
+        status: ExternalCutoverStatus.FAILED,
+        manifestSha256,
+      },
+    })).rejects.toThrow(/sequential/);
+    await expect(control.externalCutoverRun.create({
+      data: {
+        idempotencyKey: logicalRun,
+        attempt: 1,
+        status: ExternalCutoverStatus.PLANNED,
+        manifestSha256,
+      },
+    })).rejects.toThrow();
+    await expect(control.externalCutoverRun.create({
+      data: {
+        idempotencyKey: logicalRun,
+        attempt: 2,
+        status: ExternalCutoverStatus.FAILED,
+        manifestSha256,
+      },
+    })).resolves.toMatchObject({ attempt: 2, status: ExternalCutoverStatus.FAILED });
+
+    const evidence = await control.externalCutoverEvidence.create({
+      data: {
+        runId: run.id,
+        runAttempt: run.attempt,
+        sequence: 1,
+        domain: ExternalCutoverDomain.CLICKHOUSE,
+        action: ExternalCutoverAction.VERIFY,
+        outcome: ExternalCutoverOutcome.MATCH,
+        resourceName: "platos_spans_v1",
+        expectedMetadata: { rowCount: "2", rowsSha256: "8".repeat(64) },
+        observedMetadata: { rowCount: "2", rowsSha256: "8".repeat(64) },
+      },
+    });
+    await expect(control.externalCutoverEvidence.create({
+      data: {
+        runId: run.id,
+        runAttempt: run.attempt,
+        sequence: 3,
+        domain: ExternalCutoverDomain.CLICKHOUSE,
+        action: ExternalCutoverAction.VERIFY,
+        outcome: ExternalCutoverOutcome.FAILED,
+        resourceName: "platos_spans_v1",
+      },
+    })).rejects.toThrow(/sequential/);
+    await expect(control.externalCutoverEvidence.create({
+      data: {
+        runId: run.id,
+        runAttempt: run.attempt,
+        sequence: 2,
+        domain: ExternalCutoverDomain.OBJECT_STORE,
+        action: ExternalCutoverAction.PLAN,
+        outcome: ExternalCutoverOutcome.BLOCKED,
+        expectedMetadata: { sourceObjectKey: "must-not-persist" },
+      },
+    })).rejects.toThrow();
+
+    const messageAttachmentId = seeded.registry.get("MessageAttachment")!.id;
+    const objectEvidence = await control.objectKeyReconciliation.create({
+      data: {
+        runId: run.id,
+        runAttempt: run.attempt,
+        metadataModel: "MessageAttachment",
+        metadataRowId: messageAttachmentId,
+        attempt: 1,
+        outcome: ExternalCutoverOutcome.INDETERMINATE,
+        sourceObjectKeySha256: "9".repeat(64),
+        targetObjectKeySha256: "a".repeat(64),
+        expectedMetadata: { byteLength: "2" },
+      },
+    });
+    await expect(control.objectKeyReconciliation.create({
+      data: {
+        runId: run.id,
+        runAttempt: run.attempt,
+        metadataModel: "MessageAttachment",
+        metadataRowId: messageAttachmentId,
+        attempt: 3,
+        outcome: ExternalCutoverOutcome.MATCH,
+        sourceObjectKeySha256: "9".repeat(64),
+        targetObjectKeySha256: "a".repeat(64),
+        expectedMetadata: { byteLength: "2" },
+        observedMetadata: { byteLength: "2" },
+      },
+    })).rejects.toThrow(/sequential/);
+    await expect(control.objectKeyReconciliation.create({
+      data: {
+        runId: run.id,
+        runAttempt: run.attempt,
+        metadataModel: "PlatosMessageAttachment",
+        metadataRowId: messageAttachmentId,
+        attempt: 2,
+        outcome: ExternalCutoverOutcome.MATCH,
+        sourceObjectKeySha256: "9".repeat(64),
+        targetObjectKeySha256: "a".repeat(64),
+        expectedMetadata: { byteLength: "2" },
+        observedMetadata: { byteLength: "2" },
+      },
+    })).rejects.toThrow();
+    await expect(control.objectKeyReconciliation.create({
+      data: {
+        runId: run.id,
+        runAttempt: run.attempt,
+        metadataModel: "MessageAttachment",
+        metadataRowId: messageAttachmentId,
+        attempt: 2,
+        outcome: ExternalCutoverOutcome.MATCH,
+        sourceObjectKeySha256: "not-a-digest",
+        targetObjectKeySha256: "a".repeat(64),
+        expectedMetadata: { byteLength: "2" },
+        observedMetadata: { byteLength: "2" },
+      },
+    })).rejects.toThrow();
+
+    const invalidReport = {
+      contractVersion: 1,
+      implementation: "STUB",
+      state: "STUB_BLOCKED",
+      manifestSha256,
+      clickHouseTables: [],
+      objectStoreObjects: [],
+      sourceObjectKey: "must-not-persist",
+    };
+    await expect(control.externalCutoverRun.create({
+      data: {
+        idempotencyKey: "external-ledger-invalid-report",
+        attempt: 1,
+        manifestSha256,
+        report: invalidReport,
+      },
+    })).rejects.toThrow();
+
+    await expect(control.externalCutoverRun.update({
+      where: { id: run.id },
+      data: { status: ExternalCutoverStatus.COPYING },
+    })).rejects.toThrow(/immutable/);
+    await expect(control.externalCutoverRun.delete({ where: { id: run.id } }))
+      .rejects.toThrow(/immutable/);
+    await expect(control.externalCutoverEvidence.update({
+      where: { id: evidence.id },
+      data: { outcome: ExternalCutoverOutcome.FAILED },
+    })).rejects.toThrow(/immutable/);
+    await expect(control.externalCutoverEvidence.delete({ where: { id: evidence.id } }))
+      .rejects.toThrow(/immutable/);
+    await expect(control.objectKeyReconciliation.update({
+      where: { id: objectEvidence.id },
+      data: { outcome: ExternalCutoverOutcome.FAILED },
+    })).rejects.toThrow(/immutable/);
+    await expect(control.objectKeyReconciliation.delete({ where: { id: objectEvidence.id } }))
+      .rejects.toThrow(/immutable/);
+    for (const table of ["ExternalCutoverEvidence", "ObjectKeyReconciliation"]) {
+      await expect(control.$executeRawUnsafe(`TRUNCATE TABLE "public"."${table}"`))
+        .rejects.toThrow(/immutable/);
+    }
+    await expect(control.$executeRawUnsafe(
+      'TRUNCATE TABLE "public"."ExternalCutoverEvidence", ' +
+      '"public"."ObjectKeyReconciliation", "public"."ExternalCutoverRun"'
+    )).rejects.toThrow(/immutable/);
   });
 
   test("rejects cross-owner ancestry and canonical-owner reparenting", async () => {
@@ -1331,6 +1511,34 @@ async function seedEveryModel(control: PrismaClient) {
       outcome: TokenLifecycleOutcome.SUCCESS,
     },
   }));
+  const externalCutoverManifestSha256 = "f".repeat(64);
+  const externalCutoverRun = track("ExternalCutoverRun", await control.externalCutoverRun.create({
+    data: {
+      idempotencyKey: "round-trip-external-cutover",
+      attempt: 1,
+      manifestSha256: externalCutoverManifestSha256,
+      report: {
+        contractVersion: 1,
+        implementation: "STUB",
+        state: "STUB_BLOCKED",
+        manifestSha256: externalCutoverManifestSha256,
+        clickHouseTables: [],
+        objectStoreObjects: [],
+      },
+    },
+  }));
+  track("ExternalCutoverEvidence", await control.externalCutoverEvidence.create({
+    data: {
+      runId: externalCutoverRun.id,
+      runAttempt: externalCutoverRun.attempt,
+      sequence: 1,
+      domain: ExternalCutoverDomain.OBJECT_STORE,
+      action: ExternalCutoverAction.PLAN,
+      outcome: ExternalCutoverOutcome.BLOCKED,
+      expectedMetadata: { objectCount: "0", manifestSha256: externalCutoverManifestSha256 },
+      observedMetadata: {},
+    },
+  }));
   track("PostmanTemplate", await control.postmanTemplate.create({
     data: {
       environmentId: environment.id,
@@ -1409,7 +1617,7 @@ async function seedEveryModel(control: PrismaClient) {
       createdBy: user.id,
     },
   }));
-  track("MessageAttachment", await control.messageAttachment.create({
+  const messageAttachment = track("MessageAttachment", await control.messageAttachment.create({
     data: {
       environmentId: environment.id,
       endUserId: endUser.id,
@@ -1418,6 +1626,20 @@ async function seedEveryModel(control: PrismaClient) {
       mimeType: "text/plain",
       bytes: 2,
       storageKey: "attachment",
+    },
+  }));
+  track("ObjectKeyReconciliation", await control.objectKeyReconciliation.create({
+    data: {
+      runId: externalCutoverRun.id,
+      runAttempt: externalCutoverRun.attempt,
+      metadataModel: "MessageAttachment",
+      metadataRowId: messageAttachment.id,
+      attempt: 1,
+      outcome: ExternalCutoverOutcome.INDETERMINATE,
+      sourceObjectKeySha256: "1".repeat(64),
+      targetObjectKeySha256: "2".repeat(64),
+      expectedMetadata: { byteLength: String(messageAttachment.bytes) },
+      observedMetadata: {},
     },
   }));
   const reservationCreatedAt = new Date();

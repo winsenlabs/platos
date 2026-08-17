@@ -18,8 +18,20 @@ export interface ParsedCutoverArguments {
   readonly writerFenceAttestationRef?: string;
   readonly reportDirectory?: string;
   readonly exportDirectory?: string;
+  readonly exportKeyEnvironment: string;
+  readonly exportKeyReference?: string;
   readonly freshCatalogDatabaseUrlEnvironment: string;
   readonly forcedFailurePhase?: string;
+}
+
+const EXPORT_KEY_ENVIRONMENT = /^[A-Z_][A-Z0-9_]*$/;
+const EXPORT_KEY_REFERENCE = /^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,254}$/;
+
+export function resolveCutoverMessageEncryptionKeyVersion(
+  environment: Readonly<Record<string, string | undefined>>
+): number {
+  const configuredVersion = Number(environment.PLATOS_MESSAGE_ENCRYPTION_KEY_V ?? "1");
+  return Number.isSafeInteger(configuredVersion) && configuredVersion > 0 ? configuredVersion : 1;
 }
 
 export function parseCutoverArguments(argv: readonly string[]): ParsedCutoverArguments {
@@ -34,6 +46,8 @@ export function parseCutoverArguments(argv: readonly string[]): ParsedCutoverArg
     "--writer-fence-attestation-ref",
     "--report-dir",
     "--export-dir",
+    "--export-key-env",
+    "--export-key-reference",
     "--fresh-catalog-database-url-env",
     "--force-failure-after-phase",
   ]);
@@ -65,6 +79,15 @@ export function parseCutoverArguments(argv: readonly string[]): ParsedCutoverArg
     : flags.has("--execute")
       ? "FULL_EXECUTE"
       : "DRY_RUN";
+  const exportKeyEnvironment =
+    values.get("--export-key-env") ?? "PLATOS_CUTOVER_EXPORT_KEY";
+  const exportKeyReference = values.get("--export-key-reference");
+  if (!EXPORT_KEY_ENVIRONMENT.test(exportKeyEnvironment)) {
+    throw new Error("--export-key-env must name an environment variable");
+  }
+  if (exportKeyReference !== undefined && !EXPORT_KEY_REFERENCE.test(exportKeyReference)) {
+    throw new Error("--export-key-reference is invalid");
+  }
   return {
     mode,
     executeAcceptance: values.get("--accept-execute"),
@@ -75,6 +98,8 @@ export function parseCutoverArguments(argv: readonly string[]): ParsedCutoverArg
     writerFenceAttestationRef: values.get("--writer-fence-attestation-ref"),
     reportDirectory: values.get("--report-dir"),
     exportDirectory: values.get("--export-dir"),
+    exportKeyEnvironment,
+    exportKeyReference,
     freshCatalogDatabaseUrlEnvironment:
       values.get("--fresh-catalog-database-url-env") ?? "CUTOVER_FRESH_DATABASE_URL",
     forcedFailurePhase: values.get("--force-failure-after-phase"),
@@ -85,10 +110,7 @@ export function parseCutoverArguments(argv: readonly string[]): ParsedCutoverArg
 export function resolveCutoverMessageEncryptionKeys(
   environment: Readonly<Record<string, string | undefined>>
 ): Readonly<Record<string, string>> {
-  const configuredVersion = Number(environment.PLATOS_MESSAGE_ENCRYPTION_KEY_V ?? "1");
-  const activeVersion = Number.isSafeInteger(configuredVersion) && configuredVersion > 0
-    ? configuredVersion
-    : 1;
+  const activeVersion = resolveCutoverMessageEncryptionKeyVersion(environment);
   const keys: Record<string, string> = {};
   for (const [name, value] of Object.entries(environment)) {
     const match = name.match(/^PLATOS_MESSAGE_ENCRYPTION_KEY_V([1-9][0-9]*)$/);
@@ -139,15 +161,24 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     },
     reportDirectory: parsed.reportDirectory,
     exportDirectory: parsed.exportDirectory,
+    exportKeyReference: parsed.exportKeyReference,
     freshCatalogDatabaseUrl: process.env[parsed.freshCatalogDatabaseUrlEnvironment],
     requiredKeyEnvironment: Object.fromEntries(
-      CUTOVER_REQUIRED_KEY_ENVIRONMENT.map((name) => [name, Boolean(process.env[name])])
+      CUTOVER_REQUIRED_KEY_ENVIRONMENT.map((name) => [
+        name,
+        name === "PLATOS_CUTOVER_EXPORT_KEY"
+          ? Boolean(process.env[parsed.exportKeyEnvironment])
+          : Boolean(process.env[name]),
+      ])
     ),
     keyMaterial: {
       legacyEncryptionKey: process.env.ENCRYPTION_KEY,
       targetAuthEncryptionKey: process.env.PLATOS_ENCRYPTION_KEY,
       messageEncryptionKeys: resolveCutoverMessageEncryptionKeys(process.env),
+      targetMessageEncryptionKey: process.env.PLATOS_MESSAGE_ENCRYPTION_KEY,
+      targetMessageEncryptionKeyVersion: resolveCutoverMessageEncryptionKeyVersion(process.env),
       credentialRootKeyRing: resolveCutoverCredentialRootKeyRing(process.env),
+      exportSealingKeyHex: process.env[parsed.exportKeyEnvironment],
     },
     forcedFailurePhase: parsed.forcedFailurePhase,
   };

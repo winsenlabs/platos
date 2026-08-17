@@ -9,6 +9,7 @@ import {
   type DecodedCutoverValue,
 } from "./cutover-crypto";
 import { normalizeJsonField, type JsonField, type JsonValue } from "./json";
+import { CredentialRootKeyRing, decryptCredentialSecret } from "./secrets";
 import type { CutoverDatabase } from "./cutover-types";
 import { CutoverFailure } from "./cutover-types";
 
@@ -145,6 +146,12 @@ export interface RetainedCryptoCutoverEvidence {
   readonly sourceUnversionedCount: number;
   readonly sourceVersionCounts: Readonly<Record<string, number>>;
   readonly targetVersionCounts: Readonly<Record<string, number>>;
+}
+
+export interface RetainedCredentialProbeEvidence {
+  readonly credentialCount: number;
+  readonly kindCounts: readonly Readonly<{ kind: string; count: number }>[];
+  readonly rootVersionCounts: Readonly<Record<string, number>>;
 }
 
 interface PreparedFieldTransform extends RetainedCryptoFieldTransform {
@@ -663,5 +670,102 @@ export async function reencryptAndProbeRetainedCryptoTargets(
     options.targetMessageEncryptionKey,
     ...Object.values(options.sourceMessageEncryptionKeys),
   ]);
+  return evidence;
+}
+
+interface PersistedCredentialProbeRow extends Record<string, unknown> {
+  readonly credential_id: string;
+  readonly environment_id: string;
+  readonly kind: string;
+  readonly secret_revision: number;
+  readonly format_version: number;
+  readonly root_key_version: number;
+  readonly salt: Buffer;
+  readonly nonce: Buffer;
+  readonly ciphertext: Buffer;
+  readonly auth_tag: Buffer;
+}
+
+/** Exercises the production envelope reader against every mapped active Credential row. */
+export async function probeRetainedCredentialTargets(
+  database: CutoverDatabase,
+  keyRing: CredentialRootKeyRing
+): Promise<RetainedCredentialProbeEvidence> {
+  const result = await database.query<PersistedCredentialProbeRow>(`
+    SELECT credential.id::text AS credential_id,
+           credential."environmentId"::text AS environment_id,
+           credential.kind::text AS kind,
+           version."secretRevision" AS secret_revision,
+           version."formatVersion" AS format_version,
+           version."rootKeyVersion" AS root_key_version,
+           version.salt, version.nonce, version.ciphertext, version."authTag" AS auth_tag
+      FROM public."Credential" credential
+      JOIN cutover_legacy.cutover_id_map mapping
+        ON mapping.mapping_version=1 AND mapping.target_model='Credential'
+       AND mapping.target_id=credential.id
+      LEFT JOIN public."CredentialSecretVersion" version
+        ON version.id=credential."activeSecretVersionId"
+       AND version."credentialId"=credential.id
+     ORDER BY credential.id`);
+  const kindCounts: Record<string, number> = {};
+  const rootVersionCounts: Record<string, number> = {};
+
+  for (const row of result.rows) {
+    if (
+      typeof row.credential_id !== "string" ||
+      typeof row.environment_id !== "string" ||
+      typeof row.kind !== "string" ||
+      !Number.isSafeInteger(row.secret_revision) ||
+      !Number.isSafeInteger(row.format_version) ||
+      !Number.isSafeInteger(row.root_key_version) ||
+      !Buffer.isBuffer(row.salt) ||
+      !Buffer.isBuffer(row.nonce) ||
+      !Buffer.isBuffer(row.ciphertext) ||
+      !Buffer.isBuffer(row.auth_tag)
+    ) {
+      throw cryptoFailure(
+        "CUTOVER_CREDENTIAL_TARGET_READER_FAILED",
+        "mapped target credential envelope is unavailable"
+      );
+    }
+    try {
+      const material = decryptCredentialSecret(
+        keyRing.key(row.root_key_version),
+        {
+          credentialId: row.credential_id,
+          environmentId: row.environment_id,
+          secretRevision: row.secret_revision,
+          formatVersion: row.format_version,
+          rootKeyVersion: row.root_key_version,
+        },
+        {
+          salt: row.salt,
+          nonce: row.nonce,
+          ciphertext: row.ciphertext,
+          authTag: row.auth_tag,
+        }
+      );
+      if (material.reveal().length === 0) throw new Error();
+    } catch {
+      throw cryptoFailure(
+        "CUTOVER_CREDENTIAL_TARGET_READER_FAILED",
+        "mapped target credential envelope is unreadable"
+      );
+    }
+    kindCounts[row.kind] = (kindCounts[row.kind] ?? 0) + 1;
+    const rootVersion = String(row.root_key_version);
+    rootVersionCounts[rootVersion] = (rootVersionCounts[rootVersion] ?? 0) + 1;
+  }
+
+  const evidence = Object.freeze({
+    credentialCount: result.rows.length,
+    kindCounts: Object.freeze(
+      Object.entries(kindCounts)
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+        .map(([kind, count]) => Object.freeze({ kind, count }))
+    ),
+    rootVersionCounts: Object.freeze({ ...rootVersionCounts }),
+  });
+  assertSecretFreeCutoverEvidence(evidence);
   return evidence;
 }

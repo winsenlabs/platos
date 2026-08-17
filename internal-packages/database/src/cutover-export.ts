@@ -21,6 +21,7 @@ import {
   type SourceFieldTransformation,
 } from "./source-field-manifest";
 import type { LegacyMigrationRow } from "./cutover-history";
+import type { CutoverDatabase } from "./cutover-types";
 
 const FORMAT = "platos.win123.cutover-export.sealed.v1";
 const PAYLOAD_DOMAIN = "platos.win123.cutover-export.payload.v1";
@@ -31,6 +32,9 @@ const TAG_BYTES = 16;
 const SHA256 = /^[0-9a-f]{64}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const KEY_REFERENCE = /^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,254}$/;
+const LEGACY_EXPORT_FIELD_COLUMNS = Object.freeze({
+  "Project.allowedWorkerQueues": "allowedMasterQueues",
+} as const);
 const MIGRATION_HISTORY_FIELDS = Object.freeze([
   "applied_steps_count",
   "checksum",
@@ -128,12 +132,22 @@ function selectionFor(
 function queryFor(
   table: string,
   selection: CutoverExportSelection,
-  exportFields: readonly string[]
+  exportFields: readonly string[],
+  sourceModel?: string
 ): string {
   const from = `FROM cutover_legacy.${quoted(table)}`;
   if (selection === "COUNT_ONLY") return `SELECT count(*)::bigint AS row_count ${from}`;
   if (selection === "MANIFEST_EXPORT_FIELDS") {
-    return `SELECT ${exportFields.map(quoted).join(", ")} ${from}`;
+    return `SELECT ${exportFields.map((field) => {
+      const physicalField = sourceModel
+        ? LEGACY_EXPORT_FIELD_COLUMNS[
+            `${sourceModel}.${field}` as keyof typeof LEGACY_EXPORT_FIELD_COLUMNS
+          ] ?? field
+        : field;
+      return physicalField === field
+        ? quoted(field)
+        : `${quoted(physicalField)} AS ${quoted(field)}`;
+    }).join(", ")} ${from}`;
   }
   return `SELECT * ${from}`;
 }
@@ -157,7 +171,7 @@ export function createCutoverExportObjectManifest(
       disposition: entry.disposition,
       selection,
       exportFields,
-      sql: queryFor(entry.physicalTable, selection, exportFields),
+      sql: queryFor(entry.physicalTable, selection, exportFields, entry.sourceModel),
     };
   });
   const additional = legacyAdditionalPhysicalObjectLedger.flatMap<CutoverExportObjectContract>(
@@ -184,6 +198,48 @@ export function createCutoverExportObjectManifest(
 }
 
 export const cutoverExportObjectManifest = createCutoverExportObjectManifest();
+
+/** Reads the complete export inventory from the transaction-local legacy schema. */
+export async function collectCutoverExportSourceSnapshots(
+  database: CutoverDatabase
+): Promise<readonly CutoverExportSourceSnapshot[]> {
+  const snapshots: CutoverExportSourceSnapshot[] = [];
+  try {
+    for (const contract of cutoverExportObjectManifest) {
+      if (contract.selection === "MIGRATION_HISTORY") continue;
+      const result = await database.query(contract.sql);
+      if (contract.selection === "COUNT_ONLY") {
+        const rowCount = result.rows[0]?.row_count;
+        if (
+          result.rows.length !== 1 ||
+          (typeof rowCount !== "string" &&
+            typeof rowCount !== "number" &&
+            typeof rowCount !== "bigint")
+        ) {
+          throw new CutoverExportError("invalid_row_count");
+        }
+        snapshots.push({ objectName: contract.objectName, rowCount });
+        continue;
+      }
+
+      const fields = contract.selection === "MANIFEST_EXPORT_FIELDS"
+        ? contract.exportFields
+        : (
+            await database.query<{ column_name: string }>(
+              `SELECT column_name FROM information_schema.columns
+                WHERE table_schema='cutover_legacy' AND table_name=$1
+                ORDER BY ordinal_position`,
+              [contract.objectName]
+            )
+          ).rows.map((row) => row.column_name);
+      snapshots.push({ objectName: contract.objectName, fields, rows: result.rows });
+    }
+    return snapshots;
+  } catch (error) {
+    if (error instanceof CutoverExportError) throw error;
+    throw new CutoverExportError("invalid_source_inventory");
+  }
+}
 
 export const ephemeralDispositionContracts = Object.freeze([
   Object.freeze({

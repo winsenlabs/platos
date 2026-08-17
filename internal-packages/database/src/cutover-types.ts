@@ -1,4 +1,11 @@
 import type { ExternalCutoverReportFragment } from "./cutover-external";
+import type {
+  CutoverExportReport,
+} from "./cutover-export";
+import type {
+  RetainedCredentialProbeEvidence,
+  RetainedCryptoCutoverEvidence,
+} from "./cutover-crypto-probes";
 import type { CredentialRootKeyRing } from "./secrets";
 
 export type CutoverMode = "DRY_RUN" | "CORE_REHEARSAL_ROLLBACK" | "FULL_EXECUTE";
@@ -35,13 +42,17 @@ export interface CutoverOptions {
   readonly attestations: CutoverAttestations;
   readonly reportDirectory?: string;
   readonly exportDirectory?: string;
+  readonly exportKeyReference?: string;
   readonly freshCatalogDatabaseUrl?: string;
   readonly requiredKeyEnvironment?: Readonly<Record<string, boolean>>;
   readonly keyMaterial?: {
     readonly legacyEncryptionKey?: string;
     readonly targetAuthEncryptionKey?: string;
     readonly messageEncryptionKeys?: Readonly<Record<string, string>>;
+    readonly targetMessageEncryptionKey?: string;
+    readonly targetMessageEncryptionKeyVersion?: number;
     readonly credentialRootKeyRing?: CredentialRootKeyRing;
+    readonly exportSealingKeyHex?: string;
   };
   readonly forcedFailurePhase?: string;
 }
@@ -52,6 +63,7 @@ export interface CutoverPhaseResult {
   readonly startedAt?: string;
   readonly finishedAt?: string;
   readonly summary: string;
+  readonly evidence?: Readonly<Record<string, unknown>>;
 }
 
 export interface SourceDigest {
@@ -73,6 +85,11 @@ export interface CutoverReport {
   readonly phases: readonly CutoverPhaseResult[];
   readonly sourceDigests: readonly SourceDigest[];
   readonly external?: ExternalCutoverReportFragment;
+  readonly cryptoEvidence?: Readonly<{
+    retainedFields: RetainedCryptoCutoverEvidence;
+    credentials: RetainedCredentialProbeEvidence;
+  }>;
+  readonly exportReport?: CutoverExportReport;
   readonly incompletePhaseIds: readonly string[];
   readonly backupAttestationRef?: string;
   readonly backupRestoreTestRef?: string;

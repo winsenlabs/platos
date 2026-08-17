@@ -32,6 +32,7 @@ export const CUTOVER_REQUIRED_KEY_ENVIRONMENT = [
   "PLATOS_CREDENTIAL_ROOT_KEY_VERSION",
   "PLATOS_CREDENTIAL_ROOT_KEYS",
   "PLATOS_MESSAGE_ENCRYPTION_KEY",
+  "PLATOS_CUTOVER_EXPORT_KEY",
 ] as const;
 
 export interface PreflightResult {
@@ -170,7 +171,7 @@ export async function runCutoverPreflight(
     let historyRows: LegacyMigrationRow[] = [];
     if (actualTables.includes("_prisma_migrations")) {
       const history = await database.query<LegacyMigrationRow>(
-        `SELECT migration_name, checksum, finished_at, rolled_back_at, applied_steps_count, logs
+        `SELECT *
            FROM public."_prisma_migrations"
           ORDER BY migration_name`
       );
@@ -225,6 +226,15 @@ export async function runCutoverPreflight(
 
     const mutationAttestationChecks = validateMutationAttestations(options.mode, options.attestations);
     checks.push(...mutationAttestationChecks);
+    checks.push(
+      check(
+        "sealed-export-contract",
+        options.mode === "DRY_RUN" || Boolean(options.exportKeyReference) ? "PASS" : "BLOCK",
+        options.mode === "DRY_RUN" || options.exportKeyReference
+          ? "sealed export key reference and environment-key contract is configured"
+          : "sealed export key reference is required for mutation rehearsal"
+      )
+    );
 
     checks.push(
       check(

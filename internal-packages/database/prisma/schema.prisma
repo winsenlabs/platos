@@ -100,6 +100,48 @@ enum TokenLifecycleOutcome {
   SUCCESS
 }
 
+enum ExternalCutoverStatus {
+  STUB_BLOCKED
+  PLANNED
+  WRITERS_FENCED
+  COPYING
+  COPY_VERIFIED
+  SWAPPED
+  OBJECTS_RECONCILING
+  VERIFIED
+  COMPLETED
+  ROLLBACK_REQUIRED
+  ROLLED_BACK
+  FAILED
+}
+
+enum ExternalCutoverDomain {
+  CLICKHOUSE
+  OBJECT_STORE
+}
+
+enum ExternalCutoverAction {
+  PLAN
+  FENCE_WRITERS
+  COPY
+  VERIFY
+  SWAP
+  RECONCILE
+  COMPLETE
+  ROLLBACK
+}
+
+enum ExternalCutoverOutcome {
+  SUCCEEDED
+  BLOCKED
+  FAILED
+  MATCH
+  MISMATCH
+  MISSING
+  INDETERMINATE
+  ROLLED_BACK
+}
+
 enum AgentToolDefaultPolicy {
   NONE
   ALL
@@ -838,6 +880,81 @@ model TokenLifecycleAudit {
   @@index([projectId, createdAt])
   @@index([environmentId, createdAt])
   @@index([family, action, outcome, createdAt])
+}
+
+/// PostgreSQL-authoritative immutable snapshot for one idempotent external
+/// cutover attempt. The execution path remains unwired while reports are STUB.
+model ExternalCutoverRun {
+  id             String                @id @default(uuid()) @db.Uuid
+  idempotencyKey String
+  attempt        Int
+  status         ExternalCutoverStatus @default(STUB_BLOCKED)
+  manifestSha256 String
+  /// Object root containing a validated, redacted STUB external cutover report fragment.
+  report         Json?
+  startedAt      DateTime              @default(now())
+  finishedAt     DateTime?
+  createdAt      DateTime              @default(now())
+
+  evidence                 ExternalCutoverEvidence[]
+  objectKeyReconciliations ObjectKeyReconciliation[]
+
+  @@unique([id, attempt])
+  @@unique([idempotencyKey, attempt])
+  @@index([status, createdAt])
+  @@index([idempotencyKey, createdAt])
+}
+
+/// Immutable routine phase evidence. Expected and observed metadata are closed
+/// hash/count-only objects enforced by the sequential migration.
+model ExternalCutoverEvidence {
+  id               String                 @id @default(uuid()) @db.Uuid
+  runId            String                 @db.Uuid
+  runAttempt       Int
+  sequence         Int
+  domain           ExternalCutoverDomain
+  action           ExternalCutoverAction
+  outcome          ExternalCutoverOutcome
+  resourceName     String?
+  /// Object root containing only safe expected counts and SHA-256 digests.
+  expectedMetadata Json                   @default("{}")
+  /// Object root containing only safe observed counts and SHA-256 digests.
+  observedMetadata Json                   @default("{}")
+  createdAt        DateTime               @default(now())
+
+  run ExternalCutoverRun @relation(fields: [runId, runAttempt], references: [id, attempt], onDelete: Restrict)
+
+  @@unique([runId, sequence])
+  @@index([runId, domain, action, outcome])
+  @@index([domain, action, outcome, createdAt])
+}
+
+/// Immutable object-store reconciliation evidence. Routine rows identify the
+/// canonical metadata row by UUID and persist only SHA-256 object-key digests.
+model ObjectKeyReconciliation {
+  id                      String                 @id @default(uuid()) @db.Uuid
+  runId                   String                 @db.Uuid
+  runAttempt              Int
+  metadataModel           String
+  metadataRowId           String                 @db.Uuid
+  attempt                 Int
+  action                  ExternalCutoverAction  @default(RECONCILE)
+  outcome                 ExternalCutoverOutcome
+  sourceObjectKeySha256   String
+  targetObjectKeySha256   String
+  /// Object root containing only safe expected byte counts and SHA-256 digests.
+  expectedMetadata        Json                   @default("{}")
+  /// Object root containing only safe observed byte counts and SHA-256 digests.
+  observedMetadata        Json                   @default("{}")
+  createdAt               DateTime               @default(now())
+
+  run ExternalCutoverRun @relation(fields: [runId, runAttempt], references: [id, attempt], onDelete: Restrict)
+
+  @@unique([runId, metadataModel, metadataRowId, attempt])
+  @@unique([runId, sourceObjectKeySha256, targetObjectKeySha256, attempt])
+  @@index([runId, outcome, createdAt])
+  @@index([metadataModel, metadataRowId, createdAt])
+  @@index([targetObjectKeySha256])
 }
 
 model OAuthAccessToken {

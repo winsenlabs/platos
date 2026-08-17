@@ -179,7 +179,7 @@ export const cutoverDomainPhases = [
   },
   {
     id: "final-message-re-encryption-read-probes",
-    implementation: "STUB",
+    implementation: "IMPLEMENTED",
     sourceModels: [],
     summary: "Final target message re-encryption and Batch 6 audit/Batch 8 memory re-encryption plus target-reader semantic probes",
   },
@@ -191,13 +191,13 @@ export const cutoverDomainPhases = [
   },
   {
     id: "unsupported-trigger-export",
-    implementation: "STUB",
+    implementation: "IMPLEMENTED",
     sourceModels: sourceModelsFor("EXPORT_DROP"),
     summary: "Encrypted unsupported and Trigger-owned export with count and checksum proofs",
   },
   {
     id: "ephemeral-session-recovery-disposition",
-    implementation: "STUB",
+    implementation: "IMPLEMENTED",
     sourceModels: sourceModelsFor("EPHEMERAL_DROP"),
     summary: "Explicit browser-session and recovery-code invalidation report",
   },
@@ -209,7 +209,7 @@ export const cutoverDomainPhases = [
   },
   {
     id: "cryptographic-read-probes",
-    implementation: "STUB",
+    implementation: "IMPLEMENTED",
     sourceModels: [],
     summary: "Remaining provider, channel, entity, OIDC, Batch 6 audit, memory, and credential decrypt/read probes",
   },

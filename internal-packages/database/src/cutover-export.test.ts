@@ -127,6 +127,9 @@ describe("WIN-123 cutover export foundations", () => {
       "MfaBackupCode",
       "RuntimeEnvironmentSession",
     ]);
+    expect(
+      cutoverExportObjectManifest.find((entry) => entry.sourceModel === "Project")?.sql
+    ).toContain('"allowedMasterQueues" AS "allowedWorkerQueues"');
 
     const plannedUnsupportedFields = new Set(
       cutoverExportObjectManifest.flatMap((entry) =>

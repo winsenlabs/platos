@@ -1,10 +1,11 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { retainedMemoryBatch8DeferredTargetChecks } from "./cutover-memory-batch8";
+import { unsealCutoverExportPayload, type SealedCutoverExport } from "./cutover-export";
 
 const runHarness = process.env.RUN_DATABASE_CUTOVER_HARNESS === "1";
 const describeHarness = runHarness ? describe : describe.skip;
@@ -17,6 +18,7 @@ const requiredKeys = {
   PLATOS_CREDENTIAL_ROOT_KEYS: JSON.stringify({ 1: "2".repeat(64) }),
   PLATOS_MESSAGE_ENCRYPTION_KEY: "11".repeat(32),
   PLATOS_MESSAGE_ENCRYPTION_KEY_V: "1",
+  TEST_CUTOVER_EXPORT_KEY: "55".repeat(32),
 };
 
 const combinedFixtureFiles = [
@@ -31,6 +33,30 @@ const combinedFixtureFiles = [
   "legacy-eval-job-skill-batch7-seed.sql",
   "legacy-memory-batch8-seed.sql",
   "legacy-combined-cutover-replay.sql",
+] as const;
+
+const forcedRollbackArguments = [
+  "db:cutover",
+  "--",
+  "--execute",
+  "--core-rehearsal",
+  "--force-rollback-before-commit",
+  "--accept-execute",
+  "WIN123_EXECUTE_V1",
+  "--accept-irreversible-effects",
+  "WIN123_IRREVERSIBLE_EFFECTS_V1",
+  "--backup-attestation-ref",
+  "fixture-backup",
+  "--backup-restore-test-ref",
+  "fixture-restore-test",
+  "--capacity-attestation-ref",
+  "fixture-capacity",
+  "--writer-fence-attestation-ref",
+  "fixture-writer-fence",
+  "--export-key-env",
+  "TEST_CUTOVER_EXPORT_KEY",
+  "--export-key-reference",
+  "ops/win-123/test-export-key-v1",
 ] as const;
 
 describeHarness("production database command Testcontainers harness", () => {
@@ -69,6 +95,7 @@ describeHarness("production database command Testcontainers harness", () => {
       "20260817000000_add_upload_reservations",
       "20260817010000_add_token_lifecycle_audit",
       "20260817020000_add_attachment_byte_reconciliation",
+      "20260817030000_add_external_cutover_reconciliation",
     ]);
     expect(legacyMarker.rows[0].name).toBeNull();
   }, 120_000);
@@ -94,23 +121,7 @@ describeHarness("production database command Testcontainers harness", () => {
     const result = spawnSync(
       pnpm,
       [
-        "db:cutover",
-        "--",
-        "--execute",
-        "--core-rehearsal",
-        "--force-rollback-before-commit",
-        "--accept-execute",
-        "WIN123_EXECUTE_V1",
-        "--accept-irreversible-effects",
-        "WIN123_IRREVERSIBLE_EFFECTS_V1",
-        "--backup-attestation-ref",
-        "fixture-backup",
-        "--backup-restore-test-ref",
-        "fixture-restore-test",
-        "--capacity-attestation-ref",
-        "fixture-capacity",
-        "--writer-fence-attestation-ref",
-        "fixture-writer-fence",
+        ...forcedRollbackArguments,
         "--report-dir",
         reportDirectory,
         "--export-dir",
@@ -134,19 +145,58 @@ describeHarness("production database command Testcontainers harness", () => {
     expect(result.stdout).not.toContain("fixture-provider-secret-v1");
     expect(result.stdout).not.toContain("fixture-provider-secret-v2");
     expect(result.stdout).not.toContain("fixture-webhook-secret-required");
+    expect(result.stdout).not.toContain("fixture-trigger-export-secret-never-report");
+    expect(result.stdout).not.toContain(requiredKeys.TEST_CUTOVER_EXPORT_KEY);
     expect(result.stdout).not.toContain(requiredKeys.PLATOS_CREDENTIAL_ROOT_KEYS);
     expect(JSON.parse(result.stdout.slice(reportStart))).toMatchObject({
       state: "ROLLED_BACK",
-      incompletePhaseIds: expect.arrayContaining([
-        "final-message-re-encryption-read-probes",
-        "unsupported-trigger-export",
+      incompletePhaseIds: [
         "clean-trigger-defer-install",
-        "cryptographic-read-probes",
         "external-analytics-object-rekey",
-      ]),
+      ],
+      external: {
+        implementation: "STUB",
+        state: "STUB_BLOCKED",
+        clickHouseTables: [],
+        objectStoreObjects: [],
+      },
+      cryptoEvidence: {
+        retainedFields: {
+          rowCounts: {
+            turns: 1,
+            toolCallAudits: 1,
+            safetyEvents: 1,
+            memories: 2,
+            memoryEntities: 2,
+            memoryRelationships: 1,
+          },
+          sourceUnversionedCount: 5,
+          sourceVersionCounts: { "1": 10 },
+          targetVersionCounts: { "1": 15 },
+        },
+        credentials: {
+          credentialCount: 8,
+          kindCounts: [
+            { kind: "CHANNEL_SECRET", count: 4 },
+            { kind: "ENTITY_SECRET", count: 2 },
+            { kind: "SERVICE_CREDENTIAL", count: 2 },
+          ],
+          rootVersionCounts: { "1": 8 },
+        },
+      },
+      exportReport: {
+        mode: "WRITE",
+        keyReference: "ops/win-123/test-export-key-v1",
+        externalTriggerPolicy: "NO_IMPORT_EXPORT_ONLY",
+        artifact: { status: "WRITTEN" },
+        ephemeral: [
+          expect.objectContaining({ sourceModel: "MfaBackupCode", rowCount: "1" }),
+          expect.objectContaining({ sourceModel: "RuntimeEnvironmentSession", rowCount: "1" }),
+        ],
+      },
     });
     const report = JSON.parse(result.stdout.slice(reportStart)) as {
-      phases: { phase: string; status: string }[];
+      phases: { phase: string; status: string; evidence?: Record<string, unknown> }[];
     };
     expect(
       report.phases
@@ -162,6 +212,10 @@ describeHarness("production database command Testcontainers harness", () => {
           "retained-eval-job-skill-batch-7",
           "retained-memory-batch-8",
           "remaining-retained-backfill",
+          "final-message-re-encryption-read-probes",
+          "cryptographic-read-probes",
+          "unsupported-trigger-export",
+          "ephemeral-session-recovery-disposition",
         ].includes(phase.phase))
         .map((phase) => ({ phase: phase.phase, status: phase.status }))
     ).toEqual([
@@ -176,19 +230,35 @@ describeHarness("production database command Testcontainers harness", () => {
       { phase: "retained-eval-job-skill-batch-7", status: "SUCCEEDED" },
       { phase: "retained-memory-batch-8", status: "SUCCEEDED" },
       { phase: "remaining-retained-backfill", status: "SUCCEEDED" },
+      { phase: "final-message-re-encryption-read-probes", status: "SUCCEEDED" },
+      { phase: "cryptographic-read-probes", status: "SUCCEEDED" },
+      { phase: "unsupported-trigger-export", status: "SUCCEEDED" },
+      { phase: "ephemeral-session-recovery-disposition", status: "SUCCEEDED" },
     ]);
     expect(report.phases).toEqual(expect.arrayContaining([
-      {
-        phase: "final-message-re-encryption-read-probes",
-        status: "NOT_RUN",
-        summary: expect.stringContaining("message re-encryption"),
-      },
-      expect.objectContaining({ phase: "unsupported-trigger-export", status: "NOT_RUN" }),
       expect.objectContaining({ phase: "clean-trigger-defer-install", status: "NOT_RUN" }),
       expect.objectContaining({ phase: "external-analytics-object-rekey", status: "NOT_RUN" }),
     ]));
 
     const exportDirectory = resolve(packageRoot, ".cutover-test/exports");
+    for (const file of readdirSync(exportDirectory)) {
+      expect(statSync(resolve(exportDirectory, file)).mode & 0o777).toBe(0o600);
+    }
+    for (const file of readdirSync(reportDirectory)) {
+      expect(statSync(resolve(reportDirectory, file)).mode & 0o777).toBe(0o600);
+    }
+    const sealedExportFile = readdirSync(exportDirectory).find((name) =>
+      name.startsWith("cutover-export-")
+    );
+    expect(sealedExportFile).toBeDefined();
+    const sealedExportText = readFileSync(resolve(exportDirectory, sealedExportFile!), "utf8");
+    expect(sealedExportText).not.toContain("fixture-trigger-export-secret-never-report");
+    const sealedExport = JSON.parse(sealedExportText) as SealedCutoverExport;
+    const unsealedExport = unsealCutoverExportPayload(
+      sealedExport,
+      Buffer.from(requiredKeys.TEST_CUTOVER_EXPORT_KEY, "hex")
+    );
+    expect(unsealedExport.toString("utf8")).toContain("fixture-trigger-export-secret-never-report");
     const idMapFile = readdirSync(exportDirectory).find((name) => name.startsWith("cutover-id-map-"));
     expect(idMapFile).toBeDefined();
     const idMap = JSON.parse(readFileSync(resolve(exportDirectory, idMapFile!), "utf8")) as {
@@ -326,6 +396,10 @@ describeHarness("production database command Testcontainers harness", () => {
       "retained-eval-job-skill-batch-7",
       "retained-memory-batch-8",
       "remaining-retained-backfill",
+      "final-message-re-encryption-read-probes",
+      "cryptographic-read-probes",
+      "unsupported-trigger-export",
+      "ephemeral-session-recovery-disposition",
     ]));
     expect(
       journal.filter((entry) => [
@@ -340,6 +414,10 @@ describeHarness("production database command Testcontainers harness", () => {
         "retained-eval-job-skill-batch-7",
         "retained-memory-batch-8",
         "remaining-retained-backfill",
+        "final-message-re-encryption-read-probes",
+        "cryptographic-read-probes",
+        "unsupported-trigger-export",
+        "ephemeral-session-recovery-disposition",
       ].includes(entry.phase)).map((entry) => entry.phase)
     ).toEqual([
       "core-tenancy-auth",
@@ -353,6 +431,10 @@ describeHarness("production database command Testcontainers harness", () => {
       "retained-eval-job-skill-batch-7",
       "retained-memory-batch-8",
       "remaining-retained-backfill",
+      "final-message-re-encryption-read-probes",
+      "cryptographic-read-probes",
+      "unsupported-trigger-export",
+      "ephemeral-session-recovery-disposition",
     ]);
     expect(JSON.stringify(journal)).not.toContain("fixture-invite-token");
     expect(JSON.stringify(journal)).not.toContain("A1B2C3D4E5F6G7H8I9J0K1L2");
@@ -372,14 +454,14 @@ describeHarness("production database command Testcontainers harness", () => {
     });
     expect(
       journal.find((entry) => entry.phase === "retained-conversation-batch-2")?.evidence
-    ).toMatchObject({ finalMessageReEncryptionReadProbes: "INCOMPLETE" });
+    ).toMatchObject({ finalMessageReEncryptionReadProbes: "DEFERRED_TO_POST_BATCH_GATE" });
     expect(
       journal.find((entry) => entry.phase === "retained-entity-mcp-batch-3")?.evidence
     ).toMatchObject({
       sourceModels: expect.arrayContaining(["PlatosConnectedEntity", "PlatosMcpBearerToken"]),
       entityRows: 1,
       entityAuthRows: 2,
-      cryptographicReadProbes: "INCOMPLETE",
+      cryptographicReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
     });
     expect(
       journal.find((entry) => entry.phase === "retained-channel-batch-5")?.evidence
@@ -393,7 +475,7 @@ describeHarness("production database command Testcontainers harness", () => {
         installations: 2,
         appThreads: 2,
       },
-      cryptographicReadProbes: "INCOMPLETE",
+      cryptographicReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
     });
     expect(
       journal.find((entry) => entry.phase === "retained-operational-batch-6")?.evidence
@@ -429,7 +511,7 @@ describeHarness("production database command Testcontainers harness", () => {
           readProbe: "AUDIT_DECRYPT_READ",
         },
       ],
-      finalTargetReEncryptionReadProbes: "INCOMPLETE",
+      finalTargetReEncryptionReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
     });
     expect(
       journal.find((entry) => entry.phase === "retained-eval-job-skill-batch-7")?.evidence
@@ -467,7 +549,7 @@ describeHarness("production database command Testcontainers harness", () => {
         sourcedEdges: 1,
       },
       retainedEncryptedRepresentations: retainedMemoryBatch8DeferredTargetChecks,
-      finalTargetReEncryptionReadProbes: "INCOMPLETE",
+      finalTargetReEncryptionReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
     });
     expect(
       journal.find((entry) => entry.phase === "remaining-retained-backfill")?.evidence
@@ -482,16 +564,59 @@ describeHarness("production database command Testcontainers harness", () => {
       batch: "retained-provider-oauth-batch4",
       sourceModels: expect.arrayContaining(["PlatosProviderKey", "PlatosOAuthRefreshToken"]),
       sourceRows: { environmentProviders: 2, providerKeys: 2, oauthRefreshTokens: 1 },
-      cryptographicReadProbes: "INCOMPLETE",
+      cryptographicReadProbes: "DEFERRED_TO_POST_BATCH_GATE",
+    });
+    expect(
+      journal.find((entry) => entry.phase === "final-message-re-encryption-read-probes")?.evidence
+    ).toMatchObject({
+      rowCounts: {
+        turns: 1,
+        toolCallAudits: 1,
+        safetyEvents: 1,
+        memories: 2,
+        memoryEntities: 2,
+        memoryRelationships: 1,
+      },
+      sourceUnversionedCount: 5,
+      sourceVersionCounts: { "1": 10 },
+      targetVersionCounts: { "1": 15 },
+    });
+    expect(
+      journal.find((entry) => entry.phase === "cryptographic-read-probes")?.evidence
+    ).toEqual({
+      credentialCount: 8,
+      kindCounts: [
+        { kind: "CHANNEL_SECRET", count: 4 },
+        { kind: "ENTITY_SECRET", count: 2 },
+        { kind: "SERVICE_CREDENTIAL", count: 2 },
+      ],
+      retainedFieldCount: 15,
+      rootVersionCounts: { "1": 8 },
+    });
+    expect(
+      journal.find((entry) => entry.phase === "unsupported-trigger-export")?.evidence
+    ).toMatchObject({
+      mode: "WRITE",
+      keyReference: "ops/win-123/test-export-key-v1",
+      externalTriggerPolicy: "NO_IMPORT_EXPORT_ONLY",
+      objectCount: 130,
+      exportOnlyObjectCount: 64,
+      artifact: { status: "WRITTEN" },
+    });
+    expect(
+      journal.find((entry) => entry.phase === "ephemeral-session-recovery-disposition")?.evidence
+    ).toEqual({
+      dispositions: [
+        expect.objectContaining({ sourceModel: "MfaBackupCode", rowCount: "1" }),
+        expect.objectContaining({ sourceModel: "RuntimeEnvironmentSession", rowCount: "1" }),
+      ],
+      totalRowCount: "2",
     });
     expect(
       journal.find((entry) => entry.phase === "forced-pre-commit-rollback")?.evidence
     ).toMatchObject({
       incompletePhaseIds: expect.arrayContaining([
-        "final-message-re-encryption-read-probes",
-        "unsupported-trigger-export",
         "clean-trigger-defer-install",
-        "cryptographic-read-probes",
         "external-analytics-object-rekey",
       ]),
     });
@@ -503,5 +628,46 @@ describeHarness("production database command Testcontainers harness", () => {
     await verify.end();
     expect(legacyTable.rows[0].name).toBe('"RuntimeEnvironment"');
     expect(cleanTable.rows[0].name).toBeNull();
-  }, 600_000);
+
+    rmSync(resolve(packageRoot, ".cutover-test"), { recursive: true, force: true });
+    const noArtifactResult = spawnSync(pnpm, [...forcedRollbackArguments], {
+      cwd: packageRoot,
+      env: {
+        ...process.env,
+        ...requiredKeys,
+        DATABASE_URL: legacy.getConnectionUri(),
+        CUTOVER_FRESH_DATABASE_URL: fresh.getConnectionUri(),
+      },
+      encoding: "utf8",
+    });
+    expect(noArtifactResult.status, `${noArtifactResult.stderr}\n${noArtifactResult.stdout}`).toBe(0);
+    const noArtifactReportStart = noArtifactResult.stdout.indexOf("{\n");
+    expect(noArtifactReportStart).toBeGreaterThanOrEqual(0);
+    expect(noArtifactResult.stdout).not.toContain("fixture-trigger-export-secret-never-report");
+    expect(noArtifactResult.stdout).not.toContain(requiredKeys.TEST_CUTOVER_EXPORT_KEY);
+    expect(JSON.parse(noArtifactResult.stdout.slice(noArtifactReportStart))).toMatchObject({
+      state: "ROLLED_BACK",
+      incompletePhaseIds: [
+        "clean-trigger-defer-install",
+        "external-analytics-object-rekey",
+      ],
+      exportReport: {
+        mode: "DRY_RUN",
+        keyReference: "ops/win-123/test-export-key-v1",
+        artifact: { status: "VALIDATED_NOT_WRITTEN" },
+      },
+      phases: expect.arrayContaining([
+        expect.objectContaining({
+          phase: "export-rehearsal-artifacts",
+          status: "SUCCEEDED",
+          summary: "sealed export was validated without writing rehearsal artifacts",
+        }),
+        expect.objectContaining({
+          phase: "forced-pre-commit-rollback",
+          status: "ROLLED_BACK",
+        }),
+      ]),
+    });
+    expect(existsSync(resolve(packageRoot, ".cutover-test"))).toBe(false);
+  }, 900_000);
 });

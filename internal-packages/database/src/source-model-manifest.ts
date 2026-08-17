@@ -427,6 +427,9 @@ export const supportDomainModels = [
   "Credential",
   "CredentialAudit",
   "CredentialSecretVersion",
+  "ExternalCutoverEvidence",
+  "ExternalCutoverRun",
+  "ObjectKeyReconciliation",
   "TokenLifecycleAudit",
 ] as const;
 
