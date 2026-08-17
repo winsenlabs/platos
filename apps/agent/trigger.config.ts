@@ -10,8 +10,11 @@ import { generatedWorkerExternalsMustResolve } from "./scripts/trigger-worker-ex
  *   npx trigger.dev@latest dev
  *
  * Registration classification is documented in
- * `src/trigger-tasks/registration-manifest.ts`. Source discovery remains the
- * Trigger CLI's responsibility; this config does not route runtime dispatch.
+ * `src/trigger-tasks/registration-manifest.ts`. The deployment boundary in
+ * `src/trigger-tasks/deployment-boundary-manifest.json` is audited before the
+ * CLI runs and forbids database clients and DATABASE_URL in emitted task
+ * graphs. Source discovery remains the Trigger CLI's responsibility; this
+ * config does not route runtime dispatch.
  */
 function requireTriggerProjectRef(): string {
   const projectRef = process.env.TRIGGER_PROJECT_REF?.trim();

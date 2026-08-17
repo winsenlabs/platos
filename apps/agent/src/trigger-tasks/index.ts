@@ -38,7 +38,7 @@ export { approvalsExpirySweep } from "./approvals-expiry-sweep.task";
 // conversation is done so they don't accumulate "Active" forever.
 export { chatSessionReaper } from "./chat-session-reaper.task";
 
-// EOBD.100 — every-2-min ClickHouse DLQ drain. Retries dual-write
+// EOBD.100 — every-2-min ClickHouse DLQ drain. Retries ClickHouse dual-write
 // failures so transient CH outages don't lose telemetry.
 export { observabilityDlqDrain } from "./observability-dlq-drain.task";
 
