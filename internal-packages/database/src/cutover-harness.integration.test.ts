@@ -25,6 +25,8 @@ const combinedFixtureFiles = [
   "legacy-conversation-batch2-seed.sql",
   "legacy-retained-batch3-seed.sql",
   "legacy-provider-oauth-batch4-seed.sql",
+  "legacy-channel-batch5-seed.sql",
+  "legacy-operational-batch6-seed.sql",
   "legacy-combined-cutover-replay.sql",
 ] as const;
 
@@ -128,12 +130,17 @@ describeHarness("production database command Testcontainers harness", () => {
     expect(result.stdout).not.toContain("fixture-only-service-material");
     expect(result.stdout).not.toContain("fixture-provider-secret-v1");
     expect(result.stdout).not.toContain("fixture-provider-secret-v2");
+    expect(result.stdout).not.toContain("fixture-webhook-secret-required");
     expect(result.stdout).not.toContain(requiredKeys.PLATOS_CREDENTIAL_ROOT_KEYS);
     expect(JSON.parse(result.stdout.slice(reportStart))).toMatchObject({
       state: "ROLLED_BACK",
       incompletePhaseIds: expect.arrayContaining([
         "final-message-re-encryption-read-probes",
         "remaining-retained-backfill",
+        "unsupported-trigger-export",
+        "clean-trigger-defer-install",
+        "cryptographic-read-probes",
+        "external-analytics-object-rekey",
       ]),
     });
     const report = JSON.parse(result.stdout.slice(reportStart)) as {
@@ -148,6 +155,8 @@ describeHarness("production database command Testcontainers harness", () => {
           "retained-conversation-batch-2",
           "retained-entity-mcp-batch-3",
           "retained-provider-oauth-batch-4",
+          "retained-channel-batch-5",
+          "retained-operational-batch-6",
         ].includes(phase.phase))
         .map((phase) => ({ phase: phase.phase, status: phase.status }))
     ).toEqual([
@@ -157,6 +166,8 @@ describeHarness("production database command Testcontainers harness", () => {
       { phase: "retained-conversation-batch-2", status: "SUCCEEDED" },
       { phase: "retained-entity-mcp-batch-3", status: "SUCCEEDED" },
       { phase: "retained-provider-oauth-batch-4", status: "SUCCEEDED" },
+      { phase: "retained-channel-batch-5", status: "SUCCEEDED" },
+      { phase: "retained-operational-batch-6", status: "SUCCEEDED" },
     ]);
     expect(report.phases).toEqual(expect.arrayContaining([
       {
@@ -164,7 +175,14 @@ describeHarness("production database command Testcontainers harness", () => {
         status: "NOT_RUN",
         summary: expect.stringContaining("message re-encryption"),
       },
-      expect.objectContaining({ phase: "remaining-retained-backfill", status: "NOT_RUN" }),
+      expect.objectContaining({
+        phase: "remaining-retained-backfill",
+        status: "NOT_RUN",
+        summary: expect.stringContaining("Batch 7/8"),
+      }),
+      expect.objectContaining({ phase: "unsupported-trigger-export", status: "NOT_RUN" }),
+      expect.objectContaining({ phase: "clean-trigger-defer-install", status: "NOT_RUN" }),
+      expect.objectContaining({ phase: "external-analytics-object-rekey", status: "NOT_RUN" }),
     ]));
 
     const exportDirectory = resolve(packageRoot, ".cutover-test/exports");
@@ -243,6 +261,30 @@ describeHarness("production database command Testcontainers harness", () => {
         target_model: "CredentialSecretVersion",
         stable_suffix: "credential-secret-version:1",
       }),
+      expect.objectContaining({
+        source_model: "PlatosChannelInstallation",
+        source_id: "cllegacychannelinstallation0001",
+        target_model: "CredentialSecretVersion",
+        stable_suffix: "credential-secret-version:1",
+      }),
+      expect.objectContaining({
+        source_model: "PlatosChannelAppThread",
+        source_id: "cllegacychannelappthread0002",
+        target_model: "ChannelAppThread",
+        stable_suffix: "",
+      }),
+      expect.objectContaining({
+        source_model: "PlatosCredentialAudit",
+        source_id: "cllegacycredentialaudit0001",
+        target_model: "AdminAudit",
+        stable_suffix: "",
+      }),
+      expect.objectContaining({
+        source_model: "PlatosErasureOperation",
+        source_id: "cllegacyerasure0001",
+        target_model: "ErasureOperation",
+        stable_suffix: "",
+      }),
     ]));
 
     const journalFile = readdirSync(exportDirectory).find((name) => name.startsWith("cutover-journal-"));
@@ -258,6 +300,8 @@ describeHarness("production database command Testcontainers harness", () => {
       "retained-conversation-batch-2",
       "retained-entity-mcp-batch-3",
       "retained-provider-oauth-batch-4",
+      "retained-channel-batch-5",
+      "retained-operational-batch-6",
     ]));
     expect(
       journal.filter((entry) => [
@@ -267,6 +311,8 @@ describeHarness("production database command Testcontainers harness", () => {
         "retained-conversation-batch-2",
         "retained-entity-mcp-batch-3",
         "retained-provider-oauth-batch-4",
+        "retained-channel-batch-5",
+        "retained-operational-batch-6",
       ].includes(entry.phase)).map((entry) => entry.phase)
     ).toEqual([
       "core-tenancy-auth",
@@ -275,18 +321,22 @@ describeHarness("production database command Testcontainers harness", () => {
       "retained-conversation-batch-2",
       "retained-entity-mcp-batch-3",
       "retained-provider-oauth-batch-4",
+      "retained-channel-batch-5",
+      "retained-operational-batch-6",
     ]);
     expect(JSON.stringify(journal)).not.toContain("fixture-invite-token");
     expect(JSON.stringify(journal)).not.toContain("A1B2C3D4E5F6G7H8I9J0K1L2");
     expect(JSON.stringify(journal)).not.toContain("fixture-only-service-material");
     expect(JSON.stringify(journal)).not.toContain("fixture-provider-secret-v1");
     expect(JSON.stringify(journal)).not.toContain("fixture-provider-secret-v2");
+    expect(JSON.stringify(journal)).not.toContain("fixture-webhook-secret-required");
     expect(JSON.stringify(journal)).not.toContain(requiredKeys.PLATOS_CREDENTIAL_ROOT_KEYS);
     expect(
       journal.find((entry) => entry.phase === "materialize-id-map")?.evidence
     ).toMatchObject({
       retainedBatch3MappingCount: 4,
       retainedProviderOauthBatch4MappingCount: 4,
+      retainedChannelBatch5MappingCount: 8,
     });
     expect(
       journal.find((entry) => entry.phase === "retained-conversation-batch-2")?.evidence
@@ -298,6 +348,56 @@ describeHarness("production database command Testcontainers harness", () => {
       entityRows: 1,
       entityAuthRows: 2,
       cryptographicReadProbes: "INCOMPLETE",
+    });
+    expect(
+      journal.find((entry) => entry.phase === "retained-channel-batch-5")?.evidence
+    ).toMatchObject({
+      batch: "retained-channel-batch5",
+      sourceModels: expect.arrayContaining(["PlatosChannelConnection", "PlatosChannelInstallation"]),
+      sourceRows: {
+        connections: 1,
+        channelThreads: 1,
+        apps: 1,
+        installations: 2,
+        appThreads: 2,
+      },
+      cryptographicReadProbes: "INCOMPLETE",
+    });
+    expect(
+      journal.find((entry) => entry.phase === "retained-operational-batch-6")?.evidence
+    ).toMatchObject({
+      batch: "retained-operational-batch6",
+      sourceModels: expect.arrayContaining(["PlatosToolCallAudit", "PlatosCredentialAudit"]),
+      sourceRows: {
+        toolHealth: 1,
+        toolCallAudits: 1,
+        adminAudits: 1,
+        credentialAudits: 1,
+        agentApprovals: 1,
+        budgets: 1,
+        safetyEvents: 1,
+        events: 1,
+        notificationRules: 1,
+        erasureOperations: 1,
+      },
+      mergeCounts: {
+        adminAuditSources: 1,
+        credentialAuditSources: 1,
+        adminAuditTargets: 2,
+      },
+      retainedEncryptedRepresentations: [
+        {
+          fields: "ToolCallAudit.arguments,ToolCallAudit.result",
+          reEncryption: "DEFERRED",
+          readProbe: "AUDIT_DECRYPT_READ",
+        },
+        {
+          fields: "SafetyEvent.detail,SafetyEvent.metadata",
+          reEncryption: "DEFERRED",
+          readProbe: "AUDIT_DECRYPT_READ",
+        },
+      ],
+      finalTargetReEncryptionReadProbes: "INCOMPLETE",
     });
     expect(
       journal.find((entry) => entry.phase === "retained-provider-oauth-batch-4")?.evidence
@@ -313,6 +413,10 @@ describeHarness("production database command Testcontainers harness", () => {
       incompletePhaseIds: expect.arrayContaining([
         "final-message-re-encryption-read-probes",
         "remaining-retained-backfill",
+        "unsupported-trigger-export",
+        "clean-trigger-defer-install",
+        "cryptographic-read-probes",
+        "external-analytics-object-rekey",
       ]),
     });
 

@@ -32,7 +32,7 @@ describe("cutover command safety contracts", () => {
   test("keeps all unimplemented domain phases machine-readable and exhaustive", () => {
     expect(() => assertCutoverPhaseLedgerIsExhaustive()).not.toThrow();
     expect(cutoverDomainPhases.filter((phase) => phase.implementation === "IMPLEMENTED"))
-      .toHaveLength(6);
+      .toHaveLength(8);
     expect(
       cutoverDomainPhases
         .filter((phase) => phase.implementation === "IMPLEMENTED")
@@ -44,6 +44,8 @@ describe("cutover command safety contracts", () => {
       "retained-conversation-batch-2",
       "retained-entity-mcp-batch-3",
       "retained-provider-oauth-batch-4",
+      "retained-channel-batch-5",
+      "retained-operational-batch-6",
     ]);
     expect(cutoverDomainPhases.find((phase) => phase.id === "supplemental-auth-mfa"))
       .toMatchObject({
@@ -94,11 +96,43 @@ describe("cutover command safety contracts", () => {
           "PlatosOAuthRefreshToken",
         ]),
       });
+    expect(cutoverDomainPhases.find((phase) => phase.id === "retained-channel-batch-5"))
+      .toMatchObject({
+        implementation: "IMPLEMENTED",
+        sourceModels: expect.arrayContaining([
+          "PlatosChannelConnection",
+          "PlatosChannelInstallation",
+          "PlatosChannelAppThread",
+        ]),
+      });
+    expect(cutoverDomainPhases.find((phase) => phase.id === "retained-operational-batch-6"))
+      .toMatchObject({
+        implementation: "IMPLEMENTED",
+        sourceModels: expect.arrayContaining([
+          "PlatosToolCallAudit",
+          "PlatosCredentialAudit",
+          "PlatosErasureOperation",
+        ]),
+      });
+    expect(
+      cutoverDomainPhases.find((phase) => phase.id === "final-message-re-encryption-read-probes")
+    ).toMatchObject({
+      implementation: "STUB",
+      summary: expect.stringContaining("Batch 6 retained-audit re-encryption"),
+    });
     expect(cutoverDomainPhases.find((phase) => phase.id === "remaining-retained-backfill"))
       .toMatchObject({
         implementation: "STUB",
-        sourceModels: expect.arrayContaining(["SecretReference", "SecretStore"]),
+        sourceModels: expect.arrayContaining([
+          "SecretReference",
+          "SecretStore",
+          "PlatosEvalCriterion",
+          "PlatosMemory",
+        ]),
+        summary: expect.stringContaining("Batch 7/8"),
       });
+    expect(cutoverDomainPhases.find((phase) => phase.id === "cryptographic-read-probes"))
+      .toMatchObject({ implementation: "STUB", summary: expect.stringContaining("Batch 6 audit") });
     expect(incompleteCutoverPhaseIds).toEqual([
       "final-message-re-encryption-read-probes",
       "remaining-retained-backfill",

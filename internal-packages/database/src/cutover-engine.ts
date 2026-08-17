@@ -29,6 +29,16 @@ import {
   validateRetainedConversationBatch2,
 } from "./cutover-conversation-batch2";
 import {
+  backfillRetainedChannelBatch5,
+  materializeRetainedChannelBatch5Mappings,
+  retainedChannelBatch5SourceModels,
+} from "./cutover-channel-batch5";
+import {
+  backfillRetainedOperationalBatch6,
+  retainedOperationalBatch6DeferredTargetChecks,
+  retainedOperationalBatch6SourceModels,
+} from "./cutover-operational-batch6";
+import {
   backfillRetainedProviderOauthBatch4,
   materializeRetainedProviderOauthBatch4Mappings,
   retainedProviderOauthBatch4SourceModels,
@@ -166,6 +176,8 @@ export async function runCutover(
           await materializeRetainedBatch3Checkpoint2Mappings(database);
         const retainedProviderOauthBatch4MappingCount =
           await materializeRetainedProviderOauthBatch4Mappings(database);
+        const retainedChannelBatch5MappingCount =
+          await materializeRetainedChannelBatch5Mappings(database);
         const mappingResult = await database.query<{ mapping_count: string }>(
           "SELECT count(*)::text AS mapping_count FROM cutover_legacy.cutover_id_map"
         );
@@ -178,6 +190,7 @@ export async function runCutover(
           messageOrdinalMappingCount,
           retainedBatch3MappingCount,
           retainedProviderOauthBatch4MappingCount,
+          retainedChannelBatch5MappingCount,
         });
         phases.push(phase("materialize-id-map", "SUCCEEDED", `${mappingCount} deterministic UUID mappings materialized`, mapStarted));
         failIfRequested(options, "materialize-id-map");
@@ -305,6 +318,53 @@ export async function runCutover(
           )
         );
         failIfRequested(options, "retained-provider-oauth-batch-4");
+
+        const retainedChannelBatch5Started = new Date().toISOString();
+        const retainedChannelBatch5Evidence = await backfillRetainedChannelBatch5(database, {
+          messageEncryptionKeys: keyMaterial.messageEncryptionKeys,
+          credentialRootKeyRing: keyMaterial.credentialRootKeyRing,
+        });
+        await appendCutoverJournal(database, runId, "retained-channel-batch-5", "SUCCEEDED", {
+          sourceModels: retainedChannelBatch5SourceModels,
+          ...retainedChannelBatch5Evidence,
+          cryptographicReadProbes: "INCOMPLETE",
+        });
+        phases.push(
+          phase(
+            "retained-channel-batch-5",
+            "SUCCEEDED",
+            "channel Batch 5 normalized backfill validations passed",
+            retainedChannelBatch5Started
+          )
+        );
+        failIfRequested(options, "retained-channel-batch-5");
+
+        const retainedOperationalBatch6Started = new Date().toISOString();
+        const retainedOperationalBatch6Evidence = await backfillRetainedOperationalBatch6(
+          database,
+          { messageEncryptionKeys: keyMaterial.messageEncryptionKeys }
+        );
+        await appendCutoverJournal(
+          database,
+          runId,
+          "retained-operational-batch-6",
+          "SUCCEEDED",
+          {
+            sourceModels: retainedOperationalBatch6SourceModels,
+            ...retainedOperationalBatch6Evidence,
+            retainedEncryptedRepresentations: retainedOperationalBatch6DeferredTargetChecks,
+            finalTargetReEncryptionReadProbes: "INCOMPLETE",
+          }
+        );
+        phases.push(
+          phase(
+            "retained-operational-batch-6",
+            "SUCCEEDED",
+            "operational, audit, and governance Batch 6 retained-representation validations passed",
+            retainedOperationalBatch6Started
+          )
+        );
+        failIfRequested(options, "retained-operational-batch-6");
 
         const reference = new Client({
           connectionString: options.freshCatalogDatabaseUrl,
@@ -435,7 +495,7 @@ function requiredCutoverKeyMaterial(options: CutoverOptions): {
   ) {
     throw new CutoverFailure(
       "CUTOVER_KEY_MATERIAL_REQUIRED",
-      "implemented auth, conversation, entity, and provider phases require all declared cutover key domains"
+      "implemented auth, conversation, entity, provider, channel, and audit phases require all declared cutover key domains"
     );
   }
   return {

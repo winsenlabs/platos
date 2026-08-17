@@ -1,6 +1,8 @@
 import { legacyModelDispositionLedger } from "./cutover-ledger";
 import { retainedAgentToolBatch1SourceModels } from "./cutover-agent-tool-batch1";
+import { retainedChannelBatch5SourceModels } from "./cutover-channel-batch5";
 import { retainedConversationBatch2SourceModels } from "./cutover-conversation-batch2";
+import { retainedOperationalBatch6SourceModels } from "./cutover-operational-batch6";
 import { retainedProviderOauthBatch4SourceModels } from "./cutover-provider-oauth-batch4";
 import { retainedBatch3SourceModels } from "./cutover-retained-batch3";
 
@@ -29,6 +31,8 @@ const implementedRetainedSet = new Set<string>([
   ...retainedConversationBatch2SourceModels,
   ...retainedBatch3SourceModels,
   ...retainedProviderOauthBatch4SourceModels,
+  ...retainedChannelBatch5SourceModels,
+  ...retainedOperationalBatch6SourceModels,
 ]);
 
 const sourceModelsFor = (disposition: "BACKFILL" | "EXPORT_DROP" | "EPHEMERAL_DROP") =>
@@ -84,16 +88,28 @@ export const cutoverDomainPhases = [
     summary: "Provider, access-key, MCP token, PAT, OAuth, and organization MCP-policy cutover",
   },
   {
+    id: "retained-channel-batch-5",
+    implementation: "IMPLEMENTED",
+    sourceModels: retainedChannelBatch5SourceModels,
+    summary: "Channel connection, thread, app, installation, and channel credential cutover",
+  },
+  {
+    id: "retained-operational-batch-6",
+    implementation: "IMPLEMENTED",
+    sourceModels: retainedOperationalBatch6SourceModels,
+    summary: "Operational, audit, approval, budget, safety, event, notification, and erasure cutover",
+  },
+  {
     id: "final-message-re-encryption-read-probes",
     implementation: "STUB",
     sourceModels: [],
-    summary: "Final target message re-encryption and target-reader semantic probes",
+    summary: "Final target message re-encryption and Batch 6 retained-audit re-encryption plus target-reader semantic probes",
   },
   {
     id: "remaining-retained-backfill",
     implementation: "STUB",
     sourceModels: sourceModelsFor("BACKFILL"),
-    summary: "Later retained secret, audit, policy, evaluation, memory, and normalized Platos batches",
+    summary: "Later retained secret, policy, evaluation, skill, and memory Batch 7/8 backfills",
   },
   {
     id: "unsupported-trigger-export",
@@ -117,7 +133,7 @@ export const cutoverDomainPhases = [
     id: "cryptographic-read-probes",
     implementation: "STUB",
     sourceModels: [],
-    summary: "Remaining provider, channel, entity, OIDC, audit, memory, and credential decrypt/read probes",
+    summary: "Remaining provider, channel, entity, OIDC, Batch 6 audit, memory, and credential decrypt/read probes",
   },
   {
     id: "external-analytics-object-rekey",
