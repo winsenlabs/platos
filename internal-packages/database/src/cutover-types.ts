@@ -36,6 +36,11 @@ export interface CutoverOptions {
   readonly exportDirectory?: string;
   readonly freshCatalogDatabaseUrl?: string;
   readonly requiredKeyEnvironment?: Readonly<Record<string, boolean>>;
+  readonly keyMaterial?: {
+    readonly legacyEncryptionKey?: string;
+    readonly targetAuthEncryptionKey?: string;
+    readonly messageEncryptionKeys?: Readonly<Record<string, string>>;
+  };
   readonly forcedFailurePhase?: string;
 }
 

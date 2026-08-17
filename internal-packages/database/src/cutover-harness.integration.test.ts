@@ -11,11 +11,20 @@ const packageRoot = resolve(__dirname, "..");
 const pnpm = "pnpm";
 const requiredKeys = {
   ENCRYPTION_KEY: "0".repeat(64),
-  PLATOS_ENCRYPTION_KEY: "1".repeat(64),
+  PLATOS_ENCRYPTION_KEY: "4".repeat(64),
   PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "1",
   PLATOS_CREDENTIAL_ROOT_KEYS: JSON.stringify({ 1: "2".repeat(64) }),
-  PLATOS_MESSAGE_ENCRYPTION_KEY: "3".repeat(64),
+  PLATOS_MESSAGE_ENCRYPTION_KEY: "11".repeat(32),
+  PLATOS_MESSAGE_ENCRYPTION_KEY_V: "1",
 };
+
+const combinedFixtureFiles = [
+  "legacy-core-seed.sql",
+  "legacy-auth-supplemental-seed.sql",
+  "legacy-agent-tool-batch1-seed.sql",
+  "legacy-conversation-batch2-seed.sql",
+  "legacy-combined-cutover-replay.sql",
+] as const;
 
 describeHarness("production database command Testcontainers harness", () => {
   let legacy: StartedPostgreSqlContainer;
@@ -69,13 +78,9 @@ describeHarness("production database command Testcontainers harness", () => {
     );
     const client = new pg.Client({ connectionString: legacy.getConnectionUri() });
     await client.connect();
-    await client.query(readFileSync(resolve(packageRoot, "test-fixtures/legacy-core-seed.sql"), "utf8"));
-    await client.query(
-      readFileSync(
-        resolve(packageRoot, "test-fixtures/legacy-agent-tool-batch1-seed.sql"),
-        "utf8"
-      )
-    );
+    for (const fixture of combinedFixtureFiles) {
+      await client.query(readFileSync(resolve(packageRoot, "test-fixtures", fixture), "utf8"));
+    }
     await client.end();
 
     const result = spawnSync(
@@ -119,14 +124,37 @@ describeHarness("production database command Testcontainers harness", () => {
     expect(reportStart).toBeGreaterThanOrEqual(0);
     expect(JSON.parse(result.stdout.slice(reportStart))).toMatchObject({
       state: "ROLLED_BACK",
-      phases: expect.arrayContaining([
-        expect.objectContaining({
-          phase: "retained-agent-tool-batch-1",
-          status: "SUCCEEDED",
-        }),
+      incompletePhaseIds: expect.arrayContaining([
+        "final-message-re-encryption-read-probes",
+        "remaining-retained-backfill",
       ]),
-      incompletePhaseIds: expect.arrayContaining(["remaining-retained-backfill"]),
     });
+    const report = JSON.parse(result.stdout.slice(reportStart)) as {
+      phases: { phase: string; status: string }[];
+    };
+    expect(
+      report.phases
+        .filter((phase) => [
+          "core-tenancy-auth",
+          "supplemental-auth-mfa",
+          "retained-agent-tool-batch-1",
+          "retained-conversation-batch-2",
+        ].includes(phase.phase))
+        .map((phase) => ({ phase: phase.phase, status: phase.status }))
+    ).toEqual([
+      { phase: "core-tenancy-auth", status: "SUCCEEDED" },
+      { phase: "supplemental-auth-mfa", status: "SUCCEEDED" },
+      { phase: "retained-agent-tool-batch-1", status: "SUCCEEDED" },
+      { phase: "retained-conversation-batch-2", status: "SUCCEEDED" },
+    ]);
+    expect(report.phases).toEqual(expect.arrayContaining([
+      {
+        phase: "final-message-re-encryption-read-probes",
+        status: "NOT_RUN",
+        summary: expect.stringContaining("message re-encryption"),
+      },
+      expect.objectContaining({ phase: "remaining-retained-backfill", status: "NOT_RUN" }),
+    ]));
 
     const exportDirectory = resolve(packageRoot, ".cutover-test/exports");
     const idMapFile = readdirSync(exportDirectory).find((name) => name.startsWith("cutover-id-map-"));
@@ -162,7 +190,70 @@ describeHarness("production database command Testcontainers harness", () => {
         target_model: "AgentCluster",
         stable_suffix: "",
       }),
+      expect.objectContaining({
+        source_model: "OrgMemberInvite",
+        source_id: "cllegacyinvite0001",
+        target_model: "OrganizationInvitation",
+        stable_suffix: "",
+      }),
+      expect.objectContaining({
+        source_model: "User",
+        source_id: "cllegacyuser0001",
+        target_model: "OperatorMfaTotp",
+        stable_suffix: "operator-mfa-totp",
+      }),
+      expect.objectContaining({
+        source_model: "PlatosAgentMessage",
+        source_id: "cllegacymessage0002",
+        target_model: "Step",
+        stable_suffix: "step:0",
+      }),
+      expect.objectContaining({
+        source_model: "PlatosAgentMessage",
+        source_id: "cllegacymessage0002",
+        target_model: "ToolCall",
+        stable_suffix: "tool-call:0",
+      }),
     ]));
+
+    const journalFile = readdirSync(exportDirectory).find((name) => name.startsWith("cutover-journal-"));
+    expect(journalFile).toBeDefined();
+    const journal = JSON.parse(readFileSync(resolve(exportDirectory, journalFile!), "utf8")) as {
+      phase: string;
+      evidence: Record<string, unknown>;
+    }[];
+    expect(journal.map((entry) => entry.phase)).toEqual(expect.arrayContaining([
+      "core-tenancy-auth",
+      "supplemental-auth-mfa",
+      "retained-agent-tool-batch-1",
+      "retained-conversation-batch-2",
+    ]));
+    expect(
+      journal.filter((entry) => [
+        "core-tenancy-auth",
+        "supplemental-auth-mfa",
+        "retained-agent-tool-batch-1",
+        "retained-conversation-batch-2",
+      ].includes(entry.phase)).map((entry) => entry.phase)
+    ).toEqual([
+      "core-tenancy-auth",
+      "supplemental-auth-mfa",
+      "retained-agent-tool-batch-1",
+      "retained-conversation-batch-2",
+    ]);
+    expect(JSON.stringify(journal)).not.toContain("fixture-invite-token");
+    expect(JSON.stringify(journal)).not.toContain("A1B2C3D4E5F6G7H8I9J0K1L2");
+    expect(
+      journal.find((entry) => entry.phase === "retained-conversation-batch-2")?.evidence
+    ).toMatchObject({ finalMessageReEncryptionReadProbes: "INCOMPLETE" });
+    expect(
+      journal.find((entry) => entry.phase === "forced-pre-commit-rollback")?.evidence
+    ).toMatchObject({
+      incompletePhaseIds: expect.arrayContaining([
+        "final-message-re-encryption-read-probes",
+        "remaining-retained-backfill",
+      ]),
+    });
 
     const verify = new pg.Client({ connectionString: legacy.getConnectionUri() });
     await verify.connect();

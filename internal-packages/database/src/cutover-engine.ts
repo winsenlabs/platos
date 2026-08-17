@@ -17,8 +17,19 @@ import {
   backfillRetainedAgentToolBatch1,
   validateRetainedAgentToolBatch1,
 } from "./cutover-agent-tool-batch1";
+import {
+  backfillSupplementalAuthCutover,
+  supplementalAuthSourceModels,
+  validateSupplementalAuthCutover,
+} from "./cutover-auth-supplemental";
+import {
+  backfillRetainedConversationBatch2,
+  materializeBatch2MessageOrdinalMappings,
+  retainedConversationBatch2SourceModels,
+  validateRetainedConversationBatch2,
+} from "./cutover-conversation-batch2";
 import { CUTOVER_ID_MAPPING_VERSION, CUTOVER_ID_NAMESPACE } from "./cutover-id";
-import { incompleteCutoverPhaseIds } from "./cutover-phases";
+import { cutoverDomainPhases, incompleteCutoverPhaseIds } from "./cutover-phases";
 import { CUTOVER_ADVISORY_LOCK, runCutoverPreflight } from "./cutover-preflight";
 import { writeCutoverReport, writeJsonExport } from "./cutover-report";
 import type {
@@ -44,6 +55,10 @@ function phase(
     startedAt,
     finishedAt: new Date().toISOString(),
   };
+}
+
+function incompletePhase(phaseName: string, summary: string): CutoverPhaseResult {
+  return { phase: phaseName, status: "NOT_RUN", summary };
 }
 
 export async function runCutover(
@@ -134,8 +149,19 @@ export async function runCutover(
         failIfRequested(options, "create-clean-catalog");
 
         const mapStarted = new Date().toISOString();
-        const mappingCount = await materializeCutoverIdMap(database);
-        await appendCutoverJournal(database, runId, "materialize-id-map", "SUCCEEDED", { mappingCount });
+        await materializeCutoverIdMap(database);
+        const messageOrdinalMappingCount = await materializeBatch2MessageOrdinalMappings(database);
+        const mappingResult = await database.query<{ mapping_count: string }>(
+          "SELECT count(*)::text AS mapping_count FROM cutover_legacy.cutover_id_map"
+        );
+        const mappingCount = Number(mappingResult.rows[0]?.mapping_count);
+        if (!Number.isSafeInteger(mappingCount) || mappingCount < 0) {
+          throw new CutoverFailure("ID_MAPPING_COUNT_INVALID", "materialized mapping count is invalid");
+        }
+        await appendCutoverJournal(database, runId, "materialize-id-map", "SUCCEEDED", {
+          mappingCount,
+          messageOrdinalMappingCount,
+        });
         phases.push(phase("materialize-id-map", "SUCCEEDED", `${mappingCount} deterministic UUID mappings materialized`, mapStarted));
         failIfRequested(options, "materialize-id-map");
 
@@ -145,6 +171,32 @@ export async function runCutover(
         await appendCutoverJournal(database, runId, "core-tenancy-auth", "SUCCEEDED", {});
         phases.push(phase("core-tenancy-auth", "SUCCEEDED", "core tenancy/auth backfill and conservation checks passed", backfillStarted));
         failIfRequested(options, "core-tenancy-auth");
+
+        const supplementalAuthStarted = new Date().toISOString();
+        const keyMaterial = requiredCutoverKeyMaterial(options);
+        const supplementalAuthOptions = {
+          cutoverAt: new Date(startedAt),
+          legacyEncryptionKey: keyMaterial.legacyEncryptionKey,
+          targetAuthEncryptionKey: keyMaterial.targetAuthEncryptionKey,
+        };
+        const supplementalEvidence = await backfillSupplementalAuthCutover(
+          database,
+          supplementalAuthOptions
+        );
+        await validateSupplementalAuthCutover(database, supplementalAuthOptions);
+        await appendCutoverJournal(database, runId, "supplemental-auth-mfa", "SUCCEEDED", {
+          sourceModels: supplementalAuthSourceModels,
+          ...supplementalEvidence,
+        });
+        phases.push(
+          phase(
+            "supplemental-auth-mfa",
+            "SUCCEEDED",
+            "supplemental invitations, impersonation history, and MFA validations passed",
+            supplementalAuthStarted
+          )
+        );
+        failIfRequested(options, "supplemental-auth-mfa");
 
         const retainedBatchStarted = new Date().toISOString();
         await backfillRetainedAgentToolBatch1(database);
@@ -166,6 +218,23 @@ export async function runCutover(
           )
         );
         failIfRequested(options, "retained-agent-tool-batch-1");
+
+        const conversationBatchStarted = new Date().toISOString();
+        await backfillRetainedConversationBatch2(database, keyMaterial.messageEncryptionKeys);
+        await validateRetainedConversationBatch2(database);
+        await appendCutoverJournal(database, runId, "retained-conversation-batch-2", "SUCCEEDED", {
+          sourceModels: retainedConversationBatch2SourceModels,
+          finalMessageReEncryptionReadProbes: "INCOMPLETE",
+        });
+        phases.push(
+          phase(
+            "retained-conversation-batch-2",
+            "SUCCEEDED",
+            "conversation Batch 2 source decoding and normalized backfill validations passed",
+            conversationBatchStarted
+          )
+        );
+        failIfRequested(options, "retained-conversation-batch-2");
 
         const reference = new Client({
           connectionString: options.freshCatalogDatabaseUrl,
@@ -193,6 +262,10 @@ export async function runCutover(
         }
         failIfRequested(options, "application-catalog-parity");
 
+        await appendCutoverJournal(database, runId, "forced-pre-commit-rollback", "ROLLED_BACK", {
+          reason: "cutover rehearsal cannot commit while domain phases are incomplete",
+          incompletePhaseIds: incompleteCutoverPhaseIds,
+        });
         const artifacts = await exportTransactionArtifacts(database);
         writeJsonExport(options.exportDirectory, `cutover-id-map-${runId}.json`, artifacts.idMap);
         writeJsonExport(options.exportDirectory, `cutover-journal-${runId}.json`, artifacts.journal);
@@ -211,9 +284,6 @@ export async function runCutover(
         );
         phases.push(phase("export-rehearsal-artifacts", "SUCCEEDED", "secret-free mapping, journal, and history evidence exported"));
 
-        await appendCutoverJournal(database, runId, "forced-pre-commit-rollback", "ROLLED_BACK", {
-          reason: "core rehearsal cannot commit while domain phases are incomplete",
-        });
         await database.query("ROLLBACK");
         transactionOpen = false;
         state = "ROLLED_BACK";
@@ -252,6 +322,10 @@ export async function runCutover(
     await database.end();
   }
 
+  const reportedPhaseIds = new Set(phases.map((entry) => entry.phase));
+  const incompletePhases = cutoverDomainPhases
+    .filter((entry) => entry.implementation === "STUB" && !reportedPhaseIds.has(entry.id))
+    .map((entry) => incompletePhase(entry.id, entry.summary));
   const report: CutoverReport = {
     reportVersion: 1,
     runId,
@@ -262,7 +336,7 @@ export async function runCutover(
     startedAt,
     finishedAt: new Date().toISOString(),
     checks,
-    phases,
+    phases: [...phases, ...incompletePhases],
     sourceDigests,
     external: createStubExternalCutoverReportFragment(),
     incompletePhaseIds: incompleteCutoverPhaseIds,
@@ -273,6 +347,30 @@ export async function runCutover(
   };
   if (options.reportDirectory) writeCutoverReport(options.reportDirectory, report);
   return report;
+}
+
+function requiredCutoverKeyMaterial(options: CutoverOptions): {
+  readonly legacyEncryptionKey: string;
+  readonly targetAuthEncryptionKey: string;
+  readonly messageEncryptionKeys: Readonly<Record<string, string>>;
+} {
+  const material = options.keyMaterial;
+  if (
+    !material?.legacyEncryptionKey ||
+    !material.targetAuthEncryptionKey ||
+    !material.messageEncryptionKeys ||
+    Object.keys(material.messageEncryptionKeys).length === 0
+  ) {
+    throw new CutoverFailure(
+      "CUTOVER_KEY_MATERIAL_REQUIRED",
+      "implemented auth and conversation phases require all declared cutover key domains"
+    );
+  }
+  return {
+    legacyEncryptionKey: material.legacyEncryptionKey,
+    targetAuthEncryptionKey: material.targetAuthEncryptionKey,
+    messageEncryptionKeys: material.messageEncryptionKeys,
+  };
 }
 
 function failIfRequested(options: CutoverOptions, phaseName: string): void {

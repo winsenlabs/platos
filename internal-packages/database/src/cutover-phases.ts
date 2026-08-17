@@ -1,5 +1,6 @@
 import { legacyModelDispositionLedger } from "./cutover-ledger";
 import { retainedAgentToolBatch1SourceModels } from "./cutover-agent-tool-batch1";
+import { retainedConversationBatch2SourceModels } from "./cutover-conversation-batch2";
 
 export type CutoverPhaseImplementation = "IMPLEMENTED" | "STUB";
 
@@ -19,7 +20,12 @@ const coreSourceModels = [
 ] as const;
 
 const coreSet = new Set<string>(coreSourceModels);
-const implementedRetainedSet = new Set<string>(retainedAgentToolBatch1SourceModels);
+const supplementalAuthOwnedSourceModels = ["OrgMemberInvite", "ImpersonationAuditLog"] as const;
+const implementedRetainedSet = new Set<string>([
+  ...supplementalAuthOwnedSourceModels,
+  ...retainedAgentToolBatch1SourceModels,
+  ...retainedConversationBatch2SourceModels,
+]);
 
 const sourceModelsFor = (disposition: "BACKFILL" | "EXPORT_DROP" | "EPHEMERAL_DROP") =>
   legacyModelDispositionLedger
@@ -44,16 +50,34 @@ export const cutoverDomainPhases = [
     summary: "User, operator identity, organization, membership, project, project access, and Environment",
   },
   {
+    id: "supplemental-auth-mfa",
+    implementation: "IMPLEMENTED",
+    sourceModels: supplementalAuthOwnedSourceModels,
+    summary: "Organization invitations, impersonation history, and User-owned operator MFA",
+  },
+  {
     id: "retained-agent-tool-batch-1",
     implementation: "IMPLEMENTED",
     sourceModels: retainedAgentToolBatch1SourceModels,
     summary: "Tool, Agent, AgentBinding, AgentVersion, and AgentCluster retained-domain cutover",
   },
   {
+    id: "retained-conversation-batch-2",
+    implementation: "IMPLEMENTED",
+    sourceModels: retainedConversationBatch2SourceModels,
+    summary: "End user, identity, thread, turn, step, tool-call, artifact, attachment, and Postman cutover",
+  },
+  {
+    id: "final-message-re-encryption-read-probes",
+    implementation: "STUB",
+    sourceModels: [],
+    summary: "Final target message re-encryption and target-reader semantic probes",
+  },
+  {
     id: "remaining-retained-backfill",
     implementation: "STUB",
     sourceModels: sourceModelsFor("BACKFILL"),
-    summary: "Retained invitation, MFA, secret, audit, and normalized Platos domain transformations",
+    summary: "Later retained secret, audit, policy, evaluation, memory, and normalized Platos batches",
   },
   {
     id: "unsupported-trigger-export",
@@ -77,7 +101,7 @@ export const cutoverDomainPhases = [
     id: "cryptographic-read-probes",
     implementation: "STUB",
     sourceModels: [],
-    summary: "MFA, provider, channel, entity, OIDC, message, audit, and memory decrypt/read probes",
+    summary: "Remaining provider, channel, entity, OIDC, audit, memory, and credential decrypt/read probes",
   },
   {
     id: "external-analytics-object-rekey",

@@ -80,6 +80,25 @@ export function parseCutoverArguments(argv: readonly string[]): ParsedCutoverArg
   };
 }
 
+/** Mirrors the message runtime's active-plus-prior environment key contract. */
+export function resolveCutoverMessageEncryptionKeys(
+  environment: Readonly<Record<string, string | undefined>>
+): Readonly<Record<string, string>> {
+  const configuredVersion = Number(environment.PLATOS_MESSAGE_ENCRYPTION_KEY_V ?? "1");
+  const activeVersion = Number.isSafeInteger(configuredVersion) && configuredVersion > 0
+    ? configuredVersion
+    : 1;
+  const keys: Record<string, string> = {};
+  for (const [name, value] of Object.entries(environment)) {
+    const match = name.match(/^PLATOS_MESSAGE_ENCRYPTION_KEY_V([1-9][0-9]*)$/);
+    if (match && value) keys[match[1]!] = value;
+  }
+  if (environment.PLATOS_MESSAGE_ENCRYPTION_KEY) {
+    keys[String(activeVersion)] = environment.PLATOS_MESSAGE_ENCRYPTION_KEY;
+  }
+  return Object.freeze(keys);
+}
+
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const parsed = parseCutoverArguments(argv);
   const databaseUrl = process.env.DATABASE_URL;
@@ -102,6 +121,11 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     requiredKeyEnvironment: Object.fromEntries(
       CUTOVER_REQUIRED_KEY_ENVIRONMENT.map((name) => [name, Boolean(process.env[name])])
     ),
+    keyMaterial: {
+      legacyEncryptionKey: process.env.ENCRYPTION_KEY,
+      targetAuthEncryptionKey: process.env.PLATOS_ENCRYPTION_KEY,
+      messageEncryptionKeys: resolveCutoverMessageEncryptionKeys(process.env),
+    },
     forcedFailurePhase: parsed.forcedFailurePhase,
   };
   const report = await runCutover(options);
