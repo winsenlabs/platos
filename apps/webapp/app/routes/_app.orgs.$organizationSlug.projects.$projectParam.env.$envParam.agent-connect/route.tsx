@@ -34,11 +34,10 @@ import { Paragraph } from "~/components/primitives/Paragraph";
 import { useEnvironment } from "~/hooks/useEnvironment";
 import { useOrganization } from "~/hooks/useOrganizations";
 import { useProject } from "~/hooks/useProject";
-import { prisma } from "~/db.server";
 import { env } from "~/env.server";
 import { findProjectBySlug } from "~/models/project.server";
 import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
-import { isAgentServiceAvailable, listEntities } from "~/services/platosAgent.server";
+import { isAgentServiceAvailable, listAgents, listEntities } from "~/services/platosAgent.server";
 import { requireUserId } from "~/services/session.server";
 import { cn } from "~/utils/cn";
 import { ChannelSetupGuide, ChannelWebhookGuide } from "./ChannelSetupGuide";
@@ -77,6 +76,7 @@ type McpEntitySummary = {
   displayName: string;
   mcpEnabled: boolean;
   unrestricted: boolean;
+  linkedAgentIds: string[];
 };
 
 type ConnectionDetails = {
@@ -122,33 +122,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     userId,
   };
 
-  // Agents (+ visibility) straight from Postgres — mirrors the share route's
-  // prisma read. This works even when the agent service is offline and gives
-  // the Web card its visibility badge without an extra round-trip.
-  const agentRows = await prisma.platosAgent.findMany({
-    where: {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
-    },
-    select: { id: true, name: true, slug: true, visibility: true },
-    orderBy: { createdAt: "asc" },
-  });
-  const agents: AgentSummary[] = agentRows.map((a) => ({
-    id: a.id,
-    name: a.name,
-    slug: a.slug,
-    visibility: a.visibility,
-  }));
-
-  const url = new URL(request.url);
-  const requestedAgentId = url.searchParams.get("agentId");
-  const selectedAgent =
-    (requestedAgentId ? agents.find((a) => a.id === requestedAgentId) : undefined) ??
-    agents[0] ??
-    null;
-  const selectedAgentId = selectedAgent?.id ?? null;
-
+  let agents: AgentSummary[] = [];
   let connectionDetails: ConnectionDetails | null = null;
   let channels: ChannelRow[] = [];
   let mcpEntities: McpEntitySummary[] = [];
@@ -160,54 +134,71 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
       const headers = scopeHeaders(scope);
 
-      const [connRes, chanRes, entitiesResult] = await Promise.all([
+      const [agentsResult, connRes, chanRes, entitiesResult] = await Promise.all([
+        listAgents(scope),
         fetch(`${AGENT_API_URL}/api/v1/agent/connect`, {
           headers,
           signal: AbortSignal.timeout(5000),
-        }).catch(() => null),
+        }),
         fetch(`${AGENT_API_URL}/api/v1/agent/channels`, {
           headers,
           signal: AbortSignal.timeout(5000),
-        }).catch(() => null),
-        listEntities(scope).catch(() => ({ entities: [] as any[] })),
+        }),
+        listEntities(scope),
       ]);
 
-      if (connRes?.ok) {
-        connectionDetails = (await connRes.json()) as ConnectionDetails;
+      if (!connRes.ok || !chanRes.ok) {
+        throw new Error("Agent connect data unavailable");
       }
 
-      if (chanRes?.ok) {
-        const data = (await chanRes.json()) as { channels?: ChannelRow[] };
-        const all = Array.isArray(data.channels) ? data.channels : [];
-        // Filter to the selected agent client-side of the agent API (the list
-        // endpoint returns every channel in scope).
-        channels = selectedAgentId ? all.filter((c) => c.agentId === selectedAgentId) : [];
-      }
+      agents = (agentsResult.agents ?? []).map((agent) => ({
+        id: String(agent.id),
+        name: String(agent.name),
+        slug: String(agent.slug),
+        visibility: typeof agent.visibility === "string" ? agent.visibility : "private",
+      }));
+
+      connectionDetails = (await connRes.json()) as ConnectionDetails;
+
+      const data = (await chanRes.json()) as { channels?: ChannelRow[] };
+      channels = Array.isArray(data.channels) ? data.channels : [];
 
       const allEntities = Array.isArray((entitiesResult as any)?.entities)
         ? ((entitiesResult as any).entities as any[])
         : [];
-      if (selectedAgentId) {
-        mcpEntities = allEntities
-          .filter((e) => {
-            const linked = Array.isArray(e.linkedAgentIds) ? (e.linkedAgentIds as string[]) : [];
-            // Empty allow-list = visible to every agent in scope (runtime
-            // semantics); otherwise the agent must be explicitly listed.
-            return linked.length === 0 || linked.includes(selectedAgentId);
-          })
-          .map((e) => ({
-            entityId: e.entityId,
-            displayName: e.displayName || e.entityId,
-            mcpEnabled: !!(e.mcpConfig && e.mcpConfig.enabled),
-            unrestricted:
-              !Array.isArray(e.linkedAgentIds) || (e.linkedAgentIds as string[]).length === 0,
-          }));
-      }
+      mcpEntities = allEntities.map((e) => ({
+        entityId: e.entityId,
+        displayName: e.displayName || e.entityId,
+        mcpEnabled: !!(e.mcpConfig && e.mcpConfig.enabled),
+        unrestricted:
+          !Array.isArray(e.linkedAgentIds) || (e.linkedAgentIds as string[]).length === 0,
+        linkedAgentIds: Array.isArray(e.linkedAgentIds) ? (e.linkedAgentIds as string[]) : [],
+      }));
     }
   } catch {
-    // Agent service offline — degrade to empty payloads. Agents + visibility
-    // still render from the prisma read above.
+    agentServiceAvailable = false;
+    agents = [];
+    connectionDetails = null;
+    channels = [];
+    mcpEntities = [];
   }
+
+  const url = new URL(request.url);
+  const requestedAgentId = url.searchParams.get("agentId");
+  const selectedAgent =
+    (requestedAgentId ? agents.find((a) => a.id === requestedAgentId) : undefined) ??
+    agents[0] ??
+    null;
+  const selectedAgentId = selectedAgent?.id ?? null;
+
+  channels = selectedAgentId
+    ? channels.filter((channel) => channel.agentId === selectedAgentId)
+    : [];
+  mcpEntities = selectedAgentId
+    ? mcpEntities.filter(
+        (entity) => entity.unrestricted || entity.linkedAgentIds.includes(selectedAgentId)
+      )
+    : [];
 
   const appOrigin = env.APP_ORIGIN.replace(/\/$/, "");
   const embedUrl = selectedAgentId
@@ -465,7 +456,10 @@ function WebCard({
               ? "This agent accepts anonymous guest chat from the embedded widget. Guest traffic is rate-limited per IP and capped by the agent's budget."
               : "Make this agent public to enable the embeddable widget and share URL. Guest chat stays rate-limited and budget-capped."}
           </Paragraph>
-          <shareFetcher.Form method="post" action={agentSharePath(organization, project, environment, agent.id)}>
+          <shareFetcher.Form
+            method="post"
+            action={agentSharePath(organization, project, environment, agent.id)}
+          >
             <input type="hidden" name="intent" value="set-visibility" />
             <input type="hidden" name="visibility" value={isPublic ? "private" : "public-guest"} />
             <Button type="submit" variant="secondary/small" disabled={busy}>
@@ -474,9 +468,7 @@ function WebCard({
           </shareFetcher.Form>
         </div>
 
-        {shareFetcher.data?.error && (
-          <Callout variant="error">{shareFetcher.data.error}</Callout>
-        )}
+        {shareFetcher.data?.error && <Callout variant="error">{shareFetcher.data.error}</Callout>}
 
         {isPublic ? (
           <div className="space-y-4">
@@ -550,13 +542,13 @@ function WebhookRevealBlock({
             No public agent origin is configured
             {webhookOrigin ? (
               <>
-                {" "}— <code>{webhookOrigin}</code> is not reachable by providers
+                {" "}
+                — <code>{webhookOrigin}</code> is not reachable by providers
               </>
             ) : null}
             . Set <code>PLATOS_AGENT_PUBLIC_API_URL</code> to your agent service's public https
-            origin (and make sure your reverse proxy routes{" "}
-            <code>/api/v1/channels/*</code> to it), then prepend that origin to the webhook path
-            below.
+            origin (and make sure your reverse proxy routes <code>/api/v1/channels/*</code> to it),
+            then prepend that origin to the webhook path below.
           </Callout>
           <div>
             <div className="mb-1 text-xs text-text-dimmed">Webhook path</div>
@@ -631,14 +623,15 @@ function RotateSecretAction({
       >
         <input type="hidden" name="intent" value="rotate-secret" />
         <input type="hidden" name="id" value={channel.id} />
-        <Button
-          type="submit"
-          variant="minimal/small"
-          disabled={busy}
-          title={fetcher.data?.error ? `Rotate failed: ${fetcher.data.error}` : "Rotate webhook secret"}
+        <span
+          title={
+            fetcher.data?.error ? `Rotate failed: ${fetcher.data.error}` : "Rotate webhook secret"
+          }
         >
-          {busy ? "Rotating…" : "Rotate"}
-        </Button>
+          <Button type="submit" variant="minimal/small" disabled={busy}>
+            {busy ? "Rotating…" : "Rotate"}
+          </Button>
+        </span>
       </fetcher.Form>
       {/* While the one-time secret is on screen, only the explicit Done button
           closes the dialog — implicit dismissal would destroy the secret. */}
@@ -720,18 +713,15 @@ function UpdateCredentialsAction({
 
   return (
     <>
-      <Button
-        type="button"
-        variant="minimal/small"
-        onClick={() => setOpen(true)}
+      <span
         title={
-          fetcher.data?.error
-            ? `Update failed: ${fetcher.data.error}`
-            : "Update stored credentials"
+          fetcher.data?.error ? `Update failed: ${fetcher.data.error}` : "Update stored credentials"
         }
       >
-        Update credentials
-      </Button>
+        <Button type="button" variant="minimal/small" onClick={() => setOpen(true)}>
+          Update credentials
+        </Button>
+      </span>
       <Dialog
         open={open}
         onOpenChange={(next) => {
@@ -755,9 +745,7 @@ function UpdateCredentialsAction({
                   name={`cred_${field.key}`}
                   type={field.secret ? "password" : "text"}
                   value={values[field.key] ?? ""}
-                  onChange={(e) =>
-                    setValues((v) => ({ ...v, [field.key]: e.target.value }))
-                  }
+                  onChange={(e) => setValues((v) => ({ ...v, [field.key]: e.target.value }))}
                   placeholder="unchanged — paste to replace"
                   autoComplete="off"
                   className={inputClass}
@@ -798,7 +786,8 @@ function ChannelRowItem({
   const spec = providerSpec(channel.provider);
 
   // Optimistic enabled state while a toggle is in flight.
-  const pendingEnabled = fetcher.formData?.get("intent") === "toggle" ? fetcher.formData.get("enabled") : null;
+  const pendingEnabled =
+    fetcher.formData?.get("intent") === "toggle" ? fetcher.formData.get("enabled") : null;
   const enabled = pendingEnabled != null ? String(pendingEnabled) === "true" : channel.enabled;
 
   return (
@@ -830,7 +819,11 @@ function ChannelRowItem({
         method="post"
         action={actionPath}
         onSubmit={(e) => {
-          if (!window.confirm("Delete this channel connection? Its inbound webhook stops working immediately.")) {
+          if (
+            !window.confirm(
+              "Delete this channel connection? Its inbound webhook stops working immediately."
+            )
+          ) {
             e.preventDefault();
           }
         }}
@@ -1091,13 +1084,18 @@ function MintTokenButton() {
           </span>
           <p className="mt-1 text-xs text-text-dimmed">
             Returns a 5-minute session token signed with{" "}
-            <code className="rounded bg-charcoal-700 px-1">SESSION_SECRET</code>. Paste it
-            into <code className="rounded bg-charcoal-700 px-1">X-Platos-Session-Token</code> to poke
-            the agent directly. Enabled only when{" "}
+            <code className="rounded bg-charcoal-700 px-1">SESSION_SECRET</code>. Paste it into{" "}
+            <code className="rounded bg-charcoal-700 px-1">X-Platos-Session-Token</code> to poke the
+            agent directly. Enabled only when{" "}
             <code className="rounded bg-charcoal-700 px-1">PLATOS_TEST_MODE=true</code>.
           </p>
         </div>
-        <Button type="button" variant="secondary/small" onClick={onClick} disabled={state === "loading"}>
+        <Button
+          type="button"
+          variant="secondary/small"
+          onClick={onClick}
+          disabled={state === "loading"}
+        >
           {state === "loading" ? "Minting…" : state === "minted" ? "Re-mint" : "Mint"}
         </Button>
       </div>
@@ -1106,7 +1104,9 @@ function MintTokenButton() {
           <CodeBlock language="Session token (5 min)" code={token} />
         </div>
       )}
-      {state === "error" && <p className="mt-2 text-xs text-rose-400">Mint failed — check the server logs.</p>}
+      {state === "error" && (
+        <p className="mt-2 text-xs text-rose-400">Mint failed — check the server logs.</p>
+      )}
     </div>
   );
 }
@@ -1333,19 +1333,24 @@ export default function ConnectPage() {
             <div className="mx-auto mb-4 grid size-12 place-items-center rounded-xl bg-charcoal-800">
               <CpuChipIcon className="size-6 text-text-dimmed" />
             </div>
-            <h2 className="text-base font-medium text-text-bright">No agents yet</h2>
+            <h2 className="text-base font-medium text-text-bright">
+              {agentServiceAvailable ? "No agents yet" : "Connect is temporarily unavailable"}
+            </h2>
             <Paragraph variant="small" className="mx-auto mt-2 max-w-sm text-text-dimmed">
-              Create an agent first, then come back here to connect it to the web, messaging
-              channels, your API, and MCP tools.
+              {agentServiceAvailable
+                ? "Create an agent first, then come back here to connect it to the web, messaging channels, your API, and MCP tools."
+                : "The agent service could not resolve this environment. Your selected scope is unchanged; try again when the service is reachable."}
             </Paragraph>
-            <div className="mt-5">
-              <Link
-                to={agentsPath(organization, project, environment)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-charcoal-600 bg-charcoal-800 px-4 py-2 text-sm text-text-bright transition-colors hover:bg-charcoal-700"
-              >
-                <PlusIcon className="size-4" /> Create an agent
-              </Link>
-            </div>
+            {agentServiceAvailable && (
+              <div className="mt-5">
+                <Link
+                  to={agentsPath(organization, project, environment)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-charcoal-600 bg-charcoal-800 px-4 py-2 text-sm text-text-bright transition-colors hover:bg-charcoal-700"
+                >
+                  <PlusIcon className="size-4" /> Create an agent
+                </Link>
+              </div>
+            )}
           </div>
         </PageBody>
       </PageContainer>

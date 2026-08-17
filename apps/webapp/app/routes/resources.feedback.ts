@@ -51,11 +51,11 @@ export async function action({ request }: ActionFunctionArgs) {
     await sendToPlain({
       userId: user.id,
       email: user.email,
-      name: user.name ?? user.displayName ?? user.email,
+      name: user.displayName ?? user.email,
       title,
       components: [
         uiComponent.text({
-          text: `New ${title} reported by ${user.name} (${user.email})`,
+          text: `New ${title} reported by ${user.displayName ?? user.email} (${user.email})`,
         }),
         uiComponent.divider({ spacingSize: "M" }),
         uiComponent.text({

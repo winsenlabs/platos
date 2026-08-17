@@ -54,9 +54,7 @@ import { LoggerSpanExporter } from "./telemetry/loggerExporter.server";
 import { CompactMetricExporter } from "./telemetry/compactMetricExporter.server";
 import { logger } from "~/services/logger.server";
 import { flattenAttributes } from "@platos/core/v3";
-import { prisma } from "~/db.server";
 import { metricsRegister } from "~/metrics.server";
-import type { Prisma } from "@platos/database";
 import { performance } from "node:perf_hooks";
 
 export const SEMINTATTRS_FORCE_RECORDING = "forceRecording";
@@ -330,219 +328,10 @@ function setupMetrics() {
 
   const meter = meterProvider.getMeter("trigger.dev", "3.3.12");
 
-  configurePrismaMetrics({ meter });
   configureNodejsMetrics({ meter });
   configureHostMetrics({ meterProvider });
 
   return meter;
-}
-
-function configurePrismaMetrics({ meter }: { meter: Meter }) {
-  // Counters
-  const queriesTotal = meter.createObservableCounter("db.client.queries.total", {
-    description: "Total number of Prisma Client queries executed",
-    unit: "queries",
-  });
-  const datasourceQueriesTotal = meter.createObservableCounter("db.datasource.queries.total", {
-    description: "Total number of datasource queries executed",
-    unit: "queries",
-  });
-  const connectionsOpenedTotal = meter.createObservableCounter("db.pool.connections.opened.total", {
-    description: "Total number of pool connections opened",
-    unit: "connections",
-  });
-  const connectionsClosedTotal = meter.createObservableCounter("db.pool.connections.closed.total", {
-    description: "Total number of pool connections closed",
-    unit: "connections",
-  });
-
-  // Gauges
-  const queriesActive = meter.createObservableGauge("db.client.queries.active", {
-    description: "Number of currently active Prisma Client queries",
-    unit: "queries",
-  });
-  const queriesWait = meter.createObservableGauge("db.client.queries.wait", {
-    description: "Number of queries currently waiting for a connection",
-    unit: "queries",
-  });
-  const totalGauge = meter.createObservableGauge("db.pool.connections.total", {
-    description: "Open Prisma-pool connections",
-    unit: "connections",
-  });
-  const busyGauge = meter.createObservableGauge("db.pool.connections.busy", {
-    description: "Connections currently executing queries",
-    unit: "connections",
-  });
-  const freeGauge = meter.createObservableGauge("db.pool.connections.free", {
-    description: "Idle (free) connections in the pool",
-    unit: "connections",
-  });
-
-  // Histogram statistics as gauges
-  const queriesWaitTimeCount = meter.createObservableGauge("db.client.queries.wait_time.count", {
-    description: "Number of wait time observations",
-    unit: "observations",
-  });
-  const queriesWaitTimeSum = meter.createObservableGauge("db.client.queries.wait_time.sum", {
-    description: "Total wait time across all observations",
-    unit: "ms",
-  });
-  const queriesWaitTimeMean = meter.createObservableGauge("db.client.queries.wait_time.mean", {
-    description: "Average wait time for a connection",
-    unit: "ms",
-  });
-
-  const queriesDurationCount = meter.createObservableGauge("db.client.queries.duration.count", {
-    description: "Number of query duration observations",
-    unit: "observations",
-  });
-  const queriesDurationSum = meter.createObservableGauge("db.client.queries.duration.sum", {
-    description: "Total query duration across all observations",
-    unit: "ms",
-  });
-  const queriesDurationMean = meter.createObservableGauge("db.client.queries.duration.mean", {
-    description: "Average duration of Prisma Client queries",
-    unit: "ms",
-  });
-
-  const datasourceQueriesDurationCount = meter.createObservableGauge(
-    "db.datasource.queries.duration.count",
-    {
-      description: "Number of datasource query duration observations",
-      unit: "observations",
-    }
-  );
-  const datasourceQueriesDurationSum = meter.createObservableGauge(
-    "db.datasource.queries.duration.sum",
-    {
-      description: "Total datasource query duration across all observations",
-      unit: "ms",
-    }
-  );
-  const datasourceQueriesDurationMean = meter.createObservableGauge(
-    "db.datasource.queries.duration.mean",
-    {
-      description: "Average duration of datasource queries",
-      unit: "ms",
-    }
-  );
-
-  // Single helper so we hit Prisma only once per scrape ---------------------
-  async function readPrismaMetrics() {
-    const metrics = await prisma.$metrics.json();
-
-    // Extract counter values
-    const counters: Record<string, number> = {};
-    for (const counter of metrics.counters) {
-      counters[counter.key] = counter.value;
-    }
-
-    // Extract gauge values
-    const gauges: Record<string, number> = {};
-    for (const gauge of metrics.gauges) {
-      gauges[gauge.key] = gauge.value;
-    }
-
-    // Extract histogram values
-    const histograms: Record<string, Prisma.MetricHistogram> = {};
-    for (const histogram of metrics.histograms) {
-      histograms[histogram.key] = histogram.value;
-    }
-
-    return {
-      counters: {
-        queriesTotal: counters["prisma_client_queries_total"] ?? 0,
-        datasourceQueriesTotal: counters["prisma_datasource_queries_total"] ?? 0,
-        connectionsOpenedTotal: counters["prisma_pool_connections_opened_total"] ?? 0,
-        connectionsClosedTotal: counters["prisma_pool_connections_closed_total"] ?? 0,
-      },
-      gauges: {
-        queriesActive: gauges["prisma_client_queries_active"] ?? 0,
-        queriesWait: gauges["prisma_client_queries_wait"] ?? 0,
-        connectionsOpen: gauges["prisma_pool_connections_open"] ?? 0,
-        connectionsBusy: gauges["prisma_pool_connections_busy"] ?? 0,
-        connectionsIdle: gauges["prisma_pool_connections_idle"] ?? 0,
-      },
-      histograms: {
-        queriesWait: histograms["prisma_client_queries_wait_histogram_ms"],
-        queriesDuration: histograms["prisma_client_queries_duration_histogram_ms"],
-        datasourceQueriesDuration: histograms["prisma_datasource_queries_duration_histogram_ms"],
-      },
-    };
-  }
-
-  meter.addBatchObservableCallback(
-    async (res) => {
-      const { counters, gauges, histograms } = await readPrismaMetrics();
-
-      // Observe counters
-      res.observe(queriesTotal, counters.queriesTotal);
-      res.observe(datasourceQueriesTotal, counters.datasourceQueriesTotal);
-      res.observe(connectionsOpenedTotal, counters.connectionsOpenedTotal);
-      res.observe(connectionsClosedTotal, counters.connectionsClosedTotal);
-
-      // Observe gauges
-      res.observe(queriesActive, gauges.queriesActive);
-      res.observe(queriesWait, gauges.queriesWait);
-      res.observe(totalGauge, gauges.connectionsOpen);
-      res.observe(busyGauge, gauges.connectionsBusy);
-      res.observe(freeGauge, gauges.connectionsIdle);
-
-      // Observe histogram statistics as gauges
-      if (histograms.queriesWait) {
-        res.observe(queriesWaitTimeCount, histograms.queriesWait.count);
-        res.observe(queriesWaitTimeSum, histograms.queriesWait.sum);
-        res.observe(
-          queriesWaitTimeMean,
-          histograms.queriesWait.count > 0
-            ? histograms.queriesWait.sum / histograms.queriesWait.count
-            : 0
-        );
-      }
-
-      if (histograms.queriesDuration) {
-        res.observe(queriesDurationCount, histograms.queriesDuration.count);
-        res.observe(queriesDurationSum, histograms.queriesDuration.sum);
-        res.observe(
-          queriesDurationMean,
-          histograms.queriesDuration.count > 0
-            ? histograms.queriesDuration.sum / histograms.queriesDuration.count
-            : 0
-        );
-      }
-
-      if (histograms.datasourceQueriesDuration) {
-        res.observe(datasourceQueriesDurationCount, histograms.datasourceQueriesDuration.count);
-        res.observe(datasourceQueriesDurationSum, histograms.datasourceQueriesDuration.sum);
-        res.observe(
-          datasourceQueriesDurationMean,
-          histograms.datasourceQueriesDuration.count > 0
-            ? histograms.datasourceQueriesDuration.sum / histograms.datasourceQueriesDuration.count
-            : 0
-        );
-      }
-    },
-    [
-      queriesTotal,
-      datasourceQueriesTotal,
-      connectionsOpenedTotal,
-      connectionsClosedTotal,
-      queriesActive,
-      queriesWait,
-      totalGauge,
-      busyGauge,
-      freeGauge,
-      queriesWaitTimeCount,
-      queriesWaitTimeSum,
-      queriesWaitTimeMean,
-      queriesDurationCount,
-      queriesDurationSum,
-      queriesDurationMean,
-      datasourceQueriesDurationCount,
-      datasourceQueriesDurationSum,
-      datasourceQueriesDurationMean,
-    ]
-  );
 }
 
 function configureNodejsMetrics({ meter }: { meter: Meter }) {
@@ -750,27 +539,25 @@ function configureHostMetrics({ meterProvider }: { meterProvider: MeterProvider 
 
 const SemanticEnvResources = {
   ENV_ID: "$trigger.env.id",
-  ENV_TYPE: "$trigger.env.type",
+  ENV_NAME: "$trigger.env.name",
   ENV_SLUG: "$trigger.env.slug",
   ORG_ID: "$trigger.org.id",
   ORG_SLUG: "$trigger.org.slug",
-  ORG_TITLE: "$trigger.org.title",
+  ORG_NAME: "$trigger.org.name",
   PROJECT_ID: "$trigger.project.id",
   PROJECT_NAME: "$trigger.project.name",
-  USER_ID: "$trigger.user.id",
 };
 
 export function attributesFromAuthenticatedEnv(env: AuthenticatedEnvironment): Attributes {
   return {
     [SemanticEnvResources.ENV_ID]: env.id,
-    [SemanticEnvResources.ENV_TYPE]: env.type,
+    [SemanticEnvResources.ENV_NAME]: env.name,
     [SemanticEnvResources.ENV_SLUG]: env.slug,
-    [SemanticEnvResources.ORG_ID]: env.organizationId,
+    [SemanticEnvResources.ORG_ID]: env.organization.id,
     [SemanticEnvResources.ORG_SLUG]: env.organization.slug,
-    [SemanticEnvResources.ORG_TITLE]: env.organization.title,
-    [SemanticEnvResources.PROJECT_ID]: env.projectId,
+    [SemanticEnvResources.ORG_NAME]: env.organization.name,
+    [SemanticEnvResources.PROJECT_ID]: env.project.id,
     [SemanticEnvResources.PROJECT_NAME]: env.project.name,
-    [SemanticEnvResources.USER_ID]: env.orgMember?.userId,
   };
 }
 

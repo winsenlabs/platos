@@ -4,7 +4,7 @@ import { requireUser } from "~/services/session.server";
 export async function loader({ request }: DataFunctionArgs) {
   const user = await requireUser(request);
 
-  if (!user.admin) {
+  if (!user.platformOperator) {
     throw new Response("You must be an admin to perform this action", { status: 403 });
   }
 

@@ -15,7 +15,10 @@ import { ModuleRef } from "@nestjs/core";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
-import { PlatosMCPTokenService, AdminMintForbiddenError } from "./token.service";
+import {
+  PlatosMCPTokenService,
+  MCPTokenForbiddenError,
+} from "./token.service";
 import type { VerifiedToken, PlatosMCPTokenTier } from "./token.service";
 import {
   McpRouter,
@@ -671,7 +674,7 @@ export class McpPlatformController {
       ttlSeconds?: number;
       /**
        * K.18 — optional tier. Defaults to "scope". "admin" requires the
-       * caller to be an org ADMIN (enforced in TokenService.mint()).
+       * caller to be Project ADMIN or Organization OWNER/ADMIN.
        */
       tier?: PlatosMCPTokenTier;
     },
@@ -692,7 +695,7 @@ export class McpPlatformController {
         ...(body?.tier ? { tier: body.tier } : {}),
       });
     } catch (err) {
-      if (err instanceof AdminMintForbiddenError) {
+      if (err instanceof MCPTokenForbiddenError) {
         throw new HttpException(err.message, HttpStatus.FORBIDDEN);
       }
       throw err;
@@ -707,7 +710,15 @@ export class McpPlatformController {
     // operator/dashboard read (enumerates every token's permissions + scope tier).
     // Same admin-action tier as mintToken; end-user/guest tokens must not enumerate.
     requireOperator(scope);
-    const tokens = await this.tokenService.list(scope);
+    let tokens;
+    try {
+      tokens = await this.tokenService.list(scope);
+    } catch (error) {
+      if (error instanceof MCPTokenForbiddenError) {
+        throw new HttpException(error.message, HttpStatus.FORBIDDEN);
+      }
+      throw error;
+    }
     return { tokens };
   }
 
@@ -721,7 +732,15 @@ export class McpPlatformController {
     requireOperator(scope);
     const id = req.params["id"];
     if (!id) throw new HttpException("id missing", HttpStatus.BAD_REQUEST);
-    const ok = await this.tokenService.revoke(id, scope);
+    let ok;
+    try {
+      ok = await this.tokenService.revoke(id, scope);
+    } catch (error) {
+      if (error instanceof MCPTokenForbiddenError) {
+        throw new HttpException(error.message, HttpStatus.FORBIDDEN);
+      }
+      throw error;
+    }
     return { ok };
   }
 
@@ -742,6 +761,14 @@ export class McpPlatformController {
   async toolCatalog(@Req() req: Request) {
     const scope = (req as any).scope as RequestScope | undefined;
     if (!scope) throw new HttpException("unauthenticated", HttpStatus.UNAUTHORIZED);
+    try {
+      await this.tokenService.authorizeMetadataAccess(scope);
+    } catch (error) {
+      if (error instanceof MCPTokenForbiddenError) {
+        throw new HttpException(error.message, HttpStatus.FORBIDDEN);
+      }
+      throw error;
+    }
 
     const handlers = this.getRouter().getRegisteredTools();
     const byCategory = new Map<

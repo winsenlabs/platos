@@ -27,8 +27,8 @@ import {
   type InputStreamWaitOptions,
   type SendInputStreamOptions,
   type InferInputStreamType,
+  parsePacket,
 } from "@platos/core/v3";
-import { conditionallyImportAndParsePacket } from "@platos/core/v3/utils/ioSerialization";
 import { tracer } from "./tracer.js";
 import { SpanStatusCode } from "@opentelemetry/api";
 
@@ -782,13 +782,10 @@ function input<TData>(opts: { id: string }): RealtimeDefinedInputStream<TData> {
               // 4. Parse the output
               const data =
                 waitResult.output !== undefined
-                  ? await conditionallyImportAndParsePacket(
-                    {
+                  ? await parsePacket({
                       data: waitResult.output,
                       dataType: waitResult.outputType ?? "application/json",
-                    },
-                    apiClient
-                  )
+                    })
                   : undefined;
 
               if (waitResult.ok) {

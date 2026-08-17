@@ -109,6 +109,7 @@ export async function action({ request }: ActionFunctionArgs) {
       projectSlug: parsed.data.projectSlug,
     },
     userId,
+    "mutate",
   );
   if (!verified.ok) {
     return json({ error: verified.error.message }, { status: scopeErrorStatus(verified.error) });

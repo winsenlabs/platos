@@ -1,5 +1,4 @@
 import { env } from "~/env.server";
-import { authenticateAuthorizationHeader } from "./apiAuth.server";
 import { authorizationRateLimitMiddleware } from "./authorizationRateLimitMiddleware.server";
 import { Duration } from "./rateLimiter.server";
 
@@ -24,31 +23,9 @@ export const apiRateLimiter = authorizationRateLimitMiddleware({
     stale: 60_000 * 20, // Date is stale after 20 minutes
     maxItems: 1000,
   },
-  limiterConfigOverride: async (authorizationValue) => {
-    const authenticatedEnv = await authenticateAuthorizationHeader(authorizationValue, {
-      allowPublicKey: true,
-      allowJWT: true,
-    });
-
-    if (!authenticatedEnv || !authenticatedEnv.ok) {
-      return;
-    }
-
-    if (authenticatedEnv.type === "PUBLIC_JWT") {
-      return {
-        type: "fixedWindow",
-        window: env.API_RATE_LIMIT_JWT_WINDOW,
-        tokens: env.API_RATE_LIMIT_JWT_TOKENS,
-      };
-    } else {
-      return authenticatedEnv.environment.organization.apiRateLimiterConfig;
-    }
-  },
   pathMatchers: [/^\/api/],
   pathWhiteList: [
-    "/api/v1/usage/ingest",
     "/api/v1/timezones",
-    "/api/v1/auth/jwt/claims",
     // Platos attachment routes are cookie-authenticated Remix routes, not
     // token-authenticated API routes — no Authorization header is present.
     /^\/api\/v1\/agent\/attachments/,

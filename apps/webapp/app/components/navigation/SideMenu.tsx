@@ -53,7 +53,6 @@ import { useHasAdminAccess } from "~/hooks/useUser";
 import { type UserWithDashboardPreferences } from "~/models/user.server";
 import { type loader as rootLoader } from "~/root";
 import { IncidentStatusPanel, useIncidentStatus } from "~/routes/resources.incidents";
-import { NotificationPanel } from "./NotificationPanel";
 import { cn } from "~/utils/cn";
 import {
   accountPath,
@@ -614,12 +613,6 @@ export function SideMenu({
             projectCreatedAt={project.createdAt}
             hasIncident={incidentStatus.hasIncident}
             isManagedCloud={incidentStatus.isManagedCloud}
-          />
-          <NotificationPanel
-            isCollapsed={isCollapsed}
-            hasIncident={incidentStatus.hasIncident}
-            organizationId={organization.id}
-            projectId={project.id}
           />
           <motion.div
             layout

@@ -1,4 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
+import {
+  AuthorizationScopeKind,
+  OrganizationRole,
+  ProjectRole,
+  TokenFamily,
+  TokenLifecycleAction,
+  TokenLifecycleOutcome,
+} from "@platos/database";
 import * as crypto from "node:crypto";
 import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
@@ -15,7 +23,7 @@ export interface MintTokenInput {
   permissions: string[];
   /** Lifetime in seconds. Defaults to 90 days and must be positive. */
   ttlSeconds?: number;
-  /** Admin-tier tokens are restricted to organization owners/admins. */
+  /** Admin-tier tokens use the same Project ADMIN / Organization admin gate as scope-tier mint. */
   tier?: PlatosMCPTokenTier;
 }
 
@@ -46,13 +54,15 @@ const DEFAULT_TTL_SECONDS = 90 * 24 * 3600;
 const TOKEN_PREFIX = "plt_mcp_";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
+type AuthorizedScope = ScopeTuple & {
+  organizationRole: OrganizationRole;
+  projectRole: ProjectRole | null;
+};
 
-export class AdminMintForbiddenError extends Error {
-  constructor(userId: string, organizationId: string) {
-    super(
-      `user ${userId} is not an owner or admin of organization ${organizationId} — admin-tier MCP tokens are reserved for organization administrators`,
-    );
-    this.name = "AdminMintForbiddenError";
+export class MCPTokenForbiddenError extends Error {
+  constructor() {
+    super("MCP token access is outside the user's active project membership");
+    this.name = "MCPTokenForbiddenError";
   }
 }
 
@@ -81,7 +91,10 @@ export class PlatosMCPTokenService {
    * Load canonical ancestry from the Environment row. Request tuples are used
    * only as assertions and never become persisted or returned authority.
    */
-  private async resolveScope(scope: ScopeTuple): Promise<ScopeTuple | null> {
+  private async authorizeScope(
+    scope: ScopeTuple & Pick<RequestScope, "userId">,
+    access: "read" | "mutate",
+  ): Promise<AuthorizedScope> {
     const environment = await this.prisma.environment.findUnique({
       where: { id: scope.environmentId },
       select: {
@@ -94,13 +107,54 @@ export class PlatosMCPTokenService {
       environment.project.id !== scope.projectId ||
       environment.project.organizationId !== scope.organizationId
     ) {
-      return null;
+      throw new MCPTokenForbiddenError();
+    }
+
+    const organizationMembership = await this.prisma.organizationMembership.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: environment.project.organizationId,
+          userId: scope.userId,
+        },
+      },
+      select: { id: true, role: true, deactivatedAt: true },
+    });
+    if (!organizationMembership || organizationMembership.deactivatedAt) {
+      throw new MCPTokenForbiddenError();
+    }
+    const projectMembership = await this.prisma.projectMembership.findUnique({
+      where: {
+        projectId_organizationMembershipId: {
+          projectId: environment.project.id,
+          organizationMembershipId: organizationMembership.id,
+        },
+      },
+      select: { role: true },
+    });
+    const organizationAdmin =
+      organizationMembership.role === OrganizationRole.OWNER ||
+      organizationMembership.role === OrganizationRole.ADMIN;
+    if (access === "read" && !projectMembership) throw new MCPTokenForbiddenError();
+    if (
+      access === "mutate" &&
+      !organizationAdmin &&
+      projectMembership?.role !== ProjectRole.ADMIN
+    ) {
+      throw new MCPTokenForbiddenError();
     }
     return {
       organizationId: environment.project.organizationId,
       projectId: environment.project.id,
       environmentId: environment.id,
+      organizationRole: organizationMembership.role,
+      projectRole: projectMembership?.role ?? null,
     };
+  }
+
+  async authorizeMetadataAccess(
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId" | "userId">,
+  ): Promise<void> {
+    await this.authorizeScope(scope, "read");
   }
 
   /** Generate a token and return its raw bearer once. */
@@ -117,46 +171,45 @@ export class PlatosMCPTokenService {
       throw new Error("ttlSeconds must be a positive number");
     }
 
-    const canonical = await this.resolveScope(input.scope);
-    if (!canonical) throw new Error("Environment not found in scope");
+    const canonical = await this.authorizeScope(input.scope, "mutate");
 
     const tier = normalizeTier(input.tier);
-    if (tier === "admin") {
-      const membership = await this.prisma.organizationMembership.findFirst({
-        where: {
-          organizationId: canonical.organizationId,
-          userId: input.scope.userId,
-          deactivatedAt: null,
-          role: { in: ["OWNER", "ADMIN"] },
-        },
-        select: { id: true },
-      });
-      if (!membership) {
-        throw new AdminMintForbiddenError(input.scope.userId, canonical.organizationId);
-      }
-    }
 
     const raw = `${TOKEN_PREFIX}${crypto.randomBytes(32).toString("base64url")}`;
     const tokenHash = this.hashToken(raw);
     const expiresAt = new Date(Date.now() + ttl * 1000);
-    const row = await this.prisma.mcpToken.create({
-      data: {
-        environmentId: canonical.environmentId,
-        mintedByUserId: input.scope.userId,
-        name: input.name,
-        tokenHash,
-        permissions: input.permissions,
-        tier,
-        expiresAt,
-      },
-      select: {
-        id: true,
-        name: true,
-        permissions: true,
-        tier: true,
-        expiresAt: true,
-        createdAt: true,
-      },
+    const row = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.mcpToken.create({
+        data: {
+          environmentId: canonical.environmentId,
+          mintedByUserId: input.scope.userId,
+          name: input.name,
+          tokenHash,
+          permissions: input.permissions,
+          tier,
+          expiresAt,
+        },
+        select: {
+          id: true,
+          name: true,
+          permissions: true,
+          tier: true,
+          expiresAt: true,
+          createdAt: true,
+        },
+      });
+      await tx.tokenLifecycleAudit.create({
+        data: {
+          family: TokenFamily.MCP_TOKEN,
+          mcpTokenId: created.id,
+          scopeKind: AuthorizationScopeKind.ENVIRONMENT,
+          environmentId: canonical.environmentId,
+          actorUserId: input.scope.userId,
+          action: TokenLifecycleAction.MINT,
+          outcome: TokenLifecycleOutcome.SUCCESS,
+        },
+      });
+      return created;
     });
 
     return {
@@ -197,15 +250,30 @@ export class PlatosMCPTokenService {
     if (!row || !constantTimeHexEqual(row.tokenHash, tokenHash) || row.revokedAt) return null;
     if (row.expiresAt && row.expiresAt.getTime() <= Date.now()) return null;
 
-    const updated = await this.prisma.mcpToken.updateMany({
-      where: {
-        id: row.id,
-        revokedAt: null,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      data: { lastUsedAt: new Date() },
+    const recorded = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.mcpToken.updateMany({
+        where: {
+          id: row.id,
+          revokedAt: null,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        data: { lastUsedAt: new Date() },
+      });
+      if (updated.count !== 1) return false;
+      await tx.tokenLifecycleAudit.create({
+        data: {
+          family: TokenFamily.MCP_TOKEN,
+          mcpTokenId: row.id,
+          scopeKind: AuthorizationScopeKind.ENVIRONMENT,
+          environmentId: row.environment.id,
+          actorUserId: row.mintedByUserId,
+          action: TokenLifecycleAction.USE,
+          outcome: TokenLifecycleOutcome.SUCCESS,
+        },
+      });
+      return true;
     });
-    if (updated.count !== 1) return null;
+    if (!recorded) return null;
 
     return {
       id: row.id,
@@ -222,7 +290,7 @@ export class PlatosMCPTokenService {
   }
 
   /** List redacted token metadata for a canonically resolved Environment. */
-  async list(scope: ScopeTuple): Promise<
+  async list(scope: ScopeTuple & Pick<RequestScope, "userId">): Promise<
     Array<{
       id: string;
       name: string;
@@ -235,8 +303,7 @@ export class PlatosMCPTokenService {
       createdAt: Date;
     }>
   > {
-    const canonical = await this.resolveScope(scope);
-    if (!canonical) return [];
+    const canonical = await this.authorizeScope(scope, "read");
     const rows = await this.prisma.mcpToken.findMany({
       where: { environmentId: canonical.environmentId },
       orderBy: { createdAt: "desc" },
@@ -270,8 +337,7 @@ export class PlatosMCPTokenService {
     id: string,
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId" | "userId">,
   ): Promise<boolean> {
-    const canonical = await this.resolveScope(scope);
-    if (!canonical) return false;
+    const canonical = await this.authorizeScope(scope, "mutate");
     const existing = await this.prisma.mcpToken.findFirst({
       where: { id, environmentId: canonical.environmentId },
       select: { id: true, revokedAt: true },
@@ -279,9 +345,23 @@ export class PlatosMCPTokenService {
     if (!existing) return false;
     if (existing.revokedAt) return true;
 
-    await this.prisma.mcpToken.updateMany({
-      where: { id, environmentId: canonical.environmentId, revokedAt: null },
-      data: { revokedAt: new Date(), revokedBy: scope.userId },
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.mcpToken.updateMany({
+        where: { id, environmentId: canonical.environmentId, revokedAt: null },
+        data: { revokedAt: new Date(), revokedBy: scope.userId },
+      });
+      if (updated.count !== 1) return;
+      await tx.tokenLifecycleAudit.create({
+        data: {
+          family: TokenFamily.MCP_TOKEN,
+          mcpTokenId: id,
+          scopeKind: AuthorizationScopeKind.ENVIRONMENT,
+          environmentId: canonical.environmentId,
+          actorUserId: scope.userId,
+          action: TokenLifecycleAction.REVOKE,
+          outcome: TokenLifecycleOutcome.SUCCESS,
+        },
+      });
     });
     return true;
   }

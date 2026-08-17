@@ -338,9 +338,6 @@ importers:
       '@depot/cli':
         specifier: 0.0.1-cli.2.80.0
         version: 0.0.1-cli.2.80.0
-      '@depot/sdk-node':
-        specifier: ^1.0.0
-        version: 1.0.0
       '@electric-sql/react':
         specifier: ^0.3.5
         version: 0.3.5(react@18.3.1)
@@ -362,9 +359,6 @@ importers:
       '@internal/docs':
         specifier: workspace:*
         version: link:../../internal-packages/docs
-      '@internal/llm-model-catalog':
-        specifier: workspace:*
-        version: link:../../internal-packages/llm-model-catalog
       '@internal/redis':
         specifier: workspace:*
         version: link:../../internal-packages/redis
@@ -563,9 +557,6 @@ importers:
       '@trigger.dev/companyicons':
         specifier: ^1.5.35
         version: 1.5.35(react-dom@18.2.0(react@18.3.1))(react@18.3.1)
-      '@trigger.dev/platform':
-        specifier: 1.0.27
-        version: 1.0.27
       '@types/pg':
         specifier: 8.6.6
         version: 8.6.6
@@ -1216,22 +1207,6 @@ importers:
       '@types/react':
         specifier: 18.2.69
         version: 18.2.69
-
-  internal-packages/llm-model-catalog:
-    dependencies:
-      '@platos/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@platos/database':
-        specifier: workspace:*
-        version: link:../database
-    devDependencies:
-      '@internal/testcontainers':
-        specifier: workspace:*
-        version: link:../testcontainers
-      vitest:
-        specifier: 3.1.4
-        version: 3.1.4(@types/debug@4.1.12)(@types/node@20.14.14)(jsdom@28.1.0)(lightningcss@1.29.2)(terser@5.44.1)
 
   internal-packages/otlp-importer:
     dependencies:
@@ -2806,9 +2781,6 @@ packages:
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
     hasBin: true
 
-  '@bufbuild/protobuf@1.10.0':
-    resolution: {integrity: sha512-QDdVFLoN93Zjg36NoQPZfsVH9tZew7wKDKyV5qRdj8ntT4wQCOradQjRaTdwMhWUYsgKsvCINKKm87FdEk96Ag==}
-
   '@bufbuild/protobuf@2.11.0':
     resolution: {integrity: sha512-sBXGT13cpmPR5BMgHE6UEEfEaShh5Ror6rfN3yEK5si7QVrtZg8LEPQb0VVhiLRUslD2yLnXtnRzG035J/mZXQ==}
 
@@ -2973,23 +2945,11 @@ packages:
       '@conform-to/dom': 0.9.2
       zod: ^3.21.0
 
-  '@connectrpc/connect-node@1.4.0':
-    resolution: {integrity: sha512-0ANnrr6SvsjevsWEgdzHy7BaHkluZyS6s4xNoVt7RBHFR5V/kT9lPokoIbYUOU9JHzdRgTaS3x5595mwUsu15g==}
-    engines: {node: '>=16.0.0'}
-    peerDependencies:
-      '@bufbuild/protobuf': ^1.4.2
-      '@connectrpc/connect': 1.4.0
-
   '@connectrpc/connect-web@2.0.0-rc.3':
     resolution: {integrity: sha512-w88P8Lsn5CCsA7MFRl2e6oLY4J/5toiNtJns/YJrlyQaWOy3RO8pDgkz+iIkG98RPMhj2thuBvsd3Cn4DKKCkw==}
     peerDependencies:
       '@bufbuild/protobuf': ^2.2.0
       '@connectrpc/connect': 2.0.0-rc.3
-
-  '@connectrpc/connect@1.4.0':
-    resolution: {integrity: sha512-vZeOkKaAjyV4+RH3+rJZIfDFJAfr+7fyYr6sLDKbYX3uuTVszhFe9/YKf5DNqrDb5cKdKVlYkGn6DTDqMitAnA==}
-    peerDependencies:
-      '@bufbuild/protobuf': ^1.4.2
 
   '@connectrpc/connect@2.0.0-rc.3':
     resolution: {integrity: sha512-ARBt64yEyKbanyRETTjcjJuHr2YXorzQo0etyS5+P6oSeW8xEuzajA9g+zDnMcj1hlX2dQE93foIWQGfpru7gQ==}
@@ -3093,9 +3053,6 @@ packages:
     resolution: {integrity: sha512-KvmOiQdpbamFziqnzzgqBm6RjfGhLJimBBYEOVriTxCPtVJuBIFm34xZllM36OQzPZIWpWBP+2/UnOyRG5smUg==}
     engines: {node: '>=14'}
     hasBin: true
-
-  '@depot/sdk-node@1.0.0':
-    resolution: {integrity: sha512-zq1xqesqGhp58Rh0bTXhsjoC8X+L+LwZABLlQh7Rm45770nGtAABa3GtU1n/776YTMI1gIAhzc++Jxae3H0J4w==}
 
   '@discordjs/builders@1.14.1':
     resolution: {integrity: sha512-gSKkhXLqs96TCzk66VZuHHl8z2bQMJFGwrXC0f33ngK+FLNau4hU1PYny3DNJfNdSH+gVMzE85/d5FQ2BpcNwQ==}
@@ -8177,9 +8134,6 @@ packages:
   '@trigger.dev/core@4.5.4':
     resolution: {integrity: sha512-+PqaL5ltwu523EYummK4spG76VeAD+GtoGCbjzGGD1A54EOFmamgfTKg25sgoWVpd2hyp1xno5gQrsjcpvH0IQ==}
     engines: {node: '>=18.20.0'}
-
-  '@trigger.dev/platform@1.0.27':
-    resolution: {integrity: sha512-gYfYDBnp2RJpgL4V2oOeqzV20flMZg+oGALhxHmmNJdJM01MW4aJSLsFFjoj+dikpL+4/3gocJcoyZk1G02UNg==}
 
   '@trigger.dev/sdk@4.5.4':
     resolution: {integrity: sha512-Sig0/OdS6bAdpagJve2GNnvDX0139EjbMPePX0FaVwa2RjU0ff3f/y/LBunS/+rTVanK0xQ2E2RmdbYJasz66g==}
@@ -18775,8 +18729,6 @@ snapshots:
     dependencies:
       css-tree: 3.2.1
 
-  '@bufbuild/protobuf@1.10.0': {}
-
   '@bufbuild/protobuf@2.11.0': {}
 
   '@bugsnag/cuid@3.1.1': {}
@@ -19115,20 +19067,10 @@ snapshots:
       '@conform-to/dom': 0.9.2
       zod: 3.25.76
 
-  '@connectrpc/connect-node@1.4.0(@bufbuild/protobuf@1.10.0)(@connectrpc/connect@1.4.0(@bufbuild/protobuf@1.10.0))':
-    dependencies:
-      '@bufbuild/protobuf': 1.10.0
-      '@connectrpc/connect': 1.4.0(@bufbuild/protobuf@1.10.0)
-      undici: 5.29.0
-
   '@connectrpc/connect-web@2.0.0-rc.3(@bufbuild/protobuf@2.11.0)(@connectrpc/connect@2.0.0-rc.3(@bufbuild/protobuf@2.11.0))':
     dependencies:
       '@bufbuild/protobuf': 2.11.0
       '@connectrpc/connect': 2.0.0-rc.3(@bufbuild/protobuf@2.11.0)
-
-  '@connectrpc/connect@1.4.0(@bufbuild/protobuf@1.10.0)':
-    dependencies:
-      '@bufbuild/protobuf': 1.10.0
 
   '@connectrpc/connect@2.0.0-rc.3(@bufbuild/protobuf@2.11.0)':
     dependencies:
@@ -19198,12 +19140,6 @@ snapshots:
       '@depot/cli-win32-arm64': 0.0.1-cli.2.80.0
       '@depot/cli-win32-ia32': 0.0.1-cli.2.80.0
       '@depot/cli-win32-x64': 0.0.1-cli.2.80.0
-
-  '@depot/sdk-node@1.0.0':
-    dependencies:
-      '@bufbuild/protobuf': 1.10.0
-      '@connectrpc/connect': 1.4.0(@bufbuild/protobuf@1.10.0)
-      '@connectrpc/connect-node': 1.4.0(@bufbuild/protobuf@1.10.0)(@connectrpc/connect@1.4.0(@bufbuild/protobuf@1.10.0))
 
   '@discordjs/builders@1.14.1':
     dependencies:
@@ -25025,10 +24961,6 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
-
-  '@trigger.dev/platform@1.0.27':
-    dependencies:
-      zod: 3.23.8
 
   '@trigger.dev/sdk@4.5.4(ai@7.0.28(zod@3.25.76))(bufferutil@4.0.9)(react@18.3.1)(zod@3.25.76)':
     dependencies:

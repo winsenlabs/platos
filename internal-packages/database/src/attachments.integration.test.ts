@@ -6,6 +6,7 @@ import {
   AgentVersionBucket,
   OrganizationRole,
   PrismaClient,
+  ProjectRole,
 } from "../generated/control";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import {
@@ -13,6 +14,7 @@ import {
   AttachmentQuotaExceededError,
   attachmentUploadRetention,
   claimAttachmentUpload,
+  reconcileAttachmentUploadBytes,
   reserveAttachmentUpload,
   sweepExpiredAttachmentUploadReservations,
 } from "./attachments";
@@ -57,7 +59,7 @@ describe("attachment upload reservation integration", () => {
     const organization = await client.organization.create({
       data: { slug: `${label}-${randomUUID()}`, name: label },
     });
-    await client.organizationMembership.create({
+    const organizationMembership = await client.organizationMembership.create({
       data: {
         organizationId: organization.id,
         userId: user.id,
@@ -66,6 +68,14 @@ describe("attachment upload reservation integration", () => {
     });
     const project = await client.project.create({
       data: { organizationId: organization.id, slug: "project", name: "Project" },
+    });
+    await client.projectMembership.create({
+      data: {
+        projectId: project.id,
+        organizationId: organization.id,
+        organizationMembershipId: organizationMembership.id,
+        role: ProjectRole.ADMIN,
+      },
     });
     const environment = await client.environment.create({
       data: { projectId: project.id, slug: "production", name: "Production" },
@@ -329,5 +339,107 @@ describe("attachment upload reservation integration", () => {
         expiresAt: attachment.expiresAt!,
       },
     })).rejects.toThrow();
+  });
+
+  test("corrects unclaimed bytes only through the quota-locked helper", async () => {
+    const scope = await seedScope("correct-unclaimed");
+    const reservation = await reserveAttachmentUpload(client, {
+      environmentId: scope.environment.id,
+      uploader: { userId: scope.user.id },
+      kind: "document",
+      mimeType: "text/plain",
+      bytes: 2,
+      storageKey: `correct-unclaimed/${randomUUID()}`,
+      quotaBytes: 10,
+    });
+
+    await expect(client.attachmentUploadReservation.update({
+      where: { id: reservation.id },
+      data: { bytes: 3 },
+    })).rejects.toThrow(/immutable/);
+
+    await expect(reconcileAttachmentUploadBytes(client, {
+      reservationId: reservation.id,
+      environmentId: scope.environment.id,
+      storageKey: reservation.storageKey,
+      claimedBytes: 2,
+      actualBytes: 3,
+      quotaBytes: 10,
+    })).resolves.toEqual({ claimedBytes: 2, actualBytes: 3, corrected: true });
+    await expect(client.attachmentUploadReservation.findUnique({ where: { id: reservation.id } }))
+      .resolves.toMatchObject({ bytes: 3, storageKey: reservation.storageKey });
+  });
+
+  test("atomically corrects a claimed reservation and its immutable attachment", async () => {
+    const scope = await seedScope("correct-claimed");
+    const reservation = await reserveAttachmentUpload(client, {
+      environmentId: scope.environment.id,
+      uploader: { userId: scope.user.id },
+      kind: "document",
+      mimeType: "text/plain",
+      bytes: 4,
+      storageKey: `correct-claimed/${randomUUID()}`,
+      quotaBytes: 10,
+    });
+    const attachment = await claimAttachmentUpload(client, {
+      reservationId: reservation.id,
+      environmentId: scope.environment.id,
+      turnId: scope.firstTurn.id,
+    });
+
+    await expect(client.messageAttachment.update({
+      where: { id: attachment.id },
+      data: { bytes: 5 },
+    })).rejects.toThrow(/immutable/);
+    await expect(reconcileAttachmentUploadBytes(client, {
+      reservationId: reservation.id,
+      environmentId: scope.environment.id,
+      storageKey: reservation.storageKey,
+      claimedBytes: 4,
+      actualBytes: 5,
+      quotaBytes: 10,
+    })).resolves.toEqual({ claimedBytes: 4, actualBytes: 5, corrected: true });
+
+    const [storedReservation, storedAttachment] = await Promise.all([
+      client.attachmentUploadReservation.findUniqueOrThrow({ where: { id: reservation.id } }),
+      client.messageAttachment.findUniqueOrThrow({ where: { id: attachment.id } }),
+    ]);
+    expect(storedReservation.bytes).toBe(5);
+    expect(storedAttachment.bytes).toBe(5);
+    expect(storedReservation.storageKey).toBe(reservation.storageKey);
+    expect(storedAttachment.storageKey).toBe(reservation.storageKey);
+  });
+
+  test("rejects byte correction that would exceed canonical organization quota", async () => {
+    const scope = await seedScope("correct-quota");
+    const reservation = await reserveAttachmentUpload(client, {
+      environmentId: scope.environment.id,
+      uploader: { userId: scope.user.id },
+      kind: "document",
+      mimeType: "text/plain",
+      bytes: 8,
+      storageKey: `correct-quota/${randomUUID()}`,
+      quotaBytes: 10,
+    });
+    await reserveAttachmentUpload(client, {
+      environmentId: scope.environment.id,
+      uploader: { userId: scope.user.id },
+      kind: "document",
+      mimeType: "text/plain",
+      bytes: 2,
+      storageKey: `correct-quota/${randomUUID()}`,
+      quotaBytes: 10,
+    });
+
+    await expect(reconcileAttachmentUploadBytes(client, {
+      reservationId: reservation.id,
+      environmentId: scope.environment.id,
+      storageKey: reservation.storageKey,
+      claimedBytes: 8,
+      actualBytes: 9,
+      quotaBytes: 10,
+    })).rejects.toThrow(/quota exceeded/i);
+    await expect(client.attachmentUploadReservation.findUnique({ where: { id: reservation.id } }))
+      .resolves.toMatchObject({ bytes: 8 });
   });
 });

@@ -1,13 +1,9 @@
-import {
-  CheckBadgeIcon,
-  IdentificationIcon,
-  UsersIcon,
-} from "@heroicons/react/20/solid";
+import { CheckBadgeIcon, IdentificationIcon, UsersIcon } from "@heroicons/react/20/solid";
 import { type MetaFunction } from "@remix-run/react";
 import { type LoaderFunctionArgs } from "@remix-run/server-runtime";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import { PageBody, PageContainer } from "~/components/layout/AppLayout";
-import { Badge } from "~/components/primitives/Badge";
+import { Callout } from "~/components/primitives/Callout";
 import { NavBar, PageAccessories, PageTitle } from "~/components/primitives/PageHeader";
 import { DocsLink } from "~/components/primitives/DocsLink";
 import { Paragraph } from "~/components/primitives/Paragraph";
@@ -27,14 +23,9 @@ import { EnvironmentParamSchema } from "~/utils/pathBuilder";
 
 export const meta: MetaFunction = () => [{ title: "Connected Accounts | Platos" }];
 
-// UNIT D (MCP consumption / Surface 4) — read-only per-user connected-accounts
-// view. Lists the PlatosEndUsers in this scope with their adopted
-// `linkedExternalId` (the Composio user_id, preferred as {{endUserId}}) and
-// their verified channel identities (email/slack/…). The actual binding
-// happens via Walle's finish-setup flow — this page is operator visibility
-// only, so there is no action(). Queries Prisma directly (mirrors the
-// toolMappings query in agent-entities._index), which keeps the page working
-// even when the agent service is down.
+// Read-only operator view over canonical, organization-owned EndUsers that
+// have activity in this Environment. Environment membership is derived through
+// Thread rather than copied onto the person or identity rows.
 const MAX_ACCOUNTS = 200;
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -58,66 +49,73 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   type AccountRow = {
     id: string;
-    externalUserId: string;
-    linkedExternalId: string | null;
     displayName: string | null;
     email: string | null;
     threadCount: number;
-    lastActiveAt: string;
+    lastActiveAt: string | null;
     identities: Array<{
       id: string;
       channel: string;
       handle: string;
       verified: boolean;
-      sourceEntityId: string | null;
     }>;
   };
 
   let accounts: AccountRow[] = [];
+  let accountsAvailable = true;
   try {
-    const rows = await prisma.platosEndUser.findMany({
+    const rows = await prisma.endUser.findMany({
       where: {
         organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        disabledAt: null,
+        threads: { some: { environmentId: scope.environmentId } },
       },
-      orderBy: { lastActiveAt: "desc" },
+      orderBy: { updatedAt: "desc" },
       take: MAX_ACCOUNTS,
       select: {
         id: true,
-        externalUserId: true,
-        linkedExternalId: true,
         displayName: true,
-        email: true,
-        threadCount: true,
-        lastActiveAt: true,
         identities: {
+          where: { disabledAt: null },
           select: {
             id: true,
             channel: true,
-            handle: true,
-            verified: true,
-            sourceEntityId: true,
+            subject: true,
+            verifiedAt: true,
           },
-          orderBy: [{ verified: "desc" }, { channel: "asc" }],
+          orderBy: [{ verifiedAt: "desc" }, { channel: "asc" }],
+        },
+        threads: {
+          where: { environmentId: scope.environmentId },
+          orderBy: { updatedAt: "desc" },
+          take: 1,
+          select: { updatedAt: true },
+        },
+        _count: {
+          select: {
+            threads: { where: { environmentId: scope.environmentId } },
+          },
         },
       },
     });
     accounts = rows.map((r) => ({
       id: r.id,
-      externalUserId: r.externalUserId,
-      linkedExternalId: r.linkedExternalId,
       displayName: r.displayName,
-      email: r.email,
-      threadCount: r.threadCount,
-      lastActiveAt: r.lastActiveAt.toISOString(),
-      identities: r.identities,
+      email: r.identities.find((identity) => identity.channel === "email")?.subject ?? null,
+      threadCount: r._count.threads,
+      lastActiveAt: r.threads[0]?.updatedAt.toISOString() ?? null,
+      identities: r.identities.map((identity) => ({
+        id: identity.id,
+        channel: identity.channel,
+        handle: identity.subject,
+        verified: identity.verifiedAt !== null,
+      })),
     }));
   } catch {
-    // DB temporarily unavailable — render the empty state rather than 500.
+    accountsAvailable = false;
   }
 
-  return typedjson({ accounts });
+  return typedjson({ accounts, accountsAvailable });
 }
 
 // UNIT D — per-channel colour so the identity badges read at a glance. Falls
@@ -139,22 +137,23 @@ function IdentityBadge({
   identity: { channel: string; handle: string; verified: boolean };
 }) {
   const cls =
-    CHANNEL_COLORS[identity.channel] ??
-    "border-charcoal-600 bg-charcoal-800 text-text-dimmed";
+    CHANNEL_COLORS[identity.channel] ?? "border-charcoal-600 bg-charcoal-800 text-text-dimmed";
   return (
     <span
       className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs ${cls}`}
-      title={`${identity.channel}: ${identity.handle}${identity.verified ? " (verified)" : " (unverified)"}`}
+      title={`${identity.channel}: ${identity.handle}${
+        identity.verified ? " (verified)" : " (unverified)"
+      }`}
     >
       {identity.verified && <CheckBadgeIcon className="size-3" />}
       <span className="font-medium">{identity.channel}</span>
-      <span className="opacity-70 font-mono truncate max-w-[160px]">{identity.handle}</span>
+      <span className="max-w-[160px] truncate font-mono opacity-70">{identity.handle}</span>
     </span>
   );
 }
 
 export default function AgentAccountsPage() {
-  const { accounts } = useTypedLoaderData<typeof loader>();
+  const { accounts, accountsAvailable } = useTypedLoaderData<typeof loader>();
 
   return (
     <PageContainer>
@@ -169,19 +168,22 @@ export default function AgentAccountsPage() {
       </NavBar>
       <PageBody>
         <Paragraph variant="small" className="mb-4 max-w-3xl">
-          End-users seen in this environment, with their adopted external id
-          (the Composio <span className="font-mono">user_id</span>, preferred as{" "}
-          <code className="font-mono text-xs">{"{{endUserId}}"}</code> when set)
-          and their linked channel identities. Binding happens automatically via
-          the entity's finish-setup flow — this view is read-only.
+          Canonical end-users with thread activity in this environment. Identity records are
+          organization-owned and shown here read-only; activity and counts remain scoped to the
+          selected environment.
         </Paragraph>
 
-        {accounts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
+        {!accountsAvailable ? (
+          <Callout variant="warning">
+            Connected accounts are temporarily unavailable. Your selected scope is unchanged; try
+            again when the database is reachable.
+          </Callout>
+        ) : accounts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-20">
             <IdentificationIcon className="size-12 text-charcoal-500" />
-            <Paragraph variant="base/bright" className="text-center max-w-md">
-              No connected accounts yet. End-users appear here after their first
-              conversation or identity assertion in this environment.
+            <Paragraph variant="base/bright" className="max-w-md text-center">
+              No connected accounts yet. End-users appear here after their first conversation or
+              identity assertion in this environment.
             </Paragraph>
           </div>
         ) : (
@@ -189,7 +191,7 @@ export default function AgentAccountsPage() {
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>User</TableHeaderCell>
-                <TableHeaderCell>Linked external id</TableHeaderCell>
+                <TableHeaderCell>Account ID</TableHeaderCell>
                 <TableHeaderCell>Identities</TableHeaderCell>
                 <TableHeaderCell>Threads</TableHeaderCell>
                 <TableHeaderCell>Last active</TableHeaderCell>
@@ -205,30 +207,20 @@ export default function AgentAccountsPage() {
                           {a.displayName}
                         </span>
                       )}
-                      {a.email && (
-                        <span className="text-xs text-emerald-400">{a.email}</span>
-                      )}
-                      <span className="text-xs text-text-dimmed font-mono truncate max-w-[220px]">
-                        {a.externalUserId}
+                      {a.email && <span className="text-xs text-emerald-400">{a.email}</span>}
+                      <span className="max-w-[220px] truncate font-mono text-xs text-text-dimmed">
+                        {a.id}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    {a.linkedExternalId ? (
-                      <span className="text-xs font-mono text-text-bright break-all">
-                        {a.linkedExternalId}
-                      </span>
-                    ) : (
-                      <Badge variant="small" className="border-charcoal-600 bg-charcoal-800 text-text-dimmed">
-                        not adopted
-                      </Badge>
-                    )}
+                    <span className="break-all font-mono text-xs text-text-bright">{a.id}</span>
                   </TableCell>
                   <TableCell>
                     {a.identities.length === 0 ? (
-                      <span className="text-text-dimmed text-xs">—</span>
+                      <span className="text-xs text-text-dimmed">—</span>
                     ) : (
-                      <div className="flex flex-wrap gap-1 max-w-[380px]">
+                      <div className="flex max-w-[380px] flex-wrap gap-1">
                         {a.identities.map((idn) => (
                           <IdentityBadge key={idn.id} identity={idn} />
                         ))}
@@ -236,11 +228,13 @@ export default function AgentAccountsPage() {
                     )}
                   </TableCell>
                   <TableCell>{a.threadCount}</TableCell>
-                  <TableCell className="text-text-dimmed text-xs whitespace-nowrap">
-                    {new Date(a.lastActiveAt).toLocaleString(undefined, {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
+                  <TableCell className="whitespace-nowrap text-xs text-text-dimmed">
+                    {a.lastActiveAt
+                      ? new Date(a.lastActiveAt).toLocaleString(undefined, {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })
+                      : "—"}
                   </TableCell>
                 </TableRow>
               ))}

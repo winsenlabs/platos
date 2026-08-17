@@ -13,7 +13,8 @@
  * <context> wrapper in the user message each turn, keeping the system prompt
  * fully static and Anthropic-cacheable.
  *
- * Persistence: contextMapping + dynamicBlocks saved directly via Prisma.
+ * Persistence: contextMapping + dynamicBlocks are versioned through the
+ * scoped agent API. AgentVersion.systemPrompt is left unchanged.
  */
 
 import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
@@ -23,22 +24,41 @@ import { type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/ser
 import { useMemo, useState } from "react";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import { z } from "zod";
-import { Prisma } from "@platos/database";
-import { prisma } from "~/db.server";
 import { PageBody } from "~/components/layout/AppLayout";
 import { Badge } from "~/components/primitives/Badge";
 import { Button } from "~/components/primitives/Buttons";
+import { Callout } from "~/components/primitives/Callout";
 import { Header3 } from "~/components/primitives/Headers";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { DynamicBlocksEditor } from "~/components/agents/DynamicBlocksEditor";
 import { findProjectBySlug } from "~/models/project.server";
 import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
+import { getAgent, isAgentServiceAvailable } from "~/services/platosAgent.server";
 import { EnvironmentParamSchema } from "~/utils/pathBuilder";
 
 export const meta: MetaFunction = () => [{ title: "Context | Platos" }];
 
 const ParamSchema = EnvironmentParamSchema.extend({ agentId: z.string() });
+
+function isAgentNotFoundError(error: unknown) {
+  return error instanceof Error && error.message.includes("Platos Agent API error: 404");
+}
+
+function scopeHeaders(scope: {
+  organizationId: string;
+  projectId: string;
+  environmentId: string;
+  userId: string;
+}) {
+  return {
+    "Content-Type": "application/json",
+    "X-Platos-Organization-Id": scope.organizationId,
+    "X-Platos-Project-Id": scope.projectId,
+    "X-Platos-Environment-Id": scope.environmentId,
+    "X-Platos-User-Id": scope.userId,
+  };
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -87,24 +107,36 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404, statusText: "Environment not found" });
 
-  const agentRow = await prisma.platosAgent.findFirst({
-    where: {
-      id: agentId,
-      organizationId: project.organizationId,
-      projectId: project.id,
-      environmentId: environment.id,
-    },
-    select: { contextMapping: true, dynamicBlocks: true, name: true },
-  });
+  const scope = {
+    organizationId: project.organizationId,
+    projectId: project.id,
+    environmentId: environment.id,
+    userId,
+  };
+
+  let agent: any = null;
+  let agentServiceAvailable = false;
+  let agentFound = true;
+  if (await isAgentServiceAvailable()) {
+    try {
+      agent = await getAgent(agentId, scope);
+      agentServiceAvailable = true;
+    } catch (error) {
+      agentFound = !isAgentNotFoundError(error);
+    }
+  }
 
   return typedjson({
-    agentName: agentRow?.name ?? agentId,
-    contextMapping: (agentRow?.contextMapping as ContextMapping | null) ?? null,
-    dynamicBlocks: asBlockArray(agentRow?.dynamicBlocks),
+    agentName: agent?.name ?? agentId,
+    contextMapping: (agent?.contextMapping as ContextMapping | null) ?? null,
+    dynamicBlocks: asBlockArray(agent?.dynamicBlocks),
+    agentServiceAvailable,
+    agentFound,
     scope: {
       organizationId: project.organizationId,
       projectId: project.id,
       environmentId: environment.id,
+      userId,
     },
   });
 }
@@ -119,6 +151,28 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (!project) throw new Response(undefined, { status: 404, statusText: "Project not found" });
   const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404, statusText: "Environment not found" });
+
+  const scope = {
+    organizationId: project.organizationId,
+    projectId: project.id,
+    environmentId: environment.id,
+    userId,
+  };
+  if (!(await isAgentServiceAvailable())) {
+    return typedjson({ error: "Agent service unavailable for the selected scope" }, { status: 503 });
+  }
+  try {
+    await getAgent(agentId, scope);
+  } catch (error) {
+    return typedjson(
+      {
+        error: isAgentNotFoundError(error)
+          ? "Agent unavailable in the selected scope"
+          : "Agent service unavailable for the selected scope",
+      },
+      { status: isAgentNotFoundError(error) ? 404 : 503 },
+    );
+  }
 
   const formData = await request.formData();
 
@@ -171,30 +225,31 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const isEmpty = !mapping.promptVars && !mapping.envelopeKeys && !mapping.entityIdsKey && !mapping.toolArgInjection;
 
   try {
-    const result = await prisma.platosAgent.updateMany({
-      where: {
-        id: agentId,
-        organizationId: project.organizationId,
-        projectId: project.id,
-        environmentId: environment.id,
-      },
-      data: {
-        contextMapping: isEmpty ? Prisma.JsonNull : (mapping as unknown as Prisma.InputJsonValue),
-        dynamicBlocks: dynamicBlocks.length > 0
-          ? (dynamicBlocks as unknown as Prisma.InputJsonValue)
-          : Prisma.JsonNull,
-      },
+    const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
+    const result = await fetch(`${AGENT_API_URL}/api/v1/agent/agents/${agentId}`, {
+      method: "PATCH",
+      headers: scopeHeaders(scope),
+      body: JSON.stringify({
+        contextMapping: isEmpty ? null : mapping,
+        dynamicBlocks,
+      }),
+      signal: AbortSignal.timeout(10000),
     });
-    if (result.count === 0) {
-      return typedjson({ error: "Agent not found in this scope" }, { status: 404 });
+    if (!result.ok) {
+      return typedjson(
+        {
+          error:
+            result.status === 404
+              ? "Agent unavailable in the selected scope"
+              : "Context save unavailable",
+        },
+        { status: result.status === 404 ? 404 : 503 },
+      );
     }
     void telemetry.platos.agentUpdated({ organizationId: project.organizationId, agentId, field: "contextMapping" });
     return typedjson({ success: true, contextMapping: mapping });
-  } catch (err) {
-    return typedjson(
-      { error: `Save failed: ${err instanceof Error ? err.message : "unknown"}` },
-      { status: 500 },
-    );
+  } catch {
+    return typedjson({ error: "Context save unavailable" }, { status: 503 });
   }
 }
 
@@ -226,7 +281,12 @@ function SectionCard({
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AgentContextTab() {
-  const { contextMapping, dynamicBlocks: savedBlocks } = useTypedLoaderData<typeof loader>();
+  const {
+    contextMapping,
+    dynamicBlocks: savedBlocks,
+    agentServiceAvailable,
+    agentFound,
+  } = useTypedLoaderData<typeof loader>();
   const ctxFetcher = useFetcher<{ success?: boolean; error?: string }>();
   const isSaving = ctxFetcher.state !== "idle";
 
@@ -300,10 +360,19 @@ export default function AgentContextTab() {
 
   return (
     <PageBody>
+      {!agentServiceAvailable && (
+        <Callout variant={agentFound ? "warning" : "error"} className="mb-4 max-w-3xl">
+          {agentFound
+            ? "Agent context is temporarily unavailable. Your selected scope is unchanged; try again when the agent service is reachable."
+            : "Agent unavailable in the selected scope."}
+        </Callout>
+      )}
+      {agentServiceAvailable && (
+        <>
       {/* Sticky save bar */}
       <div className="sticky top-0 z-10 flex items-center justify-between bg-background-bright border-b border-charcoal-700 px-2 py-2 -mx-3 -mt-3 mb-4">
         <span className="text-xs text-text-dimmed">
-          Context mapping — how session data flows into prompts and tool calls
+          Context mapping — how session data flows into agent instructions and tool calls
         </span>
         <div className="flex items-center gap-3">
           {ctxFetcher.data?.success && (
@@ -564,6 +633,8 @@ export default function AgentContextTab() {
         </SectionCard>
 
       </div>
+        </>
+      )}
     </PageBody>
   );
 }

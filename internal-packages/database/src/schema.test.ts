@@ -25,7 +25,15 @@ const uploadReservationMigration = readFileSync(
   resolve(packageRoot, "prisma/migrations/20260817000000_add_upload_reservations/migration.sql"),
   "utf8"
 );
-const migration = `${initialMigration}\n${uploadReservationMigration}`;
+const tokenLifecycleAuditMigration = readFileSync(
+  resolve(packageRoot, "prisma/migrations/20260817010000_add_token_lifecycle_audit/migration.sql"),
+  "utf8"
+);
+const attachmentByteReconciliationMigration = readFileSync(
+  resolve(packageRoot, "prisma/migrations/20260817020000_add_attachment_byte_reconciliation/migration.sql"),
+  "utf8"
+);
+const migration = `${initialMigration}\n${uploadReservationMigration}\n${tokenLifecycleAuditMigration}\n${attachmentByteReconciliationMigration}`;
 
 const tenancyOnlyModels = [
   "User",
@@ -67,9 +75,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(80);
-    expect(domainModelNames).toHaveLength(63);
-    expect(new Set(domainModelNames).size).toBe(63);
+    expect(models).toHaveLength(81);
+    expect(domainModelNames).toHaveLength(64);
+    expect(new Set(domainModelNames).size).toBe(64);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");
@@ -143,6 +151,15 @@ describe("clean-slate domain schema", () => {
       Credential: ["environmentId", "activeSecretVersionId"],
       CredentialSecretVersion: ["credentialId", "secretRevision", "rootKeyVersion", "ciphertext"],
       CredentialAudit: ["environmentId", "credentialId", "action", "outcome", "actorType"],
+      TokenLifecycleAudit: [
+        "family",
+        "personalAccessTokenId",
+        "mcpTokenId",
+        "scopeKind",
+        "actorUserId",
+        "action",
+        "outcome",
+      ],
       McpToken: ["environmentId", "mintedByUserId", "permissions", "tier"],
       PersonalAccessToken: ["userId", "scopeKind", "organizationId", "projectId", "environmentId"],
       OAuthAuthorizationCode: ["clientId", "userId", "scopeKind", "organizationId", "projectId", "environmentId"],
@@ -180,12 +197,32 @@ describe("clean-slate domain schema", () => {
     expect(sourceModelManifest.find((entry) => entry.source === "PlatosMcpBearerToken")?.targets)
       .toEqual(["McpBearerToken"]);
     expect(migration).toContain('CONSTRAINT "PersonalAccessToken_scope_shape_check"');
+    expect(migration).toContain('CONSTRAINT "TokenLifecycleAudit_reference_shape_check"');
+    expect(migration).toContain('CONSTRAINT "TokenLifecycleAudit_scope_shape_check"');
+    expect(migration).toContain('CREATE TRIGGER "TokenLifecycleAudit_scope_match"');
+    expect(migration).toContain('CREATE TRIGGER "TokenLifecycleAudit_immutable_update"');
+    expect(migration).toContain('CREATE TRIGGER "TokenLifecycleAudit_immutable_delete"');
+    expect(migration).toContain('CREATE TRIGGER "TokenLifecycleAudit_immutable_truncate"');
+    expect(migration).toContain('REVOKE UPDATE, DELETE, TRUNCATE\nON TABLE "public"."TokenLifecycleAudit"');
+    expect([...fields("TokenLifecycleAudit")]).not.toEqual(
+      expect.arrayContaining(["token", "tokenHash", "ciphertext", "nonce", "authTag"])
+    );
     expect(migration).toContain('CONSTRAINT "OAuthRefreshToken_scope_shape_check"');
     expect(migration).toContain('CREATE UNIQUE INDEX "ProviderKey_one_default_per_environment_provider"');
     expect(migration).toContain('WHERE "isDefault" = TRUE');
     expect(migration).toContain('CREATE TRIGGER "ProviderKey_executable_reference"');
     expect(migration).toContain('CREATE TRIGGER "AttachmentUploadReservation_lifecycle"');
     expect(migration).toContain('CREATE TRIGGER "MessageAttachment_claimed_lifecycle"');
+    expect(migration).toContain('CREATE FUNCTION "public"."reconcile_attachment_upload_bytes"');
+    expect(attachmentByteReconciliationMigration).toContain("pg_advisory_xact_lock");
+    expect(attachmentByteReconciliationMigration).toContain(
+      "Attachment upload quota exceeded during byte reconciliation"
+    );
+    expect(attachmentByteReconciliationMigration).toContain(
+      'ON FUNCTION "public"."reconcile_attachment_upload_bytes"'
+    );
+    expect(attachmentByteReconciliationMigration).toContain("FROM PUBLIC");
+    expect(attachmentByteReconciliationMigration).not.toContain('SET "storageKey"');
     expect(fields("AttachmentUploadReservation").has("organizationId")).toBe(false);
     expect(fields("AttachmentUploadReservation").has("projectId")).toBe(false);
     expect(migration).toContain('version."memoryConfig" #>> \'{__runtime,providerKeyId}\'');
@@ -249,18 +286,22 @@ describe("clean-slate domain schema", () => {
     }
   });
 
-  test("preserves the clean initial migration and appends one sequential migration", () => {
+  test("preserves the clean initial migration and appends sequential migrations", () => {
     const migrationDirectories = readdirSync(resolve(packageRoot, "prisma/migrations"), {
       withFileTypes: true,
     }).filter((entry) => entry.isDirectory());
     expect(migrationDirectories.map((entry) => entry.name)).toEqual([
       "00000000000000_initial",
       "20260817000000_add_upload_reservations",
+      "20260817010000_add_token_lifecycle_audit",
+      "20260817020000_add_attachment_byte_reconciliation",
     ]);
     expect(createHash("sha256").update(initialMigration).digest("hex"))
       .toBe("ef1675ae7a79e3a426829892201a96c809cc2700a16426c24d69a14036dc383a");
     expect(uploadReservationMigration).toContain('CREATE TABLE "public"."AttachmentUploadReservation"');
     expect(uploadReservationMigration).not.toMatch(/"organizationId" UUID|"projectId" UUID/);
+    expect(tokenLifecycleAuditMigration).toContain('CREATE TABLE "public"."TokenLifecycleAudit"');
+    expect(tokenLifecycleAuditMigration).not.toMatch(/"token"|"tokenHash"|"ciphertext"|"authTag"/);
     expect(migration).toContain('CREATE FUNCTION "public"."enforce_domain_ancestry"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_canonical_owner_change"()');
     expect(migration).toContain('CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()');
@@ -304,6 +345,7 @@ describe("clean-slate domain schema", () => {
       "Entity",
       "Tool",
       "AdminAudit",
+      "TokenLifecycleAudit",
       "ErasureOperation",
     ];
     for (const model of forbidden) expect(relationTargets.has(model)).toBe(false);

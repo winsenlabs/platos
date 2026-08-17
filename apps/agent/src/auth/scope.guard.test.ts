@@ -175,35 +175,7 @@ describe("ScopeGuard — Path 2 direct headers", () => {
     expect(req.scope.userToken).toBe("opaque.user.jwt");
   });
 
-  it.each([
-    ["GET", "/api/v1/agent/access-key"],
-    ["POST", "/api/v1/agent/access-key"],
-    ["DELETE", "/api/v1/agent/access-key"],
-    ["POST", "/api/v1/agent/access-key/origins?from=dashboard"],
-  ])(
-    "allows trusted direct-header AccessKey lifecycle %s %s without raw bearer material",
-    async (method, url) => {
-      const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
-      const guard = new ScopeGuard(authService as any);
-      const ctx = mockExecutionContext(
-        {
-          "x-platos-organization-id": "org_1",
-          "x-platos-project-id": "proj_1",
-          "x-platos-environment-id": "env_1",
-          "x-platos-user-id": "user_1",
-        },
-        url,
-        undefined,
-        method,
-      );
-
-      await expect(guard.canActivate(ctx)).resolves.toBe(true);
-      expect(authService.verifyAccessKey).not.toHaveBeenCalled();
-      expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
-    },
-  );
-
-  it("continues to verify raw bearer material for non-lifecycle direct-header routes", async () => {
+  it("allows trusted direct-header control-plane routes without raw bearer material", async () => {
     const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
     const guard = new ScopeGuard(authService as any);
     const ctx = mockExecutionContext(
@@ -218,8 +190,25 @@ describe("ScopeGuard — Path 2 direct headers", () => {
       "POST",
     );
 
-    await expect(guard.canActivate(ctx)).resolves.toBe(false);
-    expect(authService.verifyAccessKey).toHaveBeenCalledOnce();
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(authService.verifyAccessKey).not.toHaveBeenCalled();
+    expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("operator");
+  });
+
+  it("continues to reject proxied raw-header requests before AccessKey verification", async () => {
+    const authService = { verifyAccessKey: vi.fn().mockResolvedValue(true) };
+    const guard = new ScopeGuard(authService as any);
+    const ctx = mockExecutionContext({
+      "x-forwarded-for": "203.0.113.7",
+      "x-platos-organization-id": "org_1",
+      "x-platos-project-id": "proj_1",
+      "x-platos-environment-id": "env_1",
+      "x-platos-user-id": "user_1",
+      "x-platos-api-key": "plt_external_attempt",
+    });
+
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(authService.verifyAccessKey).not.toHaveBeenCalled();
   });
 });
 

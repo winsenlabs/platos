@@ -1,6 +1,4 @@
 import { ClickHouse } from "@internal/clickhouse";
-import { PrismaClientOrTransaction } from "~/db.server";
-import { BasePresenter } from "./basePresenter.server";
 import { z } from "zod";
 
 const GenerationRowSchema = z.object({
@@ -35,58 +33,29 @@ export type GenerationsPagination = {
   next?: string;
 };
 
-export class PromptPresenter extends BasePresenter {
+type HostedPromptSummary = {
+  id: string;
+  friendlyId: string;
+  slug: string;
+  description: string | null;
+  tags: string[];
+  defaultModel: string | null;
+  currentVersion: { version: number } | null;
+  overrideVersion: { version: number } | null;
+  hasOverride: boolean;
+  updatedAt: Date;
+};
+
+export class PromptPresenter {
   private readonly clickhouse: ClickHouse;
 
-  constructor(clickhouse: ClickHouse, replica?: PrismaClientOrTransaction) {
-    super(undefined, replica);
+  constructor(clickhouse: ClickHouse) {
     this.clickhouse = clickhouse;
   }
 
-  async listPrompts(projectId: string, environmentId: string) {
-    const prompts = await this._replica.prompt.findMany({
-      where: {
-        projectId,
-        runtimeEnvironmentId: environmentId,
-        archivedAt: null,
-      },
-      include: {
-        versions: {
-          where: {
-            labels: { hasSome: ["current", "override"] },
-          },
-          select: {
-            version: true,
-            labels: true,
-            model: true,
-          },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
-
-    return prompts.map((p) => {
-      const currentVersion = p.versions.find((v) => v.labels.includes("current"));
-      const overrideVersion = p.versions.find((v) => v.labels.includes("override"));
-      const hasOverride = !!overrideVersion;
-
-      // Effective model: override > current version > prompt default
-      const effectiveModel =
-        overrideVersion?.model ?? currentVersion?.model ?? p.defaultModel;
-
-      return {
-        id: p.id,
-        friendlyId: p.friendlyId,
-        slug: p.slug,
-        description: p.description,
-        tags: p.tags,
-        defaultModel: effectiveModel,
-        currentVersion: currentVersion ? { version: currentVersion.version } : null,
-        overrideVersion: overrideVersion ? { version: overrideVersion.version } : null,
-        hasOverride,
-        updatedAt: p.updatedAt,
-      };
-    });
+  async listPrompts(_projectId: string, _environmentId: string): Promise<HostedPromptSummary[]> {
+    // Hosted prompt records are intentionally absent from the clean Platos schema.
+    return [];
   }
 
   async getUsageSparklines(
@@ -126,21 +95,23 @@ export class PromptPresenter extends BasePresenter {
 
     // Build a map of slug -> 24 hourly buckets (use UTC to match ClickHouse)
     const now = new Date();
-    const startHour = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      now.getUTCHours() - 23,
-      0, 0, 0
-    ));
+    const startHour = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        now.getUTCHours() - 23,
+        0,
+        0,
+        0
+      )
+    );
 
     const bucketKeys: string[] = [];
     for (let i = 0; i < 24; i++) {
       const h = new Date(startHour.getTime() + i * 3600_000);
       // Format to match ClickHouse's toStartOfHour output: "YYYY-MM-DD HH:MM:SS"
-      bucketKeys.push(
-        h.toISOString().slice(0, 13).replace("T", " ") + ":00:00"
-      );
+      bucketKeys.push(h.toISOString().slice(0, 13).replace("T", " ") + ":00:00");
     }
 
     // Index rows by slug+bucket for fast lookup
@@ -155,63 +126,6 @@ export class PromptPresenter extends BasePresenter {
     }
 
     return result;
-  }
-
-  async resolveVersion(
-    promptId: string,
-    options?: { version?: number; label?: string }
-  ) {
-    if (options?.version != null) {
-      return this._replica.promptVersion.findUnique({
-        where: {
-          promptId_version: {
-            promptId,
-            version: options.version,
-          },
-        },
-      });
-    }
-
-    // Check for override first — dashboard edits take precedence
-    const override = await this._replica.promptVersion.findFirst({
-      where: {
-        promptId,
-        labels: { has: "override" },
-      },
-      orderBy: { version: "desc" },
-    });
-
-    if (override) {
-      return override;
-    }
-
-    const label = options?.label ?? "current";
-    return this._replica.promptVersion.findFirst({
-      where: {
-        promptId,
-        labels: { has: label },
-      },
-      orderBy: { version: "desc" },
-    });
-  }
-
-  async listVersions(promptId: string, limit: number = 50) {
-    return this._replica.promptVersion.findMany({
-      where: { promptId },
-      orderBy: { version: "desc" },
-      take: limit,
-      select: {
-        id: true,
-        version: true,
-        labels: true,
-        source: true,
-        model: true,
-        textContent: true,
-        commitMessage: true,
-        contentHash: true,
-        createdAt: true,
-      },
-    });
   }
 
   async listGenerations(options: {
@@ -422,7 +336,10 @@ function encodeCursor(startTime: string, spanId: string): string {
 
 function decodeCursor(cursor: string): { startTime: string; spanId: string } | null {
   try {
-    const parsed = JSON.parse(Buffer.from(cursor, "base64").toString("utf-8")) as Record<string, unknown>;
+    const parsed = JSON.parse(Buffer.from(cursor, "base64").toString("utf-8")) as Record<
+      string,
+      unknown
+    >;
     if (typeof parsed.s === "string" && typeof parsed.i === "string") {
       return { startTime: parsed.s, spanId: parsed.i };
     }

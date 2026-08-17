@@ -25,14 +25,48 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response(undefined, { status: 404 });
   }
 
-  const agent = await prisma.platosAgent.findUnique({
-    where: { id: agentId },
-    select: { id: true, name: true, visibility: true, isActive: true },
-  });
-  if (!agent || agent.visibility !== "public-guest" || !agent.isActive) {
+  let publicBindings: Array<{
+    environmentId: string;
+    agent: { id: string; name: string; isActive: boolean };
+    activeAgentVersion: { memoryConfig: unknown; toolsBlockConfig: unknown };
+  }> = [];
+  try {
+    const bindings = await prisma.agentBinding.findMany({
+      where: { agentId },
+      select: {
+        environmentId: true,
+        agent: { select: { id: true, name: true, isActive: true } },
+        activeAgentVersion: {
+          select: { memoryConfig: true, toolsBlockConfig: true },
+        },
+      },
+    });
+    publicBindings = bindings.filter((binding) => {
+      const memory = binding.activeAgentVersion.memoryConfig;
+      const runtime =
+        memory && typeof memory === "object" && !Array.isArray(memory)
+          ? (memory as Record<string, unknown>).__runtime
+          : null;
+      const runtimeVisibility =
+        runtime && typeof runtime === "object" && !Array.isArray(runtime)
+          ? (runtime as Record<string, unknown>).visibility
+          : undefined;
+      const tools = binding.activeAgentVersion.toolsBlockConfig;
+      const toolsVisibility =
+        tools && typeof tools === "object" && !Array.isArray(tools)
+          ? (tools as Record<string, unknown>).visibility
+          : undefined;
+      return binding.agent.isActive && (runtimeVisibility ?? toolsVisibility) === "public-guest";
+    });
+  } catch {
+    // Fail closed with the same response used for private or missing agents.
+  }
+  if (publicBindings.length !== 1) {
     // 404 instead of 403 so private agent ids can't be enumerated.
     throw new Response(undefined, { status: 404 });
   }
+  const binding = publicBindings[0];
+  const agent = binding.agent;
 
   const url = new URL(request.url);
   const theme = url.searchParams.get("theme") === "dark" ? "dark" : "light";
@@ -47,13 +81,14 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   return typedjson({
     agentId: agent.id,
     agentName: agent.name,
+    environmentId: binding.environmentId,
     theme,
     agentApiUrl,
   });
 }
 
 export default function EmbedAgent() {
-  const { agentId, agentName, theme, agentApiUrl } =
+  const { agentId, agentName, environmentId, theme, agentApiUrl } =
     useTypedLoaderData<typeof loader>();
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +107,7 @@ export default function EmbedAgent() {
         const res = await fetch(`${agentApiUrl}/api/v1/public/guest-token`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agentId }),
+          body: JSON.stringify({ agentId, environmentId }),
         });
         if (!res.ok) {
           const body = await res.text().catch(() => "");
@@ -87,7 +122,7 @@ export default function EmbedAgent() {
     return () => {
       cancelled = true;
     };
-  }, [agentApiUrl, agentId]);
+  }, [agentApiUrl, agentId, environmentId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });

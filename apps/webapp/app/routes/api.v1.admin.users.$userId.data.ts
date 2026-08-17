@@ -2,10 +2,12 @@
  * EOBD.66 — user-data admin surface for GDPR erasure + export.
  *
  * DELETE /api/v1/admin/users/:userId/data?organizationId=…&projectId=…&environmentId=…
- *   Cascades Platos rows for the user in the given scope. Admin-tier
- *   control-plane credential gated.
- *   Returns per-table delete counts. Audit rows (`PlatosAdminAudit`,
- *   `PlatosToolCallAudit`) are retained for forensics unless `purgeAudit=1`
+ *   Cascades clean Platos rows for the canonical EndUser UUID in the given
+ *   scope. Admin-tier control-plane credential gated.
+ *   Returns per-model delete counts. Normalized conversation evidence remains
+ *   Thread → Turn → Step → ToolCall until the transaction deletes its owning
+ *   Thread. Audit rows (`AdminAudit`, `ToolCallAudit`) are retained for
+ *   forensics unless `purgeAudit=1`
  *   is passed explicitly.
  *
  * GET /api/v1/admin/users/:userId/data?organizationId=…&projectId=…&environmentId=…&dryRun=1
@@ -14,13 +16,9 @@
  * Both call paths require `Authorization: Bearer plt_mcp_...` where the
  * credential is admin-tier and belongs to the requested organization.
  */
-import {
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-  json,
-} from "@remix-run/server-runtime";
+import { type ActionFunctionArgs, type LoaderFunctionArgs, json } from "@remix-run/server-runtime";
 import { env } from "~/env.server";
-import { prisma } from "~/db.server";
+import { prisma, type PrismaClientOrTransaction } from "~/db.server";
 import { logger } from "~/services/logger.server";
 import { verifyAdminControlPlaneCredential } from "~/services/controlPlaneCredential.server";
 
@@ -28,6 +26,36 @@ type Scope = {
   organizationId: string;
   projectId: string;
   environmentId: string;
+};
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type DataCounts = {
+  threads: number;
+  turns: number;
+  steps: number;
+  toolCalls: number;
+  memories: number;
+  memoryEntities: number;
+  memoryRelationships: number;
+  ratings: number;
+  attachments: number;
+  adminAudits: number;
+  toolCallAudits: number;
+};
+
+const EMPTY_COUNTS: DataCounts = {
+  threads: 0,
+  turns: 0,
+  steps: 0,
+  toolCalls: 0,
+  memories: 0,
+  memoryEntities: 0,
+  memoryRelationships: 0,
+  ratings: 0,
+  attachments: 0,
+  adminAudits: 0,
+  toolCallAudits: 0,
 };
 
 function parseScope(url: URL): Scope | Response {
@@ -40,27 +68,56 @@ function parseScope(url: URL): Scope | Response {
         error: "Missing required query params",
         required: ["organizationId", "projectId", "environmentId"],
       },
-      { status: 400 },
+      { status: 400 }
     );
   }
   return { organizationId, projectId, environmentId };
 }
 
-function parseUserId(userId: string | undefined): string | Response {
+function parseEndUserId(userId: string | undefined): string | Response {
   if (!userId || userId.length === 0) {
     return json({ error: "userId path param is required" }, { status: 400 });
   }
-  // Reject suspicious values that could be interpreted as SQL fragments.
-  // Prisma parameterization already protects us; this is a defence-in-depth.
-  if (!/^[A-Za-z0-9_\-]{1,64}$/.test(userId)) {
-    return json({ error: "userId contains invalid characters" }, { status: 400 });
+  if (!UUID_PATTERN.test(userId)) {
+    return json(
+      {
+        error: "invalid_end_user_id",
+        message: "userId must be a canonical EndUser UUID",
+      },
+      { status: 400 }
+    );
   }
   return userId;
 }
 
+async function scopeExists(client: PrismaClientOrTransaction, scope: Scope): Promise<boolean> {
+  return (
+    (await client.environment.findFirst({
+      where: {
+        id: scope.environmentId,
+        projectId: scope.projectId,
+        project: { organizationId: scope.organizationId },
+      },
+      select: { id: true },
+    })) !== null
+  );
+}
+
+async function resolveEndUserId(
+  client: PrismaClientOrTransaction,
+  scope: Scope,
+  endUserId: string
+): Promise<string | null> {
+  const endUser = await client.endUser.findFirst({
+    where: { id: endUserId, organizationId: scope.organizationId },
+    select: { id: true },
+  });
+  return endUser?.id ?? null;
+}
+
 // ── Loader (GET) — dry-run count ─────────────────────────────────────
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const userIdOrErr = parseUserId(params.userId);
+  const userIdOrErr = parseEndUserId(params.userId);
   if (userIdOrErr instanceof Response) return userIdOrErr;
   const userId = userIdOrErr;
 
@@ -69,6 +126,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const scope = scopeOrErr;
   if (!(await verifyAdminControlPlaneCredential(request, scope.organizationId))) {
     return json({ error: "forbidden" }, { status: 401 });
+  }
+  if (!(await scopeExists(prisma, scope))) {
+    return json({ error: "scope_not_found" }, { status: 404 });
   }
 
   const counts = await gatherCounts(prisma, scope, userId);
@@ -80,7 +140,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (request.method !== "DELETE") {
     return json({ error: "Method not allowed" }, { status: 405 });
   }
-  const userIdOrErr = parseUserId(params.userId);
+  const userIdOrErr = parseEndUserId(params.userId);
   if (userIdOrErr instanceof Response) return userIdOrErr;
   const userId = userIdOrErr;
 
@@ -90,6 +150,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const scope = scopeOrErr;
   if (!(await verifyAdminControlPlaneCredential(request, scope.organizationId))) {
     return json({ error: "forbidden" }, { status: 401 });
+  }
+  if (!(await scopeExists(prisma, scope))) {
+    return json({ error: "scope_not_found" }, { status: 404 });
   }
 
   const purgeAudit = url.searchParams.get("purgeAudit") === "1";
@@ -106,61 +169,47 @@ export async function action({ request, params }: ActionFunctionArgs) {
         error: "legal_hold_active",
         message: `user ${userId} is on PLATOS_LEGAL_HOLD_USER_IDS; refuse delete`,
       },
-      { status: 409 },
+      { status: 409 }
     );
   }
 
   logger.warn(
-    `[admin/users/data] delete user=${userId} scope=${scope.organizationId}/${scope.projectId}/${scope.environmentId} purgeAudit=${purgeAudit}`,
+    `[admin/users/data] delete user=${userId} scope=${scope.organizationId}/${scope.projectId}/${scope.environmentId} purgeAudit=${purgeAudit}`
   );
 
   const deleted = await prisma.$transaction(async (tx) => {
-    const where = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
-      userId,
-    } as const;
+    const endUserId = await resolveEndUserId(tx, scope, userId);
+    if (!endUserId) return { ...EMPTY_COUNTS, adminAudits: null, toolCallAudits: null };
 
-    const relationships = await tx.platosMemoryRelationship.deleteMany({ where });
-    const entities = await tx.platosMemoryEntity.deleteMany({ where });
-    const memories = await tx.platosMemory.deleteMany({ where });
-    // Theme M.4 — PlatosAgentUserProfile was dropped. Profile rows are
-    // PlatosMemory rows (kind="profile") and already removed above.
-    const ratings = await tx.platosMessageRating.deleteMany({ where });
-    const attachments = await tx.platosMessageAttachment.deleteMany({ where });
-    // Messages are per-thread; delete via thread FK.
-    const threadRows = await tx.platosAgentThread.findMany({
-      where,
-      select: { id: true },
-    });
-    const threadIds = threadRows.map((t) => t.id);
-    let messages = { count: 0 };
-    if (threadIds.length > 0) {
-      messages = await tx.platosAgentMessage.deleteMany({
-        where: { threadId: { in: threadIds } },
-      });
-    }
-    const threads = await tx.platosAgentThread.deleteMany({ where });
+    const counts = await gatherCountsForEndUser(tx, scope, endUserId);
+    const where = { environmentId: scope.environmentId, endUserId } as const;
+
+    await tx.memoryRelationship.deleteMany({ where });
+    await tx.memoryEntity.deleteMany({ where });
+    await tx.memory.deleteMany({ where });
+    // Profile rows are Memory rows (kind="profile") and are removed above.
+    await tx.messageRating.deleteMany({ where });
+    await tx.messageAttachment.deleteMany({ where });
+
+    // Do not flatten or selectively rewrite normalized conversation history.
+    // The schema-owned cascade removes each Thread's Turn → Step → ToolCall
+    // graph atomically, retaining the hierarchy until this delete commits.
+    await tx.thread.deleteMany({ where });
 
     let admin = { count: 0 };
     let toolAudits = { count: 0 };
     if (purgeAudit) {
-      admin = await tx.platosAdminAudit.deleteMany({
-        where: { ...where, actorUserId: userId } as any,
+      admin = await tx.adminAudit.deleteMany({
+        where: {
+          environmentId: scope.environmentId,
+          subjectId: endUserId,
+        },
       });
-      toolAudits = await tx.platosToolCallAudit.deleteMany({ where });
+      toolAudits = await tx.toolCallAudit.deleteMany({ where });
     }
 
     return {
-      memoryRelationships: relationships.count,
-      memoryEntities: entities.count,
-      memories: memories.count,
-      // Theme M.4 — `userProfiles` count retired; counted under `memories`.
-      ratings: ratings.count,
-      attachments: attachments.count,
-      messages: messages.count,
-      threads: threads.count,
+      ...counts,
       adminAudits: purgeAudit ? admin.count : null,
       toolCallAudits: purgeAudit ? toolAudits.count : null,
     };
@@ -182,48 +231,66 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 async function gatherCounts(
-  client: typeof prisma,
+  client: PrismaClientOrTransaction,
   scope: Scope,
-  userId: string,
-): Promise<Record<string, number>> {
-  const where = { ...scope, userId };
+  userId: string
+): Promise<DataCounts> {
+  const endUserId = await resolveEndUserId(client, scope, userId);
+  return endUserId ? gatherCountsForEndUser(client, scope, endUserId) : { ...EMPTY_COUNTS };
+}
+
+async function gatherCountsForEndUser(
+  client: PrismaClientOrTransaction,
+  scope: Scope,
+  endUserId: string
+): Promise<DataCounts> {
+  const where = { environmentId: scope.environmentId, endUserId } as const;
+  const threadWhere = {
+    environmentId: scope.environmentId,
+    endUserId,
+  } as const;
   const [
     threads,
+    turns,
+    steps,
+    toolCalls,
     memories,
     entities,
     relationships,
     ratings,
     attachments,
+    adminAudits,
+    toolCallAudits,
   ] = await Promise.all([
-    client.platosAgentThread.count({ where }),
-    client.platosMemory.count({ where }),
-    client.platosMemoryEntity.count({ where }),
-    client.platosMemoryRelationship.count({ where }),
-    // Theme M.4 — PlatosAgentUserProfile was dropped; profile rows count
-    // under `memories` (kind="profile").
-    client.platosMessageRating.count({ where }),
-    client.platosMessageAttachment.count({ where }),
+    client.thread.count({ where: threadWhere }),
+    client.turn.count({ where: { thread: threadWhere } }),
+    client.step.count({ where: { turn: { thread: threadWhere } } }),
+    client.toolCall.count({ where: { step: { turn: { thread: threadWhere } } } }),
+    client.memory.count({ where }),
+    client.memoryEntity.count({ where }),
+    client.memoryRelationship.count({ where }),
+    client.messageRating.count({ where }),
+    client.messageAttachment.count({ where }),
+    client.adminAudit.count({
+      where: {
+        environmentId: scope.environmentId,
+        subjectId: endUserId,
+      },
+    }),
+    client.toolCallAudit.count({ where }),
   ]);
-
-  const threadRows = await client.platosAgentThread.findMany({
-    where,
-    select: { id: true },
-  });
-  const messageCount =
-    threadRows.length === 0
-      ? 0
-      : await client.platosAgentMessage.count({
-          where: { threadId: { in: threadRows.map((t) => t.id) } },
-        });
 
   return {
     threads,
-    messages: messageCount,
+    turns,
+    steps,
+    toolCalls,
     memories,
     memoryEntities: entities,
     memoryRelationships: relationships,
-    // Theme M.4 — `userProfiles` count retired; folded into `memories`.
     ratings,
     attachments,
+    adminAudits,
+    toolCallAudits,
   };
 }

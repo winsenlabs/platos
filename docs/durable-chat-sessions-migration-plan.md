@@ -51,7 +51,7 @@ Two native paths, different depths:
 ## Phase A implementation sketch (if A is chosen)
 1. `apps/agent/src/streams.ts`: `export const turnStream = streams.define<UIMessageChunk>({ id: "agent-turn" })`.
 2. In `executeStreamingTurn` (or the durable-turn callback), `turnStream.pipe(result.toUIMessageStream(), { target: runId })` instead of publishing to Redis `overview:event`.
-3. Gateway: on durable dispatch, mint `auth.createPublicToken({ scopes:{ read:{ runs:[runId] } } })`, emit `{type:"meta", runId, streamToken}` to the client.
+3. Gateway: on durable dispatch, use the run-scoped `publicAccessToken` returned by `tasks.trigger()`, then emit `{type:"meta", runId, streamToken}` to the client.
 4. Client (dashboard first): subscribe with `useRealtimeStream(turnStream, runId, {accessToken, baseURL})`; render `parts`.
 5. Delete the RunsBridge run_update relay for durable turns (the double-emit source) — or, if kept for non-durable run status, collapse `:136-137` into one chained `.to(scope).to(thread).emit()`.
 6. Keep direct-mode turns on socket.io until a later unification pass.

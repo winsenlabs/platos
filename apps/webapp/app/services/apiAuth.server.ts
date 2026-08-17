@@ -1,4 +1,3 @@
-import { json } from "@remix-run/server-runtime";
 import type { Environment, Organization, Project } from "@platos/database";
 import { SignJWT, errors, jwtVerify } from "jose";
 import { z } from "zod";
@@ -16,23 +15,6 @@ import {
   type VerifiedPAT,
 } from "./patService.server";
 import { getUserId } from "./session.server";
-import {
-  type OrganizationAccessTokenAuthenticationResult,
-  authenticateApiRequestWithOrganizationAccessToken,
-  isOrganizationAccessToken,
-} from "./organizationAccessToken.server";
-import { isPublicJWT, validatePublicJwtKey } from "./realtime/jwtAuth.server";
-
-const ClaimsSchema = z.object({
-  scopes: z.array(z.string()).optional(),
-  // One-time use token
-  otu: z.boolean().optional(),
-  realtime: z
-    .object({
-      skipColumns: z.array(z.string()).optional(),
-    })
-    .optional(),
-});
 
 export type AuthenticatedEnvironment = Environment & {
   apiKey: string;
@@ -48,13 +30,9 @@ export type ApiAuthenticationResult =
 export type ApiAuthenticationResultSuccess = {
   ok: true;
   apiKey: string;
-  type: "PUBLIC" | "PRIVATE" | "PUBLIC_JWT";
+  type: "PUBLIC" | "PRIVATE";
   environment: AuthenticatedEnvironment;
   scopes?: string[];
-  oneTimeUse?: boolean;
-  realtime?: {
-    skipColumns?: string[];
-  };
 };
 
 export type ApiAuthenticationResultFailure = {
@@ -67,7 +45,7 @@ export type ApiAuthenticationResultFailure = {
  */
 export async function authenticateApiRequest(
   request: Request,
-  options: { allowPublicKey?: boolean; allowJWT?: boolean } = {}
+  options: { allowPublicKey?: boolean } = {}
 ): Promise<ApiAuthenticationResultSuccess | undefined> {
   const { apiKey, branchName } = getApiKeyFromRequest(request);
 
@@ -86,7 +64,7 @@ export async function authenticateApiRequest(
  */
 export async function authenticateApiRequestWithFailure(
   request: Request,
-  options: { allowPublicKey?: boolean; allowJWT?: boolean } = {}
+  options: { allowPublicKey?: boolean } = {}
 ): Promise<ApiAuthenticationResult> {
   const { apiKey, branchName } = getApiKeyFromRequest(request);
 
@@ -107,7 +85,7 @@ export async function authenticateApiRequestWithFailure(
  */
 export async function authenticateApiKey(
   apiKey: string,
-  options: { allowPublicKey?: boolean; allowJWT?: boolean; branchName?: string } = {}
+  options: { allowPublicKey?: boolean; branchName?: string } = {}
 ): Promise<ApiAuthenticationResultSuccess | undefined> {
   const result = getApiKeyResult(apiKey);
 
@@ -119,34 +97,12 @@ export async function authenticateApiKey(
     return;
   }
 
-  if (!options.allowJWT && result.type === "PUBLIC_JWT") {
-    return;
-  }
-
   switch (result.type) {
     case "PUBLIC": {
       return;
     }
     case "PRIVATE": {
       return;
-    }
-    case "PUBLIC_JWT": {
-      const validationResults = await validatePublicJwtKey(result.apiKey);
-
-      if (!validationResults.ok) {
-        return;
-      }
-
-      const parsedClaims = ClaimsSchema.safeParse(validationResults.claims);
-
-      return {
-        ok: true,
-        ...result,
-        environment: validationResults.environment,
-        scopes: parsedClaims.success ? parsedClaims.data.scopes : [],
-        oneTimeUse: parsedClaims.success ? parsedClaims.data.otu : false,
-        realtime: parsedClaims.success ? parsedClaims.data.realtime : undefined,
-      };
     }
   }
 }
@@ -157,7 +113,7 @@ export async function authenticateApiKey(
  */
 async function authenticateApiKeyWithFailure(
   apiKey: string,
-  options: { allowPublicKey?: boolean; allowJWT?: boolean; branchName?: string } = {}
+  options: { allowPublicKey?: boolean; branchName?: string } = {}
 ): Promise<ApiAuthenticationResult> {
   const result = getApiKeyResult(apiKey);
 
@@ -175,13 +131,6 @@ async function authenticateApiKeyWithFailure(
     };
   }
 
-  if (!options.allowJWT && result.type === "PUBLIC_JWT") {
-    return {
-      ok: false,
-      error: "Public JWT API keys are not allowed for this request",
-    };
-  }
-
   switch (result.type) {
     case "PUBLIC": {
       return {
@@ -195,49 +144,11 @@ async function authenticateApiKeyWithFailure(
         error: "Invalid API Key",
       };
     }
-    case "PUBLIC_JWT": {
-      const validationResults = await validatePublicJwtKey(result.apiKey);
-
-      if (!validationResults.ok) {
-        return validationResults;
-      }
-
-      const parsedClaims = ClaimsSchema.safeParse(validationResults.claims);
-
-      return {
-        ok: true,
-        ...result,
-        environment: validationResults.environment,
-        scopes: parsedClaims.success ? parsedClaims.data.scopes : [],
-        oneTimeUse: parsedClaims.success ? parsedClaims.data.otu : false,
-        realtime: parsedClaims.success ? parsedClaims.data.realtime : undefined,
-      };
-    }
   }
-}
-
-export async function authenticateAuthorizationHeader(
-  authorization: string,
-  {
-    allowPublicKey = false,
-    allowJWT = false,
-  }: { allowPublicKey?: boolean; allowJWT?: boolean } = {}
-): Promise<ApiAuthenticationResult | undefined> {
-  const apiKey = getApiKeyFromHeader(authorization);
-
-  if (!apiKey) {
-    return;
-  }
-
-  return authenticateApiKey(apiKey, { allowPublicKey, allowJWT });
 }
 
 function isPublicApiKey(key: string) {
   return key.startsWith("pk_");
-}
-
-function isSecretApiKey(key: string) {
-  return key.startsWith("tr_");
 }
 
 export function branchNameFromRequest(request: Request): string | undefined {
@@ -265,15 +176,9 @@ function getApiKeyFromHeader(authorization?: string | null) {
 
 function getApiKeyResult(apiKey: string): {
   apiKey: string;
-  type: "PUBLIC" | "PRIVATE" | "PUBLIC_JWT";
+  type: "PUBLIC" | "PRIVATE";
 } {
-  const type = isPublicApiKey(apiKey)
-    ? "PUBLIC"
-    : isSecretApiKey(apiKey)
-    ? "PRIVATE"
-    : isPublicJWT(apiKey)
-    ? "PUBLIC_JWT"
-    : "PRIVATE"; // Fallback to private key
+  const type = isPublicApiKey(apiKey) ? "PUBLIC" : "PRIVATE";
   return { apiKey, type };
 }
 
@@ -283,22 +188,17 @@ export type AuthenticationResult =
       result: PATAuthenticationResult;
     }
   | {
-      type: "organizationAccessToken";
-      result: OrganizationAccessTokenAuthenticationResult;
-    }
-  | {
       type: "apiKey";
       result: ApiAuthenticationResult;
     };
 
-type AuthenticationMethod = "personalAccessToken" | "organizationAccessToken" | "apiKey";
+type AuthenticationMethod = "personalAccessToken" | "apiKey";
 
 type AllowedAuthenticationMethods = Record<AuthenticationMethod, boolean> &
-  ({ personalAccessToken: true } | { organizationAccessToken: true } | { apiKey: true });
+  ({ personalAccessToken: true } | { apiKey: true });
 
 const defaultAllowedAuthenticationMethods: AllowedAuthenticationMethods = {
   personalAccessToken: true,
-  organizationAccessToken: true,
   apiKey: true,
 };
 
@@ -308,15 +208,12 @@ type FilteredAuthenticationResult<
   | (T["personalAccessToken"] extends true
       ? Extract<AuthenticationResult, { type: "personalAccessToken" }>
       : never)
-  | (T["organizationAccessToken"] extends true
-      ? Extract<AuthenticationResult, { type: "organizationAccessToken" }>
-      : never)
   | (T["apiKey"] extends true ? Extract<AuthenticationResult, { type: "apiKey" }> : never);
 
 /**
  * Authenticates an incoming request by checking for various token types.
  *
- * Supports personal access tokens, organization access tokens, and API keys.
+ * Supports personal access tokens and API keys.
  * Returns the appropriate authentication result based on the token type found.
  *
  * This method currently only allows private keys for the `apiKey` authentication method.
@@ -332,7 +229,6 @@ type FilteredAuthenticationResult<
  * // Only allow personal access tokens
  * const result = await authenticateRequest(request, {
  *   personalAccessToken: true,
- *   organizationAccessToken: false,
  *   apiKey: false,
  * });
  * // result type: { type: "personalAccessToken"; result: PATAuthenticationResult } | undefined
@@ -368,22 +264,6 @@ export async function authenticateRequest<
     > as FilteredAuthenticationResult<T>;
   }
 
-  if (allowedMethods.organizationAccessToken && isOrganizationAccessToken(apiKey)) {
-    const result = await authenticateApiRequestWithOrganizationAccessToken(request);
-
-    if (!result) {
-      return;
-    }
-
-    return {
-      type: "organizationAccessToken",
-      result,
-    } satisfies Extract<
-      AuthenticationResult,
-      { type: "organizationAccessToken" }
-    > as FilteredAuthenticationResult<T>;
-  }
-
   if (allowedMethods.apiKey) {
     const result = await authenticateApiKey(apiKey, { allowPublicKey: false, branchName });
 
@@ -401,18 +281,6 @@ export async function authenticateRequest<
   }
 
   return;
-}
-
-export async function authenticatedEnvironmentForAuthentication(
-  _auth: AuthenticationResult,
-  _projectId: string,
-  _environmentId: string,
-  _branch?: string
-): Promise<AuthenticatedEnvironment> {
-  throw json(
-    { error: "Legacy project environment API authentication is no longer available" },
-    { status: 410 }
-  );
 }
 
 const JWT_SECRET = new TextEncoder().encode(env.SESSION_SECRET);
@@ -547,23 +415,6 @@ function calculateJWTExpiration() {
   return (Date.now() + DEFAULT_JWT_EXPIRATION_IN_MS) / 1000;
 }
 
-export async function getOneTimeUseToken(
-  auth: ApiAuthenticationResultSuccess
-): Promise<string | undefined> {
-  if (auth.type !== "PUBLIC_JWT") {
-    return;
-  }
-
-  if (!auth.oneTimeUse) {
-    return;
-  }
-
-  // Hash the API key to make it unique
-  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(auth.apiKey));
-
-  return Buffer.from(hash).toString("hex");
-}
-
 /**
  * Theme K.9 — PAT-or-session authentication for webapp REST endpoints.
  *
@@ -577,7 +428,7 @@ export async function getOneTimeUseToken(
  * same regardless of auth source can just read `userId`.
  *
  * Existing endpoints that call `authenticateRequest` use the same retained
- * `plt_pat_` verifier alongside organization tokens and environment API keys.
+ * `plt_pat_` verifier alongside environment API keys.
  */
 export type WebappUserAuth = {
   userId: string;

@@ -9,11 +9,7 @@ import {
 } from "../streams/asyncIterableStream.js";
 import { AnyRunTypes, AnyTask, InferRunTypes } from "../types/tasks.js";
 import { getEnvVar } from "../utils/getEnv.js";
-import {
-  conditionallyImportAndParsePacket,
-  IOPacket,
-  parsePacket,
-} from "../utils/ioSerialization.js";
+import { IOPacket, parsePacket } from "../utils/ioSerialization.js";
 import { ApiError } from "./errors.js";
 import { ApiClient } from "./index.js";
 import { zodShapeStream } from "./stream.js";
@@ -560,7 +556,7 @@ export class RunSubscription<TRunTypes extends AnyRunTypes> {
           return cachedResult;
         }
 
-        const result = await conditionallyImportAndParsePacket(packet, this.options.client);
+        const result = await parsePacket(packet);
         this.packetCache.set(`${row.friendlyId}/${key}`, result);
 
         return result;

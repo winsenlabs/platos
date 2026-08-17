@@ -18,6 +18,9 @@ import {
   AuthRateLimitAction,
   ImpersonationAction,
   OperatorIdentityProvider,
+  TokenFamily,
+  TokenLifecycleAction,
+  TokenLifecycleOutcome,
 } from "../generated/control";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
@@ -62,7 +65,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(80);
+    expect(modelNames).toHaveLength(81);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -120,6 +123,185 @@ describe("domain schema integration", () => {
       // @ts-expect-error Environment is a scalar scope pin, never a relation.
       endUser.thread.findMany({ include: { environment: true } });
     }
+  });
+
+  test("enforces append-only, scope-exact token lifecycle evidence", async () => {
+    const organizationPat = await control.personalAccessToken.create({
+      data: {
+        userId: seeded.user.id,
+        scopeKind: AuthorizationScopeKind.ORGANIZATION,
+        organizationId: seeded.organization.id,
+        tokenHash: "pat-organization-hash",
+        name: "organization",
+        role: "write",
+      },
+    });
+    const projectPat = await control.personalAccessToken.create({
+      data: {
+        userId: seeded.user.id,
+        scopeKind: AuthorizationScopeKind.PROJECT,
+        projectId: seeded.project.id,
+        tokenHash: "pat-project-hash",
+        name: "project",
+        role: "write",
+      },
+    });
+    const environmentPat = await control.personalAccessToken.create({
+      data: {
+        userId: seeded.user.id,
+        scopeKind: AuthorizationScopeKind.ENVIRONMENT,
+        environmentId: seeded.environment.id,
+        tokenHash: "pat-environment-hash",
+        name: "environment",
+        role: "write",
+      },
+    });
+
+    for (const data of [
+      {
+        personalAccessTokenId: organizationPat.id,
+        scopeKind: AuthorizationScopeKind.ORGANIZATION,
+        organizationId: seeded.organization.id,
+      },
+      {
+        personalAccessTokenId: projectPat.id,
+        scopeKind: AuthorizationScopeKind.PROJECT,
+        projectId: seeded.project.id,
+      },
+      {
+        personalAccessTokenId: environmentPat.id,
+        scopeKind: AuthorizationScopeKind.ENVIRONMENT,
+        environmentId: seeded.environment.id,
+      },
+    ]) {
+      await expect(control.tokenLifecycleAudit.create({
+        data: {
+          family: TokenFamily.PERSONAL_ACCESS_TOKEN,
+          actorUserId: seeded.user.id,
+          action: TokenLifecycleAction.USE,
+          outcome: TokenLifecycleOutcome.SUCCESS,
+          ...data,
+        },
+      })).resolves.toBeDefined();
+    }
+
+    const mcpAudit = await control.tokenLifecycleAudit.create({
+      data: {
+        family: TokenFamily.MCP_TOKEN,
+        mcpTokenId: seeded.mcpToken.id,
+        scopeKind: AuthorizationScopeKind.ENVIRONMENT,
+        environmentId: seeded.environment.id,
+        actorUserId: seeded.user.id,
+        action: TokenLifecycleAction.USE,
+        outcome: TokenLifecycleOutcome.SUCCESS,
+      },
+    });
+
+    await expect(control.tokenLifecycleAudit.create({
+      data: {
+        family: TokenFamily.PERSONAL_ACCESS_TOKEN,
+        personalAccessTokenId: seeded.personalAccessToken.id,
+        scopeKind: AuthorizationScopeKind.GLOBAL,
+        organizationId: seeded.organization.id,
+        actorUserId: seeded.user.id,
+        action: TokenLifecycleAction.USE,
+        outcome: TokenLifecycleOutcome.SUCCESS,
+      },
+    })).rejects.toThrow();
+    await expect(control.tokenLifecycleAudit.create({
+      data: {
+        family: TokenFamily.PERSONAL_ACCESS_TOKEN,
+        mcpTokenId: seeded.mcpToken.id,
+        scopeKind: AuthorizationScopeKind.GLOBAL,
+        actorUserId: seeded.user.id,
+        action: TokenLifecycleAction.USE,
+        outcome: TokenLifecycleOutcome.SUCCESS,
+      },
+    })).rejects.toThrow();
+    await expect(control.tokenLifecycleAudit.create({
+      data: {
+        family: TokenFamily.PERSONAL_ACCESS_TOKEN,
+        scopeKind: AuthorizationScopeKind.GLOBAL,
+        actorUserId: seeded.user.id,
+        action: TokenLifecycleAction.USE,
+        outcome: TokenLifecycleOutcome.SUCCESS,
+      },
+    })).rejects.toThrow();
+    await expect(control.tokenLifecycleAudit.create({
+      data: {
+        family: TokenFamily.PERSONAL_ACCESS_TOKEN,
+        personalAccessTokenId: seeded.personalAccessToken.id,
+        mcpTokenId: seeded.mcpToken.id,
+        scopeKind: AuthorizationScopeKind.GLOBAL,
+        actorUserId: seeded.user.id,
+        action: TokenLifecycleAction.USE,
+        outcome: TokenLifecycleOutcome.SUCCESS,
+      },
+    })).rejects.toThrow();
+    await expect(control.tokenLifecycleAudit.create({
+      data: {
+        family: TokenFamily.MCP_TOKEN,
+        mcpTokenId: seeded.mcpToken.id,
+        scopeKind: AuthorizationScopeKind.PROJECT,
+        projectId: seeded.project.id,
+        actorUserId: seeded.user.id,
+        action: TokenLifecycleAction.USE,
+        outcome: TokenLifecycleOutcome.SUCCESS,
+      },
+    })).rejects.toThrow();
+
+    const otherOrganization = await control.organization.create({
+      data: { slug: "audit-scope-other", name: "Audit scope other" },
+    });
+    await expect(control.tokenLifecycleAudit.create({
+      data: {
+        family: TokenFamily.PERSONAL_ACCESS_TOKEN,
+        personalAccessTokenId: organizationPat.id,
+        scopeKind: AuthorizationScopeKind.ORGANIZATION,
+        organizationId: otherOrganization.id,
+        actorUserId: seeded.user.id,
+        action: TokenLifecycleAction.USE,
+        outcome: TokenLifecycleOutcome.SUCCESS,
+      },
+    })).rejects.toThrow(/scope must match/);
+
+    await control.personalAccessToken.update({
+      where: { id: environmentPat.id },
+      data: { revokedAt: new Date() },
+    });
+    await expect(control.tokenLifecycleAudit.findFirst({
+      where: { personalAccessTokenId: environmentPat.id },
+    })).resolves.not.toBeNull();
+    await expect(control.personalAccessToken.delete({ where: { id: environmentPat.id } }))
+      .rejects.toThrow();
+    await expect(control.tokenLifecycleAudit.update({
+      where: { id: mcpAudit.id },
+      data: { outcome: TokenLifecycleOutcome.SUCCESS },
+    })).rejects.toThrow(/immutable/);
+    await expect(control.tokenLifecycleAudit.delete({ where: { id: mcpAudit.id } }))
+      .rejects.toThrow(/immutable/);
+    await expect(control.$executeRawUnsafe('TRUNCATE TABLE "public"."TokenLifecycleAudit"'))
+      .rejects.toThrow(/immutable/);
+
+    await expect(control.$transaction(async (tx) => {
+      await tx.mcpToken.update({
+        where: { id: seeded.mcpToken.id },
+        data: { lastUsedAt: new Date() },
+      });
+      await tx.tokenLifecycleAudit.create({
+        data: {
+          family: TokenFamily.MCP_TOKEN,
+          mcpTokenId: seeded.mcpToken.id,
+          scopeKind: AuthorizationScopeKind.ENVIRONMENT,
+          environmentId: null,
+          actorUserId: seeded.user.id,
+          action: TokenLifecycleAction.USE,
+          outcome: TokenLifecycleOutcome.SUCCESS,
+        },
+      });
+    })).rejects.toThrow();
+    await expect(control.mcpToken.findUnique({ where: { id: seeded.mcpToken.id } }))
+      .resolves.toMatchObject({ lastUsedAt: null });
   });
 
   test("rejects cross-owner ancestry and canonical-owner reparenting", async () => {
@@ -1119,7 +1301,7 @@ async function seedEveryModel(control: PrismaClient) {
       createdBy: user.id,
     },
   }));
-  track("McpToken", await control.mcpToken.create({
+  const mcpToken = track("McpToken", await control.mcpToken.create({
     data: {
       environmentId: environment.id,
       mintedByUserId: user.id,
@@ -1137,6 +1319,16 @@ async function seedEveryModel(control: PrismaClient) {
       name: "all-scope",
       role: "operator",
       permissions: ["admin"],
+    },
+  }));
+  track("TokenLifecycleAudit", await control.tokenLifecycleAudit.create({
+    data: {
+      family: TokenFamily.PERSONAL_ACCESS_TOKEN,
+      personalAccessTokenId: personalAccessToken.id,
+      scopeKind: AuthorizationScopeKind.GLOBAL,
+      actorUserId: user.id,
+      action: TokenLifecycleAction.MINT,
+      outcome: TokenLifecycleOutcome.SUCCESS,
     },
   }));
   track("PostmanTemplate", await control.postmanTemplate.create({
@@ -1629,6 +1821,7 @@ async function seedEveryModel(control: PrismaClient) {
     oauthClient,
     memoryEntityA,
     personalAccessToken,
+    mcpToken,
     oauthAccessToken,
     oauthRefreshToken,
     rotatedRefreshToken,

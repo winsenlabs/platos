@@ -24,6 +24,7 @@ import { prisma } from "~/db.server";
 import { findProjectBySlug } from "~/models/project.server";
 import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
+import { verifyProjectAccess } from "~/services/platos/scopeVerify.server";
 import { EnvironmentParamSchema } from "~/utils/pathBuilder";
 
 type Scope = {
@@ -103,6 +104,15 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   if (!project) throw new Response(undefined, { status: 404 });
   const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) throw new Response(undefined, { status: 404 });
+  if (
+    !(await verifyProjectAccess(
+      { organizationId: project.organizationId, projectId: project.id },
+      userId,
+      "read",
+    ))
+  ) {
+    throw new Response("Forbidden", { status: 403 });
+  }
 
   const scope: Scope = {
     organizationId: project.organizationId,
@@ -124,14 +134,27 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const catalog: Catalog =
     catalogRes ?? { totalTools: 0, totalCategories: 0, categories: [] };
 
-  // K.18 — only org ADMINs see the "Admin tier (cross-scope)" mint
-  // checkbox. Agent-side mint enforcement is authoritative; the UI flag
-  // just prevents a non-admin from seeing a control they can't use.
-  const membership = await prisma.orgMember.findFirst({
-    where: { organizationId: project.organizationId, userId },
-    select: { role: true },
+  // K.18 — Project ADMIN and Organization OWNER/ADMIN can mint either tier.
+  // Agent-side canonical membership enforcement remains authoritative.
+  const membership = await prisma.organizationMembership.findFirst({
+    where: { organizationId: project.organizationId, userId, deactivatedAt: null },
+    select: { id: true, role: true },
   });
-  const isOrgAdmin = membership?.role === "ADMIN";
+  const projectMembership = membership
+    ? await prisma.projectMembership.findUnique({
+        where: {
+          projectId_organizationMembershipId: {
+            projectId: project.id,
+            organizationMembershipId: membership.id,
+          },
+        },
+        select: { role: true },
+      })
+    : null;
+  const isOrgAdmin =
+    membership?.role === "OWNER" ||
+    membership?.role === "ADMIN" ||
+    projectMembership?.role === "ADMIN";
 
   // The public MCP URL always lives at `${APP_ORIGIN}/mcp/platform` —
   // Caddy reverse-proxies that prefix to the agent service. The
@@ -169,6 +192,15 @@ export async function action({ params, request }: ActionFunctionArgs) {
   if (!project) return { error: "project not found" };
   const environment = await findEnvironmentById(envParam, userId, project.id);
   if (!environment) return { error: "environment not found" };
+  if (
+    !(await verifyProjectAccess(
+      { organizationId: project.organizationId, projectId: project.id },
+      userId,
+      "mutate",
+    ))
+  ) {
+    throw new Response("Forbidden", { status: 403 });
+  }
 
   const scope: Scope = {
     organizationId: project.organizationId,

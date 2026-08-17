@@ -517,7 +517,7 @@ export default function ProvidersPage() {
           <DocsLink slug="providers" />
         </PageAccessories>
       </NavBar>
-      <PageBody>
+      <PageBody className="overflow-x-hidden">
         <Paragraph variant="small" className="mb-5">
           Provider credentials are encrypted by Platos and scoped to this environment. Plaintext is
           accepted only when an authenticated operator creates or rotates a key. After saving, only
@@ -552,7 +552,7 @@ export default function ProvidersPage() {
                         <h4 className="text-sm font-semibold text-text-bright">{p.displayName}</h4>
                         <StatusPill ready={p.envReady} enabled={p.enabled} />
                       </div>
-                      <p className="mt-1 text-xs text-text-dimmed">{p.description}</p>
+                      <p className="mt-1 break-words text-xs text-text-dimmed">{p.description}</p>
 
                       <div className="mt-3 flex flex-wrap gap-2">
                         {p.requiredEnv.map((e) => (

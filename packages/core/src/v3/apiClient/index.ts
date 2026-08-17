@@ -21,7 +21,6 @@ import {
   CreateInputStreamWaitpointResponseBody,
   CreateScheduleOptions,
   CreateStreamResponseBody,
-  CreateUploadPayloadUrlResponseBody,
   CreateWaitpointTokenRequestBody,
   CreateWaitpointTokenResponseBody,
   DeletedScheduleObject,
@@ -42,16 +41,6 @@ import {
   ResetIdempotencyKeyResponse,
   RetrieveBatchV2Response,
   RetrieveQueueParam,
-  ResolvePromptRequestBody,
-  ResolvePromptResponseBody,
-  ListPromptsResponseBody,
-  ListPromptVersionsResponseBody,
-  PromotePromptVersionRequestBody,
-  CreatePromptOverrideRequestBody,
-  UpdatePromptOverrideRequestBody,
-  ReactivatePromptOverrideRequestBody,
-  PromptOkResponseBody,
-  PromptOverrideCreatedResponseBody,
   RetrieveRunResponse,
   RetrieveRunTraceResponseBody,
   RetrieveSpanDetailResponseBody,
@@ -556,32 +545,6 @@ export class ApiClient {
         message: `Failed to stream batch items for batch ${batchId}: ${cause.message}`,
       });
     }
-  }
-
-  createUploadPayloadUrl(filename: string, requestOptions?: ZodFetchOptions) {
-    const encoded = encodeURIComponent(filename);
-    return zodfetch(
-      CreateUploadPayloadUrlResponseBody,
-      `${this.baseUrl}/api/v2/packets/${encoded}`,
-      {
-        method: "PUT",
-        headers: this.#getHeaders(false),
-      },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
-  }
-
-  getPayloadUrl(filename: string, requestOptions?: ZodFetchOptions) {
-    const encoded = encodeURIComponent(filename);
-    return zodfetch(
-      CreateUploadPayloadUrlResponseBody,
-      `${this.baseUrl}/api/v1/packets/${encoded}`,
-      {
-        method: "GET",
-        headers: this.#getHeaders(false),
-      },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
   }
 
   retrieveRun(runId: string, requestOptions?: ZodFetchOptions) {
@@ -1459,18 +1422,6 @@ export class ApiClient {
     );
   }
 
-  async generateJWTClaims(requestOptions?: ZodFetchOptions): Promise<Record<string, any>> {
-    return zodfetch(
-      z.record(z.any()),
-      `${this.baseUrl}/api/v1/auth/jwt/claims`,
-      {
-        method: "POST",
-        headers: this.#getHeaders(false),
-      },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
-  }
-
   retrieveBatch(batchId: string, requestOptions?: ZodFetchOptions) {
     return zodfetch(
       RetrieveBatchV2Response,
@@ -1606,86 +1557,6 @@ export class ApiClient {
     }
 
     return headers;
-  }
-
-  resolvePrompt(
-    slug: string,
-    body: ResolvePromptRequestBody,
-    requestOptions?: ZodFetchOptions
-  ) {
-    return zodfetch(
-      ResolvePromptResponseBody,
-      `${this.baseUrl}/api/v1/prompts/${slug}`,
-      {
-        method: "POST",
-        headers: this.#getHeaders(false),
-        body: JSON.stringify(body),
-      },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
-  }
-
-  listPrompts(requestOptions?: ZodFetchOptions) {
-    return zodfetch(
-      ListPromptsResponseBody,
-      `${this.baseUrl}/api/v1/prompts`,
-      { method: "GET", headers: this.#getHeaders(false) },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
-  }
-
-  listPromptVersions(slug: string, requestOptions?: ZodFetchOptions) {
-    return zodfetch(
-      ListPromptVersionsResponseBody,
-      `${this.baseUrl}/api/v1/prompts/${slug}/versions`,
-      { method: "GET", headers: this.#getHeaders(false) },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
-  }
-
-  promotePromptVersion(slug: string, body: PromotePromptVersionRequestBody, requestOptions?: ZodFetchOptions) {
-    return zodfetch(
-      PromptOkResponseBody,
-      `${this.baseUrl}/api/v1/prompts/${slug}/promote`,
-      { method: "POST", headers: this.#getHeaders(false), body: JSON.stringify(body) },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
-  }
-
-  createPromptOverride(slug: string, body: CreatePromptOverrideRequestBody, requestOptions?: ZodFetchOptions) {
-    return zodfetch(
-      PromptOverrideCreatedResponseBody,
-      `${this.baseUrl}/api/v1/prompts/${slug}/override`,
-      { method: "POST", headers: this.#getHeaders(false), body: JSON.stringify(body) },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
-  }
-
-  updatePromptOverride(slug: string, body: UpdatePromptOverrideRequestBody, requestOptions?: ZodFetchOptions) {
-    return zodfetch(
-      PromptOkResponseBody,
-      `${this.baseUrl}/api/v1/prompts/${slug}/override`,
-      { method: "PUT", headers: this.#getHeaders(false), body: JSON.stringify(body) },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
-  }
-
-  removePromptOverride(slug: string, requestOptions?: ZodFetchOptions) {
-    return zodfetch(
-      PromptOkResponseBody,
-      `${this.baseUrl}/api/v1/prompts/${slug}/override`,
-      { method: "DELETE", headers: this.#getHeaders(false) },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
-  }
-
-  reactivatePromptOverride(slug: string, body: ReactivatePromptOverrideRequestBody, requestOptions?: ZodFetchOptions) {
-    return zodfetch(
-      PromptOkResponseBody,
-      `${this.baseUrl}/api/v1/prompts/${slug}/override/reactivate`,
-      { method: "POST", headers: this.#getHeaders(false), body: JSON.stringify(body) },
-      mergeRequestOptions(this.defaultRequestOptions, requestOptions)
-    );
   }
 
   #getRealtimeHeaders() {

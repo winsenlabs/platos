@@ -37,7 +37,7 @@ export async function loader({ request }: DataFunctionArgs) {
     },
   });
 
-  if (!user?.admin) {
+  if (!user?.platformOperator) {
     throw new Response("You must be an admin to perform this action", { status: 403 });
   }
 

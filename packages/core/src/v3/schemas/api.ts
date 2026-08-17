@@ -27,60 +27,6 @@ export const WhoAmIResponseSchema = z.object({
 
 export type WhoAmIResponse = z.infer<typeof WhoAmIResponseSchema>;
 
-export const GetProjectResponseBody = z.object({
-  id: z.string(),
-  externalRef: z
-    .string()
-    .describe(
-      "The external reference for the project, also known as the project ref, a unique identifier starting with proj_"
-    ),
-  name: z.string(),
-  slug: z.string(),
-  createdAt: z.coerce.date(),
-  organization: z.object({
-    id: z.string(),
-    title: z.string(),
-    slug: z.string(),
-    createdAt: z.coerce.date(),
-  }),
-});
-
-export type GetProjectResponseBody = z.infer<typeof GetProjectResponseBody>;
-
-export const GetProjectsResponseBody = z.array(GetProjectResponseBody);
-
-export type GetProjectsResponseBody = z.infer<typeof GetProjectsResponseBody>;
-
-export const GetOrgsResponseBody = z.array(
-  z.object({
-    id: z.string(),
-    title: z.string(),
-    slug: z.string(),
-    createdAt: z.coerce.date(),
-  })
-);
-
-export type GetOrgsResponseBody = z.infer<typeof GetOrgsResponseBody>;
-
-export const CreateProjectRequestBody = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "Name is required")
-    .max(255, "Name must be less than 255 characters"),
-});
-
-export type CreateProjectRequestBody = z.infer<typeof CreateProjectRequestBody>;
-
-export const GetProjectEnvResponse = z.object({
-  apiKey: z.string(),
-  name: z.string(),
-  apiUrl: z.string(),
-  projectId: z.string(),
-});
-
-export type GetProjectEnvResponse = z.infer<typeof GetProjectEnvResponse>;
-
 // Zod schema for the response body type
 export const GetWorkerTaskResponse = z.object({
   id: z.string(),
@@ -557,23 +503,6 @@ export const UpsertBranchResponseBody = z.object({
 
 export type UpsertBranchResponseBody = z.infer<typeof UpsertBranchResponseBody>;
 
-export const CreateArtifactRequestBody = z.object({
-  type: z.enum(["deployment_context"]).default("deployment_context"),
-  contentType: z.string().default("application/gzip"),
-  contentLength: z.number().optional(),
-});
-
-export type CreateArtifactRequestBody = z.infer<typeof CreateArtifactRequestBody>;
-
-export const CreateArtifactResponseBody = z.object({
-  artifactKey: z.string(),
-  uploadUrl: z.string(),
-  uploadFields: z.record(z.string()),
-  expiresAt: z.string().datetime(),
-});
-
-export type CreateArtifactResponseBody = z.infer<typeof CreateArtifactResponseBody>;
-
 export const InitializeDeploymentResponseBody = z.object({
   id: z.string(),
   contentHash: z.string(),
@@ -786,12 +715,6 @@ export const DeploymentEventFromString = z
   })
   .pipe(DeploymentEvent);
 
-export const CreateUploadPayloadUrlResponseBody = z.object({
-  presignedUrl: z.string(),
-  /** Present on `/api/v2/packets` PUT (upload handshake); omitted on v1 GET download presign. */
-  storagePath: z.string().optional(),
-});
-
 export const WorkersListResponseBody = z
   .object({
     type: z.string(),
@@ -853,8 +776,6 @@ export const DevDisconnectResponseBody = z.object({
   bulkActionId: z.string().optional(),
 });
 export type DevDisconnectResponseBody = z.infer<typeof DevDisconnectResponseBody>;
-
-export type CreateUploadPayloadUrlResponseBody = z.infer<typeof CreateUploadPayloadUrlResponseBody>;
 
 export const ReplayRunResponse = z.object({
   id: z.string(),
@@ -1692,91 +1613,3 @@ export const SendInputStreamResponseBody = z.object({
   ok: z.boolean(),
 });
 export type SendInputStreamResponseBody = z.infer<typeof SendInputStreamResponseBody>;
-
-export const ResolvePromptRequestBody = z.object({
-  variables: z.record(z.unknown()).default({}),
-  label: z.string().optional(),
-  version: z.number().optional(),
-});
-export type ResolvePromptRequestBody = z.infer<typeof ResolvePromptRequestBody>;
-
-export const ResolvePromptResponseBody = z.object({
-  data: z.object({
-    promptId: z.string(),
-    slug: z.string(),
-    version: z.number(),
-    labels: z.array(z.string()),
-    template: z.string().optional(),
-    text: z.string().optional(),
-    model: z.string().optional().nullable(),
-    config: z.record(z.unknown()).optional().nullable(),
-  }),
-});
-export type ResolvePromptResponseBody = z.infer<typeof ResolvePromptResponseBody>;
-
-export const ListPromptsResponseBody = z.object({
-  data: z.array(
-    z.object({
-      slug: z.string(),
-      friendlyId: z.string(),
-      description: z.string().nullable(),
-      tags: z.array(z.string()),
-      defaultModel: z.string().nullable(),
-      currentVersion: z.number().nullable(),
-      hasOverride: z.boolean(),
-      updatedAt: z.string(),
-    })
-  ),
-});
-export type ListPromptsResponseBody = z.infer<typeof ListPromptsResponseBody>;
-
-export const ListPromptVersionsResponseBody = z.object({
-  data: z.array(
-    z.object({
-      id: z.string(),
-      version: z.number(),
-      labels: z.array(z.string()),
-      source: z.string(),
-      model: z.string().nullable(),
-      textContent: z.string().nullable(),
-      commitMessage: z.string().nullable(),
-      contentHash: z.string(),
-      createdAt: z.string(),
-    })
-  ),
-});
-export type ListPromptVersionsResponseBody = z.infer<typeof ListPromptVersionsResponseBody>;
-
-export const PromotePromptVersionRequestBody = z.object({
-  version: z.number().int().positive(),
-});
-export type PromotePromptVersionRequestBody = z.infer<typeof PromotePromptVersionRequestBody>;
-
-export const CreatePromptOverrideRequestBody = z.object({
-  textContent: z.string(),
-  model: z.string().optional(),
-  commitMessage: z.string().optional(),
-  source: z.string().optional(),
-});
-export type CreatePromptOverrideRequestBody = z.infer<typeof CreatePromptOverrideRequestBody>;
-
-export const UpdatePromptOverrideRequestBody = z.object({
-  textContent: z.string().optional(),
-  model: z.string().optional(),
-  commitMessage: z.string().optional(),
-});
-export type UpdatePromptOverrideRequestBody = z.infer<typeof UpdatePromptOverrideRequestBody>;
-
-export const ReactivatePromptOverrideRequestBody = z.object({
-  version: z.number().int().positive(),
-});
-export type ReactivatePromptOverrideRequestBody = z.infer<typeof ReactivatePromptOverrideRequestBody>;
-
-export const PromptOkResponseBody = z.object({ ok: z.boolean() });
-export type PromptOkResponseBody = z.infer<typeof PromptOkResponseBody>;
-
-export const PromptOverrideCreatedResponseBody = z.object({
-  ok: z.boolean(),
-  version: z.number(),
-});
-export type PromptOverrideCreatedResponseBody = z.infer<typeof PromptOverrideCreatedResponseBody>;

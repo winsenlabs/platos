@@ -91,4 +91,17 @@ describe("provider credential serialization", () => {
     expect(storeSource).toContain("secretStore.rotateProviderCredentialAndKey(");
     expect(storeSource).not.toContain("readForRuntime(");
   });
+
+  it("keeps provider metadata cards within the mobile content viewport", () => {
+    const routeSource = readFileSync(
+      new URL(
+        "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route.tsx",
+        import.meta.url
+      ),
+      "utf8"
+    );
+
+    expect(routeSource).toContain('<PageBody className="overflow-x-hidden">');
+    expect(routeSource).toContain('className="mt-1 break-words text-xs text-text-dimmed"');
+  });
 });

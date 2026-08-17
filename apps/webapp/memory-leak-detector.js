@@ -945,7 +945,7 @@ Options:
 Examples:
   node memory-leak-detector.js --verbose --requests 200
   node memory-leak-detector.js --token "your-admin-token" --api-key "your-api-key" --verbose
-  node memory-leak-detector.js --endpoints "/api/v1/whoami,/api/v1/projects" --threshold 25
+  node memory-leak-detector.js --endpoints "/api/v2/whoami" --threshold 25
         `);
         process.exit(0);
     }

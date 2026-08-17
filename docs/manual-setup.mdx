@@ -253,18 +253,19 @@ bun add @trigger.dev/react-hooks@latest
 
 ### Basic usage
 
-1. **Generate a Public Access Token** in your backend:
+1. **Trigger the task** in your backend and return its run-scoped token:
 
 ```typescript
-import { auth } from "@trigger.dev/sdk";
+import { tasks } from "@trigger.dev/sdk";
 
 // In your backend API
-export async function getPublicAccessToken() {
-  const publicAccessToken = await auth.createPublicToken({
-    scopes: ["read:runs"], // Customize based on needs
-  });
+export async function triggerTask() {
+  const handle = await tasks.trigger("my-task", { message: "Hello" });
 
-  return publicAccessToken;
+  return {
+    runId: handle.id,
+    publicAccessToken: handle.publicAccessToken,
+  };
 }
 ```
 

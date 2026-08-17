@@ -15,7 +15,6 @@ import { env } from "./env.server";
 import { eventLoopMonitor } from "./eventLoopMonitor.server";
 import { logger } from "./services/logger.server";
 import { resourceMonitor } from "./services/resourceMonitor.server";
-import { remoteBuildsEnabled } from "./v3/remoteImageBuilder.server";
 
 const ABORT_DELAY = 30000;
 
@@ -219,12 +218,6 @@ export { runWithHttpContext } from "./services/httpAsyncStorage.server";
 
 if (env.EVENT_LOOP_MONITOR_ENABLED === "1") {
   eventLoopMonitor.enable();
-}
-
-if (remoteBuildsEnabled()) {
-  console.log("🏗️  Remote builds enabled");
-} else {
-  console.log("🏗️  Local builds enabled");
 }
 
 if (env.RESOURCE_MONITOR_ENABLED === "1") {

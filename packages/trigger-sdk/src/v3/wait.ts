@@ -13,6 +13,7 @@ import {
   ListWaitpointTokensQueryParams,
   ManualWaitpointPromise,
   mergeRequestOptions,
+  parsePacket,
   runtime,
   SemanticInternalAttributes,
   taskContext,
@@ -22,7 +23,6 @@ import {
   WaitpointTokenTypedResult,
   WaitpointTimeoutError,
 } from "@platos/core/v3";
-import { conditionallyImportAndParsePacket } from "@platos/core/v3/utils/ioSerialization";
 import { tracer } from "./tracer.js";
 
 /**
@@ -257,10 +257,10 @@ async function retrieveToken<T>(
   const result = await apiClient.retrieveWaitpointToken($tokenId, $requestOptions);
 
   const data = result.output
-    ? await conditionallyImportAndParsePacket(
-        { data: result.output, dataType: result.outputType ?? "application/json" },
-        apiClient
-      )
+    ? await parsePacket({
+        data: result.output,
+        dataType: result.outputType ?? "application/json",
+      })
     : undefined;
 
   let error: Error | undefined = undefined;
@@ -601,10 +601,10 @@ export const wait = {
             const result = await runtime.waitUntil(tokenId);
 
             const data = result.output
-              ? await conditionallyImportAndParsePacket(
-                  { data: result.output, dataType: result.outputType ?? "application/json" },
-                  apiClient
-                )
+              ? await parsePacket({
+                  data: result.output,
+                  dataType: result.outputType ?? "application/json",
+                })
               : undefined;
 
             if (result.ok) {

@@ -12,13 +12,14 @@ import { useState } from "react";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import { PageBody, PageContainer } from "~/components/layout/AppLayout";
 import { Button } from "~/components/primitives/Buttons";
+import { Callout } from "~/components/primitives/Callout";
 import { Header2 } from "~/components/primitives/Headers";
 import { NavBar, PageTitle } from "~/components/primitives/PageHeader";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { findProjectBySlug } from "~/models/project.server";
 import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
-import { prisma } from "~/db.server";
+import { getAgent, isAgentServiceAvailable } from "~/services/platosAgent.server";
 import { env } from "~/env.server";
 import { EnvironmentParamSchema } from "~/utils/pathBuilder";
 
@@ -28,7 +29,22 @@ type Scope = {
   organizationId: string;
   projectId: string;
   environmentId: string;
+  userId: string;
 };
+
+function isAgentNotFoundError(error: unknown) {
+  return error instanceof Error && error.message.includes("Platos Agent API error: 404");
+}
+
+function scopeHeaders(scope: Scope) {
+  return {
+    "Content-Type": "application/json",
+    "X-Platos-Organization-Id": scope.organizationId,
+    "X-Platos-Project-Id": scope.projectId,
+    "X-Platos-Environment-Id": scope.environmentId,
+    "X-Platos-User-Id": scope.userId,
+  };
+}
 
 async function resolveAgent(
   agentId: string,
@@ -38,15 +54,12 @@ async function resolveAgent(
   name: string;
   visibility: string;
 } | null> {
-  return prisma.platosAgent.findFirst({
-    where: {
-      id: agentId,
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
-    },
-    select: { id: true, name: true, visibility: true },
-  });
+  const agent = await getAgent(agentId, scope);
+  return {
+    id: agent.id,
+    name: agent.name,
+    visibility: typeof agent.visibility === "string" ? agent.visibility : "private",
+  };
 }
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
@@ -64,17 +77,31 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     organizationId: project.organizationId,
     projectId: project.id,
     environmentId: environment.id,
+    userId,
   };
-  const agent = await resolveAgent(agentId, scope);
-  if (!agent) throw new Response(undefined, { status: 404 });
+  let agent: Awaited<ReturnType<typeof resolveAgent>> = null;
+  let agentServiceAvailable = false;
+  let agentFound = true;
+  if (await isAgentServiceAvailable()) {
+    try {
+      agent = await resolveAgent(agentId, scope);
+      agentServiceAvailable = true;
+    } catch (error) {
+      agentFound = !isAgentNotFoundError(error);
+    }
+  }
 
   const appOrigin = env.APP_ORIGIN;
-  const embedUrl = `${appOrigin.replace(/\/$/, "")}/embed/${encodeURIComponent(agent.id)}`;
+  const embedUrl = agent
+    ? `${appOrigin.replace(/\/$/, "")}/embed/${encodeURIComponent(agent.id)}`
+    : null;
 
   return typedjson({
     agent,
     embedUrl,
     appOrigin,
+    agentServiceAvailable,
+    agentFound,
   });
 }
 
@@ -93,9 +120,23 @@ export async function action({ params, request }: ActionFunctionArgs) {
     organizationId: project.organizationId,
     projectId: project.id,
     environmentId: environment.id,
+    userId,
   };
-  const existing = await resolveAgent(agentId, scope);
-  if (!existing) return { error: "agent not found in scope" };
+  if (!(await isAgentServiceAvailable())) {
+    return typedjson({ error: "Agent service unavailable for the selected scope" }, { status: 503 });
+  }
+  try {
+    await resolveAgent(agentId, scope);
+  } catch (error) {
+    return typedjson(
+      {
+        error: isAgentNotFoundError(error)
+          ? "Agent unavailable in the selected scope"
+          : "Agent service unavailable for the selected scope",
+      },
+      { status: isAgentNotFoundError(error) ? 404 : 503 },
+    );
+  }
 
   const fd = await request.formData();
   const intent = fd.get("intent");
@@ -105,21 +146,57 @@ export async function action({ params, request }: ActionFunctionArgs) {
     return { error: `invalid visibility value: ${visibility}` };
   }
 
-  await prisma.platosAgent.update({
-    where: { id: agentId },
-    data: { visibility },
-  });
+  try {
+    const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
+    const response = await fetch(`${AGENT_API_URL}/api/v1/agent/agents/${agentId}`, {
+      method: "PATCH",
+      headers: scopeHeaders(scope),
+      body: JSON.stringify({ visibility }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      return typedjson(
+        {
+          error:
+            response.status === 404
+              ? "Agent unavailable in the selected scope"
+              : "Visibility update unavailable",
+        },
+        { status: response.status === 404 ? 404 : 503 },
+      );
+    }
+  } catch {
+    return typedjson({ error: "Visibility update unavailable" }, { status: 503 });
+  }
 
   return { ok: true, visibility };
 }
 
 export default function SharePage() {
-  const { agent, embedUrl } = useTypedLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+  const { agent, embedUrl, agentServiceAvailable, agentFound } =
+    useTypedLoaderData<typeof loader>();
+  const actionData = useActionData<{ ok?: boolean; visibility?: string; error?: string }>();
   const [copied, setCopied] = useState<string | null>(null);
 
+  if (!agentServiceAvailable || !agent || !embedUrl) {
+    return (
+      <PageContainer>
+        <NavBar>
+          <PageTitle title="Share agent" />
+        </NavBar>
+        <PageBody>
+          <Callout variant={agentFound ? "warning" : "error"}>
+            {agentFound
+              ? "Agent sharing is temporarily unavailable. Your selected scope is unchanged; try again when the agent service is reachable."
+              : "Agent unavailable in the selected scope."}
+          </Callout>
+        </PageBody>
+      </PageContainer>
+    );
+  }
+
   const currentVisibility =
-    (actionData as any)?.visibility ?? agent.visibility;
+    actionData?.visibility ?? agent.visibility;
   const isPublic = currentVisibility === "public-guest";
 
   const iframeSnippet = `<script src="${embedUrl.replace(/\/embed\/.+$/, "/embed.js")}"></script>\n<platos-agent\n  base-url="${embedUrl.replace(/\/embed\/.+$/, "")}"\n  agent-id="${agent.id}"\n  theme="auto"></platos-agent>`;
@@ -162,7 +239,7 @@ export default function SharePage() {
           </span>
         </Form>
 
-        {actionData && "error" in actionData && (
+        {actionData?.error && (
           <Paragraph>
             <span style={{ color: "#ef4444" }}>Error: {actionData.error}</span>
           </Paragraph>

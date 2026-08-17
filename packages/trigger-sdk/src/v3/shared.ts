@@ -5,7 +5,6 @@ import {
   ApiError,
   apiClientManager,
   ApiRequestOptions,
-  conditionallyImportPacket,
   convertToolParametersToSchema,
   createErrorTaskError,
   defaultRetryOptions,
@@ -2646,35 +2645,10 @@ async function handleBatchTaskRunExecutionResult<TIdentifier extends string, TOu
   items: Array<TaskRunExecutionResult>,
   taskIdentifier: TIdentifier
 ): Promise<Array<TaskRunResult<TIdentifier, TOutput>>> {
-  const someObjectStoreOutputs = items.some(
-    (item) => item.ok && item.outputType === "application/store"
-  );
-
-  if (!someObjectStoreOutputs) {
-    const results = await Promise.all(
-      items.map(async (item) => {
-        return await handleTaskRunExecutionResult<TIdentifier, TOutput>(item, taskIdentifier);
-      })
-    );
-
-    return results;
-  }
-
-  return await tracer.startActiveSpan(
-    "store.downloadPayloads",
-    async (span) => {
-      const results = await Promise.all(
-        items.map(async (item) => {
-          return await handleTaskRunExecutionResult<TIdentifier, TOutput>(item, taskIdentifier);
-        })
-      );
-
-      return results;
-    },
-    {
-      kind: SpanKind.INTERNAL,
-      [SemanticInternalAttributes.STYLE_ICON]: "cloud-download",
-    }
+  return await Promise.all(
+    items.map(async (item) => {
+      return await handleTaskRunExecutionResult<TIdentifier, TOutput>(item, taskIdentifier);
+    })
   );
 }
 
@@ -2682,41 +2656,13 @@ async function handleBatchTaskRunExecutionResultV2(
   items: Array<TaskRunExecutionResult>,
   taskIdentifiers?: string[]
 ): Promise<Array<AnyTaskRunResult>> {
-  const someObjectStoreOutputs = items.some(
-    (item) => item.ok && item.outputType === "application/store"
-  );
-
-  if (!someObjectStoreOutputs) {
-    const results = await Promise.all(
-      items.map(async (item, index) => {
-        return await handleTaskRunExecutionResult(
-          item,
-          item.taskIdentifier ?? taskIdentifiers?.[index] ?? "unknown"
-        );
-      })
-    );
-
-    return results;
-  }
-
-  return await tracer.startActiveSpan(
-    "store.downloadPayloads",
-    async (span) => {
-      const results = await Promise.all(
-        items.map(async (item, index) => {
-          return await handleTaskRunExecutionResult(
-            item,
-            item.taskIdentifier ?? taskIdentifiers?.[index] ?? "unknown"
-          );
-        })
+  return await Promise.all(
+    items.map(async (item, index) => {
+      return await handleTaskRunExecutionResult(
+        item,
+        item.taskIdentifier ?? taskIdentifiers?.[index] ?? "unknown"
       );
-
-      return results;
-    },
-    {
-      kind: SpanKind.INTERNAL,
-      [SemanticInternalAttributes.STYLE_ICON]: "cloud-download",
-    }
+    })
   );
 }
 
@@ -2726,13 +2672,12 @@ async function handleTaskRunExecutionResult<TIdentifier extends string = string,
 ): Promise<TaskRunResult<TIdentifier, TOutput>> {
   if (execution.ok) {
     const outputPacket = { data: execution.output, dataType: execution.outputType };
-    const importedPacket = await conditionallyImportPacket(outputPacket, tracer);
 
     return {
       ok: true,
       id: execution.id,
       taskIdentifier: (execution.taskIdentifier ?? taskIdentifier) as TIdentifier,
-      output: await parsePacket(importedPacket),
+      output: await parsePacket(outputPacket),
     };
   } else {
     return {

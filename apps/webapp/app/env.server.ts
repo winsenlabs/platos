@@ -204,41 +204,6 @@ const EnvironmentSchema = z
     CACHE_REDIS_TLS_DISABLED: z.string().default(process.env.REDIS_TLS_DISABLED ?? "false"),
     CACHE_REDIS_CLUSTER_MODE_ENABLED: z.string().default("0"),
 
-    REALTIME_STREAMS_REDIS_HOST: z
-      .string()
-      .optional()
-      .transform((v) => v ?? process.env.REDIS_HOST),
-    REALTIME_STREAMS_REDIS_READER_HOST: z
-      .string()
-      .optional()
-      .transform((v) => v ?? process.env.REDIS_READER_HOST),
-    REALTIME_STREAMS_REDIS_READER_PORT: z.coerce
-      .number()
-      .optional()
-      .transform(
-        (v) =>
-          v ?? (process.env.REDIS_READER_PORT ? parseInt(process.env.REDIS_READER_PORT) : undefined)
-      ),
-    REALTIME_STREAMS_REDIS_PORT: z.coerce
-      .number()
-      .optional()
-      .transform(
-        (v) => v ?? (process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : undefined)
-      ),
-    REALTIME_STREAMS_REDIS_USERNAME: z
-      .string()
-      .optional()
-      .transform((v) => v ?? process.env.REDIS_USERNAME),
-    REALTIME_STREAMS_REDIS_PASSWORD: z
-      .string()
-      .optional()
-      .transform((v) => v ?? process.env.REDIS_PASSWORD),
-    REALTIME_STREAMS_REDIS_TLS_DISABLED: z
-      .string()
-      .default(process.env.REDIS_TLS_DISABLED ?? "false"),
-    REALTIME_STREAMS_REDIS_CLUSTER_MODE_ENABLED: z.string().default("0"),
-    REALTIME_STREAMS_INACTIVITY_TIMEOUT_MS: z.coerce.number().int().default(60000), // 1 minute
-
     PUBSUB_REDIS_HOST: z
       .string()
       .optional()
@@ -292,8 +257,6 @@ const EnvironmentSchema = z
     API_RATE_LIMIT_REJECTION_LOGS_ENABLED: z.string().default("1"),
     API_RATE_LIMIT_LIMITER_LOGS_ENABLED: z.string().default("0"),
 
-    API_RATE_LIMIT_JWT_WINDOW: z.string().default("1m"),
-    API_RATE_LIMIT_JWT_TOKENS: z.coerce.number().int().default(60),
 
     // Public docs API (/api/v1/public/*). Has to absorb a marketing-site
     // SSG that fans out ~250 requests from one Vercel build IP — the old
@@ -304,9 +267,6 @@ const EnvironmentSchema = z
     //v3
     PROVIDER_SECRET: z.string().default("provider-secret"),
     COORDINATOR_SECRET: z.string().default("coordinator-secret"),
-    DEPOT_TOKEN: z.string().optional(),
-    DEPOT_ORG_ID: z.string().optional(),
-    DEPOT_REGION: z.string().default("us-east-1"),
 
     // Deployment registry (v3)
     DEPLOY_REGISTRY_HOST: z.string().min(1),
@@ -779,21 +739,11 @@ const EnvironmentSchema = z
     EVENTS_CLICKHOUSE_MAX_TRACE_DETAILED_SUMMARY_VIEW_COUNT: z.coerce.number().int().default(5_000),
     EVENTS_CLICKHOUSE_MAX_LIVE_RELOADING_SETTING: z.coerce.number().int().default(2000),
 
-    // LLM cost tracking
-    LLM_COST_TRACKING_ENABLED: BoolEnv.default(true),
-    LLM_PRICING_RELOAD_INTERVAL_MS: z.coerce
-      .number()
-      .int()
-      .default(5 * 60 * 1000), // 5 minutes
-    LLM_PRICING_SEED_ON_STARTUP: BoolEnv.default(false),
-    LLM_PRICING_READY_TIMEOUT_MS: z.coerce.number().int().default(500),
+    // LLM metrics
     LLM_METRICS_BATCH_SIZE: z.coerce.number().int().default(5000),
     LLM_METRICS_FLUSH_INTERVAL_MS: z.coerce.number().int().default(2000),
     LLM_METRICS_MAX_BATCH_SIZE: z.coerce.number().int().default(10000),
     LLM_METRICS_MAX_CONCURRENCY: z.coerce.number().int().default(2),
-
-    // Machine presets
-    MACHINE_PRESETS_OVERRIDE_PATH: z.string().optional(),
 
     // CLI package tag (e.g. "latest", "v4-beta", "4.0.0") - used for setup commands
     TRIGGER_CLI_TAG: z.string().default("latest"),
@@ -856,26 +806,8 @@ const EnvironmentSchema = z
 
     VERY_SLOW_QUERY_THRESHOLD_MS: z.coerce.number().int().optional(),
 
-    REALTIME_STREAMS_S2_BASIN: z.string().optional(),
-    REALTIME_STREAMS_S2_ACCESS_TOKEN: z.string().optional(),
-    REALTIME_STREAMS_S2_ENDPOINT: z.string().optional(),
-    REALTIME_STREAMS_S2_SKIP_ACCESS_TOKENS: z.enum(["true", "false"]).default("false"),
-    REALTIME_STREAMS_S2_ACCESS_TOKEN_EXPIRATION_IN_MS: z.coerce
-      .number()
-      .int()
-      .default(60_000 * 60 * 24), // 1 day
-    REALTIME_STREAMS_S2_LOG_LEVEL: z
-      .enum(["log", "error", "warn", "info", "debug"])
-      .default("info"),
-    REALTIME_STREAMS_S2_FLUSH_INTERVAL_MS: z.coerce.number().int().default(100),
-    REALTIME_STREAMS_S2_MAX_RETRIES: z.coerce.number().int().default(10),
-    REALTIME_STREAMS_S2_WAIT_SECONDS: z.coerce.number().int().default(60),
-    REALTIME_STREAMS_DEFAULT_VERSION: z.enum(["v1", "v2"]).default("v1"),
     WAIT_UNTIL_TIMEOUT_MS: z.coerce.number().int().default(600_000),
 
-    // Private connections
-    PRIVATE_CONNECTIONS_ENABLED: z.string().optional(),
-    PRIVATE_CONNECTIONS_AWS_ACCOUNT_IDS: z.string().optional(),
   })
   .and(S2EnvSchema)
   // SECURITY (audit H14) — the webapp MINTS the login cookie (also the API JWT

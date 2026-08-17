@@ -30,7 +30,7 @@ import { useEnvironment } from "~/hooks/useEnvironment";
 import { useOrganization } from "~/hooks/useOrganizations";
 import { useProject } from "~/hooks/useProject";
 import { usePostHogTracking } from "~/hooks/usePostHog";
-import { Prisma } from "@platos/database";
+import type { Prisma } from "@platos/database";
 import { prisma } from "~/db.server";
 import { findProjectBySlug } from "~/models/project.server";
 import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
@@ -141,14 +141,15 @@ function humanizeBytes(bytes: number): string {
 /**
  * Theme CTX — session-context contract.
  *
- * `PlatosAgentThread.sessionContext` is a per-thread key=value bag (e.g.
+ * `Thread.sessionContext` is a per-thread key=value bag (e.g.
  * `{ "user.id": "usr_abc", "tenant.id": "winsen-bridge" }`) consumed by the
  * runtime for prompt substitution, tool-arg auto-injection, envelope
  * forwarding, and tool-matrix routing (via `entity_ids: string[]`).
  *
- * `PlatosAgent.contextMapping` declares WHICH keys play WHICH role. This
- * route exposes the raw JSON to the operator + a derived "which keys inject
- * where" preview so they can type-check their context bag before saving.
+ * The active `AgentVersion` stores the compatibility context mapping in its
+ * runtime config. This route exposes the raw JSON to the operator + a derived
+ * "which keys inject where" preview so they can type-check their context bag
+ * before saving.
  */
 type ContextMapping = {
   promptVars?: string[];
@@ -158,6 +159,12 @@ type ContextMapping = {
 };
 
 type SessionContext = Record<string, unknown>;
+
+function objectRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const userId = await requireUserId(request);
@@ -180,55 +187,60 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     userId,
   };
 
-  let agentName = agentId === "default" ? "Default Agent" : agentId;
-  try {
-    const { isAgentServiceAvailable, getAgent } = await import("~/services/platosAgent.server");
-    if (await isAgentServiceAvailable()) {
-      const agent = await getAgent(agentId, scope);
-      if (agent?.name) agentName = agent.name;
-    }
-  } catch {
-    // Agent service not running
-  }
-
-  // CTX.3 — pull contextMapping from the agent (scope-gated) + sessionContext
-  // from the active thread (if the URL carries one). Thread scope is checked
-  // at the action site; the loader just reads, so failure is benign.
+  // CTX.3 — pull compatibility runtime configuration from the Environment's
+  // active AgentVersion and sessionContext from the active clean Thread (if
+  // the URL carries one). Both reads derive ancestry through Environment.
   const url = new URL(request.url);
   const threadIdFromUrl = url.searchParams.get("threadId");
 
-  const [agentRow, threadRow, userRow] = await Promise.all([
-    prisma.platosAgent.findFirst({
+  const [agentBinding, threadRow, userRow] = await Promise.all([
+    prisma.agentBinding.findFirst({
       where: {
-        id: agentId,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
+        agentId,
+        environment: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
+        agent: { projectId: scope.projectId, isActive: true },
       },
-      // PRELAUNCH-A1-8 — pull `model` so the trace panel can resolve the
-      // provider-aware cache discount label (90% / 50% / 75%) instead of
-      // hard-coding Anthropic's 90%.
-      select: { contextMapping: true, modelRoutes: true, enableThreading: true, model: true },
+      select: {
+        agent: { select: { name: true } },
+        activeAgentVersion: {
+          select: { memoryConfig: true, modelRoutes: true, model: true },
+        },
+      },
     }),
     threadIdFromUrl
-      ? prisma.platosAgentThread.findFirst({
+      ? prisma.thread.findFirst({
           where: {
             id: threadIdFromUrl,
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
             environmentId: scope.environmentId,
+            agentId,
+            environment: {
+              projectId: scope.projectId,
+              project: { organizationId: scope.organizationId },
+            },
           },
           select: { sessionContext: true },
         })
       : Promise.resolve(null),
     prisma.user.findFirst({
       where: { id: userId },
-      select: { id: true, name: true, displayName: true, email: true },
+      select: { id: true, displayName: true, email: true },
     }),
   ]);
 
-  const contextMapping = (agentRow?.contextMapping as ContextMapping | null) ?? null;
+  if (!agentBinding) {
+    throw new Response(undefined, { status: 404, statusText: "Agent not found" });
+  }
+
+  const runtimeConfig = objectRecord(
+    objectRecord(agentBinding.activeAgentVersion.memoryConfig)?.__runtime,
+  );
+  const contextMapping = objectRecord(runtimeConfig?.contextMapping) as ContextMapping | null;
   const sessionContext = (threadRow?.sessionContext as SessionContext | null) ?? null;
+  const agentName = agentBinding.agent.name;
 
   const sessionToken = mintPlatosSessionToken(scope, 3600);
 
@@ -288,14 +300,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     contextMapping,
     sessionContext,
     postmanTemplates,
-    agentModelRoutes: (agentRow?.modelRoutes as any[] | null) ?? null,
+    agentModelRoutes: (agentBinding.activeAgentVersion.modelRoutes as any[] | null) ?? null,
     // PRELAUNCH-A1-8 — surface the agent's model so the trace panel can
     // render a provider-aware cache discount label.
-    agentModel: (agentRow?.model as string | null) ?? null,
-    enableThreading: agentRow?.enableThreading ?? false,
+    agentModel: agentBinding.activeAgentVersion.model,
+    enableThreading: runtimeConfig?.enableThreading === true,
     currentUser: {
       id: userRow?.id ?? userId,
-      name: userRow?.displayName || userRow?.name || userRow?.email || null,
+      name: userRow?.displayName || userRow?.email || null,
     },
   });
 }
@@ -304,9 +316,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
  * CTX.3 — playground save-session-context action.
  *
  * Parses the posted raw JSON, validates it's an object-shaped bag, then writes
- * `sessionContext` into the scoped thread row. Scope is double-gated: the
- * `where` clause filters by (threadId, org, project, env) — no cross-tenant
- * writes possible.
+ * `sessionContext` into the scoped clean Thread row. Scope is double-gated:
+ * the `where` clause filters by Thread, Agent, and canonical Environment
+ * ancestry — no cross-tenant writes are possible.
  */
 export async function action({ request, params }: ActionFunctionArgs) {
   const userId = await requireUserId(request);
@@ -378,12 +390,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return { ok: false as const, error: "sessionContext must be a JSON object" };
   }
 
-  const result = await prisma.platosAgentThread.updateMany({
+  const result = await prisma.thread.updateMany({
     where: {
       id: threadId,
-      organizationId: project.organizationId,
-      projectId: project.id,
       environmentId: environment.id,
+      agentId,
+      environment: {
+        projectId: project.id,
+        project: { organizationId: project.organizationId },
+      },
     },
     data: { sessionContext: parsed as Prisma.InputJsonValue },
   });

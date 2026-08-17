@@ -1,8 +1,5 @@
 import { z } from "zod";
 import { DeserializedJsonSchema } from "../../schemas/json.js";
-import type { RuntimeEnvironmentType as DBRuntimeEnvironmentType } from "@platos/database";
-
-export type Enum<T extends string> = { [K in T]: K };
 
 export const RunMetadataUpdateOperation = z.object({
   type: z.literal("update"),
@@ -559,11 +556,11 @@ export const RuntimeEnvironmentType = {
   STAGING: "STAGING",
   DEVELOPMENT: "DEVELOPMENT",
   PREVIEW: "PREVIEW",
-} satisfies Enum<DBRuntimeEnvironmentType>;
+} as const;
 
 export type RuntimeEnvironmentType =
   (typeof RuntimeEnvironmentType)[keyof typeof RuntimeEnvironmentType];
 
 export const RuntimeEnvironmentTypeSchema = z.enum(
-  Object.values(RuntimeEnvironmentType) as [DBRuntimeEnvironmentType]
+  Object.values(RuntimeEnvironmentType) as [RuntimeEnvironmentType, ...RuntimeEnvironmentType[]]
 );

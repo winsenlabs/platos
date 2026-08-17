@@ -18,8 +18,6 @@ import { type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/ser
 import { useMemo, useState } from "react";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import { z } from "zod";
-import { Prisma } from "@platos/database";
-import { prisma } from "~/db.server";
 import { ModelPicker, type ProviderForPicker } from "~/components/agents/ModelPicker";
 import { ModelRoutesEditor } from "~/components/agents/ModelRoutesEditor";
 import { PromptBlockEditor } from "~/components/agents/PromptBlockEditor";
@@ -27,6 +25,7 @@ import { RetryRulesEditor, type RetryRule } from "~/components/agents/RetryRules
 import { PageBody, PageContainer } from "~/components/layout/AppLayout";
 import { Badge } from "~/components/primitives/Badge";
 import { Button, LinkButton } from "~/components/primitives/Buttons";
+import { Callout } from "~/components/primitives/Callout";
 import { Fieldset } from "~/components/primitives/Fieldset";
 import { FormButtons } from "~/components/primitives/FormButtons";
 import { Header3 } from "~/components/primitives/Headers";
@@ -39,6 +38,7 @@ import { useProject } from "~/hooks/useProject";
 import { findProjectBySlug } from "~/models/project.server";
 import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
+import { getAgent, isAgentServiceAvailable } from "~/services/platosAgent.server";
 import { telemetry } from "~/services/telemetry.server";
 import { cacheRatesFor } from "~/utils/cacheRates";
 import {
@@ -68,6 +68,10 @@ function scopeHeaders(scope: {
     "X-Platos-Environment-Id": scope.environmentId,
     "X-Platos-User-Id": scope.userId,
   };
+}
+
+function isAgentNotFoundError(error: unknown) {
+  return error instanceof Error && error.message.includes("Platos Agent API error: 404");
 }
 
 /**
@@ -118,7 +122,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     name: agentId === "default" ? "Default Agent" : agentId,
     slug: agentId,
     model: "anthropic:claude-sonnet-4-6",
-    systemPrompt: "You are a helpful AI assistant powered by Platos.",
+    systemPrompt: null as string | null,
     maxSteps: 20,
     toolMode: "direct",
     memoryConfig: { conversation: true, working: true, semantic: { enabled: false }, graph: { enabled: false } },
@@ -147,19 +151,15 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   let agent = defaults;
   let promptBlocks: any[] = [];
+  let agentServiceAvailable = false;
   try {
-    const { isAgentServiceAvailable, getAgent } = await import("~/services/platosAgent.server");
     if (await isAgentServiceAvailable()) {
-      const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
       const result = await getAgent(agentId, scope);
       agent = { ...defaults, ...result };
+      agentServiceAvailable = true;
 
-      // Use saved blocks if agent has them; else synthesize from
-      // `systemPrompt` so MCP-created agents (which set the raw
-      // systemPrompt column but not promptBlocks) render what's
-      // actually stored, not a generic template. Fall through to
-      // generic defaults only when BOTH are empty (e.g. brand-new
-      // agent via the builder wizard before the first save).
+      // AgentVersion.systemPrompt remains canonical when no block array was
+      // saved. Do not consult the retired prompt-default registry.
       if (Array.isArray((result as any)?.promptBlocks) && (result as any).promptBlocks.length > 0) {
         promptBlocks = (result as any).promptBlocks;
       } else if ((result as any)?.systemPrompt && typeof (result as any).systemPrompt === "string") {
@@ -174,26 +174,18 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
             order: 0,
           },
         ];
-      } else {
-        const blocksRes = await fetch(`${AGENT_API_URL}/api/v1/agent/prompt/defaults?agentName=${encodeURIComponent(agent.name)}`, {
-          headers: scopeHeaders(scope),
-          signal: AbortSignal.timeout(5000),
-        });
-        if (blocksRes.ok) {
-          const data = (await blocksRes.json()) as { blocks?: any[] };
-          promptBlocks = data.blocks || [];
-        }
       }
     }
-  } catch {
-    // Agent service not running — use defaults
+  } catch (error) {
+    if (isAgentNotFoundError(error)) {
+      throw new Response(undefined, { status: 404, statusText: "Agent unavailable in scope" });
+    }
   }
 
   // Load provider states for the scope-aware model picker.
   let providers: ProviderForPicker[] = [];
   try {
-    const { isAgentServiceAvailable } = await import("~/services/platosAgent.server");
-    if (await isAgentServiceAvailable()) {
+    if (agentServiceAvailable) {
       const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
       const res = await fetch(`${AGENT_API_URL}/api/v1/agent/providers`, {
         headers: scopeHeaders(scope),
@@ -221,8 +213,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   // PIFSP-14 — load named provider keys so the key picker can show options.
   let providerKeys: Array<{ id: string; provider: string; label: string; envVarName: string; isDefault: boolean; envVarSet?: boolean }> = [];
   try {
-    const { isAgentServiceAvailable } = await import("~/services/platosAgent.server");
-    if (await isAgentServiceAvailable()) {
+    if (agentServiceAvailable) {
       const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
       const pkRes = await fetch(`${AGENT_API_URL}/api/v1/agent/providers/keys`, {
         headers: scopeHeaders(scope),
@@ -237,8 +228,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   // PRA-AC — load available clusters so the agent settings cluster picker is populated.
   let availableClusters: Array<{ id: string; name: string; slug: string }> = [];
   try {
-    const { isAgentServiceAvailable } = await import("~/services/platosAgent.server");
-    if (await isAgentServiceAvailable()) {
+    if (agentServiceAvailable) {
       const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
       const clRes = await fetch(`${AGENT_API_URL}/api/v1/agent/clusters`, { headers: scopeHeaders(scope) });
       if (clRes.ok) {
@@ -248,29 +238,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     }
   } catch {}
 
-  // CTX.4 — pull `contextMapping` from the scoped agent row so the Context
-  // section can round-trip the operator's edits. Scope-gated via the full
-  // (id, org, project, env) tuple — a cross-tenant id lookup just returns
-  // null and the section renders an empty mapping.
-  const agentRow = await prisma.platosAgent.findFirst({
-    where: {
-      id: agentId,
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
-    },
-    select: { contextMapping: true, providerKeyId: true, modelRoutes: true, clusteringId: true, enableThreading: true, agentRetryConfig: true },
-  });
-  const contextMapping =
-    (agentRow?.contextMapping as ContextMapping | null) ?? null;
+  const contextMapping = ((agent as any).contextMapping as ContextMapping | null) ?? null;
 
   // MC.4 — per-agent cache hit rate series for the last 7 days. Failures
   // here are non-fatal; the section renders a neutral state if the agent
   // endpoint is unreachable or returns a non-2xx.
   let cacheRange: CacheRangePayload | null = null;
   try {
-    const { isAgentServiceAvailable } = await import("~/services/platosAgent.server");
-    if (await isAgentServiceAvailable()) {
+    if (agentServiceAvailable) {
       const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
       const res = await fetch(
         `${AGENT_API_URL}/api/v1/agent/monitoring/agent/${encodeURIComponent(agentId)}/cache-range?days=7`,
@@ -289,6 +264,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   return typedjson({
     agent,
+    agentServiceAvailable,
     promptBlocks,
     providers,
     providersPath,
@@ -296,7 +272,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     contextMapping,
     cacheRange,
     providerKeys,
-    agentProviderKeyId: agentRow?.providerKeyId ?? null,
+    agentProviderKeyId: (agent as any).providerKeyId ?? null,
     // `modelRoutes` is the same array-column shape as promptBlocks/dynamicBlocks
     // and was missed by the PIFSP-19 read-side defense above. A double-encoded
     // write left a JSON string in the column; `?? []` only guards null, so the
@@ -304,10 +280,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     // "(h ?? []).map is not a function". Null stays null so the editor's
     // "no routes configured" state is unchanged.
     agentModelRoutes:
-      agentRow?.modelRoutes == null ? null : asBlockArray<any>(agentRow.modelRoutes),
-    agentRetryRules: ((agentRow as any)?.agentRetryConfig?.rules ?? null) as RetryRule[] | null,
-    agentClusteringId: agentRow?.clusteringId ?? null,
-    agentEnableThreading: agentRow?.enableThreading ?? false,
+      (agent as any).modelRoutes == null ? null : asBlockArray<any>((agent as any).modelRoutes),
+    agentRetryRules: ((agent as any).agentRetryConfig?.rules ?? null) as RetryRule[] | null,
+    agentClusteringId: (agent as any).clusteringId ?? null,
+    agentEnableThreading: (agent as any).enableThreading ?? false,
     availableClusters,
   });
 }
@@ -447,6 +423,25 @@ export async function action({ request, params }: ActionFunctionArgs) {
     userId,
   };
 
+  if (!(await isAgentServiceAvailable())) {
+    return typedjson(
+      { error: "Agent service unavailable for the selected scope" },
+      { status: 503 },
+    );
+  }
+  try {
+    await getAgent(agentId, scope);
+  } catch (error) {
+    return typedjson(
+      {
+        error: isAgentNotFoundError(error)
+          ? "Agent unavailable in the selected scope"
+          : "Agent service unavailable for the selected scope",
+      },
+      { status: isAgentNotFoundError(error) ? 404 : 503 },
+    );
+  }
+
   const formData = await request.formData();
 
   // Theme G.7 — feature-flags editor posts with `intent=set-feature-flags`
@@ -505,9 +500,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
   }
 
-  // CTX.4 — persist the per-agent session-context mapping. Scope double-gate
-  // via the full tuple on `updateMany`; cross-tenant id replay is a no-op
-  // (count === 0 → fail-open error, no plaintext leaked).
+  // CTX.4 — persist through the scoped agent API so the immutable active
+  // AgentVersion is replaced without changing its canonical systemPrompt.
   if (intent === "save-context-mapping") {
     const payload = {
       promptVarsRaw: String(formData.get("contextPromptVars") ?? ""),
@@ -528,33 +522,33 @@ export async function action({ request, params }: ActionFunctionArgs) {
       !parsed.mapping.envelopeKeys &&
       !parsed.mapping.entityIdsKey;
     try {
-      const result = await prisma.platosAgent.updateMany({
-        where: {
-          id: agentId,
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        },
-        data: {
-          contextMapping: isEmpty
-            ? Prisma.JsonNull
-            : (parsed.mapping as unknown as Prisma.InputJsonValue),
-        },
+      const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
+      const result = await fetch(`${AGENT_API_URL}/api/v1/agent/agents/${agentId}`, {
+        method: "PATCH",
+        headers: scopeHeaders(scope),
+        body: JSON.stringify({ contextMapping: isEmpty ? null : parsed.mapping }),
+        signal: AbortSignal.timeout(10000),
       });
-      if (result.count === 0) {
+      if (!result.ok) {
         return typedjson(
-          { error: "Agent not found in this scope", submitted: payload },
-          { status: 404 },
+          {
+            error:
+              result.status === 404
+                ? "Agent unavailable in the selected scope"
+                : "Context mapping save unavailable",
+            submitted: payload,
+          },
+          { status: result.status === 404 ? 404 : 503 },
         );
       }
       return typedjson({ success: true, contextMapping: parsed.mapping });
-    } catch (error: any) {
+    } catch {
       return typedjson(
         {
-          error: `Context mapping save failed: ${error?.message || "unknown"}`,
+          error: "Context mapping save unavailable",
           submitted: payload,
         },
-        { status: 500 },
+        { status: 503 },
       );
     }
   }
@@ -724,6 +718,7 @@ export { RouteNotFoundBoundary as ErrorBoundary } from "~/components/platos/Rout
 export default function AgentDetailPage() {
   const {
     agent,
+    agentServiceAvailable,
     promptBlocks: initialBlocks,
     providers,
     providersPath,
@@ -789,8 +784,8 @@ export default function AgentDetailPage() {
 
   // CTX.4 — context mapping editor. Local state for the three sub-sections
   // (chip lists + JSON textarea + entity-ids key). On submit we post to the
-  // `save-context-mapping` action which writes `PlatosAgent.contextMapping`
-  // via a scope-gated `updateMany`. On server error the form state is
+  // `save-context-mapping` action, which creates a new canonical AgentVersion
+  // through the scoped agent API. On server error the form state is
   // preserved via `submitted` echoed back in the fetcher data.
   const initialPromptVars = useMemo<string[]>(
     () => contextMapping?.promptVars ?? [],
@@ -908,6 +903,14 @@ export default function AgentDetailPage() {
   // just renders its scrollable body content via PageBody.
   return (
     <PageBody>
+      {!agentServiceAvailable && (
+        <Callout variant="warning" className="mb-4 max-w-2xl">
+          Agent configuration is temporarily unavailable. Your selected scope is unchanged; try
+          again when the agent service is reachable.
+        </Callout>
+      )}
+      {agentServiceAvailable && (
+        <>
         <Form method="post" className="max-w-2xl">
           <div className="space-y-6">
             {/* Basic Info */}
@@ -1592,6 +1595,8 @@ export default function AgentDetailPage() {
           </Paragraph>
           <CacheHitRateSection cacheRange={cacheRange} model={agent.model} />
         </section>
+        </>
+      )}
     </PageBody>
   );
 }
@@ -1829,4 +1834,3 @@ app.message(async ({ message, say }) => {
     </section>
   );
 }
-

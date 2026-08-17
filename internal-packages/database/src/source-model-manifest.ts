@@ -427,6 +427,7 @@ export const supportDomainModels = [
   "Credential",
   "CredentialAudit",
   "CredentialSecretVersion",
+  "TokenLifecycleAudit",
 ] as const;
 
 /** All source target models plus independently required clean-slate support models. */

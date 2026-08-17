@@ -85,9 +85,23 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const organizationId = url.searchParams.get("organization_id") ?? null;
   const projectId = url.searchParams.get("project_id") ?? null;
 
-  const client = await prisma.platosOAuthClient.findUnique({
+  const client = await prisma.oAuthClient.findUnique({
     where: { clientId: clientIdParam },
-    select: { clientId: true, clientName: true, redirectUris: true, deletedAt: true },
+    select: {
+      clientId: true,
+      clientName: true,
+      redirectUris: true,
+      deletedAt: true,
+      organizationId: true,
+      entity: {
+        select: {
+          id: true,
+          externalId: true,
+          displayName: true,
+          project: { select: { id: true, organizationId: true } },
+        },
+      },
+    },
   });
   if (!client) throw new Response("Unknown client_id", { status: 400 });
   // MCPF-W3 — soft-deleted clients can't mint new tokens; reject at consent
@@ -95,6 +109,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (client.deletedAt) throw new Response("Client has been deleted", { status: 400 });
   if (!client.redirectUris.includes(redirectUriParam)) {
     throw new Response("redirect_uri not registered for this client", { status: 400 });
+  }
+  if (codeChallengeMethod !== "S256") {
+    throw new Response("Only S256 code challenges are supported", { status: 400 });
   }
 
   const queryShape = {
@@ -108,10 +125,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   // ── Entity flows (OIDC / anonymous) ──────────────────────────────────
   if (entityId && entityPk && organizationId && projectId) {
+    if (
+      !client.entity ||
+      client.entity.id !== entityPk ||
+      client.entity.externalId !== entityId ||
+      client.entity.project.id !== projectId ||
+      client.entity.project.organizationId !== organizationId ||
+      client.organizationId !== organizationId
+    ) {
+      throw new Response("OAuth entity scope is invalid", { status: 400 });
+    }
+
     // Fetch identity mode + branding from the agent backend.
     let identityMode = "bearer";
     let branding: { primaryColor?: string; tagline?: string } | null = null;
-    let displayName = entityId;
+    const displayName = client.entity.displayName;
     try {
       const agentBase = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
       const cfgRes = await fetch(
@@ -133,7 +161,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
         };
         identityMode = (data.config?.identityMode as string) ?? "bearer";
         branding = (data.config?.branding as { primaryColor?: string; tagline?: string } | null) ?? null;
-        displayName = (data.entityId as string) ?? entityId;
       }
     } catch {
       // Proceed with defaults if agent unreachable.
@@ -173,50 +200,69 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw redirect(`/login?${searchParams}`);
   }
 
-  const memberships = await prisma.orgMember.findMany({
-    where: { userId: user.id },
-    select: {
-      organization: {
-        select: {
-          id: true,
-          title: true,
-          projects: {
-            where: { deletedAt: null },
-            select: {
-              id: true,
-              name: true,
-              environments: {
-                select: {
-                  id: true,
-                  slug: true,
-                  type: true,
-                  orgMember: { select: { userId: true } },
+  const environments = await prisma.environment.findMany({
+    where: {
+      archivedAt: null,
+      project: {
+        organizationId: client.organizationId,
+        archivedAt: null,
+        organization: {
+          archivedAt: null,
+          memberships: { some: { userId: user.id, deactivatedAt: null } },
+        },
+        OR: [
+          {
+            organization: {
+              memberships: {
+                some: {
+                  userId: user.id,
+                  deactivatedAt: null,
+                  role: { in: ["OWNER", "ADMIN"] },
                 },
               },
             },
           },
+          {
+            memberships: {
+              some: {
+                organizationMembership: { userId: user.id, deactivatedAt: null },
+              },
+            },
+          },
+        ],
+      },
+    },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      project: {
+        select: {
+          id: true,
+          name: true,
+          organization: { select: { id: true, name: true } },
         },
       },
     },
+    orderBy: [
+      { project: { organization: { name: "asc" } } },
+      { project: { name: "asc" } },
+      { name: "asc" },
+    ],
   });
 
-  const scopes: ConsentScope[] = [];
-  for (const m of memberships) {
-    for (const project of m.organization.projects) {
-      for (const envRow of project.environments) {
-        if (envRow.orgMember && envRow.orgMember.userId !== user.id) continue;
-        scopes.push({
-          organizationId: m.organization.id,
-          organizationName: m.organization.title,
-          projectId: project.id,
-          projectName: project.name,
-          environmentId: envRow.id,
-          environmentLabel: `${envRow.slug} (${envRow.type.toLowerCase()})`,
-          value: `${m.organization.id}|${project.id}|${envRow.id}`,
-        });
-      }
-    }
-  }
+  const scopes: ConsentScope[] = environments.map((environment) => ({
+    organizationId: environment.project.organization.id,
+    organizationName: environment.project.organization.name,
+    projectId: environment.project.id,
+    projectName: environment.project.name,
+    environmentId: environment.id,
+    environmentLabel:
+      environment.name === environment.slug
+        ? environment.name
+        : `${environment.name} (${environment.slug})`,
+    value: `${environment.project.organization.id}|${environment.project.id}|${environment.id}`,
+  }));
 
   return json<LoaderData>({
     flow: "platform",
@@ -246,6 +292,14 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ error: "Missing required fields" }, { status: 400 });
   }
 
+  const client = await prisma.oAuthClient.findUnique({
+    where: { clientId },
+    select: { id: true, organizationId: true, redirectUris: true, deletedAt: true },
+  });
+  if (!client || client.deletedAt || !client.redirectUris.includes(redirectUri)) {
+    return json({ error: "OAuth client is unavailable" }, { status: 400 });
+  }
+
   if (action === "deny") {
     const r = new URL(redirectUri);
     r.searchParams.set("error", "access_denied");
@@ -260,6 +314,49 @@ export async function action({ request }: ActionFunctionArgs) {
   const [organizationId, projectId, environmentId] = scopeValue.split("|");
   if (!organizationId || !projectId || !environmentId) {
     return json({ error: "Invalid scope" }, { status: 400 });
+  }
+  if (organizationId !== client.organizationId) {
+    return json({ error: "Selected scope is unavailable" }, { status: 403 });
+  }
+
+  const authorizedEnvironment = await prisma.environment.findFirst({
+    where: {
+      id: environmentId,
+      archivedAt: null,
+      project: {
+        id: projectId,
+        organizationId,
+        archivedAt: null,
+        organization: {
+          archivedAt: null,
+          memberships: { some: { userId: user.id, deactivatedAt: null } },
+        },
+        OR: [
+          {
+            organization: {
+              memberships: {
+                some: {
+                  userId: user.id,
+                  deactivatedAt: null,
+                  role: { in: ["OWNER", "ADMIN"] },
+                },
+              },
+            },
+          },
+          {
+            memberships: {
+              some: {
+                organizationMembership: { userId: user.id, deactivatedAt: null },
+              },
+            },
+          },
+        ],
+      },
+    },
+    select: { id: true },
+  });
+  if (!authorizedEnvironment) {
+    return json({ error: "Selected scope is unavailable" }, { status: 403 });
   }
 
   const secret = env.SESSION_SECRET;

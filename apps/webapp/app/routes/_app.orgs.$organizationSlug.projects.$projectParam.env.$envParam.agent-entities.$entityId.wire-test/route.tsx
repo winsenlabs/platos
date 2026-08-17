@@ -15,10 +15,7 @@
  * actually connect?" uncertainty.
  */
 
-import {
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-} from "@remix-run/server-runtime";
+import { type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/server-runtime";
 import { Form, useActionData, type MetaFunction } from "@remix-run/react";
 import { useState } from "react";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
@@ -54,37 +51,33 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   const entityId = params.entityId;
   if (!entityId) throw new Response(undefined, { status: 404 });
 
-  const entity = await prisma.platosConnectedEntity.findFirst({
+  const entity = await prisma.entity.findFirst({
     where: {
-      organizationId: project.organizationId,
       projectId: project.id,
-      entityId,
+      externalId: entityId,
     },
     select: {
       id: true,
-      entityId: true,
+      externalId: true,
       connectionStatus: true,
       lastConnectedAt: true,
+      environmentTools: {
+        where: { environmentId: environment.id, enabled: true },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: { tool: { select: { name: true } } },
+      },
     },
   });
   if (!entity) throw new Response(undefined, { status: 404 });
 
-  // Pre-pick a tool that looks like a reasonable health-check target:
-  // any enabled mapping for this entity — the agent will resolve the
-  // tool name from the mapping. Operator can override via form input.
-  const mapping = await prisma.platosEntityToolMapping.findFirst({
-    where: {
-      environmentId: environment.id,
-      entityId: entity.id,
-      enabled: true,
-    },
-    orderBy: [{ enabled: "desc" }],
-    select: { toolId: true },
-  });
-
   return typedjson({
-    entity,
-    suggestedTool: mapping?.toolId ?? "ping",
+    entity: {
+      entityId: entity.externalId,
+      connectionStatus: entity.connectionStatus,
+      lastConnectedAt: entity.lastConnectedAt,
+    },
+    suggestedTool: entity.environmentTools[0]?.tool.name ?? "ping",
   });
 }
 
@@ -114,15 +107,17 @@ export async function action({ params, request }: ActionFunctionArgs) {
 
   const entityId = params.entityId;
   if (!entityId) return { error: "entity id missing" };
-  const entity = await prisma.platosConnectedEntity.findFirst({
+  const entity = await prisma.entity.findFirst({
     where: {
-      organizationId: project.organizationId,
       projectId: project.id,
-      entityId,
+      externalId: entityId,
+      environmentTools: {
+        some: { environmentId: environment.id, enabled: true },
+      },
     },
-    select: { id: true, entityId: true },
+    select: { id: true, externalId: true },
   });
-  if (!entity) return { error: "entity not found in scope" };
+  if (!entity) return { error: "entity or tool unavailable in scope" };
 
   const fd = await request.formData();
   const toolName = String(fd.get("toolName") || "ping").trim();
@@ -133,6 +128,17 @@ export async function action({ params, request }: ActionFunctionArgs) {
   } catch (err: any) {
     return { error: `Invalid JSON for params: ${err?.message}` };
   }
+
+  const mapping = await prisma.environmentEntityTool.findFirst({
+    where: {
+      environmentId: environment.id,
+      entityId: entity.id,
+      enabled: true,
+      tool: { name: toolName },
+    },
+    select: { id: true },
+  });
+  if (!mapping) return { error: "entity or tool unavailable in scope" };
 
   const scope: Scope = {
     organizationId: project.organizationId,
@@ -146,12 +152,11 @@ export async function action({ params, request }: ActionFunctionArgs) {
   // handler in the agent) dispatches via ToolExecutorService — same
   // code path real tool calls take — and returns the request/response
   // transcript.
-  const AGENT_API_URL =
-    process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
+  const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
   const startedAt = Date.now();
   try {
     const res = await fetch(
-      `${AGENT_API_URL}/api/v1/agent/entities/${encodeURIComponent(entity.entityId)}/wire-test`,
+      `${AGENT_API_URL}/api/v1/agent/entities/${encodeURIComponent(entity.externalId)}/wire-test`,
       {
         method: "POST",
         headers: {
@@ -163,12 +168,16 @@ export async function action({ params, request }: ActionFunctionArgs) {
         },
         body: JSON.stringify({ toolName, params: paramsJson }),
         signal: AbortSignal.timeout(30_000),
-      },
+      }
     );
     const body = await res.json().catch(() => ({}));
     const latencyMs = Date.now() - startedAt;
     if (!res.ok) {
-      void telemetry.platos.entityWireTest({ organizationId: scope.organizationId, entityId: entity.entityId, success: false });
+      void telemetry.platos.entityWireTest({
+        organizationId: scope.organizationId,
+        entityId: entity.externalId,
+        success: false,
+      });
       return {
         ok: false,
         result: {
@@ -184,7 +193,11 @@ export async function action({ params, request }: ActionFunctionArgs) {
         } satisfies WireTestResult,
       };
     }
-    void telemetry.platos.entityWireTest({ organizationId: scope.organizationId, entityId: entity.entityId, success: true });
+    void telemetry.platos.entityWireTest({
+      organizationId: scope.organizationId,
+      entityId: entity.externalId,
+      success: true,
+    });
     return { ok: true, result: body as WireTestResult };
   } catch (err: any) {
     return {
@@ -194,7 +207,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
         latencyMs: Date.now() - startedAt,
         error: err?.message || String(err),
         request: {
-          url: `${AGENT_API_URL}/api/v1/agent/entities/${entity.entityId}/wire-test`,
+          url: `${AGENT_API_URL}/api/v1/agent/entities/${entity.externalId}/wire-test`,
           headers: {},
           body: JSON.stringify({ toolName, params: paramsJson }),
         },
@@ -216,10 +229,9 @@ export default function WireTestPage() {
       </NavBar>
       <PageBody>
         <Paragraph>
-          Dispatch a signed test tool-call through the same code path production
-          turns use. Catches HMAC mismatches, callback-URL reachability issues,
-          and response-shape surprises before you ever attach a tool to an
-          agent.
+          Dispatch a signed test tool-call through the same code path production turns use. Catches
+          HMAC mismatches, callback-URL reachability issues, and response-shape surprises before you
+          ever attach a tool to an agent.
         </Paragraph>
         <div
           style={{
@@ -236,9 +248,7 @@ export default function WireTestPage() {
           <div>
             Last connected:{" "}
             <code>
-              {entity.lastConnectedAt
-                ? new Date(entity.lastConnectedAt).toISOString()
-                : "never"}
+              {entity.lastConnectedAt ? new Date(entity.lastConnectedAt).toISOString() : "never"}
             </code>
           </div>
         </div>
@@ -261,9 +271,7 @@ export default function WireTestPage() {
             </label>
           </div>
           <div style={{ marginTop: 8 }}>
-            <label style={{ display: "block", marginBottom: 4 }}>
-              Params (JSON):
-            </label>
+            <label style={{ display: "block", marginBottom: 4 }}>Params (JSON):</label>
             <textarea
               name="params"
               value={paramsInput}

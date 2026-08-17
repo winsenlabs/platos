@@ -61,11 +61,8 @@ export {
 export { accessoryAttributes } from "./utils/styleAttributes.js";
 
 export {
-  conditionallyExportPacket,
-  conditionallyImportPacket,
   createPacketAttributes,
   createPacketAttributesAsJson,
-  packetRequiresOffloading,
   parsePacket,
   prettyPrintPacket,
   stringifyIO,

@@ -41,8 +41,6 @@ export const OTEL_ATTRIBUTE_PER_EVENT_COUNT_LIMIT = getOtelEnvVarLimit(
   10
 );
 
-export const OFFLOAD_IO_PACKET_LENGTH_LIMIT = 128 * 1024;
-
 export function imposeAttributeLimits(attributes: Attributes): Attributes {
   const newAttributes: Attributes = {};
 

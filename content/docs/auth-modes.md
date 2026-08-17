@@ -132,7 +132,7 @@ Only include user metadata the entity collected lawfully. `userMeta` is plaintex
 ### User API request
 
 ```bash
-curl https://platos.example.com/api/v1/orgs \
+curl https://platos.example.com/api/v2/whoami \
   -H "Authorization: Bearer $PLATOS_PAT"
 ```
 

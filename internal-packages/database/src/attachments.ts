@@ -31,6 +31,21 @@ export interface ClaimAttachmentUploadInput {
   readonly turnId: string;
 }
 
+export interface ReconcileAttachmentUploadBytesInput {
+  readonly reservationId: string;
+  readonly environmentId: string;
+  readonly storageKey: string;
+  readonly claimedBytes: number;
+  readonly actualBytes: number;
+  readonly quotaBytes: number;
+}
+
+export interface AttachmentByteReconciliation {
+  readonly claimedBytes: number;
+  readonly actualBytes: number;
+  readonly corrected: boolean;
+}
+
 export class AttachmentQuotaExceededError extends Error {
   readonly usedBytes: number;
   readonly requestedBytes: number;
@@ -218,6 +233,36 @@ export async function claimAttachmentUpload(
     });
     return attachment;
   }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
+}
+
+/**
+ * Corrects object-store byte metadata through the database's constrained
+ * quota-locked reconciliation function. Claimed reservations update their
+ * immutable MessageAttachment partner in the same transaction.
+ */
+export async function reconcileAttachmentUploadBytes(
+  client: PrismaClient,
+  input: ReconcileAttachmentUploadBytesInput,
+): Promise<AttachmentByteReconciliation> {
+  requirePositiveInteger(input.claimedBytes, "claimedBytes");
+  requirePositiveInteger(input.actualBytes, "actualBytes");
+  requirePositiveInteger(input.quotaBytes, "quotaBytes");
+  if (!input.storageKey) throw new TypeError("storageKey must not be empty");
+
+  const rows = await client.$queryRaw<AttachmentByteReconciliation[]>(Prisma.sql`
+    SELECT "claimedBytes", "actualBytes", corrected
+      FROM "public"."reconcile_attachment_upload_bytes"(
+        ${input.reservationId}::uuid,
+        ${input.environmentId}::uuid,
+        ${input.storageKey},
+        ${input.claimedBytes}::integer,
+        ${input.actualBytes}::integer,
+        ${BigInt(input.quotaBytes)}::bigint
+      )
+  `);
+  const result = rows[0];
+  if (!result) throw new AttachmentClaimError("Attachment upload reservation is not accessible");
+  return result;
 }
 
 export interface SweptAttachmentUploadReservation {

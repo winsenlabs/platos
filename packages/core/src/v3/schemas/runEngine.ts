@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { Enum, MachinePreset, RuntimeEnvironmentType, TaskRunExecution } from "./common.js";
+import { MachinePreset, RuntimeEnvironmentType, TaskRunExecution } from "./common.js";
 import { EnvironmentType } from "./schemas.js";
-import type * as DB_TYPES from "@platos/database";
 
 const anyString = z.custom<string & {}>((v) => typeof v === "string");
 
@@ -35,7 +34,7 @@ export const TaskRunExecutionStatus = {
   PENDING_CANCEL: "PENDING_CANCEL",
   FINISHED: "FINISHED",
   DELAYED: "DELAYED",
-} satisfies Enum<DB_TYPES.TaskRunExecutionStatus>;
+} as const;
 
 export type TaskRunExecutionStatus =
   (typeof TaskRunExecutionStatus)[keyof typeof TaskRunExecutionStatus];
@@ -58,7 +57,7 @@ export const TaskRunStatus = {
   CRASHED: "CRASHED",
   EXPIRED: "EXPIRED",
   TIMED_OUT: "TIMED_OUT",
-} satisfies Enum<DB_TYPES.TaskRunStatus>;
+} as const;
 
 export type TaskRunStatus = (typeof TaskRunStatus)[keyof typeof TaskRunStatus];
 
@@ -67,16 +66,19 @@ export const WaitpointType = {
   DATETIME: "DATETIME",
   MANUAL: "MANUAL",
   BATCH: "BATCH",
-} satisfies Enum<DB_TYPES.WaitpointType>;
+} as const;
 
 export type WaitpointType = (typeof WaitpointType)[keyof typeof WaitpointType];
 
 const WaitpointStatusValues = {
   PENDING: "PENDING",
   COMPLETED: "COMPLETED",
-} satisfies Enum<DB_TYPES.WaitpointStatus>;
+} as const;
 export const WaitpointStatus = z.enum(
-  Object.values(WaitpointStatusValues) as [DB_TYPES.WaitpointStatus]
+  Object.values(WaitpointStatusValues) as [
+    (typeof WaitpointStatusValues)[keyof typeof WaitpointStatusValues],
+    ...(typeof WaitpointStatusValues)[keyof typeof WaitpointStatusValues][],
+  ]
 );
 export type WaitpointStatus = z.infer<typeof WaitpointStatus>;
 
@@ -178,7 +180,7 @@ export const CheckpointTypeEnum = {
   DOCKER: "DOCKER",
   KUBERNETES: "KUBERNETES",
   COMPUTE: "COMPUTE",
-} satisfies Enum<DB_TYPES.TaskRunCheckpointType>;
+} as const;
 export type CheckpointTypeEnum = (typeof CheckpointTypeEnum)[keyof typeof CheckpointTypeEnum];
 
 export const CheckpointType = z.enum(Object.values(CheckpointTypeEnum) as [CheckpointTypeEnum]);

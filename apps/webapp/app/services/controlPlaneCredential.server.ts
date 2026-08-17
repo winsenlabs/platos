@@ -1,3 +1,9 @@
+import {
+  AuthorizationScopeKind,
+  TokenFamily,
+  TokenLifecycleAction,
+  TokenLifecycleOutcome,
+} from "@platos/database";
 import crypto from "node:crypto";
 import { prisma } from "~/db.server";
 
@@ -32,51 +38,54 @@ export async function verifyAdminControlPlaneCredential(
   if (!raw.startsWith(PREFIX)) return null;
 
   const tokenHash = crypto.createHash("sha256").update(raw).digest("hex");
-  const row = await prisma.platosMCPToken.findUnique({
+  const row = await prisma.mcpToken.findUnique({
     where: { tokenHash },
     select: {
       id: true,
       tokenHash: true,
-      organizationId: true,
-      projectId: true,
-      environmentId: true,
       mintedByUserId: true,
       tier: true,
       expiresAt: true,
       revokedAt: true,
+      environment: {
+        select: {
+          id: true,
+          project: { select: { id: true, organizationId: true } },
+        },
+      },
     },
   });
   if (
     !row ||
     !constantTimeHexEqual(row.tokenHash, tokenHash) ||
     row.tier !== "admin" ||
-    row.organizationId !== organizationId
+    row.environment.project.organizationId !== organizationId
   ) {
     return null;
   }
   if (row.revokedAt || (row.expiresAt && row.expiresAt.getTime() <= Date.now())) return null;
 
   const recorded = await prisma.$transaction(async (tx) => {
-    const updated = await tx.platosMCPToken.updateMany({
+    const updated = await tx.mcpToken.updateMany({
       where: {
         id: row.id,
         tier: "admin",
-        organizationId,
+        environment: { project: { organizationId } },
         revokedAt: null,
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       data: { lastUsedAt: new Date() },
     });
     if (updated.count !== 1) return false;
-    await tx.platosCredentialAudit.create({
+    await tx.tokenLifecycleAudit.create({
       data: {
-        family: "control_plane",
-        credentialId: row.id,
-        action: "use",
-        organizationId: row.organizationId,
-        projectId: row.projectId,
-        environmentId: row.environmentId,
+        family: TokenFamily.MCP_TOKEN,
+        mcpTokenId: row.id,
+        scopeKind: AuthorizationScopeKind.ENVIRONMENT,
+        environmentId: row.environment.id,
         actorUserId: row.mintedByUserId,
+        action: TokenLifecycleAction.USE,
+        outcome: TokenLifecycleOutcome.SUCCESS,
       },
     });
     return true;
@@ -85,7 +94,7 @@ export async function verifyAdminControlPlaneCredential(
 
   return {
     id: row.id,
-    organizationId: row.organizationId,
+    organizationId: row.environment.project.organizationId,
     actorUserId: row.mintedByUserId,
   };
 }

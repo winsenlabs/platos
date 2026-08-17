@@ -57,10 +57,6 @@ const stories: Story[] = [
     slug: "environment-label",
   },
   {
-    name: "Free plan usage",
-    slug: "free-plan-usage",
-  },
-  {
     name: "Info panel",
     slug: "info-panel",
   },
@@ -193,7 +189,7 @@ const stories: Story[] = [
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const user = await requireUser(request);
 
-  if (!user.admin) {
+  if (!user.platformOperator) {
     throw redirect("/");
   }
 

@@ -19,7 +19,8 @@
  * On any failure returns a typed ScopeVerifyError so callers can surface
  * the right HTTP status (400 / 403 / 404).
  */
-import { $replica } from "~/db.server";
+import { OrganizationRole, ProjectRole } from "@platos/database";
+import { $replica, prisma } from "~/db.server";
 import { findProjectBySlug } from "~/models/project.server";
 import { findEnvironmentById } from "~/models/runtimeEnvironment.server";
 
@@ -42,6 +43,41 @@ export interface ScopeVerifyInput {
   projectSlug?: string | null;
 }
 
+export type ProjectAccess = "read" | "mutate";
+
+export async function verifyProjectAccess(
+  scope: Pick<ResolvedScope, "organizationId" | "projectId">,
+  userId: string,
+  access: ProjectAccess,
+): Promise<boolean> {
+  const organizationMembership = await prisma.organizationMembership.findUnique({
+    where: {
+      organizationId_userId: {
+        organizationId: scope.organizationId,
+        userId,
+      },
+    },
+    select: { id: true, role: true, deactivatedAt: true },
+  });
+  if (!organizationMembership || organizationMembership.deactivatedAt) return false;
+
+  const projectMembership = await prisma.projectMembership.findUnique({
+    where: {
+      projectId_organizationMembershipId: {
+        projectId: scope.projectId,
+        organizationMembershipId: organizationMembership.id,
+      },
+    },
+    select: { role: true },
+  });
+  if (access === "read") return projectMembership !== null;
+  return (
+    organizationMembership.role === OrganizationRole.OWNER ||
+    organizationMembership.role === OrganizationRole.ADMIN ||
+    projectMembership?.role === ProjectRole.ADMIN
+  );
+}
+
 /**
  * Resolve scope from request query/body params and verify the caller
  * has access. Fails closed.
@@ -53,6 +89,7 @@ export interface ScopeVerifyInput {
 export async function resolveAndVerifyScope(
   input: ScopeVerifyInput,
   userId: string,
+  access?: ProjectAccess,
 ): Promise<{ ok: true; scope: ResolvedScope } | { ok: false; error: ScopeVerifyError }> {
   const hasAllIds = !!(input.organizationId && input.projectId && input.environmentId);
   const hasSlugScope = !!(input.organizationSlug && input.projectSlug && input.environmentId);
@@ -82,13 +119,20 @@ export async function resolveAndVerifyScope(
     if (!environment) {
       return { ok: false, error: { kind: "not_found", message: "Environment not found" } };
     }
+    const scope = {
+      organizationId: project.organizationId,
+      projectId: project.id,
+      environmentId: environment.id,
+    };
+    if (access && !(await verifyProjectAccess(scope, userId, access))) {
+      return {
+        ok: false,
+        error: { kind: "forbidden", message: "User does not have required project access" },
+      };
+    }
     return {
       ok: true,
-      scope: {
-        organizationId: project.organizationId,
-        projectId: project.id,
-        environmentId: environment.id,
-      },
+      scope,
     };
   }
 
@@ -136,7 +180,14 @@ export async function resolveAndVerifyScope(
     };
   }
 
-  return { ok: true, scope: { organizationId, projectId, environmentId } };
+  const scope = { organizationId, projectId, environmentId };
+  if (access && !(await verifyProjectAccess(scope, userId, access))) {
+    return {
+      ok: false,
+      error: { kind: "forbidden", message: "User does not have required project access" },
+    };
+  }
+  return { ok: true, scope };
 }
 
 /** HTTP status code to return for a given error kind. */

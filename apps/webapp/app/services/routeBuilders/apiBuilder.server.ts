@@ -31,7 +31,6 @@ type ApiKeyRouteBuilderOptions<
   params?: TParamsSchema;
   searchParams?: TSearchParamsSchema;
   headers?: THeadersSchema;
-  allowJWT?: boolean;
   corsStrategy?: "all" | "none";
   findResource: (
     params: TParamsSchema extends z.ZodFirstPartySchemaTypes | z.ZodDiscriminatedUnion<any, any>
@@ -102,7 +101,6 @@ export function createLoaderApiRoute<
       params: paramsSchema,
       searchParams: searchParamsSchema,
       headers: headersSchema,
-      allowJWT = false,
       corsStrategy = "none",
       authorization,
       findResource,
@@ -114,7 +112,7 @@ export function createLoaderApiRoute<
     }
 
     try {
-      const authenticationResult = await authenticateApiRequestWithFailure(request, { allowJWT });
+      const authenticationResult = await authenticateApiRequestWithFailure(request);
 
       if (!authenticationResult) {
         return await wrapResponse(
@@ -435,7 +433,6 @@ type ApiKeyActionRouteBuilderOptions<
   params?: TParamsSchema;
   searchParams?: TSearchParamsSchema;
   headers?: THeadersSchema;
-  allowJWT?: boolean;
   corsStrategy?: "all" | "none";
   method?: "POST" | "PUT" | "DELETE" | "PATCH";
   findResource?: (
@@ -526,7 +523,6 @@ export function createActionApiRoute<
     searchParams: searchParamsSchema,
     headers: headersSchema,
     body: bodySchema,
-    allowJWT = false,
     corsStrategy = "none",
     authorization,
     maxContentLength,
@@ -555,7 +551,7 @@ export function createActionApiRoute<
     }
 
     try {
-      const authenticationResult = await authenticateApiRequestWithFailure(request, { allowJWT });
+      const authenticationResult = await authenticateApiRequestWithFailure(request);
 
       if (!authenticationResult) {
         return await wrapResponse(
@@ -788,7 +784,6 @@ type MultiMethodApiRouteOptions<
   params?: TParamsSchema;
   searchParams?: TSearchParamsSchema;
   headers?: THeadersSchema;
-  allowJWT?: boolean;
   corsStrategy?: "all" | "none";
   authorization?: {
     action: AuthorizationAction;
@@ -815,7 +810,6 @@ export function createMultiMethodApiRoute<
     params: paramsSchema,
     searchParams: searchParamsSchema,
     headers: headersSchema,
-    allowJWT = false,
     corsStrategy = "none",
     authorization,
     maxContentLength,
@@ -845,7 +839,7 @@ export function createMultiMethodApiRoute<
 
     try {
       // Authenticate
-      const authenticationResult = await authenticateApiRequestWithFailure(request, { allowJWT });
+      const authenticationResult = await authenticateApiRequestWithFailure(request);
 
       if (!authenticationResult) {
         return await wrapResponse(

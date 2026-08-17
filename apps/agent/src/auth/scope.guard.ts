@@ -152,34 +152,6 @@ export interface RequestScope {
 export class ScopeGuard implements CanActivate {
   constructor(@Optional() @Inject(AuthService) private readonly authService?: AuthService) {}
 
-  /**
-   * Access-key lifecycle is a control-plane operation. The webapp sends it
-   * over the trusted direct-header channel and deliberately never retains the
-   * raw bearer after its one-time browser reveal. Keep this exception exact:
-   * it applies only to the lifecycle routes and only from Path 2 below, which
-   * rejects requests that arrived through the public proxy.
-   */
-  private isDirectAccessKeyLifecycleRequest(request: {
-    method?: unknown;
-    originalUrl?: unknown;
-    url?: unknown;
-  }): boolean {
-    const method = typeof request.method === "string" ? request.method.toUpperCase() : "";
-    const url =
-      typeof request.originalUrl === "string"
-        ? request.originalUrl
-        : typeof request.url === "string"
-          ? request.url
-          : "";
-    const pathname = url.split("?", 1)[0];
-
-    return (
-      (pathname === "/api/v1/agent/access-key" &&
-        (method === "GET" || method === "POST" || method === "DELETE")) ||
-      (pathname === "/api/v1/agent/access-key/origins" && method === "POST")
-    );
-  }
-
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
@@ -564,26 +536,13 @@ export class ScopeGuard implements CanActivate {
         // path too (webapp → agent over the Docker network).
         ...(traceCtx ? { traceId: traceCtx.traceId, parentSpanId: traceCtx.parentSpanId } : {}),
       } satisfies RequestScope;
-      // Access key checks protect ordinary direct-header runtime requests. The
-      // exact AccessKey lifecycle routes are operator-authorized by their
-      // controller/service and cannot require raw bearer material that the
-      // dashboard intentionally discards after the one-time reveal.
-      if (this.authService && !this.isDirectAccessKeyLifecycleRequest(request)) {
-        const providedKey = request.headers["x-platos-api-key"] as string | undefined;
-        const origin = (request.headers["origin"] || request.headers["referer"]) as string | undefined;
-        const scopeForCheck = {
-          organizationId: request.scope.organizationId,
-          projectId: request.scope.projectId,
-          environmentId: request.scope.environmentId,
-          userId: request.scope.userId,
-        };
-        const keyResult = await this.authService.verifyAccessKey(scopeForCheck, providedKey, origin);
-        if (keyResult === false) {
-          const resp = context.switchToHttp().getResponse();
-          resp.status(401).json({ error: "INVALID_ACCESS_KEY", message: "X-Platos-Api-Key is missing or invalid for this scope." });
-          return false;
-        }
-      }
+      // Path 2 is the trusted control-plane channel, not an end-user SDK
+      // request. The dashboard deliberately discards AccessKey bearer material
+      // after its one-time browser reveal, so it cannot and must not attach a
+      // raw key when loading or mutating normal operator surfaces. External
+      // callers are still rejected above when Caddy stamps X-Forwarded-For;
+      // session-token traffic continues through Path 1 and verifies an
+      // AccessKey when configured for the scope.
       return true;
     }
 

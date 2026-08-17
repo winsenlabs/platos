@@ -1,17 +1,10 @@
 import { JSONHeroPath } from "@jsonhero/path";
-import { Attributes, Span } from "@opentelemetry/api";
-import { z } from "zod";
-import { ApiClient } from "../apiClient/index.js";
-import { apiClientManager } from "../apiClientManager-api.js";
+import { Attributes } from "@opentelemetry/api";
 import {
-  OFFLOAD_IO_PACKET_LENGTH_LIMIT,
   OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT,
   imposeAttributeLimits,
 } from "../limits.js";
-import type { RetryOptions } from "../schemas/index.js";
-import { SemanticInternalAttributes } from "../semanticInternalAttributes.js";
 import { TriggerTracer } from "../tracer.js";
-import { zodfetch } from "../zodfetch.js";
 import { flattenAttributes } from "./flattenAttributes.js";
 import superjson from "../imports/superjson.js";
 
@@ -73,15 +66,6 @@ export async function parsePacketAsJson(
   }
 }
 
-export async function conditionallyImportAndParsePacket(
-  value: IOPacket,
-  client?: ApiClient
-): Promise<any> {
-  const importedPacket = await conditionallyImportPacket(value, undefined, client);
-
-  return await parsePacket(importedPacket);
-}
-
 export async function stringifyIO(value: any): Promise<IOPacket> {
   if (value === undefined) {
     return { dataType: "application/json" };
@@ -97,136 +81,6 @@ export async function stringifyIO(value: any): Promise<IOPacket> {
     return { data, dataType: "application/super+json" };
   } catch {
     return { data: value, dataType: "application/json" };
-  }
-}
-
-export async function conditionallyExportPacket(
-  packet: IOPacket,
-  pathPrefix: string,
-  tracer?: TriggerTracer
-): Promise<IOPacket> {
-  if (apiClientManager.client) {
-    const { needsOffloading, size } = packetRequiresOffloading(packet);
-
-    if (needsOffloading) {
-      if (!tracer) {
-        return await exportPacket(packet, pathPrefix);
-      } else {
-        const result = await tracer.startActiveSpan(
-          "store.uploadOutput",
-          async (span) => {
-            return await exportPacket(packet, pathPrefix);
-          },
-          {
-            attributes: {
-              byteLength: size,
-              [SemanticInternalAttributes.STYLE_ICON]: "cloud-upload",
-            },
-          }
-        );
-
-        return result ?? packet;
-      }
-    }
-  }
-
-  return packet;
-}
-
-export function packetRequiresOffloading(
-  packet: IOPacket,
-  lengthLimit?: number
-): {
-  needsOffloading: boolean;
-  size: number;
-} {
-  if (!packet.data) {
-    return {
-      needsOffloading: false,
-      size: 0,
-    };
-  }
-
-  const byteSize = Buffer.byteLength(packet.data, "utf8");
-
-  return {
-    needsOffloading: byteSize >= (lengthLimit ?? OFFLOAD_IO_PACKET_LENGTH_LIMIT),
-    size: byteSize,
-  };
-}
-
-const ioRetryOptions = {
-  minTimeoutInMs: 500,
-  maxTimeoutInMs: 5000,
-  maxAttempts: 5,
-  factor: 2,
-  randomize: true,
-} satisfies RetryOptions;
-
-async function exportPacket(packet: IOPacket, pathPrefix: string): Promise<IOPacket> {
-  // Offload the output
-  const filename = `${pathPrefix}.${getPacketExtension(packet.dataType)}`;
-
-  const presignedResponse = await apiClientManager.client!.createUploadPayloadUrl(filename);
-
-  if (!presignedResponse.storagePath) {
-    throw new Error(
-      "Packet upload presign response missing storagePath; ensure the server supports /api/v2/packets"
-    );
-  }
-
-  const uploadResponse = await zodfetch(
-    z.any(),
-    presignedResponse.presignedUrl,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": packet.dataType,
-      },
-      body: packet.data,
-    },
-    {
-      retry: ioRetryOptions,
-    }
-  ).asResponse();
-
-  if (!uploadResponse.ok) {
-    throw new Error(
-      `Failed to upload output to ${presignedResponse.presignedUrl}: ${uploadResponse.statusText}`
-    );
-  }
-
-  return {
-    data: presignedResponse.storagePath,
-    dataType: "application/store",
-  };
-}
-
-export async function conditionallyImportPacket(
-  packet: IOPacket,
-  tracer?: TriggerTracer,
-  client?: ApiClient
-): Promise<IOPacket> {
-  if (packet.dataType !== "application/store") {
-    return packet;
-  }
-
-  if (!tracer) {
-    return await importPacket(packet, undefined, client);
-  } else {
-    const result = await tracer.startActiveSpan(
-      "store.downloadPayload",
-      async (span) => {
-        return await importPacket(packet, span, client);
-      },
-      {
-        attributes: {
-          [SemanticInternalAttributes.STYLE_ICON]: "cloud-download",
-        },
-      }
-    );
-
-    return result ?? packet;
   }
 }
 
@@ -253,39 +107,6 @@ export async function resolvePresignedPacketUrl(
   } catch (error) {
     return;
   }
-}
-
-async function importPacket(packet: IOPacket, span?: Span, client?: ApiClient): Promise<IOPacket> {
-  if (!packet.data) {
-    return packet;
-  }
-
-  const $client = client ?? apiClientManager.client;
-
-  if (!$client) {
-    return packet;
-  }
-
-  const presignedResponse = await $client.getPayloadUrl(packet.data);
-
-  const response = await zodfetch(z.any(), presignedResponse.presignedUrl, undefined, {
-    retry: ioRetryOptions,
-  }).asResponse();
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to import packet ${presignedResponse.presignedUrl}: ${response.statusText}`
-    );
-  }
-
-  const data = await response.text();
-
-  span?.setAttribute("size", Buffer.byteLength(data, "utf8"));
-
-  return {
-    data,
-    dataType: response.headers.get("content-type") ?? "application/json",
-  };
 }
 
 export async function createPacketAttributes(
@@ -493,19 +314,6 @@ function makeSafeReviver(options?: ReplacerOptions) {
 
     return value;
   };
-}
-
-function getPacketExtension(outputType: string): string {
-  switch (outputType) {
-    case "application/json":
-      return "json";
-    case "application/super+json":
-      return "json";
-    case "text/plain":
-      return "txt";
-    default:
-      return "txt";
-  }
 }
 
 function safeJsonParse(value: string): any {

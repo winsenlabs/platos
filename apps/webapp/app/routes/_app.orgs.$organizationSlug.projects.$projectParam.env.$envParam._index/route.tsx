@@ -810,7 +810,7 @@ export default function PlatoCentral() {
     <PageContainer>
       <NavBar>
         <PageTitle title="Plato Central" icon={<CpuChipIcon className="size-5 text-emerald-500" />} />
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex min-w-0 items-center gap-1 sm:gap-3">
           <SegmentedControl
             name="range"
             value={data.range}
@@ -818,14 +818,16 @@ export default function PlatoCentral() {
             variant="secondary/small"
             onChange={changeRange}
           />
-          <Badge variant="outline-rounded">{data.envParam}</Badge>
+          <span className="hidden sm:block">
+            <Badge variant="outline-rounded">{data.envParam}</Badge>
+          </span>
           {wsConnected === true && (
-            <span className="flex items-center gap-1 text-[11px] text-emerald-400">
+            <span className="hidden items-center gap-1 text-[11px] text-emerald-400 sm:flex">
               <SignalIcon className="size-3.5" /> live
             </span>
           )}
           {wsConnected === false && (
-            <span className="flex items-center gap-1 text-[11px] text-text-dimmed">
+            <span className="hidden items-center gap-1 text-[11px] text-text-dimmed sm:flex">
               <SignalSlashIcon className="size-3.5" /> reconnecting…
             </span>
           )}
@@ -833,7 +835,7 @@ export default function PlatoCentral() {
             type="button"
             onClick={() => revalidator.revalidate()}
             disabled={revalidator.state === "loading"}
-            className="rounded p-1 text-text-dimmed hover:bg-charcoal-800 hover:text-text-bright disabled:opacity-50"
+            className="hidden rounded p-1 text-text-dimmed hover:bg-charcoal-800 hover:text-text-bright disabled:opacity-50 sm:block"
             aria-label="Refresh"
           >
             <ArrowPathIcon
@@ -843,7 +845,7 @@ export default function PlatoCentral() {
         </div>
       </NavBar>
 
-      <PageBody>
+      <PageBody className="overflow-x-hidden">
         {!data.agentReachable && (
           <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-300">
             <ExclamationTriangleIcon className="mr-1.5 inline size-4" />
@@ -886,7 +888,7 @@ export default function PlatoCentral() {
         )}
 
         {/* ── Row 1: hero KPIs ─────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <KpiTile
             icon={<ChatBubbleLeftRightIcon className="size-3.5" />}
             label="Conversations"

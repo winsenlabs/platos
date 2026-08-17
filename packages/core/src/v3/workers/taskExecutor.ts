@@ -11,7 +11,6 @@ import {
 } from "../errors.js";
 import {
   accessoryAttributes,
-  attemptKey,
   flattenAttributes,
   inputStreams,
   lifecycleHooks,
@@ -44,8 +43,6 @@ import { TriggerTracer } from "../tracer.js";
 import { tryCatch } from "../tryCatch.js";
 import { HandleErrorModificationOptions, TaskMetadataWithFunctions } from "../types/index.js";
 import {
-  conditionallyExportPacket,
-  conditionallyImportPacket,
   createPacketAttributes,
   parsePacket,
   stringifyIO,
@@ -116,8 +113,7 @@ export class TaskExecutor {
 
           const [inputError, payloadResult] = await tryCatch(
             runTimelineMetrics.measureMetric("trigger.dev/execution", "payload", async () => {
-              const payloadPacket = await conditionallyImportPacket(originalPacket, this._tracer);
-              return await parsePacket(payloadPacket);
+              return await parsePacket(originalPacket);
             })
           );
 
@@ -263,28 +259,9 @@ export class TaskExecutor {
               );
             }
 
-            const [exportError, finalOutput] = await tryCatch(
-              conditionallyExportPacket(
-                stringifiedOutput,
-                `${attemptKey(ctx)}/output`,
-                this._tracer
-              )
-            );
-
-            if (exportError) {
-              recordSpanException(span, exportError);
-              await this.#cleanupAndWaitUntil(payload, ctx, initOutput, signal);
-
-              return this.#internalErrorResult(
-                execution,
-                TaskRunErrorCodes.TASK_OUTPUT_ERROR,
-                exportError
-              );
-            }
-
             const [attrError, attributes] = await tryCatch(
               createPacketAttributes(
-                finalOutput,
+                stringifiedOutput,
                 SemanticInternalAttributes.OUTPUT,
                 SemanticInternalAttributes.OUTPUT_TYPE
               )
@@ -308,8 +285,8 @@ export class TaskExecutor {
             return {
               ok: true,
               id: execution.run.id,
-              output: finalOutput.data,
-              outputType: finalOutput.dataType,
+              output: stringifiedOutput.data,
+              outputType: stringifiedOutput.dataType,
             } satisfies TaskRunExecutionResult;
           };
 

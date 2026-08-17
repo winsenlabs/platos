@@ -71,20 +71,12 @@ export function newOrganizationPath() {
   return `/orgs/new`;
 }
 
-export function selectPlanPath(organization: OrgForPath) {
-  return `${organizationPath(organization)}/select-plan`;
-}
-
 export function organizationTeamPath(organization: OrgForPath) {
   return `${organizationPath(organization)}/settings/team`;
 }
 
 export function inviteTeamMemberPath(organization: OrgForPath) {
   return `${organizationPath(organization)}/invite`;
-}
-
-export function organizationBillingPath(organization: OrgForPath) {
-  return `${organizationPath(organization)}/billing`;
 }
 
 export function organizationSettingsPath(organization: OrgForPath) {
@@ -207,32 +199,6 @@ export function v3ModelComparePath(
   environment: EnvironmentForPath
 ) {
   return `${v3ModelsPath(organization, project, environment)}/compare`;
-}
-
-export function v3BillingPath(organization: OrgForPath, message?: string) {
-  return `${organizationPath(organization)}/settings/billing${
-    message ? `?message=${encodeURIComponent(message)}` : ""
-  }`;
-}
-
-export function v3BillingAlertsPath(organization: OrgForPath) {
-  return `${organizationPath(organization)}/settings/billing-alerts`;
-}
-
-export function v3PrivateConnectionsPath(organization: OrgForPath) {
-  return `${organizationPath(organization)}/settings/private-connections`;
-}
-
-export function v3NewPrivateConnectionPath(organization: OrgForPath) {
-  return `${organizationPath(organization)}/settings/private-connections/new`;
-}
-
-export function v3StripePortalPath(organization: OrgForPath) {
-  return `/resources/${organization.slug}/subscription/portal`;
-}
-
-export function v3UsagePath(organization: OrgForPath) {
-  return `${organizationPath(organization)}/settings/usage`;
 }
 
 // Docs

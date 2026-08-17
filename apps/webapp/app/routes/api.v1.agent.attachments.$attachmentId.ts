@@ -47,6 +47,7 @@ import {
 async function resolveScope(
   url: URL,
   userId: string,
+  access: "read" | "mutate",
 ): Promise<
   | { organizationId: string; projectId: string; environmentId: string; userId: string }
   | { error: string; status: number }
@@ -60,6 +61,7 @@ async function resolveScope(
       projectSlug: url.searchParams.get("projectSlug"),
     },
     userId,
+    access,
   );
   if (!verified.ok) {
     return { error: verified.error.message, status: scopeErrorStatus(verified.error) };
@@ -75,7 +77,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   }
 
   const url = new URL(request.url);
-  const scope = await resolveScope(url, userId);
+  const scope = await resolveScope(url, userId, "read");
   if ("error" in scope) {
     return json({ error: scope.error }, { status: scope.status });
   }
@@ -99,7 +101,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   const url = new URL(request.url);
-  const scope = await resolveScope(url, userId);
+  const scope = await resolveScope(url, userId, "mutate");
   if ("error" in scope) {
     return json({ error: scope.error }, { status: scope.status });
   }

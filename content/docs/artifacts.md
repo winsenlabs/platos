@@ -20,7 +20,8 @@ related:
 source_files_referenced:
   - apps/agent/src/agent-runtime/artifact-meta.ts
   - apps/agent/src/agent-runtime/artifact-meta.test.ts
-  - apps/webapp/app/routes/api.v1.artifacts.ts
+  - apps/agent/src/agent-runtime/agent.controller.ts
+  - packages/platos-client/src/apis/threads.ts
   - docs/themes/THEME_F.md
 ---
 
@@ -67,10 +68,16 @@ Subsequent turns can reference the id and call `revise_artifact({ artifactId, pa
 ```tsx
 import { PlatosArtifact } from "@platosdev/client/react";
 
-<PlatosArtifact id={artifact.id} />;
+<PlatosArtifact artifact={artifact} />;
 ```
 
-The component fetches the artifact (`GET /api/v1/artifacts/:id`), picks a renderer by type, and applies the sandbox. Override per-type renderers via the `renderers` prop if you have a custom UI.
+Load a thread's artifacts with `client.threads.artifacts(threadId, scope)`, which calls the
+canonical agent endpoint `GET /api/v1/agent/threads/:threadId/artifacts`. The component picks a
+renderer by type and applies the sandbox. Override per-type renderers via the `renderers` prop if
+you have a custom UI.
+
+`artifactKey` is an opaque persisted handle. Clients and migration code must preserve it exactly;
+they must not derive or rewrite it from organization, project, or environment labels.
 
 ### Sandbox details
 
