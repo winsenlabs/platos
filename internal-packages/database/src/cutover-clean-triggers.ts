@@ -203,7 +203,6 @@ function quoteIdentifier(value: string): string {
 
 /**
  * Transactional contract for the start of the controlled offline backfill.
- * It is intentionally not wired into cutover-engine while the phase is blocked.
  */
 export async function deferCleanTriggersForBackfill(
   database: CutoverDatabase,

@@ -14,6 +14,13 @@ import {
   validateCoreTenancyBackfill,
 } from "./cutover-backfill";
 import { compareApplicationCatalogs, readApplicationCatalog } from "./cutover-catalog";
+import { deferredCleanTriggerManifest } from "./cutover-clean-trigger-manifest";
+import {
+  deferCleanTriggersForBackfill,
+  installAndValidateCleanTriggers,
+  readCleanTriggerCatalog,
+  type CleanTriggerCatalogSnapshot,
+} from "./cutover-clean-triggers";
 import { createStubExternalCutoverReportFragment } from "./cutover-external";
 import {
   probeRetainedCredentialTargets,
@@ -112,6 +119,16 @@ function incompletePhase(phaseName: string, summary: string): CutoverPhaseResult
   return { phase: phaseName, status: "NOT_RUN", summary };
 }
 
+function cleanTriggerCatalogEvidence(snapshot: CleanTriggerCatalogSnapshot) {
+  return {
+    objectCount: snapshot.entries.length,
+    functionCount: snapshot.entries.filter((entry) => entry.kind === "function").length,
+    triggerCount: snapshot.entries.filter((entry) => entry.kind === "trigger").length,
+    digest: snapshot.digest,
+    manifestDigest: snapshot.manifestDigest,
+  } as const;
+}
+
 export async function runCutover(
   options: CutoverOptions,
   packageRoot = resolve(__dirname, "..")
@@ -204,6 +221,33 @@ export async function runCutover(
         await appendCutoverJournal(database, runId, "create-clean-catalog", "SUCCEEDED", {});
         phases.push(phase("create-clean-catalog", "SUCCEEDED", "clean migrations applied transactionally", createStarted));
         failIfRequested(options, "create-clean-catalog");
+
+        const cleanTriggerStarted = new Date().toISOString();
+        const deferReference = new Client({
+          connectionString: options.freshCatalogDatabaseUrl,
+          application_name: "platos-cutover-fresh-clean-trigger-defer-reference",
+          connectionTimeoutMillis: 10_000,
+        });
+        await deferReference.connect();
+        let deferredCleanTriggerCatalog: CleanTriggerCatalogSnapshot;
+        try {
+          deferredCleanTriggerCatalog = await deferCleanTriggersForBackfill(
+            database,
+            deferReference
+          );
+        } finally {
+          await deferReference.end();
+        }
+        await appendCutoverJournal(
+          database,
+          runId,
+          "clean-trigger-defer-install",
+          "STARTED",
+          {
+            deferredTriggers: deferredCleanTriggerManifest.map((entry) => entry.name),
+            deferredCatalog: cleanTriggerCatalogEvidence(deferredCleanTriggerCatalog),
+          }
+        );
 
         const mapStarted = new Date().toISOString();
         await materializeCutoverIdMap(database);
@@ -526,6 +570,35 @@ export async function runCutover(
         });
         await reference.connect();
         try {
+          const installedCleanTriggerCatalog = await installAndValidateCleanTriggers(
+            database,
+            reference
+          );
+          const freshCleanTriggerCatalog = await readCleanTriggerCatalog(reference);
+          const cleanTriggerEvidence = {
+            deferredTriggers: deferredCleanTriggerManifest.map((entry) => entry.name),
+            deferredCatalog: cleanTriggerCatalogEvidence(deferredCleanTriggerCatalog),
+            installedCatalog: cleanTriggerCatalogEvidence(installedCleanTriggerCatalog),
+            freshReferenceCatalog: cleanTriggerCatalogEvidence(freshCleanTriggerCatalog),
+          } as const;
+          await appendCutoverJournal(
+            database,
+            runId,
+            "clean-trigger-defer-install",
+            "SUCCEEDED",
+            cleanTriggerEvidence
+          );
+          phases.push(
+            phase(
+              "clean-trigger-defer-install",
+              "SUCCEEDED",
+              "bulk-load-safe trigger was deferred, canonically reinstalled, and matched the fresh clean reference",
+              cleanTriggerStarted,
+              cleanTriggerEvidence
+            )
+          );
+          failIfRequested(options, "clean-trigger-defer-install");
+
           const comparison = compareApplicationCatalogs(
             await readApplicationCatalog(database),
             await readApplicationCatalog(reference)

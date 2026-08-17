@@ -76,6 +76,7 @@ describe("cutover command safety contracts", () => {
       "remaining-retained-backfill",
       "unsupported-trigger-export",
       "ephemeral-session-recovery-disposition",
+      "clean-trigger-defer-install",
       "cryptographic-read-probes",
     ]);
     expect(cutoverDomainPhases.find((phase) => phase.id === "supplemental-auth-mfa"))
@@ -178,10 +179,9 @@ describe("cutover command safety contracts", () => {
       });
     expect(cutoverDomainPhases.find((phase) => phase.id === "cryptographic-read-probes"))
       .toMatchObject({ implementation: "IMPLEMENTED", summary: expect.stringContaining("Batch 6 audit") });
-    expect(incompleteCutoverPhaseIds).toEqual([
-      "clean-trigger-defer-install",
-      "external-analytics-object-rekey",
-    ]);
+    expect(cutoverDomainPhases.find((phase) => phase.id === "clean-trigger-defer-install"))
+      .toMatchObject({ implementation: "IMPLEMENTED", sourceModels: [] });
+    expect(incompleteCutoverPhaseIds).toEqual(["external-analytics-object-rekey"]);
     expect(implementedRetainedSourceCoverage).toEqual({
       retainedPlatosSourceModelCount: 55,
       supplementalRetainedSourceModelCount: 4,
@@ -195,10 +195,7 @@ describe("cutover command safety contracts", () => {
     expect(new Set(assignedPlatosSources)).toEqual(
       new Set(sourceModelManifest.map((entry) => entry.source))
     );
-    for (const blockedPhase of [
-      "clean-trigger-defer-install",
-      "external-analytics-object-rekey",
-    ]) {
+    for (const blockedPhase of ["external-analytics-object-rekey"]) {
       expect(cutoverDomainPhases.find((phase) => phase.id === blockedPhase))
         .toMatchObject({ implementation: "STUB" });
     }

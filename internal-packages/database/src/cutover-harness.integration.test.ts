@@ -150,10 +150,7 @@ describeHarness("production database command Testcontainers harness", () => {
     expect(result.stdout).not.toContain(requiredKeys.PLATOS_CREDENTIAL_ROOT_KEYS);
     expect(JSON.parse(result.stdout.slice(reportStart))).toMatchObject({
       state: "ROLLED_BACK",
-      incompletePhaseIds: [
-        "clean-trigger-defer-install",
-        "external-analytics-object-rekey",
-      ],
+      incompletePhaseIds: ["external-analytics-object-rekey"],
       external: {
         implementation: "STUB",
         state: "STUB_BLOCKED",
@@ -214,6 +211,7 @@ describeHarness("production database command Testcontainers harness", () => {
           "remaining-retained-backfill",
           "final-message-re-encryption-read-probes",
           "cryptographic-read-probes",
+          "clean-trigger-defer-install",
           "unsupported-trigger-export",
           "ephemeral-session-recovery-disposition",
         ].includes(phase.phase))
@@ -232,11 +230,35 @@ describeHarness("production database command Testcontainers harness", () => {
       { phase: "remaining-retained-backfill", status: "SUCCEEDED" },
       { phase: "final-message-re-encryption-read-probes", status: "SUCCEEDED" },
       { phase: "cryptographic-read-probes", status: "SUCCEEDED" },
+      { phase: "clean-trigger-defer-install", status: "SUCCEEDED" },
       { phase: "unsupported-trigger-export", status: "SUCCEEDED" },
       { phase: "ephemeral-session-recovery-disposition", status: "SUCCEEDED" },
     ]);
+    const cleanTriggerPhase = report.phases.find(
+      (phase) => phase.phase === "clean-trigger-defer-install"
+    );
+    expect(cleanTriggerPhase?.evidence).toMatchObject({
+      deferredTriggers: ["MessageAttachment.MessageAttachment_claimed_lifecycle"],
+      deferredCatalog: { objectCount: 121, functionCount: 21, triggerCount: 100 },
+      installedCatalog: { objectCount: 122, functionCount: 21, triggerCount: 101 },
+      freshReferenceCatalog: { objectCount: 122, functionCount: 21, triggerCount: 101 },
+    });
+    const cleanTriggerEvidence = cleanTriggerPhase?.evidence as {
+      deferredCatalog: { manifestDigest: string };
+      installedCatalog: { digest: string; manifestDigest: string };
+      freshReferenceCatalog: { digest: string; manifestDigest: string };
+    };
+    expect(cleanTriggerEvidence.installedCatalog.digest).toMatch(/^[0-9a-f]{64}$/);
+    expect(cleanTriggerEvidence.installedCatalog.digest).toBe(
+      cleanTriggerEvidence.freshReferenceCatalog.digest
+    );
+    expect(cleanTriggerEvidence.installedCatalog.manifestDigest).toBe(
+      cleanTriggerEvidence.freshReferenceCatalog.manifestDigest
+    );
+    expect(cleanTriggerEvidence.deferredCatalog.manifestDigest).toBe(
+      cleanTriggerEvidence.installedCatalog.manifestDigest
+    );
     expect(report.phases).toEqual(expect.arrayContaining([
-      expect.objectContaining({ phase: "clean-trigger-defer-install", status: "NOT_RUN" }),
       expect.objectContaining({ phase: "external-analytics-object-rekey", status: "NOT_RUN" }),
     ]));
 
@@ -382,6 +404,7 @@ describeHarness("production database command Testcontainers harness", () => {
     expect(journalFile).toBeDefined();
     const journal = JSON.parse(readFileSync(resolve(exportDirectory, journalFile!), "utf8")) as {
       phase: string;
+      status: string;
       evidence: Record<string, unknown>;
     }[];
     expect(journal.map((entry) => entry.phase)).toEqual(expect.arrayContaining([
@@ -398,6 +421,7 @@ describeHarness("production database command Testcontainers harness", () => {
       "remaining-retained-backfill",
       "final-message-re-encryption-read-probes",
       "cryptographic-read-probes",
+      "clean-trigger-defer-install",
       "unsupported-trigger-export",
       "ephemeral-session-recovery-disposition",
     ]));
@@ -593,6 +617,54 @@ describeHarness("production database command Testcontainers harness", () => {
       retainedFieldCount: 15,
       rootVersionCounts: { "1": 8 },
     });
+    const cleanTriggerJournal = journal.filter(
+      (entry) => entry.phase === "clean-trigger-defer-install"
+    );
+    expect(cleanTriggerJournal).toEqual([
+      expect.objectContaining({
+        status: "STARTED",
+        evidence: expect.objectContaining({
+          deferredTriggers: ["MessageAttachment.MessageAttachment_claimed_lifecycle"],
+          deferredCatalog: expect.objectContaining({
+            objectCount: 121,
+            functionCount: 21,
+            triggerCount: 100,
+          }),
+        }),
+      }),
+      expect.objectContaining({
+        status: "SUCCEEDED",
+        evidence: expect.objectContaining({
+          installedCatalog: expect.objectContaining({
+            objectCount: 122,
+            functionCount: 21,
+            triggerCount: 101,
+          }),
+          freshReferenceCatalog: expect.objectContaining({
+            objectCount: 122,
+            functionCount: 21,
+            triggerCount: 101,
+          }),
+        }),
+      }),
+    ]);
+    const journalPhaseIds = journal.map((entry) => entry.phase);
+    const cleanTriggerDeferredIndex = journal.findIndex(
+      (entry) => entry.phase === "clean-trigger-defer-install" && entry.status === "STARTED"
+    );
+    const cleanTriggerInstalledIndex = journal.findIndex(
+      (entry) => entry.phase === "clean-trigger-defer-install" && entry.status === "SUCCEEDED"
+    );
+    expect(cleanTriggerDeferredIndex).toBe(
+      journalPhaseIds.indexOf("create-clean-catalog") + 1
+    );
+    expect(cleanTriggerDeferredIndex).toBeLessThan(journalPhaseIds.indexOf("materialize-id-map"));
+    expect(cleanTriggerInstalledIndex).toBe(
+      journalPhaseIds.indexOf("cryptographic-read-probes") + 1
+    );
+    expect(cleanTriggerInstalledIndex).toBeLessThan(
+      journalPhaseIds.indexOf("application-catalog-parity")
+    );
     expect(
       journal.find((entry) => entry.phase === "unsupported-trigger-export")?.evidence
     ).toMatchObject({
@@ -616,7 +688,6 @@ describeHarness("production database command Testcontainers harness", () => {
       journal.find((entry) => entry.phase === "forced-pre-commit-rollback")?.evidence
     ).toMatchObject({
       incompletePhaseIds: expect.arrayContaining([
-        "clean-trigger-defer-install",
         "external-analytics-object-rekey",
       ]),
     });
@@ -647,10 +718,7 @@ describeHarness("production database command Testcontainers harness", () => {
     expect(noArtifactResult.stdout).not.toContain(requiredKeys.TEST_CUTOVER_EXPORT_KEY);
     expect(JSON.parse(noArtifactResult.stdout.slice(noArtifactReportStart))).toMatchObject({
       state: "ROLLED_BACK",
-      incompletePhaseIds: [
-        "clean-trigger-defer-install",
-        "external-analytics-object-rekey",
-      ],
+      incompletePhaseIds: ["external-analytics-object-rekey"],
       exportReport: {
         mode: "DRY_RUN",
         keyReference: "ops/win-123/test-export-key-v1",

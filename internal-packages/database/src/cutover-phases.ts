@@ -203,7 +203,7 @@ export const cutoverDomainPhases = [
   },
   {
     id: "clean-trigger-defer-install",
-    implementation: "STUB",
+    implementation: "IMPLEMENTED",
     sourceModels: [],
     summary: "Defer bulk-load-sensitive clean triggers and install them after retained-domain validation",
   },
