@@ -62,7 +62,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(79);
+    expect(modelNames).toHaveLength(80);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -301,6 +301,110 @@ describe("domain schema integration", () => {
         isDefault: true,
       },
     })).resolves.toBe(1);
+  });
+
+  test("serializes channel refresh claims and durably fences interrupted attempts", async () => {
+    await control.channelInstallation.update({
+      where: { id: seeded.installation.id },
+      data: {
+        tokenRefreshState: "IDLE",
+        tokenRefreshAttemptId: null,
+        tokenRefreshStartedAt: null,
+        tokenGeneration: 5,
+      },
+    });
+    const claims = await Promise.all(
+      Array.from({ length: 8 }, (_, index) =>
+        control.channelInstallation.updateMany({
+          where: {
+            id: seeded.installation.id,
+            credentialId: seeded.installation.credentialId,
+            tokenGeneration: 5,
+            tokenRefreshState: "IDLE",
+          },
+          data: {
+            tokenRefreshState: "REFRESHING",
+            tokenRefreshAttemptId: `00000000-0000-0000-0000-${String(index + 20).padStart(12, "0")}`,
+            tokenRefreshStartedAt: new Date(),
+          },
+        })
+      )
+    );
+    expect(claims.filter(({ count }) => count === 1)).toHaveLength(1);
+    await expect(control.channelInstallation.findUnique({ where: { id: seeded.installation.id } }))
+      .resolves.toMatchObject({ tokenRefreshState: "REFRESHING" });
+
+    const claimed = await control.channelInstallation.findUniqueOrThrow({
+      where: { id: seeded.installation.id },
+      select: { tokenRefreshAttemptId: true },
+    });
+    await control.channelInstallation.update({
+      where: { id: seeded.installation.id },
+      data: {
+        tokenGeneration: { increment: 1 },
+        tokenRefreshState: "IDLE",
+        tokenRefreshAttemptId: null,
+        tokenRefreshRepairCode: null,
+      },
+    });
+    await expect(control.channelInstallation.updateMany({
+      where: {
+        id: seeded.installation.id,
+        tokenGeneration: 5,
+        tokenRefreshState: "REFRESHING",
+        tokenRefreshAttemptId: claimed.tokenRefreshAttemptId,
+      },
+      data: { tokenRefreshState: "REPAIR_REQUIRED", tokenRefreshRepairCode: "STALE" },
+    })).resolves.toMatchObject({ count: 0 });
+    await expect(control.channelInstallation.findUnique({ where: { id: seeded.installation.id } }))
+      .resolves.toMatchObject({ tokenGeneration: 6, tokenRefreshState: "IDLE", tokenRefreshRepairCode: null });
+  });
+
+  test("admits a channel event once, leases it once, and keeps its payload immutable", async () => {
+    await expect(control.channelEventInbox.create({
+      data: {
+        appId: seeded.channelInbox.appId,
+        eventId: seeded.channelInbox.eventId,
+        payloadFormatVersion: 1,
+        payloadKeyVersion: 1,
+        encryptedPayload: "different",
+      },
+    })).rejects.toThrow();
+
+    const claims = await Promise.all(
+      Array.from({ length: 8 }, (_, index) =>
+        control.channelEventInbox.updateMany({
+          where: { id: seeded.channelInbox.id, status: "PENDING" },
+          data: {
+            status: "PROCESSING",
+            leaseGeneration: { increment: 1 },
+            leaseOwner: `worker-${index}`,
+            leaseExpiresAt: new Date(Date.now() + 60_000),
+          },
+        })
+      )
+    );
+    expect(claims.filter(({ count }) => count === 1)).toHaveLength(1);
+    const winner = await control.channelEventInbox.findUniqueOrThrow({
+      where: { id: seeded.channelInbox.id },
+      select: { leaseOwner: true, leaseGeneration: true },
+    });
+    await expect(control.channelEventInbox.updateMany({
+      where: {
+        id: seeded.channelInbox.id,
+        leaseOwner: winner.leaseOwner,
+        leaseGeneration: winner.leaseGeneration - 1,
+      },
+      data: { status: "COMPLETED" },
+    })).resolves.toMatchObject({ count: 0 });
+    await expect(control.channelEventInbox.update({
+      where: { id: seeded.channelInbox.id },
+      data: { encryptedPayload: "mutated" },
+    })).rejects.toThrow(/immutable/);
+    await expect(control.channelEventInbox.update({
+      where: { id: seeded.channelInbox.id },
+      data: { payloadFormatVersion: 2 },
+    })).rejects.toThrow(/immutable/);
   });
 
   test("rejects deletion for every provider-key path reachable by an executable version", async () => {
@@ -1261,6 +1365,15 @@ async function seedEveryModel(control: PrismaClient) {
       agentRouting: [],
     },
   }));
+  const channelInbox = track("ChannelEventInbox", await control.channelEventInbox.create({
+    data: {
+      appId: channelApp.id,
+      eventId: "Ev-seeded",
+      payloadFormatVersion: 1,
+      payloadKeyVersion: 1,
+      encryptedPayload: "encrypted-provider-envelope",
+    },
+  }));
   const installation = track("ChannelInstallation", await control.channelInstallation.create({
     data: {
       appId: channelApp.id,
@@ -1613,6 +1726,7 @@ async function seedEveryModel(control: PrismaClient) {
     step,
     memory,
     installation,
+    channelInbox,
     oauthClient,
     memoryEntityA,
     personalAccessToken,

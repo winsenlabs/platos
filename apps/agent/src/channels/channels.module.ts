@@ -8,6 +8,7 @@ import {
 } from "./channel-link.controller";
 import { ChannelRuntimeService } from "./channel-runtime.service";
 import { ChannelPersistenceService } from "./channel-persistence.service";
+import { ChannelEventCryptoService } from "./channel-event-crypto.service";
 import { AgentRuntimeModule } from "../agent-runtime/agent-runtime.module";
 import { MonitoringModule } from "../monitoring/monitoring.module";
 
@@ -18,8 +19,8 @@ import { MonitoringModule } from "../monitoring/monitoring.module";
  *   - ChannelAppOAuthController  — Slack OAuth V2 install/callback (public;
  *     CSRF via Redis `state` nonce, in-controller auth — see scope.guard.ts).
  *   - ChannelAppEventsController — the single Slack Events API request URL per
- *     app (public; Slack v0 signature verify + event_id dedupe, hands verified
- *     events to ChannelRuntimeService.handleAppEvent).
+ *     app (public; Slack v0 signature verify + durable event inbox, then hands
+ *     leased events to ChannelRuntimeService.handleAppEvent).
  *   - ChannelLinkController / ChannelLinkService — Phase C hosted account
  *     linking (public; single-use Redis nonce + Sign-in-with-Slack OIDC +
  *     userInfo-authoritative claims → verified email identity attach — see
@@ -49,7 +50,12 @@ import { MonitoringModule } from "../monitoring/monitoring.module";
     ChannelAppEventsController,
     ChannelLinkController,
   ],
-  providers: [ChannelPersistenceService, ChannelRuntimeService, ChannelLinkService],
+  providers: [
+    ChannelEventCryptoService,
+    ChannelPersistenceService,
+    ChannelRuntimeService,
+    ChannelLinkService,
+  ],
   exports: [ChannelPersistenceService, ChannelRuntimeService, ChannelLinkService],
 })
 export class ChannelsModule {}

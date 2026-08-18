@@ -213,6 +213,16 @@ export class ChannelAppsController {
       status: row.status ?? "active",
       revokedAt: row.revokedAt ?? null,
       lastEventAt: row.lastEventAt ?? null,
+      tokenRefresh: {
+        state: row.tokenRefreshState ?? "IDLE",
+        repairCode: row.tokenRefreshRepairCode ?? null,
+        action:
+          row.tokenRefreshState === "REPAIR_REQUIRED"
+            ? "reinstall"
+            : row.tokenRefreshState === "REFRESHING"
+              ? "wait_or_reinstall"
+              : null,
+      },
       agentBinding: {
         agentId: overrideAgentId,
         effectiveAgentId: overrideAgentId ?? appDefaultAgentId,

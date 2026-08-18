@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ChannelPersistenceService } from "./channel-persistence.service";
 
 const ORG_A = "00000000-0000-0000-0000-000000000001";
@@ -8,6 +8,8 @@ const ORG_B = "00000000-0000-0000-0000-000000000002";
 const PROJECT = "00000000-0000-0000-0000-000000000003";
 const ENVIRONMENT = "00000000-0000-0000-0000-000000000004";
 const APP = "00000000-0000-0000-0000-000000000005";
+const CREDENTIAL = "00000000-0000-0000-0000-000000000006";
+const INSTALLATION = "00000000-0000-0000-0000-000000000007";
 
 const cryptoShim = {
   encryptJsonField: (value: unknown) => ({ envelope: value }),
@@ -51,7 +53,127 @@ function appRow(organizationId = ORG_A) {
   };
 }
 
+function makeRefreshHarness(
+  overrides: Record<string, unknown> = {},
+  decryptJsonField = cryptoShim.decryptJsonField,
+) {
+  const installationCredential = {
+    ...credential({
+      version: 1,
+      kind: "channel-installation",
+      botToken: "xoxb-old",
+      refreshToken: "xoxe-old",
+      tokenExpiresAt: "2026-08-18T16:00:00.000Z",
+      teamId: "T1",
+      enterpriseId: null,
+      isEnterpriseInstall: false,
+    }),
+    id: CREDENTIAL,
+  };
+  const state: any = {
+    id: INSTALLATION,
+    appId: APP,
+    externalInstallationId: "slack:team:T1",
+    displayName: "Workspace",
+    credentialId: CREDENTIAL,
+    grantedScopes: ["chat:write"],
+    status: "active",
+    revokedAt: null,
+    tokenGeneration: 4,
+    tokenRefreshState: "IDLE",
+    tokenRefreshAttemptId: null,
+    tokenRefreshStartedAt: null,
+    tokenRefreshRepairCode: null,
+    ...overrides,
+  };
+  let credentialWrites = 0;
+  const matches = (where: any) =>
+    Object.entries(where).every(([key, value]) => {
+      if (key === "updatedAt") {
+        return new Date(installationCredential.updatedAt).getTime() === new Date(value as any).getTime();
+      }
+      return state[key] === value;
+    });
+  const applyData = (data: any) => {
+    for (const [key, value] of Object.entries(data)) {
+      if (value && typeof value === "object" && "increment" in value) {
+        state[key] += Number((value as any).increment);
+      } else {
+        state[key] = value;
+      }
+    }
+  };
+  const prisma: any = {
+    channelInstallation: {
+      updateMany: async ({ where, data }: any) => {
+        if (!matches(where)) return { count: 0 };
+        applyData(data);
+        return { count: 1 };
+      },
+      findFirst: async ({ where }: any) => {
+        if (where.id !== state.id || (where.appId && where.appId !== state.appId)) return null;
+        return {
+          ...state,
+          credential: { ...installationCredential },
+          app: appRow(),
+        };
+      },
+    },
+    credential: {
+      updateMany: async ({ where, data }: any) => {
+        if (
+          where.id !== installationCredential.id ||
+          where.environmentId !== installationCredential.environmentId ||
+          where.revokedAt !== installationCredential.revokedAt ||
+          new Date(where.updatedAt).getTime() !== installationCredential.updatedAt.getTime()
+        ) {
+          return { count: 0 };
+        }
+        credentialWrites++;
+        Object.assign(installationCredential, data, { updatedAt: new Date("2026-08-18T15:01:00.000Z") });
+        return { count: 1 };
+      },
+    },
+  };
+  prisma.$transaction = async (callback: (tx: any) => Promise<unknown>) => {
+    const stateSnapshot = { ...state };
+    const credentialSnapshot = { ...installationCredential };
+    try {
+      return await callback(prisma);
+    } catch (error) {
+      Object.assign(state, stateSnapshot);
+      Object.assign(installationCredential, credentialSnapshot);
+      throw error;
+    }
+  };
+  const service = new ChannelPersistenceService(
+    prisma,
+    { ...cryptoShim, decryptJsonField } as any,
+  );
+  const expectation = {
+    credentialId: CREDENTIAL,
+    credentialRevision: `${CREDENTIAL}:${installationCredential.updatedAt.getTime()}`,
+    tokenGeneration: 4,
+  };
+  return {
+    service,
+    state,
+    installationCredential,
+    expectation,
+    get credentialWrites() {
+      return credentialWrites;
+    },
+  };
+}
+
 describe("ChannelPersistenceService", () => {
+  it("fails closed for event admission when dedicated inbox crypto is unavailable", async () => {
+    const service = new ChannelPersistenceService({} as any, cryptoShim as any);
+    await expect(service.enqueueChannelEvent(APP, "Ev1", { text: "secret" })).rejects.toThrow(
+      "encryption unavailable",
+    );
+  });
+
   it("derives app scope only from persisted Environment ancestry", async () => {
     const prisma = {
       channelApp: { findUnique: async () => appRow() },
@@ -87,8 +209,8 @@ describe("ChannelPersistenceService", () => {
     const tx = {
       channelInstallation: {
         findUnique: async () => null,
-        upsert: async ({ create }: any) => {
-          writes.installation = create;
+        create: async ({ data }: any) => {
+          writes.installation = data;
           return { id: "00000000-0000-0000-0000-000000000007" };
         },
       },
@@ -220,6 +342,130 @@ describe("ChannelPersistenceService", () => {
       botToken: "new-bot",
       refreshToken: "new-refresh",
     });
+  });
+
+  it("returns only the canonical generation-bound grant from a successful refresh claim", async () => {
+    const harness = makeRefreshHarness();
+
+    const claimed = await harness.service.beginInstallationRefresh(
+      INSTALLATION,
+      APP,
+      "attempt-1",
+      harness.expectation,
+    );
+
+    expect(claimed).toMatchObject({
+      id: INSTALLATION,
+      credentialId: CREDENTIAL,
+      credentialRevision: harness.expectation.credentialRevision,
+      tokenGeneration: 4,
+      tokenRefreshState: "REFRESHING",
+      tokenRefreshAttemptId: "attempt-1",
+      botToken: "xoxb-old",
+      refreshToken: "xoxe-old",
+    });
+  });
+
+  it("rejects stale refresh generation and credential revision claims", async () => {
+    const generationHarness = makeRefreshHarness();
+    const revisionHarness = makeRefreshHarness();
+
+    await expect(
+      generationHarness.service.beginInstallationRefresh(INSTALLATION, APP, "attempt-1", {
+        ...generationHarness.expectation,
+        tokenGeneration: 3,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      revisionHarness.service.beginInstallationRefresh(INSTALLATION, APP, "attempt-2", {
+        ...revisionHarness.expectation,
+        credentialRevision: `${CREDENTIAL}:0`,
+      }),
+    ).resolves.toBeNull();
+    expect(generationHarness.state.tokenRefreshState).toBe("IDLE");
+    expect(revisionHarness.state.tokenRefreshState).toBe("IDLE");
+  });
+
+  it("does not decrypt or mutate a replacement grant from stale finalize and repair workers", async () => {
+    const decrypt = vi.fn(cryptoShim.decryptJsonField);
+    const harness = makeRefreshHarness(
+      {
+        tokenGeneration: 5,
+        tokenRefreshState: "IDLE",
+      },
+      decrypt,
+    );
+    const mark = await harness.service.markInstallationRefreshRepairRequired(
+      INSTALLATION,
+      APP,
+      "attempt-1",
+      harness.expectation,
+      "refresh_failed",
+    );
+    const finalized = await harness.service.finalizeInstallationRefresh(
+      INSTALLATION,
+      APP,
+      "attempt-1",
+      harness.expectation,
+      { botToken: "xoxb-stale", refreshToken: "xoxe-stale" },
+    );
+    const preserved = await harness.service.preserveInstallationRefreshGrantForRepair(
+      INSTALLATION,
+      APP,
+      "attempt-1",
+      harness.expectation,
+      { botToken: "xoxb-stale", refreshToken: "xoxe-stale" },
+      "refresh_commit_failed",
+    );
+
+    expect({ mark, finalized, preserved }).toEqual({
+      mark: false,
+      finalized: null,
+      preserved: false,
+    });
+    expect(decrypt).not.toHaveBeenCalled();
+    expect(harness.credentialWrites).toBe(0);
+    expect(harness.state).toMatchObject({
+      tokenGeneration: 5,
+      tokenRefreshState: "IDLE",
+      tokenRefreshRepairCode: null,
+    });
+  });
+
+  it("fences every durable inbox stage by lease owner and generation", async () => {
+    const updates: any[] = [];
+    const prisma = {
+      channelEventInbox: {
+        updateMany: async (args: any) => {
+          updates.push(args);
+          return { count: 0 };
+        },
+        findUnique: async () => ({
+          turnId: null,
+          leaseOwner: "successor",
+          leaseGeneration: 8,
+          status: "PROCESSING",
+        }),
+      },
+    };
+    const service = new ChannelPersistenceService(prisma as any, cryptoShim as any);
+
+    await expect(service.recordChannelEventTurn("inbox", "old-worker", 7, "turn")).resolves.toBe(false);
+    await expect(service.recordChannelEventDelivery("inbox", "old-worker", 7)).resolves.toBe(false);
+    await expect(service.completeChannelEvent("inbox", "old-worker", 7)).resolves.toBe(false);
+    await expect(service.failChannelEvent("inbox", "old-worker", 7, 5_000, "network")).resolves.toBe(false);
+    await expect(service.discardChannelEvent("inbox", "old-worker", 7, "invalid_auth")).resolves.toBe(false);
+
+    expect(updates).toHaveLength(5);
+    for (const update of updates) {
+      expect(update.where).toMatchObject({
+        id: "inbox",
+        status: "PROCESSING",
+        leaseOwner: "old-worker",
+        leaseGeneration: 7,
+        completedAt: null,
+      });
+    }
   });
 
   it("keys channel identities by canonical Organization and provider realm", async () => {

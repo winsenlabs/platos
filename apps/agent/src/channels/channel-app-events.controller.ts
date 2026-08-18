@@ -5,13 +5,16 @@ import {
   Req,
   Res,
   Logger,
-  Inject,
+  type OnModuleInit,
+  type OnModuleDestroy,
 } from "@nestjs/common";
 import type { Request as ExpressRequest, Response as ExpressResponse } from "express";
 import * as crypto from "node:crypto";
-import { REDIS_TOKEN } from "../shared/redis.provider";
-import type Redis from "ioredis";
-import { ChannelRuntimeService } from "./channel-runtime.service";
+import {
+  ChannelDeliveryError,
+  ChannelRuntimeService,
+  type ChannelAppEventContext,
+} from "./channel-runtime.service";
 import { ChannelPersistenceService } from "./channel-persistence.service";
 
 /**
@@ -36,32 +39,49 @@ type RawBodyExpressRequest = ExpressRequest & { rawBody?: Buffer };
  *     (> 300s). The signing secret is the app's DECRYPTED `signingSecret`.
  *
  * ORDER (Slack's < 3s ack budget):
- *   load app → verify signature → url_verification fast-ack → event_id dedupe
- *   → (lifecycle inline) → ACK 200 → DETACHED route to installation + runtime.
+ *   load app → verify signature → url_verification fast-ack → encrypt + insert
+ *   immutable inbox row → ACK 200 → leased same-process worker.
  *
- * DEDUPE: `SET chanapp:evt:<event_id> NX EX 900`. Slack retries 3× (immediate
- * / +1m / +5m); a slow-but-successful handler gets retried, so a duplicate
- * event_id returns 200 immediately — plus `x-slack-no-retry: 1` when the hit
- * carries `x-slack-retry-num` (suppress further retries of an event we own).
+ * DEDUPE: ChannelEventInbox has a durable `(appId,eventId)` unique key. Failed
+ * or expired-leased rows are recovered by the periodic sweep; only completed
+ * duplicates receive `x-slack-no-retry: 1`.
  *
- * UNINSTALL hygiene: `app_uninstalled` + `tokens_revoked` are handled INLINE
- * (before the detach) — mark the installation revoked (SOFT; never hard-delete).
- * Their order is NOT guaranteed (known Slack quirk) so the handler is idempotent
- * (status=active → revoked once; a second event updates nothing).
+ * UNINSTALL hygiene: `app_uninstalled` + `tokens_revoked` run through the same
+ * durable worker and remain idempotent (SOFT revoke; never hard-delete).
  *
  * Logging: appId + event kind ONLY. Never message text, tokens, or secrets.
  */
 @Controller()
-export class ChannelAppEventsController {
+export class ChannelAppEventsController implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ChannelAppEventsController.name);
 
   private static readonly MAX_SKEW_SECONDS = 300;
+  private static readonly EVENT_LEASE_MS = 60_000;
+  private readonly workerId = crypto.randomUUID();
+  private readonly activeInbox = new Set<string>();
+  private readonly activeAborts = new Map<string, AbortController>();
+  private recoveryTimer: ReturnType<typeof setInterval> | null = null;
+  private destroyed = false;
 
   constructor(
     private readonly persistence: ChannelPersistenceService,
-    @Inject(REDIS_TOKEN) private readonly redis: Redis,
     private readonly runtime: ChannelRuntimeService,
   ) {}
+
+  onModuleInit(): void {
+    if (this.destroyed) return;
+    void this.recoverChannelEvents();
+    this.recoveryTimer = setInterval(() => void this.recoverChannelEvents(), 5_000);
+    (this.recoveryTimer as any)?.unref?.();
+  }
+
+  onModuleDestroy(): void {
+    this.destroyed = true;
+    if (this.recoveryTimer) clearInterval(this.recoveryTimer);
+    this.recoveryTimer = null;
+    for (const controller of this.activeAborts.values()) controller.abort();
+    this.activeAborts.clear();
+  }
 
   @Post("api/v1/channels/apps/:appId/events")
   async events(
@@ -115,34 +135,162 @@ export class ChannelAppEventsController {
       return;
     }
 
-    // ── event_id dedupe (Slack retries a slow-but-successful handler) ─────
+    // ── Durable admission before ACK ─────────────────────────────────────
     const eventId =
       typeof envelope?.event_id === "string" ? envelope.event_id : null;
     const isRetry = this.firstHeader(req.headers["x-slack-retry-num"]) != null;
-    if (eventId) {
-      let acquired: string | null = null;
-      try {
-        acquired = await this.redis.set(
-          `chanapp:evt:${eventId}`,
-          "1",
-          "EX",
-          900,
-          "NX",
-        );
-      } catch {
-        // Redis blip — fall through and process rather than drop the event.
-        acquired = "OK";
-      }
-      if (!acquired) {
-        // Already handled (or in-flight) — ack and, on a retry, tell Slack to
-        // stop retrying an event we own.
-        if (isRetry) res.setHeader("x-slack-no-retry", "1");
-        res.status(200).json({ ok: true });
-        return;
-      }
+    if (!eventId) {
+      res.status(400).json({ error: "event_id_required" });
+      return;
+    }
+    let inbox: any;
+    try {
+      // Only the verified provider envelope is encrypted and stored. Signature,
+      // timestamp, retry headers, and signing secret never enter the inbox.
+      inbox = await this.persistence.enqueueChannelEvent(
+        String(app.id),
+        eventId,
+        envelope,
+      );
+    } catch {
+      this.logger.error(`[chanapp] durable event admission failed app=${appId}`);
+      res.status(503).json({ error: "event_not_persisted" });
+      return;
     }
 
-    // ── Routing coordinates from the envelope ─────────────────────────────
+    const terminal = inbox.status === "COMPLETED" || inbox.status === "DISCARDED";
+    if (terminal && isRetry) {
+      res.setHeader("x-slack-no-retry", "1");
+    }
+    res.status(200).json({ ok: true });
+    if (!terminal) this.scheduleInbox(String(inbox.id));
+  }
+
+  private scheduleInbox(inboxId: string): void {
+    if (this.destroyed || !inboxId || this.activeInbox.has(inboxId)) return;
+    setImmediate(() => void this.processInbox(inboxId));
+  }
+
+  private async recoverChannelEvents(): Promise<void> {
+    if (this.destroyed) return;
+    try {
+      const rows = await this.persistence.listRecoverableChannelEvents();
+      if (this.destroyed) return;
+      for (const row of rows) this.scheduleInbox(String(row.id));
+    } catch {
+      this.logger.error("[chanapp] event inbox recovery sweep failed");
+    }
+  }
+
+  private async processInbox(inboxId: string): Promise<void> {
+    if (this.destroyed || this.activeInbox.has(inboxId)) return;
+    this.activeInbox.add(inboxId);
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
+    const abortController = new AbortController();
+    this.activeAborts.set(inboxId, abortController);
+    let leaseGeneration = 0;
+    try {
+      const claimed = await this.persistence.claimChannelEvent(
+        inboxId,
+        this.workerId,
+        ChannelAppEventsController.EVENT_LEASE_MS,
+      );
+      if (!claimed) return;
+      if (abortController.signal.aborted) throw new Error("channel event worker shutting down");
+      leaseGeneration = Number(claimed.leaseGeneration);
+      let deliveryCompleted = !!claimed.deliveryCompletedAt;
+      const renew = async () => {
+        try {
+          const held = await this.persistence.renewChannelEventLease(
+            inboxId,
+            this.workerId,
+            leaseGeneration,
+            ChannelAppEventsController.EVENT_LEASE_MS,
+          );
+          if (!held) abortController.abort();
+        } catch {
+          abortController.abort();
+        }
+      };
+      heartbeat = setInterval(
+        () => void renew(),
+        ChannelAppEventsController.EVENT_LEASE_MS / 3,
+      );
+      (heartbeat as any)?.unref?.();
+
+      const context: ChannelAppEventContext = {
+        eventId: String(claimed.eventId),
+        abortSignal: abortController.signal,
+        persistedTurn: claimed.persistedTurn,
+        onTurnCompleted: (turnId) =>
+          this.persistence.recordChannelEventTurn(
+            inboxId,
+            this.workerId,
+            leaseGeneration,
+            turnId,
+          ),
+        onDeliveryCompleted: async () => {
+          if (deliveryCompleted) return !abortController.signal.aborted;
+          const recorded = await this.persistence.recordChannelEventDelivery(
+            inboxId,
+            this.workerId,
+            leaseGeneration,
+          );
+          if (recorded) deliveryCompleted = true;
+          return recorded;
+        },
+      };
+
+      if (!deliveryCompleted) {
+        const app = await this.persistence.loadApp(String(claimed.appId));
+        if (abortController.signal.aborted) throw new Error("channel event lease lost");
+        if (app) await this.processVerifiedEvent(app, claimed.envelope, context);
+        if (!deliveryCompleted && !(await context.onDeliveryCompleted())) {
+          throw new Error("channel event lease lost");
+        }
+      }
+      if (abortController.signal.aborted) throw new Error("channel event lease lost");
+      const completed = await this.persistence.completeChannelEvent(
+        inboxId,
+        this.workerId,
+        leaseGeneration,
+      );
+      if (!completed) throw new Error("channel event lease lost");
+    } catch (error) {
+      this.logger.error(`[chanapp] durable event processing failed inbox=${inboxId}`);
+      try {
+        if (error instanceof ChannelDeliveryError && !error.retryable) {
+          await this.persistence.discardChannelEvent(
+            inboxId,
+            this.workerId,
+            leaseGeneration,
+            error.code,
+          );
+        } else {
+          await this.persistence.failChannelEvent(
+            inboxId,
+            this.workerId,
+            leaseGeneration,
+            5_000,
+            error instanceof ChannelDeliveryError ? error.code : "PROCESSING_FAILED",
+          );
+        }
+      } catch {
+        // Lease expiry is the final recovery backstop.
+      }
+    } finally {
+      if (heartbeat) clearInterval(heartbeat);
+      this.activeAborts.delete(inboxId);
+      this.activeInbox.delete(inboxId);
+    }
+  }
+
+  private async processVerifiedEvent(
+    app: any,
+    envelope: any,
+    context: ChannelAppEventContext,
+  ): Promise<void> {
+    const appId = String(app.id);
     const teamId =
       envelope?.team_id ??
       envelope?.team?.id ??
@@ -153,41 +301,16 @@ export class ChannelAppEventsController {
       envelope?.enterprise?.id ??
       envelope?.authorizations?.[0]?.enterprise_id ??
       null;
-
-    // ── Lifecycle (uninstall/revoke) handled INLINE, before the detach ────
     const innerType =
       envelope?.type === "event_callback" ? envelope?.event?.type : null;
 
-    // app_uninstalled — the whole app was removed. Always SOFT-revoke every
-    // installation for this (app, team, enterprise). Idempotent.
     if (innerType === "app_uninstalled") {
-      try {
-        await this.revokeInstallations(String(app.id), teamId, enterpriseId);
-        this.runtime.invalidateApp(String(app.id));
-        this.logger.log(
-          `[chanapp] lifecycle app_uninstalled app=${appId} — installation revoked`,
-        );
-      } catch {
-        this.logger.error(
-          `[chanapp] lifecycle app_uninstalled revoke failed app=${appId}`,
-        );
-      }
-      res.status(200).json({ ok: true });
+      await this.revokeInstallations(appId, teamId, enterpriseId);
+      this.runtime.invalidateApp(appId);
+      this.logger.log(`[chanapp] lifecycle app_uninstalled app=${appId}`);
       return;
     }
 
-    // tokens_revoked — `event.tokens` = { bot?: string[], oauth?: string[] }.
-    // Phase C splits the two revocation kinds Phase A conflated:
-    //   • BOT tokens revoked   → the installation can no longer act → SOFT-revoke
-    //     it (the original Phase A behavior).
-    //   • USER (oauth) tokens  → a user pulled their Sign-in-with-Slack consent
-    //     (or was deactivated). Do NOT revoke the installation — the bot still
-    //     works for everyone else — instead invalidate THAT user's linked
-    //     verified EMAIL identities so the linked-email trust no longer anchors
-    //     resolution / passes the `linking: required` policy gate.
-    // Fail-safe: if `tokens` is absent/unparseable (Slack always sends it), fall
-    // back to revoking the installation, preserving Phase A's "never leave a
-    // possibly-compromised token live" property.
     if (innerType === "tokens_revoked") {
       const tokens = envelope?.event?.tokens;
       const botIds = Array.isArray(tokens?.bot)
@@ -196,68 +319,24 @@ export class ChannelAppEventsController {
       const oauthIds = Array.isArray(tokens?.oauth)
         ? (tokens.oauth as unknown[]).filter((v): v is string => typeof v === "string")
         : [];
-      const unparseable = botIds.length === 0 && oauthIds.length === 0;
-
-      if (botIds.length > 0 || unparseable) {
-        try {
-          await this.revokeInstallations(String(app.id), teamId, enterpriseId);
-          this.runtime.invalidateApp(String(app.id));
-          this.logger.log(
-            `[chanapp] lifecycle tokens_revoked (bot) app=${appId} — installation revoked`,
-          );
-        } catch {
-          this.logger.error(
-            `[chanapp] lifecycle tokens_revoked revoke failed app=${appId}`,
-          );
-        }
+      if (botIds.length > 0 || (botIds.length === 0 && oauthIds.length === 0)) {
+        await this.revokeInstallations(appId, teamId, enterpriseId);
+        this.runtime.invalidateApp(appId);
       }
       if (oauthIds.length > 0) {
-        try {
-          await this.invalidateLinkedIdentities(
-            app,
-            teamId,
-            enterpriseId,
-            oauthIds,
-          );
-          this.runtime.invalidateIdentityLinks();
-        } catch {
-          this.logger.error(
-            `[chanapp] lifecycle tokens_revoked identity-invalidate failed app=${appId}`,
-          );
-        }
+        await this.invalidateLinkedIdentities(app, teamId, enterpriseId, oauthIds);
+        this.runtime.invalidateIdentityLinks();
       }
-      res.status(200).json({ ok: true });
       return;
     }
 
-    // ── ACK fast, then route + run the turn DETACHED ──────────────────────
-    // Every non-url_verification, non-lifecycle event is admitted here and
-    // handed WHOLE to runtime.handleAppEvent — there is NO inner-type allowlist
-    // in this controller. That is deliberate: the "Agents & AI Apps" surface
-    // events (assistant_thread_started / assistant_thread_context_changed,
-    // Phase B) ride the SAME per-app events URL and MUST reach the runtime,
-    // which decides what to do per inner type. Do NOT add a type filter here —
-    // it would silently drop the assistant surface. Dedupe + ACK above are
-    // type-agnostic and stay identical.
-    res.status(200).json({ ok: true });
-    void (async () => {
-      try {
-        const installation = await this.findActiveInstallation(
-          String(app.id),
-          teamId,
-          enterpriseId,
-        );
-        if (!installation) {
-          this.logger.warn(
-            `[chanapp] no active installation for event app=${appId}`,
-          );
-          return;
-        }
-        await this.runtime.handleAppEvent(app, installation, envelope);
-      } catch {
-        this.logger.error(`[chanapp] app event handling failed app=${appId}`);
-      }
-    })();
+    const installation = await this.findActiveInstallation(
+      appId,
+      teamId,
+      enterpriseId,
+    );
+    if (!installation) throw new Error("active channel installation unavailable");
+    await this.runtime.handleAppEvent(app, installation, envelope, context);
   }
 
   // ───────────────────────────────────────────────────────────────────────
@@ -288,7 +367,7 @@ export class ChannelAppEventsController {
   //     BOTH handle forms (workspace team first, then enterprise).
   //   • TOKEN REFRESH (Phase D): getFreshBotToken does NOT re-route — it keys off
   //     the already-resolved installation.id for both its Postgres write and its
-  //     `chanapp:refresh:<installationId>` Redis lock, so it inherits whichever
+  //     durable refresh claim, so it inherits whichever
   //     row findActiveInstallation selected (org or workspace) and cannot drift
   //     from this convention. (See channel-runtime.service.ts getFreshBotToken.)
   // ───────────────────────────────────────────────────────────────────────
@@ -349,20 +428,14 @@ export class ChannelAppEventsController {
     const teamCandidates = Array.from(
       new Set([teamId, enterpriseId].filter((t): t is string => !!t)),
     );
-    try {
-      const count = await this.persistence.disableLinkedEmails(
-        app,
-        teamCandidates,
-        userIds.filter(Boolean),
-      );
-      if (count > 0) {
-        this.logger.log(
-          `[chanapp] tokens_revoked invalidated ${count} email identity(ies) app=${String(app.id)}`,
-        );
-      }
-    } catch {
-      this.logger.error(
-        `[chanapp] tokens_revoked identity lookup failed app=${String(app.id)}`,
+    const count = await this.persistence.disableLinkedEmails(
+      app,
+      teamCandidates,
+      userIds.filter(Boolean),
+    );
+    if (count > 0) {
+      this.logger.log(
+        `[chanapp] tokens_revoked invalidated ${count} email identity(ies) app=${String(app.id)}`,
       );
     }
   }

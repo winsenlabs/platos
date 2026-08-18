@@ -675,6 +675,7 @@ export class AgentTaskService {
       threadReplyToId: options.replyToMessageId ?? null,
       // PRA-AC: attribute message to the calling agent when in a cluster.
       authorAgentId: config.clusteringId ? agentId : null,
+      idempotencyKey: options.idempotencyKey,
     });
     openTurnId = userMessage.id;
     if (resolvedAttachments.length > 0 && userMessage?.id) {

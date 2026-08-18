@@ -1,7 +1,9 @@
-import { Injectable, Inject } from "@nestjs/common";
+import { Injectable, Inject, Optional } from "@nestjs/common";
+import * as crypto from "node:crypto";
 import { CredentialKind } from "@platos/tenancy-database";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
+import { ChannelEventCryptoService } from "./channel-event-crypto.service";
 
 export interface ChannelOwnerScope {
   organizationId: string;
@@ -27,6 +29,14 @@ interface VerifiedIdentityInput {
   profile?: Record<string, unknown>;
 }
 
+class InstallationRefreshLostError extends Error {}
+
+export interface InstallationRefreshExpectation {
+  tokenGeneration: number;
+  credentialId: string;
+  credentialRevision: string;
+}
+
 /**
  * Clean Channel* persistence boundary.
  *
@@ -39,7 +49,8 @@ interface VerifiedIdentityInput {
 export class ChannelPersistenceService {
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
-    private readonly messageCrypto: MessageCryptoService
+    private readonly messageCrypto: MessageCryptoService,
+    @Optional() private readonly eventCrypto?: ChannelEventCryptoService,
   ) {}
 
   async listApps(scope: ChannelOwnerScope): Promise<any[]> {
@@ -409,8 +420,16 @@ export class ChannelPersistenceService {
   }
 
   async loadInstallation(installationId: string, expectedAppId?: string): Promise<any | null> {
+    return this.loadInstallationWith(this.prisma, installationId, expectedAppId);
+  }
+
+  private async loadInstallationWith(
+    client: any,
+    installationId: string,
+    expectedAppId?: string,
+  ): Promise<any | null> {
     if (!installationId) return null;
-    const row = await this.prisma.channelInstallation.findFirst({
+    const row = await client.channelInstallation.findFirst({
       where: {
         id: installationId,
         ...(expectedAppId ? { appId: expectedAppId } : {}),
@@ -532,6 +551,24 @@ export class ChannelPersistenceService {
         select: { id: true, credentialId: true },
       });
       let credentialId = existing?.credentialId ?? null;
+      if (existing) {
+        await tx.channelInstallation.update({
+          where: { id: existing.id },
+          data: {
+            displayName: grant.displayName ?? null,
+            grantedScopes: grant.grantedScopes,
+            status: "active",
+            revokedAt: null,
+            tokenGeneration: { increment: 1 },
+            tokenRefreshState: "IDLE",
+            tokenRefreshAttemptId: null,
+            tokenRefreshStartedAt: null,
+            tokenRefreshRepairCode: null,
+            ...(grant.defaultAgentId !== undefined ? { defaultAgentId: grant.defaultAgentId } : {}),
+            ...(grant.agentRouting !== undefined ? { agentRouting: grant.agentRouting } : {}),
+          },
+        });
+      }
       if (credentialId) {
         const updated = await tx.credential.updateMany({
           where: {
@@ -577,23 +614,15 @@ export class ChannelPersistenceService {
         credentialId = credential.id;
       }
 
-      const installation = await tx.channelInstallation.upsert({
-        where: {
-          appId_externalInstallationId: {
-            appId: String(app.id),
-            externalInstallationId,
-          },
-        },
-        update: {
-          displayName: grant.displayName ?? null,
-          credentialId,
-          grantedScopes: grant.grantedScopes,
-          status: "active",
-          revokedAt: null,
-          ...(grant.defaultAgentId !== undefined ? { defaultAgentId: grant.defaultAgentId } : {}),
-          ...(grant.agentRouting !== undefined ? { agentRouting: grant.agentRouting } : {}),
-        },
-        create: {
+      if (existing) {
+        await tx.channelInstallation.update({
+          where: { id: existing.id },
+          data: { credentialId },
+        });
+        return existing.id;
+      }
+      const installation = await tx.channelInstallation.create({
+        data: {
           appId: String(app.id),
           externalInstallationId,
           displayName: grant.displayName ?? null,
@@ -644,6 +673,446 @@ export class ChannelPersistenceService {
     });
     if (updated.count !== 1) return null;
     return this.loadInstallation(installationId, appId);
+  }
+
+  /** Atomically claim the right to consume one rotating Slack refresh grant. */
+  async beginInstallationRefresh(
+    installationId: string,
+    appId: string,
+    attemptId: string,
+    expected: InstallationRefreshExpectation,
+  ): Promise<any | null> {
+    try {
+      return await this.prisma.$transaction(async (tx: any) => {
+        const claimed = await tx.channelInstallation.updateMany({
+          where: {
+            id: installationId,
+            appId,
+            status: "active",
+            tokenRefreshState: "IDLE",
+            credentialId: expected.credentialId,
+            tokenGeneration: expected.tokenGeneration,
+          },
+          data: {
+            tokenRefreshState: "REFRESHING",
+            tokenRefreshAttemptId: attemptId,
+            tokenRefreshStartedAt: new Date(),
+            tokenRefreshRepairCode: null,
+          },
+        });
+        if (claimed.count !== 1) return null;
+        const canonical = await this.loadInstallationWith(tx, installationId, appId);
+        if (
+          !canonical ||
+          canonical.tokenRefreshAttemptId !== attemptId ||
+          canonical.credentialId !== expected.credentialId ||
+          canonical.credentialRevision !== expected.credentialRevision ||
+          Number(canonical.tokenGeneration) !== expected.tokenGeneration
+        ) {
+          throw new InstallationRefreshLostError();
+        }
+        return canonical;
+      });
+    } catch (error) {
+      if (error instanceof InstallationRefreshLostError) return null;
+      throw error;
+    }
+  }
+
+  private assertOwnedRefreshCredential(
+    current: any,
+    expected: InstallationRefreshExpectation,
+    nextGeneration: number,
+    refreshState: "IDLE" | "REPAIR_REQUIRED",
+  ): void {
+    if (
+      !current?.credentialId ||
+      current.credentialId !== expected.credentialId ||
+      current.credentialRevision !== expected.credentialRevision ||
+      current.tokenRefreshAttemptId !== null ||
+      current.tokenRefreshState !== refreshState ||
+      Number(current.tokenGeneration) !== nextGeneration
+    ) {
+      throw new InstallationRefreshLostError();
+    }
+  }
+
+  private credentialUpdatedAt(current: any): Date {
+    const updatedAt = current?.credential?.updatedAt;
+    if (!updatedAt) {
+      throw new InstallationRefreshLostError();
+    }
+    return new Date(updatedAt);
+  }
+
+  /**
+   * Commit the returned rotating grant and clear its durable attempt in one
+   * transaction. Until this commits, callers must not use the returned token.
+   */
+  async finalizeInstallationRefresh(
+    installationId: string,
+    appId: string,
+    attemptId: string,
+    expected: InstallationRefreshExpectation,
+    updates: { botToken: string; refreshToken: string; tokenExpiresAt?: Date | null }
+  ): Promise<any | null> {
+    let committed: boolean;
+    try {
+      committed = await this.prisma.$transaction(async (tx: any) => {
+        const installation = await tx.channelInstallation.updateMany({
+          where: {
+            id: installationId,
+            appId,
+            status: "active",
+            credentialId: expected.credentialId,
+            tokenGeneration: expected.tokenGeneration,
+            tokenRefreshState: "REFRESHING",
+            tokenRefreshAttemptId: attemptId,
+          },
+          data: {
+            tokenGeneration: { increment: 1 },
+            tokenRefreshState: "IDLE",
+            tokenRefreshAttemptId: null,
+            tokenRefreshStartedAt: null,
+            tokenRefreshRepairCode: null,
+          },
+        });
+        if (installation.count !== 1) return false;
+        const current = await this.loadInstallationWith(tx, installationId, appId);
+        this.assertOwnedRefreshCredential(
+          current,
+          expected,
+          expected.tokenGeneration + 1,
+          "IDLE",
+        );
+        const payload = this.installationPayload(current);
+        const scope = this.scopeOf(current.app);
+        const credential = await tx.credential.updateMany({
+          where: {
+            id: expected.credentialId,
+            environmentId: scope.environmentId,
+            kind: CredentialKind.CHANNEL_SECRET,
+            revokedAt: null,
+            updatedAt: this.credentialUpdatedAt(current),
+          },
+          data: {
+            encryptedReference: this.encryptPayload({
+              ...payload,
+              version: 1,
+              kind: "channel-installation",
+              botToken: updates.botToken,
+              refreshToken: updates.refreshToken,
+              tokenExpiresAt:
+                updates.tokenExpiresAt?.toISOString() ?? payload.tokenExpiresAt ?? null,
+            }),
+            expiresAt: updates.tokenExpiresAt ?? undefined,
+          },
+        });
+        if (credential.count !== 1) throw new InstallationRefreshLostError();
+        return true;
+      });
+    } catch (error) {
+      if (error instanceof InstallationRefreshLostError) return null;
+      throw error;
+    }
+    if (!committed) return null;
+    const rotated = await this.loadInstallation(installationId, appId);
+    if (!rotated) throw new Error("installation unavailable after refresh");
+    return rotated;
+  }
+
+  /**
+   * Best-effort salvage after the normal commit path fails: retain Slack's new
+   * single-use grant in the canonical Credential, but leave the installation
+   * blocked for explicit repair/reinstall instead of publishing the token.
+   */
+  async preserveInstallationRefreshGrantForRepair(
+    installationId: string,
+    appId: string,
+    attemptId: string,
+    expected: InstallationRefreshExpectation,
+    updates: { botToken: string; refreshToken: string; tokenExpiresAt?: Date | null },
+    repairCode: string
+  ): Promise<boolean> {
+    try {
+      await this.prisma.$transaction(async (tx: any) => {
+        const installation = await tx.channelInstallation.updateMany({
+          where: {
+            id: installationId,
+            appId,
+            credentialId: expected.credentialId,
+            tokenGeneration: expected.tokenGeneration,
+            tokenRefreshState: "REFRESHING",
+            tokenRefreshAttemptId: attemptId,
+          },
+          data: {
+            tokenGeneration: { increment: 1 },
+            tokenRefreshState: "REPAIR_REQUIRED",
+            tokenRefreshAttemptId: null,
+            tokenRefreshStartedAt: null,
+            tokenRefreshRepairCode: repairCode,
+          },
+        });
+        if (installation.count !== 1) throw new InstallationRefreshLostError();
+        const current = await this.loadInstallationWith(tx, installationId, appId);
+        this.assertOwnedRefreshCredential(
+          current,
+          expected,
+          expected.tokenGeneration + 1,
+          "REPAIR_REQUIRED",
+        );
+        const payload = this.installationPayload(current);
+        const scope = this.scopeOf(current.app);
+        const credential = await tx.credential.updateMany({
+          where: {
+            id: expected.credentialId,
+            environmentId: scope.environmentId,
+            kind: CredentialKind.CHANNEL_SECRET,
+            revokedAt: null,
+            updatedAt: this.credentialUpdatedAt(current),
+          },
+          data: {
+            encryptedReference: this.encryptPayload({
+              ...payload,
+              version: 1,
+              kind: "channel-installation",
+              botToken: updates.botToken,
+              refreshToken: updates.refreshToken,
+              tokenExpiresAt:
+                updates.tokenExpiresAt?.toISOString() ?? payload.tokenExpiresAt ?? null,
+            }),
+            expiresAt: updates.tokenExpiresAt ?? undefined,
+          },
+        });
+        if (credential.count !== 1) throw new InstallationRefreshLostError();
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async markInstallationRefreshRepairRequired(
+    installationId: string,
+    appId: string,
+    attemptId: string,
+    expected: InstallationRefreshExpectation,
+    repairCode: string
+  ): Promise<boolean> {
+    const updated = await this.prisma.channelInstallation.updateMany({
+      where: {
+        id: installationId,
+        appId,
+        credentialId: expected.credentialId,
+        tokenGeneration: expected.tokenGeneration,
+        tokenRefreshState: "REFRESHING",
+        tokenRefreshAttemptId: attemptId,
+      },
+      data: {
+        tokenRefreshState: "REPAIR_REQUIRED",
+        tokenRefreshRepairCode: repairCode,
+      },
+    });
+    return updated.count === 1;
+  }
+
+  async enqueueChannelEvent(appId: string, eventId: string, envelope: unknown): Promise<any> {
+    if (!this.eventCrypto) throw new Error("channel event encryption unavailable");
+    const id = crypto.randomUUID();
+    const encrypted = this.eventCrypto.encrypt(envelope, { appId, eventId, rowId: id });
+    try {
+      return await this.prisma.channelEventInbox.create({
+        data: { id, appId, eventId, ...encrypted },
+      });
+    } catch (error) {
+      const existing = await this.prisma.channelEventInbox.findUnique({
+        where: { appId_eventId: { appId, eventId } },
+      });
+      if (existing) return existing;
+      throw error;
+    }
+  }
+
+  async listRecoverableChannelEvents(limit = 25): Promise<Array<{ id: string }>> {
+    const now = new Date();
+    return this.prisma.channelEventInbox.findMany({
+      where: {
+        completedAt: null,
+        OR: [
+          { status: { in: ["PENDING", "FAILED"] }, availableAt: { lte: now } },
+          { status: "PROCESSING", leaseExpiresAt: { lt: now } },
+        ],
+      },
+      select: { id: true },
+      orderBy: [{ availableAt: "asc" }, { createdAt: "asc" }],
+      take: limit,
+    });
+  }
+
+  async claimChannelEvent(
+    inboxId: string,
+    leaseOwner: string,
+    leaseMs: number
+  ): Promise<any | null> {
+    const now = new Date();
+    const claimed = await this.prisma.channelEventInbox.updateMany({
+      where: {
+        id: inboxId,
+        completedAt: null,
+        OR: [
+          { status: { in: ["PENDING", "FAILED"] }, availableAt: { lte: now } },
+          { status: "PROCESSING", leaseExpiresAt: { lt: now } },
+        ],
+      },
+      data: {
+        status: "PROCESSING",
+        attempts: { increment: 1 },
+        leaseGeneration: { increment: 1 },
+        leaseOwner,
+        leaseExpiresAt: new Date(now.getTime() + leaseMs),
+        lastErrorCode: null,
+      },
+    });
+    if (claimed.count !== 1) return null;
+    const row = await this.prisma.channelEventInbox.findUnique({ where: { id: inboxId } });
+    if (!row) return null;
+    if (!this.eventCrypto) throw new Error("channel event encryption unavailable");
+    const envelope = this.eventCrypto.decrypt(
+      row.encryptedPayload,
+      row.payloadKeyVersion,
+      {
+        appId: row.appId,
+        eventId: row.eventId,
+        rowId: row.id,
+        formatVersion: row.payloadFormatVersion,
+      },
+    );
+    let persistedTurn: any = null;
+    if (row.turnId) {
+      persistedTurn = await this.prisma.turn.findUnique({
+        where: { id: row.turnId },
+        select: { id: true, threadId: true, outputText: true, status: true },
+      });
+      if (!persistedTurn || persistedTurn.status !== "SUCCEEDED") {
+        throw new Error("channel event turn unavailable");
+      }
+    }
+    return { ...row, envelope, persistedTurn };
+  }
+
+  async renewChannelEventLease(
+    inboxId: string,
+    leaseOwner: string,
+    leaseGeneration: number,
+    leaseMs: number
+  ): Promise<boolean> {
+    const renewed = await this.prisma.channelEventInbox.updateMany({
+      where: { id: inboxId, status: "PROCESSING", leaseOwner, leaseGeneration, completedAt: null },
+      data: { leaseExpiresAt: new Date(Date.now() + leaseMs) },
+    });
+    return renewed.count === 1;
+  }
+
+  async recordChannelEventTurn(
+    inboxId: string,
+    leaseOwner: string,
+    leaseGeneration: number,
+    turnId: string,
+  ): Promise<boolean> {
+    const updated = await this.prisma.channelEventInbox.updateMany({
+      where: {
+        id: inboxId,
+        status: "PROCESSING",
+        leaseOwner,
+        leaseGeneration,
+        completedAt: null,
+        turnId: null,
+      },
+      data: { turnId },
+    });
+    if (updated.count === 1) return true;
+    const row = await this.prisma.channelEventInbox.findUnique({
+      where: { id: inboxId },
+      select: { turnId: true, leaseOwner: true, leaseGeneration: true, status: true },
+    });
+    return row?.turnId === turnId && row.leaseOwner === leaseOwner &&
+      row.leaseGeneration === leaseGeneration && row.status === "PROCESSING";
+  }
+
+  async recordChannelEventDelivery(
+    inboxId: string,
+    leaseOwner: string,
+    leaseGeneration: number,
+  ): Promise<boolean> {
+    const updated = await this.prisma.channelEventInbox.updateMany({
+      where: { id: inboxId, status: "PROCESSING", leaseOwner, leaseGeneration, completedAt: null },
+      data: { deliveryCompletedAt: new Date() },
+    });
+    return updated.count === 1;
+  }
+
+  async completeChannelEvent(
+    inboxId: string,
+    leaseOwner: string,
+    leaseGeneration: number,
+  ): Promise<boolean> {
+    const updated = await this.prisma.channelEventInbox.updateMany({
+      where: {
+        id: inboxId,
+        status: "PROCESSING",
+        leaseOwner,
+        leaseGeneration,
+        completedAt: null,
+        deliveryCompletedAt: { not: null },
+      },
+      data: {
+        status: "COMPLETED",
+        completedAt: new Date(),
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        lastErrorCode: null,
+      },
+    });
+    return updated.count === 1;
+  }
+
+  async failChannelEvent(
+    inboxId: string,
+    leaseOwner: string,
+    leaseGeneration: number,
+    retryDelayMs: number,
+    errorCode: string
+  ): Promise<boolean> {
+    const updated = await this.prisma.channelEventInbox.updateMany({
+      where: { id: inboxId, status: "PROCESSING", leaseOwner, leaseGeneration, completedAt: null },
+      data: {
+        status: "FAILED",
+        availableAt: new Date(Date.now() + retryDelayMs),
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        lastErrorCode: errorCode,
+      },
+    });
+    return updated.count === 1;
+  }
+
+  async discardChannelEvent(
+    inboxId: string,
+    leaseOwner: string,
+    leaseGeneration: number,
+    errorCode: string,
+  ): Promise<boolean> {
+    const updated = await this.prisma.channelEventInbox.updateMany({
+      where: { id: inboxId, status: "PROCESSING", leaseOwner, leaseGeneration, completedAt: null },
+      data: {
+        status: "DISCARDED",
+        completedAt: new Date(),
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        lastErrorCode: errorCode,
+      },
+    });
+    return updated.count === 1;
   }
 
   stampInstallationLastEvent(installationId: string): Promise<unknown> {
@@ -1385,6 +1854,24 @@ export class ChannelPersistenceService {
 
   private encryptPayload(payload: ChannelCredentialPayload): string {
     return JSON.stringify(this.messageCrypto.encryptJsonField(payload));
+  }
+
+  private decryptPayload(encryptedPayload: string, expectedKind: string): ChannelCredentialPayload {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(encryptedPayload);
+    } catch {
+      throw new Error("channel payload unavailable");
+    }
+    const decrypted = this.messageCrypto.decryptJsonField(parsed);
+    if (!decrypted || typeof decrypted !== "object" || Array.isArray(decrypted)) {
+      throw new Error("channel payload unavailable");
+    }
+    const payload = decrypted as ChannelCredentialPayload;
+    if (payload.__platos_enc !== undefined || payload.kind !== expectedKind) {
+      throw new Error("channel payload unavailable");
+    }
+    return payload;
   }
 
   private credentialRevision(credential: any): string {

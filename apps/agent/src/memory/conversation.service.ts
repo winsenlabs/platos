@@ -450,6 +450,7 @@ export class ConversationService {
       latencyMs?: number;
       structuredOutput?: unknown;
       externalRuntimeId?: string | null;
+      idempotencyKey?: string;
     },
   ): Promise<StoredMessage> {
     const thread = await this.findScopedThread(threadId, scope);
@@ -493,6 +494,7 @@ export class ConversationService {
             status: "ACTIVE",
             startedAt: new Date(),
             externalRuntimeId: message.externalRuntimeId ?? null,
+            idempotencyKey: message.idempotencyKey ?? null,
           },
         });
       });
@@ -573,7 +575,12 @@ export class ConversationService {
       if (!active) return { count: 0 };
       await tx.turn.update({
         where: { id: turnId },
-        data: { status: "FAILED", completedAt, output: { error: detail.slice(0, 2000) } },
+        data: {
+          status: "FAILED",
+          completedAt,
+          output: { error: detail.slice(0, 2000) },
+          idempotencyKey: null,
+        },
       });
       await tx.step.upsert({
         where: { turnId_sequence: { turnId, sequence: 1 } },
@@ -595,6 +602,24 @@ export class ConversationService {
       return { count: 1 };
     });
     if (!result.count) this.logger.warn(`Failed to mark turn ${turnId} failed because it was not active`);
+  }
+
+  async findTurnByIdempotency(
+    threadId: string,
+    scope: RequestScope,
+    idempotencyKey: string,
+  ): Promise<any | null> {
+    await this.findScopedThread(threadId, scope);
+    return this.prisma.turn.findUnique({
+      where: { threadId_idempotencyKey: { threadId, idempotencyKey } },
+      select: {
+        id: true,
+        threadId: true,
+        outputText: true,
+        status: true,
+        costCents: true,
+      },
+    });
   }
 
   private turnSideToMessage(turn: any, role: "user" | "assistant"): StoredMessage {

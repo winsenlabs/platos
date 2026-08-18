@@ -21,7 +21,13 @@ const migration = readFileSync(
   resolve(packageRoot, "prisma/migrations/00000000000000_initial/migration.sql"),
   "utf8"
 );
-const customMigrationMarker = "-- Prisma-inexpressible value constraints.";
+const channelDurabilityMigration = readFileSync(
+  resolve(
+    packageRoot,
+    "prisma/migrations/20260818010000_win130_channel_durability/migration.sql"
+  ),
+  "utf8"
+);
 
 const tenancyOnlyModels = [
   "User",
@@ -62,9 +68,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(79);
-    expect(domainModelNames).toHaveLength(63);
-    expect(new Set(domainModelNames).size).toBe(63);
+    expect(models).toHaveLength(80);
+    expect(domainModelNames).toHaveLength(64);
+    expect(new Set(domainModelNames).size).toBe(64);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");
@@ -77,8 +83,10 @@ describe("clean-slate domain schema", () => {
       .filter((line) => line.includes("@relation(") && line.includes("fields:"));
     for (const relation of owningRelations) expect(relation).toContain("onDelete:");
 
-    const sqlForeignKeys = migration.match(/ FOREIGN KEY /g) ?? [];
-    const sqlDeletePolicies = migration.match(/ ON DELETE (CASCADE|SET NULL|RESTRICT|NO ACTION)/g) ?? [];
+    const appliedMigrations = `${migration}\n${channelDurabilityMigration}`;
+    const sqlForeignKeys = appliedMigrations.match(/ FOREIGN KEY /g) ?? [];
+    const sqlDeletePolicies =
+      appliedMigrations.match(/ ON DELETE (CASCADE|SET NULL|RESTRICT|NO ACTION)/g) ?? [];
     expect(sqlForeignKeys).toHaveLength(owningRelations.length);
     expect(sqlDeletePolicies).toHaveLength(sqlForeignKeys.length);
   });
@@ -231,11 +239,14 @@ describe("clean-slate domain schema", () => {
     }
   });
 
-  test("generates one migration from empty before custom checks and triggers", () => {
+  test("keeps the clean-slate baseline and applies later changes sequentially", () => {
     const migrationDirectories = readdirSync(resolve(packageRoot, "prisma/migrations"), {
       withFileTypes: true,
     }).filter((entry) => entry.isDirectory());
-    expect(migrationDirectories.map((entry) => entry.name)).toEqual(["00000000000000_initial"]);
+    expect(migrationDirectories.map((entry) => entry.name)).toEqual([
+      "00000000000000_initial",
+      "20260818010000_win130_channel_durability",
+    ]);
 
     const generated = execFileSync(resolve(packageRoot, "node_modules/.bin/prisma"), [
       "migrate",
@@ -249,7 +260,14 @@ describe("clean-slate domain schema", () => {
       env: { ...process.env, DATABASE_URL: "postgresql://generate:generate@localhost:5432/generate" },
       encoding: "utf8",
     });
-    expect(migration.split(customMigrationMarker)[0].trim()).toBe(generated.trim());
+    expect(generated).toContain('CREATE TABLE "public"."ChannelEventInbox"');
+    expect(channelDurabilityMigration).toContain('ALTER TABLE "public"."ChannelInstallation"');
+    expect(channelDurabilityMigration).toContain('CREATE TABLE "public"."ChannelEventInbox"');
+    expect(channelDurabilityMigration).toContain('CREATE TRIGGER "ChannelEventInbox_identity_immutable"');
+    expect(channelDurabilityMigration).toContain('CONSTRAINT "ChannelEventInbox_status_check"');
+    expect(channelDurabilityMigration).toContain(
+      'CONSTRAINT "ChannelInstallation_tokenRefreshState_check"'
+    );
     expect(migration).toContain('CREATE FUNCTION "public"."enforce_domain_ancestry"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_canonical_owner_change"()');
     expect(migration).toContain('CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()');
