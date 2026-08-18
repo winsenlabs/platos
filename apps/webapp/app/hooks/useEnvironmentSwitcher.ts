@@ -34,29 +34,6 @@ export function routeForEnvironmentSwitch({
   environmentSlug: string;
 }) {
   switch (matchId) {
-    // Run page
-    case "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.runs.$runParam": {
-      const newLocation: Path = {
-        pathname: replaceEnvInPath(location.pathname, environmentSlug).replace(
-          /\/runs\/.*/,
-          "/runs"
-        ),
-        search: "",
-        hash: "",
-      };
-      return fullPath(newLocation);
-    }
-    case "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.deployments.$deploymentParam": {
-      const newLocation: Path = {
-        pathname: replaceEnvInPath(location.pathname, environmentSlug).replace(
-          /\/deployments\/.*/,
-          "/deployments"
-        ),
-        search: "",
-        hash: "",
-      };
-      return fullPath(newLocation);
-    }
     case "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.schedules.$scheduleParam":
     case "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.schedules.edit.$scheduleParam": {
       const newLocation: Path = {

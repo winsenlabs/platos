@@ -54,7 +54,7 @@ import { CreateBulkActionPresenter } from "~/presenters/v3/CreateBulkActionPrese
 import { logger } from "~/services/logger.server";
 import { requireUserId } from "~/services/session.server";
 import { cn } from "~/utils/cn";
-import { EnvironmentParamSchema, v3BulkActionPath, v3RunsPath } from "~/utils/pathBuilder";
+import { EnvironmentParamSchema, v3BulkActionPath, v3EnvironmentPath } from "~/utils/pathBuilder";
 import { BulkActionService } from "~/v3/services/bulk/BulkActionV2.server";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -226,7 +226,7 @@ export function CreateBulkActionInspector({
         <div className="mx-3 flex items-center justify-between gap-2 border-b border-grid-dimmed">
           <Header2 className="whitespace-nowrap">Create a bulk action</Header2>
           <LinkButton
-            to={`${v3RunsPath(
+            to={`${v3EnvironmentPath(
               organization,
               project,
               environment

@@ -22,7 +22,7 @@ import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
 import { processWaitpointCompletionPacket } from "~/runEngine/concerns/waitpointCompletionPacket.server";
 import { logger } from "~/services/logger.server";
 import { requireUserId } from "~/services/session.server";
-import { EnvironmentParamSchema, ProjectParamSchema, v3RunsPath } from "~/utils/pathBuilder";
+import { EnvironmentParamSchema, ProjectParamSchema, v3EnvironmentPath } from "~/utils/pathBuilder";
 import { engine } from "~/v3/runEngine.server";
 import { SpinnerWhite } from "~/components/primitives/Spinner";
 import { useEnvironment } from "~/hooks/useEnvironment";
@@ -198,7 +198,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 
     const errorMessage = `Something went wrong. Please try again.`;
     return redirectWithErrorMessage(
-      v3RunsPath({ slug: organizationSlug }, { slug: projectParam }, { slug: envParam }),
+      v3EnvironmentPath({ slug: organizationSlug }, { slug: projectParam }, { slug: envParam }),
       request,
       errorMessage
     );

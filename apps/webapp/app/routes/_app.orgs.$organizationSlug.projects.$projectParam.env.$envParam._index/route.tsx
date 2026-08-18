@@ -71,7 +71,6 @@ import {
   agentProvidersPath,
   agentsPath,
   EnvironmentParamSchema,
-  v3RunsPath,
 } from "~/utils/pathBuilder";
 
 export const meta: MetaFunction = () => [{ title: "Plato Central | Platos" }];
@@ -1170,7 +1169,6 @@ export default function PlatoCentral() {
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { label: "Agents", to: agentsPath(organization, project, environment) },
-            { label: "Runs", to: v3RunsPath(organization, project, environment) },
             { label: "Monitoring", to: agentMonitoringPath(organization, project, environment) },
             { label: "Providers", to: agentProvidersPath(organization, project, environment) },
           ].map(({ label, to }) => (

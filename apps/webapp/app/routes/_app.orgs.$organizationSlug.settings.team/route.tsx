@@ -56,7 +56,6 @@ import {
   organizationTeamPath,
   resendInvitePath,
   revokeInvitePath,
-  v3BillingPath,
 } from "~/utils/pathBuilder";
 import { formatCurrency, formatNumber } from "~/utils/numberFormatter";
 import { SetSeatsAddOnService } from "~/v3/services/setSeatsAddOn.server";
@@ -111,10 +110,7 @@ const PurchaseSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("quota-increase"),
-    amount: z.coerce
-      .number()
-      .int("Must be a whole number")
-      .min(1, "Amount must be greater than 0"),
+    amount: z.coerce.number().int("Must be a whole number").min(1, "Amount must be greater than 0"),
   }),
 ]);
 
@@ -212,9 +208,6 @@ export default function Page() {
   const plan = useCurrentPlan();
   const requiresUpgrade = limits.used >= limits.limit;
   const usageRatio = limits.limit > 0 ? Math.min(limits.used / limits.limit, 1) : 0;
-  const canUpgrade =
-    plan?.v3Subscription?.plan && !plan.v3Subscription.plan.limits.teamMembers.canExceed;
-
   return (
     <PageContainer>
       <NavBar>
@@ -245,7 +238,11 @@ export default function Page() {
           {requiresUpgrade ? (
             <SimpleTooltip
               button={
-                <ButtonContent variant="primary/small" LeadingIcon={UserPlusIcon} className="cursor-not-allowed opacity-50">
+                <ButtonContent
+                  variant="primary/small"
+                  LeadingIcon={UserPlusIcon}
+                  className="cursor-not-allowed opacity-50"
+                >
                   Invite a team member
                 </ButtonContent>
               }
@@ -370,10 +367,6 @@ export default function Page() {
                   maxQuota={maxSeatQuota}
                   planSeatLimit={planSeatLimit}
                 />
-              ) : canUpgrade ? (
-                <LinkButton to={v3BillingPath(organization)} variant="primary/small">
-                  Upgrade
-                </LinkButton>
               ) : null}
             </div>
           </div>

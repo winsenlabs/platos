@@ -29,10 +29,6 @@ const stories: Story[] = [
     slug: "callout",
   },
   {
-    name: "Charts",
-    slug: "charts",
-  },
-  {
     name: "Checkboxes",
     slug: "checkboxes",
   },
@@ -55,10 +51,6 @@ const stories: Story[] = [
   {
     name: "Environment label",
     slug: "environment-label",
-  },
-  {
-    name: "Free plan usage",
-    slug: "free-plan-usage",
   },
   {
     name: "Info panel",
@@ -87,10 +79,6 @@ const stories: Story[] = [
   {
     name: "Resizable",
     slug: "resizable",
-  },
-  {
-    name: "Run & Span timeline",
-    slug: "run-and-span-timeline",
   },
   {
     name: "Segemented control",
@@ -176,17 +164,8 @@ const stories: Story[] = [
   },
   // Menus section
   {
-    sectionTitle: "Menus",
-    name: "Filter",
-    slug: "filter",
-  },
-  {
     name: "Popover",
     slug: "popover",
-  },
-  {
-    name: "Select",
-    slug: "select",
   },
 ];
 

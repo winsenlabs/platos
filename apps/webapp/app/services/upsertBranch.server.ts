@@ -1,8 +1,8 @@
+import { type GitMeta } from "@platos/core/v3";
 import { type PrismaClient, type PrismaClientOrTransaction } from "@platos/database";
 import slug from "slug";
 import { prisma } from "~/db.server";
 import { createApiKeyForEnv, createPkApiKeyForEnv } from "~/models/api-key.server";
-import { type CreateBranchOptions } from "~/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.branches/route";
 import { isValidGitBranchName, sanitizeBranchName } from "~/v3/gitBranch";
 import { logger } from "./logger.server";
 import { getCurrentPlan, getLimit } from "./platform.v3.server";
@@ -22,7 +22,11 @@ export class UpsertBranchService {
     orgFilter:
       | { type: "userMembership"; userId: string }
       | { type: "orgId"; organizationId: string },
-    { parentEnvironmentId, branchName, git }: CreateBranchOptions
+    { parentEnvironmentId, branchName, git }: {
+      parentEnvironmentId: string;
+      branchName: string;
+      git?: GitMeta;
+    }
   ) {
     const sanitizedBranchName = sanitizeBranchName(branchName);
     if (!sanitizedBranchName) {

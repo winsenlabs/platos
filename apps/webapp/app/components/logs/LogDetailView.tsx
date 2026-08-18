@@ -2,7 +2,7 @@ import { XMarkIcon } from "@heroicons/react/20/solid";
 import type { TaskRunStatus } from "@platos/database";
 import { useEffect, useState } from "react";
 import { useTypedFetcher } from "remix-typedjson";
-import { Button, LinkButton } from "~/components/primitives/Buttons";
+import { Button } from "~/components/primitives/Buttons";
 import { CopyableText } from "~/components/primitives/CopyableText";
 import { DateTimeAccurate } from "~/components/primitives/DateTime";
 import { Header2 } from "~/components/primitives/Headers";
@@ -22,7 +22,6 @@ import type { LogEntry } from "~/presenters/v3/LogsListPresenter.server";
 import type { loader as logDetailLoader } from "~/routes/resources.orgs.$organizationSlug.projects.$projectParam.env.$envParam.logs.$logId";
 import { cn } from "~/utils/cn";
 import { getLevelColor } from "~/utils/logUtils";
-import { v3RunSpanPath } from "~/utils/pathBuilder";
 import { LogLevel } from "./LogLevel";
 import { ExitIcon } from "~/assets/icons/ExitIcon";
 type LogDetailViewProps = {
@@ -95,14 +94,6 @@ export function LogDetailView({ logId, initialLog, onClose, searchTerm }: LogDet
   const log = fetcher.data ?? initialLog;
   const runStatus = fetcher.data?.runStatus;
 
-  const runPath = v3RunSpanPath(
-    organization,
-    project,
-    environment,
-    { friendlyId: log?.runId ?? "" },
-    { spanId: log?.spanId ?? "" }
-  );
-
   if (isLoading && !log) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -147,7 +138,7 @@ export function LogDetailView({ logId, initialLog, onClose, searchTerm }: LogDet
         />
       </div>
       <div className="overflow-y-auto px-3 py-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-charcoal-600">
-        <DetailsTab log={log} runPath={runPath} runStatus={runStatus} searchTerm={searchTerm} />
+        <DetailsTab log={log} runStatus={runStatus} searchTerm={searchTerm} />
       </div>
     </div>
   );
@@ -155,14 +146,12 @@ export function LogDetailView({ logId, initialLog, onClose, searchTerm }: LogDet
 
 function DetailsTab({
   log,
-  runPath,
   runStatus,
   searchTerm,
 }: {
   log: LogEntry & {
     attributes?: LogAttributes;
   };
-  runPath: string;
   runStatus?: TaskRunStatus;
   searchTerm?: string;
 }) {
@@ -184,14 +173,6 @@ function DetailsTab({
           <Property.Label>Run ID</Property.Label>
           <Property.Value>
             <CopyableText value={log.runId} copyValue={log.runId} asChild />
-            <LinkButton
-              to={runPath}
-              variant="secondary/small"
-              shortcut={{ key: "v" }}
-              className="mt-2"
-            >
-              View full run
-            </LinkButton>
           </Property.Value>
         </Property.Item>
 

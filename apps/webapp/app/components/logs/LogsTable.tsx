@@ -1,14 +1,9 @@
-import { ArrowPathIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/20/solid";
-import { Link } from "@remix-run/react";
+import { ArrowPathIcon } from "@heroicons/react/20/solid";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "~/utils/cn";
-import { Button, LinkButton } from "~/components/primitives/Buttons";
-import { useEnvironment } from "~/hooks/useEnvironment";
-import { useOrganization } from "~/hooks/useOrganizations";
-import { useProject } from "~/hooks/useProject";
+import { Button } from "~/components/primitives/Buttons";
 import type { LogEntry } from "~/presenters/v3/LogsListPresenter.server";
 import { highlightSearchText } from "~/utils/logUtils";
-import { v3RunSpanPath } from "~/utils/pathBuilder";
 import { DateTimeAccurate } from "../primitives/DateTime";
 import { Paragraph } from "../primitives/Paragraph";
 import { Spinner } from "../primitives/Spinner";
@@ -20,13 +15,11 @@ import {
   TableBlankRow,
   TableBody,
   TableCell,
-  TableCellMenu,
   TableHeader,
   TableHeaderCell,
   TableRow,
   type TableVariant,
 } from "../primitives/Table";
-import { RunsIcon } from "~/assets/icons/RunsIcon";
 
 type LogsTableProps = {
   logs: LogEntry[];
@@ -69,9 +62,6 @@ export function LogsTable({
   selectedLogId,
   onLogSelect,
 }: LogsTableProps) {
-  const organization = useOrganization();
-  const project = useProject();
-  const environment = useEnvironment();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [showLoadMoreSpinner, setShowLoadMoreSpinner] = useState(false);
 
@@ -138,14 +128,6 @@ export function LogsTable({
           ) : (
             logs.map((log) => {
               const isSelected = selectedLogId === log.id;
-              const runPath = v3RunSpanPath(
-                organization,
-                project,
-                environment,
-                { friendlyId: log.runId },
-                { spanId: log.spanId }
-              );
-
               const handleRowClick = () => onLogSelect?.(log.id);
 
               return (
@@ -181,20 +163,6 @@ export function LogsTable({
                       {highlightSearchText(log.message, searchTerm)}
                     </span>
                   </TableCell>
-                  <TableCellMenu
-                    className="pl-32"
-                    hiddenButtons={
-                      <LinkButton
-                        to={runPath}
-                        variant="minimal/small"
-                        TrailingIcon={RunsIcon}
-                        trailingIconClassName="text-text-bright"
-                        className="h-[1.375rem] pl-1.5 pr-2"
-                      >
-                        <span className="text-[0.6875rem] text-text-bright">View run</span>
-                      </LinkButton>
-                    }
-                  />
                 </TableRow>
               );
             })

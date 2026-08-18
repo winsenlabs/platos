@@ -1,7 +1,6 @@
 import { conform, list, requestIntent, useFieldList, useForm } from "@conform-to/react";
 import { parse } from "@conform-to/zod";
 import {
-  ArrowUpCircleIcon,
   EnvelopeIcon,
   LockOpenIcon,
   UserPlusIcon,
@@ -33,7 +32,7 @@ import { redirectWithSuccessMessage } from "~/models/message.server";
 import { TeamPresenter } from "~/presenters/TeamPresenter.server";
 import { scheduleEmail } from "~/services/email.server";
 import { requireUserId } from "~/services/session.server";
-import { acceptInvitePath, organizationTeamPath, v3BillingPath } from "~/utils/pathBuilder";
+import { acceptInvitePath, organizationTeamPath } from "~/utils/pathBuilder";
 import { PurchaseSeatsModal } from "../_app.orgs.$organizationSlug.settings.team/route";
 
 const Params = z.object({
@@ -200,30 +199,7 @@ export default function Page() {
                 to add more.
               </Paragraph>
             </InfoPanel>
-          ) : (
-            <InfoPanel
-              variant="upgrade"
-              icon={LockOpenIcon}
-              iconClassName="text-indigo-500"
-              title="Unlock more team members"
-              accessory={
-                <LinkButton
-                  to={v3BillingPath(organization)}
-                  variant="secondary/small"
-                  LeadingIcon={ArrowUpCircleIcon}
-                  leadingIconClassName="text-indigo-500"
-                >
-                  Upgrade
-                </LinkButton>
-              }
-              panelClassName="mb-4"
-            >
-              <Paragraph variant="small">
-                You've used all {limits.limit} of your available team members. Upgrade your plan to
-                add more.
-              </Paragraph>
-            </InfoPanel>
-          ))}
+          ) : null)}
         <Form method="post" {...form.props}>
           <Fieldset>
             {submissionError ? (

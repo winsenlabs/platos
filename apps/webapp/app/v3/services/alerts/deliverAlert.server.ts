@@ -42,7 +42,7 @@ import { sendAlertEmail } from "~/services/email.server";
 import { VercelProjectIntegrationDataSchema } from "~/v3/vercel/vercelProjectIntegrationSchema";
 import { logger } from "~/services/logger.server";
 import { decryptSecret } from "~/services/secrets/secretStore.server";
-import { v3RunPath } from "~/utils/pathBuilder";
+import { v3EnvironmentPath } from "~/utils/pathBuilder";
 import { alertsRateLimiter } from "~/v3/alertsRateLimiter.server";
 import { alertsWorker } from "~/v3/alertsWorker.server";
 import { generateFriendlyId } from "~/v3/friendlyIdentifiers";
@@ -228,7 +228,11 @@ export class DeliverAlertService extends BaseService {
             project: alert.project.name,
             environment: environmentTitle(alert.taskRun.runtimeEnvironment),
             error: createJsonErrorObject(taskRunError),
-            runLink: `${env.APP_ORIGIN}/projects/v3/${alert.project.externalRef}/runs/${alert.taskRun.friendlyId}`,
+            runLink: `${env.APP_ORIGIN}${v3EnvironmentPath(
+              alert.project.organization,
+              alert.project,
+              alert.environment
+            )}`,
             organization: alert.project.organization.title,
           });
         } else {
@@ -417,11 +421,10 @@ export class DeliverAlertService extends BaseService {
                     error,
                     isOutOfMemoryError: isOOMRunError(error),
                     machine: alert.taskRun.machinePreset ?? "Unknown",
-                    dashboardUrl: `${env.APP_ORIGIN}${v3RunPath(
+                    dashboardUrl: `${env.APP_ORIGIN}${v3EnvironmentPath(
                       alert.project.organization,
                       alert.project,
-                      alert.environment,
-                      alert.taskRun
+                      alert.environment
                     )}`,
                   },
                   environment: {
@@ -774,7 +777,11 @@ export class DeliverAlertService extends BaseService {
                       type: "plain_text",
                       text: "Investigate",
                     },
-                    url: `${env.APP_ORIGIN}/projects/v3/${alert.project.externalRef}/runs/${alert.taskRun.friendlyId}`,
+                    url: `${env.APP_ORIGIN}${v3EnvironmentPath(
+                      alert.project.organization,
+                      alert.project,
+                      alert.environment
+                    )}`,
                   },
                 ],
               },

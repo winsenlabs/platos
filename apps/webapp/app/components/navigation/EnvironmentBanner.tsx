@@ -1,12 +1,9 @@
 import { ExclamationCircleIcon } from "@heroicons/react/20/solid";
-import { useLocation } from "@remix-run/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEnvironment, useOptionalEnvironment } from "~/hooks/useEnvironment";
-import { useOptionalOrganization, useOrganization } from "~/hooks/useOrganizations";
-import { useOptionalProject, useProject } from "~/hooks/useProject";
-import { v3QueuesPath } from "~/utils/pathBuilder";
+import { useOptionalOrganization } from "~/hooks/useOrganizations";
+import { useOptionalProject } from "~/hooks/useProject";
 import { environmentFullTitle } from "../environments/EnvironmentLabel";
-import { LinkButton } from "../primitives/Buttons";
 import { Icon } from "../primitives/Icon";
 import { Paragraph } from "../primitives/Paragraph";
 
@@ -26,12 +23,7 @@ export function EnvironmentBanner() {
 }
 
 function PausedBanner() {
-  const organization = useOrganization();
-  const project = useProject();
   const environment = useEnvironment();
-
-  const location = useLocation();
-  const hideButton = location.pathname.endsWith("/queues");
 
   return (
     <motion.div
@@ -47,16 +39,6 @@ function PausedBanner() {
           executed.
         </Paragraph>
       </div>
-      {hideButton ? null : (
-        <div>
-          <LinkButton
-            variant="tertiary/small"
-            to={v3QueuesPath(organization, project, environment)}
-          >
-            Manage
-          </LinkButton>
-        </div>
-      )}
     </motion.div>
   );
 }

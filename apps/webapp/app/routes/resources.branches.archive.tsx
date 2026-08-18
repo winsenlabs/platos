@@ -13,7 +13,7 @@ import { Paragraph } from "~/components/primitives/Paragraph";
 import { redirectWithErrorMessage, redirectWithSuccessMessage } from "~/models/message.server";
 import { ArchiveBranchService } from "~/services/archiveBranch.server";
 import { requireUserId } from "~/services/session.server";
-import { branchesPath, v3EnvironmentPath } from "~/utils/pathBuilder";
+import { v3EnvironmentPath } from "~/utils/pathBuilder";
 
 const ArchiveBranchOptions = z.object({
   environmentId: z.string(),
@@ -46,7 +46,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   if (result.success) {
     return redirectWithSuccessMessage(
-      branchesPath(result.organization, result.project, result.branch),
+      v3EnvironmentPath(result.organization, result.project, result.branch),
       request,
       `Branch "${result.branch.branchName}" archived`
     );

@@ -21,13 +21,11 @@ import { Label } from "~/components/primitives/Label";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { RadioButtonCircle } from "~/components/primitives/RadioButton";
 import { ComboboxProvider, SelectPopover, SelectProvider } from "~/components/primitives/Select";
-import { useOptionalOrganization } from "~/hooks/useOrganizations";
 import { useSearchParams } from "~/hooks/useSearchParam";
 import { type ShortcutDefinition, useShortcutKeys } from "~/hooks/useShortcutKeys";
 import { ShortcutKey } from "~/components/primitives/ShortcutKey";
 import { cn } from "~/utils/cn";
-import { organizationBillingPath } from "~/utils/pathBuilder";
-import { Button, LinkButton } from "../../primitives/Buttons";
+import { Button } from "../../primitives/Buttons";
 import { filterIcon } from "./RunFilters";
 
 export function FilterMenuProvider({
@@ -422,11 +420,7 @@ export function TimeFilter({
                 <Ariakit.Tooltip className="z-40 cursor-default rounded border border-charcoal-700 bg-background-bright px-2 py-1.5 text-xs">
                   <div className="flex items-center gap-2">
                     <span>Filter by time period</span>
-                    <ShortcutKey
-                      className="size-4 flex-none"
-                      shortcut={shortcut}
-                      variant="small"
-                    />
+                    <ShortcutKey className="size-4 flex-none" shortcut={shortcut} variant="small" />
                   </div>
                 </Ariakit.Tooltip>
               )}
@@ -484,7 +478,6 @@ export function TimeDropdown({
   /** When set an upgrade message will be shown if you select a period further back than this number of days */
   maxPeriodDays?: number;
 }) {
-  const organization = useOptionalOrganization();
   const [open, setOpen] = useState<boolean | undefined>();
   const { replace } = useSearchParams();
   const [fromValue, setFromValue] = useState(from);
@@ -902,19 +895,8 @@ export function TimeDropdown({
           </div>
 
           {/* Upgrade callout when exceeding maxPeriodDays */}
-          {exceedsMaxPeriod && organization && (
-            <Callout
-              variant="pricing"
-              cta={
-                <LinkButton
-                  variant="primary/small"
-                  to={organizationBillingPath({ slug: organization.slug })}
-                >
-                  Upgrade
-                </LinkButton>
-              }
-              className="items-center"
-            >
+          {exceedsMaxPeriod && (
+            <Callout variant="pricing" className="items-center">
               {simplur`Your plan allows a maximum of ${maxPeriodDays} day[|s].`}
             </Callout>
           )}

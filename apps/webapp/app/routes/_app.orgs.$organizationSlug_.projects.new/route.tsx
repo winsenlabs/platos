@@ -5,7 +5,7 @@ import { json, type ActionFunction, type LoaderFunctionArgs } from "@remix-run/n
 import { Form, useActionData, useNavigation } from "@remix-run/react";
 import type { Prisma } from "@platos/database";
 import React, { useEffect, useState } from "react";
-import { redirect, typedjson, useTypedLoaderData } from "remix-typedjson";
+import { typedjson, useTypedLoaderData } from "remix-typedjson";
 import invariant from "tiny-invariant";
 import { z } from "zod";
 import { BackgroundWrapper } from "~/components/BackgroundWrapper";
@@ -24,7 +24,6 @@ import { Label } from "~/components/primitives/Label";
 import { Select, SelectItem } from "~/components/primitives/Select";
 
 import { prisma } from "~/db.server";
-import { featuresForRequest } from "~/features.server";
 import { redirectWithErrorMessage, redirectWithSuccessMessage } from "~/models/message.server";
 import { createProject, ExceededProjectLimitError } from "~/models/project.server";
 import { requireUserId } from "~/services/session.server";
@@ -32,10 +31,8 @@ import {
   newProjectPath,
   OrganizationParamsSchema,
   organizationPath,
-  selectPlanPath,
   v3ProjectPath,
 } from "~/utils/pathBuilder";
-import { generateVercelOAuthState } from "~/v3/vercel/vercelOAuthState.server";
 
 const WORKING_ON_OTHER = "Other/not sure yet";
 const GOALS_OTHER = "Other/not sure yet";
@@ -137,11 +134,6 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     throw new Response(null, { status: 404, statusText: "Organization not found" });
   }
 
-  const { isManagedCloud } = featuresForRequest(request);
-  if (isManagedCloud && !organization.v3Enabled) {
-    return redirect(selectPlanPath({ slug: organizationSlug }));
-  }
-
   const url = new URL(request.url);
   const message = url.searchParams.get("message");
 
@@ -184,11 +176,6 @@ export const action: ActionFunction = async ({ request, params }) => {
   if (!submission.value || submission.intent !== "submit") {
     return json(submission);
   }
-
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const configurationId = url.searchParams.get("configurationId");
-  const next = url.searchParams.get("next");
 
   const stringArraySchema = z.array(z.string());
 
@@ -251,43 +238,6 @@ export const action: ActionFunction = async ({ request, params }) => {
       version: submission.value.projectVersion,
       onboardingData: Object.keys(onboardingData).length > 0 ? onboardingData : undefined,
     });
-
-    if (code && configurationId) {
-      const environment = await prisma.runtimeEnvironment.findFirst({
-        where: {
-          projectId: project.id,
-          slug: "prod",
-          archivedAt: null,
-        },
-      });
-
-      if (!environment) {
-        return redirectWithErrorMessage(
-          newProjectPath({ slug: organizationSlug }),
-          request,
-          "Failed to find project environment."
-        );
-      }
-
-      const state = await generateVercelOAuthState({
-        organizationId: project.organization.id,
-        projectId: project.id,
-        environmentSlug: environment.slug,
-        organizationSlug: project.organization.slug,
-        projectSlug: project.slug,
-      });
-
-      const params = new URLSearchParams({
-        state,
-        code,
-        configurationId,
-        origin: "marketplace",
-      });
-      if (next) {
-        params.set("next", next);
-      }
-      return redirect(`/vercel/connect?${params.toString()}`);
-    }
 
     return redirectWithSuccessMessage(
       v3ProjectPath(project.organization, project),
@@ -361,7 +311,10 @@ export default function Page() {
   return (
     <AppContainer className="bg-charcoal-900">
       <BackgroundWrapper>
-        <MainCenteredContainer variant="onboarding" className="max-w-[29rem] rounded-lg border border-grid-bright bg-background-dimmed p-5 shadow-lg">
+        <MainCenteredContainer
+          variant="onboarding"
+          className="max-w-[29rem] rounded-lg border border-grid-bright bg-background-dimmed p-5 shadow-lg"
+        >
           <div>
             <FormTitle
               LeadingIcon={<FolderIcon className="size-7 text-indigo-500" />}
@@ -452,9 +405,7 @@ export default function Page() {
                   <input
                     type="hidden"
                     name="goalsPositions"
-                    value={JSON.stringify(
-                      selectedGoals.map((v) => shuffledGoals.indexOf(v) + 1)
-                    )}
+                    value={JSON.stringify(selectedGoals.map((v) => shuffledGoals.indexOf(v) + 1))}
                   />
                   <MultiSelectField
                     value={selectedGoals}

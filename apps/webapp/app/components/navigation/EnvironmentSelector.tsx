@@ -1,26 +1,24 @@
-import { ChevronRightIcon, Cog8ToothIcon } from "@heroicons/react/20/solid";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { DropdownIcon } from "~/assets/icons/DropdownIcon";
 import { useNavigation } from "@remix-run/react";
 import { useEffect, useRef, useState } from "react";
 import { BranchEnvironmentIconSmall } from "~/assets/icons/EnvironmentIcons";
 import { useEnvironment } from "~/hooks/useEnvironment";
 import { useEnvironmentSwitcher } from "~/hooks/useEnvironmentSwitcher";
-import { useFeatures } from "~/hooks/useFeatures";
 import { useOrganization, type MatchedOrganization } from "~/hooks/useOrganizations";
 import { useProject } from "~/hooks/useProject";
 import { cn } from "~/utils/cn";
-import { branchesPath, docsPath, v3BillingPath } from "~/utils/pathBuilder";
-import { EnvironmentCombo, EnvironmentIcon, EnvironmentLabel, environmentFullTitle } from "../environments/EnvironmentLabel";
+import { docsPath } from "~/utils/pathBuilder";
+import {
+  EnvironmentCombo,
+  EnvironmentIcon,
+  EnvironmentLabel,
+  environmentFullTitle,
+} from "../environments/EnvironmentLabel";
 import { ButtonContent } from "../primitives/Buttons";
 import { Header2 } from "../primitives/Headers";
 import { Paragraph } from "../primitives/Paragraph";
-import {
-  Popover,
-  PopoverContent,
-  PopoverMenuItem,
-  PopoverSectionHeader,
-  PopoverTrigger,
-} from "../primitives/Popover";
+import { Popover, PopoverContent, PopoverMenuItem, PopoverTrigger } from "../primitives/Popover";
 import { TextLink } from "../primitives/TextLink";
 import { SimpleTooltip } from "../primitives/Tooltip";
 import { V4Badge } from "../V4Badge";
@@ -40,7 +38,6 @@ export function EnvironmentSelector({
   className?: string;
   isCollapsed?: boolean;
 }) {
-  const { isManagedCloud } = useFeatures();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigation = useNavigation();
   const { urlForEnvironment } = useEnvironmentSwitcher();
@@ -48,8 +45,6 @@ export function EnvironmentSelector({
   useEffect(() => {
     setIsMenuOpen(false);
   }, [navigation.location?.pathname]);
-
-  const hasStaging = project.environments.some((env) => env.type === "STAGING");
 
   return (
     <Popover onOpenChange={(open) => setIsMenuOpen(open)} open={isMenuOpen}>
@@ -130,41 +125,6 @@ export function EnvironmentSelector({
               }
             })}
         </div>
-        {!hasStaging && isManagedCloud && (
-          <>
-            <PopoverSectionHeader title="Additional environments" />
-            <div className="p-1">
-              <PopoverMenuItem
-                key="staging"
-                to={v3BillingPath(
-                  organization,
-                  "Upgrade to unlock a Staging environment for your projects."
-                )}
-                title={
-                  <div className="flex w-full items-center justify-between">
-                    <EnvironmentCombo environment={{ type: "STAGING" }} className="text-2sm" />
-                    <span className="text-indigo-500">Upgrade</span>
-                  </div>
-                }
-                isSelected={false}
-              />
-              <PopoverMenuItem
-                key="preview"
-                to={v3BillingPath(
-                  organization,
-                  "Upgrade to unlock Preview environments for your projects."
-                )}
-                title={
-                  <div className="flex w-full items-center justify-between">
-                    <EnvironmentCombo environment={{ type: "PREVIEW" }} className="text-2sm" />
-                    <span className="text-indigo-500">Upgrade</span>
-                  </div>
-                }
-                isSelected={false}
-              />
-            </div>
-          </>
-        )}
       </PopoverContent>
     </Popover>
   );
@@ -299,14 +259,6 @@ function Branches({
                 <Paragraph variant="extra-small">All branches are archived.</Paragraph>
               </div>
             )}
-          </div>
-          <div className="border-t border-charcoal-700 p-1">
-            <PopoverMenuItem
-              to={branchesPath(organization, project, environment)}
-              title="Manage branches"
-              icon={<Cog8ToothIcon className="size-4 text-text-dimmed" />}
-              leadingIconClassName="text-text-dimmed"
-            />
           </div>
         </PopoverContent>
       </div>

@@ -28,22 +28,6 @@ export default function Page() {
               label: "Organizations",
               to: "/admin/orgs",
             },
-            {
-              label: "Concurrency",
-              to: "/admin/concurrency",
-            },
-            {
-              label: "LLM Models",
-              to: "/admin/llm-models",
-            },
-            {
-              label: "Feature Flags",
-              to: "/admin/feature-flags",
-            },
-            {
-              label: "Notifications",
-              to: "/admin/notifications",
-            },
           ]}
           layoutId={"admin"}
         />
