@@ -58,6 +58,25 @@ describe("bm25: BM25Index basic indexing", () => {
     expect(results[0].id).toBe("tool_search");
   });
 
+  it("orders equal-score results deterministically by document id", () => {
+    const forward = new BM25Index();
+    forward.addDocument("alpha", "shared search terms");
+    forward.addDocument("zeta", "shared search terms");
+
+    const reverse = new BM25Index();
+    reverse.addDocument("zeta", "shared search terms");
+    reverse.addDocument("alpha", "shared search terms");
+
+    expect(forward.search("shared search", 10).map(({ id }) => id)).toEqual([
+      "alpha",
+      "zeta",
+    ]);
+    expect(reverse.search("shared search", 10).map(({ id }) => id)).toEqual([
+      "alpha",
+      "zeta",
+    ]);
+  });
+
   it("removeDocument drops the doc from future searches", () => {
     idx.addDocument("tool_search", "search for people find a person by name");
     idx.addDocument("tool_email", "send an email message");

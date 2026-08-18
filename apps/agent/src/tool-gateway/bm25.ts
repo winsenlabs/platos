@@ -154,7 +154,7 @@ export class BM25Index {
       }
     }
 
-    scores.sort((a, b) => b.score - a.score);
+    scores.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
     return scores.slice(0, limit);
   }
 
