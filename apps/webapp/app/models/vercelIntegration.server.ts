@@ -155,14 +155,6 @@ export const VercelSecretSchema = z.object({
 
 export type VercelSecret = z.infer<typeof VercelSecretSchema>;
 
-export type TokenResponse = {
-  accessToken: string;
-  tokenType: string;
-  teamId?: string;
-  userId?: string;
-  raw: Record<string, unknown>;
-};
-
 // ---------------------------------------------------------------------------
 // Domain types narrowed from Vercel SDK response types.
 //
@@ -244,57 +236,6 @@ function toVercelEnvironmentVariableValue(
 // ---------------------------------------------------------------------------
 
 export class VercelIntegrationRepository {
-  static exchangeCodeForToken(code: string): ResultAsync<TokenResponse, VercelApiError> {
-    const clientId = env.VERCEL_INTEGRATION_CLIENT_ID;
-    const clientSecret = env.VERCEL_INTEGRATION_CLIENT_SECRET;
-    const redirectUri = `${env.APP_ORIGIN}/vercel/callback`;
-
-    if (!clientId || !clientSecret) {
-      logger.error("Vercel integration not configured");
-      return errAsync({ message: "Vercel integration not configured", authInvalid: false });
-    }
-
-    return ResultAsync.fromPromise(
-      fetch("https://api.vercel.com/v2/oauth/access_token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-          redirect_uri: redirectUri,
-        }),
-      }).then(async (response) => {
-        if (!response.ok) {
-          const errorText = await response.text();
-          logger.error("Failed to exchange Vercel OAuth code", {
-            status: response.status,
-            error: errorText,
-          });
-          throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-        return response.json() as Promise<{
-          access_token: string;
-          token_type: string;
-          team_id?: string;
-          user_id?: string;
-        }>;
-      }),
-      (error) => {
-        logger.error("Error exchanging Vercel OAuth code", { error });
-        return toVercelApiError(error);
-      }
-    ).map((data): TokenResponse => ({
-      accessToken: data.access_token,
-      tokenType: data.token_type,
-      teamId: data.team_id,
-      userId: data.user_id,
-      raw: data as Record<string, unknown>,
-    }));
-  }
-
   static getVercelClient(
     integration: OrganizationIntegration & { tokenReference: SecretReference }
   ): ResultAsync<Vercel, VercelApiError> {

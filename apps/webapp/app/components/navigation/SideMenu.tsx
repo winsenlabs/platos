@@ -1,21 +1,15 @@
 import {
-  AdjustmentsHorizontalIcon,
   ArrowPathRoundedSquareIcon,
   ArrowRightOnRectangleIcon,
   ArrowTopRightOnSquareIcon,
   AcademicCapIcon,
-  BeakerIcon,
-  BellAlertIcon,
   BookOpenIcon,
   BuildingOffice2Icon,
-  ChartBarIcon,
   ClipboardDocumentCheckIcon,
   CpuChipIcon,
   ChevronRightIcon,
-  ClockIcon,
   Cog8ToothIcon,
   CogIcon,
-  CubeIcon,
   ExclamationTriangleIcon,
   FolderIcon,
   FolderOpenIcon,
@@ -26,12 +20,10 @@ import {
   PencilSquareIcon,
   PlusIcon,
   PuzzlePieceIcon,
-  RectangleStackIcon,
   ServerStackIcon,
   ShareIcon,
   ShieldCheckIcon,
   Squares2X2Icon,
-  TableCellsIcon,
   UsersIcon,
   WrenchScrewdriverIcon,
 } from "@heroicons/react/20/solid";
@@ -52,23 +44,16 @@ import { TaskIconSmall } from "~/assets/icons/TaskIcon";
 import { WaitpointTokenIcon } from "~/assets/icons/WaitpointTokenIcon";
 import { Avatar } from "~/components/primitives/Avatar";
 import { type MatchedEnvironment } from "~/hooks/useEnvironment";
-import { useFeatureFlags } from "~/hooks/useFeatureFlags";
-import { useFeatures } from "~/hooks/useFeatures";
 import { type MatchedOrganization } from "~/hooks/useOrganizations";
 import { type MatchedProject } from "~/hooks/useProject";
 import { useShortcutKeys } from "~/hooks/useShortcutKeys";
 import { useHasAdminAccess } from "~/hooks/useUser";
 import { type UserWithDashboardPreferences } from "~/models/user.server";
-import { useCurrentPlan } from "~/routes/_app.orgs.$organizationSlug/route";
 import { IncidentStatusPanel, useIncidentStatus } from "~/routes/resources.incidents";
-import { NotificationPanel } from "./NotificationPanel";
 import { cn } from "~/utils/cn";
 import {
   accountPath,
   adminPath,
-  branchesPath,
-  concurrencyPath,
-  limitsPath,
   logoutPath,
   newOrganizationPath,
   newProjectPath,
@@ -76,13 +61,9 @@ import {
   organizationSettingsPath,
   organizationTeamPath,
   queryPath,
-  regionsPath,
   v3ApiKeysPath,
   v3BatchesPath,
-  v3BillingPath,
-  v3BuiltInDashboardPath,
   v3BulkActionsPath,
-  v3DeploymentsPath,
   v3EnvironmentPath,
   v3EnvironmentVariablesPath,
   v3ErrorsPath,
@@ -92,12 +73,9 @@ import {
   v3ProjectAlertsPath,
   v3ProjectPath,
   v3ProjectSettingsGeneralPath,
-  v3ProjectSettingsIntegrationsPath,
+  v3ProjectSettingsIntegrationsMcpPath,
   v3QueuesPath,
-  v3RunsPath,
   v3SchedulesPath,
-  v3TestPath,
-  v3UsagePath,
   v3WaitpointTokensPath,
   agentsPath,
   agentToolsPath,
@@ -120,7 +98,6 @@ import {
 } from "~/utils/pathBuilder";
 import { AlphaBadge } from "../AlphaBadge";
 import { AskAI } from "../AskAI";
-import { FreePlanUsage } from "../billing/FreePlanUsage";
 import { ConnectionIcon, DevPresencePanel, useDevPresence } from "../DevPresence";
 import { ImpersonationBanner } from "../ImpersonationBanner";
 import { Button, ButtonContent, LinkButton } from "../primitives/Buttons";
@@ -138,8 +115,6 @@ import {
 } from "../primitives/Tooltip";
 import { ShortcutsAutoOpen } from "../Shortcuts";
 import { UserProfilePhoto } from "../UserProfilePhoto";
-import { CreateDashboardButton } from "./DashboardDialogs";
-import { DashboardList } from "./DashboardList";
 import { EnvironmentSelector } from "./EnvironmentSelector";
 import { SideMenuHeader } from "./SideMenuHeader";
 import { SideMenuItem } from "./SideMenuItem";
@@ -194,12 +169,8 @@ export function SideMenu({
     sectionCollapsed?: boolean;
   }>({});
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const currentPlan = useCurrentPlan();
   const { isConnected } = useDevPresence();
-  const isFreeUser = currentPlan?.v3Subscription?.isPaying === false;
   const isAdmin = useHasAdminAccess();
-  const { isManagedCloud } = useFeatures();
-  const featureFlags = useFeatureFlags();
   const incidentStatus = useIncidentStatus();
   const isV3Project = false;
 
@@ -659,7 +630,7 @@ export function SideMenu({
                 icon={PuzzlePieceIcon}
                 activeIconColor="text-text-bright"
                 inactiveIconColor="text-text-dimmed"
-                to={v3ProjectSettingsIntegrationsPath(organization, project, environment)}
+                to={v3ProjectSettingsIntegrationsMcpPath(organization, project, environment)}
                 data-action="project-settings-integrations"
                 isCollapsed={isCollapsed}
               />
@@ -680,12 +651,6 @@ export function SideMenu({
             hasIncident={incidentStatus.hasIncident}
             isManagedCloud={incidentStatus.isManagedCloud}
           />
-          <NotificationPanel
-            isCollapsed={isCollapsed}
-            hasIncident={incidentStatus.hasIncident}
-            organizationId={organization.id}
-            projectId={project.id}
-          />
           <motion.div
             layout
             transition={{ duration: 0.2, ease: "easeInOut" }}
@@ -695,14 +660,6 @@ export function SideMenu({
             )}
           >
             <HelpAndAI isCollapsed={isCollapsed} />
-            {isFreeUser && (
-              <CollapsibleHeight isCollapsed={isCollapsed}>
-                <FreePlanUsage
-                  to={v3BillingPath(organization)}
-                  percentage={currentPlan.v3Usage.usagePercentage}
-                />
-              </CollapsibleHeight>
-            )}
           </motion.div>
         </div>
       </div>
@@ -819,17 +776,8 @@ function ProjectSelector({
   user: SideMenuUser;
   isCollapsed?: boolean;
 }) {
-  const currentPlan = useCurrentPlan();
   const [isOrgMenuOpen, setOrgMenuOpen] = useState(false);
   const navigation = useNavigation();
-  const { isManagedCloud } = useFeatures();
-
-  let plan: string | undefined = undefined;
-  if (currentPlan?.v3Subscription?.isPaying === false) {
-    plan = "Free";
-  } else if (currentPlan?.v3Subscription?.isPaying === true) {
-    plan = currentPlan.v3Subscription.plan?.title;
-  }
 
   useEffect(() => {
     setOrgMenuOpen(false);
@@ -898,15 +846,6 @@ function ProjectSelector({
             <div className="space-y-0.5">
               <Paragraph variant="small/bright">{organization.title}</Paragraph>
               <div className="flex items-baseline gap-2">
-                {plan && (
-                  <TextLink
-                    variant="secondary"
-                    className="text-xs"
-                    to={v3BillingPath(organization)}
-                  >
-                    {plan} plan
-                  </TextLink>
-                )}
                 <TextLink
                   variant="secondary"
                   className="text-xs"
@@ -926,18 +865,6 @@ function ProjectSelector({
               <CogIcon className="size-4 text-text-dimmed" />
               <span className="text-text-bright">Settings</span>
             </LinkButton>
-            {isManagedCloud && (
-              <LinkButton
-                variant="secondary/small"
-                to={v3UsagePath(organization)}
-                fullWidth
-                iconSpacing="gap-1.5"
-                className="group-hover/button:border-charcoal-500"
-              >
-                <ChartBarIcon className="size-4 text-text-dimmed" />
-                <span className="text-text-bright">Usage</span>
-              </LinkButton>
-            )}
           </div>
         </div>
         <div className="flex flex-col gap-1 p-1">
@@ -1119,29 +1046,6 @@ function CollapsibleElement({
       )}
     >
       {children}
-    </div>
-  );
-}
-
-/** Helper component that fades out and collapses height completely */
-function CollapsibleHeight({
-  isCollapsed,
-  children,
-  className,
-}: {
-  isCollapsed: boolean;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "grid transition-all duration-200 ease-in-out",
-        isCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100",
-        className
-      )}
-    >
-      <div className="overflow-hidden">{children}</div>
     </div>
   );
 }
@@ -1367,9 +1271,7 @@ function ApprovalsSideMenuItem({
     <span
       className={cn(
         "inline-flex items-center justify-center rounded-full px-1.5 py-0.5 font-mono text-[10px] leading-none transition-colors",
-        pulse
-          ? "bg-rose-500 text-white animate-pulse"
-          : "bg-rose-500/20 text-rose-300"
+        pulse ? "animate-pulse bg-rose-500 text-white" : "bg-rose-500/20 text-rose-300"
       )}
       title={`${count} pending approval${count === 1 ? "" : "s"}`}
     >

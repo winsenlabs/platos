@@ -4,7 +4,7 @@ import { prisma } from "~/db.server";
 import { env } from "~/env.server";
 import { logger } from "~/services/logger.server";
 import { requireUserId } from "~/services/session.server";
-import { v3EnvironmentPath, v3ProjectPath, v3TestPath } from "~/utils/pathBuilder";
+import { v3EnvironmentPath } from "~/utils/pathBuilder";
 
 const ParamsSchema = z.object({
   projectRef: z.string(),

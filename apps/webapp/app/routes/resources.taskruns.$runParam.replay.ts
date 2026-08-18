@@ -9,7 +9,7 @@ import { displayableEnvironment } from "~/models/runtimeEnvironment.server";
 import { logger } from "~/services/logger.server";
 import { requireUser } from "~/services/session.server";
 import { sortEnvironments } from "~/utils/environmentSort";
-import { v3RunSpanPath } from "~/utils/pathBuilder";
+import { v3EnvironmentPath } from "~/utils/pathBuilder";
 import { ReplayTaskRunService } from "~/v3/services/replayTaskRun.server";
 import parseDuration from "parse-duration";
 import { findCurrentWorkerDeployment } from "~/v3/models/workerDeployment.server";
@@ -225,14 +225,12 @@ export const action: ActionFunction = async ({ request, params }) => {
       );
     }
 
-    const runPath = v3RunSpanPath(
+    const environmentPath = v3EnvironmentPath(
       {
         slug: taskRun.project.organization.slug,
       },
       { slug: taskRun.project.slug },
-      { slug: taskRun.runtimeEnvironment.slug },
-      { friendlyId: newRun.friendlyId },
-      { spanId: newRun.spanId }
+      { slug: taskRun.runtimeEnvironment.slug }
     );
 
     logger.debug("Replayed run", {
@@ -240,10 +238,10 @@ export const action: ActionFunction = async ({ request, params }) => {
       taskRunFriendlyId: taskRun.friendlyId,
       newRunId: newRun.id,
       newRunFriendlyId: newRun.friendlyId,
-      runPath,
+      environmentPath,
     });
 
-    return redirectWithSuccessMessage(runPath, request, `Replaying run`);
+    return redirectWithSuccessMessage(environmentPath, request, `Replaying run`);
   } catch (error) {
     if (error instanceof Error) {
       logger.error("Failed to replay run", {

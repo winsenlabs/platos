@@ -4,7 +4,7 @@ import { $replica, prisma } from "~/db.server";
 import { findCurrentWorkerFromEnvironment } from "~/v3/models/workerDeployment.server";
 import { type GetWorkerByTagResponse } from "@platos/core/v3/schemas";
 import { env as $env } from "~/env.server";
-import { v3RunsPath } from "~/utils/pathBuilder";
+import { v3EnvironmentPath } from "~/utils/pathBuilder";
 import {
   authenticatedEnvironmentForAuthentication,
   authenticateRequest,
@@ -81,11 +81,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   });
 
   const urls = {
-    runs: `${$env.APP_ORIGIN}${v3RunsPath(
+    runs: `${$env.APP_ORIGIN}${v3EnvironmentPath(
       { slug: runtimeEnv.organization.slug },
       { slug: runtimeEnv.project.slug },
-      { slug: runtimeEnv.slug },
-      { versions: [currentWorker.version] }
+      { slug: runtimeEnv.slug }
     )}`,
   };
 

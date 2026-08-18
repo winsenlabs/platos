@@ -80,7 +80,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
         showGoogleAuth: isGoogleAuthSupported,
         lastAuthMethod,
         authError: null,
-        isVercelMarketplace: redirectTo.startsWith("/vercel/callback"),
       },
       {
         headers: {
@@ -107,7 +106,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
       showGoogleAuth: isGoogleAuthSupported,
       lastAuthMethod,
       authError,
-      isVercelMarketplace: false,
     });
   }
 }
@@ -166,21 +164,19 @@ export default function LoginPage() {
                 </Form>
               </div>
             )}
-            {!data.isVercelMarketplace && (
-              <div className="relative w-full">
-                {data.lastAuthMethod === "email" && <LastUsedBadge />}
-                <LinkButton
-                  to={data.redirectTo ? `/login/magic?redirectTo=${encodeURIComponent(data.redirectTo)}` : "/login/magic"}
-                  variant="secondary/extra-large"
-                  fullWidth
-                  data-action="continue with email"
-                  className="text-text-bright"
-                >
-                  <EnvelopeIcon className="mr-2 size-5 text-text-bright" />
-                  Continue with Email
-                </LinkButton>
-              </div>
-            )}
+            <div className="relative w-full">
+              {data.lastAuthMethod === "email" && <LastUsedBadge />}
+              <LinkButton
+                to={data.redirectTo ? `/login/magic?redirectTo=${encodeURIComponent(data.redirectTo)}` : "/login/magic"}
+                variant="secondary/extra-large"
+                fullWidth
+                data-action="continue with email"
+                className="text-text-bright"
+              >
+                <EnvelopeIcon className="mr-2 size-5 text-text-bright" />
+                Continue with Email
+              </LinkButton>
+            </div>
             {data.authError && <FormError>{data.authError}</FormError>}
           </div>
           {/* Self-hosters: override these URLs by replacing platos.dev with your own

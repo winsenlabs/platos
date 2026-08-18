@@ -27,7 +27,7 @@ import { env } from "~/env.server";
 import { redirectWithErrorMessage, redirectWithSuccessMessage } from "~/models/message.server";
 import { createEnvironment } from "~/models/organization.server";
 import { logger } from "~/services/logger.server";
-import { newProjectPath, organizationBillingPath } from "~/utils/pathBuilder";
+import { newProjectPath, organizationSettingsPath } from "~/utils/pathBuilder";
 import { singleton } from "~/utils/singleton";
 import { RedisCacheStore } from "./unkey/redisCacheStore.server";
 import { $replica } from "~/db.server";
@@ -307,7 +307,7 @@ export async function customerPortalUrl(orgId: string, orgSlug: string) {
 
   try {
     return client.createPortalSession(orgId, {
-      returnUrl: `${env.APP_ORIGIN}${organizationBillingPath({ slug: orgSlug })}`,
+      returnUrl: `${env.APP_ORIGIN}${organizationSettingsPath({ slug: orgSlug })}`,
     });
   } catch (e) {
     logger.error("Error getting customer portal Url", { orgId, error: e });

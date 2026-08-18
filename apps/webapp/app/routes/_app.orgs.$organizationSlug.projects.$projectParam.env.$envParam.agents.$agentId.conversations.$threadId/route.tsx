@@ -29,7 +29,6 @@ import {
   agentConversationPath,
   agentConversationsPath,
   agentTracePath,
-  v3RunPath,
   EnvironmentParamSchema,
 } from "~/utils/pathBuilder";
 
@@ -668,15 +667,9 @@ export default function ConversationViewerPage() {
                           : r.status === "CANCELED" || r.status === "EXPIRED"
                             ? "text-text-dimmed"
                             : "text-amber-400";
-                    const href = v3RunPath(organization, project, environment, {
-                      friendlyId: r.friendlyId,
-                    });
                     return (
                       <li key={r.friendlyId}>
-                        <a
-                          href={href}
-                          className="flex items-center gap-3 px-3 py-2 hover:bg-charcoal-800"
-                        >
+                        <div className="flex items-center gap-3 px-3 py-2">
                           <span className="font-mono text-xs text-text-bright truncate flex-1 min-w-0">
                             {r.taskIdentifier}
                           </span>
@@ -687,7 +680,7 @@ export default function ConversationViewerPage() {
                           <span className="font-mono text-xs text-text-dimmed shrink-0">
                             {r.friendlyId}
                           </span>
-                        </a>
+                        </div>
                       </li>
                     );
                   })}

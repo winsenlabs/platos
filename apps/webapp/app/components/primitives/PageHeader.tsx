@@ -1,7 +1,5 @@
 import { Link, useNavigation } from "@remix-run/react";
 import { type ReactNode } from "react";
-import { useOptionalOrganization } from "~/hooks/useOrganizations";
-import { UpgradePrompt, useShowUpgradePrompt } from "../billing/UpgradePrompt";
 import { BreadcrumbIcon } from "./BreadcrumbIcon";
 import { Header2 } from "./Headers";
 import { LoadingBarDivider } from "./LoadingBarDivider";
@@ -13,9 +11,6 @@ type WithChildren = {
 };
 
 export function NavBar({ children }: WithChildren) {
-  const organization = useOptionalOrganization();
-  const showUpgradePrompt = useShowUpgradePrompt(organization);
-
   const navigation = useNavigation();
   const isLoading = navigation.state === "loading" || navigation.state === "submitting";
 
@@ -25,7 +20,7 @@ export function NavBar({ children }: WithChildren) {
         <div className="flex w-full items-center justify-between pl-3 pr-2">{children}</div>
         <LoadingBarDivider isLoading={isLoading} />
       </div>
-      {showUpgradePrompt.shouldShow && organization ? <UpgradePrompt /> : <EnvironmentBanner />}
+      <EnvironmentBanner />
     </div>
   );
 }
