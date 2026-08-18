@@ -87,7 +87,7 @@ export const sourceModelManifest = [
   { source: "PlatosMcpAnonSession", targets: ["McpAnonymousSession"], owner: "environment", surface: "subject", decision: "rename" },
   { source: "PlatosMcpOidcSession", targets: ["McpOidcSession"], owner: "environment", surface: "subject", decision: "rename" },
   { source: "PlatosEntityMcpToolAcl", targets: ["EntityToolPolicy"], owner: "entity", surface: "operator", decision: "re-home" },
-  { source: "PlatosMcpBearerToken", targets: ["McpBearerToken"], owner: "entity", surface: "operator", decision: "re-home" },
+  { source: "PlatosMcpBearerToken", targets: ["McpBearerToken"], owner: "environment", surface: "operator", decision: "re-home" },
   { source: "PlatosErasureOperation", targets: ["ErasureOperation"], owner: "organization", surface: "operator", decision: "rename" },
 ] as const satisfies readonly SourceModelDisposition[];
 
@@ -97,6 +97,7 @@ export const supportDomainModels = [
   "Credential",
   "CredentialAudit",
   "CredentialSecretVersion",
+  "OAuthConsentTransaction",
 ] as const;
 
 /** All source target models plus independently required clean-slate support models. */

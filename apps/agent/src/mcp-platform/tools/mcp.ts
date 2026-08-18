@@ -74,7 +74,7 @@ export function buildMcpToolHandlers(deps: {
         const now = Date.now();
         const allTokens = await Promise.all(
           (filtered as Array<{ id: string; entityId: string }>).map(async (e) => {
-            const rows = await bearerTokens.list(e.id);
+            const rows = await bearerTokens.list(e.id, scope.environmentId);
             return rows.map((r) => ({
               id: r.id,
               entityId: e.entityId,

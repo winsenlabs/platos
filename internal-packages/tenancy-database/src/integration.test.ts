@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import {
   ApprovalStatus,
@@ -62,7 +63,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(79);
+    expect(modelNames).toHaveLength(80);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -201,6 +202,17 @@ describe("domain schema integration", () => {
         role: OrganizationRole.MEMBER,
       },
     });
+    await expect(control.mcpBearerToken.create({
+      data: {
+        entityId: seeded.mcpBearerToken.entityId,
+        environmentId: otherEnvironment.id,
+        createdByUserId: seeded.user.id,
+        tokenHash: "cross-environment-mcp-bearer",
+        label: "invalid",
+        mcpUserId: "invalid",
+        scopes: ["tools:call"],
+      },
+    })).rejects.toThrow(/ancestry/);
     await expect(control.oAuthClient.update({
       where: { id: seeded.oauthClient.id },
       data: { organizationId: otherOrganization.id, entityId: null },
@@ -759,6 +771,7 @@ describe("domain schema integration", () => {
     });
     expect(seeded.mcpBearerToken).toMatchObject({
       entityId: expect.any(String),
+      environmentId: seeded.environment.id,
       createdByUserId: seeded.user.id,
       mcpUserId: "entity-user",
       scopes: ["tools:call"],
@@ -1541,6 +1554,7 @@ async function seedEveryModel(control: PrismaClient) {
   const mcpBearerToken = track("McpBearerToken", await control.mcpBearerToken.create({
     data: {
       entityId: entity.id,
+      environmentId: environment.id,
       createdByUserId: user.id,
       tokenHash: "mcp-bearer-hash",
       label: "entity bearer",
@@ -1559,6 +1573,23 @@ async function seedEveryModel(control: PrismaClient) {
       codeChallengeMethod: "S256",
       redirectUri: "https://example.test/callback",
       scopes: ["invoke"],
+      expiresAt: future(),
+    },
+  }));
+  track("OAuthConsentTransaction", await control.oAuthConsentTransaction.create({
+    data: {
+      tokenHash: "oauth-consent-token-hash",
+      nonce: randomUUID(),
+      clientId: oauthClient.id,
+      redirectUri: "https://example.test/callback",
+      codeChallenge: "challenge",
+      codeChallengeMethod: "S256",
+      scopes: ["mcp:tools"],
+      entityId: entity.id,
+      organizationId: organization.id,
+      projectId: project.id,
+      environmentId: environment.id,
+      state: "state",
       expiresAt: future(),
     },
   }));

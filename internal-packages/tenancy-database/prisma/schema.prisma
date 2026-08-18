@@ -262,6 +262,7 @@ model Organization {
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
   oauthAuthorizationCodes OAuthAuthorizationCode[]
+  oauthConsentTransactions OAuthConsentTransaction[]
 
   @@index([archivedAt])
 }
@@ -327,6 +328,7 @@ model Project {
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
   oauthAuthorizationCodes OAuthAuthorizationCode[]
+  oauthConsentTransactions OAuthConsentTransaction[]
 
   @@unique([organizationId, slug])
   @@unique([id, organizationId])
@@ -394,6 +396,7 @@ model Environment {
   events                  Event[]
   notificationRules       NotificationRule[]
   oauthAuthorizationCodes OAuthAuthorizationCode[]
+  oauthConsentTransactions OAuthConsentTransaction[]
   mcpAnonymousSessions    McpAnonymousSession[]
   mcpOidcSessions         McpOidcSession[]
   accessKeys              AccessKey[]
@@ -402,6 +405,7 @@ model Environment {
   personalAccessTokens    PersonalAccessToken[]
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
+  mcpBearerTokens         McpBearerToken[]
 
   @@unique([projectId, slug])
   @@index([projectId, archivedAt])
@@ -849,6 +853,7 @@ model OAuthRefreshToken {
 model McpBearerToken {
   id              String    @id @default(uuid()) @db.Uuid
   entityId        String    @db.Uuid
+  environmentId   String    @db.Uuid
   createdByUserId String    @db.Uuid
   tokenHash       String    @unique
   label           String
@@ -859,10 +864,12 @@ model McpBearerToken {
   expiresAt       DateTime?
   revokedAt       DateTime?
 
-  entity    Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  createdBy User   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  entity      Entity      @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  createdBy   User        @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
 
-  @@index([entityId, mcpUserId, revokedAt, expiresAt])
+  @@index([entityId, environmentId, mcpUserId, revokedAt, expiresAt])
+  @@index([environmentId])
   @@index([createdByUserId])
 }
 
@@ -1095,6 +1102,7 @@ model Entity {
   mcpAnonymousSessions McpAnonymousSession[]
   mcpOidcSessions      McpOidcSession[]
   oauthClients         OAuthClient[]
+  oauthConsentTransactions OAuthConsentTransaction[]
   mcpBearerTokens      McpBearerToken[]
 
   @@unique([projectId, externalId])
@@ -1836,6 +1844,7 @@ model OAuthClient {
   registeredBy       User                     @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
   entity             Entity?                  @relation(fields: [entityId], references: [id], onDelete: SetNull)
   authorizationCodes OAuthAuthorizationCode[]
+  consentTransactions OAuthConsentTransaction[]
   accessTokens       OAuthAccessToken[]
   refreshTokens      OAuthRefreshToken[]
 
@@ -1870,6 +1879,35 @@ model OAuthAuthorizationCode {
   @@index([environmentId, expiresAt])
   @@index([clientId])
   @@index([userId])
+}
+
+model OAuthConsentTransaction {
+  id                  String    @id @default(uuid()) @db.Uuid
+  tokenHash           String    @unique
+  nonce               String    @unique @db.Uuid
+  clientId            String    @db.Uuid
+  redirectUri         String
+  codeChallenge       String
+  codeChallengeMethod String
+  scopes              String[]
+  entityId            String?   @db.Uuid
+  organizationId      String    @db.Uuid
+  projectId           String    @db.Uuid
+  environmentId       String    @db.Uuid
+  state               String?
+  expiresAt           DateTime
+  consumedAt          DateTime?
+  createdAt           DateTime  @default(now())
+
+  client       OAuthClient  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  entity       Entity?      @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  environment  Environment  @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, expiresAt, consumedAt])
+  @@index([environmentId, expiresAt])
+  @@index([entityId, environmentId])
 }
 
 model McpAnonymousSession {

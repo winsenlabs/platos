@@ -121,6 +121,37 @@ export interface ToolCallOrigin {
   endUserId?: string | null;
 }
 
+/** Exact route resolved by a caller that preflights a specific entity. */
+export interface ToolRouteConstraint {
+  entityPk: string;
+  entityId: string;
+  toolId: string;
+}
+
+const RESERVED_EXTERNAL_ARGUMENT_ENVELOPES = new Set([
+  "_context",
+  "__platos",
+  "_platos",
+  "platos_context",
+  "platosContext",
+  "__platosContext",
+]);
+
+function stripReservedExternalArgumentEnvelopes(
+  params: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const strip = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(strip);
+    if (!value || typeof value !== "object") return value;
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([key]) => !RESERVED_EXTERNAL_ARGUMENT_ENVELOPES.has(key))
+        .map(([key, nested]) => [key, strip(nested)]),
+    );
+  };
+  return strip(params ?? {}) as Record<string, unknown>;
+}
+
 /**
  * ToolExecutorService — executes tool calls on entity backends.
  *
@@ -519,6 +550,7 @@ export class ToolExecutorService {
     call: ToolCallRequest,
     scope: RequestScope,
     origin?: ToolCallOrigin,
+    resolvedRoute?: ToolRouteConstraint,
   ): Promise<ToolCallResult> {
     const startTime = Date.now();
     const startNs = startTime * 1_000_000;
@@ -642,7 +674,13 @@ export class ToolExecutorService {
         ? { ...call, params: gated.params }
         : call;
 
-    const inner = await this.executeInner(dispatchedCall, scope, startTime, origin);
+    const inner = await this.executeInner(
+      dispatchedCall,
+      scope,
+      startTime,
+      origin,
+      resolvedRoute,
+    );
     const { result, toolId, entityId, entityPk } = inner;
 
     // Emit a tool.call span if a trace is open. The span carries scope tags
@@ -736,6 +774,7 @@ export class ToolExecutorService {
     scope: RequestScope,
     startTime: number,
     origin?: ToolCallOrigin,
+    resolvedRoute?: ToolRouteConstraint,
   ): Promise<{
     result: ToolCallResult;
     toolId?: string;
@@ -750,6 +789,15 @@ export class ToolExecutorService {
       enabledOnly: true,
       agentId: scope.agentId,
     });
+    if (resolvedRoute) {
+      scopedTools = scopedTools.filter(
+        (tool) =>
+          tool.entityPk === resolvedRoute.entityPk &&
+          tool.sourceEntityId === resolvedRoute.entityId &&
+          tool.toolId === resolvedRoute.toolId &&
+          tool.environmentId === scope.environmentId,
+      );
+    }
     // Theme CTX.2 — Role 3 (tool-matrix routing). Narrow to tools belonging
     // to the entity_ids declared on `thread.sessionContext` before picking a
     // target. Ensures a tool-name collision across entities resolves to the
@@ -761,7 +809,7 @@ export class ToolExecutorService {
       const entIds = resolveCtxPath(ctxBagExec, entKey);
       scopedTools = filterToolsByEntityIds(scopedTools, entIds);
     }
-    const toolEntry = scopedTools.find((t) => t.toolName === call.tool);
+    let toolEntry = scopedTools.find((t) => t.toolName === call.tool);
 
     if (!toolEntry) {
       // Dynamic-executor fallback — an entity can mark ONE of its tools with
@@ -806,6 +854,7 @@ export class ToolExecutorService {
           scope,
           startTime,
           origin,
+          resolvedRoute,
         );
       }
       return {
@@ -822,6 +871,10 @@ export class ToolExecutorService {
       };
     }
 
+    if (origin?.source === "mcp_client") {
+      call.params = stripReservedExternalArgumentEnvelopes(call.params);
+    }
+
     // Get entity's service secret for HMAC signing.
     // PIFSP-3: `customParams` was the legacy per-entity arg-injection
     // mechanism. Column dropped; the agent-config "MCP arguments" editor
@@ -829,6 +882,55 @@ export class ToolExecutorService {
     // arg-resolution layer left.
     let serviceSecret: string;
     try {
+      if (resolvedRoute) {
+        const persistedRoute = await this.prisma.environmentEntityTool.findFirst({
+          where: {
+            environmentId: scope.environmentId,
+            entityId: resolvedRoute.entityPk,
+            toolId: resolvedRoute.toolId,
+            enabled: true,
+            entity: {
+              externalId: resolvedRoute.entityId,
+              projectId: scope.projectId,
+              project: { organizationId: scope.organizationId },
+            },
+            tool: { name: call.tool },
+          },
+          select: {
+            id: true,
+            callbackUrl: true,
+            tool: {
+              select: {
+                name: true,
+                description: true,
+                paramSchema: true,
+                category: true,
+              },
+            },
+          },
+        });
+        if (!persistedRoute) {
+          return {
+            result: {
+              tool: call.tool,
+              status: "failed",
+              error: "Resolved tool route is no longer valid for this entity and environment",
+              latencyMs: Date.now() - startTime,
+            },
+            toolId: resolvedRoute.toolId,
+            entityId: resolvedRoute.entityId,
+            entityPk: resolvedRoute.entityPk,
+          };
+        }
+        toolEntry = {
+          ...toolEntry,
+          callbackUrl: persistedRoute.callbackUrl ?? "",
+          toolName: persistedRoute.tool.name,
+          description: persistedRoute.tool.description,
+          paramSchema: persistedRoute.tool.paramSchema as Record<string, unknown>,
+          category: persistedRoute.tool.category,
+        };
+      }
       // SECURITY (audit L2) — re-verify scope when re-loading the entity's
       // serviceSecret. The cache boundary holds today, so this is defense in
       // depth: a slip that yielded a cross-scope entityPk would otherwise hand
@@ -842,7 +944,7 @@ export class ToolExecutorService {
       // the read tight, per the audit-L2 defense-in-depth note above.
       const entity = await this.prisma.entity.findFirst({
         where: {
-          id: toolEntry.entityPk,
+          id: resolvedRoute?.entityPk ?? toolEntry.entityPk,
           projectId: scope.projectId,
           project: { organizationId: scope.organizationId },
         },
@@ -851,6 +953,7 @@ export class ToolExecutorService {
           externalId: true,
           projectId: true,
           connectionKind: true,
+          mcpConfig: { select: { injectMcpContext: true } },
           mcpClient: {
             include: { credential: { select: { name: true } } },
           },
@@ -869,6 +972,11 @@ export class ToolExecutorService {
           entityPk: toolEntry.entityPk,
         };
       }
+      toolEntry = {
+        ...toolEntry,
+        connectionKind: entity.connectionKind,
+        entityMcpInjectContext: entity.mcpConfig?.injectMcpContext === true,
+      };
 
       // ── connectionKind === "mcp" DISPATCH BRANCH (design §4) ───────────────
       // The single executor change. Fires BEFORE any wire read: no
@@ -1446,8 +1554,11 @@ export class ToolExecutorService {
     calls: ToolCallRequest[],
     scope: RequestScope,
     origin?: ToolCallOrigin,
+    resolvedRoute?: ToolRouteConstraint,
   ): Promise<ToolCallResult[]> {
-    return Promise.all(calls.map((call) => this.execute(call, scope, origin)));
+    return Promise.all(
+      calls.map((call) => this.execute(call, scope, origin, resolvedRoute)),
+    );
   }
 
   /**

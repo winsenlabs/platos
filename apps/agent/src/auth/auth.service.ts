@@ -228,6 +228,7 @@ export class AuthService {
           where: { id: claims.authorizationId },
           select: {
             id: true,
+            environmentId: true,
             revokedAt: true,
             expiresAt: true,
             entity: {
@@ -242,6 +243,7 @@ export class AuthService {
           !authorization ||
           authorization.revokedAt ||
           (authorization.expiresAt && authorization.expiresAt.getTime() <= now.getTime()) ||
+          authorization.environmentId !== claims.environmentId ||
           authorization.entity.externalId !== claims.entityId ||
           authorization.entity.project.id !== claims.projectId ||
           authorization.entity.project.organizationId !== claims.organizationId
@@ -266,6 +268,7 @@ export class AuthService {
         const active = await this.prisma.mcpBearerToken.updateMany({
           where: {
             id: authorization.id,
+            environmentId: claims.environmentId,
             revokedAt: null,
             OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
           },

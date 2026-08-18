@@ -5,6 +5,7 @@ import {
   type ControlDatabaseClient,
   PRISMA_TOKEN,
 } from "../shared/database.provider";
+import { env } from "../shared/env";
 
 /** Theme K.10 — OAuth 2.1 authorization-server primitives. */
 
@@ -85,6 +86,11 @@ const CLIENT_ID_PREFIX = "plt_oac_";
 const CLIENT_SECRET_PREFIX = "plt_ocs_";
 const AUTH_CODE_PREFIX = "plt_ocd_";
 const MCP_IDENTITY_SCOPE_PREFIX = "platos:mcp-identity:";
+const CONSENT_TOKEN_PREFIX = "plt_octx_";
+
+export const PLATFORM_MCP_SCOPES = ["mcp:read", "mcp:write"] as const;
+export const ENTITY_MCP_SCOPES = ["mcp:tools"] as const;
+export const OAUTH_CONSENT_TTL_SEC = 10 * 60;
 
 export const OAUTH_ACCESS_TOKEN_TTL_SEC = 3600;
 export const OAUTH_REFRESH_TOKEN_TTL_SEC = 90 * 24 * 3600;
@@ -132,7 +138,37 @@ export class OAuthService {
   }
 
   private parseRegisteredScopes(scope: string | null | undefined): string[] {
-    return (scope ?? "").split(/\s+/).filter(Boolean);
+    return [...new Set((scope ?? "").split(/\s+/).filter(Boolean))];
+  }
+
+  private serverOwnedScopes(entityPk?: string): string[] {
+    return [...(entityPk ? ENTITY_MCP_SCOPES : PLATFORM_MCP_SCOPES)];
+  }
+
+  private consentSignature(opaque: string): string {
+    const secret = env.SESSION_SECRET;
+    if (!secret) {
+      throw new OAuthError("server_error", "consent signing is not configured", 503);
+    }
+    return crypto.createHmac("sha256", secret).update(opaque).digest("base64url");
+  }
+
+  private consentTokenHash(signedToken: string): string | null {
+    const dot = signedToken.lastIndexOf(".");
+    if (dot <= 0) return null;
+    const opaque = signedToken.slice(0, dot);
+    const signature = signedToken.slice(dot + 1);
+    if (!opaque.startsWith(CONSENT_TOKEN_PREFIX) || !signature) return null;
+    const expected = this.consentSignature(opaque);
+    const providedBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expected);
+    if (
+      providedBuffer.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(providedBuffer, expectedBuffer)
+    ) {
+      return null;
+    }
+    return this.sha256(opaque);
   }
 
   private publicScopes(scopes: string[]): string[] {
@@ -296,6 +332,15 @@ export class OAuthService {
     const clientId = this.randomId(CLIENT_ID_PREFIX, 16);
     const rawSecret =
       authMethod === "none" ? undefined : this.randomId(CLIENT_SECRET_PREFIX, 32);
+    const advertisedScopes = this.serverOwnedScopes(input.entityPk);
+    const requestedRegistrationScopes = this.parseRegisteredScopes(input.scope);
+    const advertisedScopeSet = new Set<string>(advertisedScopes);
+    if (requestedRegistrationScopes.some((scope) => !advertisedScopeSet.has(scope))) {
+      throw new OAuthError(
+        "invalid_client_metadata",
+        "scope contains a label that is not advertised by this authorization server",
+      );
+    }
     const row = await this.prisma.oAuthClient.create({
       data: {
         organizationId,
@@ -305,7 +350,7 @@ export class OAuthService {
         redirectUris: input.redirectUris,
         tokenEndpointAuthMethod: authMethod,
         grantTypes,
-        scopes: this.parseRegisteredScopes(input.scope),
+        scopes: advertisedScopes,
         registeredByUserId,
         entityId: input.entityPk ?? null,
       },
@@ -357,6 +402,106 @@ export class OAuthService {
     const row = await this.prisma.oAuthClient.findUnique({ where: { clientId } });
     if (!row || row.deletedAt) return null;
     return this.projectClient(row);
+  }
+
+  async effectiveScopes(clientId: string, requested?: string): Promise<string[]> {
+    const client = await this.prisma.oAuthClient.findUnique({
+      where: { clientId },
+      select: { scopes: true, deletedAt: true },
+    });
+    if (!client || client.deletedAt) {
+      throw new OAuthError("invalid_client", "unknown client_id");
+    }
+    const requestedScopes = this.parseRegisteredScopes(requested);
+    const effective = requestedScopes.length > 0 ? requestedScopes : client.scopes;
+    if (effective.some((scope) => !client.scopes.includes(scope))) {
+      throw new OAuthError("invalid_scope", "requested scope is not advertised for this client");
+    }
+    return effective;
+  }
+
+  async createConsentTransaction(input: {
+    clientId: string;
+    redirectUri: string;
+    codeChallenge: string;
+    codeChallengeMethod: "S256";
+    scopes: string[];
+    scopeTuple: ScopeTuple;
+    entityPk?: string;
+    state?: string;
+  }): Promise<string> {
+    const scope = await this.canonicalScope(input.scopeTuple);
+    const client = await this.prisma.oAuthClient.findUnique({
+      where: { clientId: input.clientId },
+      select: { id: true, entityId: true, organizationId: true, redirectUris: true, scopes: true, deletedAt: true },
+    });
+    if (
+      !client ||
+      client.deletedAt ||
+      client.organizationId !== scope.organizationId ||
+      client.entityId !== (input.entityPk ?? null) ||
+      !client.redirectUris.includes(input.redirectUri) ||
+      input.scopes.some((label) => !client.scopes.includes(label))
+    ) {
+      throw new OAuthError("invalid_request", "consent request is not valid for this client and scope");
+    }
+    const opaque = this.randomId(CONSENT_TOKEN_PREFIX, 32);
+    const signed = `${opaque}.${this.consentSignature(opaque)}`;
+    await this.prisma.oAuthConsentTransaction.create({
+      data: {
+        tokenHash: this.sha256(opaque),
+        nonce: crypto.randomUUID(),
+        clientId: client.id,
+        redirectUri: input.redirectUri,
+        codeChallenge: input.codeChallenge,
+        codeChallengeMethod: input.codeChallengeMethod,
+        scopes: input.scopes,
+        entityId: input.entityPk ?? null,
+        ...scope,
+        state: input.state ?? null,
+        expiresAt: new Date(Date.now() + OAUTH_CONSENT_TTL_SEC * 1000),
+      },
+    });
+    return signed;
+  }
+
+  async inspectConsentTransaction(signedToken: string) {
+    const tokenHash = this.consentTokenHash(signedToken);
+    if (!tokenHash) return null;
+    const row = await this.prisma.oAuthConsentTransaction.findUnique({
+      where: { tokenHash },
+      include: {
+        client: { select: { clientId: true, clientName: true, deletedAt: true } },
+        entity: { select: { externalId: true, displayName: true, mcpConfig: true } },
+        environment: { select: { id: true, name: true, slug: true } },
+      },
+    });
+    if (!row || row.client.deletedAt || row.consumedAt || row.expiresAt.getTime() <= Date.now()) {
+      return null;
+    }
+    return row;
+  }
+
+  async consumeConsentTransaction(signedToken: string) {
+    const tokenHash = this.consentTokenHash(signedToken);
+    if (!tokenHash) throw new OAuthError("invalid_request", "consent transaction is invalid");
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.oAuthConsentTransaction.findUnique({
+        where: { tokenHash },
+        include: { client: { select: { clientId: true, registeredByUserId: true, deletedAt: true } } },
+      });
+      if (!row || row.client.deletedAt || row.consumedAt || row.expiresAt.getTime() <= Date.now()) {
+        throw new OAuthError("invalid_request", "consent transaction is expired or already consumed");
+      }
+      const claimed = await tx.oAuthConsentTransaction.updateMany({
+        where: { id: row.id, consumedAt: null, expiresAt: { gt: new Date() } },
+        data: { consumedAt: new Date() },
+      });
+      if (claimed.count !== 1) {
+        throw new OAuthError("invalid_request", "consent transaction is expired or already consumed");
+      }
+      return row;
+    });
   }
 
   async verifyClientSecret(clientId: string, clientSecret: string): Promise<boolean> {
@@ -646,6 +791,7 @@ export class OAuthService {
     code: string;
     codeVerifier: string;
     redirectUri: string;
+    expectedScope?: ScopeTuple;
   }): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -680,6 +826,14 @@ export class OAuthService {
     }
     if (!row.organizationId || !row.projectId || !row.environmentId) {
       throw new OAuthError("invalid_grant", "authorization code has no canonical scope");
+    }
+    if (
+      input.expectedScope &&
+      (row.organizationId !== input.expectedScope.organizationId ||
+        row.projectId !== input.expectedScope.projectId ||
+        row.environmentId !== input.expectedScope.environmentId)
+    ) {
+      throw new OAuthError("invalid_grant", "authorization code scope does not match this endpoint");
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -788,6 +942,7 @@ export class OAuthService {
   async exchangeRefreshToken(input: {
     clientId: string;
     refreshToken: string;
+    expectedScope?: ScopeTuple;
   }): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -809,6 +964,17 @@ export class OAuthService {
         "refresh_token was issued to a different client",
       );
     }
+    if (!row.organizationId || !row.projectId || !row.environmentId) {
+      throw new OAuthError("invalid_grant", "refresh_token has no canonical scope");
+    }
+    if (
+      input.expectedScope &&
+      (row.organizationId !== input.expectedScope.organizationId ||
+        row.projectId !== input.expectedScope.projectId ||
+        row.environmentId !== input.expectedScope.environmentId)
+    ) {
+      throw new OAuthError("invalid_grant", "refresh_token scope does not match this endpoint");
+    }
     if (row.consumedAt || row.revokedAt) {
       const now = new Date();
       await this.prisma.$transaction([
@@ -828,9 +994,6 @@ export class OAuthService {
     }
     if (row.expiresAt.getTime() < Date.now()) {
       throw new OAuthError("invalid_grant", "refresh_token expired");
-    }
-    if (!row.organizationId || !row.projectId || !row.environmentId) {
-      throw new OAuthError("invalid_grant", "refresh_token has no canonical scope");
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -871,7 +1034,13 @@ export class OAuthService {
     if (!raw || typeof raw !== "string" || !raw.startsWith(ACCESS_TOKEN_PREFIX)) {
       return null;
     }
-    const tokenHash = this.sha256(raw);
+    return this.verifyAccessTokenHash(this.sha256(raw));
+  }
+
+  /** Revalidate an SSE session without retaining the raw OAuth bearer. */
+  async verifyAccessTokenHash(
+    tokenHash: string,
+  ): Promise<VerifiedOAuthAccessToken | null> {
     const row = await this.prisma.oAuthAccessToken.findUnique({
       where: { tokenHash },
       include: { client: { select: { clientId: true, entityId: true, deletedAt: true } } },
@@ -936,7 +1105,11 @@ export class OAuthService {
     };
   }
 
-  async revokeToken(raw: string, clientId?: string): Promise<boolean> {
+  async revokeToken(
+    raw: string,
+    clientId?: string,
+    expectedScope?: ScopeTuple,
+  ): Promise<boolean> {
     if (!raw || typeof raw !== "string") return false;
     const tokenHash = this.sha256(raw);
     const now = new Date();
@@ -946,6 +1119,7 @@ export class OAuthService {
           tokenHash,
           revokedAt: null,
           ...(clientId ? { client: { clientId } } : {}),
+          ...(expectedScope ?? {}),
         },
         data: { revokedAt: now },
       });
@@ -957,6 +1131,7 @@ export class OAuthService {
           tokenHash,
           revokedAt: null,
           ...(clientId ? { client: { clientId } } : {}),
+          ...(expectedScope ?? {}),
         },
         data: { revokedAt: now },
       });

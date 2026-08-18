@@ -38,7 +38,7 @@ The MCP gateway is the universal Model Context Protocol surface in front of Plat
 
 ## What it is
 
-A single MCP endpoint at `/mcp` plus per-entity endpoints at `/mcp/entities/{slug}`. The gateway:
+A single MCP endpoint at `/mcp` plus per-entity endpoints at `/mcp/entity/{slug}`. The gateway:
 
 - **Federates**: enumerates tools from all four families on each `tools/list` MCP call. The same federation that the agent runtime uses internally is exposed externally with consistent semantics.
 - **Authenticates**: three identity modes (PIFSP-22): anonymous (limited public tools), OIDC federation (delegated user identity), bearer PAT (long-lived programmatic access).
@@ -75,16 +75,16 @@ Authenticate with a PAT (`Authorization: Bearer plt_ent_...`). The client lists 
 ### Per-entity endpoint
 
 ```
-https://platos.example.com/mcp/entities/acme
+https://platos.example.com/mcp/entity/acme
 ```
 
 Tools list scopes to the entity's pushed tools plus any Platos skills the entity has opted in.
 
 ### Identity modes
 
-- **Anonymous**: no auth header. Only tools flagged `public: true` are exposed. Use cases: read-only public data, demo skills.
-- **OIDC**: `Authorization: Bearer <oidc-id-token>`. The gateway federates with your OIDC provider, resolves the user, and applies per-user ACLs.
-- **Bearer PAT**: `Authorization: Bearer plt_ent_...`. The PAT carries a fixed scope and an explicit ACL.
+- **Anonymous**: no auth header. Only tools admitted by the anonymous ACL are exposed. The canonical `environmentId` query parameter is always required; the gateway resolves the entity slug inside that environment and never performs a global slug preselection.
+- **OIDC**: OAuth authorization pins one canonical environment and carries it through the auth code, access token, refresh token, and delegated OIDC session.
+- **Bearer PAT**: `Authorization: Bearer plt_ent_...`. The PAT is minted for the dashboard's current environment and always reuses that exact environment.
 
 ### Per-tool ACL
 
@@ -102,6 +102,8 @@ Per-entity endpoints expose `serverInfo` (name, description, logo, support URL) 
 
 - The gateway is the cross-scope cut. A bug in `permission-gateway.service.ts` can leak tools across orgs. Audit the test bar; the cross-scope IDOR probes cover this path.
 - Anonymous mode is opt-in per tool. A naively published tool with `public: true` is callable by any unauthenticated client. Treat `public: true` as a deliberate decision, not a default.
+- Never depend on project creation order to select an environment. Supply `?environmentId=<canonical-id>` for anonymous and entity OAuth discovery/authorization. Bearer routes validate the token first, load its authoritative entity and environment, then compare the requested slug.
+- External tool arguments cannot set Platos transport authority. The gateway recursively removes reserved `_context`, `__platos`, `_platos`, `platos_context`, `platosContext`, and `__platosContext` envelopes before MCP or wire dispatch, then adds server-derived context only when the entity enables it.
 - OIDC federation requires `OIDC_ISSUER`, `OIDC_AUDIENCE`, and `OIDC_JWKS_URL` env vars. Misconfigured OIDC silently rejects valid tokens.
 - The Settings -> Integrations route exists in two scopes (project and org) with similar names (drift D-006). The org-scoped page is for OAuth-style integrations like Slack; the project-scoped page is for MCP and webhook config. Cross-link from this doc to disambiguate.
 

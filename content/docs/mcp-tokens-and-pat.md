@@ -28,7 +28,7 @@ Two long-lived bearer formats: PAT (`plt_ent_*`) for human and machine users, OA
 
 ## What it is
 
-- **PAT** (Personal Access Token): a string starting `plt_ent_`, issued from the dashboard. Each PAT carries `(userId, scope, scopes[])`. `scopes[]` is an array of permission slugs (e.g. `agents:read`, `threads:write`, `metrics:read`).
+- **PAT** (Personal Access Token): a string starting `plt_ent_`, issued from an environment-scoped entity dashboard. Each PAT carries `(entityId, environmentId, mcpUserId, scopes[])`; the environment cannot change after mint.
 - **OAuth 2.1 DCR token**: issued through dynamic client registration. The MCP client registers (no upfront credentials), gets a client id and secret, runs the auth code flow, and ends up with a bearer token tied to a user and scope. Equivalent power to a PAT, different lifecycle.
 
 `TokenService` mints, lists, revokes; `MCPBearerTokenService` is the verifier on the MCP path. The verifier accepts both formats and normalises them into the same `AuthenticatedRequest` shape.
@@ -44,7 +44,7 @@ The two formats split by ergonomics:
 - PAT: paste a string. Fastest path; right for personal use, scripts, CI.
 - OAuth DCR: ergonomic for production MCP clients (Claude Desktop, IDE plugins) that already speak the OAuth handshake. No paste-the-string UX.
 
-Both paths land at the same enforcement point, so the auth surface stays simple.
+Both paths land at the same enforcement point and revalidate entity/project/environment ancestry on every HTTP or SSE message.
 
 ## How to use it
 
@@ -68,6 +68,8 @@ Set `scopes: ["agent:agent_id_xyz:read"]`. The PAT can list and read that agent 
 
 ### OAuth 2.1 DCR
 
+Dynamic registration can request only the authorization server's advertised MCP scopes (`mcp:tools` for entity endpoints and `mcp:read mcp:write` for the platform endpoint). Caller-defined ACL or privileged labels are rejected. Authorization stores the exact effective scopes in a signed, opaque, one-time consent transaction; the consent page carries only that transaction and displays those server-effective scopes.
+
 The MCP client hits `/.well-known/oauth-authorization-server` and discovers the registration endpoint. POST `/oauth/register` with the standard DCR body returns a `client_id` and `client_secret`. Then standard auth-code flow.
 
 ```http
@@ -84,9 +86,10 @@ The resulting bearer is what the client uses on `/mcp`.
 ## Common pitfalls
 
 - PAT bearer tokens MUST start with `plt_ent_`. The recent fix (commit `adfe32e6b`) accepts both PAT and OAuth bearer; older deployments may only accept the OAuth shape.
+- PATs never default to production or the oldest environment. Mint from the intended environment page; switching dashboard environments creates a separately scoped token.
 - A PAT's `scopes[]` is checked on every call. A token without `agents:write` cannot create an agent even if it has `agents:read`. Audit on `/settings/mcp-tokens` if a permission is failing unexpectedly.
-- OAuth DCR registration is unauthenticated by default; rate limits apply (see [Rate limits](/docs/rate-limits)). A misconfigured client retrying registration can hit the cap.
-- Tokens are scoped at issue time; rotating a project's permissions does not retroactively update existing tokens. Reissue when permissions tighten.
+- OAuth DCR registration is unauthenticated by default; rate limits apply (see [Rate limits](/docs/rate-limits)). Registration cannot add arbitrary scopes, and consent transactions expire and reject tamper or replay.
+- Tokens are scoped at issue time; rotating a project's permissions does not retroactively update existing tokens. Reissue when permissions tighten. Revocation is checked again for every SSE `/messages` request.
 
 ## Related
 

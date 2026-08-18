@@ -33,13 +33,15 @@ function makeExecutor(options: {
   credentialName?: string;
   resolvedSecret?: string;
   url?: string;
+  entries?: OrgToolEntry[];
+  persistedRoute?: boolean;
 } = {}) {
   const healthWrites: any[] = [];
   const prisma: any = {
     entity: {
-      findFirst: async () => ({
-        id: "entity-1",
-        externalId: "github",
+      findFirst: async ({ where }: any) => ({
+        id: where.id,
+        externalId: where.id === "entity-2" ? "other" : "github",
         projectId: "project-1",
         connectionKind: "mcp",
         mcpClient: {
@@ -52,6 +54,20 @@ function makeExecutor(options: {
         },
       }),
     },
+    environmentEntityTool: {
+      findFirst: vi.fn(async () =>
+        options.persistedRoute === false ? null : {
+          id: "mapping-1",
+          callbackUrl: options.url ?? "https://entity.example/tools",
+          tool: {
+            name: "github.create_issue",
+            description: "Create issue",
+            paramSchema: { type: "object" },
+            category: null,
+          },
+        },
+      ),
+    },
     toolHealth: {
       upsert: async (args: any) => {
         healthWrites.push(args);
@@ -60,7 +76,7 @@ function makeExecutor(options: {
     },
   };
   const registry = {
-    getScopedTools: () => [entry],
+    getScopedTools: () => options.entries ?? [entry],
   };
   const resolvedHeaders: Array<Record<string, string>> = [];
   const credentials = {
@@ -95,6 +111,66 @@ function makeExecutor(options: {
     pool as any,
   );
   return { executor, healthWrites, resolvedHeaders, getClient, callTool };
+}
+
+function makeWireExecutor(
+  injectMcpContext: boolean,
+  options: { connected?: boolean; persistedCallbackUrl?: string } = {},
+) {
+  const wireEntry: OrgToolEntry = {
+    ...entry,
+    connectionKind: "wire",
+    entityMcpInjectContext: injectMcpContext,
+  };
+  const prisma: any = {
+    environmentEntityTool: { findFirst: vi.fn().mockResolvedValue({
+      id: "mapping-1",
+      callbackUrl: options.persistedCallbackUrl ?? "https://entity.example/tools",
+      tool: {
+        name: "github.create_issue",
+        description: "Create issue",
+        paramSchema: { type: "object" },
+        category: null,
+      },
+    }) },
+    entity: {
+      findFirst: vi.fn().mockResolvedValue({
+        id: "entity-1",
+        externalId: "github",
+        projectId: "project-1",
+        connectionKind: "wire",
+        mcpConfig: { injectMcpContext },
+        mcpClient: null,
+      }),
+    },
+    credential: { findFirst: vi.fn().mockResolvedValue({ name: "github" }) },
+    toolHealth: { upsert: vi.fn().mockResolvedValue({}) },
+    mcpOidcSession: { findFirst: vi.fn().mockResolvedValue(null) },
+  };
+  const registry = { getScopedTools: () => [wireEntry] };
+  const ws = {
+    isEntityConnected: vi.fn().mockReturnValue(options.connected ?? true),
+    dispatchToolCall: vi.fn().mockResolvedValue({ result: "ok" }),
+  };
+  const credentials = {
+    resolveCredentialReference: vi.fn().mockResolvedValue("service-secret"),
+  };
+  const executor = new ToolExecutorService(
+    prisma,
+    registry as any,
+    ws as any,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    credentials as any,
+    undefined,
+  );
+  return { executor, ws };
 }
 
 describe("clean EntityMcpClient discovery", () => {
@@ -199,6 +275,134 @@ describe("clean MCP entity dispatch", () => {
         entityExternalId: "github",
       },
     });
+  });
+
+  it("strips caller-owned reserved envelopes before outbound MCP transport", async () => {
+    const { executor, callTool } = makeExecutor();
+    const result = await executor.execute(
+      {
+        tool: "github.create_issue",
+        params: {
+          title: "hello",
+          _context: { mcpUserId: "attacker" },
+          __platos: { organizationId: "attacker" },
+          _platos: { environmentId: "attacker" },
+          platosContext: { source: "attacker" },
+        },
+      },
+      SCOPE,
+      { source: "mcp_client", mcpUserId: "mcp:pat:pat-1" },
+      { entityPk: "entity-1", entityId: "github", toolId: "tool-1" },
+    );
+
+    expect(result.status).toBe("success");
+    expect(callTool).toHaveBeenCalledWith(
+      { name: "github.create_issue", arguments: { title: "hello" } },
+      undefined,
+      expect.any(Object),
+    );
+  });
+
+  it("dispatches the exact preflighted entity when another entity has the same tool name", async () => {
+    const otherEntry: OrgToolEntry = {
+      ...entry,
+      entityPk: "entity-2",
+      sourceEntityId: "other",
+      toolId: "tool-2",
+    };
+    const { executor, getClient } = makeExecutor({ entries: [otherEntry, entry] });
+
+    const result = await executor.execute(
+      { tool: "github.create_issue", params: { title: "hello" } },
+      SCOPE,
+      { source: "mcp_client", endUserId: "user-1" },
+      { entityPk: "entity-1", entityId: "github", toolId: "tool-1" },
+    );
+
+    expect(result.status).toBe("success");
+    expect(getClient).toHaveBeenCalledWith(
+      expect.objectContaining({ server: { id: "entity-1" } }),
+    );
+  });
+
+  it("denies a stale entity-pinned wire route before either wire transport", async () => {
+    const wireEntry: OrgToolEntry = { ...entry, connectionKind: "wire" };
+    const { executor, getClient } = makeExecutor({
+      entries: [wireEntry],
+      persistedRoute: false,
+    });
+
+    const result = await executor.execute(
+      { tool: "github.create_issue", params: {} },
+      SCOPE,
+      { source: "mcp_client" },
+      { entityPk: "entity-1", entityId: "github", toolId: "tool-1" },
+    );
+
+    expect(result.status).toBe("failed");
+    expect(result.error).toMatch(/route is no longer valid/i);
+    expect(getClient).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [true, true],
+    [false, false],
+  ])(
+    "injectMcpContext=%s controls the inbound MCP wire envelope",
+    async (injectMcpContext, expectsContext) => {
+      const { executor, ws } = makeWireExecutor(injectMcpContext);
+      const result = await executor.execute(
+        {
+          tool: "github.create_issue",
+          params: {
+            title: "hello",
+            _context: { source: "attacker" },
+            __platos: { organizationId: "attacker" },
+            platos_context: { source: "attacker" },
+          },
+        },
+        SCOPE,
+        {
+          source: "mcp_client",
+          mcpUserId: "mcp:pat:pat-1",
+          mcpClientId: "pat",
+        },
+        { entityPk: "entity-1", entityId: "github", toolId: "tool-1" },
+      );
+
+      expect(result.status).toBe("success");
+      const dispatchedParams = ws.dispatchToolCall.mock.calls[0]![3];
+      expect(dispatchedParams).not.toHaveProperty("platos_context");
+      if (expectsContext) {
+        expect(dispatchedParams._context).toEqual({
+          source: "mcp_client",
+          mcpUserId: "mcp:pat:pat-1",
+          mcpClientId: "pat",
+        });
+      } else {
+        expect(dispatchedParams).not.toHaveProperty("_context");
+      }
+      expect(dispatchedParams.__platos.organizationId).toBe(SCOPE.organizationId);
+    },
+  );
+
+  it("uses the current persisted callback URL when the registry cache is stale", async () => {
+    const currentUrl = "https://8.8.8.8/current-callback";
+    const { executor } = makeWireExecutor(false, {
+      connected: false,
+      persistedCallbackUrl: currentUrl,
+    });
+
+    const result = await executor.execute(
+      { tool: "github.create_issue", params: { title: "hello" } },
+      SCOPE,
+      { source: "mcp_client" },
+      { entityPk: "entity-1", entityId: "github", toolId: "tool-1" },
+    );
+
+    expect(result.status).toBe("failed");
+    expect(result.error).toContain("/current-callback");
+    expect(result.error).not.toContain("entity.example/tools");
   });
 
   it("fails closed before transport when an end-user template is unresolved", async () => {

@@ -48,6 +48,7 @@ function makeAuthHarness() {
   const state = {
     bearer: {
       id: "bearer_A",
+      environmentId: scope.environmentId,
       revokedAt: null as Date | null,
       expiresAt: new Date(Date.now() + 60_000) as Date | null,
       entity: {

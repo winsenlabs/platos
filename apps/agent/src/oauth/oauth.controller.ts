@@ -20,7 +20,13 @@ import {
   PlatosSecretStore,
   authorizeEnvironmentService,
 } from "@platos/tenancy-database";
-import { OAuthError, OAuthService, OAUTH_ACCESS_TOKEN_TTL_SEC } from "./oauth.service";
+import {
+  ENTITY_MCP_SCOPES,
+  OAuthError,
+  OAuthService,
+  OAUTH_ACCESS_TOKEN_TTL_SEC,
+  PLATFORM_MCP_SCOPES,
+} from "./oauth.service";
 import { env } from "../shared/env";
 import {
   type ControlDatabaseClient,
@@ -66,6 +72,7 @@ export class OAuthController {
    */
   private async resolveEntityForMcp(
     entityIdSlug: string,
+    environmentId?: string,
   ): Promise<
     | {
         entityPk: string;
@@ -77,39 +84,36 @@ export class OAuthController {
       }
     | null
   > {
-    if (!entityIdSlug || typeof entityIdSlug !== "string") return null;
-    const ent = await this.prisma.entity.findFirst({
-      where: { externalId: entityIdSlug, project: { archivedAt: null } },
+    if (!entityIdSlug || typeof entityIdSlug !== "string" || !environmentId) return null;
+    const environment = await this.prisma.environment.findFirst({
+      where: {
+        id: environmentId,
+        archivedAt: null,
+        project: { archivedAt: null, organization: { archivedAt: null } },
+      },
       select: {
         id: true,
-        projectId: true,
-        displayName: true,
-        mcpConfig: true,
         project: {
           select: {
+            id: true,
             organizationId: true,
-            environments: {
-              where: { archivedAt: null },
-              select: { id: true, slug: true },
-              orderBy: { createdAt: "asc" },
+            entities: {
+              where: { externalId: entityIdSlug },
+              select: { id: true, displayName: true, mcpConfig: true },
+              take: 2,
             },
           },
         },
       },
     });
-    if (!ent) return null;
+    if (!environment || environment.project.entities.length !== 1) return null;
+    const ent = environment.project.entities[0]!;
     if (!ent.mcpConfig) return null;
     if (!ent.mcpConfig.enabled) return null;
-    const environments = ent.project.environments;
-    const environment =
-      environments.find((candidate) =>
-        ["prod", "production"].includes(candidate.slug.toLowerCase()),
-      ) ?? environments[0];
-    if (!environment) return null;
     return {
       entityPk: ent.id,
-      organizationId: ent.project.organizationId,
-      projectId: ent.projectId,
+      organizationId: environment.project.organizationId,
+      projectId: environment.project.id,
       environmentId: environment.id,
       displayName: ent.displayName,
       config: ent.mcpConfig,
@@ -138,7 +142,7 @@ export class OAuthController {
         "client_secret_post",
         "none",
       ],
-      scopes_supported: ["mcp:read", "mcp:write"],
+      scopes_supported: [...PLATFORM_MCP_SCOPES],
     };
   }
 
@@ -168,7 +172,7 @@ export class OAuthController {
           ? { tokenEndpointAuthMethod: body.token_endpoint_auth_method }
           : {}),
         ...(body?.grant_types ? { grantTypes: body.grant_types } : {}),
-        scope: body?.scope ?? "mcp:read mcp:write",
+        scope: body?.scope,
         ...(body?.organization_id ? { organizationId: body.organization_id } : {}),
         ...(body?.registered_by_user_id
           ? { registeredByUserId: body.registered_by_user_id }
@@ -206,6 +210,7 @@ export class OAuthController {
     @Query("state") state: string | undefined,
     @Query("code_challenge") codeChallenge: string | undefined,
     @Query("code_challenge_method") codeChallengeMethod: string | undefined,
+    @Query("environment_id") environmentId: string | undefined,
   ): Promise<void> {
     // Parameter validation — per RFC 6749 §4.1.2.1 errors that apply to
     // redirect_uri itself MUST NOT redirect; other errors redirect back.
@@ -254,6 +259,47 @@ export class OAuthController {
       return;
     }
 
+    if (!environmentId) {
+      sendErrorRedirect("invalid_request", "environment_id is required");
+      return;
+    }
+    const environment = await this.prisma.environment.findFirst({
+      where: {
+        id: environmentId,
+        archivedAt: null,
+        project: { archivedAt: null, organizationId: client.organizationId },
+      },
+      select: { id: true, project: { select: { id: true, organizationId: true } } },
+    });
+    if (!environment) {
+      sendErrorRedirect("invalid_scope", "environment_id is not valid for this client");
+      return;
+    }
+
+    let transaction: string;
+    try {
+      const effectiveScopes = await this.oauth.effectiveScopes(clientId, scope);
+      transaction = await this.oauth.createConsentTransaction({
+        clientId,
+        redirectUri,
+        codeChallenge,
+        codeChallengeMethod: "S256",
+        scopes: effectiveScopes,
+        scopeTuple: {
+          organizationId: environment.project.organizationId,
+          projectId: environment.project.id,
+          environmentId: environment.id,
+        },
+        ...(state ? { state } : {}),
+      });
+    } catch (error) {
+      if (error instanceof OAuthError) {
+        sendErrorRedirect(error.code, error.message);
+        return;
+      }
+      throw error;
+    }
+
     // Bounce to the webapp consent screen. The loader reads these query
     // params + requireUserId, renders the approval card, then POSTs back
     // to `/oauth/authorize/callback` on this controller.
@@ -262,13 +308,38 @@ export class OAuthController {
       env.PLATOS_WEBAPP_ADMIN_URL ??
       "http://localhost:3030";
     const consentUrl = new URL("/oauth/consent", webappBase);
-    consentUrl.searchParams.set("client_id", clientId);
-    consentUrl.searchParams.set("redirect_uri", redirectUri);
-    consentUrl.searchParams.set("code_challenge", codeChallenge);
-    consentUrl.searchParams.set("code_challenge_method", codeChallengeMethod ?? "S256");
-    if (scope) consentUrl.searchParams.set("scope", scope);
-    if (state) consentUrl.searchParams.set("state", state);
+    consentUrl.searchParams.set("transaction", transaction);
     res.redirect(302, consentUrl.toString());
+  }
+
+  @Get("oauth/consent")
+  async inspectConsent(@Query("transaction") transaction: string | undefined) {
+    if (!transaction) throw new HttpException("transaction required", HttpStatus.BAD_REQUEST);
+    const row = await this.oauth.inspectConsentTransaction(transaction);
+    if (!row) throw new HttpException("consent transaction invalid or expired", HttpStatus.GONE);
+    return {
+      transaction,
+      flow: row.entityId
+        ? row.entity?.mcpConfig?.identityMode?.split("+").includes("oidc")
+          ? "entity_oidc"
+          : row.entity?.mcpConfig?.identityMode?.split("+").includes("anonymous")
+            ? "entity_anonymous"
+            : "entity_bearer"
+        : "platform",
+      client: {
+        clientId: row.client.clientId,
+        clientName: row.client.clientName,
+        redirectUri: row.redirectUri,
+      },
+      entity: row.entityId && row.entity ? {
+        entityPk: row.entityId,
+        entityId: row.entity.externalId,
+        displayName: row.entity.displayName,
+        branding: row.entity.mcpConfig?.branding ?? null,
+      } : null,
+      environment: row.environment,
+      effectiveScopes: row.scopes,
+    };
   }
 
   /**
@@ -281,95 +352,52 @@ export class OAuthController {
    */
   @Post("oauth/authorize/callback")
   async authorizeCallback(
-    @Headers("x-platos-consent-signature") signature: string | undefined,
+    @Headers("x-platos-internal-token") internalToken: string | undefined,
     @Body()
     body: {
-      clientId: string;
-      redirectUri: string;
+      transaction: string;
       userId: string;
-      organizationId: string;
-      projectId: string;
-      environmentId: string;
-      codeChallenge: string;
-      codeChallengeMethod?: string;
-      scope?: string;
-      state?: string;
-      /** Unix seconds; used to bound HMAC replay window. */
-      ts: number;
+      action?: "approve" | "deny";
     },
   ): Promise<{ redirectTo: string }> {
-    if (!signature) {
-      throw new HttpException("consent signature required", HttpStatus.UNAUTHORIZED);
-    }
-    const secret = env.SESSION_SECRET;
-    if (!secret) {
+    if (!env.PLATOS_INTERNAL_AUTH_TOKEN) {
       throw new HttpException(
-        "SESSION_SECRET not configured",
+        "internal consent authentication not configured",
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
-    if (!body.ts || Math.abs(Date.now() / 1000 - body.ts) > 300) {
-      throw new HttpException("consent timestamp stale", HttpStatus.UNAUTHORIZED);
+    const provided = Buffer.from(internalToken ?? "");
+    const expected = Buffer.from(env.PLATOS_INTERNAL_AUTH_TOKEN);
+    if (provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected)) {
+      throw new HttpException("invalid internal consent authentication", HttpStatus.UNAUTHORIZED);
     }
-    // BUG-19: use static crypto import (already imported at module level).
-    const canonical = [
-      body.clientId,
-      body.redirectUri,
-      body.userId,
-      body.organizationId,
-      body.projectId,
-      body.environmentId,
-      body.codeChallenge,
-      body.scope ?? "",
-      body.state ?? "",
-      String(body.ts),
-    ].join("\n");
-    const expected = crypto
-      .createHmac("sha256", secret)
-      .update(canonical)
-      .digest("base64url");
-    const providedBuf = Buffer.from(signature, "utf8");
-    const expectedBuf = Buffer.from(expected, "utf8");
-    if (
-      providedBuf.length !== expectedBuf.length ||
-      !crypto.timingSafeEqual(providedBuf, expectedBuf)
-    ) {
-      throw new HttpException("invalid consent signature", HttpStatus.UNAUTHORIZED);
-    }
-
-    const client = await this.oauth.findClient(body.clientId);
-    if (!client) {
-      throw new HttpException("unknown client", HttpStatus.BAD_REQUEST);
-    }
-    if (!client.redirectUris.includes(body.redirectUri)) {
-      throw new HttpException("redirect_uri not registered", HttpStatus.BAD_REQUEST);
-    }
-
-    const scopes = (body.scope ?? "mcp:read mcp:write").split(/\s+/).filter(Boolean);
 
     try {
+      const consent = await this.oauth.consumeConsentTransaction(body.transaction);
+      if (body.action === "deny") {
+        const denied = new URL(consent.redirectUri);
+        denied.searchParams.set("error", "access_denied");
+        if (consent.state) denied.searchParams.set("state", consent.state);
+        return { redirectTo: denied.toString() };
+      }
       const { code } = await this.oauth.issueAuthCode({
-        clientId: body.clientId,
+        clientId: consent.client.clientId,
         userId: body.userId,
         scopeTuple: {
-          organizationId: body.organizationId,
-          projectId: body.projectId,
-          environmentId: body.environmentId,
+          organizationId: consent.organizationId,
+          projectId: consent.projectId,
+          environmentId: consent.environmentId,
         },
-        codeChallenge: body.codeChallenge,
+        codeChallenge: consent.codeChallenge,
         codeChallengeMethod: "S256",
-        redirectUri: body.redirectUri,
-        scopes,
-        // PIFSP-21 wave-1-caveat: thread the client's entityPk so the auth
-        // code (and the access token minted from it) carries the entity pin.
-        // Without this, entity-scoped MCP tokens have null entityPk and the
-        // McpEntityController rejects them with 403.
-        ...(client.entityPk ? { entityPk: client.entityPk } : {}),
+        redirectUri: consent.redirectUri,
+        scopes: consent.scopes,
+        ...(consent.entityId ? { entityPk: consent.entityId } : {}),
       });
 
-      const redirect = new URL(body.redirectUri);
+      const redirect = new URL(consent.redirectUri);
       redirect.searchParams.set("code", code);
-      if (body.state) redirect.searchParams.set("state", body.state);
+      if (consent.state) redirect.searchParams.set("state", consent.state);
       return { redirectTo: redirect.toString() };
     } catch (err) {
       if (err instanceof OAuthError) {
@@ -635,8 +663,11 @@ export class OAuthController {
   // ═════════════════════════════════════════════════════════════════════
 
   @Get(".well-known/oauth-authorization-server/entity/:entityId")
-  async entityMetadata(@Param("entityId") entityIdSlug: string) {
-    const ent = await this.resolveEntityForMcp(entityIdSlug);
+  async entityMetadata(
+    @Param("entityId") entityIdSlug: string,
+    @Query("environmentId") environmentId: string | undefined,
+  ) {
+    const ent = await this.resolveEntityForMcp(entityIdSlug, environmentId);
     if (!ent) {
       throw new HttpException(
         { error: "not_found", error_description: `MCP not enabled for entity '${entityIdSlug}'` },
@@ -645,12 +676,13 @@ export class OAuthController {
     }
     const issuer = this.issuerUrl;
     const base = `${issuer}/oauth/entity/${encodeURIComponent(entityIdSlug)}`;
+    const environmentQuery = `?environmentId=${encodeURIComponent(ent.environmentId)}`;
     return {
       issuer,
-      authorization_endpoint: `${base}/authorize`,
-      token_endpoint: `${base}/token`,
-      revocation_endpoint: `${base}/revoke`,
-      registration_endpoint: `${base}/register`,
+      authorization_endpoint: `${base}/authorize${environmentQuery}`,
+      token_endpoint: `${base}/token${environmentQuery}`,
+      revocation_endpoint: `${base}/revoke${environmentQuery}`,
+      registration_endpoint: `${base}/register${environmentQuery}`,
       introspection_endpoint: `${issuer}/oauth/introspect`,
       response_types_supported: ["code"],
       grant_types_supported: ["authorization_code", "refresh_token"],
@@ -660,7 +692,7 @@ export class OAuthController {
         "client_secret_post",
         "none",
       ],
-      scopes_supported: ["mcp:tools"],
+      scopes_supported: [...ENTITY_MCP_SCOPES],
       // Non-standard hint so MCP clients can render the entity's name.
       "platos:entity_id": entityIdSlug,
       "platos:entity_display_name": ent.displayName,
@@ -671,6 +703,7 @@ export class OAuthController {
   @HttpCode(HttpStatus.CREATED)
   async entityRegister(
     @Param("entityId") entityIdSlug: string,
+    @Query("environmentId") environmentId: string | undefined,
     @Body()
     body: {
       client_name?: string;
@@ -680,7 +713,7 @@ export class OAuthController {
       scope?: string;
     },
   ) {
-    const ent = await this.resolveEntityForMcp(entityIdSlug);
+    const ent = await this.resolveEntityForMcp(entityIdSlug, environmentId);
     if (!ent) {
       throw new HttpException(
         { error: "not_found", error_description: "entity MCP not enabled" },
@@ -714,7 +747,7 @@ export class OAuthController {
           ? { tokenEndpointAuthMethod: body.token_endpoint_auth_method }
           : {}),
         ...(body?.grant_types ? { grantTypes: body.grant_types } : {}),
-        scope: body?.scope ?? "mcp:tools",
+        scope: body?.scope,
         organizationId: ent.organizationId,
         entityPk: ent.entityPk,
       });
@@ -745,8 +778,9 @@ export class OAuthController {
     @Query("state") state: string | undefined,
     @Query("code_challenge") codeChallenge: string | undefined,
     @Query("code_challenge_method") codeChallengeMethod: string | undefined,
+    @Query("environmentId") environmentId: string | undefined,
   ): Promise<void> {
-    const ent = await this.resolveEntityForMcp(entityIdSlug);
+    const ent = await this.resolveEntityForMcp(entityIdSlug, environmentId);
     if (!ent) {
       res.status(404).json({
         error: "not_found",
@@ -807,21 +841,35 @@ export class OAuthController {
       return;
     }
 
+    let transaction: string;
+    try {
+      const effectiveScopes = await this.oauth.effectiveScopes(clientId, scope);
+      transaction = await this.oauth.createConsentTransaction({
+        clientId,
+        redirectUri,
+        codeChallenge,
+        codeChallengeMethod: "S256",
+        scopes: effectiveScopes,
+        scopeTuple: {
+          organizationId: ent.organizationId,
+          projectId: ent.projectId,
+          environmentId: ent.environmentId,
+        },
+        entityPk: ent.entityPk,
+        ...(state ? { state } : {}),
+      });
+    } catch (error) {
+      if (error instanceof OAuthError) {
+        sendErrorRedirect(error.code, error.message);
+        return;
+      }
+      throw error;
+    }
+
     const webappBase =
       env.APP_ORIGIN ?? env.PLATOS_WEBAPP_ADMIN_URL ?? "http://localhost:3030";
     const consentUrl = new URL("/oauth/consent", webappBase);
-    consentUrl.searchParams.set("client_id", clientId);
-    consentUrl.searchParams.set("redirect_uri", redirectUri);
-    consentUrl.searchParams.set("code_challenge", codeChallenge);
-    consentUrl.searchParams.set("code_challenge_method", codeChallengeMethod ?? "S256");
-    // PIFSP-21 — carry entity context to the consent screen so it can
-    // pre-pin org/project/env + render branding without asking the user.
-    consentUrl.searchParams.set("entity_id", entityIdSlug);
-    consentUrl.searchParams.set("entity_pk", ent.entityPk);
-    consentUrl.searchParams.set("organization_id", ent.organizationId);
-    consentUrl.searchParams.set("project_id", ent.projectId);
-    if (scope) consentUrl.searchParams.set("scope", scope);
-    if (state) consentUrl.searchParams.set("state", state);
+    consentUrl.searchParams.set("transaction", transaction);
     res.redirect(302, consentUrl.toString());
   }
 
@@ -839,15 +887,17 @@ export class OAuthController {
     @Res() res: Response,
     @Body()
     body: {
-      client_id?: string;
-      redirect_uri?: string;
-      code_challenge?: string;
-      code_challenge_method?: string;
-      state?: string;
-      scope?: string;
+      transaction?: string;
     },
   ): Promise<void> {
-    const ent = await this.resolveEntityForMcp(entityIdSlug);
+    const consent = body.transaction
+      ? await this.oauth.inspectConsentTransaction(body.transaction)
+      : null;
+    if (!consent || !consent.entityId || consent.entity?.externalId !== entityIdSlug) {
+      res.status(400).json({ error: "invalid consent transaction" });
+      return;
+    }
+    const ent = await this.resolveEntityForMcp(entityIdSlug, consent.environmentId);
     if (!ent) {
       res.status(404).json({ error: "not_found" });
       return;
@@ -868,15 +918,7 @@ export class OAuthController {
       return;
     }
 
-    const { client_id, redirect_uri, code_challenge, state } = body;
-    if (!client_id || !redirect_uri || !code_challenge) {
-      res.status(400).json({ error: "client_id, redirect_uri, code_challenge required" });
-      return;
-    }
-
-    // BUG-5: verify client_id exists and is pinned to this entity; verify redirect_uri
-    // is registered for the client — same checks entityAuthorize performs.
-    const anonClient = await this.oauth.findClient(client_id);
+    const anonClient = await this.oauth.findClient(consent.client.clientId);
     if (!anonClient) {
       res.status(400).json({ error: "invalid_client", error_description: "unknown client_id" });
       return;
@@ -886,12 +928,15 @@ export class OAuthController {
       res.status(400).json({ error: "invalid_client", error_description: "client is not registered for this entity" });
       return;
     }
-    if (!anonClient.redirectUris.includes(redirect_uri)) {
-      res.status(400).json({ error: "invalid_redirect_uri", error_description: "redirect_uri not registered for this client" });
+    let consumed;
+    try {
+      consumed = await this.oauth.consumeConsentTransaction(body.transaction!);
+    } catch {
+      res.status(400).json({ error: "consent transaction expired or already consumed" });
       return;
     }
 
-    // Mint anon session
+    // Mint anon session only after atomically claiming the one-time consent.
     // BUG-19: use the static top-level crypto import instead of dynamic require().
     const mcpUserId = `mcp:anon:${crypto.randomUUID().replace(/-/g, "")}`;
     const anonymousSession = await this.prisma.mcpAnonymousSession.create({
@@ -906,24 +951,24 @@ export class OAuthController {
 
     // Issue authcode for the anon user
     const { code } = await this.oauth.issueAuthCode({
-      clientId: client_id,
+      clientId: consumed.client.clientId,
       userId: anonClient.registeredByUserId,
       scopeTuple: {
         organizationId: ent.organizationId,
         projectId: ent.projectId,
         environmentId: ent.environmentId,
       },
-      codeChallenge: code_challenge,
+      codeChallenge: consumed.codeChallenge,
       codeChallengeMethod: "S256",
-      redirectUri: redirect_uri,
-      scopes: (body.scope ?? "mcp:tools").split(" "),
+      redirectUri: consumed.redirectUri,
+      scopes: consumed.scopes,
       entityPk: ent.entityPk,
       mcpIdentity: { kind: "anonymous", sessionId: anonymousSession.id },
     });
 
-    const redirectUrl = new URL(redirect_uri);
+    const redirectUrl = new URL(consumed.redirectUri);
     redirectUrl.searchParams.set("code", code);
-    if (state) redirectUrl.searchParams.set("state", state);
+    if (consumed.state) redirectUrl.searchParams.set("state", consumed.state);
     res.redirect(302, redirectUrl.toString());
   }
 
@@ -936,6 +981,7 @@ export class OAuthController {
   @Post("oauth/entity/:entityId/token")
   async entityToken(
     @Param("entityId") entityIdSlug: string,
+    @Query("environmentId") environmentId: string | undefined,
     @Headers("authorization") authorization: string | undefined,
     @Body()
     body: {
@@ -948,7 +994,7 @@ export class OAuthController {
       refresh_token?: string;
     },
   ) {
-    const ent = await this.resolveEntityForMcp(entityIdSlug);
+    const ent = await this.resolveEntityForMcp(entityIdSlug, environmentId);
     if (!ent) {
       throw new HttpException(
         { error: "not_found", error_description: "entity MCP not enabled" },
@@ -1002,6 +1048,11 @@ export class OAuthController {
           code: body.code,
           codeVerifier: body.code_verifier,
           redirectUri: body.redirect_uri,
+          expectedScope: {
+            organizationId: ent.organizationId,
+            projectId: ent.projectId,
+            environmentId: ent.environmentId,
+          },
         });
         return {
           access_token: result.accessToken,
@@ -1018,6 +1069,11 @@ export class OAuthController {
         const result = await this.oauth.exchangeRefreshToken({
           clientId,
           refreshToken: body.refresh_token,
+          expectedScope: {
+            organizationId: ent.organizationId,
+            projectId: ent.projectId,
+            environmentId: ent.environmentId,
+          },
         });
         return {
           access_token: result.accessToken,
@@ -1045,6 +1101,7 @@ export class OAuthController {
   @HttpCode(HttpStatus.OK)
   async entityRevoke(
     @Param("entityId") entityIdSlug: string,
+    @Query("environmentId") environmentId: string | undefined,
     @Headers("authorization") authorization: string | undefined,
     @Body()
     body: {
@@ -1054,7 +1111,7 @@ export class OAuthController {
       client_secret?: string;
     },
   ) {
-    const ent = await this.resolveEntityForMcp(entityIdSlug);
+    const ent = await this.resolveEntityForMcp(entityIdSlug, environmentId);
     if (!ent) {
       throw new HttpException(
         { error: "not_found", error_description: "entity MCP not enabled" },
@@ -1099,7 +1156,11 @@ export class OAuthController {
       }
     }
     if (body?.token) {
-      await this.oauth.revokeToken(body.token, clientId);
+      await this.oauth.revokeToken(body.token, clientId, {
+        organizationId: ent.organizationId,
+        projectId: ent.projectId,
+        environmentId: ent.environmentId,
+      });
     }
     return { ok: true };
   }
@@ -1137,14 +1198,16 @@ export class OAuthController {
     @Param("entityId") entityIdSlug: string,
     @Req() _req: Request,
     @Res() res: Response,
-    @Query("client_id") clientId: string | undefined,
-    @Query("redirect_uri") redirectUri: string | undefined,
-    @Query("code_challenge") codeChallenge: string | undefined,
-    @Query("code_challenge_method") codeChallengeMethod: string | undefined,
-    @Query("scope") scope: string | undefined,
-    @Query("state") state: string | undefined,
+    @Query("transaction") transaction: string | undefined,
   ): Promise<void> {
-    const ent = await this.resolveEntityForMcp(entityIdSlug);
+    const consent = transaction
+      ? await this.oauth.inspectConsentTransaction(transaction)
+      : null;
+    if (!consent || !consent.entityId || consent.entity?.externalId !== entityIdSlug) {
+      res.status(400).json({ error: "invalid consent transaction" });
+      return;
+    }
+    const ent = await this.resolveEntityForMcp(entityIdSlug, consent.environmentId);
     if (!ent) {
       res.status(404).json({ error: "entity MCP not enabled" });
       return;
@@ -1159,12 +1222,7 @@ export class OAuthController {
       return;
     }
 
-    if (!clientId || !redirectUri || !codeChallenge) {
-      res.status(400).json({ error: "client_id, redirect_uri, code_challenge required" });
-      return;
-    }
-
-    const client = await this.oauth.findClient(clientId);
+    const client = await this.oauth.findClient(consent.client.clientId);
     if (!client || (client as any).entityPk !== ent.entityPk) {
       res.status(400).json({ error: "invalid_client" });
       return;
@@ -1183,13 +1241,7 @@ export class OAuthController {
     // Format: base64url(json) + "." + HMAC-SHA256(base64url(json), secret)
     const callbackUrl = `${this.issuerUrl}/oauth/entity/${encodeURIComponent(entityIdSlug)}/oidc-callback`;
     const statePayload = {
-      entityId: entityIdSlug,
-      clientId,
-      redirectUri,
-      codeChallenge,
-      codeChallengeMethod: codeChallengeMethod ?? "S256",
-      scope: scope ?? "mcp:tools",
-      originalState: state ?? "",
+      transaction,
       entityPkceVerifier,
       callbackUrl,
       ts: Math.floor(Date.now() / 1000),
@@ -1245,11 +1297,15 @@ export class OAuthController {
       if (signedState) {
         const sp = this.verifyAndDecodeState(signedState);
         if (sp) {
-          const errUrl = new URL(sp.redirectUri);
-          errUrl.searchParams.set("error", entityError);
-          if (sp.originalState) errUrl.searchParams.set("state", sp.originalState);
-          res.redirect(302, errUrl.toString());
-          return;
+          const consent = await this.oauth.inspectConsentTransaction(sp.transaction);
+          if (consent) {
+            await this.oauth.consumeConsentTransaction(sp.transaction).catch(() => undefined);
+            const errUrl = new URL(consent.redirectUri);
+            errUrl.searchParams.set("error", entityError);
+            if (consent.state) errUrl.searchParams.set("state", consent.state);
+            res.redirect(302, errUrl.toString());
+            return;
+          }
         }
       }
       res.status(400).json({ error: entityError });
@@ -1267,7 +1323,19 @@ export class OAuthController {
       return;
     }
 
-    const ent = await this.resolveEntityForMcp(sp.entityId);
+    const consent = await this.oauth.inspectConsentTransaction(sp.transaction);
+    if (!consent || !consent.entityId || consent.entity?.externalId !== entityIdSlug) {
+      res.status(400).json({ error: "invalid_state", error_description: "consent transaction expired or consumed" });
+      return;
+    }
+    let consumed;
+    try {
+      consumed = await this.oauth.consumeConsentTransaction(sp.transaction);
+    } catch {
+      res.status(400).json({ error: "invalid_state", error_description: "consent transaction already consumed" });
+      return;
+    }
+    const ent = await this.resolveEntityForMcp(entityIdSlug, consent.environmentId);
     if (!ent) {
       res.status(404).json({ error: "entity MCP not enabled" });
       return;
@@ -1283,10 +1351,10 @@ export class OAuthController {
     // BUG-3: validate tokenUrl to prevent SSRF via operator-supplied config.
     const tokenUrlValidation = await validatePublicUrl(providerCfg.tokenUrl);
     if (!tokenUrlValidation.ok) {
-      const errUrl = new URL(sp.redirectUri);
+      const errUrl = new URL(consent.redirectUri);
       errUrl.searchParams.set("error", "server_error");
       errUrl.searchParams.set("error_description", "entity tokenUrl blocked by SSRF guard");
-      if (sp.originalState) errUrl.searchParams.set("state", sp.originalState);
+      if (consent.state) errUrl.searchParams.set("state", consent.state);
       res.redirect(302, errUrl.toString());
       return;
     }
@@ -1318,10 +1386,10 @@ export class OAuthController {
       }
       entityTokenData = await tokenRes.json() as typeof entityTokenData;
     } catch (err: any) {
-      const errUrl = new URL(sp.redirectUri);
+      const errUrl = new URL(consent.redirectUri);
       errUrl.searchParams.set("error", "server_error");
       errUrl.searchParams.set("error_description", "entity token exchange failed");
-      if (sp.originalState) errUrl.searchParams.set("state", sp.originalState);
+      if (consent.state) errUrl.searchParams.set("state", consent.state);
       res.redirect(302, errUrl.toString());
       return;
     }
@@ -1367,7 +1435,7 @@ export class OAuthController {
       ? new Date(Date.now() + entityTokenData.expires_in * 1000)
       : null;
 
-    const client = await this.oauth.findClient(sp.clientId);
+    const client = await this.oauth.findClient(consent.client.clientId);
     if (!client || client.entityPk !== ent.entityPk) {
       res.status(400).json({ error: "invalid_client" });
       return;
@@ -1443,24 +1511,24 @@ export class OAuthController {
     });
 
     const { code: platosCode } = await this.oauth.issueAuthCode({
-      clientId: sp.clientId,
+      clientId: consumed.client.clientId,
       userId: client.registeredByUserId,
       scopeTuple: {
         organizationId: ent.organizationId,
         projectId: ent.projectId,
         environmentId: ent.environmentId,
       },
-      codeChallenge: sp.codeChallenge,
+      codeChallenge: consumed.codeChallenge,
       codeChallengeMethod: "S256",
-      redirectUri: sp.redirectUri,
-      scopes: sp.scope.split(" ").filter(Boolean),
+      redirectUri: consumed.redirectUri,
+      scopes: consumed.scopes,
       entityPk: ent.entityPk,
       mcpIdentity: { kind: "oidc", sessionId: oidcSession.id },
     });
 
-    const finalRedirect = new URL(sp.redirectUri);
+    const finalRedirect = new URL(consumed.redirectUri);
     finalRedirect.searchParams.set("code", platosCode);
-    if (sp.originalState) finalRedirect.searchParams.set("state", sp.originalState);
+    if (consumed.state) finalRedirect.searchParams.set("state", consumed.state);
     res.redirect(302, finalRedirect.toString());
   }
 
@@ -1490,13 +1558,7 @@ export class OAuthController {
   }
 
   private verifyAndDecodeState(signedState: string): {
-    entityId: string;
-    clientId: string;
-    redirectUri: string;
-    codeChallenge: string;
-    codeChallengeMethod: string;
-    scope: string;
-    originalState: string;
+    transaction: string;
     entityPkceVerifier: string;
     callbackUrl: string;
     ts: number;
@@ -1519,6 +1581,7 @@ export class OAuthController {
       const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<string, unknown>;
       // Reject state older than 15 minutes (user has that long to complete auth).
       if (!parsed.ts || Math.abs(Date.now() / 1000 - Number(parsed.ts)) > 900) return null;
+      if (typeof parsed.transaction !== "string" || !parsed.transaction) return null;
       return parsed as ReturnType<typeof this.verifyAndDecodeState>;
     } catch {
       return null;
