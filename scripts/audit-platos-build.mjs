@@ -62,12 +62,17 @@ for (const path of [
   check(`${path} uses the explicit external Trigger gate`, source.includes("configureExternalTriggerSdk"));
 }
 
-// WIN-132 owns the destructive mode-C extraction. These assertions prevent a
-// "green" WIN-120 build from silently pretending the deferred closure is gone.
+// WIN-132 removes Platos-hosted Trigger execution while deliberately leaving
+// the broader run-engine package in place for still-deferred dashboard
+// consumers. Keep those two facts distinct so this audit catches either a
+// reintroduced Mode-C surface or an accidental package deletion.
 check("deferred run-engine package remains present", existsSync(join(root, "internal-packages/run-engine/package.json")));
-check("deferred trigger worker remains present", existsSync(join(root, "apps/agent/src/trigger-worker.ts")));
-check("deferred worker compose service remains present", /^  worker:/m.test(compose));
-check("deferred engine routes remain present", existsSync(join(root, "apps/webapp/app/routes/engine.v1.worker-actions.connect.ts")));
+check("local Trigger worker is absent", !existsSync(join(root, "apps/agent/src/trigger-worker.ts")));
+check("local Trigger worker compose service is absent", !/^  worker:/m.test(compose));
+check(
+  "local Trigger engine routes are absent",
+  !existsSync(join(root, "apps/webapp/app/routes/engine.v1.worker-actions.connect.ts"))
+);
 
 console.log(`platos-build-audit: ${checks.length} checks`);
 if (failures.length) {
