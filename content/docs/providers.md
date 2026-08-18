@@ -28,16 +28,17 @@ source_files_referenced:
 
 # Providers and BYOK
 
-Platos runs on your provider keys. There is no managed inference, no platform spend, no rebill. You bring an OpenAI key, an Anthropic key, an embedding key; Platos links them per environment and routes turns through them. Keys are encrypted at rest, scoped to the environment, and rotatable without touching agent configs.
+Platos runs on dashboard-managed BYOK credentials. There is no managed inference, platform spend, or rebill. Credentials are encrypted in the Platos-native store, owned by one Environment, and linked to provider metadata by reference.
 
 ## What it is
 
-Two layers:
+Three layers:
 
 1. **Provider manifests** under `apps/agent/src/providers/manifests/`. Each manifest declares the provider's `slug`, the env vars it needs (`OPENAI_API_KEY`, `OPENAI_API_BASE`, etc.), the auth shape, the model class, and any default model list.
-2. **`PlatosProviderKey` rows** keyed on `(scope, providerSlug, name)`. PIFSP-14 lets you have N keys per provider in the same environment; each agent can pin a specific key via `providerKeyId` or fall back to the scope default.
+2. **Environment Credentials** hold encrypted secret revisions. The raw value is accepted only by dashboard create/rotate operations and is never returned afterward.
+3. **Provider-key rows** hold a same-Environment Credential FK plus safe label/default metadata. Each agent can pin one reference or use the Environment default.
 
-`ScopedEnvService` reads the linked keys at runtime and assembles the env bag the LLM client uses. `ProviderRegistryService` enumerates available providers; `ProviderHealthService` runs cheap health pings (model list / hello call) and surfaces status on the providers page.
+At runtime, scoped resolution loads the authenticated Environment credential and unwraps it only at the provider constructor. It never falls back to `process.env[providerName]`. Missing dashboard credentials remain missing even when the agent container has a matching deployment variable.
 
 The model picker (`loadActiveProviders(scope)`) filters the model catalog by which providers have a linked key in the current environment. Hide a provider, hide its models.
 
@@ -45,40 +46,22 @@ The model picker (`loadActiveProviders(scope)`) filters the model catalog by whi
 
 A managed-inference platform locks you into someone else's pricing curve and rate limits. BYOK lets you negotiate your own rates, run on a private deployment (Azure OpenAI, Bedrock, on-prem), and rotate keys when the provider asks. The cost is some onboarding friction; Platos minimises that with a one-page checklist and the model picker that hides what you have not linked yet.
 
-The multi-key support (PIFSP-14) is for teams that need separate keys per project, per region, or per team. A single Anthropic provider can hold three keys: prod-us, prod-eu, dev. Each agent pins the key it should spend against; rotation hits one key without invalidating the rest.
+Multi-key support lets teams keep separate credentials per region, cost center, or workload. Each link remains Environment-local; a development reference cannot resolve a production credential.
 
 ## How to use it
 
-### Add a key
+### Add and link a credential
 
-Provider keys live in environment variables. The Providers page shows you which providers have a key wired and runs health checks against them; it is a read-and-link surface, not a create-a-secret form.
+1. Open the dashboard Providers page for the target Environment and choose **Add key** under the provider.
+2. Enter a label, the manifest's bare reference name (such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `VOYAGE_API_KEY`), and the raw value. Saving creates the encrypted Environment credential and its provider link together; the response contains safe metadata only.
+3. Enable/link the provider and select the new reference as default when required. Provider/MCP configuration accepts references, never plaintext.
+4. Run the provider health check and confirm the model picker shows the linked provider.
 
-For self-hosted Platos, edit your `.env` file and set the variable for the provider you want:
-
-```bash
-# LLM providers — at least one needed to run a turn
-ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-...
-GOOGLE_GENERATIVE_AI_API_KEY=...
-
-# Embedding provider — REQUIRED for memory + RAG
-PLATOS_EMBEDDING_PROVIDER=voyage   # or `openai`
-VOYAGE_API_KEY=pa-...              # required when provider=voyage
-```
-
-**The embedding key is its own track** — without one of `VOYAGE_API_KEY` or `OPENAI_API_KEY` (with `PLATOS_EMBEDDING_PROVIDER=openai`), the hourly memory-extraction cron and every `remember` call throw at write time. Multi-turn agents will look stateless. The agent emits a loud boot-time warning when neither is set; see [Memory § Setup](/docs/memory#setup).
-
-The exact variable name per provider lives in `.env.example`; the Providers page also shows the expected name for each provider. Restart the stack so the new env propagates:
-
-```bash
-docker compose -f docker-compose.platos.yml up -d
-```
-
-For managed deployments, use the dashboard Environment Variables page (Sidebar to Environment Variables) instead of editing a file. The agent picks up changes on the next request, no restart needed. Either path stores the secret in trigger.dev's `Environment Variables` table; the `PlatosProviderKey` row carries metadata only (label, last-used, status), not the secret.
+Embedding uses the same dashboard-only path. Set the non-secret `PLATOS_EMBEDDING_PROVIDER` deployment setting, then link `VOYAGE_API_KEY` or `OPENAI_API_KEY` in every Environment that needs memory/RAG.
 
 ### Multiple keys per provider
 
-Set numbered variants for additional keys: `ANTHROPIC_API_KEY_2`, `ANTHROPIC_API_KEY_3`, and so on. The Providers page lists every variant. Useful for splitting cost centers, separating regions, or rate-limit isolation.
+Use **Add key** again with distinct names/labels. The names remain references; they are not process environment fallbacks.
 
 ### Pin per agent
 
@@ -86,19 +69,19 @@ The agent's general tab has a "Provider key" field. Pick a specific named varian
 
 ### Rotate
 
-Edit the env var with the new value. Self-host: restart the stack. Managed: save on the Environment Variables page. Turns in flight finish on the old credential; new turns use the new one. No agent-config edits required.
+Rotate the credential value in the dashboard. The store atomically creates a new secret revision under the active credential root and retires the previous revision. A turn that already acquired old material may finish; subsequent reads receive the replacement. Provider links and agent pins do not change.
 
 ### Health
 
-The health badge per provider runs a cheap "list models" call every 5 minutes. Red badges mean the key is invalid or revoked; investigate before agents break.
+Health resolves only the linked Environment credential and returns status metadata. It never falls back to deployment provider variables or returns the value.
 
 ## Common pitfalls
 
-- The model picker is empty when no provider has a linked env var. The most common "I cannot pick a model" cause is "the env var is not set in this scope yet".
-- Provider env vars are scoped to `(organizationId, projectId, environmentId)`. A var in `dev` does not auto-apply to `prod`. Set per environment.
-- Wrong variable name. `OPENAI_KEY` is wrong; it has to be `OPENAI_API_KEY`. Check `.env.example` or the Providers page hint for each provider's expected name.
-- The encryption tail relies on `ENCRYPTION_KEY` being a 32-byte ASCII string. A wrong-length key breaks both reads and writes; see [Encryption and secrets](/docs/encryption-and-secrets) for the trap.
-- A pinned `providerKeyId` that no longer exists falls back to scope default. The agent does not error; it spends against a different key. If you want hard pinning, configure budget caps so the wrong key blows the cap loud.
+- A deployment `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` does not bootstrap scoped resolution. Create and link the credential in the dashboard.
+- Credentials are Environment-scoped. Create separate development and production credentials; names do not cross scope.
+- Wrong reference name. `OPENAI_KEY` does not match a credential named `OPENAI_API_KEY`.
+- Do not paste plaintext into provider or MCP reference fields. They persist identifiers only.
+- Root-key rotation and provider-secret rotation are separate; see [Encryption and secrets](/docs/encryption-and-secrets).
 
 ## Related
 

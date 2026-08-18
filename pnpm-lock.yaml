@@ -476,6 +476,9 @@ importers:
       '@platos/sdk':
         specifier: workspace:*
         version: link:../../packages/trigger-sdk
+      '@platos/tenancy-database':
+        specifier: workspace:*
+        version: link:../../internal-packages/tenancy-database
       '@popperjs/core':
         specifier: ^2.11.8
         version: 2.11.8

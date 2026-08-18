@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProviderHealthService } from "./provider-health.service";
+import { ProviderRuntimeError } from "../providers/provider-runtime.error";
 
 const scope = {
   organizationId: "org-a",
@@ -28,7 +29,8 @@ describe("ProviderHealthService clean credential path", () => {
       redis() as any,
       {
         hasProviderCredential: vi.fn().mockResolvedValue(false),
-        get: vi.fn().mockResolvedValue(undefined),
+        getForProvider: vi.fn().mockResolvedValue(undefined),
+        getProviderConfiguration: vi.fn().mockResolvedValue(undefined),
       } as any,
     );
 
@@ -54,7 +56,8 @@ describe("ProviderHealthService clean credential path", () => {
       {
         hasProviderCredential: vi.fn().mockResolvedValue(true),
         getProviderApiKey: vi.fn().mockResolvedValue("tenant-provider-key"),
-        get: vi.fn().mockResolvedValue(undefined),
+        getForProvider: vi.fn().mockResolvedValue(undefined),
+        getProviderConfiguration: vi.fn().mockResolvedValue(undefined),
       } as any,
     );
 
@@ -64,5 +67,34 @@ describe("ProviderHealthService clean credential path", () => {
     expect(result.error).toBe("provider_auth_failed");
     expect(JSON.stringify(result)).not.toContain("upstream-body-with-tenant-secret");
     expect(JSON.stringify(result)).not.toContain("tenant-provider-key");
+  });
+
+  it("escapes a stable safe error and makes no request when configured base URL is unreadable", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const cryptoDetail = "AES-GCM authentication failed for sentinel-ciphertext";
+    const service = new ProviderHealthService(
+      redis() as any,
+      {
+        hasProviderCredential: vi.fn().mockResolvedValue(true),
+        getProviderApiKey: vi.fn().mockResolvedValue("tenant-provider-key"),
+        getForProvider: vi.fn().mockResolvedValue(undefined),
+        getProviderConfiguration: vi.fn().mockRejectedValue(
+          new ProviderRuntimeError("provider_configuration_unavailable"),
+        ),
+      } as any,
+    );
+
+    const error = await service
+      .testProvider(scope, "openai")
+      .catch((value) => value as ProviderRuntimeError);
+
+    expect(error).toBeInstanceOf(ProviderRuntimeError);
+    expect(error).toMatchObject({
+      code: "provider_configuration_unavailable",
+      message: "Provider configuration is unavailable for this environment.",
+    });
+    expect(JSON.stringify(error)).not.toContain(cryptoDetail);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

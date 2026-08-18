@@ -17,6 +17,7 @@
 
 import type { McpToolHandler } from "../mcp-router";
 import type { RequestScope } from "../../auth/scope.guard";
+import { requireOperator } from "../../auth/scope.guard";
 import type { TraceService } from "../../monitoring/trace.service";
 import type { ProviderHealthService } from "../../auth/provider-health.service";
 
@@ -184,6 +185,7 @@ export function buildMonitoringToolHandlers(deps: {
       },
       async execute(params, scope) {
         const reqScope = scope as RequestScope;
+        requireOperator(reqScope);
         const provider = params["provider"] as string | undefined;
         if (provider) {
           const result = await providerHealth.testProvider(tuple(reqScope), provider);

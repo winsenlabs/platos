@@ -368,6 +368,7 @@ CREATE TABLE "public"."AgentBinding" (
 CREATE TABLE "public"."Credential" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
+    "activeSecretVersionId" UUID,
     "kind" "public"."CredentialKind" NOT NULL,
     "name" TEXT NOT NULL,
     "prefix" TEXT,
@@ -388,6 +389,42 @@ CREATE TABLE "public"."Credential" (
 );
 
 -- CreateTable
+CREATE TABLE "public"."CredentialSecretVersion" (
+    "id" UUID NOT NULL,
+    "credentialId" UUID NOT NULL,
+    "secretRevision" INTEGER NOT NULL,
+    "formatVersion" INTEGER NOT NULL,
+    "rootKeyVersion" INTEGER NOT NULL,
+    "salt" BYTEA NOT NULL,
+    "nonce" BYTEA NOT NULL,
+    "ciphertext" BYTEA NOT NULL,
+    "authTag" BYTEA NOT NULL,
+    "retiredAt" TIMESTAMP(3),
+    "readableUntil" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CredentialSecretVersion_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."CredentialAudit" (
+    "id" UUID NOT NULL,
+    "environmentId" UUID NOT NULL,
+    "credentialId" UUID NOT NULL,
+    "action" TEXT NOT NULL,
+    "outcome" TEXT NOT NULL,
+    "actorType" TEXT NOT NULL,
+    "actorId" TEXT NOT NULL,
+    "effectiveUserId" TEXT,
+    "secretRevision" INTEGER,
+    "fromRootKeyVersion" INTEGER,
+    "toRootKeyVersion" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CredentialAudit_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "public"."AccessKey" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
@@ -395,6 +432,8 @@ CREATE TABLE "public"."AccessKey" (
     "keyHash" TEXT NOT NULL,
     "allowedOrigins" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "lastUsedAt" TIMESTAMP(3),
+    "validUntil" TIMESTAMP(3),
+    "replacedById" UUID,
     "revokedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -406,10 +445,10 @@ CREATE TABLE "public"."AccessKey" (
 CREATE TABLE "public"."ProviderKey" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
+    "credentialId" UUID NOT NULL,
     "provider" TEXT NOT NULL,
     "label" TEXT NOT NULL,
     "environmentKeyName" TEXT NOT NULL,
-    "encryptedReference" TEXT,
     "isDefault" BOOLEAN NOT NULL DEFAULT false,
     "createdBy" TEXT NOT NULL,
     "lastUsedAt" TIMESTAMP(3),
@@ -1526,16 +1565,49 @@ CREATE UNIQUE INDEX "AgentBinding_environmentId_agentId_key" ON "public"."AgentB
 CREATE INDEX "Credential_environmentId_kind_revokedAt_idx" ON "public"."Credential"("environmentId", "kind", "revokedAt");
 
 -- CreateIndex
+CREATE INDEX "Credential_activeSecretVersionId_idx" ON "public"."Credential"("activeSecretVersionId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Credential_id_environmentId_key" ON "public"."Credential"("id", "environmentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Credential_activeSecretVersionId_id_key" ON "public"."Credential"("activeSecretVersionId", "id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Credential_environmentId_kind_name_key" ON "public"."Credential"("environmentId", "kind", "name");
+
+-- CreateIndex
+CREATE INDEX "CredentialSecretVersion_credentialId_retiredAt_idx" ON "public"."CredentialSecretVersion"("credentialId", "retiredAt");
+
+-- CreateIndex
+CREATE INDEX "CredentialSecretVersion_rootKeyVersion_idx" ON "public"."CredentialSecretVersion"("rootKeyVersion");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CredentialSecretVersion_id_credentialId_key" ON "public"."CredentialSecretVersion"("id", "credentialId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CredentialSecretVersion_credentialId_secretRevision_rootKey_key" ON "public"."CredentialSecretVersion"("credentialId", "secretRevision", "rootKeyVersion");
+
+-- CreateIndex
+CREATE INDEX "CredentialAudit_environmentId_createdAt_idx" ON "public"."CredentialAudit"("environmentId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "CredentialAudit_credentialId_createdAt_idx" ON "public"."CredentialAudit"("credentialId", "createdAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AccessKey_keyHash_key" ON "public"."AccessKey"("keyHash");
 
 -- CreateIndex
-CREATE INDEX "AccessKey_environmentId_revokedAt_idx" ON "public"."AccessKey"("environmentId", "revokedAt");
+CREATE INDEX "AccessKey_environmentId_revokedAt_validUntil_idx" ON "public"."AccessKey"("environmentId", "revokedAt", "validUntil");
+
+-- CreateIndex
+CREATE INDEX "AccessKey_replacedById_idx" ON "public"."AccessKey"("replacedById");
 
 -- CreateIndex
 CREATE INDEX "ProviderKey_environmentId_provider_isDefault_idx" ON "public"."ProviderKey"("environmentId", "provider", "isDefault");
+
+-- CreateIndex
+CREATE INDEX "ProviderKey_credentialId_idx" ON "public"."ProviderKey"("credentialId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ProviderKey_environmentId_provider_label_key" ON "public"."ProviderKey"("environmentId", "provider", "label");
@@ -1997,10 +2069,28 @@ ALTER TABLE "public"."AgentBinding" ADD CONSTRAINT "AgentBinding_clusterId_fkey"
 ALTER TABLE "public"."Credential" ADD CONSTRAINT "Credential_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."Credential" ADD CONSTRAINT "Credential_activeSecretVersionId_id_fkey" FOREIGN KEY ("activeSecretVersionId", "id") REFERENCES "public"."CredentialSecretVersion"("id", "credentialId") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CredentialSecretVersion" ADD CONSTRAINT "CredentialSecretVersion_credentialId_fkey" FOREIGN KEY ("credentialId") REFERENCES "public"."Credential"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CredentialAudit" ADD CONSTRAINT "CredentialAudit_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."CredentialAudit" ADD CONSTRAINT "CredentialAudit_credentialId_environmentId_fkey" FOREIGN KEY ("credentialId", "environmentId") REFERENCES "public"."Credential"("id", "environmentId") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."AccessKey" ADD CONSTRAINT "AccessKey_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."AccessKey" ADD CONSTRAINT "AccessKey_replacedById_fkey" FOREIGN KEY ("replacedById") REFERENCES "public"."AccessKey"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."ProviderKey" ADD CONSTRAINT "ProviderKey_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."ProviderKey" ADD CONSTRAINT "ProviderKey_credentialId_environmentId_fkey" FOREIGN KEY ("credentialId", "environmentId") REFERENCES "public"."Credential"("id", "environmentId") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."McpToken" ADD CONSTRAINT "McpToken_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2566,7 +2656,7 @@ CREATE TRIGGER "EndUser_owner_immutable" BEFORE UPDATE ON "public"."EndUser" FOR
 CREATE TRIGGER "Agent_owner_immutable" BEFORE UPDATE ON "public"."Agent" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('projectId');
 CREATE TRIGGER "AgentVersion_owner_immutable" BEFORE UPDATE ON "public"."AgentVersion" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('agentId');
 CREATE TRIGGER "AgentCluster_owner_immutable" BEFORE UPDATE ON "public"."AgentCluster" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
-CREATE TRIGGER "Credential_owner_immutable" BEFORE UPDATE ON "public"."Credential" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
+CREATE TRIGGER "Credential_owner_immutable" BEFORE UPDATE ON "public"."Credential" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'kind', 'name', 'provider');
 CREATE TRIGGER "Thread_owner_immutable" BEFORE UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
 CREATE TRIGGER "Turn_owner_immutable" BEFORE UPDATE ON "public"."Turn" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('threadId', 'agentVersionId', 'versionBucket');
 CREATE TRIGGER "Step_owner_immutable" BEFORE UPDATE ON "public"."Step" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('turnId');
@@ -3163,3 +3253,74 @@ CREATE TRIGGER "ImpersonationAudit_immutable_truncate"
 -- Runtime roles should receive SELECT/INSERT only. Remove mutation privileges
 -- inherited through PUBLIC as defense in depth; the triggers also bind owners.
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."ImpersonationAudit" FROM PUBLIC;
+
+-- WIN-123: Platos-native credential envelope and append-only audit invariants.
+CREATE FUNCTION "public"."reject_provider_key_credential_mismatch"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM "public"."Credential" credential
+     WHERE credential.id = NEW."credentialId"
+       AND credential."environmentId" = NEW."environmentId"
+       AND credential.provider = NEW.provider
+       AND credential.name = NEW."environmentKeyName"
+  ) THEN
+    RAISE EXCEPTION 'ProviderKey credential/provider mismatch' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "ProviderKey_credential_provider_integrity"
+  BEFORE INSERT OR UPDATE ON "public"."ProviderKey"
+  FOR EACH ROW EXECUTE FUNCTION "public"."reject_provider_key_credential_mismatch"();
+
+-- Enforce one current key even when a caller bypasses the rotation helper.
+CREATE UNIQUE INDEX "AccessKey_one_active_per_environment"
+  ON "public"."AccessKey" ("environmentId")
+  WHERE "revokedAt" IS NULL AND "validUntil" IS NULL;
+
+ALTER TABLE "public"."CredentialSecretVersion"
+  ADD CONSTRAINT "CredentialSecretVersion_revision_check" CHECK ("secretRevision" > 0),
+  ADD CONSTRAINT "CredentialSecretVersion_format_check" CHECK ("formatVersion" > 0),
+  ADD CONSTRAINT "CredentialSecretVersion_root_key_check" CHECK ("rootKeyVersion" > 0),
+  ADD CONSTRAINT "CredentialSecretVersion_salt_length_check" CHECK (octet_length("salt") = 32),
+  ADD CONSTRAINT "CredentialSecretVersion_nonce_length_check" CHECK (octet_length("nonce") = 12),
+  ADD CONSTRAINT "CredentialSecretVersion_auth_tag_length_check" CHECK (octet_length("authTag") = 16);
+
+CREATE FUNCTION "public"."reject_credential_secret_envelope_change"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD."credentialId" IS DISTINCT FROM NEW."credentialId"
+     OR OLD."secretRevision" IS DISTINCT FROM NEW."secretRevision"
+     OR OLD."formatVersion" IS DISTINCT FROM NEW."formatVersion"
+     OR OLD."rootKeyVersion" IS DISTINCT FROM NEW."rootKeyVersion"
+     OR OLD."salt" IS DISTINCT FROM NEW."salt"
+     OR OLD."nonce" IS DISTINCT FROM NEW."nonce"
+     OR OLD."ciphertext" IS DISTINCT FROM NEW."ciphertext"
+     OR OLD."authTag" IS DISTINCT FROM NEW."authTag"
+     OR OLD."createdAt" IS DISTINCT FROM NEW."createdAt" THEN
+    RAISE EXCEPTION 'CredentialSecretVersion envelope is immutable' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "CredentialSecretVersion_envelope_immutable"
+  BEFORE UPDATE ON "public"."CredentialSecretVersion"
+  FOR EACH ROW EXECUTE FUNCTION "public"."reject_credential_secret_envelope_change"();
+
+CREATE FUNCTION "public"."reject_credential_audit_mutation"()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'CredentialAudit is immutable' USING ERRCODE = '23514';
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER "CredentialAudit_immutable_update"
+  BEFORE UPDATE ON "public"."CredentialAudit"
+  FOR EACH ROW EXECUTE FUNCTION "public"."reject_credential_audit_mutation"();
+CREATE TRIGGER "CredentialAudit_immutable_delete"
+  BEFORE DELETE ON "public"."CredentialAudit"
+  FOR EACH ROW EXECUTE FUNCTION "public"."reject_credential_audit_mutation"();
+CREATE TRIGGER "CredentialAudit_immutable_truncate"
+  BEFORE TRUNCATE ON "public"."CredentialAudit"
+  FOR EACH STATEMENT EXECUTE FUNCTION "public"."reject_credential_audit_mutation"();
+REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."CredentialAudit" FROM PUBLIC;

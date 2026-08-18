@@ -118,12 +118,11 @@ const PLATFORM_TIER_MINIMUMS: Array<{ pattern: string; min: McpPermissionState }
   { pattern: "entities.census", min: "require_approval" },
   { pattern: "gdpr.export_user_everywhere", min: "require_approval" },
   // MCPF-W3 — provider integration mutations.
-  //   - add_key      registers a SecretStore-pointer row (label/envVarName);
+  //   - add_key      links a ProviderKey to a same-Environment Credential;
   //                  not directly destructive but unlocks model spend on a
   //                  new key, so always gated.
   //   - delete_key   removes the pointer row (refused if agents pinned).
-  //   - rotate_key   atomically swaps an active key's SecretStore var; the
-  //                  underlying plaintext rotation is out-of-band.
+  //   - rotate_key   atomically relinks to another provider-matched Credential.
   //   - set_routes   writes per-agent modelRoutes JSON; alters which
   //                  provider key the runtime hits at request time.
   // get / list / test_credentials / get_routes are read-only — auto-allow.

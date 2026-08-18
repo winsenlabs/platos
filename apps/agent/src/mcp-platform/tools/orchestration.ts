@@ -204,7 +204,7 @@ export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpTool
           displayName,
           mcpUrls: effectiveMcpUrls,
           serviceSecret: "auto",
-        });
+        }, scope);
 
         // Step 2 — for each `initialTools` name, upsert a minimal
         // PlatosToolDefinition (real schema gets overwritten by the first

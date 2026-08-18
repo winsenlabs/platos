@@ -62,7 +62,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(77);
+    expect(modelNames).toHaveLength(79);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -226,16 +226,25 @@ describe("domain schema integration", () => {
 
   test("enforces one provider default under real concurrent PostgreSQL writes", async () => {
     const direct = await Promise.allSettled(
-      Array.from({ length: 8 }, (_, index) => control.providerKey.create({
-        data: {
+      Array.from({ length: 8 }, async (_, index) => {
+        const credential = await control.credential.create({
+          data: {
+            environmentId: seeded.environment.id,
+            kind: CredentialKind.SERVICE_CREDENTIAL,
+            name: `DIRECT_${index}`,
+            provider: "concurrent-direct",
+          },
+        });
+        return control.providerKey.create({ data: {
           environmentId: seeded.environment.id,
+          credentialId: credential.id,
           provider: "concurrent-direct",
           label: `direct-${index}`,
           environmentKeyName: `DIRECT_${index}`,
           isDefault: true,
           createdBy: seeded.user.id,
-        },
-      })),
+        } });
+      }),
     );
     expect(direct.filter(({ status }) => status === "fulfilled")).toHaveLength(1);
     await expect(control.providerKey.count({
@@ -246,7 +255,16 @@ describe("domain schema integration", () => {
       },
     })).resolves.toBe(1);
 
-    const replaceDefault = (index: number) => control.$transaction(async (tx) => {
+    const replaceDefault = async (index: number) => {
+      const credential = await control.credential.create({
+        data: {
+          environmentId: seeded.environment.id,
+          kind: CredentialKind.SERVICE_CREDENTIAL,
+          name: `SERIALIZED_${index}`,
+          provider: "concurrent-serialized",
+        },
+      });
+      return control.$transaction(async (tx) => {
       await tx.$queryRawUnsafe(
         "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))::text AS locked",
         `${seeded.environment.id}:concurrent-serialized`,
@@ -262,6 +280,7 @@ describe("domain schema integration", () => {
       return tx.providerKey.create({
         data: {
           environmentId: seeded.environment.id,
+          credentialId: credential.id,
           provider: "concurrent-serialized",
           label: `serialized-${index}`,
           environmentKeyName: `SERIALIZED_${index}`,
@@ -269,7 +288,8 @@ describe("domain schema integration", () => {
           createdBy: seeded.user.id,
         },
       });
-    });
+      });
+    };
     const serialized = await Promise.allSettled(Array.from({ length: 8 }, (_, index) => replaceDefault(index)));
     expect(serialized.flatMap((result) => result.status === "rejected"
       ? [{ code: result.reason?.code, message: result.reason?.message }]
@@ -284,15 +304,25 @@ describe("domain schema integration", () => {
   });
 
   test("rejects deletion for every provider-key path reachable by an executable version", async () => {
-    const createKey = (provider: string, label: string) => control.providerKey.create({
-      data: {
+    const createKey = async (provider: string, label: string) => {
+      const environmentKeyName = `${label.toUpperCase()}_KEY`;
+      const credential = await control.credential.create({
+        data: {
+          environmentId: seeded.environment.id,
+          kind: CredentialKind.SERVICE_CREDENTIAL,
+          name: environmentKeyName,
+          provider,
+        },
+      });
+      return control.providerKey.create({ data: {
         environmentId: seeded.environment.id,
+        credentialId: credential.id,
         provider,
         label,
-        environmentKeyName: `${label.toUpperCase()}_KEY`,
+        environmentKeyName,
         createdBy: seeded.user.id,
-      },
-    });
+      } });
+    };
     const [runtimeKey, canaryKey, lockedKey, fallbackKey, compactionKey, wrongProviderKey] = await Promise.all([
       createKey("openai", "runtime-reference"),
       createKey("anthropic", "canary-reference"),
@@ -1036,9 +1066,38 @@ async function seedEveryModel(control: PrismaClient) {
     data: {
       environmentId: environment.id,
       kind: CredentialKind.SERVICE_CREDENTIAL,
-      name: "provider",
-      secretHash: "hash",
+      name: "ANTHROPIC_API_KEY",
+      provider: "anthropic",
       permissions: ["invoke"],
+    },
+  }));
+  const credentialSecretVersion = track("CredentialSecretVersion", await control.credentialSecretVersion.create({
+    data: {
+      credentialId: credential.id,
+      secretRevision: 1,
+      formatVersion: 1,
+      rootKeyVersion: 1,
+      salt: Buffer.alloc(32, 1),
+      nonce: Buffer.alloc(12, 2),
+      ciphertext: Buffer.from("seed-ciphertext"),
+      authTag: Buffer.alloc(16, 3),
+    },
+  }));
+  await control.credential.update({
+    where: { id: credential.id },
+    data: { activeSecretVersionId: credentialSecretVersion.id },
+  });
+  track("CredentialAudit", await control.credentialAudit.create({
+    data: {
+      environmentId: environment.id,
+      credentialId: credential.id,
+      action: "CREATE",
+      outcome: "SUCCESS",
+      actorType: "operator",
+      actorId: user.id,
+      effectiveUserId: user.id,
+      secretRevision: 1,
+      toRootKeyVersion: 1,
     },
   }));
   track("AccessKey", await control.accessKey.create({
@@ -1052,10 +1111,10 @@ async function seedEveryModel(control: PrismaClient) {
   track("ProviderKey", await control.providerKey.create({
     data: {
       environmentId: environment.id,
+      credentialId: credential.id,
       provider: "anthropic",
       label: "primary",
       environmentKeyName: "ANTHROPIC_API_KEY",
-      encryptedReference: "secret://provider",
       isDefault: true,
       createdBy: user.id,
     },
@@ -1547,6 +1606,7 @@ async function seedEveryModel(control: PrismaClient) {
     endUserIdentity,
     agent,
     agentVersion,
+    credential,
     cluster,
     thread,
     turn,

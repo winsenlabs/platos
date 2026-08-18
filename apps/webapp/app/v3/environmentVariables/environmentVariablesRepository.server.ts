@@ -48,6 +48,17 @@ const SecretValue = z.object({ secret: z.string() });
 export class EnvironmentVariablesRepository implements Repository {
   constructor(private prismaClient: PrismaClient = prisma) {}
 
+  /**
+   * Dashboard reads must never bulk-decrypt the environment. Secret values
+   * are represented by metadata only; a non-secret value may be resolved by
+   * its exact reference for display.
+   */
+  async getDashboardValue(valueReferenceKey: string | null, isSecret: boolean): Promise<string> {
+    if (!valueReferenceKey || isSecret) return "";
+    const secretStore = getSecretStore("DATABASE", { prismaClient: this.prismaClient });
+    return (await secretStore.getSecret(SecretValue, valueReferenceKey))?.secret ?? "";
+  }
+
   async create(projectId: string, options: CreateEnvironmentVariables): Promise<CreateResult> {
     const project = await this.prismaClient.project.findFirst({
       where: {
@@ -193,8 +204,7 @@ export class EnvironmentVariablesRepository implements Repository {
               existingSecret &&
               existingSecret.secret === variable.value &&
               existingValueRecord &&
-              (options.isSecret === undefined ||
-                existingValueRecord.isSecret === options.isSecret);
+              (options.isSecret === undefined || existingValueRecord.isSecret === options.isSecret);
             if (canSkip) {
               continue;
             }

@@ -95,6 +95,8 @@ export const sourceModelManifest = [
 export const supportDomainModels = [
   "AgentToolPolicy",
   "Credential",
+  "CredentialAudit",
+  "CredentialSecretVersion",
 ] as const;
 
 /** All source target models plus independently required clean-slate support models. */

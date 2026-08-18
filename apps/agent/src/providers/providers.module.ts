@@ -3,12 +3,11 @@ import { ProviderRegistryService } from "./provider-registry.service";
 import { ScopedEnvService } from "./scoped-env.service";
 import { ModelCatalogService } from "./model-catalog.service";
 import { ProvidersController } from "./providers.controller";
-import { SecretsModule } from "../auth/secrets.module";
+import { ProviderKeyService } from "./provider-key.service";
 
 @Module({
-  imports: [SecretsModule],
   controllers: [ProvidersController],
-  providers: [ProviderRegistryService, ScopedEnvService, ModelCatalogService],
-  exports: [ProviderRegistryService, ScopedEnvService, ModelCatalogService],
+  providers: [ProviderRegistryService, ProviderKeyService, ScopedEnvService, ModelCatalogService],
+  exports: [ProviderRegistryService, ProviderKeyService, ScopedEnvService, ModelCatalogService],
 })
 export class ProvidersModule {}

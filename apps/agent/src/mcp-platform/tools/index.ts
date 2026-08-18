@@ -40,6 +40,7 @@ import type { MemoryService } from "../../memory/memory.service";
 import type { MemoryExtractionService } from "../../memory/memory-extraction.service";
 import type { KnowledgeGraphService } from "../../memory/knowledge-graph.service";
 import type { ProviderRegistryService } from "../../providers/provider-registry.service";
+import type { ProviderKeyService } from "../../providers/provider-key.service";
 import type { ScopedEnvService } from "../../providers/scoped-env.service";
 import type { OAuthService } from "../../oauth/oauth.service";
 import type { MonitoringApprovalsService } from "../../monitoring/approvals.service";
@@ -118,6 +119,7 @@ export function buildPlatformToolHandlers(deps: {
   memoryExtraction: MemoryExtractionService;
   graph: KnowledgeGraphService;
   providers: ProviderRegistryService;
+  providerKeys: ProviderKeyService;
   // MCPF-W3 — provider key resolution + health checks (providers.test_credentials, rotate_key).
   scopedEnv: ScopedEnvService;
   // MCPF-W3 — OAuth client + token management.
@@ -905,6 +907,7 @@ export function buildPlatformToolHandlers(deps: {
     ...buildProviderToolHandlers({
       agentCrud: deps.agentCrud,
       providers: deps.providers,
+      providerKeys: deps.providerKeys,
       scopedEnv: deps.scopedEnv,
       toolAudit: deps.toolAudit,
       prisma: deps.prisma,

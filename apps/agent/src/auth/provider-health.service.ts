@@ -4,6 +4,7 @@ import type Redis from "ioredis";
 import type { RequestScope } from "./scope.guard";
 import { PROVIDER_MANIFESTS, getManifest, type ProviderManifest } from "../providers/manifests";
 import { ScopedEnvService } from "../providers/scoped-env.service";
+import { ProviderRuntimeError } from "../providers/provider-runtime.error";
 
 export type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -13,18 +14,30 @@ export interface ProviderHealthResult {
   latencyMs: number;
   error?: string;
   model?: string;
-  /** Which required env vars are currently set in the agent container. */
+  /** Which required same-Environment credential references are available. */
   requiredEnv: Array<{ name: string; set: boolean }>;
+}
+
+type ProviderProbeErrorCode =
+  | "provider_auth_failed"
+  | "provider_request_failed"
+  | "probe_configuration_error";
+
+class ProviderProbeError extends Error {
+  constructor(readonly code: ProviderProbeErrorCode) {
+    super(code);
+    this.name = "ProviderProbeError";
+  }
+}
+
+function rejectUpstreamStatus(status: number): never {
+  throw new ProviderProbeError(
+    status === 401 || status === 403 ? "provider_auth_failed" : "provider_request_failed",
+  );
 }
 
 function scopeKey(scope: ScopeTuple): string {
   return `${scope.organizationId}:${scope.projectId}:${scope.environmentId}`;
-}
-
-class ProviderProbeError extends Error {
-  constructor(readonly authFailure: boolean) {
-    super(authFailure ? "provider_auth_failed" : "provider_request_failed");
-  }
 }
 
 /**
@@ -46,11 +59,20 @@ export class ProviderHealthService {
   private async resolveEnv(
     scope: ScopeTuple,
     name: string,
+    provider: string,
   ): Promise<string | undefined> {
-    return this.scopedEnv.get(scope, name);
+    return this.scopedEnv.getForProvider(scope, name, provider);
   }
 
-  private resolveApiKey(scope: ScopeTuple, manifest: ProviderManifest): Promise<string> {
+  private resolveProviderConfiguration(
+    scope: ScopeTuple,
+    name: string,
+    provider: string,
+  ): Promise<string | undefined> {
+    return this.scopedEnv.getProviderConfiguration(scope, name, provider);
+  }
+
+  private resolveApiKey(scope: ScopeTuple, manifest: ProviderManifest): Promise<string | undefined> {
     return this.scopedEnv.getProviderApiKey(
       scope,
       manifest.id,
@@ -68,7 +90,7 @@ export class ProviderHealthService {
         status: "not_configured",
         latencyMs: 0,
         requiredEnv: [],
-        error: `Unknown provider "${providerId}". See PROVIDER_MANIFESTS.`,
+        error: "unknown_provider",
       };
     }
 
@@ -76,7 +98,7 @@ export class ProviderHealthService {
       name,
       set: index === 0
         ? await this.scopedEnv.hasProviderCredential(scope, manifest.id)
-        : !!(await this.resolveEnv(scope, name)),
+        : !!(await this.resolveEnv(scope, name, manifest.id)),
     })));
     const allSet = requiredEnv.every((e) => e.set);
     if (!allSet) {
@@ -111,12 +133,13 @@ export class ProviderHealthService {
       await this.redis.set(cacheKey, JSON.stringify(result), "EX", 300);
       return result;
     } catch (error: unknown) {
-      const isAuthError = error instanceof ProviderProbeError && error.authFailure;
+      if (error instanceof ProviderRuntimeError) throw error;
+      const code = error instanceof ProviderProbeError ? error.code : "provider_request_failed";
       const result: ProviderHealthResult = {
         provider: providerId,
-        status: isAuthError ? "invalid_key" : "error",
+        status: code === "provider_auth_failed" ? "invalid_key" : "error",
         latencyMs: Date.now() - start,
-        error: isAuthError ? "provider_auth_failed" : "provider_request_failed",
+        error: code,
         requiredEnv,
       };
       await this.redis.set(cacheKey, JSON.stringify(result), "EX", 60);
@@ -141,9 +164,14 @@ export class ProviderHealthService {
   }
 
   private async probe(manifest: ProviderManifest, scope: ScopeTuple): Promise<{ model: string }> {
+    const apiKey = async (): Promise<string> => {
+      const key = await this.resolveApiKey(scope, manifest);
+      if (!key) throw new ProviderProbeError("probe_configuration_error");
+      return key;
+    };
     switch (manifest.healthCheck.kind) {
       case "anthropic": {
-        const key = await this.resolveApiKey(scope, manifest);
+        const key = await apiKey();
         const res = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
@@ -159,14 +187,16 @@ export class ProviderHealthService {
           signal: AbortSignal.timeout(10000),
         });
         if (!res.ok) {
-          throw new ProviderProbeError(res.status === 401 || res.status === 403);
+          rejectUpstreamStatus(res.status);
         }
         return { model: manifest.healthCheck.probeModel };
       }
 
       case "openai": {
-        const key = await this.resolveApiKey(scope, manifest);
-        const base = (await this.resolveEnv(scope, "OPENAI_BASE_URL")) || "https://api.openai.com";
+        const key = await apiKey();
+        const base =
+          (await this.resolveProviderConfiguration(scope, "OPENAI_BASE_URL", manifest.id)) ||
+          "https://api.openai.com";
         const res = await fetch(`${base}/v1/chat/completions`, {
           method: "POST",
           headers: {
@@ -181,13 +211,13 @@ export class ProviderHealthService {
           signal: AbortSignal.timeout(10000),
         });
         if (!res.ok) {
-          throw new ProviderProbeError(res.status === 401 || res.status === 403);
+          rejectUpstreamStatus(res.status);
         }
         return { model: manifest.healthCheck.probeModel };
       }
 
       case "google": {
-        const key = await this.resolveApiKey(scope, manifest);
+        const key = await apiKey();
         const res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${manifest.healthCheck.probeModel}:generateContent?key=${key}`,
           {
@@ -201,21 +231,21 @@ export class ProviderHealthService {
           },
         );
         if (!res.ok) {
-          throw new ProviderProbeError(res.status === 401 || res.status === 403);
+          rejectUpstreamStatus(res.status);
         }
         return { model: manifest.healthCheck.probeModel };
       }
 
       case "vertex-file": {
-        const serialized = await this.resolveApiKey(scope, manifest);
+        const serialized = await apiKey();
         let content: { project_id?: string };
         try {
           content = JSON.parse(serialized);
         } catch {
-          throw new ProviderProbeError(false);
+          throw new ProviderProbeError("probe_configuration_error");
         }
         if (!content.project_id) {
-          throw new ProviderProbeError(false);
+          throw new ProviderProbeError("probe_configuration_error");
         }
         return { model: `${manifest.healthCheck.probeModel} (project: ${content.project_id})` };
       }
@@ -225,13 +255,18 @@ export class ProviderHealthService {
         // xAI, DeepSeek, Cerebras, Perplexity, Together, Fireworks, Azure).
         // The manifest carries the `baseURL`; for Azure the deployment URL
         // is supplied via AZURE_OPENAI_BASE_URL since it's per-resource.
-        const key = await this.resolveApiKey(scope, manifest);
+        const key = await apiKey();
         let baseURL = manifest.healthCheck.baseURL;
         if (manifest.id === "azure") {
-          baseURL = (await this.resolveEnv(scope, "AZURE_OPENAI_BASE_URL")) || baseURL;
+          baseURL =
+            (await this.resolveProviderConfiguration(
+              scope,
+              "AZURE_OPENAI_BASE_URL",
+              manifest.id,
+            )) || baseURL;
         }
         if (!baseURL) {
-          throw new ProviderProbeError(false);
+          throw new ProviderProbeError("probe_configuration_error");
         }
         const url = `${baseURL.replace(/\/$/, "")}/chat/completions`;
         const headers: Record<string, string> = {
@@ -252,7 +287,7 @@ export class ProviderHealthService {
           signal: AbortSignal.timeout(10000),
         });
         if (!res.ok) {
-          throw new ProviderProbeError(res.status === 401 || res.status === 403);
+          rejectUpstreamStatus(res.status);
         }
         return { model: manifest.healthCheck.probeModel };
       }

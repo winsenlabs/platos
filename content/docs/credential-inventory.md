@@ -10,13 +10,14 @@ questions:
   - "Which Platos credentials and secrets exist?"
   - "How long does each token live?"
   - "How do I revoke or rotate a credential?"
-  - "Why are there three encryption keys?"
+  - "Why is the credential root-key ring separate from other encryption keys?"
 related:
   - auth-modes
   - mcp-tokens-and-pat
   - encryption-and-secrets
 source_files_referenced:
-  - internal-packages/database/prisma/schema.prisma
+  - internal-packages/tenancy-database/prisma/schema.prisma
+  - internal-packages/tenancy-database/src/secrets.ts
   - apps/agent/src/shared/env.ts
   - apps/webapp/app/env.server.ts
   - apps/agent/src/mcp-platform/token.service.ts
@@ -26,7 +27,7 @@ source_files_referenced:
 
 # Credential and secret inventory
 
-This page is the canonical inventory for Platos-owned authentication, signing, encryption, and service-boundary secrets. Third-party provider credentials such as Anthropic, Voyage, object-store, Postgres, Redis, and ClickHouse passwords are operational dependencies, not Platos credential families; rotate those with their provider and update every consuming container.
+This page is the canonical inventory for Platos-owned authentication, signing, encryption, and service-boundary secrets. Dashboard BYOK provider and MCP credentials are Environment-owned Platos credentials. Object-store, Postgres, Redis, and ClickHouse passwords remain deployment dependencies; rotate those with their provider and update every consuming container.
 
 Never log raw bearer tokens, token hashes, signing secrets, or encryption keys.
 
@@ -75,19 +76,20 @@ Generate new AES-256-GCM deployment keys as exactly **64 hexadecimal characters 
 openssl rand -hex 32
 ```
 
-| Input                           | Domain                                                                                    | Why it remains separate                                                          | Production behavior                                                                    |
-| ------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `ENCRYPTION_KEY`                | Webapp encrypted columns, scoped provider values, and Platos-owned operator TOTP material | Compromise should not decrypt agent integration secrets or conversation content  | Required and format-validated; known example sentinel is rejected                      |
-| `PLATOS_ENCRYPTION_KEY`         | Agent integration/secret-store ciphertext                                                 | Integration credentials have a different operational and rotation blast radius   | Required; invalid/missing key fails closed in production                               |
-| `PLATOS_MESSAGE_ENCRYPTION_KEY` | Message, audit, and PII-bearing content envelopes                                         | Content can be versioned and re-encrypted independently from service credentials | Required; missing/invalid key fails closed in production rather than writing plaintext |
+| Input                           | Domain                                                                       | Why it remains separate                                                          | Production behavior                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `ENCRYPTION_KEY`                | Webapp encrypted columns and Platos-owned operator TOTP material             | Webapp/auth data has a different access and rotation boundary                    | Required and format-validated; known example sentinel is rejected                      |
+| `PLATOS_ENCRYPTION_KEY`         | Agent integration ciphertext outside the native Environment credential store | Agent integration data has a separate legacy rotation boundary                   | Required; invalid/missing key fails closed in production                               |
+| `PLATOS_MESSAGE_ENCRYPTION_KEY` | Message, audit, and PII-bearing content envelopes                            | Content can be versioned and re-encrypted independently from service credentials | Required; missing/invalid key fails closed in production rather than writing plaintext |
+| `PLATOS_CREDENTIAL_ROOT_KEYS`   | Native Environment provider/MCP credential envelopes                         | Customer credentials need staged root overlap, rewrap, and removal checks        | Active version and root required; missing, malformed, or wrong roots fail closed       |
 
 Existing exact 32-byte UTF-8 `ENCRYPTION_KEY` values remain supported. Keep their exact bytes until every historical row has been re-encrypted; changing only the environment value makes those rows unrecoverable.
 
-The agent compares configured key bytes pairwise and refuses reused material, including hex strings that differ only by letter case.
+Do not reuse material across these domains or with session, magic-link, internal-auth, or worker secrets.
 
-### Webapp and agent secret-store rotation
+### Fixed-key legacy domain rotation
 
-These ciphertext domains do not currently carry a per-row key version. Do not replace either key in place before re-encrypting every row in that domain. The safe procedure is:
+`ENCRYPTION_KEY` and `PLATOS_ENCRYPTION_KEY` ciphertext does not carry the native credential root version. Do not replace either key in place before re-encrypting every row in that domain. The safe procedure is:
 
 1. Take and verify a database backup.
 2. Run a maintenance re-encryption job that decrypts with the old key and writes with the new key.
@@ -96,6 +98,18 @@ These ciphertext domains do not currently carry a per-row key version. Do not re
 5. Retain the old key only in the approved secret manager rollback window, then destroy it.
 
 If no re-encryption tooling is available, rotation is a planned maintenance migration, not an environment-only change.
+
+### Credential root-key rotation
+
+The native credential store uses `PLATOS_CREDENTIAL_ROOT_KEY_VERSION` as its positive active version and `PLATOS_CREDENTIAL_ROOT_KEYS` as a JSON map of positive versions to 64-hex roots. For version 1 to 2:
+
+1. Add `"2":"<new-root>"` to the root map on webapp, agent, and worker while active remains `1`; deploy and verify every service accepts the overlap ring.
+2. Switch `PLATOS_CREDENTIAL_ROOT_KEY_VERSION=2` on all three and deploy. New envelopes use root 2 while root 1 remains readable.
+3. Rewrap every active credential. Each rewrap is atomic and writes one immutable audit row.
+4. Check credential-store `status()` until `activeVersionsByRoot[1]` is zero and require `canRemoveRoot(..., 1) === true`.
+5. Only then remove the `"1"` map entry everywhere, deploy, and repeat status plus a representative read.
+
+Old-root removal is blocked while the old version is active or any active credential envelope references it. Provider-secret rotation is separate and creates a new secret revision under the currently active root.
 
 ### Message-key rotation
 
@@ -122,7 +136,13 @@ For version 1 to version 2:
 
 ## Audit review
 
-`PlatosCredentialAudit` records only:
+`CredentialAudit` is the native credential ledger. It records Environment, credential ID, action (`CREATE`, `READ`, `ROTATE`, `REWRAP`, or `REVOKE`), actor metadata, secret revision, and root transition only. It never records plaintext or envelope material. Reads, rotations, and rewraps write audit in the same transaction; audit insertion failure aborts the operation, and database triggers reject UPDATE, DELETE, and TRUNCATE.
+
+Provider and MCP metadata stores references only: `ProviderKey.credentialId` and the bare same-Environment `credsSecretKey` name. Scoped credential resolution is dashboard-only and never falls back to a matching provider name in `process.env`.
+
+The clean-slate initial migration is the only native credential schema path. There is no inherited SecretStore dual-write or fallback.
+
+For database-backed bearer credentials, `PlatosCredentialAudit` records only:
 
 - family and credential row ID;
 - action (`mint`, `use`, or `revoke`);

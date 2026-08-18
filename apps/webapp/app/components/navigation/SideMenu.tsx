@@ -284,7 +284,7 @@ export function SideMenu({
   return (
     <div
       className={cn(
-        "relative h-full border-r border-grid-bright bg-background-bright transition-all duration-200",
+        "side-menu-responsive relative h-full border-r border-grid-bright bg-background-bright transition-all duration-200",
         isCollapsed ? "w-[2.75rem]" : "w-56"
       )}
     >
