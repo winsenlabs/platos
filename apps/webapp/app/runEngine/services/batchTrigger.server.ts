@@ -18,7 +18,7 @@ import { logger } from "~/services/logger.server";
 import { batchTriggerWorker } from "~/v3/batchTriggerWorker.server";
 import { downloadPacketFromObjectStore, uploadPacketToObjectStore } from "../../v3/objectStore.server";
 import { ServiceValidationError, WithRunEngine } from "../../v3/services/baseService.server";
-import { TriggerTaskService } from "../../v3/services/triggerTask.server";
+import { rejectLocalTaskTrigger } from "../../v3/externalTriggerBoundary.server";
 import { startActiveSpan } from "../../v3/tracer.server";
 import { TriggerFailedTaskService } from "./triggerFailedTask.server";
 
@@ -659,37 +659,7 @@ export class RunEngineBatchTriggerService extends WithRunEngine {
       currentIndex,
     });
 
-    const triggerTaskService = new TriggerTaskService();
-
-    const result = await triggerTaskService.call(
-      item.task,
-      environment,
-      {
-        ...item,
-        options: {
-          ...item.options,
-          parentRunId,
-          resumeParentOnCompletion,
-          parentBatch: batch.id,
-        },
-      },
-      {
-        triggerVersion: options?.triggerVersion,
-        traceContext: options?.traceContext,
-        spanParentAsLink: options?.spanParentAsLink,
-        batchId: batch.id,
-        batchIndex: currentIndex,
-        realtimeStreamsVersion: options?.realtimeStreamsVersion,
-        triggerSource: options?.triggerSource ?? "api",
-        triggerAction: options?.triggerAction ?? "trigger",
-      }
-    );
-
-    return result
-      ? {
-          friendlyId: result.run.friendlyId,
-        }
-      : undefined;
+    return rejectLocalTaskTrigger();
   }
 
   async #handlePayloadPacket(

@@ -1,41 +1,15 @@
 import { task, metadata, logger } from "@trigger.dev/sdk";
-import type { PrismaClient } from "@platos/tenancy-database";
-import { runInNewContext } from "node:vm";
+import { postInternalCallback, type InternalCallbackFailureCode } from "./internal-callback";
 
 /**
- * PIFSP-12 — Platos custom task executor.
+ * PIFSP-12 / WIN-132 — callback-only Platos custom task shell.
  *
- * Triggered by the `run_platos_task` meta-tool (agent-spawn tasks) or by the
- * task management UI ("Run now" button on manual tasks).
- *
- * Payload shape:
- *   taskRowId — DB id of the PlatosTask row (for scope-gated lookup + lastRunAt bump).
- *   payload   — The operator-supplied payload passed to the handler's `run()` fn.
- *   scope     — Full (org, proj, env) tuple for DB access + audit.
- *   invokedBy — "agent" | "manual" | "schedule" | "webhook"
- *
- * Execution:
- *   1. Fetch `compiledHandler` from DB (Prisma in Node context via direct env access).
- *   2. Run the handler JS in a sandboxed `vm.runInNewContext()` context.
- *   3. The sandbox `ctx` object exposes: `logger`, `metadata`, `fetch`,
- *      `wait` (thin shim), and `output.set()`.
- *   4. Any unhandled throw becomes `{ status: "failed", error }` (not a re-throw)
- *      so trigger.dev run detail shows a clean handle rather than a raw stack.
- *
- * Security:
- *   - Compiled handler runs in a fresh V8 context with NO access to Node globals,
- *     process.env, or require(). Only the `ctx` sandbox object is exposed.
- *   - Operator code cannot exfiltrate secrets or break out of the scope.
- *   - This is appropriate for operator-authored code (admin-tier trust); it is
- *     NOT appropriate for end-user-authored code (no vm escape protection).
- *
- * TypeScript support:
- *   The handler is stored as plain JavaScript (ES2020). The task editor in the
- *   webapp renders a textarea with JSDoc type hints. Full TypeScript compile
- *   (esbuild.transform) is a follow-up once esbuild is added to agent deps.
+ * Trigger receives only identifiers, canonical scope, invocation metadata, and
+ * the operator-supplied task input. Handler source, database credentials, and
+ * Platos authentication never appear in the Trigger payload. The Platos agent
+ * owns task lookup, scope enforcement, handler execution, and last-run writes.
  */
-
-interface PlatosCustomTaskPayload {
+export interface PlatosCustomTaskPayload {
   taskRowId: string;
   payload?: Record<string, unknown>;
   scope: {
@@ -48,152 +22,85 @@ interface PlatosCustomTaskPayload {
   agentId?: string;
 }
 
-interface PlatosCustomTaskOutput {
+export interface PlatosCustomTaskOutput {
+  status: "completed";
+  result?: unknown;
+  durationMs: number;
+}
+
+export type PlatosCustomTaskError =
+  | InternalCallbackFailureCode
+  | "CALLBACK_INVALID_CONTEXT"
+  | "CALLBACK_EXECUTION_FAILED";
+
+interface CallbackOutput {
   status: "completed" | "failed";
   result?: unknown;
-  error?: string;
-  durationMs: number;
+}
+
+const CALLBACK_PATH = "/api/v1/agent/internal/platos-tasks/execute";
+const CALLBACK_TIMEOUT_MS = 590_000;
+
+async function failRun(error: PlatosCustomTaskError): Promise<never> {
+  await metadata.set("stage", "failed");
+  throw new Error(error);
 }
 
 export const platosCustomTask = task({
   id: "platos-custom-task",
-  queue: { concurrencyLimit: parseInt(process.env.PLATOS_CUSTOM_TASK_CONCURRENCY ?? "10", 10) },
-  retry: { maxAttempts: 3, factor: 2, minTimeoutInMs: 1000, maxTimeoutInMs: 10000 },
-  run: async (payload: PlatosCustomTaskPayload): Promise<PlatosCustomTaskOutput> => {
+  queue: {
+    concurrencyLimit: parseInt(process.env.PLATOS_CUSTOM_TASK_CONCURRENCY ?? "10", 10),
+  },
+  maxDuration: 600,
+  retry: {
+    maxAttempts: 3,
+    factor: 2,
+    minTimeoutInMs: 1000,
+    maxTimeoutInMs: 10000,
+  },
+  run: async (payload: PlatosCustomTaskPayload, context): Promise<PlatosCustomTaskOutput> => {
     const startMs = Date.now();
+    await metadata.set("stage", "dispatching");
+    await metadata.set("taskId", payload.taskRowId);
 
-    // Dynamic Prisma import — the agent container generates Prisma at startup.
-    // We import directly rather than going through NestJS DI since trigger tasks
-    // run outside the NestJS container lifecycle.
-    let prisma: PrismaClient;
-    try {
-      const { PrismaClient: ControlPrismaClient } = await import(
-        "@platos/tenancy-database"
-      );
-      prisma = new ControlPrismaClient({
-        datasourceUrl: process.env.DATABASE_URL,
-      });
-    } catch (err: unknown) {
-      logger.error("[platos-custom-task] Failed to create Prisma client", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return { status: "failed", error: "DB client unavailable", durationMs: Date.now() - startMs };
+    const requestId = context?.ctx?.run?.id;
+    if (typeof requestId !== "string" || requestId.length === 0) {
+      return failRun("CALLBACK_INVALID_CONTEXT");
     }
 
-    try {
-      // 1. Load the task row.
-      await metadata.set("stage", "loading");
-      const row = await prisma.job.findFirst({
-        where: {
-          id: payload.taskRowId,
-          environmentId: payload.scope.environmentId,
-          environment: {
-            projectId: payload.scope.projectId,
-            project: { organizationId: payload.scope.organizationId },
-          },
-          status: "ACTIVE",
-        },
-        select: {
-          handler: true,
-          externalId: true,
-          timeoutSeconds: true,
-          displayName: true,
-        },
-      });
-
-      if (!row) {
-        return { status: "failed", error: "Task not found or inactive", durationMs: Date.now() - startMs };
-      }
-
-      const source = row.handler;
-      if (!source?.trim()) {
-        return { status: "failed", error: "Task has no handler code", durationMs: Date.now() - startMs };
-      }
-
-      await metadata.set("stage", "executing");
-      const taskId = row.externalId ?? payload.taskRowId;
-      await metadata.set("taskId", taskId);
-
-      // 2. Build sandbox context — expose only safe primitives.
-      let sandboxOutput: unknown = undefined;
-      const sandbox = {
-        // Platos ctx helpers (operator API surface)
-        ctx: {
-          logger: {
-            info: (msg: string, data?: unknown) => logger.info(`[task:${taskId}] ${msg}`, data as any),
-            warn: (msg: string, data?: unknown) => logger.warn(`[task:${taskId}] ${msg}`, data as any),
-            error: (msg: string, data?: unknown) => logger.error(`[task:${taskId}] ${msg}`, data as any),
-          },
-          metadata: {
-            set: async (key: string, value: unknown) => metadata.set(key, value as any),
-          },
-          fetch: globalThis.fetch,
-          output: {
-            set: (value: unknown) => { sandboxOutput = value; },
-          },
-        },
-        payload: payload.payload ?? {},
-        // Standard JS globals — no Node-specific globals
-        console: {
-          log: (...args: unknown[]) => logger.info(`[task:${taskId}]`, { args }),
-          warn: (...args: unknown[]) => logger.warn(`[task:${taskId}]`, { args }),
-          error: (...args: unknown[]) => logger.error(`[task:${taskId}]`, { args }),
-        },
-        JSON,
-        Math,
-        Date,
-        Promise,
-        Array,
-        Object,
-        String,
-        Number,
-        Boolean,
-        Error,
-        setTimeout: undefined,  // blocked — use ctx.wait in future
-        setInterval: undefined, // blocked
-        require: undefined,     // blocked — no module access
-        process: undefined,     // blocked — no process env access
-      };
-
-      // 3. Execute in isolated context.
-      // Wrap the handler: extract the `run` export and call it.
-      const wrappedSource = `
-        (async function __platosTaskWrapper__() {
-          ${source}
-          if (typeof run !== "function") throw new Error("Handler must export a \`run\` function");
-          return await run(payload, ctx);
-        })()
-      `;
-
-      const timeoutMs = Math.min(row.timeoutSeconds * 1000, 3600_000);
-      const resultPromise = runInNewContext(wrappedSource, sandbox) as Promise<unknown>;
-
-      // Enforce timeout
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Handler timed out after ${row.timeoutSeconds}s`)), timeoutMs)
-      );
-
-      const result = await Promise.race([resultPromise, timeoutPromise]);
-      const finalResult = sandboxOutput !== undefined ? sandboxOutput : result;
-
-      // 4. Bump lastRunAt
-      await prisma.job.updateMany({
-        where: { id: payload.taskRowId },
-        data: { lastStartedAt: new Date() },
-      }).catch(() => {});
-
-      await metadata.set("stage", "completed");
-      return { status: "completed", result: finalResult, durationMs: Date.now() - startMs };
-
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      logger.error("[platos-custom-task] Handler error", {
+    const callback = await postInternalCallback<CallbackOutput>({
+      path: CALLBACK_PATH,
+      timeoutMs: CALLBACK_TIMEOUT_MS,
+      body: {
+        requestId,
         taskRowId: payload.taskRowId,
-        error: errorMsg,
+        payload: payload.payload ?? {},
+        scope: payload.scope,
+        invokedBy: payload.invokedBy,
+        ...(payload.agentId ? { agentId: payload.agentId } : {}),
+      },
+    });
+
+    if (!callback.ok) {
+      logger.error("[platos-custom-task] Internal callback failed", {
+        code: callback.code,
+        ...(callback.httpStatus ? { httpStatus: callback.httpStatus } : {}),
       });
-      return { status: "failed", error: errorMsg, durationMs: Date.now() - startMs };
-    } finally {
-      await prisma.$disconnect().catch(() => {});
+      return failRun(callback.code);
     }
+
+    if (callback.value.status !== "completed") {
+      logger.error("[platos-custom-task] Internal execution failed", {
+        code: "CALLBACK_EXECUTION_FAILED",
+      });
+      return failRun("CALLBACK_EXECUTION_FAILED");
+    }
+
+    await metadata.set("stage", "completed");
+    return {
+      status: "completed",
+      result: callback.value.result,
+      durationMs: Date.now() - startMs,
+    };
   },
 });

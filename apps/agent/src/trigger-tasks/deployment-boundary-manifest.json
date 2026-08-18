@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "deploymentOwner": "external-trigger",
+  "entryPoints": [
+    "agent-batch.task.ts",
+    "agent-durable-approval-wait.task.ts",
+    "agent-scheduled-run.task.ts",
+    "agent-subrun.task.ts",
+    "agent-tool-block.task.ts",
+    "approvals-expiry-sweep.task.ts",
+    "attachment-retention.task.ts",
+    "budget-alert.task.ts",
+    "chat-session-reaper.task.ts",
+    "chat-session.task.ts",
+    "compaction.task.ts",
+    "cost-reconcile.task.ts",
+    "durable-turn.task.ts",
+    "employee-run.task.ts",
+    "eval-sample.task.ts",
+    "litellm-cost-refresh.task.ts",
+    "memory-extraction.task.ts",
+    "observability-dlq-drain.task.ts",
+    "platos-custom-task.ts",
+    "skill-run.task.ts"
+  ],
+  "forbiddenRuntimeImports": [
+    "@platos/database",
+    "@platos/tenancy-database",
+    "@prisma/client",
+    "@prisma/adapter-pg",
+    "pg"
+  ],
+  "forbiddenRuntimeIdentifiers": [
+    "DATABASE_URL",
+    "DIRECT_URL",
+    "PrismaClient"
+  ],
+  "forbiddenRelativeImports": [
+    "database.provider",
+    "prisma"
+  ],
+  "callbackAuthentication": {
+    "transport": "X-Platos-Internal-Auth header",
+    "payloadFields": [
+      "taskRowId",
+      "payload",
+      "scope",
+      "invokedBy",
+      "agentId"
+    ],
+    "forbiddenPayloadFields": [
+      "authorization",
+      "token",
+      "secret",
+      "handler",
+      "compiledHandler",
+      "databaseUrl"
+    ]
+  }
+}

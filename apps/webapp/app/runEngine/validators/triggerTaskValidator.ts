@@ -1,7 +1,10 @@
 import { MAX_TAGS_PER_RUN } from "~/models/taskRunTag.server";
 import { logger } from "~/services/logger.server";
 import { getEntitlement } from "~/services/platform.v3.server";
-import { MAX_ATTEMPTS, OutOfEntitlementError } from "~/v3/services/triggerTask.server";
+import {
+  MAX_TRIGGER_ATTEMPTS,
+  OutOfEntitlementError,
+} from "~/v3/externalTriggerBoundary.server";
 import { isFinalRunStatus } from "~/v3/taskStatus";
 import type {
   EntitlementValidationParams,
@@ -62,11 +65,11 @@ export class DefaultTriggerTaskValidator implements TriggerTaskValidator {
   validateMaxAttempts(params: MaxAttemptsValidationParams): ValidationResult {
     const { taskId, attempt } = params;
 
-    if (attempt > MAX_ATTEMPTS) {
+    if (attempt > MAX_TRIGGER_ATTEMPTS) {
       return {
         ok: false,
         error: new ServiceValidationError(
-          `Failed to trigger ${taskId} after ${MAX_ATTEMPTS} attempts.`
+          `Failed to trigger ${taskId} after ${MAX_TRIGGER_ATTEMPTS} attempts.`
         ),
       };
     }

@@ -5,7 +5,7 @@
  * discovers registrations from source, while the source-discovery test keeps
  * this classification exhaustive without importing task modules at runtime.
  */
-type TriggerTaskRegistrationId = `platos${string}` | "price-verify";
+type TriggerTaskRegistrationId = `platos${string}`;
 type TriggerSessionRegistrationId = `platos.${string}`;
 
 function defineTaskManifest<const T extends readonly TriggerTaskRegistrationId[]>(ids: T): T {
@@ -43,12 +43,6 @@ export const EXTERNAL_PLATOS_SESSION_MANIFEST = defineSessionManifest([
   "platos.chat.session",
 ] as const);
 
-/** Trigger registrations retained as internal/mode-C surface until WIN-132. */
-export const INTERNAL_TRIGGER_TASK_MANIFEST = defineTaskManifest([
-  "platos-agent-batch-op",
-  "price-verify",
-] as const);
-
 /** Source retained for compatibility, but not an active Platos dispatch target. */
 export const DORMANT_TRIGGER_TASK_MANIFEST = defineTaskManifest([
   "platos.agent.durable-turn",
@@ -56,9 +50,5 @@ export const DORMANT_TRIGGER_TASK_MANIFEST = defineTaskManifest([
 
 export type ExternalPlatosTaskId = (typeof EXTERNAL_PLATOS_TASK_MANIFEST)[number];
 export type ExternalPlatosSessionId = (typeof EXTERNAL_PLATOS_SESSION_MANIFEST)[number];
-export type InternalTriggerTaskId = (typeof INTERNAL_TRIGGER_TASK_MANIFEST)[number];
 export type DormantTriggerTaskId = (typeof DORMANT_TRIGGER_TASK_MANIFEST)[number];
-export type ClassifiedTriggerTaskId =
-  | ExternalPlatosTaskId
-  | InternalTriggerTaskId
-  | DormantTriggerTaskId;
+export type ClassifiedTriggerTaskId = ExternalPlatosTaskId | DormantTriggerTaskId;

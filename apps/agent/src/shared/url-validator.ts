@@ -38,7 +38,6 @@ import { promises as dns } from "node:dns";
 import * as net from "node:net";
 import type { LookupFunction } from "node:net";
 import { Agent, fetch as undiciFetch } from "undici";
-import { env } from "./env";
 
 export type UrlValidationError =
   | { kind: "invalid_url"; reason: string }
@@ -132,8 +131,12 @@ export async function validatePublicUrl(
   raw: string,
   opts: { allowHttp?: boolean } = {},
 ): Promise<UrlValidationResult> {
+  // Keep this utility safe for external Trigger bundles: importing the full
+  // agent env schema would also load/validate DATABASE_URL in the worker.
   const allowHttp =
-    opts.allowHttp ?? env.PLATOS_ALLOW_HTTP_WEBHOOKS === true;
+    opts.allowHttp ??
+    (process.env.PLATOS_ALLOW_HTTP_WEBHOOKS === "true" ||
+      process.env.PLATOS_ALLOW_HTTP_WEBHOOKS === "1");
 
   let url: URL;
   try {

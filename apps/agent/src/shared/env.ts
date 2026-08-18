@@ -126,11 +126,10 @@ export const AgentEnvSchema = z
       .optional()
       .transform((v) => v === "true"),
 
-    // Trigger / engine integration
+    // External Trigger integration
     TRIGGER_API_URL: z.string().url().optional(),
     TRIGGER_SECRET_KEY: optTrimmedString,
     TRIGGER_INTERNAL_SECRET: optTrimmedString,
-    TRIGGER_WORKER_TOKEN: optTrimmedString,
     PLATOS_TRIGGER_API_URL: z.string().url().optional(),
     PLATOS_TRIGGER_API_KEY: optTrimmedString,
     PLATOS_TRIGGER_PROJECT_REF: optTrimmedString,
@@ -172,10 +171,6 @@ export const AgentEnvSchema = z
     PLATOS_WEBAPP_ADMIN_URL: z.string().url().optional(),
     PLATOS_INTERNAL_AUTH_TOKEN: optTrimmedString,
     PLATOS_ERASURE_HASH_SALT: z.string().min(32).optional(),
-
-    // Worker mode — set to "true" to run the trigger.dev task worker
-    // instead of the NestJS HTTP server. See entrypoint.sh.
-    WORKER_MODE: boolLike,
 
     // Test mode (EOBD.4). Belt-and-braces production guard below.
     PLATOS_TEST_MODE: boolLike,

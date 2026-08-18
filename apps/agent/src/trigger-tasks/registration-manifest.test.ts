@@ -7,7 +7,6 @@ import {
   DORMANT_TRIGGER_TASK_MANIFEST,
   EXTERNAL_PLATOS_SESSION_MANIFEST,
   EXTERNAL_PLATOS_TASK_MANIFEST,
-  INTERNAL_TRIGGER_TASK_MANIFEST,
 } from "./registration-manifest";
 
 type DeclarationKind = "task" | "schedule" | "chat.customAgent";
@@ -104,7 +103,7 @@ function duplicates(values: readonly string[]): string[] {
 }
 
 describe("Trigger registration manifest", () => {
-  it("discovers all 21 task/schedule declarations and the chat customAgent", () => {
+  it("discovers all 19 task/schedule declarations and the chat customAgent", () => {
     const registrations = discoverRegistrations();
     const taskRegistrations = registrations.filter(
       (registration) =>
@@ -114,7 +113,7 @@ describe("Trigger registration manifest", () => {
       (registration) => registration.declaration === "chat.customAgent"
     );
 
-    expect(taskRegistrations).toHaveLength(21);
+    expect(taskRegistrations).toHaveLength(19);
     expect(sessionRegistrations).toEqual([
       {
         id: "platos.chat.session",
@@ -127,16 +126,11 @@ describe("Trigger registration manifest", () => {
 
   it("classifies every discovered registration exactly once", () => {
     const registrations = discoverRegistrations();
-    const taskManifest = [
-      ...EXTERNAL_PLATOS_TASK_MANIFEST,
-      ...INTERNAL_TRIGGER_TASK_MANIFEST,
-      ...DORMANT_TRIGGER_TASK_MANIFEST,
-    ];
+    const taskManifest = [...EXTERNAL_PLATOS_TASK_MANIFEST, ...DORMANT_TRIGGER_TASK_MANIFEST];
     const completeManifest = [...taskManifest, ...EXTERNAL_PLATOS_SESSION_MANIFEST];
 
     expect(EXTERNAL_PLATOS_TASK_MANIFEST).toHaveLength(18);
     expect(EXTERNAL_PLATOS_SESSION_MANIFEST).toEqual(["platos.chat.session"]);
-    expect(INTERNAL_TRIGGER_TASK_MANIFEST).toEqual(["platos-agent-batch-op", "price-verify"]);
     expect(DORMANT_TRIGGER_TASK_MANIFEST).toEqual(["platos.agent.durable-turn"]);
     expect(duplicates(completeManifest)).toEqual([]);
     expect([...completeManifest].sort()).toEqual(registrations.map(({ id }) => id).sort());
@@ -174,10 +168,18 @@ describe("Trigger deployment config", () => {
     return (module.exports as { default: { project: string } }).default;
   }
 
-  it("requires an explicit project ref only when deployment config is loaded", () => {
-    expect(() => evaluateConfig({})).toThrow(/TRIGGER_PROJECT_REF is required/);
-    expect(evaluateConfig({ TRIGGER_PROJECT_REF: "  proj_explicit  " }).project).toBe(
-      "proj_explicit"
+  it("requires an explicit project ref and Trigger API endpoint when deployment config is loaded", () => {
+    expect(() => evaluateConfig({ TRIGGER_API_URL: "https://trigger.example.com" })).toThrow(
+      /TRIGGER_PROJECT_REF is required/
     );
+    expect(() => evaluateConfig({ TRIGGER_PROJECT_REF: "proj_explicit" })).toThrow(
+      /TRIGGER_API_URL is required/
+    );
+    expect(
+      evaluateConfig({
+        TRIGGER_PROJECT_REF: "  proj_explicit  ",
+        TRIGGER_API_URL: "https://trigger.example.com",
+      }).project
+    ).toBe("proj_explicit");
   });
 });

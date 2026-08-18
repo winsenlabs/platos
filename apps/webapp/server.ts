@@ -3,12 +3,10 @@ import "./sentry.server";
 import { createRequestHandler } from "@remix-run/express";
 import { broadcastDevReady, logDevReady } from "@remix-run/server-runtime";
 import compression from "compression";
-import type { Server as EngineServer } from "engine.io";
 import express from "express";
 import morgan from "morgan";
 import { nanoid } from "nanoid";
 import path from "path";
-import type { Server as IoServer } from "socket.io";
 import { RateLimitMiddleware } from "~/services/apiRateLimit.server";
 import { type RunWithHttpContextFunction } from "~/services/httpAsyncStorage.server";
 import cluster from "node:cluster";
@@ -116,9 +114,7 @@ if (ENABLE_CLUSTER && cluster.isPrimary) {
   const port = process.env.REMIX_APP_PORT || process.env.PORT || 3000;
 
   if (process.env.HTTP_SERVER_DISABLED !== "true") {
-    const socketIo: { io: IoServer } | undefined = build.entry.module.socketIo;
     const apiRateLimiter: RateLimitMiddleware = build.entry.module.apiRateLimiter;
-    const engineRateLimiter: RateLimitMiddleware = build.entry.module.engineRateLimiter;
     const runWithHttpContext: RunWithHttpContextFunction = build.entry.module.runWithHttpContext;
 
     app.use((req, res, next) => {
@@ -165,7 +161,6 @@ if (ENABLE_CLUSTER && cluster.isPrimary) {
       }
 
       app.use(apiRateLimiter);
-      app.use(engineRateLimiter);
 
       app.all(
         "*",
@@ -219,36 +214,6 @@ if (ENABLE_CLUSTER && cluster.isPrimary) {
 
     process.on("SIGTERM", closeServer);
     process.on("SIGINT", closeServer);
-
-    socketIo?.io.attach(server);
-    server.removeAllListeners("upgrade"); // prevent duplicate upgrades from listeners created by io.attach()
-
-    server.on("upgrade", async (req, socket, head) => {
-      console.log(`Attemping to upgrade connection at url ${req.url}`);
-
-      socket.on("error", (err) => {
-        console.error("Connection upgrade error:", err);
-      });
-
-      const url = new URL(req.url ?? "", "http://localhost");
-
-      // Upgrade socket.io connection
-      if (url.pathname.startsWith("/socket.io/")) {
-        console.log(`Socket.io client connected, upgrading their connection...`);
-
-        // https://github.com/socketio/socket.io/issues/4693
-        (socketIo?.io.engine as EngineServer).handleUpgrade(req, socket, head);
-        return;
-      }
-
-      // Non-socket.io upgrades are no longer supported (legacy V1 `/ws` dev CLI
-      // endpoint was removed in Theme R.1). Reject with a clear error.
-      socket.destroy(
-        new Error(
-          `Cannot upgrade connection at path ${url.pathname}: only /socket.io/ upgrades are supported.`
-        )
-      );
-    });
   } else {
     require(BUILD_DIR);
     console.log(`✅ app ready (skipping http server)`);

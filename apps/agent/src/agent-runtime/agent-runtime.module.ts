@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { AgentController } from "./agent.controller";
 import { PlatosTasksController } from "./platos-tasks.controller";
+import { PlatosTaskExecutionController } from "./platos-task-execution.controller";
+import { PlatosTaskExecutionService } from "./platos-task-execution.service";
 import { ChannelsController } from "./channels.controller";
 import { ChannelAppsController } from "./channel-apps.controller";
 import { AgentService } from "./agent.service";
@@ -43,12 +45,12 @@ import { PromptCacheService } from "./prompt-cache.service";
     // forwardRef on module scan. No need to import TriggerBridgeModule
     // here.
   ],
-  controllers: [AgentController, PlatosTasksController, ChannelsController, ChannelAppsController],
+  controllers: [AgentController, PlatosTasksController, PlatosTaskExecutionController, ChannelsController, ChannelAppsController],
   // TurnDispatchService — the durable-vs-direct chokepoint. Exported so the WS
   // gateway (ConnectionsModule), the SSE/REST controller (this module), and the
   // Slack channel (ChannelsModule) all route dispatch through the ONE service
   // that reads executionMode.
-  providers: [AgentService, AgentTaskService, TurnDispatchService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
+  providers: [AgentService, AgentTaskService, TurnDispatchService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService, PlatosTaskExecutionService],
   exports: [AgentService, AgentTaskService, TurnDispatchService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
 })
 export class AgentRuntimeModule {}
