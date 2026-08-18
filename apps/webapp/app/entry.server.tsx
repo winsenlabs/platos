@@ -5,8 +5,6 @@ import { parseAcceptLanguage } from "intl-parse-accept-language";
 import isbot from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import { PassThrough } from "stream";
-import * as Worker from "~/services/worker.server";
-import { bootstrap } from "./bootstrap";
 import { LocaleContextProvider } from "./components/primitives/LocaleProvider";
 import {
   OperatingSystemContextProvider,
@@ -17,12 +15,7 @@ import { env } from "./env.server";
 import { eventLoopMonitor } from "./eventLoopMonitor.server";
 import { logger } from "./services/logger.server";
 import { resourceMonitor } from "./services/resourceMonitor.server";
-import { singleton } from "./utils/singleton";
 import { remoteBuildsEnabled } from "./v3/remoteImageBuilder.server";
-import {
-  registerRunEngineEventBusHandlers,
-  setupBatchQueueCallbacks,
-} from "./v3/runEngineHandlers.server";
 
 const ABORT_DELAY = 30000;
 
@@ -193,14 +186,6 @@ export const handleError = wrapHandleErrorWithSentry((error, { request }) => {
   }
 });
 
-Worker.init().catch((error) => {
-  logError(error);
-});
-
-bootstrap().catch((error) => {
-  logError(error);
-});
-
 function logError(error: unknown, request?: Request) {
   console.error(error);
 
@@ -233,13 +218,8 @@ process.on("uncaughtException", (error, origin) => {
   process.exit(1);
 });
 
-singleton("RunEngineEventBusHandlers", registerRunEngineEventBusHandlers);
-singleton("SetupBatchQueueCallbacks", setupBatchQueueCallbacks);
-
 export { apiRateLimiter } from "./services/apiRateLimit.server";
-export { engineRateLimiter } from "./services/engineRateLimit.server";
 export { runWithHttpContext } from "./services/httpAsyncStorage.server";
-export { socketIo } from "./v3/handleSocketIo.server";
 
 if (env.EVENT_LOOP_MONITOR_ENABLED === "1") {
   eventLoopMonitor.enable();

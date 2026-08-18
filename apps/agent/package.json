@@ -9,6 +9,8 @@
     "start": "node dist/main.js",
     "start:prod": "node dist/main.js",
     "test:trigger-bundle": "vitest run scripts/trigger-worker-externals.test.ts",
+    "audit:trigger-boundary": "vitest run src/trigger-tasks/deployment-boundary-manifest.test.ts",
+    "test:trigger-cutover": "node --test scripts/trigger-cutover-plan.test.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:dev": "vitest"

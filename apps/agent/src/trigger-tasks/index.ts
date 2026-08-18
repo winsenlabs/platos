@@ -1,9 +1,6 @@
 export { agentToolBlock } from "./agent-tool-block.task";
 export type { AgentToolBlockPayload, AgentToolBlockOutput } from "./agent-tool-block.task";
 
-export { agentBatchOp } from "./agent-batch-op.task";
-export type { AgentBatchOpPayload, AgentBatchOpOutput } from "./agent-batch-op.task";
-
 // W.1 — durable `agent_batch` meta-tool executor. Runs an LLM turn per
 // item in a supplied list with a restricted tool subset, streams per-item
 // progress back to the spawning thread via RunsBridgeService.
@@ -23,7 +20,6 @@ export type { AgentSubrunPayload, AgentSubrunOutput } from "./agent-subrun.task"
 export { agentScheduledRun } from "./agent-scheduled-run.task";
 
 export { litellmCostRefresh } from "./litellm-cost-refresh.task";
-export { priceVerify } from "./price-verify.task";
 export type { LiteLLMCatalog, LiteLLMModelEntry } from "./litellm-cost-refresh.task";
 
 export { attachmentRetention } from "./attachment-retention.task";
@@ -38,7 +34,7 @@ export { approvalsExpirySweep } from "./approvals-expiry-sweep.task";
 // conversation is done so they don't accumulate "Active" forever.
 export { chatSessionReaper } from "./chat-session-reaper.task";
 
-// EOBD.100 — every-2-min ClickHouse DLQ drain. Retries dual-write
+// EOBD.100 — every-2-min ClickHouse DLQ drain. Retries ClickHouse dual-write
 // failures so transient CH outages don't lose telemetry.
 export { observabilityDlqDrain } from "./observability-dlq-drain.task";
 

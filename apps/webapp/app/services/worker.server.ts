@@ -7,7 +7,7 @@ import {
   BatchProcessingOptions as RunEngineBatchProcessingOptions,
   RunEngineBatchTriggerService,
 } from "~/runEngine/services/batchTrigger.server";
-import { scheduleEngine } from "~/v3/scheduleEngine.server";
+import { rejectLocalScheduleOperation } from "~/v3/externalTriggerBoundary.server";
 import { DeliverAlertService } from "~/v3/services/alerts/deliverAlert.server";
 import { PerformDeploymentAlertsService } from "~/v3/services/alerts/performDeploymentAlerts.server";
 import { PerformTaskRunAlertsService } from "~/v3/services/alerts/performTaskRunAlerts.server";
@@ -30,7 +30,7 @@ const workerCatalog = {
     fromStatus: z.string(),
     errorMessage: z.string(),
   }),
-  // @deprecated, moved to ScheduleEngine
+  // @deprecated, local scheduled task execution is disabled
   "v3.triggerScheduledTask": z.object({
     instanceId: z.string(),
   }),
@@ -121,15 +121,14 @@ function getWorkerQueue() {
           return await service.call(payload.deploymentId, payload.fromStatus, payload.errorMessage);
         },
       },
-      // @deprecated, moved to ScheduleEngine
+      // @deprecated, local scheduled task execution is disabled
       "v3.triggerScheduledTask": {
         priority: 0,
         maxAttempts: 3, // total delay of 30 seconds
         handler: async (payload, job) => {
-          await scheduleEngine.triggerScheduledTask({
-            instanceId: payload.instanceId,
-            finalAttempt: job.attempts === job.max_attempts,
-          });
+          void payload;
+          void job;
+          rejectLocalScheduleOperation();
         },
       },
       // @deprecated, moved to alertsWorker.server.ts

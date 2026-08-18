@@ -1,26 +1,42 @@
 name: Deploy Trigger.dev tasks
 
-# Auto-deploys the Platos agent's durable tasks (apps/agent/src/trigger-tasks)
-# to the managed trigger.dev project on every push to main that touches them.
-#
-# SETUP (one-time):
-#   1. GitHub → repo Settings → Secrets and variables → Actions → New secret:
-#        TRIGGER_ACCESS_TOKEN = <your external Trigger deployment access token>
-#   2. Set the project ref in apps/agent/trigger.config.ts (or the
-#        TRIGGER_PROJECT_REF repo variable) to your project's proj_… id.
+# Builds an immutable external Trigger deployment without promoting it. The
+# emitted deployment-contract artifact records the exact source-compatible and
+# target-compatible versions used by the WIN-132 cutover/rollback runbook.
+# Promotion is an explicit workflow_dispatch choice and always targets the
+# version emitted by this deploy job; production pause/drain remains a separate
+# authorized operator action.
 
 on:
   push:
     branches: [main]
     paths:
       - "apps/agent/src/trigger-tasks/**"
+      - "apps/agent/scripts/trigger-cutover-plan.mjs"
+      - "apps/agent/scripts/verify-no-trigger-db-sessions.sql"
       - "apps/agent/trigger.config.ts"
       - ".github/workflows/trigger-deploy.yml"
-  workflow_dispatch: {} # allow manual "Run workflow"
+  workflow_dispatch:
+    inputs:
+      source_deployment_version:
+        description: "Currently promoted source-compatible Trigger deployment version"
+        required: true
+        type: string
+      promote_target:
+        description: "Explicitly promote the newly deployed target version"
+        required: true
+        default: false
+        type: boolean
+      trigger_api_url:
+        description: "Exact Trigger API endpoint (Trigger Cloud or the separately deployed self-hosted service)"
+        required: true
+        type: string
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    outputs:
+      deployment_version: ${{ steps.deploy-trigger.outputs.deploymentVersion }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,9 +51,89 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Deploy to Trigger.dev
+      - name: Verify external Trigger deployment boundary
+        working-directory: apps/agent
+        run: pnpm exec vitest run src/trigger-tasks/deployment-boundary-manifest.test.ts
+
+      - name: Deploy immutable Trigger.dev version
+        id: deploy-trigger
         working-directory: apps/agent
         env:
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
           TRIGGER_PROJECT_REF: ${{ vars.TRIGGER_PROJECT_REF }}
-        run: pnpm dlx trigger.dev@4.5.4 deploy
+          TRIGGER_API_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.trigger_api_url || vars.TRIGGER_API_URL }}
+        run: |
+          test -n "$TRIGGER_API_URL"
+          pnpm dlx trigger.dev@4.5.4 deploy --skip-promotion
+
+      - name: Validate pinned deployment output
+        env:
+          TARGET_DEPLOYMENT_VERSION: ${{ steps.deploy-trigger.outputs.deploymentVersion }}
+        run: test -n "$TARGET_DEPLOYMENT_VERSION"
+
+      - name: Record deployment contract
+        env:
+          SOURCE_DEPLOYMENT_VERSION: ${{ inputs.source_deployment_version }}
+          TARGET_DEPLOYMENT_VERSION: ${{ steps.deploy-trigger.outputs.deploymentVersion }}
+          PROMOTION_REQUESTED: ${{ inputs.promote_target }}
+          TRIGGER_API_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.trigger_api_url || vars.TRIGGER_API_URL }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const contract = {
+              schemaVersion: 1,
+              commitSha: process.env.COMMIT_SHA,
+              sourceDeploymentVersion: process.env.SOURCE_DEPLOYMENT_VERSION || null,
+              targetDeploymentVersion: process.env.TARGET_DEPLOYMENT_VERSION,
+              triggerApiUrl: process.env.TRIGGER_API_URL,
+              promotionRequested: process.env.PROMOTION_REQUESTED === "true",
+            };
+            fs.writeFileSync("trigger-deployment-contract.json", JSON.stringify(contract, null, 2) + "\n", { mode: 0o600 });
+          '
+
+      - name: Upload deployment contract
+        uses: actions/upload-artifact@v4
+        with:
+          name: trigger-deployment-contract-${{ github.run_id }}
+          path: trigger-deployment-contract.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Summarize pinned target
+        env:
+          SOURCE_DEPLOYMENT_VERSION: ${{ inputs.source_deployment_version }}
+          TARGET_DEPLOYMENT_VERSION: ${{ steps.deploy-trigger.outputs.deploymentVersion }}
+        run: |
+          {
+            echo "## External Trigger deployment"
+            echo "- Source-compatible version: ${SOURCE_DEPLOYMENT_VERSION:-not supplied on push}"
+            echo "- Target-compatible version: ${TARGET_DEPLOYMENT_VERSION}"
+            echo "- Target promoted by deploy job: no"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  promote:
+    needs: deploy
+    if: github.event_name == 'workflow_dispatch' && inputs.promote_target
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Promote exact pinned target
+        working-directory: apps/agent
+        env:
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+          TRIGGER_PROJECT_REF: ${{ vars.TRIGGER_PROJECT_REF }}
+          TRIGGER_API_URL: ${{ inputs.trigger_api_url }}
+          TARGET_DEPLOYMENT_VERSION: ${{ needs.deploy.outputs.deployment_version }}
+        run: |
+          test -n "$TRIGGER_API_URL"
+          pnpm dlx trigger.dev@4.5.4 promote "$TARGET_DEPLOYMENT_VERSION"

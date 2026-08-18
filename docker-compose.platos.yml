@@ -300,71 +300,6 @@ services:
         echo '[migrations-init] done'
     restart: "no"
 
-  # ─────────────────────────────────────────────────────────────
-  # worker — dedicated trigger.dev task worker (optional).
-  #
-  # Runs the same platos-agent image in WORKER_MODE=true so task
-  # execution (spawn_bgo / agent_batch / custom tasks) is handled
-  # by separate processes rather than the API server. Horizontal
-  # scaling: increase `replicas` or add more worker services.
-  #
-  # Requires TRIGGER_WORKER_TOKEN — either:
-  #   a) Set explicitly in .env (generate from the webapp admin UI
-  #      under Settings → Worker Groups → bootstrap).
-  #   b) Mount the token volume written by the webapp on first boot
-  #      (TRIGGER_BOOTSTRAP_WORKER_TOKEN_PATH=/run/secrets/worker-token).
-  #
-  # The worker service is OPTIONAL for single-node deploys — the
-  # webapp's bootstrap worker already handles task execution when
-  # TRIGGER_BOOTSTRAP_ENABLED=1. Enable this service for dedicated
-  # task execution or horizontal scale-out.
-  # ─────────────────────────────────────────────────────────────
-  worker:
-    build:
-      context: .
-      dockerfile: apps/agent/Dockerfile
-    restart: unless-stopped
-    logging: *default-logging
-    mem_limit: ${WORKER_MEM_LIMIT:-1g}
-    deploy:
-      replicas: 1
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      webapp:
-        condition: service_healthy
-      migrations-init:
-        condition: service_completed_successfully
-    environment:
-      WORKER_MODE: "true"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&connection_limit=30&pool_timeout=20"
-      REDIS_URL: "redis://redis:6379"
-      TRIGGER_API_URL: "http://webapp:3000"
-      TRIGGER_WORKER_TOKEN: "${TRIGGER_WORKER_TOKEN:-}"
-      TRIGGER_SECRET_KEY: "${TRIGGER_SECRET_KEY:-}"
-      TRIGGER_INTERNAL_SECRET: "${TRIGGER_INTERNAL_SECRET:?required — openssl rand -hex 32}"
-      PLATOS_WORKER_CONCURRENCY: "${PLATOS_WORKER_CONCURRENCY:-10}"
-      PLATOS_BATCH_CONCURRENCY: "${PLATOS_BATCH_CONCURRENCY:-5}"
-      PLATOS_PER_ORG_CONCURRENCY: "${PLATOS_PER_ORG_CONCURRENCY:-10}"
-      PLATOS_BATCH_ITEM_CONCURRENCY: "${PLATOS_BATCH_ITEM_CONCURRENCY:-3}"
-      PLATOS_MAX_BGOS_PER_TURN: "${PLATOS_MAX_BGOS_PER_TURN:-5}"
-      PLATOS_AGENT_API_URL: "http://agent:3100"
-      PLATOS_AGENT_HTTP_URL: "http://agent:3100"
-      PLATOS_ENCRYPTION_KEY: "${PLATOS_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
-      ENCRYPTION_KEY: "${ENCRYPTION_KEY:?required — 64 hex chars for new deployments}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V:-1}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V1: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V1:-}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V2: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V2:-}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V3: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V3:-}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V4: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V4:-}"
-      PLATOS_MESSAGE_ENCRYPTION_KEY_V5: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V5:-}"
-      SESSION_SECRET: "${SESSION_SECRET:?required — any non-empty string from openssl rand -base64 24}"
-      MANAGED_WORKER_SECRET: "${MANAGED_WORKER_SECRET:?required — generate with `openssl rand -hex 32`}"
-      NODE_ENV: "${NODE_ENV:-production}"
-
   agent:
     build:
       context: .
@@ -598,8 +533,6 @@ services:
       OBJECT_STORE_BASE_URL: "${OBJECT_STORE_BASE_URL:-}"
       OBJECT_STORE_ACCESS_KEY_ID: "${OBJECT_STORE_ACCESS_KEY_ID:-}"
       OBJECT_STORE_SECRET_ACCESS_KEY: "${OBJECT_STORE_SECRET_ACCESS_KEY:-}"
-      TRIGGER_BOOTSTRAP_ENABLED: "1"
-      TRIGGER_BOOTSTRAP_WORKER_GROUP_NAME: bootstrap
       APP_LOG_LEVEL: info
       # EOBD.55 — migrations-init runs before webapp boot, but the
       # prod webapp image still doesn't carry Prisma, so keep these
