@@ -4,6 +4,7 @@ import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.pro
 import { EmbeddingService } from "./embedding.service";
 import { requireValidMemoryPayload } from "./memory-kind.validator";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
+import { legacyFeedbackMetadataState } from "./memory-feedback-legacy";
 import {
   assertEnvironmentScope,
   canShareAgentScope,
@@ -44,11 +45,15 @@ export interface MemoryRow {
   createdAt: Date;
   updatedAt: Date;
   lastAccessedAt: Date | null;
+  quarantinedAt: Date | null;
   archivedAt: Date | null;
 }
 
 export interface MemorySearchHit extends MemoryRow {
+  /** Cosine similarity. Preserved for backwards compatibility and minScore semantics. */
   score: number;
+  /** 80% cosine similarity + 20% confidence (null confidence is neutral at 0.5). */
+  rankingScore: number;
 }
 
 export interface AddMemoryInput {
@@ -446,6 +451,7 @@ export class MemoryService {
       input.agentIds,
     );
     const qvec = await this.embeddings.embed(query, scope);
+    const legacyFilterRequired = !(await this.legacyFeedbackBackfillComplete(scope));
     const params: unknown[] = [vectorToLiteral(qvec), scope.environmentId, endUser.id];
     const clauses = [
       `"environmentId" = $2::uuid`,
@@ -456,6 +462,7 @@ export class MemoryService {
       params.push(value);
       return `$${params.length}${cast}`;
     };
+    clauses.push(`"quarantinedAt" IS NULL`);
     if (!input.includeArchived) clauses.push(`"archivedAt" IS NULL`);
     if (input.kind) clauses.push(`"kind" = ${addParam(input.kind)}`);
     if (agentIds.length) clauses.push(`"agentId" = ANY(${addParam(agentIds, "::uuid[]")})`);
@@ -467,25 +474,108 @@ export class MemoryService {
     if (input.excludeRag) clauses.push(`"source" IS DISTINCT FROM ${addParam(RAG_MEMORY_SOURCE)}`);
 
     const limit = clampInt(input.limit ?? 10, 1, 50);
-    const rows: any[] = await this.prisma.$queryRawUnsafe(
-      `SELECT "id", "environmentId", "endUserId", "agentId", "clusterId",
-              "kind", "content", "metadata", "agentVisible", "visibility", "source",
-              "sourceThreadId", "sourceTurnIds", "extractorVersion", "confidence",
-              "createdAt", "updatedAt", "lastAccessedAt", "archivedAt",
-              1 - ("embedding" <=> $1::vector) AS "score"
-       FROM "Memory"
-       WHERE ${clauses.join(" AND ")}
-       ORDER BY "embedding" <=> $1::vector
-       LIMIT ${limit}`,
-      ...params,
-    );
+    // Preserve the HNSW cosine path for candidate generation, then let a
+    // bounded confidence signal affect final recall. Overfetching is required:
+    // reranking only the requested limit can never promote a slightly less
+    // similar memory after positive feedback.
+    const candidateLimit = Math.min(limit * 4, 200);
     const minScore = typeof input.minScore === "number" ? input.minScore : 0;
+    const rows: any[] = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe("SET LOCAL statement_timeout = 25000");
+      const useExactScan = async () => {
+        await tx.$executeRawUnsafe("SET LOCAL enable_indexscan = off");
+        await tx.$executeRawUnsafe("SET LOCAL enable_indexonlyscan = off");
+        await tx.$executeRawUnsafe("SET LOCAL enable_bitmapscan = off");
+      };
+      const queryCandidates = (exactFallback = false) => tx.$queryRawUnsafe<any[]>(
+        `SELECT "id", "environmentId", "endUserId", "agentId", "clusterId",
+                "kind", "content", "metadata", "agentVisible", "visibility", "source",
+                "sourceThreadId", "sourceTurnIds", "extractorVersion", "confidence",
+                "createdAt", "updatedAt", "lastAccessedAt", "quarantinedAt", "archivedAt",
+                1 - ("embedding" <=> $1::vector) AS "cosineScore"
+         FROM "Memory"
+         WHERE ${clauses.join(" AND ")}
+         ORDER BY ${exactFallback
+           ? '("embedding" <=> $1::vector) + 0'
+           : '"embedding" <=> $1::vector'}
+         LIMIT ${candidateLimit}${exactFallback ? " /* exact fallback */" : ""}`,
+        ...params,
+      );
+      const versions = await tx.$queryRawUnsafe<Array<{ extversion: string }>>(
+        "SELECT extversion FROM pg_extension WHERE extname = 'vector'",
+      );
+      const pgvectorVersion = versions[0]?.extversion;
+      if (pgvectorVersionAtLeast(pgvectorVersion, 0, 8)) {
+        await tx.$executeRawUnsafe("SET LOCAL hnsw.iterative_scan = strict_order");
+        await tx.$executeRawUnsafe(`SET LOCAL hnsw.ef_search = ${candidateLimit}`);
+        const candidates = await queryCandidates();
+        if (
+          candidates.length >= candidateLimit &&
+          (!legacyFilterRequired ||
+            countLegacyApprovedCandidates(
+              candidates,
+              minScore,
+              (metadata) => this.decryptMetadata(metadata),
+            ) >= candidateLimit)
+        ) {
+          return candidates;
+        }
+
+        // max_scan_tuples and highly selective filters can still exhaust an
+        // iterative HNSW scan. Retry exactly rather than returning a partial
+        // page indistinguishable from a genuinely small result set.
+        await useExactScan();
+        if (legacyFilterRequired) {
+          return queryLegacyApprovedCandidates(
+            tx,
+            params,
+            clauses,
+            candidateLimit,
+            minScore,
+            (metadata) => this.decryptMetadata(metadata),
+          );
+        }
+        return queryCandidates(true);
+      } else {
+        // Before pgvector 0.8, ef_search alone cannot continue past candidates
+        // rejected by selective filters. Disable index paths transaction-locally
+        // so the distance expression is exact instead of silently underfilling.
+        await useExactScan();
+        if (legacyFilterRequired) {
+          return queryLegacyApprovedCandidates(
+            tx,
+            params,
+            clauses,
+            candidateLimit,
+            minScore,
+            (metadata) => this.decryptMetadata(metadata),
+          );
+        }
+        return queryCandidates(true);
+      }
+    }, { timeout: 30_000 });
     const hits = rows
-      .map((row) => ({
-        ...this.toMemoryRow(row, scope, endUser.externalId),
-        score: typeof row.score === "number" ? row.score : Number(row.score) || 0,
-      }))
-      .filter((row) => row.score >= minScore);
+      .map((row) => {
+        const memoryRow = this.toMemoryRow(row, scope, endUser.externalId);
+        return {
+          ...memoryRow,
+          score: numericScore(row.cosineScore),
+          legacyBlocked: legacyFeedbackMetadataState(row.metadata, memoryRow.metadata).blocksRecall,
+          rankingScore: blendedRecallScore(
+            numericScore(row.cosineScore),
+            row.confidence == null ? 0.5 : Number(row.confidence),
+          ),
+        };
+      })
+      .filter((row) => row.score >= minScore && (!legacyFilterRequired || !row.legacyBlocked))
+      .sort((left, right) => {
+        if (right.rankingScore !== left.rankingScore) {
+          return right.rankingScore - left.rankingScore;
+        }
+        return left.id < right.id ? -1 : left.id > right.id ? 1 : 0;
+      })
+      .slice(0, limit)
+      .map(({ legacyBlocked: _legacyBlocked, ...row }) => row);
 
     if (hits.length) {
       const ids = hits.map((hit) => hit.id);
@@ -583,8 +673,21 @@ export class MemoryService {
       createdAt: asDate(row.createdAt),
       updatedAt: asDate(row.updatedAt),
       lastAccessedAt: row.lastAccessedAt ? asDate(row.lastAccessedAt) : null,
+      quarantinedAt: row.quarantinedAt ? asDate(row.quarantinedAt) : null,
       archivedAt: row.archivedAt ? asDate(row.archivedAt) : null,
     };
+  }
+
+  private async legacyFeedbackBackfillComplete(scope: ScopeTuple): Promise<boolean> {
+    const environment = await this.prisma.environment.findFirst({
+      where: {
+        id: scope.environmentId,
+        projectId: scope.projectId,
+        project: { organizationId: scope.organizationId },
+      },
+      select: { memoryFeedbackBackfillCompletedAt: true },
+    });
+    return !!environment?.memoryFeedbackBackfillCompletedAt;
   }
 }
 
@@ -606,6 +709,110 @@ function clampInt(value: number, min: number, max: number): number {
   const normalized = Math.floor(Number(value));
   if (!Number.isFinite(normalized)) return min;
   return Math.min(Math.max(normalized, min), max);
+}
+
+function numericScore(value: unknown): number {
+  return typeof value === "number" ? value : Number(value) || 0;
+}
+
+function blendedRecallScore(cosineScore: number, confidence: number): number {
+  const boundedConfidence = Math.min(1, Math.max(0, confidence));
+  return cosineScore * 0.8 + boundedConfidence * 0.2;
+}
+
+type RawQueryClient = {
+  $queryRawUnsafe<T = unknown>(query: string, ...values: unknown[]): Promise<T>;
+};
+
+function countLegacyApprovedCandidates(
+  rows: any[],
+  minScore: number,
+  decryptMetadata: (metadata: unknown) => unknown,
+): number {
+  return rows.reduce((count, row) => {
+    if (numericScore(row.cosineScore) < minScore) return count;
+    const decrypted = decryptLegacyMetadata(row.metadata, decryptMetadata);
+    return legacyFeedbackMetadataState(row.metadata, decrypted).blocksRecall ? count : count + 1;
+  }, 0);
+}
+
+async function queryLegacyApprovedCandidates(
+  tx: RawQueryClient,
+  params: unknown[],
+  clauses: string[],
+  candidateLimit: number,
+  minScore: number,
+  decryptMetadata: (metadata: unknown) => unknown,
+): Promise<any[]> {
+  // Keep memory bounded to one fixed-size page plus the normal 200-candidate
+  // overfetch window. The caller's transaction and statement timeouts bound
+  // total work; timeout failures surface instead of returning a silent partial.
+  const approved: any[] = [];
+  const pageLimit = 200;
+  const minScoreParam = `$${params.length + 1}::double precision`;
+  let cursor: { distance: number; id: string } | undefined;
+
+  while (approved.length < candidateLimit) {
+    const cursorClause = cursor
+      ? `AND ROW(("embedding" <=> $1::vector), "id") >
+             ROW($${params.length + 2}::double precision, $${params.length + 3}::uuid)`
+      : "";
+    const page = await tx.$queryRawUnsafe<any[]>(
+      `SELECT "id", "environmentId", "endUserId", "agentId", "clusterId",
+              "kind", "content", "metadata", "agentVisible", "visibility", "source",
+              "sourceThreadId", "sourceTurnIds", "extractorVersion", "confidence",
+              "createdAt", "updatedAt", "lastAccessedAt", "quarantinedAt", "archivedAt",
+              "embedding" <=> $1::vector AS "distanceScore",
+              1 - ("embedding" <=> $1::vector) AS "cosineScore"
+       FROM "Memory"
+       WHERE ${clauses.join(" AND ")}
+         AND 1 - ("embedding" <=> $1::vector) >= ${minScoreParam}
+         ${cursorClause}
+       ORDER BY ("embedding" <=> $1::vector) + 0, "id" ASC
+       LIMIT ${pageLimit} /* bounded legacy exact page */`,
+      ...params,
+      minScore,
+      ...(cursor ? [cursor.distance, cursor.id] : []),
+    );
+    if (!page.length) break;
+
+    for (const row of page) {
+      const decrypted = decryptLegacyMetadata(row.metadata, decryptMetadata);
+      if (!legacyFeedbackMetadataState(row.metadata, decrypted).blocksRecall) {
+        approved.push(row);
+        if (approved.length >= candidateLimit) break;
+      }
+    }
+
+    const last = page[page.length - 1]!;
+    cursor = { distance: numericScore(last.distanceScore), id: String(last.id) };
+    if (page.length < pageLimit) break;
+  }
+
+  return approved;
+}
+
+function decryptLegacyMetadata(
+  metadata: unknown,
+  decryptMetadata: (metadata: unknown) => unknown,
+): unknown {
+  try {
+    return decryptMetadata(metadata);
+  } catch {
+    return metadata;
+  }
+}
+
+function pgvectorVersionAtLeast(
+  version: string | undefined,
+  requiredMajor: number,
+  requiredMinor: number,
+): boolean {
+  const match = /^(\d+)\.(\d+)/.exec(version ?? "");
+  if (!match) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return major > requiredMajor || (major === requiredMajor && minor >= requiredMinor);
 }
 
 function asDate(value: Date | string): Date {

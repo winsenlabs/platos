@@ -357,6 +357,8 @@ model Environment {
   slug       String
   name       String
   archivedAt DateTime?
+  memoryFeedbackBackfillCursor      String?   @db.Uuid
+  memoryFeedbackBackfillCompletedAt DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -1447,6 +1449,7 @@ model MessageRating {
   agentVersionId String?  @db.Uuid
   endUserId      String   @db.Uuid
   rating         Int
+  revision       Int      @default(1)
   comment        String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -1679,7 +1682,9 @@ model Memory {
   extractorVersion String?
   contentHash      String?
   confidence       Float?
+  feedbackBaselineConfidence Float?
   lastAccessedAt   DateTime?
+  quarantinedAt    DateTime?
   archivedAt       DateTime?
   createdAt        DateTime                     @default(now())
   updatedAt        DateTime                     @updatedAt
@@ -1693,6 +1698,7 @@ model Memory {
 
   @@unique([environmentId, endUserId, sourceThreadId, contentHash])
   @@index([environmentId, endUserId, archivedAt])
+  @@index([environmentId, endUserId, quarantinedAt])
   @@index([environmentId, endUserId, agentId, archivedAt])
   @@index([environmentId, endUserId, clusterId, archivedAt])
 }
@@ -1720,7 +1726,6 @@ model MemoryEntity {
   fromRelationships MemoryRelationship[] @relation("MemoryRelationshipFrom")
   toRelationships   MemoryRelationship[] @relation("MemoryRelationshipTo")
 
-  @@unique([environmentId, endUserId, agentId, entityKey])
   @@index([environmentId, endUserId, clusterId])
 }
 

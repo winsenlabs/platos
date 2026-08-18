@@ -21,6 +21,10 @@ const EMBEDDING_RATE_CENTS_PER_MTOK: Record<string, number> = {
 };
 
 type EmbeddingProvider = "openai" | "voyage";
+type EmbeddingScope = Pick<
+  RequestScope,
+  "organizationId" | "projectId" | "environmentId"
+>;
 
 /**
  * Default model per provider. Must return 1536-dim vectors to fit the
@@ -44,10 +48,11 @@ const DEFAULT_MODEL: Record<EmbeddingProvider, string> = {
  * never fall back to deployment environment variables; unscoped maintenance
  * jobs may still use explicitly configured deployment credentials.
  *
- * Requests are deduped via an LRU cache keyed on `sha256(model + text)`.
- * The model is part of the cache key so switching
- * `PLATOS_EMBEDDING_MODEL` across a running cluster never serves a
- * stale-dimension vector.
+ * Requests are deduped via an LRU cache keyed on the authoritative scope
+ * tuple plus provider, model, and text. Unscoped maintenance calls use a
+ * separate namespace. Scoped credentials are still resolved before lookup so
+ * a revoked or unavailable credential fails closed instead of receiving a
+ * previously cached vector.
  *
  * Batch embedding is used by bulk-insert paths (Theme O extractor).
  * Single-shot `embed()` is what `MemoryService.add()` calls on every
@@ -66,8 +71,8 @@ export class EmbeddingService {
 
   // Simple LRU: Map preserves insertion order; touching a key reinserts
   // it at the tail so eviction removes the coldest entry. Cache key
-  // includes the provider + model so switching providers at runtime
-  // never serves a stale vector.
+  // includes the scope + provider + model so neither tenant boundaries nor
+  // runtime provider changes can reuse another namespace's vector.
   private cache = new Map<string, number[]>();
 
   constructor(
@@ -94,8 +99,20 @@ export class EmbeddingService {
     }
   }
 
-  private cacheKey(text: string): string {
+  private cacheKey(text: string, scope?: EmbeddingScope): string {
     const h = crypto.createHash("sha256");
+    if (scope) {
+      h.update("scoped");
+      h.update("\0");
+      h.update(scope.organizationId);
+      h.update("\0");
+      h.update(scope.projectId);
+      h.update("\0");
+      h.update(scope.environmentId);
+    } else {
+      h.update("unscoped");
+    }
+    h.update("\0");
     h.update(this.provider);
     h.update("\0");
     h.update(this.model);
@@ -125,7 +142,7 @@ export class EmbeddingService {
   }
 
   private async resolveApiKey(
-    scope?: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+    scope?: EmbeddingScope,
   ): Promise<string | undefined> {
     const keyName = this.provider === "voyage" ? "VOYAGE_API_KEY" : "OPENAI_API_KEY";
     if (scope) {
@@ -151,18 +168,18 @@ export class EmbeddingService {
    */
   async embed(
     text: string,
-    scope?: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+    scope?: EmbeddingScope,
   ): Promise<number[]> {
     const normalized = text.trim();
     if (!normalized) {
       throw new Error("EmbeddingService.embed: empty text");
     }
-    const key = this.cacheKey(normalized);
-    const cached = this.cacheGet(key);
-    if (cached) return cached;
-
     const apiKey = await this.resolveApiKey(scope);
     if (!apiKey) throw this.missingKeyError();
+
+    const key = this.cacheKey(normalized, scope);
+    const cached = this.cacheGet(key);
+    if (cached) return cached;
 
     // EOBD.32 (Wave 11b fix) — pass scope as an explicit parameter to
     // the provider-specific call instead of stashing on `this`. The
@@ -187,7 +204,7 @@ export class EmbeddingService {
    */
   async embedBatch(
     texts: string[],
-    scope?: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+    scope?: EmbeddingScope,
   ): Promise<number[][]> {
     if (texts.length === 0) return [];
     const normalized = texts.map((t) => t.trim());
@@ -202,7 +219,7 @@ export class EmbeddingService {
       if (!text) {
         throw new Error(`EmbeddingService.embedBatch: empty text at index ${i}`);
       }
-      const cached = this.cacheGet(this.cacheKey(text));
+      const cached = this.cacheGet(this.cacheKey(text, scope));
       if (cached) {
         results[i] = cached;
       } else {
@@ -225,7 +242,7 @@ export class EmbeddingService {
             `Embedding provider returned unexpected dimension ${vec?.length ?? 0}, expected ${EmbeddingService.DIMENSION}`,
           );
         }
-        this.cacheSet(this.cacheKey(text), vec);
+        this.cacheSet(this.cacheKey(text, scope), vec);
         results[missingIdx[start + j]!] = vec;
       }
     }
@@ -236,7 +253,7 @@ export class EmbeddingService {
   private async callProvider(
     inputs: string[],
     apiKey: string,
-    scope?: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+    scope?: EmbeddingScope,
   ): Promise<number[][]> {
     if (this.provider === "voyage") {
       return this.callVoyage(inputs, apiKey, scope);
@@ -275,7 +292,7 @@ export class EmbeddingService {
   private async callOpenAi(
     inputs: string[],
     apiKey: string,
-    scope?: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+    scope?: EmbeddingScope,
   ): Promise<number[][]> {
     const resp = await this.fetchWithTimeout("https://api.openai.com/v1/embeddings", {
       method: "POST",
@@ -329,7 +346,7 @@ export class EmbeddingService {
   private async callVoyage(
     inputs: string[],
     apiKey: string,
-    scope?: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+    scope?: EmbeddingScope,
   ): Promise<number[][]> {
     const body: Record<string, unknown> = {
       model: this.model,
@@ -369,7 +386,7 @@ export class EmbeddingService {
 
   private recordEmbeddingCost(
     totalTokens: number,
-    scope?: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+    scope?: EmbeddingScope,
   ): void {
     if (!this.costService || totalTokens <= 0 || !scope) return;
     const rate = EMBEDDING_RATE_CENTS_PER_MTOK[this.model];

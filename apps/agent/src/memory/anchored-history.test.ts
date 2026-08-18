@@ -105,10 +105,12 @@ describe("cursor-anchored clean Turn history", () => {
     expect(history[0]?.content).toBe("user-20");
   });
 
-  it("caps an anchored window if compaction stalls", async () => {
+  it("keeps the newest complete turns when a 300-turn anchored window stalls", async () => {
     const turns = makeTurns(300);
     const history = await service(turns, turns[0]!.id).loadHistory("thread-1", scope, 10);
-    expect(history.length).toBeLessThanOrEqual(50);
-    expect(history[0]?.content).toBe("user-1");
+    expect(history).toHaveLength(50);
+    expect(history[0]?.content).toBe("user-275");
+    expect(history.at(-1)?.content).toBe("assistant-299");
+    expect(history.some((message) => message.content === "assistant-274")).toBe(false);
   });
 });

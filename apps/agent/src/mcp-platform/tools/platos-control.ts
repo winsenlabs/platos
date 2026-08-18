@@ -124,7 +124,7 @@ export function buildPlatosControlToolHandlers(deps: {
     {
       name: "memories.search",
       description:
-        "Semantic search over memories for a user. Embeds the query and does a pgvector cosine-distance scan. Returns hits ordered by similarity.",
+        "Semantic search over memories for a user. Overfetches through pgvector HNSW cosine recall, then returns non-quarantined hits ordered by rankingScore (80% cosine / 20% confidence) with stable ID ties. score remains cosine similarity and minScore filters cosine.",
       inputSchema: {
         type: "object",
         required: ["query", "userId"],
