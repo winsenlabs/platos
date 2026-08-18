@@ -330,7 +330,12 @@ function requireString(field: JsonField, entry: Record<string, unknown>, key: st
 export function normalizePromptBlocks(input: unknown): PromptBlock[] {
   const field = "AgentVersion.promptBlocks" as const;
   return requireObjectEntries(field, normalizeJsonField(field, input)).map((entry, index) => {
-    for (const key of ["id", "type", "name", "content"]) requireString(field, entry, key, index);
+    for (const key of ["id", "type", "name"]) requireString(field, entry, key, index);
+    // `content` must be a string but may legitimately be empty: a block whose
+    // text is produced at render time (e.g. type "datetime") stores "".
+    if (typeof entry.content !== "string") {
+      throw new JsonShapeError(field, `entry ${index}.content must be a string`);
+    }
     if (typeof entry.enabled !== "boolean" || typeof entry.editable !== "boolean") {
       throw new JsonShapeError(field, `entry ${index} enabled/editable must be booleans`);
     }
@@ -344,7 +349,12 @@ export function normalizePromptBlocks(input: unknown): PromptBlock[] {
 export function normalizeDynamicBlocks(input: unknown): DynamicBlock[] {
   const field = "AgentVersion.dynamicBlocks" as const;
   return requireObjectEntries(field, normalizeJsonField(field, input)).map((entry, index) => {
-    for (const key of ["key", "name", "defaultContent"]) requireString(field, entry, key, index);
+    for (const key of ["key", "name"]) requireString(field, entry, key, index);
+    // Empty `defaultContent` is meaningful: a frontend-driven block (e.g.
+    // "approval_policy") is populated on every turn and has no default.
+    if (typeof entry.defaultContent !== "string") {
+      throw new JsonShapeError(field, `entry ${index}.defaultContent must be a string`);
+    }
     if (entry.description !== undefined && typeof entry.description !== "string") {
       throw new JsonShapeError(field, `entry ${index}.description must be a string`);
     }
@@ -365,15 +375,18 @@ export function normalizeModelRoutes(input: unknown): ModelRoute[] {
     if (entry.providerCredentialId !== undefined && typeof entry.providerCredentialId !== "string") {
       throw new JsonShapeError(field, `entry ${index}.providerCredentialId must be a string`);
     }
-    if (typeof entry.isDefault !== "boolean") {
+    // A route that never carried the key is simply not the default. Only a
+    // present-but-wrongly-typed value is a shape error.
+    const isDefault = entry.isDefault === undefined ? false : entry.isDefault;
+    if (typeof isDefault !== "boolean") {
       throw new JsonShapeError(field, `entry ${index}.isDefault must be a boolean`);
     }
     if (labels.has(entry.label as string)) {
       throw new JsonShapeError(field, `duplicate route label ${entry.label as string}`);
     }
     labels.add(entry.label as string);
-    if (entry.isDefault) defaults += 1;
-    return entry as unknown as ModelRoute;
+    if (isDefault) defaults += 1;
+    return { ...entry, isDefault } as unknown as ModelRoute;
   });
   if (routes.length > 0 && defaults !== 1) {
     throw new JsonShapeError(field, "exactly one non-empty route must be the default");
@@ -392,11 +405,29 @@ export function normalizeToolsBlockConfig(input: unknown): ToolsBlockConfig {
   const field = "AgentVersion.toolsBlockConfig" as const;
   const config = normalizeJsonField(field, input) as Record<string, unknown>;
   if ("enabledTools" in config) {
-    throw new JsonShapeError(
-      field,
-      "enabledTools is retired; write explicit AgentToolPolicy relations instead"
-    );
+    // An empty array grants nothing, so there is no policy to express and the
+    // vestigial key is simply dropped. A populated one carries real
+    // authorization that only explicit AgentToolPolicy rows can represent, and
+    // no backfill writes those yet — so it must still fail closed.
+    const enabledTools = config.enabledTools;
+    if (Array.isArray(enabledTools) && enabledTools.length === 0) {
+      delete config.enabledTools;
+    } else {
+      throw new JsonShapeError(
+        field,
+        "enabledTools is retired; write explicit AgentToolPolicy relations instead"
+      );
+    }
   }
+  // The create wizard once submitted `mode: "tool-wrapper"`, which was never in
+  // the enum and was stored raw. The runtime coerces it to its intended
+  // semantics on every save (agent-crud.service.ts `normalizeToolsBlockConfig`);
+  // apply the same mapping here so a version that was never re-saved carries
+  // across with the meaning it always had.
+  if (config.mode === "tool-wrapper") {
+    config.mode = "execute-tool";
+  }
+
   const enums = {
     mode: ["direct", "sub-agent", "execute-tool"],
     toolExposure: ["direct", "meta"],

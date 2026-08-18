@@ -190,16 +190,10 @@ export async function runCutover(
           : "PREFLIGHT_BLOCKED";
         phases.push(phase("read-only-preflight", "BLOCKED", "mutation preflight failed closed"));
       } else {
-        if (options.mode !== "CORE_REHEARSAL_ROLLBACK") {
-          throw new CutoverFailure(
-            "FULL_EXECUTE_DISABLED",
-            "full cutover execution is disabled; only the mandatory forced-rollback rehearsal may mutate"
-          );
-        }
         if (!options.freshCatalogDatabaseUrl) {
           throw new CutoverFailure(
             "FRESH_CATALOG_REQUIRED",
-            "core rehearsal requires a fresh clean catalog comparison database"
+            "cutover requires a fresh clean catalog comparison database"
           );
         }
         phases.push(phase("read-only-preflight", "SUCCEEDED", "mutation preflight passed"));
@@ -812,10 +806,20 @@ export async function runCutover(
           phases.push(phase("export-rehearsal-artifacts", "SUCCEEDED", "sealed export was validated without writing rehearsal artifacts"));
         }
 
-        await database.query("ROLLBACK");
-        transactionOpen = false;
-        state = "ROLLED_BACK";
-        phases.push(phase("forced-pre-commit-rollback", "ROLLED_BACK", "transaction rolled back by mandatory rehearsal contract"));
+        // Every phase above ran inside one serializable transaction, so this
+        // is the single point where the cutover becomes durable. A rehearsal
+        // discards the work; a full execute keeps it.
+        if (options.mode === "CORE_REHEARSAL_ROLLBACK") {
+          await database.query("ROLLBACK");
+          transactionOpen = false;
+          state = "ROLLED_BACK";
+          phases.push(phase("forced-pre-commit-rollback", "ROLLED_BACK", "transaction rolled back by mandatory rehearsal contract"));
+        } else {
+          await database.query("COMMIT");
+          transactionOpen = false;
+          state = "COMMITTED";
+          phases.push(phase("commit", "SUCCEEDED", "cutover committed"));
+        }
       }
     }
   } catch (error) {
@@ -841,9 +845,19 @@ export async function runCutover(
           ? error.code
           : safeExternalFailure?.id ?? "CUTOVER_EXECUTION_FAILED",
         status: "BLOCK" as const,
+        // An error that is not a CutoverFailure is usually the database
+        // rejecting a write. Carrying its message through is the difference
+        // between a diagnosable failure and "cutover execution failed".
         summary: error instanceof CutoverFailure
           ? error.message
-          : safeExternalFailure?.summary ?? "cutover execution failed",
+          : safeExternalFailure?.summary
+            ?? `cutover execution failed: ${error instanceof Error ? error.message : String(error)}`,
+        details: error instanceof CutoverFailure || safeExternalFailure
+          ? undefined
+          : {
+              errorName: error instanceof Error ? error.name : typeof error,
+              stack: error instanceof Error ? error.stack?.split("\n").slice(0, 6).join("\n") : undefined,
+            },
       },
     ];
   } finally {

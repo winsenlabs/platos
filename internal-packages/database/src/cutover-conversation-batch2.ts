@@ -53,8 +53,10 @@ interface NormalizedToolCall {
   readonly ordinal: number;
   readonly toolName: string;
   readonly arguments: JsonValue;
-  readonly result: JsonValue;
-  readonly status: "SUCCEEDED";
+  /// Null for a call that never produced a result; ToolCall.result is nullable
+  /// and the target row carries status PENDING.
+  readonly result: JsonValue | null;
+  readonly status: "SUCCEEDED" | "PENDING";
 }
 
 interface PendingCall {
@@ -84,9 +86,29 @@ function optionalCallId(value: unknown, label: string): string | null {
   return nonEmptyString(value, label);
 }
 
-function normalizedArguments(value: unknown): JsonValue {
+/**
+ * Models sometimes emit tool input as a JSON string rather than an object. The
+ * runtime repairs that in flight (`repairStringifiedToolInput`), but a call
+ * persisted before the repair kept the raw string, and ToolCall.arguments
+ * requires an object root. Decode the same shape the runtime would have.
+ */
+function decodeStringifiedArguments(value: unknown): unknown {
+  if (typeof value !== "string") return value;
   try {
-    return normalizeJsonField("ToolCall.arguments", value) as unknown as JsonValue;
+    const parsed = JSON.parse(value);
+    return isRecord(parsed) ? parsed : value;
+  } catch {
+    return value;
+  }
+}
+
+function normalizedArguments(value: unknown): JsonValue {
+  const decoded = decodeStringifiedArguments(value);
+  // A non-object that will not decode is preserved under a `value` key rather
+  // than failing the cutover, matching how results are handled.
+  const candidate = isRecord(decoded) ? decoded : { value: decoded };
+  try {
+    return normalizeJsonField("ToolCall.arguments", candidate) as unknown as JsonValue;
   } catch (error) {
     throw batch2Failure(
       "BATCH2_MALFORMED_TOOL_CALLS",
@@ -175,7 +197,18 @@ export function normalizeBatch2ToolCalls(input: unknown): readonly NormalizedToo
         ? call.callId === null && call.toolName === toolName
         : call.callId === callId && call.toolName === toolName
     );
-    if (candidates.length !== 1) {
+    if (candidates.length === 0) {
+      throw batch2Failure(
+        "BATCH2_AMBIGUOUS_TOOL_CALLS",
+        "tool result must identify exactly one unresolved call"
+      );
+    }
+    // A correlated result naming several unresolved calls is genuinely
+    // ambiguous. An uncorrelated one is not: legacy `toolCalls` never recorded
+    // a callId, so a tool invoked twice in a turn leaves two identical pending
+    // entries. Results come back in call order, so resolve the earliest —
+    // `pending` is append-ordered, making candidates[0] that call.
+    if (candidates.length > 1 && callId !== null) {
       throw batch2Failure(
         "BATCH2_AMBIGUOUS_TOOL_CALLS",
         "tool result must identify exactly one unresolved call"
@@ -191,8 +224,18 @@ export function normalizeBatch2ToolCalls(input: unknown): readonly NormalizedToo
       status: "SUCCEEDED" as const,
     }));
   }
-  if (pending.length > 0) {
-    throw batch2Failure("BATCH2_AMBIGUOUS_TOOL_CALLS", "tool call event has no matching result");
+  // A call with no result is a real terminal state, not corruption: an
+  // approval request that was never answered leaves exactly this shape. The
+  // target models it directly — ToolCall.result is nullable and WorkStatus has
+  // PENDING — so carry it across rather than failing the whole cutover.
+  for (const unresolved of pending) {
+    completed.push(Object.freeze({
+      ordinal: unresolved.ordinal,
+      toolName: unresolved.toolName,
+      arguments: unresolved.arguments,
+      result: null,
+      status: "PENDING" as const,
+    }));
   }
   return Object.freeze(completed.sort((left, right) => left.ordinal - right.ordinal));
 }
@@ -200,7 +243,7 @@ export function normalizeBatch2ToolCalls(input: unknown): readonly NormalizedToo
 interface NormalizedResponseEvidence {
   readonly model: string;
   readonly versionSourceId: string;
-  readonly versionBucket: "CURRENT" | "CANARY";
+  readonly versionBucket: "CURRENT" | "CANARY" | "LOCKED" | "FALLBACK";
   readonly inputTokens: number | null;
   readonly outputTokens: number | null;
   readonly cacheCreationInputTokens: number | null;
@@ -234,11 +277,12 @@ export function normalizeBatch2ResponseJson(input: unknown): NormalizedResponseE
   if (hasOwn(input, "versionId") || hasOwn(input, "versionBucket") || hasOwn(input, "latency")) {
     throw batch2Failure("BATCH2_AMBIGUOUS_RESPONSE_JSON", "responseJson contains an unsupported mapped-field alias");
   }
+  // The four outcomes agent version resolution can record for a turn.
   const bucket = input.version_bucket;
-  if (bucket !== "current" && bucket !== "canary") {
+  if (bucket !== "current" && bucket !== "canary" && bucket !== "locked" && bucket !== "fallback") {
     throw batch2Failure(
       "BATCH2_MALFORMED_RESPONSE_JSON",
-      "responseJson.version_bucket must be current or canary"
+      "responseJson.version_bucket must be current, canary, locked, or fallback"
     );
   }
   const usage = input.usage === undefined || input.usage === null ? {} : input.usage;
@@ -249,7 +293,7 @@ export function normalizeBatch2ResponseJson(input: unknown): NormalizedResponseE
   return Object.freeze({
     model: nonEmptyString(input.model, "responseJson.model"),
     versionSourceId: nonEmptyString(input.version_id, "responseJson.version_id"),
-    versionBucket: bucket.toUpperCase() as "CURRENT" | "CANARY",
+    versionBucket: bucket.toUpperCase() as "CURRENT" | "CANARY" | "LOCKED" | "FALLBACK",
     inputTokens: optionalNonNegativeInteger(usage.inputTokens, "responseJson.usage.inputTokens"),
     outputTokens: optionalNonNegativeInteger(usage.outputTokens, "responseJson.usage.outputTokens"),
     cacheCreationInputTokens: optionalNonNegativeInteger(
@@ -928,8 +972,11 @@ export async function backfillBatch2Messages(
         if (!id || row.step_id === null) {
           throw batch2Failure("BATCH2_SOURCE_OR_MAPPING_INVALID", "tool-call ordinal mapping is missing");
         }
+        // SQL NULL, not JSON null: the post-cutover shape check requires
+        // result to be an object or array when present, and jsonb 'null'
+        // would fail it.
         return [id, row.step_id, call.ordinal + 1, call.toolName, JSON.stringify(call.arguments),
-          JSON.stringify(call.result), call.status, row.created_at];
+          call.result === null ? null : JSON.stringify(call.result), call.status, row.created_at];
       }));
     }
   }, chunkSize);

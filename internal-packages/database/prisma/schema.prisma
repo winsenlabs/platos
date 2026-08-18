@@ -154,6 +154,12 @@ enum AgentToolDefaultPolicy {
 enum AgentVersionBucket {
   CURRENT
   CANARY
+  /// Thread pinned to a specific version rather than following the current
+  /// pointer. Distinct from CURRENT: the turn did not track the live release.
+  LOCKED
+  /// Version resolution found no usable version and the agent's base config
+  /// served the turn.
+  FALLBACK
 }
 
 enum ThreadCompactionState {

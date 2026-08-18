@@ -255,7 +255,11 @@ export async function runCutoverPreflight(
     );
 
     const hardBlock = checks.some((entry) => entry.status === "BLOCK");
-    const incompleteBlocksMode = options.mode === "FULL_EXECUTE";
+    // A full execute must not run while any domain phase is still a
+    // fail-closed stub — it would commit a partial cutover. Rehearsals may
+    // proceed regardless, since they always roll back.
+    const incompleteBlocksMode =
+      options.mode === "FULL_EXECUTE" && incompleteCutoverPhaseIds.length > 0;
     return {
       checks,
       sourceDigests,

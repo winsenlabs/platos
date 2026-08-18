@@ -301,8 +301,14 @@ const sourceAndMappingValidationSql = `
            OR source."contentHash" IS NOT NULL)
         ) OR (
           source."sourceThreadId" IS NOT NULL AND
-          (thread.id IS NULL OR cardinality(source."sourceMessageIds")=0
-           OR NULLIF(btrim(source."extractorVersion"),'') IS NULL
+          -- A memory may be attached to a thread without having been produced
+          -- by extraction (e.g. written directly through the memories API), so
+          -- absent extractor metadata is not itself a defect. What must hold is
+          -- internal consistency: if an extractor claimed the memory, it must
+          -- name the messages it read.
+          (thread.id IS NULL
+           OR (NULLIF(btrim(source."extractorVersion"),'') IS NOT NULL
+               AND cardinality(source."sourceMessageIds")=0)
            OR source."contentHash" !~ '^[0-9a-f]{64}$'
            OR thread."environmentId"<>source."environmentId"
            OR thread."agentId"<>source."agentId"

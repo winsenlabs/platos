@@ -44,7 +44,7 @@ CREATE TYPE "public"."AuthorizationScopeKind" AS ENUM ('GLOBAL', 'ORGANIZATION',
 CREATE TYPE "public"."AgentToolDefaultPolicy" AS ENUM ('NONE', 'ALL');
 
 -- CreateEnum
-CREATE TYPE "public"."AgentVersionBucket" AS ENUM ('CURRENT', 'CANARY');
+CREATE TYPE "public"."AgentVersionBucket" AS ENUM ('CURRENT', 'CANARY', 'LOCKED', 'FALLBACK');
 
 -- CreateEnum
 CREATE TYPE "public"."ThreadCompactionState" AS ENUM ('IDLE', 'IN_PROGRESS');
@@ -2556,12 +2556,18 @@ ALTER TABLE "public"."Step"
 ALTER TABLE "public"."Memory"
   ADD CONSTRAINT "Memory_extraction_provenance_check" CHECK (
     (
-      "sourceThreadId" IS NULL AND cardinality("sourceTurnIds") = 0 AND
-      "extractorVersion" IS NULL AND "contentHash" IS NULL
-    ) OR (
+      -- Extracted from a conversation: the extractor must name itself and the
+      -- turns it read.
       "sourceThreadId" IS NOT NULL AND cardinality("sourceTurnIds") > 0 AND
       NULLIF(btrim("extractorVersion"), '') IS NOT NULL AND
       "contentHash" ~ '^[0-9a-f]{64}$'
+    ) OR (
+      -- Written directly rather than extracted. It may still record the thread
+      -- it was created in and carry a content hash, but it must not claim
+      -- turns it never read or an extractor that never ran.
+      NULLIF(btrim("extractorVersion"), '') IS NULL AND
+      cardinality("sourceTurnIds") = 0 AND
+      ("contentHash" IS NULL OR "contentHash" ~ '^[0-9a-f]{64}$')
     )
   );
 ALTER TABLE "public"."Memory"
