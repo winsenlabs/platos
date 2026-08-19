@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -19,6 +20,13 @@ const schema = readFileSync(schemaPath, "utf8");
 const sourceSchema = readFileSync(resolve(packageRoot, "../database/prisma/schema.prisma"), "utf8");
 const migration = readFileSync(
   resolve(packageRoot, "prisma/migrations/00000000000000_initial/migration.sql"),
+  "utf8"
+);
+const channelDurabilityMigration = readFileSync(
+  resolve(
+    packageRoot,
+    "prisma/migrations/20260818020000_win130_channel_durability/migration.sql"
+  ),
   "utf8"
 );
 const feedbackMigration = readFileSync(
@@ -87,8 +95,10 @@ describe("clean-slate domain schema", () => {
       .filter((line) => line.includes("@relation(") && line.includes("fields:"));
     for (const relation of owningRelations) expect(relation).toContain("onDelete:");
 
-    const sqlForeignKeys = migration.match(/ FOREIGN KEY /g) ?? [];
-    const sqlDeletePolicies = migration.match(/ ON DELETE (CASCADE|SET NULL|RESTRICT|NO ACTION)/g) ?? [];
+    const appliedMigrations = `${migration}\n${channelDurabilityMigration}`;
+    const sqlForeignKeys = appliedMigrations.match(/ FOREIGN KEY /g) ?? [];
+    const sqlDeletePolicies =
+      appliedMigrations.match(/ ON DELETE (CASCADE|SET NULL|RESTRICT|NO ACTION)/g) ?? [];
     expect(sqlForeignKeys).toHaveLength(owningRelations.length);
     expect(sqlDeletePolicies).toHaveLength(sqlForeignKeys.length);
   });
@@ -253,9 +263,31 @@ describe("clean-slate domain schema", () => {
       "00000000000000_initial",
       "20260818000000_memory_feedback_quarantine",
       "20260818010000_memory_entity_ownership_transition",
+      "20260818020000_win130_channel_durability",
     ]);
     expect(createHash("sha256").update(migration).digest("hex")).toBe(
       "76039eaca78e84890ed9ca499890bf9579f31eff540953deda257ac50a855ad8"
+    );
+
+    const generated = execFileSync(resolve(packageRoot, "node_modules/.bin/prisma"), [
+      "migrate",
+      "diff",
+      "--from-empty",
+      "--to-schema-datamodel",
+      schemaPath,
+      "--script",
+    ], {
+      cwd: packageRoot,
+      env: { ...process.env, DATABASE_URL: "postgresql://generate:generate@localhost:5432/generate" },
+      encoding: "utf8",
+    });
+    expect(generated).toContain('CREATE TABLE "public"."ChannelEventInbox"');
+    expect(channelDurabilityMigration).toContain('ALTER TABLE "public"."ChannelInstallation"');
+    expect(channelDurabilityMigration).toContain('CREATE TABLE "public"."ChannelEventInbox"');
+    expect(channelDurabilityMigration).toContain('CREATE TRIGGER "ChannelEventInbox_identity_immutable"');
+    expect(channelDurabilityMigration).toContain('CONSTRAINT "ChannelEventInbox_status_check"');
+    expect(channelDurabilityMigration).toContain(
+      'CONSTRAINT "ChannelInstallation_tokenRefreshState_check"'
     );
     expect(feedbackMigration).toContain('ADD COLUMN "quarantinedAt" TIMESTAMP(3)');
     expect(feedbackMigration).toContain('ADD COLUMN "revision" INTEGER NOT NULL DEFAULT 1');

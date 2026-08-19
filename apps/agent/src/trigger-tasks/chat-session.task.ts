@@ -40,6 +40,7 @@ import type { SessionScope } from "../agent-runtime/session-scope";
 interface PlatosChatClientData {
   agentId: string;
   threadId: string;
+  clientMessageId?: string | null;
   scope: SessionScope;
 }
 
@@ -206,6 +207,7 @@ export const platosChatSession = chat.customAgent({
           threadId: cd.threadId,
           agentId: cd.agentId,
           message,
+          clientMessageId: cd.clientMessageId ?? null,
           scope: { ...cd.scope, agentId: cd.agentId, threadId: cd.threadId },
         }),
         signal: fetchAborter.signal,

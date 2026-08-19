@@ -6,9 +6,8 @@ import {
   type OnModuleInit,
   type OnModuleDestroy,
 } from "@nestjs/common";
+import * as crypto from "node:crypto";
 import { PRISMA_TOKEN } from "../shared/database.provider";
-import { REDIS_TOKEN } from "../shared/redis.provider";
-import type Redis from "ioredis";
 import { TurnDispatchService } from "../agent-runtime/turn-dispatch.service";
 import { env } from "../shared/env";
 import type { RequestScope } from "../auth/scope.guard";
@@ -111,9 +110,33 @@ interface CachedBot {
   bot: any;
   provider: string;
   credentialRevision: string;
+  generation: number;
   builtAt: number;
   /** Discord-only: tear down the long-lived Gateway WebSocket on evict. */
   gatewayStop?: () => void | Promise<void>;
+}
+
+interface BuildingBot {
+  generation: number;
+  promise: Promise<CachedBot>;
+}
+
+export interface ChannelAppEventContext {
+  eventId: string;
+  abortSignal: AbortSignal;
+  persistedTurn?: { id: string; threadId: string; outputText: string | null } | null;
+  onTurnCompleted: (turnId: string) => Promise<boolean>;
+  onDeliveryCompleted: () => Promise<boolean>;
+}
+
+export class ChannelDeliveryError extends Error {
+  constructor(
+    public readonly code: string,
+    public readonly retryable: boolean,
+  ) {
+    super(code);
+    this.name = "ChannelDeliveryError";
+  }
 }
 
 /**
@@ -216,7 +239,9 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   /** connectionId → cached Chat instance. Evicted on update/rotate + TTL. */
   private readonly cache = new Map<string, CachedBot>();
   /** connectionId → in-flight build (async build ⇒ dedupe concurrent hits). */
-  private readonly building = new Map<string, Promise<CachedBot>>();
+  private readonly building = new Map<string, BuildingBot>();
+  /** Monotonic process-local fence advanced by every invalidate, cached or not. */
+  private readonly generations = new Map<string, number>();
   /**
    * Connect v3 — `app:<appId>:<team>` → decrypted bot token. Evicted by
    * invalidateApp on app-credential edits + workspace re-install + revoke.
@@ -230,8 +255,6 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
    * plausible clock skew / in-flight turn without churning.
    */
   private static readonly TOKEN_REFRESH_SKEW_MS = 120 * 1000; // 120s
-  /** TTL of the single-refresh Redis lock `chanapp:refresh:<installationId>`. */
-  private static readonly REFRESH_LOCK_TTL_S = 30;
   /**
    * Connect v3 (Phase C) — POSITIVE account-link memo: `installationId:slackHandle`
    * → expiry epoch-ms. A `linking:required` app checks per message whether the
@@ -243,13 +266,10 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   /** Discord keep-warm sweep cadence (see onModuleInit). */
   private readonly DISCORD_WARM_INTERVAL_MS = 60 * 1000;
   private discordWarmTimer: ReturnType<typeof setInterval> | null = null;
+  private destroyed = false;
 
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
-    // Connect v3 (Phase D) — token rotation needs a fleet-wide single-refresh
-    // lock so concurrent events can't double-refresh a single-use refresh token.
-    // RedisModule is @Global, so no ChannelsModule import is required.
-    @Inject(REDIS_TOKEN) private readonly redis: Redis,
     private readonly persistence: ChannelPersistenceService,
     // The durable-vs-direct chokepoint. Both channel turn call-sites route
     // through collectTurn so a durable Walle/Slack agent now drives a Trigger
@@ -285,7 +305,9 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
    * re-check entirely. Guarded: zero discord connections starts nothing.
    */
   async onModuleInit(): Promise<void> {
+    if (this.destroyed) return;
     await this.warmDiscordConnections();
+    if (this.destroyed) return;
     this.discordWarmTimer = setInterval(() => {
       void this.warmDiscordConnections();
     }, this.DISCORD_WARM_INTERVAL_MS);
@@ -294,8 +316,12 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy(): void {
+    this.destroyed = true;
     if (this.discordWarmTimer) clearInterval(this.discordWarmTimer);
     this.discordWarmTimer = null;
+    // Any asynchronous build that completes after shutdown is stale and must
+    // self-stop rather than publishing a fresh gateway into a dying module.
+    this.building.clear();
     // Tear down every cached bot (esp. Discord gateway sockets) on shutdown.
     for (const [id, cached] of this.cache) {
       this.cache.delete(id);
@@ -307,12 +333,14 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
 
   /** Ensure a live bot per enabled discord connection; evict dead ones. */
   private async warmDiscordConnections(): Promise<void> {
+    if (this.destroyed) return;
     let rows: any[];
     try {
       rows = await this.persistence.listEnabledConnections("discord");
     } catch {
       return; // DB hiccup — the next sweep retries
     }
+    if (this.destroyed) return;
     const liveIds = new Set(rows.map((r: any) => String(r.id)));
     // Disabled/deleted discord connections must lose their gateway NOW —
     // no webhook path will ever re-check them.
@@ -322,6 +350,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       }
     }
     for (const row of rows) {
+      if (this.destroyed) return;
       try {
         // No-op when fresh; rebuilds (with fresh creds/config) on TTL expiry.
         await this.getOrCreateBot(row);
@@ -349,7 +378,13 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     connection: any,
   ): Promise<{ bot: any; provider: string }> {
     const connectionId = String(connection?.id ?? connection ?? "");
+    if (this.destroyed) throw new Error("channel runtime destroyed");
+    const generation = this.generations.get(connectionId) ?? 0;
     const canonical = await this.persistence.loadConnection(connectionId);
+    if (this.destroyed) throw new Error("channel runtime destroyed");
+    if ((this.generations.get(connectionId) ?? 0) !== generation) {
+      throw new Error("channel bot build invalidated");
+    }
     if (!canonical || canonical.enabled !== true) {
       throw new Error("channel connection unavailable");
     }
@@ -357,6 +392,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     const existing = this.cache.get(connectionId);
     if (
       existing &&
+      existing.generation === generation &&
       existing.credentialRevision === connection.credentialRevision &&
       Date.now() - existing.builtAt < this.TTL_MS
     ) {
@@ -366,8 +402,11 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     // concurrent webhooks would both build, and the loser's Discord gateway
     // would leak as a live duplicate-processing socket.
     const inFlight = this.building.get(connectionId);
-    if (inFlight) {
-      const built = await inFlight;
+    if (inFlight?.generation === generation) {
+      const built = await inFlight.promise;
+      if (this.destroyed || (this.generations.get(connectionId) ?? 0) !== generation) {
+        throw new Error("channel bot build invalidated");
+      }
       return { bot: built.bot, provider: built.provider };
     }
     if (existing) {
@@ -375,21 +414,36 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       this.cache.delete(connectionId);
       this.stopCached(existing);
     }
-    const promise = this.buildBot(connection)
+    const entry = {} as BuildingBot;
+    const promise = this.buildBot(connection, generation)
       .then((built) => {
+        built.generation = generation;
+        if (
+          this.destroyed ||
+          (this.generations.get(connectionId) ?? 0) !== generation ||
+          this.building.get(connectionId) !== entry
+        ) {
+          this.stopCached(built);
+          throw new Error("channel bot build invalidated");
+        }
         this.cache.set(connectionId, built);
-        this.building.delete(connectionId);
+        if (this.building.get(connectionId) === entry) this.building.delete(connectionId);
         this.logger.log(
           `[channels] built bot connection=${connectionId} provider=${built.provider}`,
         );
         return built;
       })
       .catch((e) => {
-        this.building.delete(connectionId);
+        if (this.building.get(connectionId) === entry) this.building.delete(connectionId);
         throw e;
       });
-    this.building.set(connectionId, promise);
+    entry.generation = generation;
+    entry.promise = promise;
+    this.building.set(connectionId, entry);
     const built = await promise;
+    if (this.destroyed || (this.generations.get(connectionId) ?? 0) !== generation) {
+      throw new Error("channel bot build invalidated");
+    }
     return { bot: built.bot, provider: built.provider };
   }
 
@@ -399,15 +453,20 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
    * Also tears down the Discord gateway socket if one is running. Idempotent.
    */
   invalidate(connectionId: string): void {
+    this.generations.set(
+      connectionId,
+      (this.generations.get(connectionId) ?? 0) + 1,
+    );
     const cached = this.cache.get(connectionId);
-    if (!cached) return;
-    this.cache.delete(connectionId);
-    this.stopCached(cached);
-    this.logger.log(`[channels] invalidated bot cache connection=${connectionId}`);
+    if (cached) {
+      this.cache.delete(connectionId);
+      this.stopCached(cached);
+      this.logger.log(`[channels] invalidated bot cache connection=${connectionId}`);
+    }
     // A discord connection has no webhook traffic to lazily rebuild its
     // gateway — re-warm promptly (still enabled → fresh bot; disabled/deleted
     // → no-op). Fire-and-forget; the 60s sweep is the backstop.
-    if (cached.provider === "discord" && this.discordWarmTimer) {
+    if (!this.destroyed && cached?.provider === "discord" && this.discordWarmTimer) {
       void this.warmDiscordConnections();
     }
   }
@@ -446,12 +505,15 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   // Chat SDK construction (ISOLATED — adjust here after first real build)
   // ───────────────────────────────────────────────────────────────────────
 
-  private async buildBot(connection: any): Promise<CachedBot> {
+  private async buildBot(connection: any, generation = 0): Promise<CachedBot> {
+    this.assertBuildActive(String(connection.id), generation);
     const sdk = await loadChatSdk();
+    this.assertBuildActive(String(connection.id), generation);
     const provider = String(connection.provider);
     const creds = this.decryptCredentials(connection);
     const config = this.isPlainObject(connection.config) ? connection.config : {};
     const adapter = this.buildAdapter(sdk, provider, creds, config);
+    this.assertBuildActive(String(connection.id), generation);
 
     const bot = new sdk.Chat({
       userName: "platos",
@@ -477,6 +539,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     };
 
     this.registerHandlers(bot, connCtx);
+    this.assertBuildActive(String(connection.id), generation);
 
     let gatewayStop: (() => void | Promise<void>) | undefined;
     if (provider === "discord") {
@@ -491,9 +554,16 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       bot,
       provider,
       credentialRevision: String(connection.credentialRevision ?? "none"),
+      generation: 0,
       builtAt: Date.now(),
       gatewayStop,
     };
+  }
+
+  private assertBuildActive(connectionId: string, generation: number): void {
+    if (this.destroyed || (this.generations.get(connectionId) ?? 0) !== generation) {
+      throw new Error("channel bot build invalidated");
+    }
   }
 
   /** Build the provider adapter from DECRYPTED creds + public config. */
@@ -924,9 +994,9 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Handle ONE already-verified Slack event for an installed app. Called
-   * DETACHED by the events controller (after its fast 200 ACK), so this may
-   * run the full turn inline — there is no < 3s budget and no SDK per-thread
+   * Handle ONE already-verified, durably admitted Slack event for an installed
+   * app. Called by the leased inbox worker after ACK, so this may run the full
+   * turn inline — there is no < 3s budget and no SDK per-thread
    * lock to escape (the v2 bridge's out-of-handler dance does not apply).
    *
    * `app` + `installation` are the freshly-loaded rows the controller routed
@@ -935,7 +1005,13 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
    * OWNER's (org/project/env) — installations are external workspaces talking
    * to the owner's agent, never their own scope.
    */
-  async handleAppEvent(app: any, installation: any, envelope: any): Promise<void> {
+  async handleAppEvent(
+    app: any,
+    installation: any,
+    envelope: any,
+    context?: ChannelAppEventContext,
+  ): Promise<void> {
+    this.assertEventActive(context);
     const appId = String(app?.id ?? "");
     const installationId = String(installation?.id ?? "");
     if (!appId || !installationId) return;
@@ -943,6 +1019,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       installationId,
       appId,
     );
+    this.assertEventActive(context);
     if (!canonicalInstallation) return;
     installation = canonicalInstallation;
     app = canonicalInstallation.app;
@@ -968,6 +1045,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     const eventType = typeof event?.type === "string" ? event.type : "";
     if (eventType === "assistant_thread_started") {
       await this.handleAssistantThreadStarted(app, installation, event);
+      await this.markEventDelivery(context);
       return;
     }
     if (eventType === "assistant_thread_context_changed") {
@@ -993,11 +1071,12 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     let botToken: string;
     try {
       botToken = await this.getFreshBotToken(installation, app);
-    } catch {
+      this.assertEventActive(context);
+    } catch (error) {
       this.logger.error(
         `[channel-apps] bot token unavailable app=${appId} installation=${installationId}`,
       );
-      return;
+      throw error;
     }
 
     // Default agent: installation override → app default. Both null ⇒ the app
@@ -1070,8 +1149,12 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       replyChannel: parsed.channel,
       replyThreadTs: parsed.replyThreadTs,
       isAssistantThread,
-    });
-    if (!proceed) return;
+    }, context);
+    this.assertEventActive(context);
+    if (!proceed) {
+      await this.markEventDelivery(context);
+      return;
+    }
 
     // ── Resolve or create the (pinned) agent + Platos thread ──────────────
     let agentId: string;
@@ -1086,14 +1169,15 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
         parsed.channelThreadKey,
         parsed.text,
       );
+      this.assertEventActive(context);
       agentId = resolved.agentId;
       platosThreadId = resolved.platosThreadId;
       conversationScope.userId = resolved.endUserId;
-    } catch {
+    } catch (error) {
       this.logger.error(
         `[channel-apps] thread-binding failed app=${appId} installation=${installationId}`,
       );
-      return;
+      throw error;
     }
 
     // ── Assistant-surface "is thinking…" status (best-effort) ─────────────
@@ -1131,11 +1215,27 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       // session unavailable pre-commit → in-process (never a dropped turn). The
       // chat.postMessage post-back below is a channel-only TAIL, downstream of
       // the decision.
-      const result = await this.dispatch.collectTurn(agentId, {
-        scope: turnScope,
-        message: parsed.text,
-        threadId: platosThreadId,
-      });
+      const result = context?.persistedTurn
+        ? {
+            text: context.persistedTurn.outputText ?? "",
+            threadId: context.persistedTurn.threadId,
+            messageId: context.persistedTurn.id,
+          }
+        : await this.dispatch.collectTurn(agentId, {
+            scope: turnScope,
+            message: parsed.text,
+            threadId: platosThreadId,
+            ...(context ? { idempotencyKey: `channel-event:${appId}:${context.eventId}` } : {}),
+            ...(context ? { abortSignal: context.abortSignal } : {}),
+          });
+      this.assertEventActive(context);
+      if (context && !context.persistedTurn) {
+        if (!result.messageId) throw new Error("channel event turn was not durably persisted");
+        if (!(await context.onTurnCompleted(result.messageId))) {
+          throw new Error("channel event lease lost");
+        }
+        this.assertEventActive(context);
+      }
       if (result?.threadId && result.threadId !== platosThreadId) {
         this.logger.warn(
           `[channel-apps] turn thread diverged app=${appId} installation=${installationId} pinned=${platosThreadId} got=${result.threadId}`,
@@ -1148,6 +1248,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
           parsed.channel,
           parsed.replyThreadTs,
           reply,
+          context ? this.slackClientMessageId(appId, context.eventId) : undefined,
+          context?.abortSignal,
         );
       } else if (isAssistantThread) {
         // Empty/tool-only turn: nothing gets posted, so the "is thinking…"
@@ -1164,21 +1266,32 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
           /* best-effort */
         }
       }
-    } catch {
+      await this.markEventDelivery(context);
+    } catch (error) {
       this.logger.error(
         `[channel-apps] turn failed app=${appId} installation=${installationId}`,
       );
-      try {
-        await this.postSlackMessage(
-          botToken,
-          parsed.channel,
-          parsed.replyThreadTs,
-          "Sorry — something went wrong on my end. Please try again in a moment.",
-        );
-      } catch {
-        /* best-effort */
-      }
+      throw error;
     }
+  }
+
+  private assertEventActive(context?: ChannelAppEventContext): void {
+    if (context?.abortSignal.aborted) throw new Error("channel event lease lost");
+  }
+
+  private async markEventDelivery(context?: ChannelAppEventContext): Promise<void> {
+    if (!context) return;
+    this.assertEventActive(context);
+    if (!(await context.onDeliveryCompleted())) throw new Error("channel event lease lost");
+    this.assertEventActive(context);
+  }
+
+  private slackClientMessageId(appId: string, eventId: string): string {
+    const bytes = crypto.createHash("sha256").update(`channel-event:${appId}:${eventId}`).digest();
+    bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+    bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+    const hex = bytes.subarray(0, 16).toString("hex");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
   /**
@@ -1215,15 +1328,15 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
 
     // Need the bot token to decorate the thread; fail-closed on decrypt.
     // getFreshBotToken rotates a Phase-D rotating token near expiry (single
-    // Redis-locked refresh) before we use it on the assistant surface.
+    // durably claimed refresh) before we use it on the assistant surface.
     let botToken: string;
     try {
       botToken = await this.getFreshBotToken(installation, app);
-    } catch {
+    } catch (error) {
       this.logger.error(
         `[channel-apps] bot token unavailable (assistant_thread_started) app=${appId} installation=${installationId}`,
       );
-      return;
+      throw error;
     }
 
     // Default agent: install override → app default. None ⇒ nothing to bind.
@@ -1508,20 +1621,26 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
    * ORG-INSTALL (Enterprise Grid) NOTE: `installation` here has already been
    * resolved by the events controller's findActiveInstallation (which applies
    * the teamId:null→enterpriseId Grid fallback), so refresh keys off the
-   * resolved row's `id` for BOTH the DB write and the Redis lock — there is no
+   * resolved row's `id` for the durable compare-and-set — there is no
    * (teamId/enterpriseId) re-routing on this path to drift from the controller's
    * convention. See the ORG-INSTALL invariant block in
    * channel-app-events.controller.ts.
    *
-   * Fail-closed on a TOTAL decrypt failure (THROWS, like getAppBotToken — the
-   * caller skips the event). A failed REFRESH degrades to the current token
-   * (best-effort): a token still valid for up to 120s can serve this one event
-   * while the next event retries.
+   * Fail-closed on decrypt or rotation failure. A Slack grant returned from a
+   * refresh is never usable until its Credential update and durable refresh
+   * state transition commit together.
    */
   async getFreshBotToken(installation: any, app: any): Promise<string> {
     // Current decrypted token — also the ONLY path for non-rotating installs.
     // Throws (fail-closed) when the stored token is entirely unusable.
     const current = this.getAppBotToken(app, installation);
+
+    if (installation.tokenRefreshState === "REPAIR_REQUIRED") {
+      throw new Error("channel installation token repair required");
+    }
+    if (installation.tokenRefreshState === "REFRESHING") {
+      throw new Error("channel installation token refresh incomplete");
+    }
 
     // No expiry recorded ⇒ not a rotating install ⇒ current token is authoritative.
     const expMs = this.expiryMs(installation.tokenExpiresAt);
@@ -1530,110 +1649,71 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     if (Date.now() < expMs - ChannelRuntimeService.TOKEN_REFRESH_SKEW_MS) {
       return current;
     }
-    // Within 120s of expiry (or past) ⇒ rotate under a fleet-wide single-flight
-    // lock (refresh tokens are SINGLE-USE with a 2-active cap — a concurrent
-    // double-refresh orphans one).
-    return this.rotateBotToken(installation, app, current);
+    // Within 120s of expiry (or past) ⇒ rotate under a fleet-wide durable claim
+    // (refresh tokens are SINGLE-USE; a concurrent double-refresh orphans one).
+    return this.rotateBotToken(installation, app);
   }
 
   /**
-   * Rotate a rotating installation's bot token under a cross-process
-   * single-refresh lock (`chanapp:refresh:<installationId>`, SET NX EX 30).
-   * WINNER performs the Slack refresh; LOSER waits for the lock to clear then
-   * re-reads the freshly-rotated row. On a Redis outage we refresh WITHOUT the
-   * lock (a rare duplicate refresh is within Slack's 2-active cap, whereas
-   * skipping the refresh entirely would post an expired token).
+   * Rotate under a durable compare-and-set on ChannelInstallation. Redis is
+   * deliberately not authoritative: an unavailable cache must never permit
+   * two consumers of Slack's single-use refresh grant.
    */
   private async rotateBotToken(
     installation: any,
     app: any,
-    current: string,
   ): Promise<string> {
     const installationId = String(installation?.id ?? "");
-    if (!installationId) return current; // nothing to key a lock / update on
-    const lockKey = `chanapp:refresh:${installationId}`;
-
-    let haveLock = false;
-    try {
-      haveLock =
-        (await this.redis.set(
-          lockKey,
-          "1",
-          "EX",
-          ChannelRuntimeService.REFRESH_LOCK_TTL_S,
-          "NX",
-        )) === "OK";
-    } catch {
-      // Redis unreachable — cannot coordinate; refresh unlocked (see docstring).
-      return this.performRefresh(installation, app, current);
-    }
-
-    if (!haveLock) {
-      // Another event owns the refresh — wait it out, then re-read its result.
-      return this.awaitRotatedToken(installation, app, current, lockKey);
-    }
-
-    try {
-      // Re-read UNDER the lock: a peer may have finished refreshing between our
-      // expiry check and acquiring the lock. If the row is now comfortably
-      // valid, adopt it and skip a redundant (token-orphaning) refresh.
-      const row = (await this.reloadInstallation(installationId)) ?? installation;
-      const rowExp = this.expiryMs(row.tokenExpiresAt);
-      if (
-        rowExp &&
-        Date.now() < rowExp - ChannelRuntimeService.TOKEN_REFRESH_SKEW_MS
-      ) {
-        const token = this.adoptRefreshedRow(installation, app, row);
-        if (token) return token;
-      }
-      return this.performRefresh(installation, app, current);
-    } finally {
-      try {
-        await this.redis.del(lockKey);
-      } catch {
-        /* best-effort — the 30s TTL is the backstop */
-      }
-    }
+    const appId = String(app?.id ?? "");
+    if (!installationId || !appId) throw new Error("installation unavailable");
+    const expected = this.refreshExpectation(installation);
+    const attemptId = crypto.randomUUID();
+    const claimed = await this.persistence.beginInstallationRefresh(
+      installationId,
+      appId,
+      attemptId,
+      expected,
+    );
+    if (!claimed) return this.awaitRotatedToken(installation, app);
+    return this.performRefresh(claimed, claimed.app, attemptId, expected);
   }
 
   /**
-   * LOSER path: another event holds the refresh lock. Poll for it to clear
-   * (bounded ≈3s), then re-read the row — the winner has by then written the
-   * rotated token. Falls back to the current token if the wait/read yields
-   * nothing newer (the event proceeds best-effort rather than blocking).
+   * LOSER path: poll the durable attempt (bounded ≈3s) and adopt only a fully
+   * committed replacement. An incomplete or repair-required attempt fails
+   * closed so the durable event worker can retry later.
    */
   private async awaitRotatedToken(
     installation: any,
     app: any,
-    current: string,
-    lockKey: string,
   ): Promise<string> {
     const installationId = String(installation?.id ?? "");
     for (let i = 0; i < 10; i++) {
       await this.sleep(300);
-      let held: string | null;
-      try {
-        held = await this.redis.get(lockKey);
-      } catch {
-        held = null; // treat a read error as "clear" and re-read the row
+      const row = await this.reloadInstallation(installationId);
+      if (!row) continue;
+      if (row.tokenRefreshState === "REPAIR_REQUIRED") {
+        throw new Error("channel installation token repair required");
       }
-      if (!held) break; // winner released the lock
+      if (row.tokenRefreshState === "IDLE") {
+        const rowExp = this.expiryMs(row.tokenExpiresAt);
+        if (
+          rowExp &&
+          Date.now() < rowExp - ChannelRuntimeService.TOKEN_REFRESH_SKEW_MS
+        ) {
+          const token = this.adoptRefreshedRow(installation, app, row);
+          if (token) return token;
+        }
+      }
     }
-    if (!installationId) return current;
-    const row = await this.reloadInstallation(installationId);
-    if (row) {
-      const token = this.adoptRefreshedRow(installation, app, row);
-      if (token) return token;
-    }
-    return current;
+    throw new Error("channel installation token refresh incomplete");
   }
 
   /**
-   * Perform the Slack token refresh and persist the rotated grant. Best-effort:
-   * on ANY failure (no refresh token, undecryptable app creds, Slack error,
-   * network) it degrades to `current` rather than throwing. Mutates the caller's
-   * in-memory `installation` + primes the decrypted-token cache so the rest of
-   * the handler sees the fresh token. NEVER logs tokens/secrets.
+   * Perform the Slack token refresh and atomically persist the rotated grant.
+   * NEVER mutates or primes caches before the durable commit. If commit fails,
+   * a second transaction attempts to retain the returned grant while marking
+   * the installation REPAIR_REQUIRED; the token is still not published.
    *
    *   POST https://slack.com/api/oauth.v2.access
    *   form: grant_type=refresh_token, refresh_token, client_id, client_secret
@@ -1642,16 +1722,23 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
   private async performRefresh(
     installation: any,
     app: any,
-    current: string,
+    attemptId: string,
+    expected: {
+      tokenGeneration: number;
+      credentialId: string;
+      credentialRevision: string;
+    },
   ): Promise<string> {
     const installationId = String(installation?.id ?? "");
+    const appId = String(app?.id ?? "");
     const refreshToken = this.optionalSecretString(installation.refreshToken);
     if (!refreshToken) {
       // Rotation is on (expiry set) but no usable refresh token to rotate with.
       this.logger.warn(
         `[channel-apps] token near expiry but no refresh token installation=${installationId}`,
       );
-      return current;
+      await this.markRefreshRepair(installationId, appId, attemptId, expected, "REFRESH_TOKEN_MISSING");
+      throw new Error("channel installation token repair required");
     }
     const clientId = typeof app?.clientId === "string" ? app.clientId : "";
     const clientSecret = this.optionalSecretString(app?.clientSecret);
@@ -1659,7 +1746,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(
         `[channel-apps] token refresh blocked — app credentials unavailable installation=${installationId}`,
       );
-      return current;
+      await this.markRefreshRepair(installationId, appId, attemptId, expected, "APP_CREDENTIALS_MISSING");
+      throw new Error("channel installation token repair required");
     }
 
     let json: any = null;
@@ -1681,7 +1769,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(
         `[channel-apps] token refresh request failed installation=${installationId}`,
       );
-      return current;
+      await this.markRefreshRepair(installationId, appId, attemptId, expected, "SLACK_REFRESH_UNKNOWN");
+      throw new Error("channel installation token repair required");
     }
     if (
       !json?.ok ||
@@ -1692,7 +1781,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(
         `[channel-apps] token refresh rejected installation=${installationId} error=${json?.error ?? "unknown"}`,
       );
-      return current;
+      await this.markRefreshRepair(installationId, appId, attemptId, expected, "SLACK_REFRESH_REJECTED");
+      throw new Error("channel installation token repair required");
     }
 
     const newBotToken = json.access_token as string;
@@ -1706,45 +1796,102 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
         ? new Date(Date.now() + json.expires_in * 1000)
         : null;
 
-    let rotated: any | null = null;
+    let rotated: any;
     try {
-      rotated = await this.persistence.rotateInstallationGrant(
+      rotated = await this.persistence.finalizeInstallationRefresh(
         installationId,
-        String(app.id),
+        appId,
+        attemptId,
+        expected,
         {
           botToken: newBotToken,
           refreshToken: newRefreshToken,
           tokenExpiresAt: newExpiresAt,
         },
       );
+      if (!rotated) {
+        return this.awaitRotatedToken(installation, app);
+      }
     } catch {
       this.logger.error(
         `[channel-apps] token refresh persist failed installation=${installationId}`,
       );
+      const preserved = await this.persistence.preserveInstallationRefreshGrantForRepair(
+        installationId,
+        appId,
+        attemptId,
+        expected,
+        {
+          botToken: newBotToken,
+          refreshToken: newRefreshToken,
+          tokenExpiresAt: newExpiresAt,
+        },
+        "REFRESH_COMMIT_FAILED",
+      );
+      if (!preserved) {
+        await this.markRefreshRepair(
+          installationId,
+          appId,
+          attemptId,
+          expected,
+          "REFRESH_COMMIT_FAILED",
+        );
+      }
+      throw new Error("channel installation token repair required");
     }
 
-    // Keep the caller's in-memory row + decrypted-token cache coherent with the
-    // rotated grant (the encrypted-source self-invalidation key now matches, so
-    // a later getAppBotToken on this same row returns the new token from cache).
-    installation.botToken = newBotToken;
-    installation.refreshToken = newRefreshToken;
-    if (newExpiresAt) installation.tokenExpiresAt = newExpiresAt;
-    if (rotated?.credentialRevision) {
-      installation.credentialRevision = rotated.credentialRevision;
-    }
-    this.cacheAppToken(app, installation, newBotToken);
+    const committedToken = this.adoptRefreshedRow(installation, app, rotated);
+    if (!committedToken) throw new Error("committed channel token unavailable");
 
     this.logger.log(
       `[channel-apps] bot token refreshed installation=${installationId}`,
     );
-    return newBotToken;
+    return committedToken;
+  }
+
+  private async markRefreshRepair(
+    installationId: string,
+    appId: string,
+    attemptId: string,
+    expected: {
+      tokenGeneration: number;
+      credentialId: string;
+      credentialRevision: string;
+    },
+    repairCode: string,
+  ): Promise<void> {
+    try {
+      await this.persistence.markInstallationRefreshRepairRequired(
+        installationId,
+        appId,
+        attemptId,
+        expected,
+        repairCode,
+      );
+    } catch {
+      // The REFRESHING row itself is already a durable fail-closed restart fence.
+    }
+  }
+
+  private refreshExpectation(installation: any): {
+    tokenGeneration: number;
+    credentialId: string;
+    credentialRevision: string;
+  } {
+    const tokenGeneration = Number(installation?.tokenGeneration);
+    const credentialId = String(installation?.credentialId ?? "");
+    const credentialRevision = String(installation?.credentialRevision ?? "");
+    if (!Number.isSafeInteger(tokenGeneration) || tokenGeneration < 1 || !credentialId || !credentialRevision) {
+      throw new Error("installation refresh generation unavailable");
+    }
+    return { tokenGeneration, credentialId, credentialRevision };
   }
 
   /**
    * Adopt a freshly-reloaded installation row's token onto the caller's
    * in-memory `installation` + the decrypted-token cache, returning the
    * decrypted token (or null if the row's token can't be decrypted). Used by
-   * both the under-lock re-read and the loser's post-wait re-read so a peer's
+   * the loser's post-wait re-read so a peer's
    * rotation is picked up WITHOUT a second Slack call.
    */
   private adoptRefreshedRow(
@@ -1856,9 +2003,12 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     channel: string,
     threadTs: string | undefined,
     text: string,
+    clientMessageId?: string,
+    abortSignal?: AbortSignal,
   ): Promise<void> {
     const body: Record<string, unknown> = { channel, text };
     if (threadTs) body.thread_ts = threadTs;
+    if (clientMessageId) body.client_msg_id = clientMessageId;
     let res: Response;
     try {
       res = await fetch("https://slack.com/api/chat.postMessage", {
@@ -1868,13 +2018,15 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
           Authorization: `Bearer ${botToken}`,
         },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(10_000),
+        signal: abortSignal
+          ? AbortSignal.any([abortSignal, AbortSignal.timeout(10_000)])
+          : AbortSignal.timeout(10_000),
       });
     } catch {
       this.logger.error(
         `[channel-apps] chat.postMessage request failed channel=${channel}`,
       );
-      return;
+      throw new ChannelDeliveryError("SLACK_REQUEST_FAILED", true);
     }
     let json: any = null;
     try {
@@ -1882,9 +2034,34 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
     } catch {
       /* non-JSON response — treat as failure below */
     }
-    if (!json?.ok) {
+    if (!res.ok || !json?.ok) {
+      const providerCode = typeof json?.error === "string" ? json.error : `HTTP_${res.status}`;
+      // Recovery after "Slack accepted, worker crashed before delivery stage"
+      // intentionally reuses client_msg_id. Slack's duplicate response proves
+      // the original delivery exists, so this retry may durably complete.
+      if (clientMessageId && providerCode === "duplicate_message") return;
+      const permanentCodes = new Set([
+        "invalid_auth",
+        "account_inactive",
+        "token_revoked",
+        "missing_scope",
+        "channel_not_found",
+        "not_in_channel",
+        "is_archived",
+        "msg_too_long",
+        "no_text",
+        "restricted_action",
+      ]);
+      const retryable =
+        res.status === 429 ||
+        res.status >= 500 ||
+        !permanentCodes.has(providerCode);
       this.logger.error(
-        `[channel-apps] chat.postMessage rejected channel=${channel} error=${json?.error ?? res.status}`,
+        `[channel-apps] chat.postMessage rejected channel=${channel} error=${providerCode}`,
+      );
+      throw new ChannelDeliveryError(
+        retryable ? "SLACK_DELIVERY_RETRYABLE" : "SLACK_DELIVERY_REJECTED",
+        retryable,
       );
     }
   }
@@ -1930,6 +2107,7 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       replyThreadTs?: string;
       isAssistantThread: boolean;
     },
+    eventContext?: ChannelAppEventContext,
   ): Promise<boolean> {
     // The hosted flow itself is owned by the link-controller slice (injected
     // @Optional). If it isn't wired, the ENTIRE feature degrades to `none`
@@ -1954,6 +2132,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
         url
           ? `🔗 Connect your account: ${url}`
           : "Account linking isn't available right now. Please try again later.",
+        eventContext ? this.slackClientMessageId(String(app.id), eventContext.eventId) : undefined,
+        eventContext?.abortSignal,
       );
       if (ctx.isAssistantThread) await this.clearAssistantStatus(botToken, ctx);
       return false;
@@ -1973,6 +2153,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
         removed > 0
           ? `✅ Unlinked — removed ${removed} linked email ${removed === 1 ? "identity" : "identities"}.`
           : "You don't have a linked account to remove.",
+        eventContext ? this.slackClientMessageId(String(app.id), eventContext.eventId) : undefined,
+        eventContext?.abortSignal,
       );
       if (ctx.isAssistantThread) await this.clearAssistantStatus(botToken, ctx);
       return false;
@@ -1996,6 +2178,8 @@ export class ChannelRuntimeService implements OnModuleInit, OnModuleDestroy {
       url
         ? `🔗 Connect your account to continue: ${url}`
         : "This assistant requires a linked account, but linking isn't available right now. Please try again later.",
+      eventContext ? this.slackClientMessageId(String(app.id), eventContext.eventId) : undefined,
+      eventContext?.abortSignal,
     );
     if (ctx.isAssistantThread) await this.clearAssistantStatus(botToken, ctx);
     return false;

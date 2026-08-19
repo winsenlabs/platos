@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as crypto from "node:crypto";
 import { ChannelAppEventsController } from "./channel-app-events.controller";
+import { ChannelDeliveryError } from "./channel-runtime.service";
 
 type Row = {
   id: string;
@@ -77,7 +78,7 @@ function makePersistenceShim(rows: Row[]) {
 }
 
 function makeController(persistence: ReturnType<typeof makePersistenceShim>) {
-  return new ChannelAppEventsController(persistence as any, {} as any, {} as any) as any;
+  return new ChannelAppEventsController(persistence as any, {} as any) as any;
 }
 
 const APP = "00000000-0000-0000-0000-000000000001";
@@ -206,5 +207,238 @@ describe("ChannelAppEventsController — Grid org-install routing", () => {
 
       expect(controller.verifySlackSignature(secret, rawBody, timestamp, signature)).toBe(false);
     });
+  });
+});
+
+describe("ChannelAppEventsController — durable inbox", () => {
+  function signedRequest(envelope: unknown, retry = false) {
+    const rawBody = Buffer.from(JSON.stringify(envelope));
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = `v0=${crypto
+      .createHmac("sha256", "signing-secret")
+      .update(`v0:${timestamp}:`)
+      .update(rawBody)
+      .digest("hex")}`;
+    return {
+      rawBody,
+      headers: {
+        "x-slack-request-timestamp": timestamp,
+        "x-slack-signature": signature,
+        ...(retry ? { "x-slack-retry-num": "1" } : {}),
+      },
+    } as any;
+  }
+
+  function responseShim() {
+    const response: any = {
+      statusCode: 0,
+      body: null,
+      headers: {},
+      status: vi.fn((code: number) => {
+        response.statusCode = code;
+        return response;
+      }),
+      json: vi.fn((body: unknown) => {
+        response.body = body;
+        return response;
+      }),
+      setHeader: vi.fn((name: string, value: string) => {
+        response.headers[name] = value;
+      }),
+    };
+    return response;
+  }
+
+  const envelope = {
+    type: "event_callback",
+    event_id: "Ev1",
+    team_id: "T1",
+    event: { type: "app_mention", user: "U1", text: "sensitive text" },
+  };
+
+  it("does not ACK until the verified envelope is durably inserted", async () => {
+    let resolveInsert!: (row: any) => void;
+    const enqueue = vi.fn(
+      () => new Promise((resolve) => (resolveInsert = resolve)),
+    );
+    const persistence = {
+      loadApp: vi.fn().mockResolvedValue({ id: APP, signingSecret: "signing-secret" }),
+      enqueueChannelEvent: enqueue,
+    };
+    const controller = new ChannelAppEventsController(persistence as any, {} as any);
+    const response = responseShim();
+    const pending = controller.events(signedRequest(envelope), response, APP);
+    await vi.waitFor(() => expect(enqueue).toHaveBeenCalledOnce());
+
+    expect(response.json).not.toHaveBeenCalled();
+    resolveInsert({ id: "inbox-1", status: "COMPLETED" });
+    await pending;
+
+    expect(response.statusCode).toBe(200);
+    expect(enqueue).toHaveBeenCalledWith(APP, "Ev1", envelope);
+    expect(JSON.stringify(enqueue.mock.calls[0])).not.toContain("x-slack-signature");
+  });
+
+  it("returns retryable 503 instead of ACK when durable admission fails", async () => {
+    const runtime = { handleAppEvent: vi.fn() };
+    const persistence = {
+      loadApp: vi.fn().mockResolvedValue({ id: APP, signingSecret: "signing-secret" }),
+      enqueueChannelEvent: vi.fn().mockRejectedValue(new Error("postgres unavailable")),
+    };
+    const controller = new ChannelAppEventsController(persistence as any, runtime as any);
+    const response = responseShim();
+
+    await controller.events(signedRequest(envelope), response, APP);
+
+    expect(response.statusCode).toBe(503);
+    expect(runtime.handleAppEvent).not.toHaveBeenCalled();
+  });
+
+  it("ACKs completed duplicates and tells Slack to stop retrying", async () => {
+    const persistence = {
+      loadApp: vi.fn().mockResolvedValue({ id: APP, signingSecret: "signing-secret" }),
+      enqueueChannelEvent: vi.fn().mockResolvedValue({ id: "inbox-1", status: "COMPLETED" }),
+    };
+    const controller = new ChannelAppEventsController(persistence as any, {} as any);
+    const response = responseShim();
+
+    await controller.events(signedRequest(envelope, true), response, APP);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["x-slack-no-retry"]).toBe("1");
+  });
+
+  it("marks a retryable processing failure and reprocesses it on recovery", async () => {
+    const complete = vi.fn().mockResolvedValue(true);
+    const fail = vi.fn().mockResolvedValue(undefined);
+    const persistence = {
+      claimChannelEvent: vi.fn().mockResolvedValue({
+        id: "inbox-1",
+        appId: APP,
+        attempts: 1,
+        eventId: "Ev1",
+        leaseGeneration: 1,
+        envelope,
+      }),
+      renewChannelEventLease: vi.fn().mockResolvedValue(true),
+      loadApp: vi.fn().mockResolvedValue({ id: APP }),
+      findActiveInstallation: vi.fn().mockResolvedValue({ id: "installation-1" }),
+      recordChannelEventTurn: vi.fn().mockResolvedValue(true),
+      recordChannelEventDelivery: vi.fn().mockResolvedValue(true),
+      completeChannelEvent: complete,
+      failChannelEvent: fail,
+    };
+    const runtime = {
+      handleAppEvent: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("retry me"))
+        .mockResolvedValueOnce(undefined),
+    };
+    const controller = new ChannelAppEventsController(
+      persistence as any,
+      runtime as any,
+    ) as any;
+
+    await controller.processInbox("inbox-1");
+    await controller.processInbox("inbox-1");
+
+    expect(fail).toHaveBeenCalledWith(
+      "inbox-1",
+      expect.any(String),
+      1,
+      5_000,
+      "PROCESSING_FAILED",
+    );
+    expect(runtime.handleAppEvent).toHaveBeenCalledTimes(2);
+    expect(complete).toHaveBeenCalledOnce();
+  });
+
+  it("does not claim new inbox work after module shutdown", async () => {
+    const claim = vi.fn();
+    const controller = new ChannelAppEventsController(
+      { claimChannelEvent: claim } as any,
+      {} as any,
+    ) as any;
+
+    controller.onModuleDestroy();
+    await controller.processInbox("inbox-1");
+
+    expect(claim).not.toHaveBeenCalled();
+  });
+
+  it("aborts processing and never completes after losing its lease heartbeat", async () => {
+    vi.useFakeTimers();
+    const complete = vi.fn();
+    const fail = vi.fn().mockResolvedValue(false);
+    const persistence = {
+      claimChannelEvent: vi.fn().mockResolvedValue({
+        id: "inbox-1",
+        appId: APP,
+        eventId: "Ev1",
+        leaseGeneration: 7,
+        envelope,
+      }),
+      renewChannelEventLease: vi.fn().mockResolvedValue(false),
+      loadApp: vi.fn().mockResolvedValue({ id: APP }),
+      findActiveInstallation: vi.fn().mockResolvedValue({ id: "installation-1" }),
+      completeChannelEvent: complete,
+      failChannelEvent: fail,
+      recordChannelEventDelivery: vi.fn(),
+      recordChannelEventTurn: vi.fn(),
+    };
+    const runtime = {
+      handleAppEvent: vi.fn((_app, _installation, _envelope, context) =>
+        new Promise<void>((resolve) => context.abortSignal.addEventListener("abort", () => resolve())),
+      ),
+    };
+    const controller = new ChannelAppEventsController(persistence as any, runtime as any) as any;
+    const processing = controller.processInbox("inbox-1");
+    await vi.advanceTimersByTimeAsync(20_000);
+    await processing;
+
+    expect(complete).not.toHaveBeenCalled();
+    expect(fail).toHaveBeenCalledWith(
+      "inbox-1",
+      expect.any(String),
+      7,
+      5_000,
+      "PROCESSING_FAILED",
+    );
+    vi.useRealTimers();
+  });
+
+  it("discards explicit nonretryable Slack delivery failures", async () => {
+    const discard = vi.fn().mockResolvedValue(true);
+    const fail = vi.fn();
+    const persistence = {
+      claimChannelEvent: vi.fn().mockResolvedValue({
+        id: "inbox-1",
+        appId: APP,
+        eventId: "Ev1",
+        leaseGeneration: 2,
+        envelope,
+      }),
+      renewChannelEventLease: vi.fn().mockResolvedValue(true),
+      loadApp: vi.fn().mockResolvedValue({ id: APP }),
+      findActiveInstallation: vi.fn().mockResolvedValue({ id: "installation-1" }),
+      discardChannelEvent: discard,
+      failChannelEvent: fail,
+    };
+    const runtime = {
+      handleAppEvent: vi.fn().mockRejectedValue(
+        new ChannelDeliveryError("SLACK_DELIVERY_REJECTED", false),
+      ),
+    };
+    const controller = new ChannelAppEventsController(persistence as any, runtime as any) as any;
+
+    await controller.processInbox("inbox-1");
+
+    expect(discard).toHaveBeenCalledWith(
+      "inbox-1",
+      expect.any(String),
+      2,
+      "SLACK_DELIVERY_REJECTED",
+    );
+    expect(fail).not.toHaveBeenCalled();
   });
 });

@@ -409,6 +409,22 @@ export class TurnDispatchService {
    * failure); the session's own persistence/error handling stands.
    */
   async collectTurn(agentId: string, ctx: TurnDispatchContext): Promise<CollectedTurnResult> {
+    if (ctx.idempotencyKey && ctx.threadId) {
+      const persisted = await this.conversationService.findTurnByIdempotency(
+        ctx.threadId,
+        ctx.scope,
+        ctx.idempotencyKey,
+      );
+      if (persisted?.status === "SUCCEEDED") {
+        return {
+          text: persisted.outputText ?? "",
+          threadId: persisted.threadId,
+          costCents: Number(persisted.costCents ?? 0),
+          messageId: persisted.id,
+        };
+      }
+      if (persisted) throw new Error("idempotent turn is still in progress");
+    }
     const mode = await this.resolveMode(agentId, ctx.scope);
     if (mode === "direct") {
       return this.collectDirect(agentId, ctx);
@@ -678,6 +694,7 @@ export class TurnDispatchService {
         clientData: {
           agentId,
           threadId,
+          clientMessageId: ctx.idempotencyKey ?? null,
           // Single source of truth for what crosses the Trigger-session
           // boundary — see session-scope.ts. Carries userToken (turn-proof),
           // entityId, principal (trust tier), userIdentities (end-user

@@ -94,6 +94,7 @@ export const sourceModelManifest = [
 /** New support models required by the approved normalized design. */
 export const supportDomainModels = [
   "AgentToolPolicy",
+  "ChannelEventInbox",
   "Credential",
   "CredentialAudit",
   "CredentialSecretVersion",

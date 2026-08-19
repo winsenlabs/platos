@@ -40,6 +40,11 @@ type InstallRow = {
   status: string;
   revokedAt: Date | null;
   lastEventAt: Date | null;
+  tokenGeneration: number;
+  tokenRefreshState: string;
+  tokenRefreshAttemptId: string | null;
+  tokenRefreshStartedAt: Date | null;
+  tokenRefreshRepairCode: string | null;
   createdAt: Date;
 };
 
@@ -220,16 +225,47 @@ function makePrisma(seed: { agents?: AgentRow[] } = {}) {
             status: create.status,
             revokedAt: null,
             lastEventAt: null,
+            tokenGeneration: 1,
+            tokenRefreshState: "IDLE",
+            tokenRefreshAttemptId: null,
+            tokenRefreshStartedAt: null,
+            tokenRefreshRepairCode: null,
             createdAt: new Date(Date.now() + sequence),
           };
           installs.push(row);
         }
         return { id: row.id };
       },
+      create: async ({ data }: any) => {
+        const row: InstallRow = {
+          id: nextId("installation"),
+          appId: data.appId,
+          externalInstallationId: data.externalInstallationId,
+          displayName: data.displayName ?? null,
+          credentialId: data.credentialId ?? null,
+          grantedScopes: data.grantedScopes ?? [],
+          defaultAgentId: data.defaultAgentId ?? null,
+          agentRouting: data.agentRouting ?? [],
+          status: data.status,
+          revokedAt: null,
+          lastEventAt: null,
+          tokenGeneration: 1,
+          tokenRefreshState: "IDLE",
+          tokenRefreshAttemptId: null,
+          tokenRefreshStartedAt: null,
+          tokenRefreshRepairCode: null,
+          createdAt: new Date(Date.now() + sequence),
+        };
+        installs.push(row);
+        return { id: row.id };
+      },
       update: async ({ where, data }: any) => {
         const row = installs.find((candidate) => candidate.id === where.id);
         if (!row) throw new Error("installation not found");
-        Object.assign(row, data);
+        const { tokenGeneration, ...rest } = data;
+        Object.assign(row, rest);
+        if (tokenGeneration?.increment) row.tokenGeneration += tokenGeneration.increment;
+        else if (tokenGeneration !== undefined) row.tokenGeneration = tokenGeneration;
         return hydrateInstall(row);
       },
     },
@@ -442,6 +478,7 @@ describe("ChannelAppsController clean installation management", () => {
       teamId: "T100",
       botToken: "xoxb-1",
     });
+    const firstTokenGeneration = prisma.installs[0].tokenGeneration;
     const credential = prisma.credentials[0];
     credential.encryptedReference = JSON.stringify(
       messageCrypto.encryptJsonField({
@@ -460,6 +497,7 @@ describe("ChannelAppsController clean installation management", () => {
     expect(prisma.installs).toHaveLength(1);
     expect(prisma.credentials).toHaveLength(1);
     expect(second.installation.id).toBe(first.installation.id);
+    expect(prisma.installs[0].tokenGeneration).toBe(firstTokenGeneration + 1);
     expect(prisma.installs[0]).toMatchObject({ status: "active", revokedAt: null });
     expect(prisma.credentials[0].revokedAt).toBeNull();
     expect(credentialPayload(prisma, prisma.installs[0])).toMatchObject({
@@ -543,6 +581,11 @@ describe("ChannelAppsController clean installation management", () => {
     expect(status.installations[0]).toMatchObject({
       teamId: "T100",
       status: "active",
+      tokenRefresh: {
+        state: "IDLE",
+        repairCode: null,
+        action: null,
+      },
       agentBinding: {
         agentId: null,
         effectiveAgentId: "appDefaultAgent",
