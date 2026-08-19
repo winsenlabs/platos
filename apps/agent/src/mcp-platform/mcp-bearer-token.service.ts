@@ -33,32 +33,30 @@ export class McpBearerTokenService {
     return createHash("sha256").update(raw).digest("hex");
   }
 
-  private async auditScope(entityId: string): Promise<{
+  private async resolveScope(entityId: string, environmentId: string): Promise<{
     organizationId: string;
     projectId: string;
     environmentId: string;
-  }> {
-    const entity = await this.prisma.entity.findUnique({
-      where: { id: entityId },
+  } | null> {
+    const entity = await this.prisma.entity.findFirst({
+      where: {
+        id: entityId,
+        project: {
+          environments: {
+            some: { id: environmentId, archivedAt: null },
+          },
+        },
+      },
       select: {
         project: {
           select: {
             id: true,
             organizationId: true,
-            environments: {
-              where: { archivedAt: null },
-              select: { id: true },
-              orderBy: { createdAt: "asc" },
-              take: 1,
-            },
           },
         },
       },
     });
-    const environmentId = entity?.project.environments[0]?.id;
-    if (!entity || !environmentId) {
-      throw new Error("Entity is not attached to an active environment");
-    }
+    if (!entity) return null;
     return {
       organizationId: entity.project.organizationId,
       projectId: entity.project.id,
@@ -67,7 +65,7 @@ export class McpBearerTokenService {
   }
 
   private auditData(
-    scope: Awaited<ReturnType<McpBearerTokenService["auditScope"]>>,
+    scope: NonNullable<Awaited<ReturnType<McpBearerTokenService["resolveScope"]>>>,
     tokenId: string,
     action: "mint" | "use" | "revoke",
     actorUserId?: string,
@@ -81,6 +79,7 @@ export class McpBearerTokenService {
       after: {
         organizationId: scope.organizationId,
         projectId: scope.projectId,
+        environmentId: scope.environmentId,
       },
       source: "entity_mcp",
     } as const;
@@ -89,6 +88,7 @@ export class McpBearerTokenService {
   /** Generate a new PAT for an entity. Returns the raw token (shown once). */
   async generate(
     entityPk: string,
+    environmentId: string,
     label: string,
     createdBy: string,
     options: { scopes?: string[]; expiresAt?: Date; mcpUserId?: string } = {}
@@ -97,7 +97,10 @@ export class McpBearerTokenService {
     const tokenHash = McpBearerTokenService.hashToken(raw);
     const id = randomUUID();
     const mcpUserId = options.mcpUserId ?? `mcp:pat:${id}`;
-    const scope = await this.auditScope(entityPk);
+    const scope = await this.resolveScope(entityPk, environmentId);
+    if (!scope) {
+      throw new Error("Entity and environment do not share canonical project ancestry");
+    }
     const expiresAt = options.expiresAt ?? new Date(Date.now() + DEFAULT_TTL_MS);
     if (expiresAt.getTime() <= Date.now()) {
       throw new Error("expiresAt must be in the future");
@@ -107,6 +110,7 @@ export class McpBearerTokenService {
         data: {
           id,
           entityId: entityPk,
+          environmentId,
           tokenHash,
           label,
           mcpUserId,
@@ -126,11 +130,23 @@ export class McpBearerTokenService {
   async validate(raw: string): Promise<{
     id: string;
     entityPk: string;
+    environmentId: string;
     mcpUserId: string;
     scopes: string[];
   } | null> {
     if (!raw.startsWith(TOKEN_PREFIX)) return null;
     const tokenHash = McpBearerTokenService.hashToken(raw);
+    return this.validateHash(tokenHash);
+  }
+
+  /** Revalidate an SSE session without retaining the raw bearer in Redis. */
+  async validateHash(tokenHash: string): Promise<{
+    id: string;
+    entityPk: string;
+    environmentId: string;
+    mcpUserId: string;
+    scopes: string[];
+  } | null> {
     const row = await this.prisma.mcpBearerToken.findFirst({
       where: {
         tokenHash,
@@ -139,7 +155,8 @@ export class McpBearerTokenService {
       },
     });
     if (!row || !constantTimeHexEqual(row.tokenHash, tokenHash)) return null;
-    const scope = await this.auditScope(row.entityId);
+    const scope = await this.resolveScope(row.entityId, row.environmentId);
+    if (!scope) return null;
     const recorded = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.mcpBearerToken.updateMany({
         where: {
@@ -156,13 +173,20 @@ export class McpBearerTokenService {
       return true;
     });
     if (!recorded) return null;
-    return { id: row.id, entityPk: row.entityId, mcpUserId: row.mcpUserId, scopes: row.scopes };
+    return {
+      id: row.id,
+      entityPk: row.entityId,
+      environmentId: row.environmentId,
+      mcpUserId: row.mcpUserId,
+      scopes: row.scopes,
+    };
   }
 
   /** List tokens for an entity (hashes not returned). */
-  async list(entityPk: string): Promise<
+  async list(entityPk: string, environmentId: string): Promise<
     Array<{
       id: string;
+      environmentId: string;
       label: string;
       mcpUserId: string;
       scopes: string[];
@@ -172,10 +196,15 @@ export class McpBearerTokenService {
       revokedAt: Date | null;
     }>
   > {
+    const scope = await this.resolveScope(entityPk, environmentId);
+    if (!scope) {
+      throw new Error("Entity and environment do not share canonical project ancestry");
+    }
     return this.prisma.mcpBearerToken.findMany({
-      where: { entityId: entityPk },
+      where: { entityId: entityPk, environmentId },
       select: {
         id: true,
+        environmentId: true,
         label: true,
         mcpUserId: true,
         scopes: true,
@@ -189,17 +218,23 @@ export class McpBearerTokenService {
   }
 
   /** Revoke a PAT by id, scoped to entityPk. */
-  async revoke(id: string, entityPk: string, revokedBy?: string): Promise<boolean> {
+  async revoke(
+    id: string,
+    entityPk: string,
+    environmentId: string,
+    revokedBy?: string,
+  ): Promise<boolean> {
     const existing = await this.prisma.mcpBearerToken.findFirst({
-      where: { id, entityId: entityPk },
+      where: { id, entityId: entityPk, environmentId },
       select: { id: true, revokedAt: true },
     });
     if (!existing) return false;
     if (existing.revokedAt) return true;
-    const scope = await this.auditScope(entityPk);
+    const scope = await this.resolveScope(entityPk, environmentId);
+    if (!scope) return false;
     await this.prisma.$transaction(async (tx) => {
       const updated = await tx.mcpBearerToken.updateMany({
-        where: { id, entityId: entityPk, revokedAt: null },
+        where: { id, entityId: entityPk, environmentId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
       if (updated.count === 0) return;

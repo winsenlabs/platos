@@ -9,6 +9,7 @@ import { randomUUID } from "crypto";
 
 export interface McpIdentityResult {
   mcpUserId: string;
+  environmentId: string;
   identityMode: "anonymous" | "oidc" | "bearer";
   metadata: Record<string, unknown>;
 }
@@ -66,8 +67,13 @@ export class McpIdentityResolverService {
       }
       return {
         mcpUserId: token.mcpUserId,
+        environmentId: token.environmentId,
         identityMode: "bearer",
-        metadata: { tokenId: token.id, scopes: token.scopes },
+        metadata: {
+          tokenId: token.id,
+          scopes: token.scopes,
+          environmentId: token.environmentId,
+        },
       };
     }
 
@@ -82,12 +88,22 @@ export class McpIdentityResolverService {
       if (!allowedModes.some((m) => m === "anonymous")) {
         return { error: "This entity requires authentication", status: 401 };
       }
-      // Mint or retrieve anonymous session
-      const result = await this.getOrCreateAnonSession(entityPk, req);
+      const environment = await this.resolveAnonymousEnvironment(entityPk, req);
+      if ("error" in environment) return environment;
+      // Mint or retrieve anonymous session in the explicitly resolved environment.
+      const result = await this.getOrCreateAnonSession(
+        entityPk,
+        environment.environmentId,
+        req,
+      );
       return {
         mcpUserId: result.mcpUserId,
+        environmentId: environment.environmentId,
         identityMode: "anonymous",
-        metadata: { sessionId: result.id },
+        metadata: {
+          sessionId: result.id,
+          environmentId: environment.environmentId,
+        },
       };
     }
 
@@ -96,13 +112,19 @@ export class McpIdentityResolverService {
 
   private async getOrCreateAnonSession(
     entityPk: string,
+    environmentId: string,
     req: Request,
   ): Promise<{ id: string; mcpUserId: string }> {
     // Check for existing anon session cookie/header
     const existingId = req.headers["x-mcp-anon-session"] as string | undefined;
     if (existingId) {
       const existing = await this.prisma.mcpAnonymousSession.findFirst({
-        where: { mcpUserId: existingId, entityId: entityPk, revokedAt: null },
+        where: {
+          mcpUserId: existingId,
+          entityId: entityPk,
+          environmentId,
+          revokedAt: null,
+        },
         select: { id: true, mcpUserId: true },
       });
       if (existing) {
@@ -116,25 +138,6 @@ export class McpIdentityResolverService {
 
     // Create new anon session
     const mcpUserId = `mcp:anon:${randomUUID().replace(/-/g, "")}`;
-    const entity = await this.prisma.entity.findUnique({
-      where: { id: entityPk },
-      select: {
-        project: {
-          select: {
-            environments: {
-              where: { archivedAt: null },
-              select: { id: true },
-              orderBy: { createdAt: "asc" },
-              take: 1,
-            },
-          },
-        },
-      },
-    });
-    const environmentId = entity?.project.environments[0]?.id;
-    if (!environmentId) {
-      throw new Error("Entity is not attached to an active environment");
-    }
     const session = await this.prisma.mcpAnonymousSession.create({
       data: {
         entityId: entityPk,
@@ -146,5 +149,34 @@ export class McpIdentityResolverService {
       select: { id: true, mcpUserId: true },
     });
     return session;
+  }
+
+  private async resolveAnonymousEnvironment(
+    entityPk: string,
+    req: Request,
+  ): Promise<{ environmentId: string } | McpIdentityRejectReason> {
+    const queryValue = (req.query as Record<string, unknown> | undefined)?.environmentId;
+    if (Array.isArray(queryValue)) {
+      return { error: "environmentId must be a single canonical id", status: 400 };
+    }
+    const requested = typeof queryValue === "string" && queryValue.trim()
+      ? queryValue.trim()
+      : undefined;
+    if (!requested) {
+      return { error: "environmentId is required for anonymous MCP authentication", status: 400 };
+    }
+    const environments = await this.prisma.environment.findMany({
+      where: {
+        id: requested,
+        archivedAt: null,
+        project: { entities: { some: { id: entityPk } } },
+      },
+      select: { id: true },
+      orderBy: { id: "asc" },
+      take: 1,
+    });
+    return environments[0]
+      ? { environmentId: environments[0].id }
+      : { error: "environmentId is not active for this entity", status: 403 };
   }
 }

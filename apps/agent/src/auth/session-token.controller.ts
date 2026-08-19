@@ -156,6 +156,7 @@ export class SessionTokenController {
       where: { tokenHash },
       select: {
         id: true,
+        environmentId: true,
         expiresAt: true,
         revokedAt: true,
         entity: {
@@ -174,6 +175,7 @@ export class SessionTokenController {
       !bearer ||
       bearer.revokedAt ||
       (bearer.expiresAt && bearer.expiresAt.getTime() <= now.getTime()) ||
+      bearer.environmentId !== body.environmentId ||
       bearer.entity.externalId !== entityId ||
       bearer.entity.project.id !== body.projectId ||
       bearer.entity.project.organizationId !== body.organizationId ||
@@ -186,6 +188,7 @@ export class SessionTokenController {
     const active = await this.prisma.mcpBearerToken.updateMany({
       where: {
         id: bearer.id,
+        environmentId: body.environmentId,
         revokedAt: null,
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },

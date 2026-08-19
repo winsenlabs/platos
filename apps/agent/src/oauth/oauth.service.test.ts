@@ -20,6 +20,11 @@ function createPrisma() {
       findUnique: vi.fn(),
       updateMany: vi.fn(),
     },
+    oAuthConsentTransaction: {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      updateMany: vi.fn(),
+    },
     oAuthAccessToken: {
       create: vi.fn(),
       findUnique: vi.fn(),
@@ -80,7 +85,7 @@ describe("OAuthService clean entity lifecycle", () => {
       clientName: "Claude",
       redirectUris: ["https://client.example/callback"],
       tokenEndpointAuthMethod: "none",
-      scope: "mcp:tools profile",
+      scope: "mcp:tools",
       organizationId: scope.organizationId,
       entityPk: entityId,
     });
@@ -92,12 +97,85 @@ describe("OAuthService clean entity lifecycle", () => {
         organizationId: scope.organizationId,
         registeredByUserId: userId,
         entityId,
-        scopes: ["mcp:tools", "profile"],
+        scopes: ["mcp:tools"],
       }),
     });
     expect(JSON.stringify(prisma.oAuthClient.create.mock.calls[0][0])).not.toContain(
       "anonymous",
     );
+  });
+
+  it("rejects caller-defined privileged labels during dynamic registration", async () => {
+    prisma.entity.findUnique.mockResolvedValue({
+      project: { organizationId: scope.organizationId },
+    });
+    prisma.organizationMembership.findFirst.mockResolvedValue({ userId });
+
+    await expect(service.register({
+      clientName: "Untrusted client",
+      redirectUris: ["https://client.example/callback"],
+      scope: "mcp:tools admin:all",
+      organizationId: scope.organizationId,
+      entityPk: entityId,
+    })).rejects.toMatchObject({ code: "invalid_client_metadata" });
+    expect(prisma.oAuthClient.create).not.toHaveBeenCalled();
+  });
+
+  it("persists exact effective consent scopes and rejects tamper and replay", async () => {
+    mockCanonicalScope(prisma);
+    prisma.oAuthClient.findUnique.mockResolvedValue({
+      id: clientDbId,
+      clientId: "client_1",
+      entityId,
+      organizationId: scope.organizationId,
+      redirectUris: ["https://client.example/callback"],
+      scopes: ["mcp:tools"],
+      deletedAt: null,
+    });
+    prisma.oAuthConsentTransaction.create.mockResolvedValue({});
+
+    const transaction = await service.createConsentTransaction({
+      clientId: "client_1",
+      redirectUri: "https://client.example/callback",
+      codeChallenge: "challenge",
+      codeChallengeMethod: "S256",
+      scopes: ["mcp:tools"],
+      scopeTuple: scope,
+      entityPk: entityId,
+      state: "state_1",
+    });
+    expect(prisma.oAuthConsentTransaction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        scopes: ["mcp:tools"],
+        entityId,
+        environmentId: scope.environmentId,
+        state: "state_1",
+      }),
+    });
+    await expect(service.inspectConsentTransaction(`${transaction}tampered`)).resolves.toBeNull();
+
+    const persisted = {
+      id: "consent_1",
+      tokenHash: "hash",
+      clientId: clientDbId,
+      redirectUri: "https://client.example/callback",
+      codeChallenge: "challenge",
+      codeChallengeMethod: "S256",
+      scopes: ["mcp:tools"],
+      entityId,
+      ...scope,
+      state: "state_1",
+      expiresAt: new Date(Date.now() + 60_000),
+      consumedAt: null,
+      client: { clientId: "client_1", registeredByUserId: userId, deletedAt: null },
+    };
+    prisma.oAuthConsentTransaction.findUnique.mockResolvedValue(persisted);
+    prisma.oAuthConsentTransaction.updateMany.mockResolvedValueOnce({ count: 1 });
+    await expect(service.consumeConsentTransaction(transaction)).resolves.toMatchObject({ id: "consent_1" });
+    prisma.oAuthConsentTransaction.updateMany.mockResolvedValueOnce({ count: 0 });
+    await expect(service.consumeConsentTransaction(transaction)).rejects.toMatchObject({
+      code: "invalid_request",
+    });
   });
 
   it("hashes authorization codes and persists normalized scope columns", async () => {
@@ -216,9 +294,69 @@ describe("OAuthService clean entity lifecycle", () => {
     expect(child.tokenHash).toBe(sha256(result.refreshToken));
   });
 
+  it("rejects an entity token exchange through a different environment endpoint", async () => {
+    const verifier = "entity-pkce-verifier";
+    prisma.oAuthAuthorizationCode.findUnique.mockResolvedValue({
+      id: "70000000-0000-4000-8000-000000000002",
+      clientId: clientDbId,
+      userId,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
+      environmentId: scope.environmentId,
+      scopes: ["mcp:tools"],
+      codeChallenge: createHash("sha256").update(verifier).digest("base64url"),
+      redirectUri: "https://client.example/callback",
+      usedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      client: { clientId: "plt_oac_client", entityId },
+    });
+
+    await expect(
+      service.exchangeAuthCode({
+        clientId: "plt_oac_client",
+        code: "plt_ocd_environment_pinned",
+        codeVerifier: verifier,
+        redirectUri: "https://client.example/callback",
+        expectedScope: { ...scope, environmentId: "30000000-0000-4000-8000-000000000002" },
+      }),
+    ).rejects.toMatchObject({ code: "invalid_grant" });
+    expect(prisma.oAuthAuthorizationCode.updateMany).not.toHaveBeenCalled();
+    expect(prisma.oAuthAccessToken.create).not.toHaveBeenCalled();
+  });
+
+  it("does not consume a refresh token through a different environment endpoint", async () => {
+    prisma.oAuthRefreshToken.findUnique.mockResolvedValue({
+      id: "70000000-0000-4000-8000-000000000003",
+      clientId: clientDbId,
+      userId,
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
+      environmentId: scope.environmentId,
+      scopes: ["mcp:tools"],
+      rotationFamilyId: "80000000-0000-4000-8000-000000000003",
+      consumedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+      client: { clientId: "plt_oac_client", entityId },
+    });
+
+    await expect(
+      service.exchangeRefreshToken({
+        clientId: "plt_oac_client",
+        refreshToken: "plt_or_environment_pinned",
+        expectedScope: { ...scope, environmentId: "30000000-0000-4000-8000-000000000002" },
+      }),
+    ).rejects.toMatchObject({ code: "invalid_grant" });
+    expect(prisma.oAuthRefreshToken.updateMany).not.toHaveBeenCalled();
+    expect(prisma.oAuthAccessToken.create).not.toHaveBeenCalled();
+  });
+
   it("revokes an entire refresh family and linked access tokens on replay", async () => {
     prisma.oAuthRefreshToken.findUnique.mockResolvedValue({
       id: "70000000-0000-4000-8000-000000000001",
+      organizationId: scope.organizationId,
+      projectId: scope.projectId,
+      environmentId: scope.environmentId,
       rotationFamilyId: "80000000-0000-4000-8000-000000000001",
       consumedAt: new Date(),
       revokedAt: null,

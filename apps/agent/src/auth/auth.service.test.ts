@@ -12,6 +12,7 @@ const SCOPE = {
 
 type BearerState = {
   id: string;
+  environmentId: string;
   revokedAt: Date | null;
   expiresAt: Date | null;
   entity: {
@@ -28,6 +29,7 @@ function makeSessionHarness() {
   } = {
     bearer: {
       id: "bearer_1",
+      environmentId: SCOPE.environmentId,
       revokedAt: null,
       expiresAt: new Date(Date.now() + 90_000),
       entity: {
@@ -152,6 +154,15 @@ describe("AuthService — clean bearer-backed session tokens", () => {
       60,
     );
     await expect(h.auth.validateSessionToken(token!)).resolves.toBeNull();
+  });
+
+  it("rejects a session whose environment differs from its PAT owner in the same project", async () => {
+    const h = makeSessionHarness();
+    h.state.bearer!.environmentId = "env_2";
+    const token = await h.auth.createEntitySessionToken(entityClaims(), "bearer_1", 60);
+
+    await expect(h.auth.validateSessionToken(token!)).resolves.toBeNull();
+    expect(h.prisma.mcpBearerToken.updateMany).not.toHaveBeenCalled();
   });
 
   it("accepts operator platform tokens without an entity authorization", async () => {

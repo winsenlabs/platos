@@ -7,11 +7,10 @@ const tokenHash = (raw: string) => createHash("sha256").update(raw).digest("hex"
 function createPrisma() {
   const prisma: any = {
     entity: {
-      findUnique: vi.fn().mockResolvedValue({
+      findFirst: vi.fn().mockResolvedValue({
         project: {
           id: "proj_1",
           organizationId: "org_1",
-          environments: [{ id: "env_1" }],
         },
       }),
     },
@@ -40,12 +39,13 @@ describe("McpBearerTokenService credential lifecycle", () => {
 
   it("mints only plt_ent_ credentials with a 90-day default and redacted evidence", async () => {
     const before = Date.now();
-    const minted = await service.generate("entity_1", "Claude", "user_1");
+    const minted = await service.generate("entity_1", "env_1", "Claude", "user_1");
 
     expect(minted.raw).toMatch(/^plt_ent_/);
     const create = prisma.mcpBearerToken.create.mock.calls[0][0];
     expect(create.data.id).toBe(minted.id);
     expect(create.data.mcpUserId).toBe(`mcp:pat:${minted.id}`);
+    expect(create.data.environmentId).toBe("env_1");
     expect(create.data.expiresAt.getTime()).toBeGreaterThanOrEqual(
       before + 90 * 24 * 60 * 60 * 1000
     );
@@ -56,7 +56,11 @@ describe("McpBearerTokenService credential lifecycle", () => {
         action: "mcp_bearer.mint",
         subjectType: "McpBearerToken",
         subjectId: minted.id,
-        after: { organizationId: "org_1", projectId: "proj_1" },
+        after: {
+          organizationId: "org_1",
+          projectId: "proj_1",
+          environmentId: "env_1",
+        },
         source: "entity_mcp",
       },
     });
@@ -67,7 +71,7 @@ describe("McpBearerTokenService credential lifecycle", () => {
 
   it("does not mint already-expired entity credentials", async () => {
     await expect(
-      service.generate("entity_1", "Claude", "user_1", {
+      service.generate("entity_1", "env_1", "Claude", "user_1", {
         expiresAt: new Date(Date.now() - 1),
       })
     ).rejects.toThrow(/expiresAt must be in the future/i);
@@ -84,6 +88,7 @@ describe("McpBearerTokenService credential lifecycle", () => {
       id: "token_1",
       tokenHash: tokenHash("plt_ent_valid"),
       entityId: "entity_1",
+      environmentId: "env_1",
       mcpUserId: "mcp:pat:token_1",
       scopes: ["mcp:tools"],
     });
@@ -91,6 +96,7 @@ describe("McpBearerTokenService credential lifecycle", () => {
     await expect(service.validate("plt_ent_valid")).resolves.toEqual({
       id: "token_1",
       entityPk: "entity_1",
+      environmentId: "env_1",
       mcpUserId: "mcp:pat:token_1",
       scopes: ["mcp:tools"],
     });
@@ -109,6 +115,7 @@ describe("McpBearerTokenService credential lifecycle", () => {
       id: "token_1",
       tokenHash: tokenHash("plt_ent_different"),
       entityId: "entity_1",
+      environmentId: "env_1",
       mcpUserId: "mcp:pat:token_1",
       scopes: ["mcp:tools"],
     });
@@ -122,6 +129,7 @@ describe("McpBearerTokenService credential lifecycle", () => {
       id: "token_1",
       tokenHash: tokenHash("plt_ent_valid"),
       entityId: "entity_1",
+      environmentId: "env_1",
       mcpUserId: "mcp:pat:token_1",
       scopes: ["mcp:tools"],
     });
@@ -137,8 +145,12 @@ describe("McpBearerTokenService credential lifecycle", () => {
       .mockResolvedValueOnce({ id: "token_1", revokedAt: new Date() });
     prisma.mcpBearerToken.updateMany.mockResolvedValue({ count: 1 });
 
-    await expect(service.revoke("token_1", "entity_1", "user_1")).resolves.toBe(true);
-    await expect(service.revoke("token_1", "entity_1", "user_1")).resolves.toBe(true);
+    await expect(
+      service.revoke("token_1", "entity_1", "env_1", "user_1"),
+    ).resolves.toBe(true);
+    await expect(
+      service.revoke("token_1", "entity_1", "env_1", "user_1"),
+    ).resolves.toBe(true);
 
     expect(prisma.adminAudit.create).toHaveBeenCalledTimes(1);
     expect(prisma.adminAudit.create).toHaveBeenCalledWith(

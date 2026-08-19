@@ -62,7 +62,7 @@ An MCP client connected to your Platos instance. The client's tool catalogue fed
    If you only want one entity's tools, point at the per-entity endpoint instead:
 
    ```
-   https://platos.example.com/mcp/entities/my-entity
+   https://platos.example.com/mcp/entity/my-entity
    ```
 
    Branding (PIFSP-24) means the connector shows the entity's own name.
@@ -78,6 +78,8 @@ An MCP client connected to your Platos instance. The client's tool catalogue fed
 - Token must start with `plt_ent_`. The recent fix (commit `adfe32e6b`) accepts both PAT and OAuth bearers; older deployments may only accept the OAuth shape.
 - Token must have the right `scopes`. A PAT scoped only `agents:read` cannot execute tools.
 - Token must be in the right scope (org/project/env). MCP gateway picks the scope from the PAT.
+- Anonymous entity endpoints require `?environmentId=<canonical-id>` on every request. OAuth clients must use only the scopes advertised by discovery; the browser consent URL contains an opaque one-time transaction rather than mutable OAuth authority fields.
+- The PAT's environment is fixed at mint. The gateway never substitutes production or the oldest project environment.
 
 ## Next steps
 

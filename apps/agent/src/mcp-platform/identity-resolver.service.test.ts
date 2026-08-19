@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Request } from "express";
 import { McpIdentityResolverService } from "./identity-resolver.service";
 
-function request(headers: Record<string, string> = {}): Request {
+function request(
+  headers: Record<string, string> = {},
+  query: Record<string, string> = {},
+): Request {
   return {
     headers,
+    query,
     socket: { remoteAddress: "127.0.0.1" },
   } as unknown as Request;
 }
@@ -17,7 +21,7 @@ function createPrisma() {
       update: vi.fn().mockResolvedValue({}),
       create: vi.fn(),
     },
-    entity: { findUnique: vi.fn() },
+    environment: { findMany: vi.fn() },
   } as any;
 }
 
@@ -40,6 +44,7 @@ describe("McpIdentityResolverService authentication order", () => {
     bearer.validate.mockResolvedValue({
       id: "token_1",
       entityPk: "entity_1",
+      environmentId: "env_1",
       mcpUserId: "mcp:pat:token_1",
       scopes: ["mcp:tools"],
     });
@@ -51,8 +56,13 @@ describe("McpIdentityResolverService authentication order", () => {
       ),
     ).resolves.toEqual({
       mcpUserId: "mcp:pat:token_1",
+      environmentId: "env_1",
       identityMode: "bearer",
-      metadata: { tokenId: "token_1", scopes: ["mcp:tools"] },
+      metadata: {
+        tokenId: "token_1",
+        scopes: ["mcp:tools"],
+        environmentId: "env_1",
+      },
     });
     expect(prisma.mcpAnonymousSession.create).not.toHaveBeenCalled();
   });
@@ -61,6 +71,7 @@ describe("McpIdentityResolverService authentication order", () => {
     const req = request();
     (req as any).mcpIdentity = {
       mcpUserId: "mcp:oidc:user",
+      environmentId: "env_1",
       identityMode: "oidc",
       metadata: { clientId: "client_1" },
     };
@@ -72,19 +83,18 @@ describe("McpIdentityResolverService authentication order", () => {
   });
 
   it("creates an environment-owned anonymous session only when enabled", async () => {
-    prisma.entity.findUnique.mockResolvedValue({
-      project: { environments: [{ id: "env_1" }] },
-    });
+    prisma.environment.findMany.mockResolvedValue([{ id: "env_1" }]);
     prisma.mcpAnonymousSession.create.mockImplementation(async ({ data }: any) => ({
       id: "session_1",
       mcpUserId: data.mcpUserId,
     }));
 
-    const result = await service.resolve(request(), "entity_1");
+    const result = await service.resolve(request({}, { environmentId: "env_1" }), "entity_1");
 
     expect(result).toMatchObject({
       identityMode: "anonymous",
-      metadata: { sessionId: "session_1" },
+      environmentId: "env_1",
+      metadata: { sessionId: "session_1", environmentId: "env_1" },
     });
     expect(prisma.mcpAnonymousSession.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -94,6 +104,34 @@ describe("McpIdentityResolverService authentication order", () => {
       }),
       select: { id: true, mcpUserId: true },
     });
+  });
+
+  it("requires an explicit environment when anonymous scope is ambiguous", async () => {
+    await expect(service.resolve(request(), "entity_1")).resolves.toEqual({
+      error: "environmentId is required for anonymous MCP authentication",
+      status: 400,
+    });
+    expect(prisma.mcpAnonymousSession.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts a canonical anonymous environment selector and verifies ancestry", async () => {
+    prisma.environment.findMany.mockResolvedValue([{ id: "env_2" }]);
+    prisma.mcpAnonymousSession.create.mockResolvedValue({
+      id: "session_2",
+      mcpUserId: "mcp:anon:user",
+    });
+
+    const req = request();
+    (req as any).query = { environmentId: "env_2" };
+    const result = await service.resolve(req, "entity_1");
+    expect(result).toMatchObject({ environmentId: "env_2" });
+    expect(prisma.environment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          project: { entities: { some: { id: "entity_1" } } },
+        }),
+      }),
+    );
   });
 
   it("rejects anonymous and bearer credentials when their modes are disabled", async () => {

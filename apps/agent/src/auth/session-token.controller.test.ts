@@ -38,6 +38,7 @@ function makeHarness() {
   const state = {
     bearer: {
       id: "bearer-controller",
+      environmentId: SCOPE.environmentId,
       tokenHash: createHash("sha256").update(RAW_BEARER).digest("hex"),
       revokedAt: null as Date | null,
       expiresAt: new Date(Date.now() + 90_000) as Date | null,
@@ -72,6 +73,7 @@ function makeHarness() {
     },
   };
   const auth = new AuthService(prisma as any, {} as any);
+  vi.spyOn(auth, "verifyAccessKey").mockResolvedValue(null);
   return {
     state,
     prisma,
@@ -149,6 +151,23 @@ describe("SessionTokenController clean bearer mint", () => {
     await expect(
       h.controller.mint(SCOPE.entityId, `Bearer ${RAW_BEARER}`, body(overrides)),
     ).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("rejects a same-project environment that is not owned by the PAT", async () => {
+    const h = makeHarness();
+    h.state.environment = {
+      id: "environment-other",
+      project: { id: SCOPE.projectId, organizationId: SCOPE.organizationId },
+    };
+
+    await expect(
+      h.controller.mint(
+        SCOPE.entityId,
+        `Bearer ${RAW_BEARER}`,
+        body({ environmentId: "environment-other" }),
+      ),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(h.prisma.mcpBearerToken.updateMany).not.toHaveBeenCalled();
   });
 
   it.each(["revoked", "expired", "revocation race"])(

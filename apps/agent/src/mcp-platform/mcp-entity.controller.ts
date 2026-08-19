@@ -145,6 +145,72 @@ export class McpEntityController {
     };
   }
 
+  private async loadEntityByPk(entityPk: string) {
+    if (!entityPk) return null;
+    const ent = await this.prisma.entity.findUnique({
+      where: { id: entityPk },
+      select: {
+        id: true,
+        externalId: true,
+        projectId: true,
+        displayName: true,
+        mcpConfig: true,
+        project: { select: { organizationId: true } },
+      },
+    });
+    if (!ent?.mcpConfig) return null;
+    return {
+      entityPk: ent.id,
+      entityId: ent.externalId,
+      organizationId: ent.project.organizationId,
+      projectId: ent.projectId,
+      displayName: ent.displayName,
+      config: {
+        enabled: ent.mcpConfig.enabled,
+        toolAllowlist: ent.mcpConfig.toolAllowlist ?? [],
+        rateLimitPerMinute: ent.mcpConfig.rateLimitPerMinute ?? 60,
+        identityMode: ent.mcpConfig.identityMode ?? "bearer",
+      },
+    };
+  }
+
+  private async loadAnonymousEntity(
+    entityIdSlug: string,
+    req: Request,
+  ): Promise<
+    | {
+        entity: NonNullable<Awaited<ReturnType<McpEntityController["loadEntityByPk"]>>>;
+        environmentId: string;
+      }
+    | { error: string; status: number }
+  > {
+    const raw = (req.query as Record<string, unknown> | undefined)?.environmentId;
+    if (Array.isArray(raw) || typeof raw !== "string" || !raw.trim()) {
+      return { error: "environmentId is required for anonymous MCP authentication", status: 400 } as const;
+    }
+    const environment = await this.prisma.environment.findFirst({
+      where: { id: raw.trim(), archivedAt: null, project: { archivedAt: null } },
+      select: {
+        id: true,
+        project: {
+          select: {
+            entities: {
+              where: { externalId: entityIdSlug },
+              select: { id: true },
+              take: 2,
+            },
+          },
+        },
+      },
+    });
+    if (!environment || environment.project.entities.length !== 1) {
+      return { error: "entity MCP not found in the requested environment", status: 404 } as const;
+    }
+    const entity = await this.loadEntityByPk(environment.project.entities[0]!.id);
+    if (!entity) return { error: "entity MCP not found", status: 404 } as const;
+    return { entity, environmentId: environment.id };
+  }
+
   /**
    * Authenticate + authorize an incoming MCP request. Returns the
    * resolved entity + bearer metadata or null if rejected.
@@ -168,15 +234,13 @@ export class McpEntityController {
       }
     | { error: string; status: number }
   > {
-    const entity = await this.loadEntity(entityIdSlug);
-    if (!entity) return { error: "entity MCP not found", status: 404 };
-    if (!entity.config.enabled) return { error: "entity MCP not enabled", status: 403 };
+    let entity: Awaited<ReturnType<McpEntityController["loadEntityByPk"]>> = null;
 
     // Two token systems are valid here:
     //   1. Bearer PATs (`plt_ent_*`) — minted via the webapp UI / the
     //      `entities.generate_mcp_token` MCP tool. Stored as
-    //      PlatosMcpBearerToken rows with sha256 hashes; entity-scoped only
-    //      (no environmentId). The intended use case is CI/CD or a single
+    //      PlatosMcpBearerToken rows with sha256 hashes; entity + environment
+    //      scoped. The intended use case is CI/CD or a single
     //      service-to-service integrator (e.g. an operator pasting the
     //      token into Claude Code as an HTTP MCP).
     //   2. OAuth 2.1 access tokens (`plt_oa_*`) — minted via the per-entity
@@ -203,36 +267,9 @@ export class McpEntityController {
     if (bearer?.startsWith("plt_ent_")) {
       const patRow = await this.bearerTokenService.validate(bearer);
       if (patRow) {
-        // PATs have no environmentId — they are entity-scoped only. Resolve
-        // the entity's PRODUCTION RuntimeEnvironment for the matrix lookup.
-        // This matches the typical "PAT for prod CI/CD" use case and lines
-        // up with the tool mappings the operator wired up in the dashboard.
-        // Fall back to ANY env owned by the project if there is no
-        // PRODUCTION row (very unusual — projects ship with PROD by default).
-        let environmentId = "";
-        try {
-          const prod = await this.prisma.environment.findFirst({
-            where: {
-              projectId: entity.projectId,
-              archivedAt: null,
-              slug: { in: ["prod", "production"] },
-            },
-            select: { id: true },
-          });
-          if (prod) environmentId = prod.id;
-          if (!environmentId) {
-            const any = await this.prisma.environment.findFirst({
-              where: { projectId: entity.projectId, archivedAt: null },
-              select: { id: true },
-              orderBy: { createdAt: "asc" },
-            });
-            if (any) environmentId = any.id;
-          }
-        } catch {
-          /* fall-through; emptyEnv reject below */
-        }
-        if (!environmentId) {
-          return { error: "could not resolve environment for PAT — entity has no runtime envs", status: 500 };
+        entity = await this.loadEntityByPk(patRow.entityPk);
+        if (!entity || entity.entityId !== entityIdSlug) {
+          return { error: "token not valid for this entity route", status: 403 };
         }
         // sha256(raw) — same hash McpBearerTokenService stored at mint time.
         const tokenHash = crypto.createHash("sha256").update(bearer).digest("hex");
@@ -241,7 +278,7 @@ export class McpEntityController {
           clientId: "pat",
           mcpUserId: patRow.mcpUserId,
           entityPk: patRow.entityPk,
-          environmentId,
+          environmentId: patRow.environmentId,
           organizationId: entity.organizationId,
           projectId: entity.projectId,
           identityMode: "bearer",
@@ -253,6 +290,13 @@ export class McpEntityController {
     if (!verified) {
       const oauthVerified = await this.oauth.verifyAccessToken(bearer);
       if (oauthVerified) {
+        if (!oauthVerified.entityPk) {
+          return { error: "token not valid for an entity MCP route", status: 403 };
+        }
+        entity = await this.loadEntityByPk(oauthVerified.entityPk);
+        if (!entity || entity.entityId !== entityIdSlug) {
+          return { error: "token not valid for this entity route", status: 403 };
+        }
         verified = {
           tokenHash: oauthVerified.tokenHash,
           clientId: oauthVerified.clientId,
@@ -273,7 +317,13 @@ export class McpEntityController {
       }
     }
 
+    if (!verified && bearer) return { error: "invalid or expired token", status: 401 };
+
     if (!verified && !bearer && req) {
+      const anonymousAuthority = await this.loadAnonymousEntity(entityIdSlug, req);
+      if ("error" in anonymousAuthority) return anonymousAuthority;
+      entity = anonymousAuthority.entity;
+      if (!entity.config.enabled) return { error: "entity MCP not enabled", status: 403 };
       const identity = await this.identityResolver.resolve(req, entity.entityPk);
       if ("error" in identity) return identity;
       if (identity.identityMode !== "anonymous") {
@@ -284,6 +334,7 @@ export class McpEntityController {
         where: {
           id: sessionId,
           entityId: entity.entityPk,
+          environmentId: identity.environmentId,
           revokedAt: null,
           environment: {
             projectId: entity.projectId,
@@ -298,7 +349,7 @@ export class McpEntityController {
         clientId: "anonymous",
         mcpUserId: identity.mcpUserId,
         entityPk: entity.entityPk,
-        environmentId: session.environmentId,
+        environmentId: identity.environmentId,
         organizationId: entity.organizationId,
         projectId: entity.projectId,
         identityMode: "anonymous",
@@ -307,6 +358,8 @@ export class McpEntityController {
     }
 
     if (!verified) return { error: "invalid or expired token", status: 401 };
+    if (!entity) return { error: "entity MCP not found", status: 404 };
+    if (!entity.config.enabled) return { error: "entity MCP not enabled", status: 403 };
 
     const allowedModes = entity.config.identityMode.split("+");
     if (!allowedModes.includes(verified.identityMode)) {
@@ -337,6 +390,18 @@ export class McpEntityController {
     }
     if (verified.projectId !== entity.projectId) {
       return { error: "token project does not match entity", status: 403 };
+    }
+    const environment = await this.prisma.environment.findFirst({
+      where: {
+        id: verified.environmentId,
+        projectId: entity.projectId,
+        archivedAt: null,
+        project: { organizationId: entity.organizationId },
+      },
+      select: { id: true },
+    });
+    if (!environment) {
+      return { error: "token environment does not match entity project", status: 403 };
     }
     return {
       entity,
@@ -620,12 +685,24 @@ export class McpEntityController {
     // hashing); we reconstruct the token metadata via the DB. Try the
     // OAuth access-token table first, then fall back to PlatosMcpBearerToken
     // (PAT path) so SSE clients using `plt_ent_*` tokens also work.
-    const oauthRow = await this.prisma.oAuthAccessToken.findUnique({
-      where: { tokenHash: parsed.tokenHash },
-      include: { client: { select: { clientId: true, entityId: true, deletedAt: true } } },
-    });
-    const entity = await this.loadEntity(entityIdSlug);
-    if (!entity || !entity.config.enabled) {
+    const oauthRow = await this.oauth.verifyAccessTokenHash(parsed.tokenHash);
+    const isAnonymous = parsed.tokenHash.startsWith("anonymous:");
+    const patRow = !isAnonymous && !oauthRow
+      ? await this.bearerTokenService.validateHash(parsed.tokenHash)
+      : null;
+    if (!isAnonymous && !oauthRow && !patRow) {
+      res.status(401).send("session token revoked or expired");
+      return;
+    }
+    const authoritativeEntityPk = oauthRow?.entityPk ?? patRow?.entityPk ?? parsed.token.entityPk;
+    const entity = authoritativeEntityPk
+      ? await this.loadEntityByPk(authoritativeEntityPk)
+      : null;
+    if (!entity || entity.entityId !== entityIdSlug) {
+      res.status(403).send("session token does not match entity route");
+      return;
+    }
+    if (!entity.config.enabled) {
       res.status(403).send("entity MCP not enabled");
       return;
     }
@@ -640,13 +717,17 @@ export class McpEntityController {
       scopes: string[];
     } | null = null;
 
-    if (parsed.tokenHash.startsWith("anonymous:")) {
+    if (isAnonymous) {
       const anonymousSession = await this.prisma.mcpAnonymousSession.findFirst({
         where: {
           id: parsed.tokenHash.slice("anonymous:".length),
           entityId: entity.entityPk,
           environmentId: parsed.token.environmentId,
           revokedAt: null,
+          environment: {
+            projectId: entity.projectId,
+            project: { organizationId: entity.organizationId },
+          },
         },
         select: { id: true },
       });
@@ -655,68 +736,65 @@ export class McpEntityController {
         return;
       }
       token = parsed.token;
-    } else if (oauthRow && !oauthRow.revokedAt && oauthRow.expiresAt.getTime() >= Date.now()) {
+    } else if (oauthRow) {
       if (
-        oauthRow.client.deletedAt ||
-        oauthRow.client.entityId !== entity.entityPk ||
-        oauthRow.environmentId !== parsed.token.environmentId
+        oauthRow.entityPk !== entity.entityPk ||
+        oauthRow.scope.organizationId !== entity.organizationId ||
+        oauthRow.scope.projectId !== entity.projectId ||
+        oauthRow.scope.environmentId !== parsed.token.environmentId
       ) {
         res.status(403).send("token not valid for this entity");
         return;
       }
-      token = { ...parsed.token, clientId: oauthRow.client.clientId };
+      token = {
+        tokenHash: oauthRow.tokenHash,
+        clientId: oauthRow.clientId,
+        mcpUserId: oauthRow.mcpUserId,
+        entityPk: entity.entityPk,
+        environmentId: oauthRow.scope.environmentId,
+        identityMode: oauthRow.identityMode,
+        scopes: oauthRow.scopes,
+      };
     } else {
-      // PAT path — look up by tokenHash in PlatosMcpBearerToken.
-      const patRow = await this.prisma.mcpBearerToken.findFirst({
-        where: {
-          tokenHash: parsed.tokenHash,
-          revokedAt: null,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-        },
-      });
+      // PAT path — revalidate the exact persisted entity + environment owner.
       if (!patRow) {
         res.status(401).send("session token revoked or expired");
         return;
       }
-      if (patRow.entityId !== entity.entityPk) {
+      if (
+        patRow.entityPk !== entity.entityPk ||
+        patRow.environmentId !== parsed.token.environmentId
+      ) {
         res.status(403).send("token not valid for this entity");
         return;
       }
-      // Resolve PROD env (mirrors the PAT branch in authenticate()).
-      const prod = await this.prisma.environment.findFirst({
-        where: {
-          projectId: entity.projectId,
-          archivedAt: null,
-          slug: { in: ["prod", "production"] },
-        },
-        select: { id: true },
-      });
-      const fallback = prod
-        ? null
-        : await this.prisma.environment.findFirst({
-            where: { projectId: entity.projectId, archivedAt: null },
-            select: { id: true },
-            orderBy: { createdAt: "asc" },
-          });
-      const environmentId = prod?.id ?? fallback?.id ?? "";
-      if (!environmentId) {
-        res.status(500).send("could not resolve environment for PAT");
-        return;
-      }
-      // Stamp lastUsedAt — same fire-and-forget pattern as
-      // McpBearerTokenService.validate.
-      this.prisma.mcpBearerToken
-        .update({ where: { id: patRow.id }, data: { lastUsedAt: new Date() } })
-        .catch(() => undefined);
       token = {
-        tokenHash: patRow.tokenHash,
+        tokenHash: parsed.tokenHash,
         clientId: "pat",
         mcpUserId: patRow.mcpUserId,
         entityPk: entity.entityPk,
-        environmentId,
+        environmentId: patRow.environmentId,
         identityMode: "bearer",
-        scopes: (patRow.scopes as string[] | undefined) ?? [],
+        scopes: patRow.scopes,
       };
+    }
+
+    if (!entity.config.identityMode.split("+").includes(token.identityMode)) {
+      res.status(403).send(`${token.identityMode} identity is not enabled for this entity`);
+      return;
+    }
+    const environment = await this.prisma.environment.findFirst({
+      where: {
+        id: token.environmentId,
+        projectId: entity.projectId,
+        archivedAt: null,
+        project: { organizationId: entity.organizationId },
+      },
+      select: { id: true },
+    });
+    if (!environment) {
+      res.status(403).send("token environment does not match entity project");
+      return;
     }
 
     if (!body || body.jsonrpc !== "2.0" || typeof body.method !== "string") {
@@ -1112,6 +1190,11 @@ export class McpEntityController {
         mcpClientId: token.clientId,
         endUserId,
       },
+      {
+        entityPk: route.entityPk,
+        entityId: route.entityId,
+        toolId: route.toolId,
+      },
     );
 
     if (result.status === "success") {
@@ -1154,7 +1237,10 @@ export class McpEntityController {
     if (entity.organizationId !== scope.organizationId) {
       throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
     }
-    const tokens = await this.bearerTokenService.list(entity.entityPk);
+    const tokens = await this.bearerTokenService.list(
+      entity.entityPk,
+      scope.environmentId,
+    );
     return { tokens };
   }
 
@@ -1175,6 +1261,7 @@ export class McpEntityController {
     const expiresAt = body.expiresIn ? new Date(Date.now() + body.expiresIn * 1000) : undefined;
     const result = await this.bearerTokenService.generate(
       entity.entityPk,
+      scope.environmentId,
       body.label ?? "PAT",
       scope.userId,
       { scopes: body.scopes, expiresAt },
@@ -1196,7 +1283,12 @@ export class McpEntityController {
     if (entity.organizationId !== scope.organizationId) {
       throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
     }
-    const ok = await this.bearerTokenService.revoke(tokenId, entity.entityPk, scope.userId);
+    const ok = await this.bearerTokenService.revoke(
+      tokenId,
+      entity.entityPk,
+      scope.environmentId,
+      scope.userId,
+    );
     return { revoked: ok };
   }
 

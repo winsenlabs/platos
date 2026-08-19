@@ -72,9 +72,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(79);
-    expect(domainModelNames).toHaveLength(63);
-    expect(new Set(domainModelNames).size).toBe(63);
+    expect(models).toHaveLength(80);
+    expect(domainModelNames).toHaveLength(64);
+    expect(new Set(domainModelNames).size).toBe(64);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");
@@ -142,9 +142,10 @@ describe("clean-slate domain schema", () => {
       McpToken: ["environmentId", "mintedByUserId", "permissions", "tier"],
       PersonalAccessToken: ["userId", "scopeKind", "organizationId", "projectId", "environmentId"],
       OAuthAuthorizationCode: ["clientId", "userId", "scopeKind", "organizationId", "projectId", "environmentId"],
+      OAuthConsentTransaction: ["clientId", "organizationId", "projectId", "environmentId", "scopes", "nonce"],
       OAuthAccessToken: ["clientId", "userId", "scopeKind", "scopes"],
       OAuthRefreshToken: ["accessTokenId", "rotationFamilyId", "parentRefreshTokenId", "consumedAt", "replayDetectedAt"],
-      McpBearerToken: ["entityId", "mcpUserId", "createdByUserId", "scopes"],
+      McpBearerToken: ["entityId", "environmentId", "mcpUserId", "createdByUserId", "scopes"],
       Thread: ["compactedUpToTurnId", "compactionState", "compactedAt"],
       Turn: ["agentVersionId", "versionBucket", "costCents", "latencyMs"],
       Step: [

@@ -1194,6 +1194,7 @@ export function buildEntityToolHandlers(deps: {
         const expiresAt = new Date(Date.now() + (expiresInDays ?? 90) * 86400_000);
         const minted = await bearerTokens.generate(
           entityPk,
+          scope.environmentId,
           label,
           scope.userId ?? "mcp:platform",
           {

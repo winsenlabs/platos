@@ -541,6 +541,7 @@ CREATE TABLE "public"."OAuthRefreshToken" (
 CREATE TABLE "public"."McpBearerToken" (
     "id" UUID NOT NULL,
     "entityId" UUID NOT NULL,
+    "environmentId" UUID NOT NULL,
     "createdByUserId" UUID NOT NULL,
     "tokenHash" TEXT NOT NULL,
     "label" TEXT NOT NULL,
@@ -1320,6 +1321,28 @@ CREATE TABLE "public"."OAuthAuthorizationCode" (
 );
 
 -- CreateTable
+CREATE TABLE "public"."OAuthConsentTransaction" (
+    "id" UUID NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    "nonce" UUID NOT NULL,
+    "clientId" UUID NOT NULL,
+    "redirectUri" TEXT NOT NULL,
+    "codeChallenge" TEXT NOT NULL,
+    "codeChallengeMethod" TEXT NOT NULL,
+    "scopes" TEXT[],
+    "entityId" UUID,
+    "organizationId" UUID NOT NULL,
+    "projectId" UUID NOT NULL,
+    "environmentId" UUID NOT NULL,
+    "state" TEXT,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "consumedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "OAuthConsentTransaction_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "public"."McpAnonymousSession" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
@@ -1676,7 +1699,10 @@ CREATE INDEX "OAuthRefreshToken_environmentId_idx" ON "public"."OAuthRefreshToke
 CREATE UNIQUE INDEX "McpBearerToken_tokenHash_key" ON "public"."McpBearerToken"("tokenHash");
 
 -- CreateIndex
-CREATE INDEX "McpBearerToken_entityId_mcpUserId_revokedAt_expiresAt_idx" ON "public"."McpBearerToken"("entityId", "mcpUserId", "revokedAt", "expiresAt");
+CREATE INDEX "McpBearerToken_entityId_environmentId_mcpUserId_revokedAt_e_idx" ON "public"."McpBearerToken"("entityId", "environmentId", "mcpUserId", "revokedAt", "expiresAt");
+
+-- CreateIndex
+CREATE INDEX "McpBearerToken_environmentId_idx" ON "public"."McpBearerToken"("environmentId");
 
 -- CreateIndex
 CREATE INDEX "McpBearerToken_createdByUserId_idx" ON "public"."McpBearerToken"("createdByUserId");
@@ -1952,6 +1978,21 @@ CREATE INDEX "OAuthAuthorizationCode_clientId_idx" ON "public"."OAuthAuthorizati
 CREATE INDEX "OAuthAuthorizationCode_userId_idx" ON "public"."OAuthAuthorizationCode"("userId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "OAuthConsentTransaction_tokenHash_key" ON "public"."OAuthConsentTransaction"("tokenHash");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OAuthConsentTransaction_nonce_key" ON "public"."OAuthConsentTransaction"("nonce");
+
+-- CreateIndex
+CREATE INDEX "OAuthConsentTransaction_clientId_expiresAt_consumedAt_idx" ON "public"."OAuthConsentTransaction"("clientId", "expiresAt", "consumedAt");
+
+-- CreateIndex
+CREATE INDEX "OAuthConsentTransaction_environmentId_expiresAt_idx" ON "public"."OAuthConsentTransaction"("environmentId", "expiresAt");
+
+-- CreateIndex
+CREATE INDEX "OAuthConsentTransaction_entityId_environmentId_idx" ON "public"."OAuthConsentTransaction"("entityId", "environmentId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "McpAnonymousSession_environmentId_entityId_mcpUserId_key" ON "public"."McpAnonymousSession"("environmentId", "entityId", "mcpUserId");
 
 -- CreateIndex
@@ -2148,6 +2189,9 @@ ALTER TABLE "public"."OAuthRefreshToken" ADD CONSTRAINT "OAuthRefreshToken_paren
 
 -- AddForeignKey
 ALTER TABLE "public"."McpBearerToken" ADD CONSTRAINT "McpBearerToken_entityId_fkey" FOREIGN KEY ("entityId") REFERENCES "public"."Entity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."McpBearerToken" ADD CONSTRAINT "McpBearerToken_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."McpBearerToken" ADD CONSTRAINT "McpBearerToken_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -2495,6 +2539,21 @@ ALTER TABLE "public"."OAuthAuthorizationCode" ADD CONSTRAINT "OAuthAuthorization
 ALTER TABLE "public"."OAuthAuthorizationCode" ADD CONSTRAINT "OAuthAuthorizationCode_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."OAuthConsentTransaction" ADD CONSTRAINT "OAuthConsentTransaction_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "public"."OAuthClient"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."OAuthConsentTransaction" ADD CONSTRAINT "OAuthConsentTransaction_entityId_fkey" FOREIGN KEY ("entityId") REFERENCES "public"."Entity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."OAuthConsentTransaction" ADD CONSTRAINT "OAuthConsentTransaction_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."OAuthConsentTransaction" ADD CONSTRAINT "OAuthConsentTransaction_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "public"."Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."OAuthConsentTransaction" ADD CONSTRAINT "OAuthConsentTransaction_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."McpAnonymousSession" ADD CONSTRAINT "McpAnonymousSession_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2687,9 +2746,10 @@ CREATE TRIGGER "ProviderKey_owner_immutable" BEFORE UPDATE ON "public"."Provider
 CREATE TRIGGER "McpToken_owner_immutable" BEFORE UPDATE ON "public"."McpToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'mintedByUserId');
 CREATE TRIGGER "PersonalAccessToken_scope_immutable" BEFORE UPDATE ON "public"."PersonalAccessToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('userId', 'scopeKind', 'organizationId', 'projectId', 'environmentId');
 CREATE TRIGGER "OAuthAuthorizationCode_scope_immutable" BEFORE UPDATE ON "public"."OAuthAuthorizationCode" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('clientId', 'userId', 'scopeKind', 'organizationId', 'projectId', 'environmentId');
+CREATE TRIGGER "OAuthConsentTransaction_owner_immutable" BEFORE UPDATE ON "public"."OAuthConsentTransaction" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('tokenHash', 'nonce', 'clientId', 'redirectUri', 'codeChallenge', 'codeChallengeMethod', 'scopes', 'entityId', 'organizationId', 'projectId', 'environmentId', 'state', 'expiresAt', 'createdAt');
 CREATE TRIGGER "OAuthAccessToken_scope_immutable" BEFORE UPDATE ON "public"."OAuthAccessToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('clientId', 'userId', 'scopeKind', 'organizationId', 'projectId', 'environmentId');
 CREATE TRIGGER "OAuthRefreshToken_scope_immutable" BEFORE UPDATE ON "public"."OAuthRefreshToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('clientId', 'userId', 'scopeKind', 'organizationId', 'projectId', 'environmentId', 'rotationFamilyId', 'parentRefreshTokenId');
-CREATE TRIGGER "McpBearerToken_owner_immutable" BEFORE UPDATE ON "public"."McpBearerToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('entityId', 'createdByUserId');
+CREATE TRIGGER "McpBearerToken_owner_immutable" BEFORE UPDATE ON "public"."McpBearerToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('entityId', 'environmentId', 'createdByUserId');
 
 -- A Redis thread lock may select any historical version of an Environment-bound
 -- agent. All of those versions are therefore executable, including their
@@ -3085,9 +3145,24 @@ BEGIN
           AND (NEW."accessTokenId" IS NULL OR access.id IS NOT NULL)
           AND (NEW."parentRefreshTokenId" IS NULL OR parent.id IS NOT NULL)
       ) INTO valid;
+    WHEN 'OAuthConsentTransaction' THEN
+      SELECT EXISTS (
+        SELECT 1 FROM "OAuthClient" client
+        JOIN "Project" project ON project.id = NEW."projectId"
+          AND project."organizationId" = NEW."organizationId"
+        JOIN "Environment" environment ON environment.id = NEW."environmentId"
+          AND environment."projectId" = project.id
+        LEFT JOIN "Entity" entity ON entity.id = NEW."entityId"
+          AND entity."projectId" = project.id
+        WHERE client.id = NEW."clientId"
+          AND client."organizationId" = NEW."organizationId"
+          AND (NEW."entityId" IS NULL OR entity.id IS NOT NULL)
+      ) INTO valid;
     WHEN 'McpBearerToken' THEN
       SELECT EXISTS (
         SELECT 1 FROM "Entity" entity JOIN "Project" p ON p.id = entity."projectId"
+        JOIN "Environment" environment ON environment.id = NEW."environmentId"
+          AND environment."projectId" = entity."projectId"
         JOIN "OrganizationMembership" membership ON membership."organizationId" = p."organizationId"
           AND membership."userId" = NEW."createdByUserId" AND membership."deactivatedAt" IS NULL
         WHERE entity.id = NEW."entityId"
@@ -3134,6 +3209,7 @@ CREATE TRIGGER "MemoryEntity_ancestry" BEFORE INSERT OR UPDATE ON "public"."Memo
 CREATE TRIGGER "MemoryRelationship_ancestry" BEFORE INSERT OR UPDATE ON "public"."MemoryRelationship" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "OAuthClient_ancestry" BEFORE INSERT OR UPDATE ON "public"."OAuthClient" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "OAuthAuthorizationCode_ancestry" BEFORE INSERT OR UPDATE ON "public"."OAuthAuthorizationCode" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
+CREATE TRIGGER "OAuthConsentTransaction_ancestry" BEFORE INSERT OR UPDATE ON "public"."OAuthConsentTransaction" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "McpAnonymousSession_ancestry" BEFORE INSERT OR UPDATE ON "public"."McpAnonymousSession" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "McpOidcSession_ancestry" BEFORE INSERT OR UPDATE ON "public"."McpOidcSession" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "McpToken_ancestry" BEFORE INSERT OR UPDATE ON "public"."McpToken" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
