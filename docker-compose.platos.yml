@@ -276,6 +276,8 @@ services:
   # webapp `depends_on` uses service_completed_successfully so it
   # waits for this to finish.
   # ─────────────────────────────────────────────────────────────
+  # Deploys the clean tenancy schema the agent runtime reads. This is the
+  # canonical database: Agent, Thread, Turn, Step, ToolCall, Memory.
   migrations-init:
     image: node:22-alpine
     logging: *default-logging
@@ -286,7 +288,7 @@ services:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
       DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
     volumes:
-      - ./internal-packages/database:/work
+      - ./internal-packages/tenancy-database:/work
     working_dir: /work
     entrypoint:
       - /bin/sh
@@ -295,9 +297,52 @@ services:
         set -e
         echo '[migrations-init] installing prisma...'
         npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
-        echo '[migrations-init] running prisma migrate deploy...'
+        echo '[migrations-init] deploying the clean tenancy schema...'
         npx prisma migrate deploy
         echo '[migrations-init] done'
+    restart: "no"
+
+  # Deploys the legacy schema into a SEPARATE database, for the dashboard.
+  #
+  # The webapp has not been migrated yet (M4 rebuilds it), so it still reads
+  # TaskRun, TaskQueue, RuntimeEnvironment and the Platos* models. Those cannot
+  # share a database with the clean schema: both define User, Organization and
+  # Project with different columns. Giving the legacy set its own Postgres
+  # schema does not work either — its migrations hardcode `public.` prefixes
+  # and fail partway with `relation "public.JobRun" does not exist` — so it
+  # gets its own database instead.
+  #
+  # Retire this service, and POSTGRES_LEGACY_DB, once the dashboard reads the
+  # clean schema.
+  migrations-init-legacy:
+    image: node:22-alpine
+    logging: *default-logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: "${POSTGRES_PASSWORD}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_LEGACY_DB:-platos_legacy}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_LEGACY_DB:-platos_legacy}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+    volumes:
+      - ./internal-packages/database:/work
+    working_dir: /work
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        echo '[migrations-init-legacy] ensuring the legacy database exists...'
+        apk add --no-cache postgresql-client >/dev/null
+        psql -h postgres -U "${POSTGRES_USER:-postgres}" -d postgres -tAc \
+          "SELECT 1 FROM pg_database WHERE datname='${POSTGRES_LEGACY_DB:-platos_legacy}'" \
+          | grep -q 1 || psql -h postgres -U "${POSTGRES_USER:-postgres}" -d postgres \
+          -c "CREATE DATABASE \"${POSTGRES_LEGACY_DB:-platos_legacy}\""
+        echo '[migrations-init-legacy] installing prisma...'
+        npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
+        echo '[migrations-init-legacy] deploying the legacy schema...'
+        npx prisma migrate deploy
+        echo '[migrations-init-legacy] done'
     restart: "no"
 
   agent:
@@ -485,7 +530,7 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
-      migrations-init:
+      migrations-init-legacy:
         condition: service_completed_successfully
       clickhouse-migrate:
         condition: service_completed_successfully
@@ -498,8 +543,9 @@ services:
       APP_ORIGIN: "${APP_ORIGIN:-http://localhost:3030}"
       LOGIN_ORIGIN: "${LOGIN_ORIGIN:-http://localhost:3030}"
       API_ORIGIN: "${API_ORIGIN:-http://localhost:3030}"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
-      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      # The dashboard still reads the legacy schema; see migrations-init-legacy.
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_LEGACY_DB:-platos_legacy}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_LEGACY_DB:-platos_legacy}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
       DATABASE_HOST: "postgres:5432"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
