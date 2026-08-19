@@ -354,6 +354,9 @@ describe("AuthService — clean Entity registry", () => {
         updateMany: vi.fn(),
         upsert: vi.fn(),
       },
+      environmentEntityTool: {
+        deleteMany: vi.fn(),
+      },
     };
     prisma.$transaction = vi.fn(async (callback: (tx: any) => unknown) => callback(prisma));
     return prisma;
@@ -396,6 +399,21 @@ describe("AuthService — clean Entity registry", () => {
       rotateInTransaction: vi.fn(async (_tx: any, params: any) => ({
         id: params.credentialId,
       })),
+    };
+  }
+
+  function toolRegistry() {
+    const apply = vi.fn(() => ({ bucketsEvicted: 1 }));
+    return {
+      apply,
+      registry: {
+        prepareEntityEviction: vi.fn(() => ({
+          entityPk: cleanEntity.id,
+          bucketsEvicted: 1,
+          apply,
+        })),
+        rebuildIndex: vi.fn(),
+      },
     };
   }
 
@@ -567,13 +585,21 @@ describe("AuthService — clean Entity registry", () => {
     }
   });
 
-  it("revokes scoped Entity credentials before deleting the clean Entity", async () => {
+  it("atomically revokes credentials, removes mappings, and deletes the Entity before cache eviction", async () => {
     const prisma = entityPrisma();
     prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
     prisma.entity.deleteMany.mockResolvedValue({ count: 1 });
-    const auth = new AuthService(prisma, {} as any, undefined, secretStore() as any);
+    prisma.environmentEntityTool.deleteMany.mockResolvedValue({ count: 2 });
+    const tools = toolRegistry();
+    const auth = new AuthService(
+      prisma,
+      {} as any,
+      tools.registry as any,
+      secretStore() as any,
+    );
 
     await expect(auth.deleteEntity("org_1", "proj_1", "support-core")).resolves.toBe(true);
+    expect(tools.registry.prepareEntityEviction).toHaveBeenCalledWith(cleanEntity.id);
     expect(prisma.credential.updateMany).toHaveBeenCalledWith({
       where: expect.objectContaining({
         kind: "ENTITY_SECRET",
@@ -582,6 +608,9 @@ describe("AuthService — clean Entity registry", () => {
       }),
       data: { revokedAt: expect.any(Date) },
     });
+    expect(prisma.environmentEntityTool.deleteMany).toHaveBeenCalledWith({
+      where: { entityId: cleanEntity.id },
+    });
     expect(prisma.entity.deleteMany).toHaveBeenCalledWith({
       where: {
         id: cleanEntity.id,
@@ -589,5 +618,86 @@ describe("AuthService — clean Entity registry", () => {
         project: { organizationId: "org_1" },
       },
     });
+    expect(tools.apply).toHaveBeenCalledOnce();
+  });
+
+  it("does not start a database transaction when registry eviction cannot be prepared", async () => {
+    const prisma = entityPrisma();
+    prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
+    const tools = toolRegistry();
+    tools.registry.prepareEntityEviction.mockImplementation(() => {
+      throw new Error("index build failed");
+    });
+    const auth = new AuthService(prisma, {} as any, tools.registry as any);
+
+    await expect(
+      auth.deleteEntity("org_1", "proj_1", "support-core"),
+    ).rejects.toThrow("index build failed");
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.credential.updateMany).not.toHaveBeenCalled();
+    expect(prisma.environmentEntityTool.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.entity.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("does not evict cache/index when the entity transaction fails", async () => {
+    const prisma = entityPrisma();
+    prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
+    prisma.$transaction.mockRejectedValue(new Error("transaction failed"));
+    const tools = toolRegistry();
+    const auth = new AuthService(prisma, {} as any, tools.registry as any);
+
+    await expect(
+      auth.deleteEntity("org_1", "proj_1", "support-core"),
+    ).rejects.toThrow("transaction failed");
+    expect(tools.apply).not.toHaveBeenCalled();
+    expect(tools.registry.rebuildIndex).not.toHaveBeenCalled();
+  });
+
+  it("returns success after recovering a post-commit eviction failure from canonical DB", async () => {
+    const prisma = entityPrisma();
+    prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
+    prisma.environmentEntityTool.deleteMany.mockResolvedValue({ count: 1 });
+    prisma.entity.deleteMany.mockResolvedValue({ count: 1 });
+    const tools = toolRegistry();
+    tools.apply.mockImplementation(() => {
+      throw new Error("cache swap failed");
+    });
+    const auth = new AuthService(prisma, {} as any, tools.registry as any);
+
+    await expect(
+      auth.deleteEntity("org_1", "proj_1", "support-core"),
+    ).resolves.toBe(true);
+    expect(tools.registry.rebuildIndex).toHaveBeenCalledOnce();
+  });
+
+  it("fails loudly only when post-commit eviction and canonical recovery both fail", async () => {
+    const prisma = entityPrisma();
+    prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
+    prisma.environmentEntityTool.deleteMany.mockResolvedValue({ count: 1 });
+    prisma.entity.deleteMany.mockResolvedValue({ count: 1 });
+    const tools = toolRegistry();
+    tools.apply.mockImplementation(() => {
+      throw new Error("cache swap failed");
+    });
+    tools.registry.rebuildIndex.mockRejectedValue(new Error("rebuild failed"));
+    const auth = new AuthService(prisma, {} as any, tools.registry as any);
+
+    await expect(
+      auth.deleteEntity("org_1", "proj_1", "support-core"),
+    ).rejects.toThrow("entity_deleted_but_registry_recovery_failed");
+    expect(tools.registry.rebuildIndex).toHaveBeenCalledOnce();
+  });
+
+  it("returns false for an unknown Entity without touching registry or persistence", async () => {
+    const prisma = entityPrisma();
+    prisma.entity.findFirst.mockResolvedValue(null);
+    const tools = toolRegistry();
+    const auth = new AuthService(prisma, {} as any, tools.registry as any);
+
+    await expect(
+      auth.deleteEntity("org_1", "proj_1", "missing"),
+    ).resolves.toBe(false);
+    expect(tools.registry.prepareEntityEviction).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

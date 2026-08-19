@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { Prisma as ControlPrisma } from "../generated/control";
@@ -24,7 +25,18 @@ const migration = readFileSync(
 const channelDurabilityMigration = readFileSync(
   resolve(
     packageRoot,
-    "prisma/migrations/20260818010000_win130_channel_durability/migration.sql"
+    "prisma/migrations/20260818020000_win130_channel_durability/migration.sql"
+  ),
+  "utf8"
+);
+const feedbackMigration = readFileSync(
+  resolve(packageRoot, "prisma/migrations/20260818000000_memory_feedback_quarantine/migration.sql"),
+  "utf8"
+);
+const memoryEntityOwnershipMigration = readFileSync(
+  resolve(
+    packageRoot,
+    "prisma/migrations/20260818010000_memory_entity_ownership_transition/migration.sql"
   ),
   "utf8"
 );
@@ -159,7 +171,10 @@ describe("clean-slate domain schema", () => {
         "sourceTurnIds",
         "extractorVersion",
         "contentHash",
+        "quarantinedAt",
+        "feedbackBaselineConfidence",
       ],
+      MessageRating: ["revision"],
       MemoryEntity: ["agentId", "clusterId"],
       MemoryRelationship: ["agentId", "clusterId", "sourceMemoryId"],
     })) {
@@ -239,14 +254,19 @@ describe("clean-slate domain schema", () => {
     }
   });
 
-  test("keeps the clean-slate baseline and applies later changes sequentially", () => {
+  test("keeps the initial migration immutable and appends tenancy changes sequentially", () => {
     const migrationDirectories = readdirSync(resolve(packageRoot, "prisma/migrations"), {
       withFileTypes: true,
     }).filter((entry) => entry.isDirectory());
-    expect(migrationDirectories.map((entry) => entry.name)).toEqual([
+    expect(migrationDirectories.map((entry) => entry.name).sort()).toEqual([
       "00000000000000_initial",
-      "20260818010000_win130_channel_durability",
+      "20260818000000_memory_feedback_quarantine",
+      "20260818010000_memory_entity_ownership_transition",
+      "20260818020000_win130_channel_durability",
     ]);
+    expect(createHash("sha256").update(migration).digest("hex")).toBe(
+      "76039eaca78e84890ed9ca499890bf9579f31eff540953deda257ac50a855ad8"
+    );
 
     const generated = execFileSync(resolve(packageRoot, "node_modules/.bin/prisma"), [
       "migrate",
@@ -268,6 +288,26 @@ describe("clean-slate domain schema", () => {
     expect(channelDurabilityMigration).toContain(
       'CONSTRAINT "ChannelInstallation_tokenRefreshState_check"'
     );
+    expect(feedbackMigration).toContain('ADD COLUMN "quarantinedAt" TIMESTAMP(3)');
+    expect(feedbackMigration).toContain('ADD COLUMN "revision" INTEGER NOT NULL DEFAULT 1');
+    expect(feedbackMigration).toContain('"memoryFeedbackBackfillCompletedAt" TIMESTAMP(3)');
+    expect(feedbackMigration).toContain("MessageRating thumbs preflight failed");
+    expect(feedbackMigration).toContain("rating=2:%s, rating=3:%s, rating=4:%s, rating=5:%s");
+    expect(feedbackMigration.indexOf("DO $$")).toBeLessThan(
+      feedbackMigration.indexOf('ALTER TABLE "public"."Memory"')
+    );
+    expect(feedbackMigration).toContain('CHECK ("rating" IN (-1, 1))');
+    expect(feedbackMigration).toContain(
+      'CREATE INDEX "Memory_environmentId_endUserId_quarantinedAt_idx"'
+    );
+    expect(memoryEntityOwnershipMigration).toContain(
+      'CREATE UNIQUE INDEX "MemoryEntity_standalone_agent_entityKey_key"'
+    );
+    expect(memoryEntityOwnershipMigration).toContain('WHERE "clusterId" IS NULL');
+    expect(memoryEntityOwnershipMigration).toContain(
+      'CREATE FUNCTION "public"."enforce_memory_entity_owner_transition"()'
+    );
+    expect(memoryEntityOwnershipMigration).toContain('DROP TRIGGER "MemoryEntity_owner_immutable"');
     expect(migration).toContain('CREATE FUNCTION "public"."enforce_domain_ancestry"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_canonical_owner_change"()');
     expect(migration).toContain('CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()');

@@ -105,7 +105,7 @@ describe("clean cursor compaction", () => {
 
   it("leaves summary/cursor untouched and releases IN_PROGRESS when generation fails", async () => {
     generateTextMock.mockRejectedValueOnce(new Error("provider failed"));
-    const { service, prisma, tx } = setup();
+    const { service, prisma, tx, updates } = setup();
 
     await expect((service as any).compactIfNeeded("thread-1", scope, config))
       .rejects.toThrow("provider failed");
@@ -115,5 +115,6 @@ describe("clean cursor compaction", () => {
       where: expect.objectContaining({ compactionState: "IN_PROGRESS" }),
       data: { compactionState: "IDLE" },
     }));
+    expect(updates.some(({ data }) => "summary" in data || "compactedUpToTurnId" in data)).toBe(false);
   });
 });

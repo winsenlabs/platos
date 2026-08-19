@@ -1461,7 +1461,7 @@ async function seedEveryModel(control: PrismaClient) {
       agentId: agent.id,
       agentVersionId: agentVersion.id,
       endUserId: endUser.id,
-      rating: 5,
+      rating: 1,
     },
   }));
   const criterion = track("EvalCriterion", await control.evalCriterion.create({

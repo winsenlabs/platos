@@ -39,6 +39,12 @@ export interface OrgToolEntry {
   entityMcpInjectContext: boolean;
 }
 
+export interface PreparedEntityEviction {
+  readonly entityPk: string;
+  readonly bucketsEvicted: number;
+  apply(): { bucketsEvicted: number };
+}
+
 type ScopeTuple = Pick<
   RequestScope,
   "organizationId" | "projectId" | "environmentId"
@@ -96,11 +102,12 @@ function entryOrder(a: OrgToolEntry, b: OrgToolEntry): number {
  */
 @Injectable()
 export class ToolRegistryService implements OnModuleInit {
-  private readonly bm25 = new BM25Index();
-  private readonly scopedToolCache = new Map<
+  private bm25 = new BM25Index();
+  private scopedToolCache = new Map<
     string,
     Map<string, OrgToolEntry>
   >();
+  private cacheRevision = 0;
 
   constructor(
     @Inject(PRISMA_TOKEN)
@@ -113,91 +120,89 @@ export class ToolRegistryService implements OnModuleInit {
 
   /** Replace the complete in-memory registry from clean tenancy rows. */
   async rebuildIndex(): Promise<void> {
-    const mappings = await this.prisma.environmentEntityTool.findMany({
-      include: {
-        tool: true,
-        entity: {
-          include: {
-            project: { select: { organizationId: true } },
-            mcpConfig: { select: { injectMcpContext: true } },
-            mcpClient: { select: { transport: true, url: true } },
-          },
-        },
-        environment: { select: { projectId: true } },
-      },
-      orderBy: [
-        { environmentId: "asc" },
-        { entityId: "asc" },
-        { tool: { name: "asc" } },
-        { toolId: "asc" },
-      ],
-    });
-
-    const environmentIds = [...new Set(mappings.map((row) => row.environmentId))];
-    const bindingsByEnvironment = new Map<string, AgentPolicyBinding[]>();
-    if (environmentIds.length > 0) {
-      const bindings = await this.prisma.agentBinding.findMany({
-        where: { environmentId: { in: environmentIds } },
-        select: {
-          environmentId: true,
-          agentId: true,
-          activeAgentVersion: {
-            select: {
-              toolDefaultPolicy: true,
-              toolPolicies: { select: { toolId: true, effect: true } },
+    for (;;) {
+      const snapshotRevision = this.cacheRevision;
+      const mappings = await this.prisma.environmentEntityTool.findMany({
+        include: {
+          tool: true,
+          entity: {
+            include: {
+              project: { select: { organizationId: true } },
+              mcpConfig: { select: { injectMcpContext: true } },
+              mcpClient: { select: { transport: true, url: true } },
             },
           },
+          environment: { select: { projectId: true } },
         },
-        orderBy: [{ environmentId: "asc" }, { agentId: "asc" }],
+        orderBy: [
+          { environmentId: "asc" },
+          { entityId: "asc" },
+          { tool: { name: "asc" } },
+          { toolId: "asc" },
+        ],
       });
-      for (const binding of bindings) {
-        const bucket = bindingsByEnvironment.get(binding.environmentId) ?? [];
-        bucket.push(binding as AgentPolicyBinding);
-        bindingsByEnvironment.set(binding.environmentId, bucket);
+
+      const environmentIds = [...new Set(mappings.map((row) => row.environmentId))];
+      const bindingsByEnvironment = new Map<string, AgentPolicyBinding[]>();
+      if (environmentIds.length > 0) {
+        const bindings = await this.prisma.agentBinding.findMany({
+          where: { environmentId: { in: environmentIds } },
+          select: {
+            environmentId: true,
+            agentId: true,
+            activeAgentVersion: {
+              select: {
+                toolDefaultPolicy: true,
+                toolPolicies: { select: { toolId: true, effect: true } },
+              },
+            },
+          },
+          orderBy: [{ environmentId: "asc" }, { agentId: "asc" }],
+        });
+        for (const binding of bindings) {
+          const bucket = bindingsByEnvironment.get(binding.environmentId) ?? [];
+          bucket.push(binding as AgentPolicyBinding);
+          bindingsByEnvironment.set(binding.environmentId, bucket);
+        }
       }
-    }
 
-    const next = new Map<string, Map<string, OrgToolEntry>>();
-    for (const mapping of mappings) {
-      const { entity, environment, tool } = mapping;
-      if (entity.projectId !== environment.projectId) continue;
+      const next = new Map<string, Map<string, OrgToolEntry>>();
+      for (const mapping of mappings) {
+        const { entity, environment, tool } = mapping;
+        if (entity.projectId !== environment.projectId) continue;
 
-      const scope: ScopeTuple = {
-        organizationId: entity.project.organizationId,
-        projectId: entity.projectId,
-        environmentId: mapping.environmentId,
-      };
-      const key = scopeEntityKey(scope, entity.externalId);
-      const bucket = next.get(key) ?? new Map<string, OrgToolEntry>();
-      const dispatchable = this.isPersistedMappingDispatchable({
-        connectionKind: entity.connectionKind,
-        callbackUrl: mapping.callbackUrl,
-        hasMcpClient: entity.mcpClient !== null,
-      });
-      bucket.set(
-        tool.name,
-        this.toEntry(
-          mapping,
-          bindingsByEnvironment.get(mapping.environmentId) ?? [],
-          dispatchable,
-        ),
+        const scope: ScopeTuple = {
+          organizationId: entity.project.organizationId,
+          projectId: entity.projectId,
+          environmentId: mapping.environmentId,
+        };
+        const key = scopeEntityKey(scope, entity.externalId);
+        const bucket = next.get(key) ?? new Map<string, OrgToolEntry>();
+        const dispatchable = this.isPersistedMappingDispatchable({
+          connectionKind: entity.connectionKind,
+          callbackUrl: mapping.callbackUrl,
+          hasMcpClient: entity.mcpClient !== null,
+        });
+        bucket.set(
+          tool.name,
+          this.toEntry(
+            mapping,
+            bindingsByEnvironment.get(mapping.environmentId) ?? [],
+            dispatchable,
+          ),
+        );
+        next.set(key, bucket);
+      }
+
+      if (!this.replaceInMemoryRegistry(next, snapshotRevision)) continue;
+
+      const stats = this.bm25.getStats();
+      console.log(
+        `[Platos ToolRegistry] Index rebuilt: ${stats.totalDocs} dispatchable tools, ` +
+          `${stats.uniqueTerms} terms, ${this.scopedToolCache.size} (scope,entity) buckets`,
       );
-      next.set(key, bucket);
+      return;
     }
-
-    this.scopedToolCache.clear();
-    for (const [key, bucket] of [...next.entries()].sort(([a], [b]) =>
-      a.localeCompare(b),
-    )) {
-      this.scopedToolCache.set(key, bucket);
-    }
-    this.rebuildSearchIndex();
-
-    const stats = this.bm25.getStats();
-    console.log(
-      `[Platos ToolRegistry] Index rebuilt: ${stats.totalDocs} dispatchable tools, ` +
-        `${stats.uniqueTerms} terms, ${this.scopedToolCache.size} (scope,entity) buckets`,
-    );
   }
 
   /**
@@ -221,6 +226,7 @@ export class ToolRegistryService implements OnModuleInit {
     newTools: number;
     removed: number;
   }> {
+    const publicationRevision = this.cacheRevision;
     const entity = await this.prisma.entity.findFirst({
       where: {
         id: params.entityPk,
@@ -330,7 +336,23 @@ export class ToolRegistryService implements OnModuleInit {
       return rows;
     });
 
+    const activeToolIds = new Set(persisted.map(({ tool }) => tool.id));
+    const newTools = [...activeToolIds].filter(
+      (toolId) => !previousToolIds.has(toolId),
+    ).length;
+    const updated = persisted.length - newTools;
+    const activeNames = new Set(declaration.map((tool) => tool.name));
+    const removed = previous.filter((mapping) => !activeNames.has(mapping.tool.name)).length;
+    const result = { registered: persisted.length, updated, newTools, removed };
+
     const bindings = await this.loadAgentPolicyBindings(params.environmentId);
+    // Any cache publication that won while this DB operation was in flight may
+    // include an entity deletion. Reload canonical state instead of publishing
+    // this older transaction's bucket over it.
+    if (this.cacheRevision !== publicationRevision) {
+      await this.rebuildIndex();
+      return result;
+    }
     const cacheKey = scopeEntityKey(params, params.sourceEntityId);
     const bucket = new Map<string, OrgToolEntry>();
     for (const { mapping, tool } of persisted) {
@@ -359,14 +381,7 @@ export class ToolRegistryService implements OnModuleInit {
     else this.scopedToolCache.delete(cacheKey);
     this.rebuildSearchIndex();
 
-    const activeToolIds = new Set(persisted.map(({ tool }) => tool.id));
-    const newTools = [...activeToolIds].filter(
-      (toolId) => !previousToolIds.has(toolId),
-    ).length;
-    const updated = persisted.length - newTools;
-    const activeNames = new Set(declaration.map((tool) => tool.name));
-    const removed = previous.filter((mapping) => !activeNames.has(mapping.tool.name)).length;
-    return { registered: persisted.length, updated, newTools, removed };
+    return result;
   }
 
   findTools(
@@ -448,6 +463,7 @@ export class ToolRegistryService implements OnModuleInit {
         updated += 1;
       }
     }
+    if (updated > 0) this.cacheRevision += 1;
     return updated;
   }
 
@@ -508,21 +524,36 @@ export class ToolRegistryService implements OnModuleInit {
     return { removed: stale.length };
   }
 
-  async purgeEntity(
-    entityPk: string,
-  ): Promise<{ mappingsRemoved: number; bucketsEvicted: number }> {
-    const removed = await this.prisma.environmentEntityTool.deleteMany({
-      where: { entityId: entityPk },
-    });
-    let bucketsEvicted = 0;
-    for (const [key, bucket] of this.scopedToolCache) {
-      if ([...bucket.values()].some((entry) => entry.entityPk === entityPk)) {
-        this.scopedToolCache.delete(key);
-        bucketsEvicted += 1;
-      }
-    }
-    this.rebuildSearchIndex();
-    return { mappingsRemoved: removed.count, bucketsEvicted };
+  /**
+   * Build and validate an entity-free cache/index replacement without mutating
+   * either Prisma or the live registry. Entity deletion can therefore fail
+   * before its database transaction if deterministic eviction cannot be built.
+   */
+  prepareEntityEviction(entityPk: string): PreparedEntityEviction {
+    const preparedAtRevision = this.cacheRevision;
+    const prepared = this.registryWithoutEntity(entityPk);
+    let applied = false;
+
+    return {
+      entityPk,
+      bucketsEvicted: prepared.bucketsEvicted,
+      apply: () => {
+        if (applied) throw new Error("entity_eviction_already_applied");
+        applied = true;
+
+        // Registration or policy/liveness invalidation may have committed while
+        // the entity transaction was in flight. Recompute from the latest cache
+        // rather than restoring the older prepared snapshot over newer state.
+        const replacement =
+          this.cacheRevision === preparedAtRevision
+            ? prepared
+            : this.registryWithoutEntity(entityPk);
+        this.scopedToolCache = replacement.cache;
+        this.bm25 = replacement.index;
+        this.cacheRevision += 1;
+        return { bucketsEvicted: replacement.bucketsEvicted };
+      },
+    };
   }
 
   /** Update transport liveness and immediately invalidate search/exposure. */
@@ -685,20 +716,64 @@ export class ToolRegistryService implements OnModuleInit {
   }
 
   private rebuildSearchIndex(): void {
-    this.bm25.clear();
+    this.bm25 = this.buildSearchIndex(this.scopedToolCache);
+    this.cacheRevision += 1;
+  }
+
+  private replaceInMemoryRegistry(
+    cache: Map<string, Map<string, OrgToolEntry>>,
+    expectedRevision: number,
+  ): boolean {
+    const ordered = new Map<string, Map<string, OrgToolEntry>>(
+      [...cache.entries()].sort(([a], [b]) => a.localeCompare(b)),
+    );
+    const index = this.buildSearchIndex(ordered);
+    if (this.cacheRevision !== expectedRevision) return false;
+    this.scopedToolCache = ordered;
+    this.bm25 = index;
+    this.cacheRevision += 1;
+    return true;
+  }
+
+  private registryWithoutEntity(entityPk: string): {
+    cache: Map<string, Map<string, OrgToolEntry>>;
+    index: BM25Index;
+    bucketsEvicted: number;
+  } {
+    const cache = new Map<string, Map<string, OrgToolEntry>>();
+    let bucketsEvicted = 0;
+    for (const [key, bucket] of this.scopedToolCache) {
+      if ([...bucket.values()].some((entry) => entry.entityPk === entityPk)) {
+        bucketsEvicted += 1;
+        continue;
+      }
+      cache.set(key, new Map(bucket));
+    }
+    return {
+      cache,
+      index: this.buildSearchIndex(cache),
+      bucketsEvicted,
+    };
+  }
+
+  private buildSearchIndex(
+    cache: Map<string, Map<string, OrgToolEntry>>,
+  ): BM25Index {
+    const index = new BM25Index();
     const indexed = new Set<string>();
-    const entries = [...this.scopedToolCache.values()]
+    const entries = [...cache.values()]
       .flatMap((bucket) => [...bucket.values()])
       .filter((entry) => entry.enabled && entry.dispatchable)
       .sort(entryOrder);
     for (const entry of entries) {
       if (indexed.has(entry.toolId)) continue;
       indexed.add(entry.toolId);
-      this.bm25.addDocument(
+      index.addDocument(
         entry.toolId,
         `${entry.toolName} ${entry.description} ${this.extractParamNames(entry.paramSchema)}`,
       );
     }
+    return index;
   }
 
   private isPersistedMappingDispatchable(input: {
