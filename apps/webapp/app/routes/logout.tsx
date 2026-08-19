@@ -1,10 +1,25 @@
-import { type ActionFunction, type LoaderFunction } from "@remix-run/node";
-import { authenticator } from "~/services/auth.server";
+import { redirect, type ActionFunction, type LoaderFunction } from "@remix-run/node";
+import { clearOAuthSession } from "~/services/auth.server";
+import { destroyImpersonationSession } from "~/services/impersonation.server";
+import { destroySession, getUserSession } from "~/services/sessionStorage.server";
+import {
+  clearOperatorSession,
+  getOperatorSessionToken,
+  platosDashboardAuth,
+} from "~/services/platosDashboardAuth.server";
 
-export const action: ActionFunction = async ({ request }) => {
-  return await authenticator.logout(request, { redirectTo: "/" });
-};
+async function logout(request: Request) {
+  const token = await getOperatorSessionToken(request);
+  if (token) await platosDashboardAuth.revokeOperatorSession(token).catch(() => false);
 
-export const loader: LoaderFunction = async ({ request }) => {
-  return await authenticator.logout(request, { redirectTo: "/" });
-};
+  const headers = new Headers();
+  headers.append("Set-Cookie", await clearOperatorSession());
+  headers.append("Set-Cookie", await clearOAuthSession(request));
+  headers.append("Set-Cookie", await destroyImpersonationSession(request));
+  headers.append("Set-Cookie", await destroySession(await getUserSession(request)));
+  return redirect("/", { headers });
+}
+
+export const action: ActionFunction = async ({ request }) => logout(request);
+
+export const loader: LoaderFunction = async ({ request }) => logout(request);

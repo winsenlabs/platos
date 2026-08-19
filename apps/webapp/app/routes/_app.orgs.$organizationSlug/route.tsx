@@ -7,7 +7,6 @@ import { prisma } from "~/db.server";
 import { useOptionalOrganization } from "~/hooks/useOrganizations";
 import { useTypedMatchesData } from "~/hooks/useTypedMatchData";
 import { OrganizationsPresenter } from "~/presenters/OrganizationsPresenter.server";
-import { getImpersonationId } from "~/services/impersonation.server";
 import { getCachedUsage, getCurrentPlan } from "~/services/platform.v3.server";
 import { requireUser } from "~/services/session.server";
 import { telemetry } from "~/services/telemetry.server";
@@ -75,7 +74,6 @@ export const shouldRevalidate: ShouldRevalidateFunction = (params) => {
 // IMPORTANT: Make sure to update shouldRevalidate if this loader depends on search params
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const user = await requireUser(request);
-  const impersonationId = await getImpersonationId(request);
 
   const { organizationSlug, projectParam, envParam } = ParamsSchema.parse(params);
 
@@ -162,7 +160,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     organization,
     project,
     environment,
-    isImpersonating: !!impersonationId,
+    isImpersonating: user.isImpersonating,
     currentPlan: { ...plan, v3Usage: { ...usage, hasExceededFreeTier, usagePercentage } },
     customDashboards: customDashboardsWithWidgetCount,
     dashboardLimits: {

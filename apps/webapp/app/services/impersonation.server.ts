@@ -21,6 +21,11 @@ export function commitImpersonationSession(session: Session) {
   return impersonationSessionStorage.commitSession(session);
 }
 
+export async function destroyImpersonationSession(request: Request) {
+  const session = await getImpersonationSession(request);
+  return impersonationSessionStorage.destroySession(session);
+}
+
 export async function getImpersonationId(request: Request) {
   const session = await getImpersonationSession(request);
 

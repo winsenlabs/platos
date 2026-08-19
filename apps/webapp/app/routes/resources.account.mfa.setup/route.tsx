@@ -1,14 +1,18 @@
-import { ActionFunctionArgs } from "@remix-run/server-runtime";
+import type { ActionFunctionArgs } from "@remix-run/server-runtime";
 import { typedjson } from "remix-typedjson";
 import { z } from "zod";
 import { redirectWithSuccessMessage, redirectWithErrorMessage, typedJsonWithSuccessMessage } from "~/models/message.server";
-import { MultiFactorAuthenticationService } from "~/services/mfa/multiFactorAuthentication.server";
-import { requireUserId } from "~/services/session.server";
-import { ServiceValidationError } from "~/v3/services/baseService.server";
 import { useMfaSetup } from "./useMfaSetup";
 import { MfaToggle } from "./MfaToggle";
 import { MfaSetupDialog } from "./MfaSetupDialog";
 import { MfaDisableDialog } from "./MfaDisableDialog";
+import {
+  authSessionRateLimitIdentifier,
+  commitOperatorSession,
+  requireCanonicalAuthorization,
+  platosDashboardAuth,
+} from "~/services/platosDashboardAuth.server";
+import { PlatosAuthError } from "@platos/tenancy-database";
 
 const formSchema = z.discriminatedUnion("action", [
   z.object({
@@ -51,7 +55,7 @@ function validateForm(formData: FormData) {
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
-    const userId = await requireUserId(request);
+    const operator = await requireCanonicalAuthorization(request);
 
     const formData = await request.formData();
 
@@ -64,11 +68,9 @@ export async function action({ request }: ActionFunctionArgs) {
       });
     }
 
-    const mfaSetupService = new MultiFactorAuthenticationService();
-
     switch (submission.data.action) {
       case "enable-mfa": {
-        const result = await mfaSetupService.enableTotp(userId);
+        const result = await platosDashboardAuth.beginTotpEnrollment(operator.canonicalUserId);
 
         return typedjson({
           action: "enable-mfa" as const,
@@ -77,46 +79,54 @@ export async function action({ request }: ActionFunctionArgs) {
         });
       }
       case "disable-mfa": {
-        const result = await mfaSetupService.disableTotp(userId, {
-          totpCode: submission.data.totpCode,
-          recoveryCode: submission.data.recoveryCode,
-        });
-
-        if (result.success) {
-          return typedJsonWithSuccessMessage(
-            {
-              action: "disable-mfa" as const,
-              success: true as const,
-            },
-            request,
-            "Successfully disabled MFA"
-          );
-        } else {
-          return typedjson({
-            action: "disable-mfa" as const,
-            success: false as const,
-            error: "Invalid code provided. Please try again.",
+        try {
+          await platosDashboardAuth.disableTotpForSession({
+            sessionToken: operator.token,
+            rateLimitIdentifier: authSessionRateLimitIdentifier(operator.token),
+            totpCode: submission.data.totpCode,
+            recoveryCode: submission.data.recoveryCode,
           });
+        } catch (error) {
+          if (error instanceof PlatosAuthError && error.code === "invalid_mfa") {
+            return typedjson({
+              action: "disable-mfa" as const,
+              success: false as const,
+              error: "Invalid code provided. Please try again.",
+            });
+          }
+          throw error;
         }
+        return typedJsonWithSuccessMessage(
+          {
+            action: "disable-mfa" as const,
+            success: true as const,
+          },
+          request,
+          "Successfully disabled MFA"
+        );
       }
       case "validate-totp": {
-        const result = await mfaSetupService.validateTotpSetup(userId, submission.data.totpCode);
-
-        if (result.success) {
-          return typedjson({
+        const result = await platosDashboardAuth.confirmTotpEnrollment(
+          operator.canonicalUserId,
+          submission.data.totpCode,
+          authSessionRateLimitIdentifier(operator.token)
+        );
+        const replacement = await platosDashboardAuth.issueOperatorSession({
+          userId: operator.canonicalUserId,
+          mfaVerifiedAt: new Date(),
+        });
+        return typedjson(
+          {
             action: "validate-totp" as const,
             success: true as const,
             recoveryCodes: result.recoveryCodes,
-          });
-        } else {
-          return typedjson({
-            action: "validate-totp" as const,
-            success: false as const,
-            error: "Invalid code provided. Please try again.",
-            otpAuthUrl: result.otpAuthUrl,
-            secret: result.secret,
-          });
-        }
+          },
+          {
+            headers: {
+              "Set-Cookie": await commitOperatorSession(replacement.token, replacement.expiresAt),
+            },
+          }
+        );
       }
       case "cancel-totp": {
         return typedjson({
@@ -129,7 +139,16 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     }
   } catch (error) {
-    if (error instanceof ServiceValidationError) {
+    if (error instanceof PlatosAuthError) {
+      if (error.code === "invalid_mfa") {
+        return typedjson({
+          action: "validate-totp" as const,
+          success: false as const,
+          error: "Invalid code provided. Please try again.",
+          secret: undefined,
+          otpAuthUrl: undefined,
+        });
+      }
       return redirectWithErrorMessage("/account/security", request, error.message);
     }
     

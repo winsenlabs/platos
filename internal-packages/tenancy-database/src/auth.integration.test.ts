@@ -8,7 +8,7 @@ import {
   OrganizationRole,
   PrismaClient,
 } from "../generated/control";
-import { generateTotp, PlatosAuthError, PlatosAuthService } from "./auth";
+import { generateTotp, hashSecret, PlatosAuthError, PlatosAuthService } from "./auth";
 
 const encryptionKey = "0123456789abcdef0123456789abcdef";
 
@@ -205,6 +205,136 @@ describe("Platos-native auth integration", () => {
         recoveryCode: recoveryCodes[0],
       })
     ).rejects.toEqual(expectAuthError("invalid_mfa"));
+
+    await auth.disableTotpForSession({
+      sessionToken: recoverySession.token,
+      rateLimitIdentifier: "mfa-disable:127.0.0.1",
+      recoveryCode: recoveryCodes[1],
+    });
+    await expect(
+      database.operatorMfaTotp.findUnique({ where: { userId: user.id } })
+    ).resolves.toBeNull();
+    await expect(
+      database.operatorMfaRecoveryCode.count({ where: { userId: user.id } })
+    ).resolves.toBe(0);
+    await expect(auth.authorizeOperatorSession(recoverySession.token)).resolves.toMatchObject({
+      effectiveUserId: user.id,
+      mfaVerifiedAt: null,
+    });
+    await expect(auth.authorizeOperatorSession(totpSession.token)).rejects.toEqual(
+      expectAuthError("revoked")
+    );
+  });
+
+  test("does not disable MFA when concurrent revocation wins the session lock", async () => {
+    const user = await database.user.create({ data: { email: "mfa-revoke-race@example.test" } });
+    const enrollment = await auth.beginTotpEnrollment(user.id);
+    const { recoveryCodes } = await auth.confirmTotpEnrollment(
+      user.id,
+      generateTotp(enrollment.secret, now),
+      "mfa-revoke-race-enrollment"
+    );
+    const issued = await auth.issueOperatorSession({ userId: user.id });
+    const session = await database.operatorSession.findUniqueOrThrow({
+      where: { tokenHash: hashSecret(issued.token) },
+    });
+
+    let signalLocked!: () => void;
+    let releaseLock!: () => void;
+    const locked = new Promise<void>((resolve) => {
+      signalLocked = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    const revocation = database.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT "id"
+        FROM "OperatorSession"
+        WHERE "id" = ${session.id}::uuid
+        FOR UPDATE
+      `;
+      await tx.operatorSession.update({
+        where: { id: session.id },
+        data: { revokedAt: now },
+      });
+      signalLocked();
+      await release;
+    });
+
+    await locked;
+    const disable = auth.disableTotpForSession({
+      sessionToken: issued.token,
+      rateLimitIdentifier: "mfa-revoke-race-session",
+      recoveryCode: recoveryCodes[0],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    releaseLock();
+    await revocation;
+
+    await expect(disable).rejects.toEqual(expectAuthError("unauthorized"));
+    await expect(
+      database.operatorMfaTotp.findUnique({ where: { userId: user.id } })
+    ).resolves.not.toBeNull();
+    await expect(
+      database.operatorMfaRecoveryCode.count({
+        where: { userId: user.id, consumedAt: { not: null } },
+      })
+    ).resolves.toBe(0);
+  });
+
+  test("rolls back recovery consumption when the disable transition fails", async () => {
+    const user = await database.user.create({ data: { email: "mfa-disable-rollback@example.test" } });
+    const enrollment = await auth.beginTotpEnrollment(user.id);
+    const { recoveryCodes } = await auth.confirmTotpEnrollment(
+      user.id,
+      generateTotp(enrollment.secret, now),
+      "mfa-disable-rollback-enrollment"
+    );
+    const issued = await auth.issueOperatorSession({ userId: user.id });
+
+    await database.$executeRawUnsafe(`
+      CREATE FUNCTION fail_mfa_factor_delete() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'forced MFA factor deletion failure';
+      END;
+      $$ LANGUAGE plpgsql
+    `);
+    await database.$executeRawUnsafe(`
+      CREATE TRIGGER fail_mfa_factor_delete
+      BEFORE DELETE ON "OperatorMfaTotp"
+      FOR EACH ROW EXECUTE FUNCTION fail_mfa_factor_delete()
+    `);
+    try {
+      await expect(
+        auth.disableTotpForSession({
+          sessionToken: issued.token,
+          rateLimitIdentifier: "mfa-disable-rollback-session",
+          recoveryCode: recoveryCodes[0],
+        })
+      ).rejects.toThrow("forced MFA factor deletion failure");
+    } finally {
+      await database.$executeRawUnsafe(
+        `DROP TRIGGER IF EXISTS fail_mfa_factor_delete ON "OperatorMfaTotp"`
+      );
+      await database.$executeRawUnsafe(`DROP FUNCTION IF EXISTS fail_mfa_factor_delete()`);
+    }
+
+    await expect(
+      database.operatorMfaTotp.findUnique({ where: { userId: user.id } })
+    ).resolves.not.toBeNull();
+    await expect(
+      database.operatorMfaRecoveryCode.count({
+        where: { userId: user.id, consumedAt: { not: null } },
+      })
+    ).resolves.toBe(0);
+    await expect(
+      auth.disableTotpForSession({
+        sessionToken: issued.token,
+        rateLimitIdentifier: "mfa-disable-rollback-session",
+        recoveryCode: recoveryCodes[0],
+      })
+    ).resolves.toBeUndefined();
   });
 
   test("keeps active MFA usable during re-enrollment and rate limits online verification", async () => {

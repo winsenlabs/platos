@@ -1,15 +1,17 @@
 import { redirect } from "@remix-run/server-runtime";
 import { prisma } from "~/db.server";
 import { logger } from "~/services/logger.server";
-import { SearchParams } from "~/routes/admin._index";
+import type { SearchParams } from "~/routes/admin._index";
 import {
   clearImpersonationId,
   commitImpersonationSession,
   getImpersonationId,
   setImpersonationId,
 } from "~/services/impersonation.server";
-import { authenticator } from "~/services/auth.server";
-import { requireUser } from "~/services/session.server";
+import {
+  getDashboardIdentity,
+  requireDashboardIdentity,
+} from "~/services/platosDashboardAuth.server";
 import { extractClientIp } from "~/utils/extractClientIp.server";
 
 const pageSize = 20;
@@ -211,8 +213,12 @@ export async function adminGetOrganizations(userId: string, { page, search }: Se
 }
 
 export async function redirectWithImpersonation(request: Request, userId: string, path: string) {
-  const user = await requireUser(request);
-  if (!user.admin) {
+  const identity = await requireDashboardIdentity(request);
+  const actor = await prisma.user.findUnique({
+    where: { id: identity.legacyActorUserId },
+    select: { id: true, admin: true },
+  });
+  if (!actor?.admin || identity.authorization.impersonation) {
     throw new Error("Unauthorized");
   }
 
@@ -223,7 +229,7 @@ export async function redirectWithImpersonation(request: Request, userId: string
     await prisma.impersonationAuditLog.create({
       data: {
         action: "START",
-        adminId: user.id,
+        adminId: actor.id,
         targetId: userId,
         ipAddress,
       },
@@ -231,7 +237,7 @@ export async function redirectWithImpersonation(request: Request, userId: string
   } catch (error) {
     logger.error("Failed to create impersonation audit log", {
       error,
-      adminId: user.id,
+      adminId: actor.id,
       targetId: userId,
     });
   }
@@ -244,10 +250,20 @@ export async function redirectWithImpersonation(request: Request, userId: string
 }
 
 export async function clearImpersonation(request: Request, path: string) {
-  const authUser = await authenticator.isAuthenticated(request);
+  const identity = await getDashboardIdentity(request);
   const targetId = await getImpersonationId(request);
+  const actor = identity
+    ? await prisma.user.findUnique({
+        where: { id: identity.legacyActorUserId },
+        select: { id: true, admin: true },
+      })
+    : null;
 
-  if (targetId && authUser?.userId) {
+  if (
+    targetId &&
+    identity?.authorization.impersonation === null &&
+    actor?.admin === true
+  ) {
     const xff = request.headers.get("x-forwarded-for");
     const ipAddress = extractClientIp(xff);
 
@@ -255,7 +271,7 @@ export async function clearImpersonation(request: Request, path: string) {
       await prisma.impersonationAuditLog.create({
         data: {
           action: "STOP",
-          adminId: authUser.userId,
+          adminId: actor.id,
           targetId,
           ipAddress,
         },
@@ -263,7 +279,7 @@ export async function clearImpersonation(request: Request, path: string) {
     } catch (error) {
       logger.error("Failed to create impersonation audit log", {
         error,
-        adminId: authUser.userId,
+        adminId: actor.id,
         targetId,
       });
     }

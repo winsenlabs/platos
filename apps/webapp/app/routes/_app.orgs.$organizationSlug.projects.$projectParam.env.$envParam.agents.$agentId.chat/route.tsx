@@ -797,7 +797,7 @@ export default function AgentChatPage() {
 
   // PIFSP-9 Postman mode
   const [postmanMode, setPostmanMode] = useState(false);
-  const [postmanUserId, setPostmanUserId] = useState(userId);
+  const [postmanUserId, setPostmanUserId] = useState<string>(userId);
   const effectiveUserId = postmanMode ? postmanUserId : userId;
   const lastEffectiveUserIdRef = useRef<string>(effectiveUserId);
   // The reset effect lives AFTER the thread-reply state declarations

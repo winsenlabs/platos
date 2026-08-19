@@ -6,9 +6,11 @@ describe("getRegistryConfig", () => {
     NODE_ENV: "test" as const,
     DATABASE_URL: "postgresql://test:test@localhost:5432/test",
     DIRECT_URL: "postgresql://test:test@localhost:5432/test",
+    PLATOS_CONTROL_DATABASE_URL: "postgresql://test:test@localhost:5432/control",
     SESSION_SECRET: "test-session-secret",
     MAGIC_LINK_SECRET: "test-magic-link-secret",
     ENCRYPTION_KEY: "test-encryption-keeeeey-32-bytes",
+    MANAGED_WORKER_SECRET: "test-managed-worker-secret",
     CLICKHOUSE_URL: "http://localhost:8123",
   };
 

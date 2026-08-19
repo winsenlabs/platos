@@ -1,13 +1,18 @@
-import type { LoaderFunction } from "@remix-run/node";
-import { redirect } from "@remix-run/node";
-import { prisma } from "~/db.server";
-import { getSession, redirectWithErrorMessage } from "~/models/message.server";
-import { authenticator } from "~/services/auth.server";
+import { redirect, type LoaderFunction } from "@remix-run/node";
+import { redirectWithErrorMessage } from "~/models/message.server";
+import { authenticator, clearOAuthSession } from "~/services/auth.server";
 import { setLastAuthMethodHeader } from "~/services/lastAuthMethod.server";
-import { commitSession } from "~/services/sessionStorage.server";
+import { commitSession, getSession } from "~/services/sessionStorage.server";
 import { trackAndClearReferralSource } from "~/services/referralSource.server";
+import { destroyImpersonationSession } from "~/services/impersonation.server";
 import { redirectCookie } from "./auth.google";
 import { sanitizeRedirectPath } from "~/utils";
+import {
+  bridgeVerifiedEmailToLegacyUser,
+  commitOperatorSession,
+  isMfaRequired,
+  platosDashboardAuth,
+} from "~/services/platosDashboardAuth.server";
 
 export let loader: LoaderFunction = async ({ request }) => {
   const cookie = request.headers.get("Cookie");
@@ -19,44 +24,47 @@ export let loader: LoaderFunction = async ({ request }) => {
   });
 
   const session = await getSession(request.headers.get("cookie"));
-
-  const userRecord = await prisma.user.findFirst({
-    where: {
-      id: auth.userId,
-    },
-    select: {
-      id: true,
-      mfaEnabledAt: true,
-    },
-  });
-
-  if (!userRecord) {
-    return redirectWithErrorMessage(
+  const bridge = await bridgeVerifiedEmailToLegacyUser(auth.email);
+  if (!bridge) {
+    const response = await redirectWithErrorMessage(
       "/login",
       request,
-      "Could not find your account. Please contact support."
+      "Could not safely match your dashboard account. Please contact support."
     );
+    response.headers.append("Set-Cookie", await clearOAuthSession(request));
+    return response;
   }
 
-  if (userRecord.mfaEnabledAt) {
-    session.set("pending-mfa-user-id", userRecord.id);
+  try {
+    await platosDashboardAuth.authorizeOperatorSession(auth.sessionToken);
+  } catch (error) {
+    if (!isMfaRequired(error)) throw error;
     session.set("pending-mfa-redirect-to", redirectTo);
 
     const headers = new Headers();
     headers.append("Set-Cookie", await commitSession(session));
+    headers.append("Set-Cookie", await clearOAuthSession(request));
+    headers.append("Set-Cookie", await destroyImpersonationSession(request));
+    headers.append(
+      "Set-Cookie",
+      await commitOperatorSession(auth.sessionToken, new Date(auth.sessionExpiresAt))
+    );
     headers.append("Set-Cookie", await setLastAuthMethodHeader("google"));
 
     return redirect("/login/mfa", { headers });
   }
 
-  session.set(authenticator.sessionKey, auth);
-
   const headers = new Headers();
   headers.append("Set-Cookie", await commitSession(session));
+  headers.append("Set-Cookie", await clearOAuthSession(request));
+  headers.append("Set-Cookie", await destroyImpersonationSession(request));
+  headers.append(
+    "Set-Cookie",
+    await commitOperatorSession(auth.sessionToken, new Date(auth.sessionExpiresAt))
+  );
   headers.append("Set-Cookie", await setLastAuthMethodHeader("google"));
 
-  await trackAndClearReferralSource(request, auth.userId, headers);
+  await trackAndClearReferralSource(request, bridge.legacyUserId, headers);
 
   return redirect(redirectTo, { headers });
 };
-

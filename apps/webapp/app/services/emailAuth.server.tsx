@@ -3,7 +3,6 @@ import { EmailLinkStrategy } from "remix-auth-email-link";
 import { env } from "~/env.server";
 import { findOrCreateUser } from "~/models/user.server";
 import { sendMagicLinkEmail } from "~/services/email.server";
-import type { AuthUser } from "./authUser";
 import { logger } from "./logger.server";
 
 import { postAuthentication } from "./postAuth.server";
@@ -45,6 +44,6 @@ const emailStrategy = new EmailLinkStrategy(
   }
 );
 
-export function addEmailLinkStrategy(authenticator: Authenticator<AuthUser>) {
+export function addEmailLinkStrategy(authenticator: Authenticator<{ userId: string }>) {
   authenticator.use(emailStrategy);
 }

@@ -591,11 +591,61 @@ export class PlatosAuthService {
     totpCode?: string;
     recoveryCode?: string;
   }): Promise<void> {
-    const session = await this.#database.operatorSession.findUnique({
-      where: { tokenHash: hashSecret(params.sessionToken) },
-      include: { user: { include: { mfaTotp: true } } },
-    });
     const now = this.#now();
+    await this.#database.$transaction(async (tx) => {
+      const session = await this.#verifyMfaForActiveSession(tx, params, now);
+      await tx.operatorSession.update({
+        where: { id: session.id },
+        data: { mfaVerifiedAt: now },
+      });
+    });
+  }
+
+  async disableTotpForSession(params: {
+    sessionToken: string;
+    rateLimitIdentifier: string;
+    totpCode?: string;
+    recoveryCode?: string;
+  }): Promise<void> {
+    const now = this.#now();
+    await this.#database.$transaction(async (tx) => {
+      const session = await this.#verifyMfaForActiveSession(tx, params, now);
+      await tx.operatorMfaRecoveryCode.deleteMany({ where: { userId: session.userId } });
+      await tx.operatorMfaTotp.delete({ where: { userId: session.userId } });
+      await tx.operatorSession.updateMany({
+        where: { userId: session.userId, id: { not: session.id }, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      await tx.operatorSession.update({
+        where: { id: session.id },
+        data: { mfaVerifiedAt: null },
+      });
+    });
+  }
+
+  async #verifyMfaForActiveSession(
+    database: Prisma.TransactionClient,
+    params: {
+      sessionToken: string;
+      rateLimitIdentifier: string;
+      totpCode?: string;
+      recoveryCode?: string;
+    },
+    now: Date
+  ): Promise<{ id: string; userId: string }> {
+    const tokenHash = hashSecret(params.sessionToken);
+    const lockedSession = await database.$queryRaw<Array<{ id: string }>>`
+      SELECT "id"
+      FROM "OperatorSession"
+      WHERE "tokenHash" = ${tokenHash}
+      FOR UPDATE
+    `;
+    if (lockedSession.length !== 1) throw unauthorized();
+
+    const session = await database.operatorSession.findUnique({
+      where: { id: lockedSession[0].id },
+      include: { user: true },
+    });
     if (
       !session ||
       session.user.disabledAt ||
@@ -604,22 +654,27 @@ export class PlatosAuthService {
     ) {
       throw unauthorized();
     }
-    const credential = session.user.mfaTotp;
+
+    await database.$queryRaw<Array<{ id: string }>>`
+      SELECT "id"
+      FROM "OperatorMfaTotp"
+      WHERE "userId" = ${session.userId}::uuid
+      FOR UPDATE
+    `;
+    const credential = await database.operatorMfaTotp.findUnique({
+      where: { userId: session.userId },
+    });
     if (!credential?.enabledAt || !credential.encryptedSecret) {
       throw new PlatosAuthError("invalid_mfa", 401, "Invalid authentication code");
     }
-    await this.#consumeRateLimit(
-      AuthRateLimitAction.MFA_VERIFY,
-      `session:${session.userId}:${params.rateLimitIdentifier}`,
-      this.#mfaVerifyRateLimit
-    );
+    await this.#consumeMfaRateLimit(params.rateLimitIdentifier);
 
     let verified = false;
     if (params.totpCode) {
       const secret = decryptSecret(credential.encryptedSecret, this.#encryptionKey);
       const counter = verifyTotp(secret, params.totpCode, now);
       if (counter !== null) {
-        const updated = await this.#database.operatorMfaTotp.updateMany({
+        const updated = await database.operatorMfaTotp.updateMany({
           where: {
             id: credential.id,
             OR: [{ lastUsedCounter: null }, { lastUsedCounter: { lt: counter } }],
@@ -629,7 +684,7 @@ export class PlatosAuthService {
         verified = updated.count === 1;
       }
     } else if (params.recoveryCode) {
-      const consumed = await this.#database.operatorMfaRecoveryCode.updateMany({
+      const consumed = await database.operatorMfaRecoveryCode.updateMany({
         where: {
           userId: session.userId,
           codeHash: hashSecret(normalizeRecoveryCode(params.recoveryCode)),
@@ -641,10 +696,15 @@ export class PlatosAuthService {
     }
     if (!verified) throw new PlatosAuthError("invalid_mfa", 401, "Invalid authentication code");
 
-    await this.#database.operatorSession.update({
-      where: { id: session.id },
-      data: { mfaVerifiedAt: now },
-    });
+    return { id: session.id, userId: session.userId };
+  }
+
+  async #consumeMfaRateLimit(rateLimitIdentifier: string): Promise<void> {
+    await this.#consumeRateLimit(
+      AuthRateLimitAction.MFA_VERIFY,
+      `session:${rateLimitIdentifier}`,
+      this.#mfaVerifyRateLimit
+    );
   }
 
   async issueInvitation(params: {

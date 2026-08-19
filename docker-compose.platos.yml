@@ -73,7 +73,7 @@ services:
       # Leaving it at the default makes the Postgres instance trivially
       # compromisable.
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?required — see .env.example}"
-      POSTGRES_DB: "${POSTGRES_DB:-postgres}"
+      POSTGRES_DB: "${POSTGRES_DB:-platos_control}"
     command: ["-c", "wal_level=logical"]
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
@@ -292,8 +292,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
-      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      PGPASSWORD: "${POSTGRES_PASSWORD}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
     volumes:
       - ./internal-packages/tenancy-database:/work
     working_dir: /work
@@ -302,6 +303,12 @@ services:
       - -c
       - |
         set -e
+        echo '[migrations-init] ensuring the clean control database exists...'
+        apk add --no-cache postgresql-client > /dev/null
+        psql -h postgres -U "${POSTGRES_USER:-postgres}" -d postgres -tAc \
+          "SELECT 1 FROM pg_database WHERE datname='${POSTGRES_DB:-platos_control}'" \
+          | grep -q 1 || psql -h postgres -U "${POSTGRES_USER:-postgres}" -d postgres \
+          -c "CREATE DATABASE \"${POSTGRES_DB:-platos_control}\""
         echo '[migrations-init] installing prisma...'
         npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
         echo '[migrations-init] deploying the clean tenancy schema...'
@@ -389,7 +396,7 @@ services:
     environment:
       PLATOS_PUBLIC_BASE_URL: "${PLATOS_PUBLIC_BASE_URL:-}"
       PLATOS_AGENT_PORT: "3100"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}?schema=public&connection_limit=30&pool_timeout=20"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&connection_limit=30&pool_timeout=20"
       REDIS_URL: "redis://redis:6379"
       # Test mode selects deterministic local providers. Token-minting test
       # controllers are not registered and are removed from production builds.
@@ -539,6 +546,8 @@ services:
         condition: service_healthy
       migrations-init-legacy:
         condition: service_completed_successfully
+      migrations-init:
+        condition: service_completed_successfully
       clickhouse-migrate:
         condition: service_completed_successfully
     environment:
@@ -553,6 +562,9 @@ services:
       # The dashboard still reads the legacy schema; see migrations-init-legacy.
       DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_LEGACY_DB:-platos_legacy}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
       DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_LEGACY_DB:-platos_legacy}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      # Explicit clean control-plane connection. Never substitute either of the
+      # legacy URLs above: the dashboard remains split until the M4 cutover.
+      PLATOS_CONTROL_DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=10&pool_timeout=20"
       DATABASE_HOST: "postgres:5432"
       REDIS_HOST: redis
       REDIS_PORT: "6379"

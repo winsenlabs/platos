@@ -1,6 +1,6 @@
 import { useReducer, useEffect } from "react";
 import { useTypedFetcher } from "remix-typedjson";
-import { action } from "./route";
+import type { action } from "./route";
 
 export type MfaPhase = 'idle' | 'enabling' | 'validating' | 'showing-recovery' | 'disabling';
 
@@ -23,7 +23,7 @@ export type MfaAction =
   | { type: 'CANCEL_SETUP' }
   | { type: 'VALIDATE_TOTP'; code: string }
   | { type: 'VALIDATION_SUCCESS'; recoveryCodes: string[] }
-  | { type: 'VALIDATION_FAILED'; error: string; setupData: { secret: string; otpAuthUrl: string } }
+  | { type: 'VALIDATION_FAILED'; error: string }
   | { type: 'RECOVERY_CODES_SAVED' }
   | { type: 'OPEN_DISABLE_DIALOG' }
   | { type: 'DISABLE_MFA' }
@@ -35,7 +35,7 @@ export type MfaAction =
   | { type: 'CLEAR_ERROR' }
   | { type: 'SET_SUBMITTING'; isSubmitting: boolean };
 
-function mfaReducer(state: MfaState, action: MfaAction): MfaState {
+export function mfaReducer(state: MfaState, action: MfaAction): MfaState {
   switch (action.type) {
     case 'ENABLE_MFA':
       return {
@@ -85,7 +85,6 @@ function mfaReducer(state: MfaState, action: MfaAction): MfaState {
       return {
         ...state,
         phase: 'enabling',
-        setupData: action.setupData,
         error: action.error,
         isSubmitting: false,
       };
@@ -200,8 +199,7 @@ export function useMfaSetup(initialIsEnabled: boolean) {
           } else {
             dispatch({ 
               type: 'VALIDATION_FAILED', 
-              error: data.error || 'Invalid code',
-              setupData: { secret: data.secret!, otpAuthUrl: data.otpAuthUrl! }
+              error: data.error || 'Invalid code'
             });
           }
           break;
@@ -210,8 +208,8 @@ export function useMfaSetup(initialIsEnabled: boolean) {
           if (data.success) {
             dispatch({ type: 'DISABLE_SUCCESS' });
           } else {
-            dispatch({ 
-              type: 'DISABLE_FAILED', 
+            dispatch({
+              type: 'DISABLE_FAILED',
               error: data.error || 'Failed to disable MFA'
             });
           }
