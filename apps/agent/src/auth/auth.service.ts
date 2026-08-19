@@ -664,45 +664,18 @@ export class AuthService {
     return entities.map(AuthService.projectEntity);
   }
 
-  /**
-   * Delete an entity and everything the tool registry still believes about it.
-   *
-   * The DB row was previously all that got deleted. The registry's in-memory
-   * scoped-tool cache is keyed by (org, project, env, entityId) and had no
-   * eviction path on this route, so a deleted entity's tools stayed live: they
-   * were still injected into every turn with full schemas, and dispatching one
-   * resolved `entityPk` against a row that no longer existed, failing with
-   * "Entity <id> not registered". Only a process restart cleared it.
-   *
-   * The purge runs BEFORE the row is deleted so the cache key can be rebuilt
-   * from the entity; `purgeEntity` also matches buckets by entityPk so it stays
-   * correct if that order ever changes.
-   */
+  /** Delete an entity, its credentials, and its tool exposure atomically. */
   async deleteEntity(organizationId: string, projectId: string, entityId: string): Promise<boolean> {
     const entity = await this.prisma.entity.findFirst({
       where: { projectId, externalId: entityId, project: { organizationId } },
       select: { id: true },
     });
-
-    if (entity && this.toolRegistry) {
-      try {
-        const purged = await this.toolRegistry.purgeEntity(entity.id);
-        this.logger.log(
-          `deleteEntity ${entityId}: purged ${purged.mappingsRemoved} tool mappings, ${purged.bucketsEvicted} cache buckets`,
-        );
-      } catch (err: any) {
-        // A failed purge must not block the delete — the operator asked for the
-        // entity to be gone. Loud, because the surviving cache entries are the
-        // exact condition that produces "Entity not registered" at dispatch.
-        this.logger.error(
-          `deleteEntity ${entityId}: registry purge failed, stale tools may persist until restart — ${err?.message ?? err}`,
-        );
-      }
-    }
-
     if (!entity) return false;
+    if (!this.toolRegistry) throw new Error("tool_registry_unavailable");
+
+    const eviction = this.toolRegistry.prepareEntityEviction(entity.id);
     const now = new Date();
-    const result = await this.prisma.$transaction(async (tx) => {
+    const persisted = await this.prisma.$transaction(async (tx) => {
       await tx.credential.updateMany({
         where: {
           kind: CredentialKind.ENTITY_SECRET,
@@ -712,11 +685,43 @@ export class AuthService {
         },
         data: { revokedAt: now },
       });
-      return tx.entity.deleteMany({
+      const mappings = await tx.environmentEntityTool.deleteMany({
+        where: { entityId: entity.id },
+      });
+      const deleted = await tx.entity.deleteMany({
         where: { id: entity.id, projectId, project: { organizationId } },
       });
+      if (deleted.count !== 1) throw new Error("entity_delete_conflict");
+      return { mappingsRemoved: mappings.count };
     });
-    return result.count > 0;
+
+    try {
+      const applied = eviction.apply();
+      this.logger.log(
+        `deleteEntity ${entityId}: removed ${persisted.mappingsRemoved} tool mappings, evicted ${applied.bucketsEvicted} cache buckets`,
+      );
+    } catch (evictionError) {
+      this.logger.error(
+        `deleteEntity ${entityId}: post-commit registry eviction failed; rebuilding from canonical database`,
+        evictionError instanceof Error ? evictionError.stack : String(evictionError),
+      );
+      try {
+        await this.toolRegistry.rebuildIndex();
+      } catch (rebuildError) {
+        this.logger.error(
+          `deleteEntity ${entityId}: canonical registry rebuild failed`,
+          rebuildError instanceof Error ? rebuildError.stack : String(rebuildError),
+        );
+        throw new AggregateError(
+          [evictionError, rebuildError],
+          "entity_deleted_but_registry_recovery_failed",
+        );
+      }
+      this.logger.warn(
+        `deleteEntity ${entityId}: registry recovered from canonical database after eviction failure`,
+      );
+    }
+    return true;
   }
 
   /**
