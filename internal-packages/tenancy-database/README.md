@@ -44,9 +44,14 @@ data. It does not import, migrate, or modify the inherited database schema.
 - Memory and entity embeddings use `vector(1536)` with HNSW cosine indexes.
   Extracted memories carry a typed Thread/Turn provenance tuple and extractor
   version; a database unique key makes concurrent extractor retries dedupe.
-- `prisma/migrations/00000000000000_initial` is the single migration generated
-  from an empty PostgreSQL database, followed by tier and parent-chain checks
-  that Prisma cannot express in its schema language.
+- `prisma/migrations/00000000000000_initial` is the complete current schema for
+  disposable environments. Edit it in place for every schema change; never add
+  another migration directory. Recreate each target database from scratch after
+  a schema change instead of migrating it forward. The DDL includes fail-closed
+  data guards plus constraints and triggers Prisma cannot express.
+- This convention ends as soon as any non-disposable environment exists. At that
+  point freeze the initial migration permanently and append ordered migrations
+  for every subsequent schema change.
 
 Tests start one isolated PostgreSQL testcontainer and pass its connection URL
 directly to Prisma. They do not read the repository `DATABASE_URL`.

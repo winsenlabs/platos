@@ -1,5 +1,4 @@
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { Prisma as ControlPrisma } from "../generated/control";
@@ -22,25 +21,6 @@ const migration = readFileSync(
   resolve(packageRoot, "prisma/migrations/00000000000000_initial/migration.sql"),
   "utf8"
 );
-const channelDurabilityMigration = readFileSync(
-  resolve(
-    packageRoot,
-    "prisma/migrations/20260818020000_win130_channel_durability/migration.sql"
-  ),
-  "utf8"
-);
-const feedbackMigration = readFileSync(
-  resolve(packageRoot, "prisma/migrations/20260818000000_memory_feedback_quarantine/migration.sql"),
-  "utf8"
-);
-const memoryEntityOwnershipMigration = readFileSync(
-  resolve(
-    packageRoot,
-    "prisma/migrations/20260818010000_memory_entity_ownership_transition/migration.sql"
-  ),
-  "utf8"
-);
-
 const tenancyOnlyModels = [
   "User",
   "OperatorSession",
@@ -95,10 +75,9 @@ describe("clean-slate domain schema", () => {
       .filter((line) => line.includes("@relation(") && line.includes("fields:"));
     for (const relation of owningRelations) expect(relation).toContain("onDelete:");
 
-    const appliedMigrations = `${migration}\n${channelDurabilityMigration}`;
-    const sqlForeignKeys = appliedMigrations.match(/ FOREIGN KEY /g) ?? [];
+    const sqlForeignKeys = migration.match(/ FOREIGN KEY /g) ?? [];
     const sqlDeletePolicies =
-      appliedMigrations.match(/ ON DELETE (CASCADE|SET NULL|RESTRICT|NO ACTION)/g) ?? [];
+      migration.match(/ ON DELETE (CASCADE|SET NULL|RESTRICT|NO ACTION)/g) ?? [];
     expect(sqlForeignKeys).toHaveLength(owningRelations.length);
     expect(sqlDeletePolicies).toHaveLength(sqlForeignKeys.length);
   });
@@ -255,19 +234,13 @@ describe("clean-slate domain schema", () => {
     }
   });
 
-  test("keeps the initial migration immutable and appends tenancy changes sequentially", () => {
+  test("keeps the complete disposable schema in one initial migration", () => {
     const migrationDirectories = readdirSync(resolve(packageRoot, "prisma/migrations"), {
       withFileTypes: true,
     }).filter((entry) => entry.isDirectory());
-    expect(migrationDirectories.map((entry) => entry.name).sort()).toEqual([
+    expect(migrationDirectories.map((entry) => entry.name)).toEqual([
       "00000000000000_initial",
-      "20260818000000_memory_feedback_quarantine",
-      "20260818010000_memory_entity_ownership_transition",
-      "20260818020000_win130_channel_durability",
     ]);
-    expect(createHash("sha256").update(migration).digest("hex")).toBe(
-      "d915b1e0626c750750830f80d6cc0b4bd5a80837476271a3384125f1b49a0398"
-    );
 
     const generated = execFileSync(resolve(packageRoot, "node_modules/.bin/prisma"), [
       "migrate",
@@ -282,33 +255,36 @@ describe("clean-slate domain schema", () => {
       encoding: "utf8",
     });
     expect(generated).toContain('CREATE TABLE "public"."ChannelEventInbox"');
-    expect(channelDurabilityMigration).toContain('ALTER TABLE "public"."ChannelInstallation"');
-    expect(channelDurabilityMigration).toContain('CREATE TABLE "public"."ChannelEventInbox"');
-    expect(channelDurabilityMigration).toContain('CREATE TRIGGER "ChannelEventInbox_identity_immutable"');
-    expect(channelDurabilityMigration).toContain('CONSTRAINT "ChannelEventInbox_status_check"');
-    expect(channelDurabilityMigration).toContain(
+    expect(migration).toContain('ALTER TABLE "public"."ChannelInstallation"');
+    expect(migration).toContain('CREATE TABLE "public"."ChannelEventInbox"');
+    expect(migration).toContain('CREATE TRIGGER "ChannelEventInbox_identity_immutable"');
+    expect(migration).toContain('CONSTRAINT "ChannelEventInbox_status_check"');
+    expect(migration).toContain(
       'CONSTRAINT "ChannelInstallation_tokenRefreshState_check"'
     );
-    expect(feedbackMigration).toContain('ADD COLUMN "quarantinedAt" TIMESTAMP(3)');
-    expect(feedbackMigration).toContain('ADD COLUMN "revision" INTEGER NOT NULL DEFAULT 1');
-    expect(feedbackMigration).toContain('"memoryFeedbackBackfillCompletedAt" TIMESTAMP(3)');
-    expect(feedbackMigration).toContain("MessageRating thumbs preflight failed");
-    expect(feedbackMigration).toContain("rating=2:%s, rating=3:%s, rating=4:%s, rating=5:%s");
-    expect(feedbackMigration.indexOf("DO $$")).toBeLessThan(
-      feedbackMigration.indexOf('ALTER TABLE "public"."Memory"')
+    expect(migration).toContain('ADD COLUMN "quarantinedAt" TIMESTAMP(3)');
+    expect(migration).toContain('ADD COLUMN "revision" INTEGER NOT NULL DEFAULT 1');
+    expect(migration).toContain('"memoryFeedbackBackfillCompletedAt" TIMESTAMP(3)');
+    expect(migration).toContain("MessageRating thumbs preflight failed");
+    expect(migration).toContain("rating=2:%s, rating=3:%s, rating=4:%s, rating=5:%s");
+    const feedbackSection = migration.indexOf(
+      "-- Memory feedback quarantine and thumbs-feedback constraints"
     );
-    expect(feedbackMigration).toContain('CHECK ("rating" IN (-1, 1))');
-    expect(feedbackMigration).toContain(
+    expect(migration.indexOf("DO $$", feedbackSection)).toBeLessThan(
+      migration.indexOf('ALTER TABLE "public"."Memory"', feedbackSection)
+    );
+    expect(migration).toContain('CHECK ("rating" IN (-1, 1))');
+    expect(migration).toContain(
       'CREATE INDEX "Memory_environmentId_endUserId_quarantinedAt_idx"'
     );
-    expect(memoryEntityOwnershipMigration).toContain(
+    expect(migration).toContain(
       'CREATE UNIQUE INDEX "MemoryEntity_standalone_agent_entityKey_key"'
     );
-    expect(memoryEntityOwnershipMigration).toContain('WHERE "clusterId" IS NULL');
-    expect(memoryEntityOwnershipMigration).toContain(
+    expect(migration).toContain('WHERE "clusterId" IS NULL');
+    expect(migration).toContain(
       'CREATE FUNCTION "public"."enforce_memory_entity_owner_transition"()'
     );
-    expect(memoryEntityOwnershipMigration).toContain('DROP TRIGGER "MemoryEntity_owner_immutable"');
+    expect(migration).toContain('DROP TRIGGER "MemoryEntity_owner_immutable"');
     expect(migration).toContain('CREATE FUNCTION "public"."enforce_domain_ancestry"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_canonical_owner_change"()');
     expect(migration).toContain('CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()');
