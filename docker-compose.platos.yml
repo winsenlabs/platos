@@ -222,7 +222,14 @@ services:
   # service_completed_successfully.
   # ─────────────────────────────────────────────────────────────
   clickhouse-migrate:
-    image: ghcr.io/pressly/goose:3
+    # `ghcr.io/pressly/goose` no longer resolves — it answers `unauthorized`
+    # for every tag, anonymously and authenticated alike. Because the webapp
+    # waits on this service completing, an unpullable image meant `compose up`
+    # aborted before anything started, and the ClickHouse schema silently never
+    # migrated. `gomicro/goose` publishes the same CLI on Docker Hub; it needs
+    # an explicit entrypoint because its default is not the goose binary.
+    image: gomicro/goose:latest
+    entrypoint: ["goose"]
     logging: *default-logging
     depends_on:
       clickhouse:
