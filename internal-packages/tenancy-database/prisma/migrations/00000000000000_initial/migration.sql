@@ -3407,3 +3407,225 @@ CREATE TRIGGER "CredentialAudit_immutable_truncate"
   BEFORE TRUNCATE ON "public"."CredentialAudit"
   FOR EACH STATEMENT EXECUTE FUNCTION "public"."reject_credential_audit_mutation"();
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."CredentialAudit" FROM PUBLIC;
+
+-- -----------------------------------------------------------------------------
+-- Memory feedback quarantine and thumbs-feedback constraints
+-- -----------------------------------------------------------------------------
+
+-- MessageRating has always been exposed by the product as thumbs feedback:
+-- +1 is thumbs-up and -1 is thumbs-down. A 1..5 check would admit 2..5,
+-- but repository history defines no safe star-scale interpretation for those
+-- values. Fail before any DDL with
+-- content-free counts so an operator can deliberately remediate source data
+-- rather than silently changing feedback meaning.
+DO $$
+DECLARE
+  rating_2_count BIGINT;
+  rating_3_count BIGINT;
+  rating_4_count BIGINT;
+  rating_5_count BIGINT;
+  other_count BIGINT;
+BEGIN
+  SELECT
+    COUNT(*) FILTER (WHERE "rating" = 2),
+    COUNT(*) FILTER (WHERE "rating" = 3),
+    COUNT(*) FILTER (WHERE "rating" = 4),
+    COUNT(*) FILTER (WHERE "rating" = 5),
+    COUNT(*) FILTER (WHERE "rating" NOT IN (-1, 1, 2, 3, 4, 5))
+  INTO rating_2_count, rating_3_count, rating_4_count, rating_5_count, other_count
+  FROM "public"."MessageRating";
+
+  IF rating_2_count + rating_3_count + rating_4_count + rating_5_count + other_count > 0 THEN
+    RAISE EXCEPTION USING
+      ERRCODE = 'check_violation',
+      MESSAGE = format(
+        'MessageRating thumbs preflight failed: unsupported rows rating=2:%s, rating=3:%s, rating=4:%s, rating=5:%s, other:%s',
+        rating_2_count, rating_3_count, rating_4_count, rating_5_count, other_count
+      ),
+      HINT = 'Platos only authorizes -1 (thumbs-down), 1 (thumbs-up), or deletion (no feedback). Audit the source rows, correct or delete unsupported values deliberately, then recreate the disposable target database from this initial migration.';
+  END IF;
+END $$;
+
+-- Quarantine is authoritative recall state. It must remain plaintext so
+-- pgvector candidate retrieval can exclude rejected memories without
+-- decrypting content or metadata.
+ALTER TABLE "public"."Memory"
+  ADD COLUMN "quarantinedAt" TIMESTAMP(3),
+  ADD COLUMN "feedbackBaselineConfidence" DOUBLE PRECISION;
+
+ALTER TABLE "public"."Environment"
+  ADD COLUMN "memoryFeedbackBackfillCursor" UUID,
+  ADD COLUMN "memoryFeedbackBackfillCompletedAt" TIMESTAMP(3);
+
+ALTER TABLE "public"."MessageRating"
+  ADD COLUMN "revision" INTEGER NOT NULL DEFAULT 1;
+
+ALTER TABLE "public"."MessageRating"
+  DROP CONSTRAINT "MessageRating_rating_check",
+  ADD CONSTRAINT "MessageRating_rating_check" CHECK ("rating" IN (-1, 1)),
+  ADD CONSTRAINT "MessageRating_revision_check" CHECK ("revision" > 0);
+
+ALTER TABLE "public"."Memory"
+  ADD CONSTRAINT "Memory_feedback_baseline_confidence_check" CHECK (
+    "feedbackBaselineConfidence" IS NULL OR
+    "feedbackBaselineConfidence" BETWEEN 0 AND 1
+  );
+
+CREATE INDEX "Memory_environmentId_endUserId_quarantinedAt_idx"
+  ON "public"."Memory"("environmentId", "endUserId", "quarantinedAt");
+
+-- -----------------------------------------------------------------------------
+-- Memory entity ownership transition
+-- -----------------------------------------------------------------------------
+
+-- MemoryEntity has two disjoint identity domains:
+--   standalone: (environmentId, endUserId, agentId, entityKey)
+--   clustered:  (environmentId, endUserId, clusterId, entityKey)
+-- Keep both as partial indexes so a standalone row can be promoted in place
+-- without conflicting with its own immutable agent attribution.
+DROP INDEX "public"."MemoryEntity_environmentId_endUserId_agentId_entityKey_key";
+
+CREATE UNIQUE INDEX "MemoryEntity_standalone_agent_entityKey_key"
+  ON "public"."MemoryEntity"("environmentId", "endUserId", "agentId", "entityKey")
+  WHERE "clusterId" IS NULL;
+
+-- Environment, subject, and agent attribution remain immutable. The only
+-- allowed ownership transition is standalone -> the Agent's currently
+-- persisted Environment cluster. Cluster removal and re-parenting fail closed.
+CREATE FUNCTION "public"."enforce_memory_entity_owner_transition"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD."environmentId" IS DISTINCT FROM NEW."environmentId" THEN
+    RAISE EXCEPTION 'MemoryEntity ownership/authorization key environmentId is immutable'
+      USING ERRCODE = '23514';
+  END IF;
+  IF OLD."agentId" IS DISTINCT FROM NEW."agentId" THEN
+    RAISE EXCEPTION 'MemoryEntity ownership/authorization key agentId is immutable'
+      USING ERRCODE = '23514';
+  END IF;
+  IF OLD."clusterId" IS NOT DISTINCT FROM NEW."clusterId" THEN
+    RETURN NEW;
+  END IF;
+  IF OLD."clusterId" IS NULL AND NEW."clusterId" IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM "public"."AgentBinding" binding
+      WHERE binding."environmentId" = NEW."environmentId"
+        AND binding."agentId" = NEW."agentId"
+        AND binding."clusterId" = NEW."clusterId"
+    ) THEN
+      RAISE EXCEPTION 'MemoryEntity cluster promotion must match the persisted Agent cluster'
+        USING ERRCODE = '23514';
+    END IF;
+    IF EXISTS (
+      SELECT 1
+      FROM "public"."MemoryRelationship" relationship
+      WHERE relationship."fromEntityId" = OLD."id"
+         OR relationship."toEntityId" = OLD."id"
+    ) THEN
+      RAISE EXCEPTION 'MemoryEntity with existing relationships cannot change ownership scope'
+        USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'MemoryEntity cluster ownership may only promote from standalone to the persisted Agent cluster'
+    USING ERRCODE = '23514';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER "MemoryEntity_owner_immutable" ON "public"."MemoryEntity";
+CREATE TRIGGER "MemoryEntity_owner_immutable"
+  BEFORE UPDATE ON "public"."MemoryEntity"
+  FOR EACH ROW EXECUTE FUNCTION "public"."enforce_memory_entity_owner_transition"();
+
+-- -----------------------------------------------------------------------------
+-- Durable channel token rotation and hosted event admission
+-- -----------------------------------------------------------------------------
+
+-- WIN-130 — durable channel token rotation and hosted event admission.
+
+ALTER TABLE "public"."ChannelInstallation"
+  ADD COLUMN "tokenRefreshState" TEXT NOT NULL DEFAULT 'IDLE',
+  ADD COLUMN "tokenRefreshAttemptId" UUID,
+  ADD COLUMN "tokenRefreshStartedAt" TIMESTAMP(3),
+  ADD COLUMN "tokenRefreshRepairCode" TEXT,
+  ADD COLUMN "tokenGeneration" INTEGER NOT NULL DEFAULT 1;
+
+ALTER TABLE "public"."Turn"
+  ADD COLUMN "idempotencyKey" TEXT;
+
+CREATE UNIQUE INDEX "Turn_threadId_idempotencyKey_key"
+  ON "public"."Turn"("threadId", "idempotencyKey");
+
+ALTER TABLE "public"."ChannelInstallation"
+  ADD CONSTRAINT "ChannelInstallation_tokenRefreshState_check"
+  CHECK ("tokenRefreshState" IN ('IDLE', 'REFRESHING', 'REPAIR_REQUIRED'));
+
+CREATE INDEX "ChannelInstallation_tokenRefreshState_tokenRefreshStartedAt_idx"
+  ON "public"."ChannelInstallation"("tokenRefreshState", "tokenRefreshStartedAt");
+
+CREATE TABLE "public"."ChannelEventInbox" (
+  "id" UUID NOT NULL,
+  "appId" UUID NOT NULL,
+  "eventId" TEXT NOT NULL,
+  "payloadFormatVersion" INTEGER NOT NULL,
+  "payloadKeyVersion" INTEGER NOT NULL,
+  "encryptedPayload" TEXT NOT NULL,
+  "status" TEXT NOT NULL DEFAULT 'PENDING',
+  "attempts" INTEGER NOT NULL DEFAULT 0,
+  "availableAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "leaseOwner" TEXT,
+  "leaseExpiresAt" TIMESTAMP(3),
+  "leaseGeneration" INTEGER NOT NULL DEFAULT 0,
+  "turnId" UUID,
+  "deliveryCompletedAt" TIMESTAMP(3),
+  "lastErrorCode" TEXT,
+  "completedAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+
+  CONSTRAINT "ChannelEventInbox_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "ChannelEventInbox_appId_eventId_key"
+  ON "public"."ChannelEventInbox"("appId", "eventId");
+CREATE UNIQUE INDEX "ChannelEventInbox_turnId_key"
+  ON "public"."ChannelEventInbox"("turnId");
+CREATE INDEX "ChannelEventInbox_status_availableAt_idx"
+  ON "public"."ChannelEventInbox"("status", "availableAt");
+CREATE INDEX "ChannelEventInbox_leaseExpiresAt_idx"
+  ON "public"."ChannelEventInbox"("leaseExpiresAt");
+
+ALTER TABLE "public"."ChannelEventInbox"
+  ADD CONSTRAINT "ChannelEventInbox_status_check"
+  CHECK ("status" IN ('PENDING', 'PROCESSING', 'FAILED', 'COMPLETED', 'DISCARDED'));
+
+ALTER TABLE "public"."ChannelEventInbox"
+  ADD CONSTRAINT "ChannelEventInbox_appId_fkey"
+  FOREIGN KEY ("appId") REFERENCES "public"."ChannelApp"("id")
+  ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "public"."ChannelEventInbox"
+  ADD CONSTRAINT "ChannelEventInbox_turnId_fkey"
+  FOREIGN KEY ("turnId") REFERENCES "public"."Turn"("id")
+  ON DELETE SET NULL ON UPDATE CASCADE;
+
+CREATE OR REPLACE FUNCTION "public"."reject_channel_event_inbox_identity_mutation"()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW."appId" IS DISTINCT FROM OLD."appId"
+     OR NEW."eventId" IS DISTINCT FROM OLD."eventId"
+     OR NEW."payloadFormatVersion" IS DISTINCT FROM OLD."payloadFormatVersion"
+     OR NEW."payloadKeyVersion" IS DISTINCT FROM OLD."payloadKeyVersion"
+     OR NEW."encryptedPayload" IS DISTINCT FROM OLD."encryptedPayload" THEN
+    RAISE EXCEPTION 'ChannelEventInbox identity and payload are immutable' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER "ChannelEventInbox_identity_immutable"
+  BEFORE UPDATE ON "public"."ChannelEventInbox"
+  FOR EACH ROW EXECUTE FUNCTION "public"."reject_channel_event_inbox_identity_mutation"();

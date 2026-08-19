@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { PrismaClient } from "../generated/control";
@@ -10,10 +11,12 @@ const initialMigration = resolve(
   packageRoot,
   "prisma/migrations/00000000000000_initial/migration.sql"
 );
-const feedbackMigration = resolve(
-  packageRoot,
-  "prisma/migrations/20260818000000_memory_feedback_quarantine/migration.sql"
-);
+const feedbackSectionMarker = "-- Memory feedback quarantine and thumbs-feedback constraints";
+const initialMigrationSql = readFileSync(initialMigration, "utf8");
+const feedbackSectionOffset = initialMigrationSql.indexOf(feedbackSectionMarker);
+if (feedbackSectionOffset === -1) throw new Error("Initial migration is missing feedback DDL");
+const initialSchemaBeforeFeedback = initialMigrationSql.slice(0, feedbackSectionOffset);
+const initialSchemaFromFeedback = initialMigrationSql.slice(feedbackSectionOffset);
 
 describe("memory feedback migration", () => {
   let container: StartedPostgreSqlContainer;
@@ -23,7 +26,7 @@ describe("memory feedback migration", () => {
   beforeAll(async () => {
     container = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
     databaseUrl = container.getConnectionUri();
-    executeSql(initialMigration, databaseUrl);
+    executeSql(initialSchemaBeforeFeedback, databaseUrl);
     prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
   }, 120_000);
 
@@ -100,7 +103,7 @@ describe("memory feedback migration", () => {
       endUser.id
     );
 
-    expect(() => executeSql(feedbackMigration, databaseUrl)).toThrow(
+    expect(() => executeSql(initialSchemaFromFeedback, databaseUrl)).toThrow(
       /MessageRating thumbs preflight failed: unsupported rows rating=2:1, rating=3:0, rating=4:0, rating=5:0, other:0/
     );
     await expect(
@@ -120,7 +123,7 @@ describe("memory feedback migration", () => {
       'UPDATE "MessageRating" SET "rating" = 1 WHERE "id" = $1::uuid',
       ratingId
     );
-    executeSql(feedbackMigration, databaseUrl);
+    executeSql(initialSchemaFromFeedback, databaseUrl);
     await expect(
       prisma.messageRating.findUniqueOrThrow({ where: { id: ratingId } })
     ).resolves.toMatchObject({ rating: 1, revision: 1 });
@@ -139,14 +142,15 @@ describe("memory feedback migration", () => {
   });
 });
 
-function executeSql(filePath: string, databaseUrl: string): void {
+function executeSql(sql: string, databaseUrl: string): void {
   try {
     execFileSync(
       resolve(packageRoot, "node_modules/.bin/prisma"),
-      ["db", "execute", "--file", filePath, "--schema", schemaPath],
+      ["db", "execute", "--stdin", "--schema", schemaPath],
       {
         cwd: packageRoot,
         env: { ...process.env, DATABASE_URL: databaseUrl },
+        input: sql,
         stdio: "pipe",
       }
     );
