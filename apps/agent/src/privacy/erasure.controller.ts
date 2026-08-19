@@ -56,7 +56,7 @@ export class ErasureController {
     const credential = await this.authorized(req);
     if (!credential || credential.scope.organizationId !== organizationId) return this.deny(res);
     const subject = await this.erasure.discoverSubject(externalUserId, organizationId);
-    const inventory = await this.erasure.inventory(subject);
+    const inventory = await this.erasure.inventory(subject, organizationId);
     return res.json({
       resolvedEndUsers: subject.platosEndUserIds.length,
       resolvedLegacyIds: subject.legacyUserIds.length,

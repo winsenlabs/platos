@@ -26,15 +26,11 @@ import type { ToolExecutorService } from "../../tool-gateway/tool-executor.servi
 import type { ToolRegistryService } from "../../tool-gateway/tool-registry.service";
 import type { EntityMcpDiscoveryService } from "../../tool-gateway/mcp-transport/entity-mcp-discovery.service";
 import type { McpToolHandler } from "../mcp-router";
+import type { ControlDatabaseClient } from "../../shared/database.provider";
 import type { RequestScope } from "../../auth/scope.guard";
 import type { McpBearerTokenService } from "../mcp-bearer-token.service";
 import type { MessageCryptoService } from "../../monitoring/message-crypto.service";
 import type { ToolAuditService } from "../../monitoring/tool-audit.service";
-
-// RFC 7230 token regex — mirrors the validation in
-// agent.controller.ts:patchEntity testCredentials path. Direct API callers
-// can't smuggle in \r\n and split a header.
-const HEADER_NAME_RE = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
 
 function scopeTuple(scope: RequestScope) {
   return {
@@ -51,7 +47,7 @@ export function buildEntityToolHandlers(deps: {
   bearerTokens: McpBearerTokenService;
   messageCrypto: MessageCryptoService;
   toolAudit: ToolAuditService;
-  prisma: any;
+  prisma: ControlDatabaseClient;
   // MCP-connected-entity (design Commit 5) — kicks outbound tools/list
   // discovery when an mcp-kind entity is registered / manually refreshed.
   // Optional (best-effort); absent in slim test harnesses.
@@ -62,7 +58,6 @@ export function buildEntityToolHandlers(deps: {
     toolExecutor,
     toolRegistry,
     bearerTokens,
-    messageCrypto,
     toolAudit,
     prisma,
     entityMcpDiscovery,
@@ -526,8 +521,8 @@ export function buildEntityToolHandlers(deps: {
         // Join with PlatosToolHealth for the same shape the dashboard renders.
         const entityPk = tools[0]?.entityPk ?? null;
         const healthRows = entityPk
-          ? await prisma.platosToolHealth.findMany({
-              where: { environmentId: scope.environmentId, entityId: entityPk },
+          ? await prisma.toolHealth.findMany({
+              where: { environmentId: scope.environmentId, entityExternalId: entityId },
             })
           : [];
         const healthByToolId = new Map<string, any>();
@@ -617,9 +612,8 @@ export function buildEntityToolHandlers(deps: {
     {
       name: "entities.get_linked_agents",
       description:
-        "List the agents allowed to use this entity's tools. Empty array " +
-        "= unrestricted (every agent in scope sees the tools); non-empty " +
-        "= only the listed PlatosAgent.id values.",
+        "Legacy compatibility endpoint. Entity-level agent allow-lists are unsupported " +
+        "by the canonical control schema.",
       inputSchema: {
         type: "object",
         required: ["entityId"],
@@ -635,8 +629,8 @@ export function buildEntityToolHandlers(deps: {
         );
         if (!entity) return { error: "not_found", entityId };
         return {
-          entityId,
-          linkedAgentIds: (entity as { linkedAgentIds?: string[] }).linkedAgentIds ?? [],
+          error: "unsupported",
+          message: "Entity-level agent allow-lists are not supported by the canonical control schema.",
         };
       },
     },
@@ -644,10 +638,8 @@ export function buildEntityToolHandlers(deps: {
     {
       name: "entities.set_linked_agents",
       description:
-        "Replace the per-entity agent allow-list. Every supplied agentId " +
-        "must belong to (org, project, env) — forged ids return an error. " +
-        "Empty array clears the restriction (= every agent in scope sees " +
-        "the tools). Mirrors PATCH /entities/:id linkedAgentIds.",
+        "Legacy compatibility endpoint. Entity-level agent allow-lists are unsupported " +
+        "by the canonical control schema.",
       inputSchema: {
         type: "object",
         required: ["entityId", "agentIds"],
@@ -659,14 +651,6 @@ export function buildEntityToolHandlers(deps: {
       },
       async execute(params, scope) {
         const entityId = String(params["entityId"]);
-        const rawIds = (params["agentIds"] as unknown[]) ?? [];
-        const cleaned = Array.from(
-          new Set(
-            rawIds
-              .map((x) => (typeof x === "string" ? x.trim() : ""))
-              .filter((x): x is string => x.length > 0),
-          ),
-        );
         const startedAt = Date.now();
         const entity = await auth.getEntity(
           scope.organizationId,
@@ -685,42 +669,19 @@ export function buildEntityToolHandlers(deps: {
           );
           return { error: "not_found", entityId };
         }
-        // Forged-id guard: each id must belong to this scope.
-        if (cleaned.length > 0) {
-          const known = await prisma.platosAgent.findMany({
-            where: {
-              id: { in: cleaned },
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-            },
-            select: { id: true },
-          });
-          const knownIds = new Set((known as Array<{ id: string }>).map((a) => a.id));
-          const bogus = cleaned.filter((id) => !knownIds.has(id));
-          if (bogus.length > 0) {
-            auditMutation(
-              scope,
-              "entities.set_linked_agents",
-              params,
-              null,
-              "failed",
-              startedAt,
-              "unknown_agent_ids",
-            );
-            return { error: "unknown_agent_ids", unknownAgentIds: bogus };
-          }
-        }
-        await prisma.platosConnectedEntity.update({
-          where: { id: (entity as { id: string }).id },
-          data: { linkedAgentIds: cleaned },
-        });
-        // Mirror the in-memory matrix cache so next-turn enumeration sees
-        // the new allow-list without a full registry rebuild — same path
-        // used by agent.controller.ts:patchEntity.
-        toolRegistry.syncEntityLinkedAgents((entity as { id: string }).id, cleaned);
-        const result = { ok: true, entityId, count: cleaned.length };
-        auditMutation(scope, "entities.set_linked_agents", params, result, "success", startedAt);
+        const result = {
+          error: "unsupported",
+          message: "Entity-level agent allow-lists are not supported by the canonical control schema.",
+        };
+        auditMutation(
+          scope,
+          "entities.set_linked_agents",
+          params,
+          null,
+          "failed",
+          startedAt,
+          result.message,
+        );
         return result;
       },
     },
@@ -728,9 +689,8 @@ export function buildEntityToolHandlers(deps: {
     {
       name: "entities.get_test_credentials",
       description:
-        "Fetch the entity's stored test-credential headers — DECRYPTED in " +
-        "memory, returned in plaintext. Caller already has scope access; " +
-        "encryption is purely an at-rest defence. Audit-logged.",
+        "Legacy compatibility endpoint. Entity test credentials are unsupported by " +
+        "the canonical control schema.",
       inputSchema: {
         type: "object",
         required: ["entityId"],
@@ -757,82 +717,28 @@ export function buildEntityToolHandlers(deps: {
           );
           return { error: "not_found", entityId };
         }
-        const encrypted = (entity as { testCredentials?: string | null }).testCredentials;
-        if (!encrypted) {
-          // Read still audited so we can prove no plaintext was served.
-          auditMutation(
-            scope,
-            "entities.get_test_credentials",
-            params,
-            { empty: true },
-            "success",
-            startedAt,
-          );
-          return { entityId, headers: [], empty: true };
-        }
-        try {
-          const envelope = JSON.parse(encrypted);
-          const decrypted = messageCrypto.decryptJsonField(envelope) as {
-            headers?: Array<{ name: string; value: string }>;
-            userId?: string;
-            updatedAt?: string;
-            updatedByUserId?: string;
-          } | null;
-          if (!decrypted || (decrypted as any).__platos_enc === 1) {
-            auditMutation(
-              scope,
-              "entities.get_test_credentials",
-              params,
-              null,
-              "failed",
-              startedAt,
-              "decryption_failed",
-            );
-            return {
-              error: "decryption_failed",
-              message: "Test credentials present but the encryption key changed.",
-            };
-          }
-          const result = {
-            entityId,
-            headers: decrypted.headers ?? [],
-            userId: decrypted.userId,
-            updatedAt: decrypted.updatedAt,
-            updatedByUserId: decrypted.updatedByUserId,
-          };
-          // Audit the access — log a redacted summary (count only, never
-          // header values) so the audit log itself doesn't become a leak.
-          auditMutation(
-            scope,
-            "entities.get_test_credentials",
-            params,
-            { entityId, headerCount: (decrypted.headers ?? []).length },
-            "success",
-            startedAt,
-          );
-          return result;
-        } catch (err: any) {
-          const message = err?.message ?? String(err);
-          auditMutation(
-            scope,
-            "entities.get_test_credentials",
-            params,
-            null,
-            "failed",
-            startedAt,
-            message,
-          );
-          return { error: "decryption_failed", message };
-        }
+        const result = {
+          error: "unsupported",
+          message: "Entity test credentials are not supported by the canonical control schema.",
+        };
+        auditMutation(
+          scope,
+          "entities.get_test_credentials",
+          params,
+          null,
+          "failed",
+          startedAt,
+          result.message,
+        );
+        return result;
       },
     },
 
     {
       name: "entities.set_test_credentials",
       description:
-        "Store encrypted test-credential headers used when 'Test' is " +
-        "clicked from the dashboard. Validates RFC 7230 names + 4096-char " +
-        "value cap + 32-header total. Pass `null` to clear. Audit-logged.",
+        "Legacy compatibility endpoint. Entity test credentials are unsupported by " +
+        "the canonical control schema.",
       inputSchema: {
         type: "object",
         required: ["entityId"],
@@ -884,90 +790,19 @@ export function buildEntityToolHandlers(deps: {
           );
           return { error: "not_found", entityId };
         }
-        const entityPk = (entity as { id: string }).id;
-        const raw = params["testCredentials"] as
-          | { headers: Array<{ name: string; value: string }>; userId?: string }
-          | null
-          | undefined;
-
-        if (raw === null) {
-          await prisma.platosConnectedEntity.update({
-            where: { id: entityPk },
-            data: { testCredentials: null },
-          });
-          auditMutation(
-            scope,
-            "entities.set_test_credentials",
-            { entityId, cleared: true },
-            { ok: true, cleared: true },
-            "success",
-            startedAt,
-          );
-          return { ok: true, cleared: true };
-        }
-
-        if (!raw || typeof raw !== "object" || !Array.isArray(raw.headers)) {
-          return { error: "headers must be an array" };
-        }
-        if (raw.headers.length > 32) {
-          return { error: "Too many test-credential headers (max 32).", limit: 32 };
-        }
-        const invalidHeaders: string[] = [];
-        const cleaned: Array<{ name: string; value: string }> = [];
-        for (const h of raw.headers) {
-          if (
-            !h ||
-            typeof h !== "object" ||
-            typeof h.name !== "string" ||
-            typeof h.value !== "string"
-          ) {
-            return { error: "Every header needs a string name + string value." };
-          }
-          const name = h.name.trim();
-          const value = h.value.trim();
-          if (!HEADER_NAME_RE.test(name)) {
-            invalidHeaders.push(name);
-            continue;
-          }
-          if (value.length > 4096) {
-            return {
-              error: "Header values capped at 4096 chars.",
-              headerName: name,
-            };
-          }
-          cleaned.push({ name, value });
-        }
-        if (invalidHeaders.length > 0) {
-          return {
-            error: "One or more header names violate RFC 7230.",
-            invalidHeaders,
-          };
-        }
-        const userId =
-          typeof raw.userId === "string" && raw.userId.trim().length > 0
-            ? raw.userId.trim()
-            : undefined;
-        const stash = {
-          headers: cleaned,
-          userId,
-          updatedAt: new Date().toISOString(),
-          updatedByUserId: scope.userId,
-        };
-        const encrypted = messageCrypto.encryptJsonField(stash);
-        await prisma.platosConnectedEntity.update({
-          where: { id: entityPk },
-          data: { testCredentials: JSON.stringify(encrypted) },
-        });
-        // Redacted audit — count + name list only, never header values.
         auditMutation(
           scope,
           "entities.set_test_credentials",
-          { entityId, headerCount: cleaned.length, headerNames: cleaned.map((h) => h.name) },
-          { ok: true, headerCount: cleaned.length },
-          "success",
+          { entityId },
+          null,
+          "failed",
           startedAt,
+          "unsupported by canonical control schema",
         );
-        return { ok: true, headerCount: cleaned.length };
+        return {
+          error: "unsupported",
+          message: "Entity test credentials are not supported by the canonical control schema.",
+        };
       },
     },
 
@@ -993,8 +828,8 @@ export function buildEntityToolHandlers(deps: {
         );
         if (!entity) return { error: "not_found", entityId };
         const entityPk = (entity as { id: string }).id;
-        const config = await prisma.platosEntityMcpConfig.findUnique({
-          where: { entityPk },
+        const config = await prisma.entityMcpConfig.findUnique({
+          where: { entityId: entityPk },
         });
         if (!config) {
           return {
@@ -1014,15 +849,15 @@ export function buildEntityToolHandlers(deps: {
           };
         }
         return {
-          entityPk: config.entityPk,
+          entityPk: config.entityId,
           entityId,
           enabled: config.enabled,
           identityMode: config.identityMode,
           identityProviders: config.identityProviders,
-          bearerTokenCount: config.bearerTokenCount,
+          bearerTokenCount: await prisma.mcpBearerToken.count({ where: { entityId: entityPk } }),
           branding: config.branding,
           toolAllowlist: config.toolAllowlist,
-          consentCopy: config.consentCopy,
+          consentCopy: null,
           redirectUriAllowlist: config.redirectUriAllowlist,
           rateLimitPerMinute: config.rateLimitPerMinute,
           injectMcpContext: config.injectMcpContext === true,
@@ -1068,9 +903,9 @@ export function buildEntityToolHandlers(deps: {
           return { error: "not_found", entityId };
         }
         const entityPk = (entity as { id: string }).id;
-        await prisma.platosEntityMcpConfig.upsert({
-          where: { entityPk },
-          create: { entityPk, enabled },
+        await prisma.entityMcpConfig.upsert({
+          where: { entityId: entityPk },
+          create: { entityId: entityPk, enabled, identityMode: "bearer" },
           update: { enabled },
         });
         const result = { ok: true, entityId, enabled };
@@ -1121,9 +956,9 @@ export function buildEntityToolHandlers(deps: {
           return { error: "not_found", entityId };
         }
         const entityPk = (entity as { id: string }).id;
-        await prisma.platosEntityMcpConfig.upsert({
-          where: { entityPk },
-          create: { entityPk, injectMcpContext: enabled },
+        await prisma.entityMcpConfig.upsert({
+          where: { entityId: entityPk },
+          create: { entityId: entityPk, injectMcpContext: enabled, identityMode: "bearer" },
           update: { injectMcpContext: enabled },
         });
         // Bust the in-memory tool registry cache so the new flag takes

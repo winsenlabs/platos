@@ -1,7 +1,8 @@
 import { Injectable, Inject, Optional, Logger } from "@nestjs/common";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { Prisma } from "@platos/tenancy-database";
 import type Redis from "ioredis";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import {
   mergeSubjectKeys, isEmptySubject, subjectKeyHash,
@@ -9,7 +10,8 @@ import {
 } from "./subject-graph";
 import {
   pendingStore, assertContentFree,
-  type ErasureReceipt, type StoreOutcome,
+  deriveStatus,
+  type ErasureReceipt, type ErasureStatus, type StoreOutcome,
 } from "./erasure-receipt";
 import { runErasure, retryErasure, type StoreExecutors } from "./erasure-orchestrator";
 import { findLegalHold, parseLegalHoldList } from "./legal-hold";
@@ -37,14 +39,55 @@ export class ErasureIdempotencyConflictError extends Error {
   }
 }
 
+function toDatabaseStatus(status: ErasureStatus) {
+  if (status === "pending") return "PENDING" as const;
+  if (status === "running") return "ACTIVE" as const;
+  if (status === "completed") return "SUCCEEDED" as const;
+  if (status === "blocked_legal_hold") return "CANCELLED" as const;
+  return "FAILED" as const;
+}
+
+const CONTENT_FREE_AUDIT_ARGUMENTS = {
+  __platosAudit: {
+    userId: null,
+    mcpUserId: null,
+    endUserId: null,
+  },
+} as const;
+
+function isContentFreeAudit(row: {
+  endUserId: string | null;
+  arguments: unknown;
+  result: unknown;
+  error: string | null;
+}): boolean {
+  const argumentsValue = row.arguments;
+  if (!argumentsValue || typeof argumentsValue !== "object" || Array.isArray(argumentsValue)) {
+    return false;
+  }
+  const argumentEntries = Object.entries(argumentsValue as Record<string, unknown>);
+  const metadata = (argumentsValue as Record<string, unknown>).__platosAudit;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return false;
+  const metadataObject = metadata as Record<string, unknown>;
+  return row.endUserId === null
+    && row.result === null
+    && row.error === null
+    && argumentEntries.length === 1
+    && argumentEntries[0]?.[0] === "__platosAudit"
+    && Object.keys(metadataObject).sort().join(",") === "endUserId,mcpUserId,userId"
+    && metadataObject.userId === null
+    && metadataObject.mcpUserId === null
+    && metadataObject.endUserId === null;
+}
+
 @Injectable()
 export class ErasureService {
   private readonly logger = new Logger(ErasureService.name);
-  private readonly prisma: any;
+  private readonly prisma: ControlDatabaseClient;
   private readonly salt: string;
 
   constructor(
-    @Inject(PRISMA_TOKEN) prisma: any,
+    @Inject(PRISMA_TOKEN) prisma: ControlDatabaseClient,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
     @Optional() private readonly attachments?: ErasureObjectStore,
   ) {
@@ -86,63 +129,85 @@ export class ErasureService {
    * userId and missed every row linked by platosEndUserId instead.
    */
   async discoverSubject(externalUserId: string, organizationId: string): Promise<SubjectKeys> {
-    const endUsers: any[] = await this.prisma.platosEndUser.findMany({
+    const externalIdentity = await this.prisma.endUserIdentity.findFirst({
       where: {
         organizationId,
-        OR: [{ externalUserId }, { linkedExternalId: externalUserId }],
+        issuer: "platos:external",
+        channel: "external",
+        subject: externalUserId,
+        disabledAt: null,
       },
-      select: { id: true, externalUserId: true, linkedExternalId: true,
-                organizationId: true, projectId: true, environmentId: true },
+      select: { endUserId: true },
     });
-
-    // A person can be reachable only through a channel handle (an email or a
-    // Slack id) with no matching externalUserId anywhere.
-    const viaIdentity: any[] = await this.prisma.platosEndUserIdentity.findMany({
-      where: { organizationId, handle: externalUserId },
-      select: { platosEndUserId: true, organizationId: true, projectId: true, environmentId: true },
-    });
-
-    const identityOwners: any[] = viaIdentity.length
-      ? await this.prisma.platosEndUser.findMany({
-          where: { id: { in: [...new Set(viaIdentity.map((i) => i.platosEndUserId))] } },
-          select: { id: true, externalUserId: true, linkedExternalId: true,
-                    organizationId: true, projectId: true, environmentId: true },
+    const endUserIds = externalIdentity ? [externalIdentity.endUserId] : [];
+    const environments = endUserIds.length
+      ? await this.prisma.environment.findMany({
+          where: {
+            project: { organizationId },
+            OR: [
+              { threads: { some: { endUserId: { in: endUserIds } } } },
+              { memories: { some: { endUserId: { in: endUserIds } } } },
+              { messageAttachments: { some: { endUserId: { in: endUserIds } } } },
+              { toolCallAudits: { some: { endUserId: { in: endUserIds } } } },
+            ],
+          },
+          select: { id: true, projectId: true },
         })
       : [];
-
-    const all = [...endUsers, ...identityOwners];
-    const scopes: SubjectScope[] = all.map((u) => ({
-      organizationId: u.organizationId, projectId: u.projectId, environmentId: u.environmentId,
+    const scopes: SubjectScope[] = environments.map((environment) => ({
+      organizationId,
+      projectId: environment.projectId,
+      environmentId: environment.id,
     }));
 
-    // Historical denormalized ids: the request id itself, plus whatever the
-    // canonical rows were keyed by before adoption.
-    const legacy = [externalUserId, ...all.map((u) => u.externalUserId), ...all.map((u) => u.linkedExternalId)]
-      .filter((v): v is string => typeof v === "string" && v.length > 0);
-
     return mergeSubjectKeys({
-      platosEndUserIds: all.map((u) => u.id),
-      legacyUserIds: legacy,
-      scopes: [...scopes, ...viaIdentity.map((i) => ({
-        organizationId: i.organizationId, projectId: i.projectId, environmentId: i.environmentId }))],
+      platosEndUserIds: endUserIds,
+      legacyUserIds: endUserIds.length > 0 ? [externalUserId] : [],
+      scopes,
     });
   }
 
   /** Content-free inventory: counts and scope ids, never content. */
-  async inventory(subject: SubjectKeys): Promise<Record<string, number | unknown>> {
+  async inventory(
+    subject: SubjectKeys,
+    organizationId: string,
+  ): Promise<Record<string, number | unknown>> {
     if (isEmptySubject(subject)) return { resolved: 0 };
     const { platosEndUserIds: eu, legacyUserIds: lu } = subject;
-    const [threads, memories, ratings, attachments, audits] = await Promise.all([
-      this.prisma.platosAgentThread.count({ where: { OR: [{ platosEndUserId: { in: eu } }, { userId: { in: lu } }] } }),
-      this.prisma.platosMemory.count({ where: { OR: [{ platosEndUserId: { in: eu } }, { userId: { in: lu } }] } }),
-      this.prisma.platosMessageRating.count({ where: { userId: { in: lu } } }),
-      this.prisma.platosMessageAttachment.count({ where: { uploadedBy: { in: lu } } }),
-      this.prisma.platosToolCallAudit.count({ where: { OR: [{ platosEndUserId: { in: eu } }, { userId: { in: lu } }] } }),
+    const auditAdapterFields = ["userId", "mcpUserId", "endUserId"] as const;
+    const legacyAuditWhere = lu.flatMap((userId) =>
+      auditAdapterFields.map((field) => ({
+        arguments: { path: ["__platosAudit", field], equals: userId },
+      })),
+    );
+    const legacySafetyWhere = lu.map((userId) => ({
+      metadata: { path: ["__platosSafety", "userId"], equals: userId },
+    }));
+    const environmentOrganizationWhere = {
+      environment: { project: { organizationId } },
+    };
+    const [threads, memories, ratings, attachments, audits, safetyEvents] = await Promise.all([
+      this.prisma.thread.count({ where: { endUserId: { in: eu } } }),
+      this.prisma.memory.count({ where: { endUserId: { in: eu } } }),
+      this.prisma.messageRating.count({ where: { endUserId: { in: eu } } }),
+      this.prisma.messageAttachment.count({ where: { endUserId: { in: eu } } }),
+      this.prisma.toolCallAudit.count({
+        where: {
+          ...environmentOrganizationWhere,
+          OR: [{ endUserId: { in: eu } }, ...legacyAuditWhere],
+        },
+      }),
+      this.prisma.safetyEvent.count({
+        where: {
+          ...environmentOrganizationWhere,
+          OR: [{ endUserId: { in: eu } }, ...legacySafetyWhere],
+        },
+      }),
     ]);
     return {
       resolved: eu.length + lu.length,
       scopes: subject.scopes,
-      threads, memories, ratings, attachments, toolCallAudits: audits,
+      threads, memories, ratings, attachments, toolCallAudits: audits, safetyEvents,
     };
   }
 
@@ -157,8 +222,8 @@ export class ErasureService {
     if (!this.attachments?.available) {
       return { ...o, status: "not_provisioned", note: "no object-store client wired" };
     }
-    const rows: any[] = await this.prisma.platosMessageAttachment.findMany({
-      where: { uploadedBy: { in: subject.legacyUserIds } },
+    const rows: any[] = await this.prisma.messageAttachment.findMany({
+      where: { endUserId: { in: subject.platosEndUserIds } },
       select: { storageKey: true },
     });
     o.discovered = rows.length;
@@ -185,8 +250,8 @@ export class ErasureService {
 
   private redisExecutor = async (subject: SubjectKeys): Promise<StoreOutcome> => {
     const o = pendingStore("redis");
-    const threadRows: any[] = await this.prisma.platosAgentThread.findMany({
-      where: { OR: [{ platosEndUserId: { in: subject.platosEndUserIds } }, { userId: { in: subject.legacyUserIds } }] },
+    const threadRows: any[] = await this.prisma.thread.findMany({
+      where: { endUserId: { in: subject.platosEndUserIds } },
       select: { id: true },
     });
     const refs = {
@@ -255,41 +320,72 @@ export class ErasureService {
   };
 
   /** Postgres. Runs LAST: it holds the identifiers every other store uses. */
-  private postgresExecutor = async (subject: SubjectKeys): Promise<StoreOutcome> => {
+  private postgresExecutor = async (
+    subject: SubjectKeys,
+    organizationId: string,
+  ): Promise<StoreOutcome> => {
     const o = pendingStore("postgres");
     const eu = subject.platosEndUserIds;
     const lu = subject.legacyUserIds;
-    const both = { OR: [{ platosEndUserId: { in: eu } }, { userId: { in: lu } }] };
+    const subjectWhere = { endUserId: { in: eu } };
+    const auditAdapterFields = ["userId", "mcpUserId", "endUserId"] as const;
+    const environmentOrganizationWhere = {
+      environment: { project: { organizationId } },
+    };
+    const auditSubjectWhere = {
+      ...environmentOrganizationWhere,
+      OR: [
+        { endUserId: { in: eu } },
+        ...lu.flatMap((userId) =>
+          auditAdapterFields.map((field) => ({
+            arguments: { path: ["__platosAudit", field], equals: userId },
+          })),
+        ),
+      ],
+    };
+    const safetySubjectWhere = {
+      ...environmentOrganizationWhere,
+      OR: [
+        { endUserId: { in: eu } },
+        ...lu.map((userId) => ({
+          metadata: { path: ["__platosSafety", "userId"], equals: userId },
+        })),
+      ],
+    };
+    const retainedAuditIds: string[] = [];
 
     try {
-      await this.prisma.$transaction(async (tx: any) => {
-        // Children first: messages and attachment metadata hang off threads.
-        const threads: any[] = await tx.platosAgentThread.findMany({ where: both, select: { id: true } });
-        const threadIds = threads.map((t) => t.id);
-        if (threadIds.length) {
-          const msgs: any[] = await tx.platosAgentMessage.findMany({
-            where: { threadId: { in: threadIds } }, select: { id: true } });
-          const msgIds = msgs.map((m) => m.id);
-          if (msgIds.length) {
-            o.deleted += (await tx.platosMessageAttachment.deleteMany({ where: { messageId: { in: msgIds } } })).count;
-            o.deleted += (await tx.platosAgentMessage.deleteMany({ where: { id: { in: msgIds } } })).count;
-          }
-        }
-        o.deleted += (await tx.platosMessageRating.deleteMany({ where: { userId: { in: lu } } })).count;
-        o.deleted += (await tx.platosMessageAttachment.deleteMany({ where: { uploadedBy: { in: lu } } })).count;
-        o.deleted += (await tx.platosMemoryRelationship.deleteMany({ where: { userId: { in: lu } } })).count;
-        o.deleted += (await tx.platosMemoryEntity.deleteMany({ where: { userId: { in: lu } } })).count;
-        o.deleted += (await tx.platosMemory.deleteMany({ where: both })).count;
-        o.deleted += (await tx.platosSafetyEvent.deleteMany({ where: { userId: { in: lu } } })).count;
-        o.deleted += (await tx.platosAgentThread.deleteMany({ where: both })).count;
+      await this.prisma.$transaction(async (tx) => {
+        o.deleted += (await tx.messageRating.deleteMany({ where: subjectWhere })).count;
+        o.deleted += (await tx.messageAttachment.deleteMany({ where: subjectWhere })).count;
+        o.deleted += (await tx.memoryRelationship.deleteMany({ where: subjectWhere })).count;
+        o.deleted += (await tx.memoryEntity.deleteMany({ where: subjectWhere })).count;
+        o.deleted += (await tx.memory.deleteMany({ where: subjectWhere })).count;
+        o.deleted += (await tx.safetyEvent.deleteMany({ where: safetySubjectWhere })).count;
+        o.deleted += (await tx.thread.deleteMany({ where: subjectWhere })).count;
         // Audit rows are ANONYMIZED, not deleted: they are the record that the
         // erasure itself happened, and destroying them would remove the proof.
-        o.anonymized += (await tx.platosToolCallAudit.updateMany({
-          where: both, data: { userId: null, platosEndUserId: null } })).count;
+        const auditRows = await tx.toolCallAudit.findMany({
+          where: auditSubjectWhere,
+          select: { id: true },
+        });
+        for (const audit of auditRows) {
+          retainedAuditIds.push(audit.id);
+          await tx.toolCallAudit.update({
+            where: { id: audit.id },
+            data: {
+              endUserId: null,
+              arguments: CONTENT_FREE_AUDIT_ARGUMENTS as any,
+              result: Prisma.DbNull,
+              error: null,
+            },
+          });
+          o.anonymized++;
+        }
         // Canonical identity last — without it nothing can be rediscovered.
         if (eu.length) {
-          o.deleted += (await tx.platosEndUserIdentity.deleteMany({ where: { platosEndUserId: { in: eu } } })).count;
-          o.deleted += (await tx.platosEndUser.deleteMany({ where: { id: { in: eu } } })).count;
+          o.deleted += (await tx.endUserIdentity.deleteMany({ where: { endUserId: { in: eu } } })).count;
+          o.deleted += (await tx.endUser.deleteMany({ where: { id: { in: eu } } })).count;
         }
       });
     } catch (err: any) {
@@ -298,26 +394,44 @@ export class ErasureService {
     }
 
     // Negative verification: prove nothing identifying survives.
-    const [t, m, a, e] = await Promise.all([
-      this.prisma.platosAgentThread.count({ where: both }),
-      this.prisma.platosMemory.count({ where: both }),
-      this.prisma.platosToolCallAudit.count({ where: { OR: [{ platosEndUserId: { in: eu } }, { userId: { in: lu } }] } }),
-      eu.length ? this.prisma.platosEndUser.count({ where: { id: { in: eu } } }) : Promise.resolve(0),
+    const [t, m, auditSubjectSurvivors, retainedAudits, s, e] = await Promise.all([
+      this.prisma.thread.count({ where: subjectWhere }),
+      this.prisma.memory.count({ where: subjectWhere }),
+      this.prisma.toolCallAudit.count({ where: auditSubjectWhere }),
+      retainedAuditIds.length
+        ? this.prisma.toolCallAudit.findMany({
+            where: {
+              id: { in: retainedAuditIds },
+              ...environmentOrganizationWhere,
+            },
+            select: {
+              id: true,
+              endUserId: true,
+              arguments: true,
+              result: true,
+              error: true,
+            },
+          })
+        : Promise.resolve([]),
+      this.prisma.safetyEvent.count({ where: safetySubjectWhere }),
+      eu.length ? this.prisma.endUser.count({ where: { id: { in: eu } } }) : Promise.resolve(0),
     ]);
-    const survivors = t + m + a + e;
+    const retainedAuditViolations = retainedAuditIds.length - retainedAudits.filter(isContentFreeAudit).length;
+    const a = auditSubjectSurvivors + retainedAuditViolations;
+    const survivors = t + m + a + s + e;
     o.verificationStatus = survivors === 0 ? "passed" : "failed";
     o.status = "done";
     o.retained = 0;
-    o.note = `verification: threads=${t} memories=${m} audits=${a} endUsers=${e}`;
+    o.note = `verification: threads=${t} memories=${m} audits=${a} safetyEvents=${s} endUsers=${e}`;
     return o;
   };
 
-  private executors(): StoreExecutors {
+  private executors(organizationId: string): StoreExecutors {
     return {
       minio: this.minioExecutor,
       redis: this.redisExecutor,
       clickhouse: this.clickhouseExecutor,
-      postgres: this.postgresExecutor,
+      postgres: (subject) => this.postgresExecutor(subject, organizationId),
     };
   }
 
@@ -334,13 +448,13 @@ export class ErasureService {
     legalHoldPolicyId?: string | null;
   }): Promise<ErasureReceipt> {
     const hash = this.hash(args.externalUserId, args.organizationId);
-    const existing = await this.prisma.platosErasureOperation.findFirst({
+    const existing = await this.prisma.erasureOperation.findFirst({
       where: { organizationId: args.organizationId, idempotencyKey: args.idempotencyKey },
     });
     if (existing) return this.existingReceiptForSubject(existing, hash);
 
     const subject = await this.discoverSubject(args.externalUserId, args.organizationId);
-    const inventory = await this.inventory(subject);
+    const inventory = await this.inventory(subject, args.organizationId);
 
     // Server-side hold check, over every alias the subject resolves to. Runs
     // before the operation row is created so a held subject leaves no
@@ -357,24 +471,24 @@ export class ErasureService {
 
     let row: any;
     try {
-      row = await this.prisma.platosErasureOperation.create({
+      row = await this.prisma.erasureOperation.create({
         data: {
           id: randomUUID(),
           idempotencyKey: args.idempotencyKey,
           subjectKeyHash: hash,
           organizationId: args.organizationId,
-          status: heldBy ? "blocked_legal_hold" : "pending",
+          status: heldBy ? "CANCELLED" : "PENDING",
           scopes: subject.scopes as any,
           stores: [] as any,
           inventory: inventory as any,
           policyVersion: ERASURE_POLICY_VERSION,
           legalHoldPolicyId: heldBy ?? null,
-          attempts: 0,
+          retryCount: 0,
         },
       });
     } catch (error: any) {
       if (error?.code !== "P2002") throw error;
-      const raced = await this.prisma.platosErasureOperation.findFirst({
+      const raced = await this.prisma.erasureOperation.findFirst({
         where: { organizationId: args.organizationId, idempotencyKey: args.idempotencyKey },
       });
       if (!raced) throw error;
@@ -386,14 +500,14 @@ export class ErasureService {
     // the operator has to be able to evidence later.
     if (heldBy) return this.toReceipt(row);
 
-    const started = await runErasure(this.toReceipt(row), subject, this.executors(), {
+    const started = await runErasure(this.toReceipt(row), subject, this.executors(args.organizationId), {
       legalHold: args.legalHoldPolicyId ? { policyId: args.legalHoldPolicyId } : null,
     });
     return this.persist(started, [args.externalUserId, ...subject.legacyUserIds]);
   }
 
   async getErasure(operationId: string): Promise<ErasureReceipt | null> {
-    const row = await this.prisma.platosErasureOperation.findFirst({ where: { id: operationId } });
+    const row = await this.prisma.erasureOperation.findFirst({ where: { id: operationId } });
     return row ? this.toReceipt(row) : null;
   }
 
@@ -401,35 +515,45 @@ export class ErasureService {
     operationId: string,
     organizationId: string,
   ): Promise<boolean> {
-    return (await this.prisma.platosErasureOperation.count({
+    return (await this.prisma.erasureOperation.count({
       where: { id: operationId, organizationId },
     })) > 0;
   }
 
   async retryErasureById(operationId: string, externalUserId: string): Promise<ErasureReceipt | null> {
-    const row = await this.prisma.platosErasureOperation.findFirst({ where: { id: operationId } });
+    const row = await this.prisma.erasureOperation.findFirst({ where: { id: operationId } });
     if (!row) return null;
     if (!this.hashMatches(this.hash(externalUserId, row.organizationId), row.subjectKeyHash)) return null;
     const receipt = this.toReceipt(row);
     const subject = await this.discoverSubject(externalUserId, row.organizationId);
-    const next = await retryErasure(receipt, subject, this.executors(), {
+    const next = await retryErasure(receipt, subject, this.executors(row.organizationId), {
       legalHold: row.legalHoldPolicyId ? { policyId: row.legalHoldPolicyId } : null,
     });
     return this.persist(next, [externalUserId, ...subject.legacyUserIds]);
   }
 
   private toReceipt(row: any): ErasureReceipt {
+    const stores = (row.stores ?? []) as StoreOutcome[];
+    const status: ErasureStatus = row.legalHoldPolicyId
+      ? "blocked_legal_hold"
+      : row.status === "SUCCEEDED"
+        ? "completed"
+        : row.status === "ACTIVE"
+          ? "running"
+          : row.status === "FAILED"
+            ? deriveStatus(stores, { started: true })
+            : "pending";
     return {
       operationId: row.id,
       subjectKeyHash: row.subjectKeyHash,
       requestedAt: row.requestedAt?.toISOString?.() ?? String(row.requestedAt),
       startedAt: row.startedAt?.toISOString?.(),
       completedAt: row.completedAt?.toISOString?.(),
-      status: row.status,
+      status,
       scopes: (row.scopes ?? []) as any,
-      stores: (row.stores ?? []) as StoreOutcome[],
+      stores,
       policyVersion: row.policyVersion,
-      attempts: row.attempts ?? 0,
+      attempts: row.retryCount ?? 0,
       legalHoldPolicyId: row.legalHoldPolicyId ?? undefined,
     };
   }
@@ -437,12 +561,12 @@ export class ErasureService {
   private async persist(r: ErasureReceipt, forbidden: string[]): Promise<ErasureReceipt> {
     // Refuse to write a receipt that would recreate the identifier it documents.
     assertContentFree(r, forbidden);
-    await this.prisma.platosErasureOperation.update({
+    await this.prisma.erasureOperation.update({
       where: { id: r.operationId },
       data: {
-        status: r.status,
+        status: toDatabaseStatus(r.status),
         stores: r.stores as any,
-        attempts: r.attempts,
+        retryCount: r.attempts,
         startedAt: r.startedAt ? new Date(r.startedAt) : null,
         completedAt: r.completedAt ? new Date(r.completedAt) : null,
         legalHoldPolicyId: r.legalHoldPolicyId ?? null,

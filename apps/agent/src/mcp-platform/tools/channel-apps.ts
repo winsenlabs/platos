@@ -31,9 +31,10 @@
 
 import type { McpToolHandler } from "../mcp-router";
 import type { RequestScope } from "../../auth/scope.guard";
-import type { MessageCryptoService } from "../../monitoring/message-crypto.service";
 import type { ToolAuditService } from "../../monitoring/tool-audit.service";
 import { validateAgentRouting } from "../../agent-runtime/channel-routing";
+import type { ControlDatabaseClient } from "../../shared/database.provider";
+import type { ChannelPersistenceService } from "../../channels/channel-persistence.service";
 
 const APP_PROVIDERS = new Set(["slack"]);
 const DISTRIBUTIONS = new Set(["private", "public"]);
@@ -47,6 +48,18 @@ function scopeTuple(scope: RequestScope) {
     projectId: scope.projectId,
     environmentId: scope.environmentId,
   };
+}
+
+function agentBindingWhere(scope: RequestScope, agentId: string) {
+  return {
+    agentId,
+    environmentId: scope.environmentId,
+    environment: {
+      projectId: scope.projectId,
+      project: { organizationId: scope.organizationId },
+    },
+    agent: { projectId: scope.projectId },
+  } as const;
 }
 
 /**
@@ -70,9 +83,11 @@ function installUrl(appId: string): string | null {
 
 /** Project an app row — strip the two secret columns, surface set-booleans. */
 function projectApp(row: any) {
-  const { clientSecret, signingSecret, ...rest } = row;
+  const { clientSecret, signingSecret, credential, environment, ...rest } = row;
   void clientSecret;
   void signingSecret;
+  void credential;
+  void environment;
   return {
     ...rest,
     hasClientSecret: clientSecret != null,
@@ -82,9 +97,11 @@ function projectApp(row: any) {
 
 /** Project an installation row — strip the secret columns, surface set-booleans. */
 function projectInstallation(row: any) {
-  const { botToken, refreshToken, ...rest } = row;
+  const { botToken, refreshToken, credential, app, ...rest } = row;
   void botToken;
   void refreshToken;
+  void credential;
+  void app;
   return {
     ...rest,
     hasBotToken: botToken != null,
@@ -111,8 +128,8 @@ function normalizeScopes(raw: unknown): string[] | undefined {
 }
 
 export function buildChannelAppToolHandlers(deps: {
-  prisma: any;
-  messageCrypto: MessageCryptoService;
+  prisma: ControlDatabaseClient;
+  channelPersistence: ChannelPersistenceService;
   toolAudit: ToolAuditService;
   /**
    * Evict the channels RUNTIME's cached decrypted bot token(s) for an app
@@ -123,7 +140,7 @@ export function buildChannelAppToolHandlers(deps: {
    */
   invalidateApp?: (appId: string) => void;
 }): McpToolHandler[] {
-  const { prisma, messageCrypto, toolAudit } = deps;
+  const { prisma, channelPersistence, toolAudit } = deps;
 
   /** Best-effort runtime-cache eviction — never fails the mutation. */
   function evictApp(appId: string): void {
@@ -160,16 +177,11 @@ export function buildChannelAppToolHandlers(deps: {
 
   /** Forged-id guard — the agent must belong to this exact scope. */
   async function agentInScope(scope: RequestScope, agentId: string): Promise<boolean> {
-    const agent = await prisma.platosAgent.findFirst({
-      where: { id: agentId, ...scopeTuple(scope) },
+    const agent = await prisma.agentBinding.findFirst({
+      where: agentBindingWhere(scope, agentId),
       select: { id: true },
     });
     return !!agent;
-  }
-
-  /** Encrypt a single secret string into the stored envelope. */
-  function encryptSecret(plain: string): string {
-    return JSON.stringify(messageCrypto.encryptJsonField(plain));
   }
 
   /**
@@ -214,16 +226,33 @@ export function buildChannelAppToolHandlers(deps: {
     enterpriseId: string | null,
     data: Record<string, unknown>,
   ): Promise<any> {
-    const existing = await prisma.platosChannelInstallation.findFirst({
-      where: { appId, teamId, enterpriseId },
-      select: { id: true },
-    });
-    if (existing) {
-      return prisma.platosChannelInstallation.update({ where: { id: existing.id }, data });
-    }
-    return prisma.platosChannelInstallation.create({
-      data: { appId, teamId, enterpriseId, ...data },
-    });
+    const app = await channelPersistence.loadApp(appId);
+    if (!app) throw new Error("channel app not found");
+    return channelPersistence.upsertInstallationGrant(
+      app,
+      {
+        teamId,
+        enterpriseId,
+        isEnterpriseInstall: data["isEnterpriseInstall"] === true,
+      },
+      {
+        botToken: String(data["botToken"] ?? ""),
+        refreshToken: null,
+        botUserId: typeof data["botUserId"] === "string" ? data["botUserId"] : null,
+        grantedScopes: Array.isArray(data["grantedScopes"])
+          ? data["grantedScopes"].filter((value): value is string => typeof value === "string")
+          : [],
+        displayName: typeof data["teamName"] === "string" ? data["teamName"] : null,
+        installedByUserId:
+          typeof data["installedByUserId"] === "string" ? data["installedByUserId"] : null,
+        ...(Object.prototype.hasOwnProperty.call(data, "agentId")
+          ? { defaultAgentId: (data["agentId"] as string | null) ?? null }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(data, "agentRouting")
+          ? { agentRouting: data["agentRouting"] }
+          : {}),
+      },
+    );
   }
 
   return [
@@ -395,21 +424,18 @@ export function buildChannelAppToolHandlers(deps: {
         }
 
         try {
-          const row = await prisma.platosChannelApp.create({
-            data: {
-              ...scopeTuple(scope),
-              provider,
-              clientId,
-              clientSecret: encryptSecret(clientSecret),
-              signingSecret: encryptSecret(signingSecret),
-              distribution,
-              ...(displayName !== undefined ? { displayName } : {}),
-              ...(scopes !== undefined ? { scopes } : {}),
-              ...(aiAppsSurface !== undefined ? { aiAppsSurface } : {}),
-              ...(linking !== undefined ? { linking } : {}),
-              ...(defaultAgentId ? { defaultAgentId } : {}),
-              ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
-            },
+          const row = await channelPersistence.createApp(scopeTuple(scope), {
+            provider,
+            clientId,
+            clientSecret,
+            signingSecret,
+            distribution,
+            ...(displayName !== undefined ? { displayName } : {}),
+            ...(scopes !== undefined ? { scopes } : {}),
+            ...(aiAppsSurface !== undefined ? { aiAppsSurface } : {}),
+            ...(linking !== undefined ? { linking } : {}),
+            ...(defaultAgentId ? { defaultAgentId } : {}),
+            ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
           });
           const result = { ...projectApp(row), installUrl: installUrl(row.id) };
           auditMutation(
@@ -445,10 +471,9 @@ export function buildChannelAppToolHandlers(deps: {
       async execute(params, scope) {
         const provider =
           typeof params["provider"] === "string" ? params["provider"].trim().toLowerCase() : undefined;
-        const rows = await prisma.platosChannelApp.findMany({
-          where: { ...scopeTuple(scope), ...(provider ? { provider } : {}) },
-          orderBy: { createdAt: "desc" },
-        });
+        const rows = (await channelPersistence.listApps(scopeTuple(scope))).filter(
+          (row) => !provider || row.provider === provider,
+        );
         return {
           apps: (rows as any[]).map((r) => ({ ...projectApp(r), installUrl: installUrl(r.id) })),
         };
@@ -469,9 +494,7 @@ export function buildChannelAppToolHandlers(deps: {
       async execute(params, scope) {
         const id = String(params["id"] ?? "").trim();
         if (!id) return { error: "invalid_params", message: "id required" };
-        const row = await prisma.platosChannelApp.findFirst({
-          where: { id, ...scopeTuple(scope) },
-        });
+        const row = await channelPersistence.loadScopedApp(scopeTuple(scope), id);
         if (!row) return { error: "not_found", id };
         return { ...projectApp(row), installUrl: installUrl(row.id) };
       },
@@ -576,10 +599,7 @@ export function buildChannelAppToolHandlers(deps: {
           return { error: "invalid_params", message: err };
         }
 
-        const existing = await prisma.platosChannelApp.findFirst({
-          where: { id, ...scopeTuple(scope) },
-          select: { id: true },
-        });
+        const existing = await channelPersistence.loadScopedApp(scopeTuple(scope), id);
         if (!existing) {
           auditMutation(scope, "channel_apps.update", auditArgs, null, "failed", startedAt, "not_found");
           return { error: "not_found", id };
@@ -600,10 +620,10 @@ export function buildChannelAppToolHandlers(deps: {
           data.clientId = clientId;
         }
         if (hasClientSecret) {
-          data.clientSecret = encryptSecret((params["clientSecret"] as string).trim());
+          data.clientSecret = (params["clientSecret"] as string).trim();
         }
         if (hasSigningSecret) {
-          data.signingSecret = encryptSecret((params["signingSecret"] as string).trim());
+          data.signingSecret = (params["signingSecret"] as string).trim();
         }
         if (Object.prototype.hasOwnProperty.call(params, "scopes")) {
           const scopes = normalizeScopes(params["scopes"]);
@@ -654,7 +674,7 @@ export function buildChannelAppToolHandlers(deps: {
         if (Object.prototype.hasOwnProperty.call(params, "agentRouting")) {
           const ar = params["agentRouting"];
           if (ar === null) {
-            data.agentRouting = null;
+            data.agentRouting = [];
           } else {
             const routing = await validateAgentRouting(prisma, scope, ar);
             if (!routing.ok) {
@@ -674,9 +694,7 @@ export function buildChannelAppToolHandlers(deps: {
         }
 
         if (Object.keys(data).length === 0) {
-          const row = await prisma.platosChannelApp.findFirst({
-            where: { id, ...scopeTuple(scope) },
-          });
+          const row = await channelPersistence.loadScopedApp(scopeTuple(scope), id);
           if (!row) {
             auditMutation(scope, "channel_apps.update", auditArgs, null, "failed", startedAt, "not_found");
             return { error: "not_found", id };
@@ -686,7 +704,24 @@ export function buildChannelAppToolHandlers(deps: {
         }
 
         try {
-          const updated = await prisma.platosChannelApp.update({ where: { id }, data });
+          const credentialKeys = new Set([
+            "clientSecret",
+            "signingSecret",
+            "aiAppsSurface",
+            "linking",
+          ]);
+          const publicData: Record<string, unknown> = {};
+          const credentialData: Record<string, unknown> = {};
+          for (const [key, value] of Object.entries(data)) {
+            (credentialKeys.has(key) ? credentialData : publicData)[key] = value;
+          }
+          const updated = await channelPersistence.updateApp(
+            scopeTuple(scope),
+            id,
+            publicData,
+            credentialData,
+          );
+          if (!updated) return { error: "not_found", id };
           evictApp(id);
           auditMutation(scope, "channel_apps.update", auditArgs, { id }, "success", startedAt);
           return { ...projectApp(updated), installUrl: installUrl(updated.id) };
@@ -714,16 +749,13 @@ export function buildChannelAppToolHandlers(deps: {
         const startedAt = Date.now();
         const id = String(params["id"] ?? "").trim();
         if (!id) return { error: "invalid_params", message: "id required" };
-        const existing = await prisma.platosChannelApp.findFirst({
-          where: { id, ...scopeTuple(scope) },
-          select: { id: true },
-        });
+        const existing = await channelPersistence.loadScopedApp(scopeTuple(scope), id);
         if (!existing) {
           auditMutation(scope, "channel_apps.delete", { id }, null, "failed", startedAt, "not_found");
           return { ok: false, error: "not_found", id };
         }
         try {
-          await prisma.platosChannelApp.delete({ where: { id } });
+          await channelPersistence.deleteApp(scopeTuple(scope), id);
           evictApp(id);
           const result = { ok: true, id };
           auditMutation(scope, "channel_apps.delete", { id }, result, "success", startedAt);
@@ -752,15 +784,9 @@ export function buildChannelAppToolHandlers(deps: {
       async execute(params, scope) {
         const appId = String(params["appId"] ?? "").trim();
         if (!appId) return { error: "invalid_params", message: "appId required" };
-        const app = await prisma.platosChannelApp.findFirst({
-          where: { id: appId, ...scopeTuple(scope) },
-          select: { id: true },
-        });
+        const app = await channelPersistence.loadScopedApp(scopeTuple(scope), appId);
         if (!app) return { error: "not_found", appId };
-        const rows = await prisma.platosChannelInstallation.findMany({
-          where: { appId },
-          orderBy: { createdAt: "desc" },
-        });
+        const rows = await channelPersistence.listInstallations(scopeTuple(scope), appId);
         return { installations: (rows as any[]).map((r) => projectInstallation(r)) };
       },
     },
@@ -830,18 +856,12 @@ export function buildChannelAppToolHandlers(deps: {
           return { error: "no_op", message: err };
         }
 
-        const app = await prisma.platosChannelApp.findFirst({
-          where: { id: appId, ...scopeTuple(scope) },
-          select: { id: true },
-        });
+        const app = await channelPersistence.loadScopedApp(scopeTuple(scope), appId);
         if (!app) {
           auditMutation(scope, "channel_apps.bind_installation", auditArgs, null, "failed", startedAt, "not_found");
           return { error: "not_found", appId };
         }
-        const installation = await prisma.platosChannelInstallation.findFirst({
-          where: { id: installationId, appId },
-          select: { id: true },
-        });
+        const installation = await channelPersistence.loadInstallation(installationId, appId);
         if (!installation) {
           auditMutation(
             scope,
@@ -859,7 +879,7 @@ export function buildChannelAppToolHandlers(deps: {
         if (hasAgentId) {
           const raw = params["agentId"];
           if (raw === null || raw === "") {
-            data.agentId = null;
+            data.defaultAgentId = null;
           } else if (typeof raw === "string") {
             const agentId = raw.trim();
             if (!(await agentInScope(scope, agentId))) {
@@ -874,13 +894,13 @@ export function buildChannelAppToolHandlers(deps: {
               );
               return { error: "unknown_agent_id", agentId };
             }
-            data.agentId = agentId;
+            data.defaultAgentId = agentId;
           }
         }
         if (hasAgentRouting) {
           const ar = params["agentRouting"];
           if (ar === null) {
-            data.agentRouting = null;
+            data.agentRouting = [];
           } else {
             const routing = await validateAgentRouting(prisma, scope, ar);
             if (!routing.ok) {
@@ -900,10 +920,13 @@ export function buildChannelAppToolHandlers(deps: {
         }
 
         try {
-          const updated = await prisma.platosChannelInstallation.update({
-            where: { id: installationId },
+          const updated = await channelPersistence.updateInstallationBinding(
+            scopeTuple(scope),
+            appId,
+            installationId,
             data,
-          });
+          );
+          if (!updated) return { error: "installation_not_found", installationId };
           auditMutation(
             scope,
             "channel_apps.bind_installation",
@@ -1025,10 +1048,7 @@ export function buildChannelAppToolHandlers(deps: {
           return { error: "invalid_params", message: err };
         }
 
-        const app = await prisma.platosChannelApp.findFirst({
-          where: { id: appId, ...scopeTuple(scope) },
-          select: { id: true },
-        });
+        const app = await channelPersistence.loadScopedApp(scopeTuple(scope), appId);
         if (!app) {
           auditMutation(scope, "channel_apps.import_installation", auditArgs, null, "failed", startedAt, "not_found");
           return { error: "not_found", appId };
@@ -1098,7 +1118,7 @@ export function buildChannelAppToolHandlers(deps: {
         // keys "this install rotates" off tokenExpiresAt, and a stale expiry
         // would refresh the OLD grant over the freshly imported key.
         const data: Record<string, unknown> = {
-          botToken: encryptSecret(botToken),
+          botToken,
           refreshToken: null,
           tokenExpiresAt: null,
           isEnterpriseInstall,
@@ -1163,18 +1183,12 @@ export function buildChannelAppToolHandlers(deps: {
           auditMutation(scope, "channel_apps.revoke_installation", auditArgs, null, "failed", startedAt, err);
           return { error: "invalid_params", message: err };
         }
-        const app = await prisma.platosChannelApp.findFirst({
-          where: { id: appId, ...scopeTuple(scope) },
-          select: { id: true },
-        });
+        const app = await channelPersistence.loadScopedApp(scopeTuple(scope), appId);
         if (!app) {
           auditMutation(scope, "channel_apps.revoke_installation", auditArgs, null, "failed", startedAt, "not_found");
           return { error: "not_found", appId };
         }
-        const installation = await prisma.platosChannelInstallation.findFirst({
-          where: { id: installationId, appId },
-          select: { id: true },
-        });
+        const installation = await channelPersistence.loadInstallation(installationId, appId);
         if (!installation) {
           auditMutation(
             scope,
@@ -1188,10 +1202,12 @@ export function buildChannelAppToolHandlers(deps: {
           return { error: "installation_not_found", installationId };
         }
         try {
-          const updated = await prisma.platosChannelInstallation.update({
-            where: { id: installationId },
-            data: { status: "revoked", revokedAt: new Date() },
-          });
+          const updated = await channelPersistence.revokeInstallation(
+            scopeTuple(scope),
+            appId,
+            installationId,
+          );
+          if (!updated) return { error: "installation_not_found", installationId };
           evictApp(appId);
           auditMutation(
             scope,
@@ -1230,15 +1246,9 @@ export function buildChannelAppToolHandlers(deps: {
       async execute(params, scope) {
         const appId = String(params["appId"] ?? "").trim();
         if (!appId) return { error: "invalid_params", message: "appId required" };
-        const app = await prisma.platosChannelApp.findFirst({
-          where: { id: appId, ...scopeTuple(scope) },
-          select: { id: true, defaultAgentId: true },
-        });
+        const app = await channelPersistence.loadScopedApp(scopeTuple(scope), appId);
         if (!app) return { error: "not_found", appId };
-        const rows = await prisma.platosChannelInstallation.findMany({
-          where: { appId },
-          orderBy: { createdAt: "desc" },
-        });
+        const rows = await channelPersistence.listInstallations(scopeTuple(scope), appId);
         return {
           installations: (rows as any[]).map((r) => projectInstallationStatus(r, app)),
         };

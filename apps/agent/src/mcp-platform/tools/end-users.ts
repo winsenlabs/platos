@@ -1,42 +1,14 @@
-/**
- * Theme EUI — end-user identity management platform MCP tools.
- *
- * The runtime resolves an end-user to a canonical `PlatosEndUser` row and
- * attaches channel-native identities (email addr, E.164 phone, Slack user
- * id, …) as `PlatosEndUserIdentity` rows using a link-not-merge model:
- * a verified identity anchors the person, every claimed identity is linked
- * to that person, and a handle already pointing at a DIFFERENT person is
- * never re-pointed. These tools give MCP clients the read + manual-edit
- * surface over that graph.
- *
- *   - end_users.get              → fetch a PlatosEndUser + its identities[]
- *   - end_users.link_identity    → manually attach a (channel, handle) identity
- *   - end_users.bind_external_id → adopt an EXTERNAL id (Composio user_id) onto
- *                                  the person behind a verified (channel, handle)
- *                                  claim; sets linkedExternalId (idempotent
- *                                  overwrite). See IDENTITY-CORE §A.3.
- *   - end_users.unlink_identity  → detach a (channel, handle) identity
- *
- * Scope is ALWAYS taken from the verified MCP token, never from the
- * LLM-supplied args — every query is filtered by the token's
- * (organizationId, projectId, environmentId) tuple. Manual links carry no
- * trust anchor (`sourceEntityId = null`); only the runtime resolver stamps
- * a sourceEntityId from the connected entity that asserted the identity.
- */
-
 import type { McpToolHandler } from "../mcp-router";
 import type { RequestScope } from "../../auth/scope.guard";
 import type { ToolAuditService } from "../../monitoring/tool-audit.service";
+import type { ControlDatabaseClient } from "../../shared/database.provider";
 
-// ── Identity sanitization — mirrors the mint-time rules in the shared
-//    contract (auth.service SessionPayload.userIdentities). Keep in sync:
-//    channel lowercased/trimmed matching /^[a-z0-9_-]{1,32}$/; handle
-//    trimmed, length 1..256, no control chars. ────────────────────────
 const CHANNEL_RE = /^[a-z0-9_-]{1,32}$/;
-// C0 control chars + DEL — a handle carrying these could split a header /
-// log line or smuggle a NUL into a DB text column.
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F]/;
+const MANUAL_ISSUER = "platos:mcp-manual";
+const EXTERNAL_ISSUER = "platos:external";
+const EXTERNAL_CHANNEL = "external";
 
 function sanitizeChannel(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
@@ -47,20 +19,13 @@ function sanitizeChannel(raw: unknown): string | null {
 function sanitizeHandle(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const handle = raw.trim();
-  if (handle.length < 1 || handle.length > 256) return null;
-  if (CONTROL_CHAR_RE.test(handle)) return null;
-  return handle;
+  return handle.length >= 1 && handle.length <= 256 && !CONTROL_CHAR_RE.test(handle)
+    ? handle
+    : null;
 }
 
-// The adopted EXTERNAL id (Walle user id = Composio `user_id`). Same bounds as
-// `externalUserId`: trimmed, 1..256, no control chars (a control char here
-// could split the outbound URL / header it is later substituted into).
 function sanitizeExternalId(raw: unknown): string | null {
-  if (typeof raw !== "string") return null;
-  const externalId = raw.trim();
-  if (externalId.length < 1 || externalId.length > 256) return null;
-  if (CONTROL_CHAR_RE.test(externalId)) return null;
-  return externalId;
+  return sanitizeHandle(raw);
 }
 
 function scopeTuple(scope: RequestScope) {
@@ -71,35 +36,46 @@ function scopeTuple(scope: RequestScope) {
   };
 }
 
-/** Shape the identity row returns for read + write responses. */
+function currentEnvironmentPresence(environmentId: string) {
+  return {
+    OR: [
+      { threads: { some: { environmentId } } },
+      { memories: { some: { environmentId } } },
+      { messageAttachments: { some: { environmentId } } },
+      { toolCallAudits: { some: { environmentId } } },
+      { safetyEvents: { some: { environmentId } } },
+    ],
+  };
+}
+
 function projectIdentity(row: {
   channel: string;
-  handle: string;
-  verified: boolean;
-  sourceEntityId: string | null;
+  subject: string;
+  verifiedAt: Date | null;
+  profile: unknown;
   createdAt: Date | string;
 }) {
+  const profile = row.profile && typeof row.profile === "object" && !Array.isArray(row.profile)
+    ? row.profile as Record<string, unknown>
+    : null;
   return {
     channel: row.channel,
-    handle: row.handle,
-    verified: row.verified,
-    sourceEntityId: row.sourceEntityId ?? null,
-    createdAt:
-      row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
+    handle: row.subject,
+    verified: row.verifiedAt !== null,
+    sourceEntityId: typeof profile?.["sourceEntityId"] === "string"
+      ? profile["sourceEntityId"]
+      : null,
+    metadata: profile,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
   };
 }
 
 export function buildEndUserToolHandlers(deps: {
-  prisma: any;
+  prisma: ControlDatabaseClient;
   toolAudit: ToolAuditService;
 }): McpToolHandler[] {
   const { prisma, toolAudit } = deps;
 
-  /**
-   * Fire-and-forget audit trail for mutating end-user tools. Mirrors the
-   * shape used by `entities.ts` / `index.ts` so MCP-driven identity edits
-   * surface in the same dashboard rows.
-   */
   function auditMutation(
     scope: RequestScope,
     toolName: string,
@@ -109,32 +85,24 @@ export function buildEndUserToolHandlers(deps: {
     startedAt: number,
     error?: string,
   ): void {
-    toolAudit
-      .record({
-        scope: scopeTuple(scope),
-        toolName,
-        userId: scope.userId ?? null,
-        args,
-        result,
-        ...(error !== undefined ? { error } : {}),
-        status,
-        latencyMs: Date.now() - startedAt,
-        source: "mcp_platform",
-      })
-      .catch(() => undefined);
+    toolAudit.record({
+      scope: scopeTuple(scope),
+      toolName,
+      userId: scope.userId ?? null,
+      args,
+      result,
+      ...(error !== undefined ? { error } : {}),
+      status,
+      latencyMs: Date.now() - startedAt,
+      source: "mcp_platform",
+    }).catch(() => undefined);
   }
 
   return [
     {
       name: "end_users.get",
       description:
-        "Fetch a single PlatosEndUser in the token's scope by EXACTLY ONE " +
-        "of `externalUserId` (the opaque id forwarded by the entity backend) " +
-        "or `platosEndUserId` (the canonical cuid). Returns the person's " +
-        "profile (id, externalUserId, displayName, email, threadCount, " +
-        "lastActiveAt, metadata) plus every linked identity (channel, " +
-        "handle, verified, sourceEntityId, createdAt). Scope-pinned — " +
-        "cross-scope ids return `{ error: 'not_found' }`.",
+        "Fetch one organization-owned EndUser by exactly one of externalUserId or platosEndUserId, including canonical identities and scope-local thread activity.",
       inputSchema: {
         type: "object",
         properties: {
@@ -144,76 +112,81 @@ export function buildEndUserToolHandlers(deps: {
         additionalProperties: false,
       },
       async execute(params, scope) {
-        const externalUserId =
-          typeof params["externalUserId"] === "string"
-            ? (params["externalUserId"] as string).trim()
-            : "";
-        const platosEndUserId =
-          typeof params["platosEndUserId"] === "string"
-            ? (params["platosEndUserId"] as string).trim()
-            : "";
-        const hasExternal = externalUserId.length > 0;
-        const hasPk = platosEndUserId.length > 0;
-        // Exactly one selector — an ambiguous or empty call is a caller
-        // error, not a 404.
-        if (hasExternal === hasPk) {
+        const externalUserId = typeof params["externalUserId"] === "string"
+          ? params["externalUserId"].trim()
+          : "";
+        const platosEndUserId = typeof params["platosEndUserId"] === "string"
+          ? params["platosEndUserId"].trim()
+          : "";
+        if (!!externalUserId === !!platosEndUserId) {
           return {
             error: "invalid_params",
-            message:
-              "supply exactly one of `externalUserId` or `platosEndUserId`",
+            message: "supply exactly one of `externalUserId` or `platosEndUserId`",
           };
         }
 
-        const tuple = scopeTuple(scope);
-        // findFirst (never findUnique) so the scope tuple is always part of
-        // the WHERE — a forged cuid from another scope can't be read.
-        const user = await prisma.platosEndUser.findFirst({
-          where: hasPk
-            ? { id: platosEndUserId, ...tuple }
-            : { externalUserId, ...tuple },
-        });
+        const user = platosEndUserId
+          ? await prisma.endUser.findFirst({
+              where: {
+                id: platosEndUserId,
+                organizationId: scope.organizationId,
+                ...currentEnvironmentPresence(scope.environmentId),
+              },
+            })
+          : await prisma.endUser.findFirst({
+              where: {
+                organizationId: scope.organizationId,
+                ...currentEnvironmentPresence(scope.environmentId),
+                identities: {
+                  some: {
+                    issuer: EXTERNAL_ISSUER,
+                    channel: EXTERNAL_CHANNEL,
+                    subject: externalUserId,
+                    disabledAt: null,
+                  },
+                },
+              },
+            });
         if (!user) {
           return {
             error: "not_found",
-            ...(hasPk ? { platosEndUserId } : { externalUserId }),
+            ...(platosEndUserId ? { platosEndUserId } : { externalUserId }),
           };
         }
 
-        const identities = await prisma.platosEndUserIdentity.findMany({
-          where: { platosEndUserId: user.id, ...tuple },
-          orderBy: { createdAt: "asc" },
-        });
-
+        const [identities, threadStats] = await Promise.all([
+          prisma.endUserIdentity.findMany({
+            where: { endUserId: user.id, organizationId: scope.organizationId, disabledAt: null },
+            orderBy: { createdAt: "asc" },
+          }),
+          prisma.thread.aggregate({
+            where: { environmentId: scope.environmentId, endUserId: user.id },
+            _count: { _all: true },
+            _max: { updatedAt: true },
+          }),
+        ]);
+        const externalIdentity = identities.find(
+          (identity) => identity.issuer === EXTERNAL_ISSUER && identity.channel === EXTERNAL_CHANNEL,
+        );
+        const emailIdentity = identities.find((identity) => identity.channel === "email");
         return {
           id: user.id,
-          externalUserId: user.externalUserId,
+          externalUserId: externalIdentity?.subject ?? null,
           displayName: user.displayName ?? null,
-          email: user.email ?? null,
-          threadCount: user.threadCount ?? 0,
-          lastActiveAt:
-            user.lastActiveAt instanceof Date
-              ? user.lastActiveAt.toISOString()
-              : (user.lastActiveAt ?? null),
-          metadata: user.metadata ?? null,
-          identities: (identities as any[]).map(projectIdentity),
+          email: emailIdentity?.subject ?? null,
+          threadCount: threadStats._count._all,
+          lastActiveAt: threadStats._max.updatedAt?.toISOString() ?? null,
+          metadata: null,
+          identities: identities
+            .filter((identity) => identity.issuer !== EXTERNAL_ISSUER)
+            .map(projectIdentity),
         };
       },
     },
-
     {
       name: "end_users.link_identity",
       description:
-        "Manually attach a channel-native identity to a PlatosEndUser. " +
-        "The person must already exist in the token's scope. `channel` is " +
-        "lowercased + must match /^[a-z0-9_-]{1,32}$/ (e.g. email, phone, " +
-        "slack, teams, whatsapp); `handle` is the channel-native id " +
-        "(email addr, E.164 phone, Slack user id) — trimmed, 1..256 chars, " +
-        "no control chars. Manual links carry NO trust anchor " +
-        "(sourceEntityId = null). If the (channel, handle) already points " +
-        "at a DIFFERENT person the call returns `{ error: " +
-        "'identity_conflict' }` naming the existing linkage and does NOT " +
-        "re-point (link-not-merge). Re-linking the SAME person updates the " +
-        "verified flag + metadata.",
+        "Attach a canonical EndUserIdentity to an organization-owned EndUser. Existing identities are never re-pointed to another person.",
       inputSchema: {
         type: "object",
         required: ["platosEndUserId", "channel", "handle"],
@@ -231,148 +204,92 @@ export function buildEndUserToolHandlers(deps: {
         const platosEndUserId = String(params["platosEndUserId"] ?? "").trim();
         const channel = sanitizeChannel(params["channel"]);
         const handle = sanitizeHandle(params["handle"]);
-        const verified = params["verified"] === true;
-        const metadata =
-          params["metadata"] &&
-          typeof params["metadata"] === "object" &&
-          !Array.isArray(params["metadata"])
-            ? (params["metadata"] as Record<string, unknown>)
-            : undefined;
-
-        if (!platosEndUserId) {
-          const err = "platosEndUserId required";
-          auditMutation(scope, "end_users.link_identity", params, null, "failed", startedAt, err);
-          return { error: "invalid_params", message: err };
+        if (!platosEndUserId || !channel || !handle) {
+          const message = !platosEndUserId
+            ? "platosEndUserId required"
+            : !channel
+              ? "invalid channel"
+              : "invalid handle";
+          auditMutation(scope, "end_users.link_identity", params, null, "failed", startedAt, "invalid_params");
+          return { error: "invalid_params", message };
         }
-        if (!channel) {
-          const err = "channel must match /^[a-z0-9_-]{1,32}$/ (after lowercasing)";
-          auditMutation(scope, "end_users.link_identity", params, null, "failed", startedAt, err);
-          return { error: "invalid_channel", message: err };
+        if (params["verified"] === true) {
+          return {
+            error: "trusted_claim_required",
+            message: "Manual MCP identities cannot manufacture a verified claim.",
+          };
         }
-        if (!handle) {
-          const err = "handle must be trimmed, 1..256 chars, no control chars";
-          auditMutation(scope, "end_users.link_identity", params, null, "failed", startedAt, err);
-          return { error: "invalid_handle", message: err };
-        }
-
-        const tuple = scopeTuple(scope);
         try {
-          // 1. The person must exist IN SCOPE — no cross-scope linking.
-          const user = await prisma.platosEndUser.findFirst({
-            where: { id: platosEndUserId, ...tuple },
+          const user = await prisma.endUser.findFirst({
+            where: {
+              id: platosEndUserId,
+              organizationId: scope.organizationId,
+              ...currentEnvironmentPresence(scope.environmentId),
+            },
             select: { id: true },
           });
-          if (!user) {
-            auditMutation(
-              scope,
-              "end_users.link_identity",
-              params,
-              null,
-              "failed",
-              startedAt,
-              "not_found",
-            );
-            return { error: "not_found", platosEndUserId };
-          }
-
-          // 2. Detect an existing linkage for this (channel, handle) in
-          //    scope. link-not-merge: a handle already owned by another
-          //    person is NEVER re-pointed.
-          const existing = await prisma.platosEndUserIdentity.findFirst({
-            where: { ...tuple, channel, handle },
+          if (!user) return { error: "not_found", platosEndUserId };
+          const existing = await prisma.endUserIdentity.findUnique({
+            where: {
+              organizationId_issuer_channel_subject: {
+                organizationId: scope.organizationId,
+                issuer: MANUAL_ISSUER,
+                channel,
+                subject: handle,
+              },
+            },
           });
-          if (existing && existing.platosEndUserId !== platosEndUserId) {
-            const conflict = {
+          if (existing && existing.endUserId !== platosEndUserId) {
+            const result = {
               error: "identity_conflict",
               channel,
               handle,
-              existingPlatosEndUserId: existing.platosEndUserId,
-              message:
-                `(${channel}, ${handle}) is already linked to ` +
-                `${existing.platosEndUserId}; unlink it first to re-point.`,
+              existingPlatosEndUserId: existing.endUserId,
             };
-            auditMutation(
-              scope,
-              "end_users.link_identity",
-              params,
-              conflict,
-              "failed",
-              startedAt,
-              "identity_conflict",
-            );
-            return conflict;
+            auditMutation(scope, "end_users.link_identity", params, result, "failed", startedAt, "identity_conflict");
+            return result;
           }
-
-          // 3. Upsert onto the resolved person. Manual link ⇒ no trust
-          //    anchor. Re-link of the same person updates verified/metadata.
+          const metadata = params["metadata"] && typeof params["metadata"] === "object" && !Array.isArray(params["metadata"])
+            ? params["metadata"]
+            : undefined;
           const row = existing
-            ? await prisma.platosEndUserIdentity.update({
+            ? await prisma.endUserIdentity.update({
                 where: { id: existing.id },
                 data: {
-                  verified,
-                  sourceEntityId: null,
-                  ...(metadata !== undefined ? { metadata } : {}),
+                  verifiedAt: null,
+                  ...(metadata !== undefined ? { profile: metadata } : {}),
+                  disabledAt: null,
                 },
               })
-            : await prisma.platosEndUserIdentity.create({
+            : await prisma.endUserIdentity.create({
                 data: {
-                  ...tuple,
-                  platosEndUserId,
+                  endUserId: platosEndUserId,
+                  organizationId: scope.organizationId,
+                  issuer: MANUAL_ISSUER,
                   channel,
-                  handle,
-                  verified,
-                  sourceEntityId: null,
-                  ...(metadata !== undefined ? { metadata } : {}),
+                  subject: handle,
+                  verifiedAt: null,
+                  ...(metadata !== undefined ? { profile: metadata } : {}),
                 },
               });
-
           const result = {
             ok: true,
             platosEndUserId,
             created: !existing,
-            identity: projectIdentity(row as any),
+            identity: projectIdentity(row),
           };
           auditMutation(scope, "end_users.link_identity", params, result, "success", startedAt);
           return result;
-        } catch (err: any) {
-          const message = err?.message ?? String(err);
-          auditMutation(
-            scope,
-            "end_users.link_identity",
-            params,
-            null,
-            "failed",
-            startedAt,
-            message,
-          );
-          return { error: "link_failed", message };
+        } catch {
+          auditMutation(scope, "end_users.link_identity", params, null, "failed", startedAt, "internal_error");
+          return { error: "link_failed", message: "Identity could not be linked." };
         }
       },
     },
-
     {
       name: "end_users.bind_external_id",
       description:
-        "Adopt an EXTERNAL id (e.g. the Walle DB user id = Composio " +
-        "`user_id`) onto the PlatosEndUser behind a VERIFIED (channel, handle) " +
-        "claim, so per-user Composio tools resolve `{{endUserId}}` to that " +
-        "external id. Keyed by the claim, NOT the cuid — callers (e.g. Walle " +
-        "finish-setup) supply only `(channel, handle, externalId)`.\n\n" +
-        "For Slack, `handle` is `<team>:<slackUserId>` where `<team> = " +
-        "teamId ?? enterpriseId` (an org/Grid install has teamId null ⇒ keyed " +
-        "by enterpriseId) — the SAME team-qualified handle the channel runtime " +
-        "mints. `channel` is lowercased + must match /^[a-z0-9_-]{1,32}$/; " +
-        "`externalId` is trimmed, 1..256 chars, no control chars.\n\n" +
-        "Behaviour: if a (channel, handle) identity exists, adopt its owner; " +
-        "else find-or-create a person by externalUserId=`<channel>:<handle>` " +
-        "and create the identity row with verified:true FORCED (so a later " +
-        "inbound message anchors on it) — regardless of the `verified` input " +
-        "flag. Then set linkedExternalId with idempotent OVERWRITE: an " +
-        "identical re-call is a no-op (created:false); a re-bind of the same " +
-        "claim to a NEW externalId re-links (moves the Composio identity). If " +
-        "a DIFFERENT person in scope already holds that externalId the call is " +
-        "refused with `{ error: 'external_id_conflict', existingPlatosEndUserId }`. " +
-        "Scope-pinned; audited (records old→new on a re-link).",
+        "Verify that an authenticated runtime external id belongs to the person behind a verified channel claim. This tool never creates or promotes identity trust.",
       inputSchema: {
         type: "object",
         required: ["channel", "handle", "externalId"],
@@ -380,8 +297,6 @@ export function buildEndUserToolHandlers(deps: {
           channel: { type: "string" },
           handle: { type: "string" },
           externalId: { type: "string" },
-          // Retained for wire-compat / future use. Does NOT gate the anchor:
-          // the web-first CREATE path always forces verified:true (§A.3 G5).
           verified: { type: "boolean" },
         },
         additionalProperties: false,
@@ -391,260 +306,118 @@ export function buildEndUserToolHandlers(deps: {
         const channel = sanitizeChannel(params["channel"]);
         const handle = sanitizeHandle(params["handle"]);
         const externalId = sanitizeExternalId(params["externalId"]);
-
-        if (!channel) {
-          const err = "channel must match /^[a-z0-9_-]{1,32}$/ (after lowercasing)";
-          auditMutation(scope, "end_users.bind_external_id", params, null, "failed", startedAt, err);
-          return { error: "invalid_channel", message: err };
+        if (!channel || !handle || !externalId) {
+          auditMutation(scope, "end_users.bind_external_id", params, null, "failed", startedAt, "invalid_params");
+          return { error: "invalid_params", message: "channel, handle, and externalId must be valid" };
         }
-        if (!handle) {
-          const err = "handle must be trimmed, 1..256 chars, no control chars";
-          auditMutation(scope, "end_users.bind_external_id", params, null, "failed", startedAt, err);
-          return { error: "invalid_handle", message: err };
-        }
-        if (!externalId) {
-          const err = "externalId must be trimmed, 1..256 chars, no control chars";
-          auditMutation(scope, "end_users.bind_external_id", params, null, "failed", startedAt, err);
-          return { error: "invalid_external_id", message: err };
-        }
-
-        const tuple = scopeTuple(scope);
         try {
-          // ── Step 1/2: adopt by the VERIFIED (channel, handle) claim. If the
-          //    identity row exists we adopt WHOEVER owns it — never re-point
-          //    the claim (link-not-merge). ──────────────────────────────────
-          let personId: string;
-          // `created` = we minted the web-first identity ANCHOR in step 3.
-          // Row-exists adoption, race-lost adoption, and a pure re-bind all
-          // return created:false.
-          let created = false;
-
-          const existingIdentity = await prisma.platosEndUserIdentity.findFirst({
-            where: { ...tuple, channel, handle },
-            select: { platosEndUserId: true },
-          });
-
-          if (existingIdentity) {
-            personId = existingIdentity.platosEndUserId as string;
-          } else {
-            // ── Step 3: web/finish-setup happened first — no identity row.
-            //    Find-or-create the person by externalUserId=`<channel>:<handle>`
-            //    (mirrors the authorScope.userId convention so a LATER inbound's
-            //    resolveEndUser step-(b) collapses onto the SAME person), then
-            //    lay down the (channel, handle) identity with verified:true
-            //    FORCED (§A.3 G5 — an unverified anchor would be ignored by
-            //    resolveEndUser step-(a), minting a SECOND person for the human).
-            const syntheticExternalUserId = `${channel}:${handle}`;
-            const existingPerson = await prisma.platosEndUser.findFirst({
-              where: { ...tuple, externalUserId: syntheticExternalUserId },
-              select: { id: true },
-            });
-            if (existingPerson) {
-              personId = existingPerson.id as string;
-            } else {
-              try {
-                const mintedPerson = await prisma.platosEndUser.create({
-                  data: {
-                    ...tuple,
-                    externalUserId: syntheticExternalUserId,
-                    lastActiveAt: new Date(),
-                  },
-                  select: { id: true },
-                });
-                personId = mintedPerson.id as string;
-              } catch {
-                // Race: a concurrent insert won the externalUserId unique.
-                // Re-read + adopt the winner (link-not-merge).
-                const winner = await prisma.platosEndUser.findFirst({
-                  where: { ...tuple, externalUserId: syntheticExternalUserId },
-                  select: { id: true },
-                });
-                if (!winner) throw new Error("person find-or-create race unresolved");
-                personId = winner.id as string;
-              }
-            }
-
-            // Create the forced-verified anchor. sourceEntityId carries the
-            // asserting entity as the trust anchor (same trust level the
-            // channel runtime asserts verified slack claims under).
-            try {
-              await prisma.platosEndUserIdentity.create({
-                data: {
-                  ...tuple,
-                  platosEndUserId: personId,
-                  channel,
-                  handle,
-                  verified: true, // FORCED (§A.3 G5) — ignores the input flag.
-                  sourceEntityId: scope.entityId ?? null,
+          const claim = await prisma.endUserIdentity.findFirst({
+              where: {
+                organizationId: scope.organizationId,
+                issuer: `channel:${channel}`,
+                channel,
+                subject: handle,
+                disabledAt: null,
+                verifiedAt: { not: null },
+                endUser: {
+                  organizationId: scope.organizationId,
+                  ...currentEnvironmentPresence(scope.environmentId),
                 },
-              });
-              created = true;
-            } catch {
-              // Race: the (channel, handle) row was created between our step-1
-              // read and here. Re-read + adopt its owner (link-not-merge — the
-              // claim is authoritative, never re-pointed).
-              const raced = await prisma.platosEndUserIdentity.findFirst({
-                where: { ...tuple, channel, handle },
-                select: { platosEndUserId: true },
-              });
-              if (raced) personId = raced.platosEndUserId as string;
-            }
-          }
-
-          // ── Step 4: set linkedExternalId with idempotent OVERWRITE (§A.3 G4).
-          const person = await prisma.platosEndUser.findFirst({
-            where: { id: personId, ...tuple },
-            select: { id: true, linkedExternalId: true },
-          });
-          if (!person) {
-            // The person we just resolved vanished (cross-scope / delete race).
-            auditMutation(scope, "end_users.bind_external_id", params, null, "failed", startedAt, "not_found");
-            return { error: "not_found", channel, handle };
-          }
-          const oldLinked = (person.linkedExternalId as string | null) ?? null;
-
-          if (oldLinked === externalId) {
-            // Identical re-call → no-op.
-            const result = { ok: true, platosEndUserId: personId, externalId, created: false };
-            auditMutation(scope, "end_users.bind_external_id", params, result, "success", startedAt);
+              },
+            });
+          if (!claim) {
+            const result = {
+              error: "trusted_claim_required" as const,
+              message: "A verified runtime identity in the current Environment is required.",
+            };
+            auditMutation(scope, "end_users.bind_external_id", params, result, "failed", startedAt, result.error);
             return result;
           }
-
-          // Cross-person collision pre-check: the scoped @@unique (NULL-distinct)
-          // guards CROSS-PERSON reuse of one Composio user_id. Re-binding the
-          // SAME person's own claim never trips this (it targets the same row).
-          const clash = await prisma.platosEndUser.findFirst({
-            where: { ...tuple, linkedExternalId: externalId },
-            select: { id: true },
-          });
-          if (clash && (clash.id as string) !== personId) {
-            const conflict = {
-              error: "external_id_conflict",
-              existingPlatosEndUserId: clash.id as string,
-            };
-            auditMutation(scope, "end_users.bind_external_id", params, conflict, "failed", startedAt, "external_id_conflict");
-            return conflict;
-          }
-
-          // Overwrite (first set OR deliberate re-link). The @@unique is the
-          // race backstop: a concurrent cross-person claim throws here.
-          try {
-            await prisma.platosEndUser.update({
-              where: { id: personId },
-              data: { linkedExternalId: externalId },
+          const existingExternal = await prisma.endUserIdentity.findUnique({
+              where: {
+                organizationId_issuer_channel_subject: {
+                  organizationId: scope.organizationId,
+                  issuer: EXTERNAL_ISSUER,
+                  channel: EXTERNAL_CHANNEL,
+                  subject: externalId,
+                },
+              },
             });
-          } catch {
-            // Unique-violation race — a different person grabbed externalId
-            // between the pre-check and the write. Re-read the owner.
-            const raceClash = await prisma.platosEndUser.findFirst({
-              where: { ...tuple, linkedExternalId: externalId },
-              select: { id: true },
-            });
-            const conflict = {
-              error: "external_id_conflict",
-              existingPlatosEndUserId: (raceClash?.id as string) ?? null,
+          if (!existingExternal || existingExternal.endUserId !== claim.endUserId || !existingExternal.verifiedAt) {
+            const result = {
+              error: "trusted_claim_required" as const,
+              message: "The external id must already be verified by authenticated runtime persistence.",
             };
-            auditMutation(scope, "end_users.bind_external_id", params, conflict, "failed", startedAt, "external_id_conflict");
-            return conflict;
+            auditMutation(scope, "end_users.bind_external_id", params, result, "failed", startedAt, result.error);
+            return result;
           }
-
-          const result = { ok: true, platosEndUserId: personId, externalId, created };
-          // Record old→new on a re-link so the move (Composio identity change)
-          // is traceable in the audit trail; wire output stays the clean shape.
+          const result = {
+            ok: true as const,
+            platosEndUserId: claim.endUserId,
+            externalId,
+            created: false,
+          };
           auditMutation(
             scope,
             "end_users.bind_external_id",
             params,
-            oldLinked !== null ? { ...result, relinkedFrom: oldLinked } : result,
+            result,
             "success",
             startedAt,
           );
           return result;
-        } catch (err: any) {
-          const message = err?.message ?? String(err);
-          auditMutation(scope, "end_users.bind_external_id", params, null, "failed", startedAt, message);
-          return { error: "bind_failed", message };
+        } catch {
+          auditMutation(scope, "end_users.bind_external_id", params, null, "failed", startedAt, "internal_error");
+          return { error: "bind_failed", message: "External identity could not be bound." };
         }
       },
     },
-
     {
       name: "end_users.unlink_identity",
-      description:
-        "Detach a channel-native identity by its (channel, handle) within " +
-        "the token's scope. `channel` is lowercased before lookup; `handle` " +
-        "is trimmed. Scope-pinned — an identity in another scope is invisible " +
-        "and returns `{ ok: false, error: 'not_found' }`. Returns the row " +
-        "that was unlinked (channel, handle, verified, sourceEntityId, " +
-        "platosEndUserId) so the caller can re-link if needed. Never merges " +
-        "or re-points other rows.",
+      description: "Detach one channel identity in the token's organization without re-pointing any other identity.",
       inputSchema: {
         type: "object",
         required: ["channel", "handle"],
-        properties: {
-          channel: { type: "string" },
-          handle: { type: "string" },
-        },
+        properties: { channel: { type: "string" }, handle: { type: "string" } },
         additionalProperties: false,
       },
       async execute(params, scope) {
         const startedAt = Date.now();
         const channel = sanitizeChannel(params["channel"]);
         const handle = sanitizeHandle(params["handle"]);
-
-        if (!channel) {
-          const err = "channel must match /^[a-z0-9_-]{1,32}$/ (after lowercasing)";
-          auditMutation(scope, "end_users.unlink_identity", params, null, "failed", startedAt, err);
-          return { error: "invalid_channel", message: err };
-        }
-        if (!handle) {
-          const err = "handle must be trimmed, 1..256 chars, no control chars";
-          auditMutation(scope, "end_users.unlink_identity", params, null, "failed", startedAt, err);
-          return { error: "invalid_handle", message: err };
-        }
-
-        const tuple = scopeTuple(scope);
+        if (!channel || !handle) return { error: "invalid_params", message: "invalid channel or handle" };
         try {
-          // find-then-delete so we can (a) scope-filter the delete and
-          // (b) return exactly what was removed.
-          const existing = await prisma.platosEndUserIdentity.findFirst({
-            where: { ...tuple, channel, handle },
+          const existing = await prisma.endUserIdentity.findFirst({
+            where: {
+              organizationId: scope.organizationId,
+              issuer: MANUAL_ISSUER,
+              channel,
+              subject: handle,
+              disabledAt: null,
+              endUser: {
+                organizationId: scope.organizationId,
+                ...currentEnvironmentPresence(scope.environmentId),
+              },
+            },
           });
           if (!existing) {
             const result = { ok: false, error: "not_found", channel, handle };
-            auditMutation(
-              scope,
-              "end_users.unlink_identity",
-              params,
-              result,
-              "failed",
-              startedAt,
-              "not_found",
-            );
+            auditMutation(scope, "end_users.unlink_identity", params, result, "failed", startedAt, "not_found");
             return result;
           }
-          await prisma.platosEndUserIdentity.delete({ where: { id: existing.id } });
+          await prisma.endUserIdentity.delete({ where: { id: existing.id } });
           const result = {
             ok: true,
             unlinked: {
-              ...projectIdentity(existing as any),
-              platosEndUserId: existing.platosEndUserId,
+              ...projectIdentity(existing),
+              platosEndUserId: existing.endUserId,
             },
           };
           auditMutation(scope, "end_users.unlink_identity", params, result, "success", startedAt);
           return result;
-        } catch (err: any) {
-          const message = err?.message ?? String(err);
-          auditMutation(
-            scope,
-            "end_users.unlink_identity",
-            params,
-            null,
-            "failed",
-            startedAt,
-            message,
-          );
-          return { error: "unlink_failed", message };
+        } catch {
+          auditMutation(scope, "end_users.unlink_identity", params, null, "failed", startedAt, "internal_error");
+          return { error: "unlink_failed", message: "Identity could not be unlinked." };
         }
       },
     },

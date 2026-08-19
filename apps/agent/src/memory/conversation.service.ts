@@ -108,16 +108,32 @@ export class ConversationService {
     const claims = Array.isArray(scope.userIdentities)
       ? scope.userIdentities.filter((claim) => claim && typeof claim.channel === "string" && typeof claim.handle === "string").slice(0, 8)
       : [];
-    const candidates = [
+    const externalIdentity = {
+      issuer: "platos:external",
+      channel: "external",
+      subject: scope.userId.trim().slice(0, 256),
+      verified: true,
+    };
+    const sessionIdentity = {
+      issuer: "platos",
+      channel: "session",
+      subject: scope.userId.trim().slice(0, 256),
+      verified: true,
+    };
+    const channelIdentities = [
       ...claims.filter((claim) => claim.verified === true).map((claim) => ({
         issuer: `channel:${claim.channel.trim().toLowerCase()}`,
         channel: claim.channel.trim().toLowerCase(),
         subject: claim.handle.trim().slice(0, 256),
         verified: true,
       })),
-      { issuer: "platos", channel: "session", subject: scope.userId, verified: true },
     ].filter((claim) => claim.subject.length > 0);
+    if (!externalIdentity.subject) {
+      throw new Error("Conversation persistence requires an authenticated external subject");
+    }
+    const candidates = [externalIdentity, sessionIdentity, ...channelIdentities];
 
+    let resolvedEndUserId: string | null = null;
     for (const claim of candidates) {
       const identity = await this.prisma.endUserIdentity.findFirst({
         where: {
@@ -130,38 +146,96 @@ export class ConversationService {
         },
         select: { endUserId: true, subject: true },
       });
-      if (identity) return { id: identity.endUserId, subject: identity.subject };
+      if (identity) {
+        resolvedEndUserId = identity.endUserId;
+        break;
+      }
     }
 
-    const fallback = candidates.at(-1);
-    if (!fallback) throw new Error("Conversation persistence requires an end-user subject");
     return this.prisma.$transaction(async (tx) => {
-      const raced = await tx.endUserIdentity.findFirst({
+      const racedExternal = await tx.endUserIdentity.findUnique({
         where: {
-          organizationId: scope.organizationId,
-          issuer: fallback.issuer,
-          channel: fallback.channel,
-          subject: fallback.subject,
+          organizationId_issuer_channel_subject: {
+            organizationId: scope.organizationId,
+            issuer: externalIdentity.issuer,
+            channel: externalIdentity.channel,
+            subject: externalIdentity.subject,
+          },
         },
+        select: { endUserId: true },
+      });
+      const endUserId = racedExternal?.endUserId ?? resolvedEndUserId ?? (await tx.endUser.create({
+        data: { organizationId: scope.organizationId, displayName: opts?.displayName ?? null },
+        select: { id: true },
+      })).id;
+      const profile = opts?.email ? { email: opts.email } : undefined;
+      const verifiedAt = new Date();
+      const canonical = await tx.endUserIdentity.upsert({
+        where: {
+          organizationId_issuer_channel_subject: {
+            organizationId: scope.organizationId,
+            issuer: externalIdentity.issuer,
+            channel: externalIdentity.channel,
+            subject: externalIdentity.subject,
+          },
+        },
+        create: {
+          endUserId,
+          organizationId: scope.organizationId,
+          issuer: externalIdentity.issuer,
+          channel: externalIdentity.channel,
+          subject: externalIdentity.subject,
+          profile,
+          verifiedAt,
+        },
+        update: { disabledAt: null, verifiedAt },
         select: { endUserId: true, subject: true },
       });
-      if (raced) return { id: raced.endUserId, subject: raced.subject };
-      const endUser = await tx.endUser.create({
-        data: { organizationId: scope.organizationId, displayName: opts?.displayName ?? null },
-      });
-      const profile = opts?.email ? { email: opts.email } : undefined;
-      const identity = await tx.endUserIdentity.create({
-        data: {
-          endUserId: endUser.id,
-          organizationId: scope.organizationId,
-          issuer: fallback.issuer,
-          channel: fallback.channel,
-          subject: fallback.subject,
-          profile,
-          verifiedAt: new Date(),
+      await tx.endUserIdentity.upsert({
+        where: {
+          organizationId_issuer_channel_subject: {
+            organizationId: scope.organizationId,
+            issuer: sessionIdentity.issuer,
+            channel: sessionIdentity.channel,
+            subject: sessionIdentity.subject,
+          },
         },
+        create: {
+          endUserId: canonical.endUserId,
+          organizationId: scope.organizationId,
+          issuer: sessionIdentity.issuer,
+          channel: sessionIdentity.channel,
+          subject: sessionIdentity.subject,
+          verifiedAt,
+        },
+        update: { disabledAt: null, verifiedAt },
       });
-      return { id: identity.endUserId, subject: identity.subject };
+      for (const claim of channelIdentities) {
+        const existing = await tx.endUserIdentity.findUnique({
+          where: {
+            organizationId_issuer_channel_subject: {
+              organizationId: scope.organizationId,
+              issuer: claim.issuer,
+              channel: claim.channel,
+              subject: claim.subject,
+            },
+          },
+          select: { endUserId: true },
+        });
+        if (!existing) {
+          await tx.endUserIdentity.create({
+            data: {
+              endUserId: canonical.endUserId,
+              organizationId: scope.organizationId,
+              issuer: claim.issuer,
+              channel: claim.channel,
+              subject: claim.subject,
+              verifiedAt,
+            },
+          });
+        }
+      }
+      return { id: canonical.endUserId, subject: canonical.subject };
     });
   }
 
@@ -179,7 +253,13 @@ export class ConversationService {
     meta: { displayName?: string | null; email?: string | null },
   ): Promise<void> {
     const identity = await this.prisma.endUserIdentity.findFirst({
-      where: { organizationId: scope.organizationId, issuer: "platos", channel: "session", subject: externalUserId },
+      where: {
+        organizationId: scope.organizationId,
+        issuer: "platos:external",
+        channel: "external",
+        subject: externalUserId,
+        disabledAt: null,
+      },
       select: { id: true, endUserId: true, profile: true },
     });
     if (!identity) return;
@@ -195,6 +275,7 @@ export class ConversationService {
   private async projectThread(row: any, requestedUserId?: string): Promise<Thread> {
     const identities = row.endUser?.identities ?? [];
     const userId = identities.find((identity: any) => identity.subject === requestedUserId)?.subject
+      ?? identities.find((identity: any) => identity.issuer === "platos:external" && identity.channel === "external")?.subject
       ?? identities.find((identity: any) => identity.issuer === "platos" && identity.channel === "session")?.subject
       ?? identities[0]?.subject
       ?? row.endUserId;
@@ -286,6 +367,14 @@ export class ConversationService {
         identities: {
           some: {
             OR: [
+              {
+                organizationId: scope.organizationId,
+                issuer: "platos:external",
+                channel: "external",
+                subject: scope.userId,
+                disabledAt: null,
+                verifiedAt: { not: null as Date | null },
+              },
               {
                 organizationId: scope.organizationId,
                 issuer: "platos",

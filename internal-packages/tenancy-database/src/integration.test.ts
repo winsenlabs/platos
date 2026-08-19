@@ -236,6 +236,83 @@ describe("domain schema integration", () => {
     })).rejects.toThrow(/immutable/);
   });
 
+  test("keeps AdminAudit append-only and rolls back a promotion when audit insertion fails", async () => {
+    const audit = await control.adminAudit.create({
+      data: {
+        environmentId: seeded.environment.id,
+        actorUserId: seeded.user.id,
+        action: "agent.canary.promote",
+        subjectType: "Agent",
+        subjectId: seeded.agent.id,
+        before: { previousCurrentVersionId: seeded.agentVersion.id },
+        after: { currentVersionId: seeded.agentVersion.id },
+        source: "integration-test",
+      },
+    });
+    await expect(control.adminAudit.update({
+      where: { id: audit.id },
+      data: { reason: "rewrite" },
+    })).rejects.toThrow(/immutable/);
+    await expect(control.adminAudit.delete({ where: { id: audit.id } })).rejects.toThrow(/immutable/);
+    await expect(control.$executeRawUnsafe('TRUNCATE TABLE "AdminAudit"')).rejects.toThrow(/immutable/);
+
+    const canary = await control.agentVersion.create({
+      data: {
+        agentId: seeded.agent.id,
+        versionNumber: 991,
+        model: "integration:canary",
+        createdBy: seeded.user.id,
+      },
+    });
+    await control.agentBinding.update({
+      where: { id: seeded.agentBinding.id },
+      data: { canaryAgentVersionId: canary.id, canaryPercent: 25 },
+    });
+    const before = await control.agentBinding.findUniqueOrThrow({
+      where: { id: seeded.agentBinding.id },
+      select: { activeAgentVersionId: true, canaryAgentVersionId: true, canaryPercent: true },
+    });
+    await control.$executeRawUnsafe(`CREATE FUNCTION "public"."block_admin_audit_insert_for_test"() RETURNS trigger
+      LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'audit unavailable'; END; $$`);
+    await control.$executeRawUnsafe(`CREATE TRIGGER "AdminAudit_block_insert_for_test"
+      BEFORE INSERT ON "public"."AdminAudit" FOR EACH ROW
+      EXECUTE FUNCTION "public"."block_admin_audit_insert_for_test"()`);
+    try {
+      await expect(control.$transaction(async (tx) => {
+        await tx.agentBinding.update({
+          where: { id: seeded.agentBinding.id },
+          data: {
+            activeAgentVersionId: canary.id,
+            canaryAgentVersionId: null,
+            canaryPercent: 0,
+          },
+        });
+        await tx.adminAudit.create({
+          data: {
+            environmentId: seeded.environment.id,
+            actorUserId: seeded.user.id,
+            action: "agent.canary.promote",
+            subjectType: "Agent",
+            subjectId: seeded.agent.id,
+            before,
+            after: { currentVersionId: canary.id },
+          },
+        });
+      })).rejects.toThrow(/audit unavailable/);
+    } finally {
+      await control.$executeRawUnsafe(
+        'DROP TRIGGER "AdminAudit_block_insert_for_test" ON "public"."AdminAudit"'
+      );
+      await control.$executeRawUnsafe(
+        'DROP FUNCTION "public"."block_admin_audit_insert_for_test"()'
+      );
+    }
+    await expect(control.agentBinding.findUniqueOrThrow({
+      where: { id: seeded.agentBinding.id },
+      select: { activeAgentVersionId: true, canaryAgentVersionId: true, canaryPercent: true },
+    })).resolves.toEqual(before);
+  });
+
   test("enforces one provider default under real concurrent PostgreSQL writes", async () => {
     const direct = await Promise.allSettled(
       Array.from({ length: 8 }, async (_, index) => {
@@ -1171,7 +1248,7 @@ async function seedEveryModel(control: PrismaClient) {
       createdBy: user.id,
     },
   }));
-  track("AgentBinding", await control.agentBinding.create({
+  const agentBinding = track("AgentBinding", await control.agentBinding.create({
     data: {
       environmentId: environment.id,
       agentId: agent.id,
@@ -1750,6 +1827,7 @@ async function seedEveryModel(control: PrismaClient) {
     endUserIdentity,
     agent,
     agentVersion,
+    agentBinding,
     credential,
     cluster,
     thread,

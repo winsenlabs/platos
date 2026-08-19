@@ -17,6 +17,7 @@ import type { McpBearerTokenService } from "../mcp-bearer-token.service";
 import type { AuthService } from "../../auth/auth.service";
 import type { McpToolHandler } from "../mcp-router";
 import type { RequestScope } from "../../auth/scope.guard";
+import type { ControlDatabaseClient } from "../../shared/database.provider";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -31,7 +32,7 @@ function tuple(scope: RequestScope): ScopeTuple {
 export function buildMcpToolHandlers(deps: {
   auth: AuthService;
   bearerTokens: McpBearerTokenService;
-  prisma: any;
+  prisma: ControlDatabaseClient;
 }): McpToolHandler[] {
   const { auth, bearerTokens, prisma } = deps;
 
@@ -143,19 +144,19 @@ export function buildMcpToolHandlers(deps: {
           deletedAt: null,
         };
         if (entityPkFilter !== undefined) {
-          where["entityPk"] = entityPkFilter;
+          where["entityId"] = entityPkFilter;
         } else {
           // Default: only entity-pinned MCP clients (the platform-wide
           // K.10 clients aren't MCP-specific).
-          where["entityPk"] = { not: null };
+          where["entityId"] = { not: null };
         }
-        const clients = await prisma.platosOAuthClient.findMany({
+        const clients = await prisma.oAuthClient.findMany({
           where,
           select: {
             id: true,
             clientId: true,
             clientName: true,
-            entityPk: true,
+            entityId: true,
             redirectUris: true,
             createdAt: true,
           },
@@ -164,12 +165,12 @@ export function buildMcpToolHandlers(deps: {
         if (clients.length === 0) {
           return { clients: [] };
         }
-        const clientIds = (clients as Array<{ clientId: string }>).map((c) => c.clientId);
+        const clientIds = (clients as Array<{ id: string }>).map((c) => c.id);
         const now = new Date();
-        const activeTokens = await prisma.platosOAuthAccessToken.findMany({
+        const activeTokens = await prisma.oAuthAccessToken.findMany({
           where: {
             clientId: { in: clientIds },
-            scopeTuple: { path: ["organizationId"], equals: scope.organizationId },
+            organizationId: scope.organizationId,
             revokedAt: null,
             expiresAt: { gt: now },
           },
@@ -203,16 +204,16 @@ export function buildMcpToolHandlers(deps: {
             id: string;
             clientId: string;
             clientName: string;
-            entityPk: string | null;
+            entityId: string | null;
             redirectUris: string[];
             createdAt: Date;
           }>).map((c) => {
-            const stats = byClient.get(c.clientId);
+            const stats = byClient.get(c.id);
             return {
               id: c.id,
               clientId: c.clientId,
               clientName: c.clientName,
-              entityPk: c.entityPk ?? null,
+              entityPk: c.entityId ?? null,
               redirectUris: c.redirectUris,
               createdAt:
                 c.createdAt instanceof Date ? c.createdAt.toISOString() : String(c.createdAt),

@@ -91,6 +91,7 @@ import type { ProviderHealthService } from "../../auth/provider-health.service";
 import type { OrganizationService } from "../../admin/organization.service";
 import type { EnvironmentService } from "../../admin/environment.service";
 import type { AgentClusterService } from "../../agent-runtime/agent-cluster.service";
+import type { ChannelPersistenceService } from "../../channels/channel-persistence.service";
 
 /**
  * Factory that builds the handler list. Takes the services as
@@ -146,6 +147,7 @@ export function buildPlatformToolHandlers(deps: {
   orgs: OrganizationService;
   envs: EnvironmentService;
   clusters: AgentClusterService;
+  channelPersistence: ChannelPersistenceService;
   /**
    * Connect channels.* — evict the channels runtime's cached Chat instance
    * after update / delete / rotate_webhook_secret so credential/config/routing
@@ -782,7 +784,7 @@ export function buildPlatformToolHandlers(deps: {
   handlers.push(
     ...buildChannelToolHandlers({
       prisma: deps.prisma,
-      messageCrypto: deps.messageCrypto,
+      channelPersistence: deps.channelPersistence,
       toolAudit: deps.toolAudit,
       // Evict the cached Chat instance after mutations (stale-credential fix).
       invalidateRuntime: deps.invalidateChannelRuntime,
@@ -798,7 +800,7 @@ export function buildPlatformToolHandlers(deps: {
   handlers.push(
     ...buildChannelAppToolHandlers({
       prisma: deps.prisma,
-      messageCrypto: deps.messageCrypto,
+      channelPersistence: deps.channelPersistence,
       toolAudit: deps.toolAudit,
       // Evict the cached decrypted bot token(s) after mutations.
       invalidateApp: deps.invalidateChannelApp,
@@ -943,9 +945,8 @@ export function buildPlatformToolHandlers(deps: {
   );
 
   // ── MCPF-W4 alert_channels.* (6 tools) ────────────────────────────
-  // Wraps ProjectAlertChannel CRUD + a webhook test path. SLACK + EMAIL
-  // tests delegate to the webapp delivery service (the agent doesn't
-  // hold the Slack OAuth tokens or the email transport).
+  // Preserves the alert-channel inventory with stable unavailable responses
+  // until WIN-124 adds canonical persistence.
   handlers.push(
     ...buildAlertChannelToolHandlers({
       toolAudit: deps.toolAudit,
@@ -954,9 +955,8 @@ export function buildPlatformToolHandlers(deps: {
   );
 
   // ── MCPF-W6 monitoring.* (5 tools) ────────────────────────────────
-  // Read-only operator surface: list TaskRuns, fetch full thread traces,
-  // list traces with cost rollups, probe provider health. No approval
-  // gates (everything is read).
+  // Read-only operator surface: run history is explicitly unavailable;
+  // canonical thread traces, cost rollups, and provider health remain active.
   handlers.push(
     ...buildMonitoringToolHandlers({
       traces: deps.traces,
@@ -972,8 +972,7 @@ export function buildPlatformToolHandlers(deps: {
   //   environments.create / environments.delete
   //   environments.set_secret / environments.delete_secret
   //   clusters.create / clusters.add_agent
-  // Secrets NEVER leak through MCP — list returns names only, set/delete
-  // audit the name only.
+  // Credential tools fail before persistence/audit until WIN-124 lands.
   handlers.push(
     ...buildSettingsToolHandlers({
       orgs: deps.orgs,

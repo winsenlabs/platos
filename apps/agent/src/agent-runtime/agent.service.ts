@@ -34,7 +34,7 @@ import * as crypto from "crypto";
 import type { RequestScope } from "../auth/scope.guard";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import { PRISMA_TOKEN, environmentScopeWhere } from "../shared/database.provider";
 import { pickExternalId } from "../shared/end-user-id";
 import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
 import { ToolExecutorService } from "../tool-gateway/tool-executor.service";
@@ -3888,38 +3888,41 @@ export class AgentService {
       const deprecation_notice =
         opts.emittedAs === "list_tasks" ? bgoDeprecation("list_tasks", "list_bgos") : undefined;
       try {
-        // PPR-20 — scope filter MUST include runtimeEnvironmentId. Before
-        // this fix an agent in env=dev could enumerate prod tasks by
-        // project alone (Theme B + Runtime reviews flagged as cross-env
-        // leak). `runtimeEnvironmentId` dropped from the select too so the
-        // leak isn't visible in the response even if the where clause ever
-        // regresses.
-        const where: Record<string, unknown> = {
-          projectId: scope.projectId,
-          runtimeEnvironmentId: scope.environmentId,
-        };
-        if (filter) (where as any).slug = { contains: filter };
-        const rows = await this.prisma.backgroundWorkerTask.findMany({
-          where,
+        const rows = await this.prisma.job.findMany({
+          where: {
+            ...environmentScopeWhere(scope),
+            externalId: filter ? { contains: filter } : { not: null },
+          },
           select: {
-            slug: true,
-            filePath: true,
-            triggerSource: true,
+            externalId: true,
+            triggerType: true,
             description: true,
           },
-          distinct: ["slug"],
-          orderBy: { slug: "asc" },
+          orderBy: { externalId: "asc" },
           take: limit ?? 50,
         });
+        const bgos = rows.map((row: {
+          externalId: string;
+          triggerType: string;
+          description: string | null;
+        }) => ({
+          slug: row.externalId,
+          filePath: null,
+          triggerSource: row.triggerType,
+          description: row.description,
+        }));
         // Theme BGO — dual-emit `bgos` + `tasks` (identical array) for one
         // release so callers on either name see the rows.
         return {
-          bgos: rows,
-          tasks: rows,
+          bgos,
+          tasks: bgos,
           ...(deprecation_notice ? { deprecation_notice } : {}),
         };
-      } catch (err: any) {
-        return { status: "failed", error: err?.message || `${opts.emittedAs} failed` };
+      } catch {
+        return {
+          status: "failed",
+          error: "Background operation catalog is unavailable.",
+        };
       }
     };
     // `list_tasks` was previously gated on `metaEnabled("list_tasks")` with
@@ -3927,7 +3930,7 @@ export class AgentService {
     if (bgoMetaEnabled("list_bgos", "list_tasks", false)) {
       tools.list_bgos = {
         description:
-          "List background operations (BGOs) available in the current project/env. Returns `{ bgos: [{ slug, filePath?, triggerSource, description? }] }`. Optional text filter. Backed by the underlying trigger.dev task catalog.",
+          "List canonical background-operation Jobs available in the current project/env. Returns `{ bgos: [{ slug, filePath, triggerSource, description? }] }`. Optional text filter; filePath is null because the canonical Job model has no source-path field.",
         inputSchema: listBgosParameters,
         execute: async (args) => listBgosHandler(args, { emittedAs: "list_bgos" }),
       };
@@ -3951,39 +3954,10 @@ export class AgentService {
         status: z.string().optional().describe("Filter by run status (e.g. 'COMPLETED', 'FAILED')"),
         limit: z.number().int().min(1).max(200).optional().describe("Max rows (default 25)"),
       }),
-      execute: async ({ taskId, status, limit }) => {
-        try {
-          const where: Record<string, unknown> = {
-            projectId: scope.projectId,
-            runtimeEnvironmentId: scope.environmentId,
-          };
-          if (taskId) (where as any).taskIdentifier = taskId;
-          if (status) (where as any).status = status;
-          const rows = await this.prisma.taskRun.findMany({
-            where,
-            select: {
-              friendlyId: true,
-              taskIdentifier: true,
-              status: true,
-              createdAt: true,
-              completedAt: true,
-            },
-            orderBy: { createdAt: "desc" },
-            take: limit ?? 25,
-          });
-          return {
-            runs: rows.map((r: any) => ({
-              id: r.friendlyId,
-              taskIdentifier: r.taskIdentifier,
-              status: r.status,
-              startedAt: r.createdAt,
-              completedAt: r.completedAt,
-            })),
-          };
-        } catch (err: any) {
-          return { status: "failed", error: err?.message || "list_runs failed" };
-        }
-      },
+      execute: async () => ({
+        error: "unavailable",
+        message: "Task run history is not available through the canonical control database.",
+      }),
     };
 
     // schedule_bgo (Theme BGO — formerly `trigger_with_delay`) — schedule a

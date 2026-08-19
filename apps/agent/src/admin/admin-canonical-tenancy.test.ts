@@ -14,7 +14,7 @@ function organizationService(prisma: Record<string, unknown>) {
 }
 
 function environmentService(prisma: Record<string, unknown>) {
-  return new EnvironmentService(prisma, { invalidate: vi.fn() } as any);
+  return new EnvironmentService(prisma as unknown as ControlDatabaseClient);
 }
 
 describe("admin canonical organization tenancy", () => {

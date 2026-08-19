@@ -1041,27 +1041,33 @@ export class AgentCrudService {
     if (!binding) throw new Error("Agent not found");
     if (!binding.canaryAgentVersionId) throw new Error("No canary to promote — canaryVersionId is null");
     const canaryId = binding.canaryAgentVersionId;
-    await this.prisma.agentBinding.update({
-      where: { id: binding.id },
-      data: {
-        activeAgentVersionId: canaryId,
-        canaryAgentVersionId: null,
-        canaryPercent: 0,
-      },
+    await this.prisma.$transaction(async (tx: any) => {
+      await tx.agentBinding.update({
+        where: { id: binding.id },
+        data: {
+          activeAgentVersionId: canaryId,
+          canaryAgentVersionId: null,
+          canaryPercent: 0,
+        },
+      });
+      await tx.adminAudit.create({
+        data: {
+          environmentId: scope.environmentId,
+          actorUserId: scope.userId ?? null,
+          action: "agent.canary.promote",
+          subjectType: "Agent",
+          subjectId: agentId,
+          before: {
+            previousCurrentVersionId: binding.activeAgentVersionId,
+            previousCanaryVersionId: canaryId,
+            previousCanaryPercent: binding.canaryPercent,
+          },
+          after: { currentVersionId: canaryId },
+          source: "api",
+        },
+      });
     });
     await this.invalidate(agentId, scope);
-    this.adminAudit?.record(scope, {
-      action: "agent.canary.promote",
-      subjectType: "Agent",
-      subjectId: agentId,
-      beforeJson: {
-        previousCurrentVersionId: binding.activeAgentVersionId,
-        previousCanaryVersionId: canaryId,
-        previousCanaryPercent: binding.canaryPercent,
-      },
-      afterJson: { currentVersionId: canaryId },
-      source: "api",
-    });
     return (await this.findById(agentId, scope))!;
   }
 

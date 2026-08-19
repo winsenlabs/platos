@@ -37,6 +37,7 @@ import type { ToolAuditService } from "../../monitoring/tool-audit.service";
 import type { MonitoringApprovalsService } from "../../monitoring/approvals.service";
 import type { CostService } from "../../monitoring/cost.service";
 import type { McpToolHandler } from "../mcp-router";
+import type { ControlDatabaseClient } from "../../shared/database.provider";
 import type { RequestScope } from "../../auth/scope.guard";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
@@ -68,7 +69,7 @@ export interface ReflectionDeps {
    *   - tool matrix snapshot (PlatosEntityToolMapping + PlatosToolDefinition)
    *   - MCP feeder list (PlatosConnectedEntity)
    */
-  prisma: any;
+  prisma: ControlDatabaseClient;
 }
 
 // ── small line-diff helper ─────────────────────────────────────────────
@@ -207,14 +208,26 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
         // 2. Load the target message — bound to the verified threadId so a
         //    crafted messageId belonging to another scope's thread can't
         //    leak through. Prisma `findFirst` scoped by threadId short-circuits.
-        const message = await prisma.platosAgentMessage.findFirst({
+        const message = await prisma.turn.findFirst({
           where: { id: messageId, threadId },
           select: {
             id: true,
-            role: true,
-            content: true,
-            toolCalls: true,
-            responseJson: true,
+            output: true,
+            costCents: true,
+            steps: {
+              select: {
+                inputTokens: true,
+                outputTokens: true,
+                toolCalls: {
+                  select: {
+                    toolName: true,
+                    arguments: true,
+                    result: true,
+                    status: true,
+                  },
+                },
+              },
+            },
             createdAt: true,
             status: true,
           },
@@ -224,102 +237,84 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
         }
 
         const agentId = thread.agentId;
-        const responseJson = (message.responseJson ?? {}) as Record<string, unknown>;
-        const usage = (responseJson["usage"] ?? {}) as {
-          inputTokens?: number;
-          outputTokens?: number;
-        };
-        const costCents = Number(responseJson["cost_cents"] ?? 0) || 0;
+        const usage = message.steps.reduce(
+          (total, step) => ({
+            inputTokens: total.inputTokens + (step.inputTokens ?? 0),
+            outputTokens: total.outputTokens + (step.outputTokens ?? 0),
+          }),
+          { inputTokens: 0, outputTokens: 0 },
+        );
+        const costCents = Number(message.costCents ?? 0) || 0;
 
         // 3. Tools-in-scope at turn time. Best-effort snapshot via the
         //    tool matrix — we don't store per-message tool lists, so this
         //    is the CURRENT matrix, not the historical one. Flagged as
         //    such in the response.
-        let toolsInScope: Array<{ name: string; enabled: boolean; entityId: string | null; toolId: string }> = [];
-        try {
-          const rows = await prisma.platosEntityToolMapping.findMany({
-            where: { environmentId: scope.environmentId },
-            select: {
-              enabled: true,
-              toolId: true,
-              entity: { select: { entityId: true } },
-              tool: { select: { name: true } },
-            },
-          });
-          toolsInScope = (rows as any[]).map((r) => ({
-            name: r.tool?.name ?? "(unknown)",
-            enabled: !!r.enabled,
-            entityId: r.entity?.entityId ?? null,
-            toolId: r.toolId,
-          }));
-        } catch {
-          // Schema drift / mock prisma in tests — leave empty rather than
-          // failing the whole explanation.
-          toolsInScope = [];
-        }
+        const toolRows = await prisma.environmentEntityTool.findMany({
+          where: { environmentId: scope.environmentId },
+          select: {
+            enabled: true,
+            toolId: true,
+            entity: { select: { externalId: true } },
+            tool: { select: { name: true } },
+          },
+        });
+        const toolsInScope = toolRows.map((row) => ({
+          name: row.tool.name,
+          enabled: row.enabled,
+          entityId: row.entity.externalId,
+          toolId: row.toolId,
+        }));
 
         // 4. Tools the LLM actually picked — stored on the assistant
          //   message's toolCalls column as produced by the runtime.
-        const rawToolCalls = Array.isArray(message.toolCalls)
-          ? (message.toolCalls as Array<Record<string, unknown>>)
-          : [];
-        const pickedTools = rawToolCalls.map((tc) => ({
-          type: (tc["type"] as string) ?? "unknown",
-          tool: (tc["tool"] as string) ?? (tc["toolName"] as string) ?? "(unknown)",
-          args: tc["args"] ?? tc["arguments"] ?? null,
-          result: tc["result"] ?? null,
+        const pickedTools = message.steps.flatMap((step) => step.toolCalls).map((toolCall) => ({
+          type: "tool",
+          tool: toolCall.toolName,
+          args: toolCall.arguments,
+          result: toolCall.result,
+          status: toolCall.status,
         }));
 
         // 5. MCP feeders — every connected entity in the project owns an
         //    `mcpUrls` list. These are the servers whose tools end up in
         //    the matrix via the tool-sync handshake.
-        let mcpFeeders: Array<{ entityId: string; displayName: string; mcpUrls: string[] }> = [];
-        try {
-          const entities = await prisma.platosConnectedEntity.findMany({
-            where: {
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-            },
-            select: { entityId: true, displayName: true, mcpUrls: true },
-          });
-          mcpFeeders = (entities as any[]).map((e) => ({
-            entityId: e.entityId,
-            displayName: e.displayName,
-            mcpUrls: Array.isArray(e.mcpUrls) ? (e.mcpUrls as string[]) : [],
-          }));
-        } catch {
-          mcpFeeders = [];
-        }
+        const entities = await prisma.entity.findMany({
+          where: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
+          select: { externalId: true, displayName: true, mcpUrls: true },
+        });
+        const mcpFeeders = entities.map((entity) => ({
+          entityId: entity.externalId,
+          displayName: entity.displayName,
+          mcpUrls: entity.mcpUrls,
+        }));
 
         // 6. Approvals in this thread. `list` is already scope-filtered
         //    server-side.
         const approvalPage = await approvals.list(tuple(scope), { threadId, limit: 200 });
 
-        // 7. Budget blocks — surfaced by the runtime as safety rows tagged
-        //    `budget_block`. Best-effort direct read; we don't import
+        // 7. Budget blocks — canonical safety rows use detector="budget"
+        //    with action="block" or "warn". Best-effort direct read; we don't import
         //    SafetyEventService here since the feature set is read-only.
-        let budgetBlocks: Array<{ kind: string; reason: string | null; createdAt: string }> = [];
-        try {
-          const rows = await prisma.platosSafetyEvent.findMany({
-            where: {
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-              threadId,
-              kind: { in: ["budget_block", "budget_warning"] },
-            },
-            orderBy: { createdAt: "desc" },
-            select: { kind: true, reason: true, createdAt: true },
-            take: 50,
-          });
-          budgetBlocks = (rows as any[]).map((r) => ({
-            kind: r.kind,
-            reason: r.reason ?? null,
-            createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
-          }));
-        } catch {
-          budgetBlocks = [];
-        }
+        const budgetRows = await prisma.safetyEvent.findMany({
+          where: {
+            environmentId: scope.environmentId,
+            threadId,
+            detector: "budget",
+            action: { in: ["block", "warn"] },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { action: true, detail: true, createdAt: true },
+          take: 50,
+        });
+        const budgetBlocks = budgetRows.map((row) => ({
+          kind: row.action === "block" ? "budget_block" : "budget_warning",
+          reason: row.detail,
+          createdAt: row.createdAt.toISOString(),
+        }));
 
         // 8. Timeline — derive from the spans log. For the one-message
         //    detail we filter spans by time window (message.createdAt ±
@@ -380,7 +375,7 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
           },
           message: {
             id: message.id,
-            role: message.role,
+            role: "assistant",
             createdAt: new Date(message.createdAt).toISOString(),
             status: message.status,
           },
@@ -670,28 +665,9 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
         if (!a) throw new Error(`agent A ${agentIdA} not found in scope`);
         if (!b) throw new Error(`agent B ${agentIdB} not found in scope`);
 
-        // contextMapping lives on PlatosAgent but isn't on the CRUD
-        // AgentRecord type today (CTX.1 schema extension). Pull it
-        // directly via prisma, scope-filtered just in case.
-        let contextMappingA: Record<string, unknown> | null = null;
-        let contextMappingB: Record<string, unknown> | null = null;
-        try {
-          const rows = await prisma.platosAgent.findMany({
-            where: {
-              id: { in: [agentIdA, agentIdB] },
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-            },
-            select: { id: true, contextMapping: true },
-          });
-          for (const r of rows as Array<{ id: string; contextMapping: any }>) {
-            if (r.id === agentIdA) contextMappingA = (r.contextMapping ?? null) as Record<string, unknown> | null;
-            if (r.id === agentIdB) contextMappingB = (r.contextMapping ?? null) as Record<string, unknown> | null;
-          }
-        } catch {
-          // Leave both null — diff will just show no changes on that field.
-        }
+        // No canonical Agent or AgentVersion field maps to legacy contextMapping.
+        const contextMappingA: Record<string, unknown> | null = null;
+        const contextMappingB: Record<string, unknown> | null = null;
 
         const identity = {
           name: a.name === b.name ? null : { from: a.name, to: b.name },

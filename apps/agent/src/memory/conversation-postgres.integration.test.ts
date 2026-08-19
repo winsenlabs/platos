@@ -8,6 +8,7 @@ import {
   ConversationRevisionNotSupportedError,
   ConversationService,
 } from "./conversation.service";
+import { ErasureService } from "../privacy/erasure.service";
 
 vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
@@ -70,6 +71,13 @@ describe("ConversationService PostgreSQL integrity", () => {
         versionNumber: 1,
         model: "fixture:model",
         createdBy: user.id,
+      },
+    });
+    await prisma.agentBinding.create({
+      data: {
+        environmentId: environment.id,
+        agentId: agent.id,
+        activeAgentVersionId: agentVersion.id,
       },
     });
     const endUser = await prisma.endUser.create({
@@ -206,6 +214,156 @@ describe("ConversationService PostgreSQL integrity", () => {
       Array.from({ length: writeCount }, (_, index) => index + 1),
     );
     expect(new Set(rows.map((row) => row.inputText)).size).toBe(writeCount);
+  });
+
+  it("erases an ordinary authenticated runtime user through the canonical external tuple", async () => {
+    const externalUserId = "ordinary-runtime-subject";
+    const runtimeScope = {
+      ...scope(),
+      userId: externalUserId,
+      principal: "end-user" as const,
+      userIdentities: [
+        { channel: "email", handle: "ordinary-runtime@test.invalid", verified: true },
+      ],
+    };
+    const thread = await service.createThread(runtimeScope, ids.agentId, "Erase me");
+    const identities = await prisma.endUserIdentity.findMany({
+      where: { endUserId: thread.endUserId },
+      orderBy: [{ issuer: "asc" }, { channel: "asc" }],
+    });
+    expect(identities).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        issuer: "platos:external",
+        channel: "external",
+        subject: externalUserId,
+        verifiedAt: expect.any(Date),
+      }),
+      expect.objectContaining({
+        issuer: "platos",
+        channel: "session",
+        subject: externalUserId,
+        verifiedAt: expect.any(Date),
+      }),
+      expect.objectContaining({
+        issuer: "channel:email",
+        channel: "email",
+        subject: "ordinary-runtime@test.invalid",
+        verifiedAt: expect.any(Date),
+      }),
+    ]));
+
+    const audit = await prisma.toolCallAudit.create({
+      data: {
+        environmentId: ids.environmentId,
+        agentId: ids.agentId,
+        threadId: thread.id,
+        toolName: "runtime_tool",
+        arguments: {
+          __platosAudit: {
+            userId: null,
+            mcpUserId: null,
+            endUserId: externalUserId,
+          },
+          value: { plaintext: "subject payload" },
+        },
+        result: { plaintext: "subject result" },
+        error: "subject error",
+        status: "FAILED",
+        latencyMs: 12,
+      },
+    });
+    await prisma.safetyEvent.create({
+      data: {
+        environmentId: ids.environmentId,
+        agentId: ids.agentId,
+        detector: "runtime",
+        action: "block",
+        severity: "high",
+        metadata: { __platosSafety: { userId: externalUserId } },
+      },
+    });
+    const otherOrganization = await prisma.organization.create({
+      data: { slug: "erasure-other-org", name: "Erasure Other Org" },
+    });
+    const otherProject = await prisma.project.create({
+      data: {
+        organizationId: otherOrganization.id,
+        slug: "erasure-other-project",
+        name: "Erasure Other Project",
+      },
+    });
+    const otherEnvironment = await prisma.environment.create({
+      data: {
+        projectId: otherProject.id,
+        slug: "development",
+        name: "Development",
+      },
+    });
+    const otherAudit = await prisma.toolCallAudit.create({
+      data: {
+        environmentId: otherEnvironment.id,
+        toolName: "other_org_runtime_tool",
+        arguments: {
+          __platosAudit: {
+            userId: null,
+            mcpUserId: null,
+            endUserId: externalUserId,
+          },
+          value: { plaintext: "other organization payload" },
+        },
+        result: { plaintext: "other organization result" },
+        error: "other organization error",
+        status: "FAILED",
+        latencyMs: 21,
+      },
+    });
+    const otherSafety = await prisma.safetyEvent.create({
+      data: {
+        environmentId: otherEnvironment.id,
+        detector: "runtime",
+        action: "block",
+        severity: "high",
+        metadata: { __platosSafety: { userId: externalUserId } },
+      },
+    });
+
+    const erasure = new ErasureService(prisma, {} as any);
+    const subject = await erasure.discoverSubject(externalUserId, ids.organizationId);
+    expect(subject.platosEndUserIds).toEqual([thread.endUserId]);
+    const inventory = await erasure.inventory(subject, ids.organizationId);
+    expect(inventory).toMatchObject({ toolCallAudits: 1, safetyEvents: 1 });
+    const outcome = await (erasure as any).postgresExecutor(subject, ids.organizationId);
+
+    expect(outcome).toMatchObject({ status: "done", verificationStatus: "passed" });
+    await expect(prisma.endUser.findUnique({ where: { id: thread.endUserId } })).resolves.toBeNull();
+    await expect(prisma.safetyEvent.count({
+      where: {
+        environment: { project: { organizationId: ids.organizationId } },
+        metadata: { path: ["__platosSafety", "userId"], equals: externalUserId },
+      },
+    })).resolves.toBe(0);
+    await expect(prisma.toolCallAudit.findUnique({ where: { id: audit.id } })).resolves.toMatchObject({
+      endUserId: null,
+      arguments: {
+        __platosAudit: { userId: null, mcpUserId: null, endUserId: null },
+      },
+      result: null,
+      error: null,
+      toolName: "runtime_tool",
+      status: "FAILED",
+      latencyMs: 12,
+    });
+    await expect(prisma.toolCallAudit.findUnique({ where: { id: otherAudit.id } })).resolves.toMatchObject({
+      arguments: {
+        __platosAudit: { userId: null, mcpUserId: null, endUserId: externalUserId },
+        value: { plaintext: "other organization payload" },
+      },
+      result: { plaintext: "other organization result" },
+      error: "other organization error",
+    });
+    await expect(prisma.safetyEvent.findUnique({ where: { id: otherSafety.id } })).resolves.toMatchObject({
+      metadata: { __platosSafety: { userId: externalUserId } },
+    });
   });
 });
 

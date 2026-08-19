@@ -103,7 +103,7 @@
       },
       {
         "name": "agents.clone_from",
-        "description": "Composite — snapshot an existing agent's config and create a fresh copy in the SAME scope with a new name + slug. Copies promptBlocks, dynamicBlocks, tool + meta-tool config, memory/extraction policy, output schema, and contextMapping. Does NOT copy threads, versions, or canary pointers — the clone starts clean.",
+        "description": "Composite — snapshot an existing agent's config and create a fresh copy in the SAME scope with a new name + slug. Copies promptBlocks, dynamicBlocks, tool + meta-tool config, memory/extraction policy, and output schema. contextMapping is not part of the canonical agent graph and is not copied. Does NOT copy threads, versions, or canary pointers — the clone starts clean.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -220,7 +220,7 @@
       },
       {
         "name": "agents.deploy_with_skills",
-        "description": "Composite — create a new agent + enable a list of scope-resident skills on it + (optionally) set its contextMapping. Returns the fully-configured agent. Destructive — defaults to require_approval at platform tier.",
+        "description": "Composite — create a new agent + enable a list of scope-resident skills on it + return the fully-configured agent. contextMapping is rejected because it has no canonical persistence field. Destructive — defaults to require_approval at platform tier.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -373,7 +373,7 @@
       },
       {
         "name": "alert_channels.create",
-        "description": "Register a new alert channel scoped to the caller's project. Required: `type` (EMAIL|SLACK|WEBHOOK), `name`, `alertTypes` (≥1 of TASK_RUN / DEPLOYMENT_FAILURE / DEPLOYMENT_SUCCESS / ERROR_GROUP), and `channel` (type-specific config). EMAIL: `{ email }`. WEBHOOK: `{ url, secret? }` — secret is encrypted with the webapp-shared ENCRYPTION_KEY before persistence; if omitted a 32-byte random secret is generated. SLACK: `{ channelId, channelName, integrationId? }` (operator must have already linked the Slack workspace via the dashboard — this tool does NOT initiate OAuth). Optional `environmentTypes` default to [STAGING, PRODUCTION]; `deduplicationKey` enables idempotent retries. Audit-logged (channel type + name + masked URL host — never the webhook URL path or any secret).",
+        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -400,25 +400,13 @@
               "type": "array",
               "minItems": 1,
               "items": {
-                "type": "string",
-                "enum": [
-                  "TASK_RUN",
-                  "DEPLOYMENT_FAILURE",
-                  "DEPLOYMENT_SUCCESS",
-                  "ERROR_GROUP"
-                ]
+                "type": "string"
               }
             },
             "environmentTypes": {
               "type": "array",
               "items": {
-                "type": "string",
-                "enum": [
-                  "DEVELOPMENT",
-                  "STAGING",
-                  "PRODUCTION",
-                  "PREVIEW"
-                ]
+                "type": "string"
               }
             },
             "deduplicationKey": {
@@ -441,7 +429,7 @@
       },
       {
         "name": "alert_channels.delete",
-        "description": "Remove an alert channel by id. Cascades through `ProjectAlert` + `ProjectAlertStorage` rows attached to this channel (foreign keys are ON DELETE CASCADE). Returns `{ error: 'not_found' }` for unknown / cross-project ids. Audit-logged.",
+        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -464,7 +452,7 @@
       },
       {
         "name": "alert_channels.get_integration",
-        "description": "Inspect the OAuth integration linked to a channel (SLACK + future Discord etc). Returns `{ provider, externalOrgId, integrationId, lastUpdatedAt, hasToken }` — NEVER returns the OAuth access token. EMAIL + WEBHOOK channels return `{ linked: false }` (they don't carry an OAuth integration). Returns `{ error: 'not_found' }` for unknown / cross-project ids.",
+        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -487,7 +475,7 @@
       },
       {
         "name": "alert_channels.list",
-        "description": "List `ProjectAlertChannel` rows for the caller's project. Channels are project-scoped (one channel routes alerts across every environment type listed in `environmentTypes`). Optional `type` narrows by EMAIL / SLACK / WEBHOOK; `enabled` filters by active status. Webhook secrets + Slack tokens are stripped — WEBHOOK rows surface only `url` + `hasSecret`.",
+        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -520,7 +508,7 @@
       },
       {
         "name": "alert_channels.test",
-        "description": "Send a synthetic test notification to a channel. Currently supports WEBHOOK channels — the agent decrypts the channel's secret + signs a `{ type: 'test', message }` payload with HMAC-SHA-256 + POSTs to the configured URL. EMAIL + SLACK tests delegate to the webapp delivery service (returns `{ supported: false }` until the webapp ships a test endpoint). Returns `{ ok, status, latencyMs, urlHost }`. NEVER echoes the webhook URL or secret in the response.",
+        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -547,7 +535,7 @@
       },
       {
         "name": "alert_channels.update",
-        "description": "Patch an existing alert channel by id. Mutable fields: `name`, `alertTypes`, `environmentTypes`, `enabled`, and the type-specific `channel` payload (matches the create-time shape). The channel `type` itself is immutable — delete + recreate to switch (e.g. EMAIL → WEBHOOK). Secrets follow the same encryption path as create. Returns `{ error: 'not_found' }` for unknown / cross-project ids. Audit-logged.",
+        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -565,25 +553,13 @@
             "alertTypes": {
               "type": "array",
               "items": {
-                "type": "string",
-                "enum": [
-                  "TASK_RUN",
-                  "DEPLOYMENT_FAILURE",
-                  "DEPLOYMENT_SUCCESS",
-                  "ERROR_GROUP"
-                ]
+                "type": "string"
               }
             },
             "environmentTypes": {
               "type": "array",
               "items": {
-                "type": "string",
-                "enum": [
-                  "DEVELOPMENT",
-                  "STAGING",
-                  "PRODUCTION",
-                  "PREVIEW"
-                ]
+                "type": "string"
               }
             },
             "enabled": {
@@ -2103,7 +2079,7 @@
       },
       {
         "name": "end_users.bind_external_id",
-        "description": "Adopt an EXTERNAL id (e.g. the Walle DB user id = Composio `user_id`) onto the PlatosEndUser behind a VERIFIED (channel, handle) claim, so per-user Composio tools resolve `{{endUserId}}` to that external id. Keyed by the claim, NOT the cuid — callers (e.g. Walle finish-setup) supply only `(channel, handle, externalId)`.\n\nFor Slack, `handle` is `<team>:<slackUserId>` where `<team> = teamId ?? enterpriseId` (an org/Grid install has teamId null ⇒ keyed by enterpriseId) — the SAME team-qualified handle the channel runtime mints. `channel` is lowercased + must match /^[a-z0-9_-]{1,32}$/; `externalId` is trimmed, 1..256 chars, no control chars.\n\nBehaviour: if a (channel, handle) identity exists, adopt its owner; else find-or-create a person by externalUserId=`<channel>:<handle>` and create the identity row with verified:true FORCED (so a later inbound message anchors on it) — regardless of the `verified` input flag. Then set linkedExternalId with idempotent OVERWRITE: an identical re-call is a no-op (created:false); a re-bind of the same claim to a NEW externalId re-links (moves the Composio identity). If a DIFFERENT person in scope already holds that externalId the call is refused with `{ error: 'external_id_conflict', existingPlatosEndUserId }`. Scope-pinned; audited (records old→new on a re-link).",
+        "description": "Verify that an authenticated runtime external id belongs to the person behind a verified channel claim. This tool never creates or promotes identity trust.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -2137,7 +2113,7 @@
       },
       {
         "name": "end_users.get",
-        "description": "Fetch a single PlatosEndUser in the token's scope by EXACTLY ONE of `externalUserId` (the opaque id forwarded by the entity backend) or `platosEndUserId` (the canonical cuid). Returns the person's profile (id, externalUserId, displayName, email, threadCount, lastActiveAt, metadata) plus every linked identity (channel, handle, verified, sourceEntityId, createdAt). Scope-pinned — cross-scope ids return `{ error: 'not_found' }`.",
+        "description": "Fetch one organization-owned EndUser by exactly one of externalUserId or platosEndUserId, including canonical identities and scope-local thread activity.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -2160,7 +2136,7 @@
       },
       {
         "name": "end_users.link_identity",
-        "description": "Manually attach a channel-native identity to a PlatosEndUser. The person must already exist in the token's scope. `channel` is lowercased + must match /^[a-z0-9_-]{1,32}$/ (e.g. email, phone, slack, teams, whatsapp); `handle` is the channel-native id (email addr, E.164 phone, Slack user id) — trimmed, 1..256 chars, no control chars. Manual links carry NO trust anchor (sourceEntityId = null). If the (channel, handle) already points at a DIFFERENT person the call returns `{ error: 'identity_conflict' }` naming the existing linkage and does NOT re-point (link-not-merge). Re-linking the SAME person updates the verified flag + metadata.",
+        "description": "Attach a canonical EndUserIdentity to an organization-owned EndUser. Existing identities are never re-pointed to another person.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -2197,7 +2173,7 @@
       },
       {
         "name": "end_users.unlink_identity",
-        "description": "Detach a channel-native identity by its (channel, handle) within the token's scope. `channel` is lowercased before lookup; `handle` is trimmed. Scope-pinned — an identity in another scope is invisible and returns `{ ok: false, error: 'not_found' }`. Returns the row that was unlinked (channel, handle, verified, sourceEntityId, platosEndUserId) so the caller can re-link if needed. Never merges or re-points other rows.",
+        "description": "Detach one channel identity in the token's organization without re-pointing any other identity.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -2323,7 +2299,7 @@
       },
       {
         "name": "entities.get_linked_agents",
-        "description": "List the agents allowed to use this entity's tools. Empty array = unrestricted (every agent in scope sees the tools); non-empty = only the listed PlatosAgent.id values.",
+        "description": "Legacy compatibility endpoint. Entity-level agent allow-lists are unsupported by the canonical control schema.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -2371,7 +2347,7 @@
       },
       {
         "name": "entities.get_test_credentials",
-        "description": "Fetch the entity's stored test-credential headers — DECRYPTED in memory, returned in plaintext. Caller already has scope access; encryption is purely an at-rest defence. Audit-logged.",
+        "description": "Legacy compatibility endpoint. Entity test credentials are unsupported by the canonical control schema.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -2591,7 +2567,7 @@
       },
       {
         "name": "entities.set_linked_agents",
-        "description": "Replace the per-entity agent allow-list. Every supplied agentId must belong to (org, project, env) — forged ids return an error. Empty array clears the restriction (= every agent in scope sees the tools). Mirrors PATCH /entities/:id linkedAgentIds.",
+        "description": "Legacy compatibility endpoint. Entity-level agent allow-lists are unsupported by the canonical control schema.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -2675,7 +2651,7 @@
       },
       {
         "name": "entities.set_test_credentials",
-        "description": "Store encrypted test-credential headers used when 'Test' is clicked from the dashboard. Validates RFC 7230 names + 4096-char value cap + 32-header total. Pass `null` to clear. Audit-logged.",
+        "description": "Legacy compatibility endpoint. Entity test credentials are unsupported by the canonical control schema.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -2885,7 +2861,7 @@
       },
       {
         "name": "environments.delete_secret",
-        "description": "Remove a secret from the caller's (project, environment) scope. Owner-gated. Idempotent — already-missing secrets return `{ deleted: false }` rather than throwing. Audit logs the NAME only.",
+        "description": "Environment credential management is unavailable pending the canonical WIN-124 persistence cutover.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -2924,7 +2900,7 @@
       },
       {
         "name": "environments.list_secrets",
-        "description": "List secret NAMES (and version + timestamps) for the caller's (project, environment) scope. Caller must be an org member. **NEVER returns secret values** — use the dashboard or deploy-pipeline injection to read them.",
+        "description": "Environment credential management is unavailable pending the canonical WIN-124 persistence cutover.",
         "inputSchema": {
           "type": "object",
           "properties": {},
@@ -2940,7 +2916,7 @@
       },
       {
         "name": "environments.set_secret",
-        "description": "Write a secret to the caller's (project, environment) scope. Owner-gated (ADMIN). Encrypted at rest with the webapp-shared `ENCRYPTION_KEY` (AES-256-GCM). Audit logs record the NAME only — never the value or any prefix. Validates name format (`^[A-Z][A-Z0-9_]{0,63}$`) + 8KiB value cap.",
+        "description": "Environment credential management is unavailable pending the canonical WIN-124 persistence cutover.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -4926,7 +4902,7 @@
       },
       {
         "name": "platos_tasks.create",
-        "description": "Create a new operator-authored task. Required: `taskId` (1-64 lowercase alphanumeric + hyphens, unique within scope), `displayName`, `handler` (raw JavaScript source — must `export function run(payload, ctx)`). Optional: `triggerType` (manual|schedule|webhook|agent-spawn, default 'manual'), `scheduleCron`, `scheduleTimezone`, `allowedAgentIds`, `payloadSchema`, `timeout` (seconds, default 300), `maxRetries` (default 3). The handler is syntax-checked before save; rows with syntax errors are stored with `isActive=false` + a `syntaxError` field surfaced in the response. Audit-logged (`taskId`, `displayName`, `handlerLength` only — never the handler source itself).",
+        "description": "Create a canonical Environment-owned job after syntax validation.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -5006,7 +4982,7 @@
       },
       {
         "name": "platos_tasks.delete",
-        "description": "Delete a task by id. Removes the row + cascades nothing (TaskRun rows are not joined to PlatosTask — they remain in the trigger engine's history). Returns `{ error: 'not_found' }` for unknown / cross-scope ids. Audit-logged.",
+        "description": "Delete one canonical job in the current Environment.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -5031,7 +5007,7 @@
       },
       {
         "name": "platos_tasks.get",
-        "description": "Fetch a single `PlatosTask` by id. Includes the raw `handler` source. Returns `{ error: 'not_found' }` for unknown / cross-scope ids — never echoes the row. Server-side `compiledHandler` cache is stripped before returning.",
+        "description": "Fetch one canonical job in scope, including its handler source.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -5056,7 +5032,7 @@
       },
       {
         "name": "platos_tasks.get_run",
-        "description": "Fetch a single `TaskRun` (by friendly id `run_*` or full cuid). Restricted to runs whose `taskIdentifier='platos-custom-task'` and whose `runtimeEnvironmentId` + `projectId` match the caller's scope. Returns the parsed payload + status + timings. Returns `{ error: 'not_found' }` for cross-scope or non-platos-task runs.",
+        "description": "Run details are unavailable through the canonical control database.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -5079,7 +5055,7 @@
       },
       {
         "name": "platos_tasks.get_runs",
-        "description": "List recent `TaskRun` rows for a `PlatosTask`. Filters `taskIdentifier='platos-custom-task'` + the agent's environment, then matches each run's `payload.taskRowId` against the supplied task `id`. Returns runs ordered most-recent first. Optional `status` narrows the underlying enum (PENDING, EXECUTING, COMPLETED_SUCCESSFULLY, FAILED, etc.). Default limit 50, max 200.",
+        "description": "Run history is unavailable through the canonical control database.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -5110,7 +5086,7 @@
       },
       {
         "name": "platos_tasks.list",
-        "description": "List operator-authored custom tasks (`PlatosTask`) in the current scope. Returns metadata only — `handler` source is omitted to keep the response small + avoid leaking embedded secrets in bulk reads. Use `platos_tasks.get` to fetch a specific task with handler code.",
+        "description": "List canonical jobs in the current Environment. Handler source is omitted.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -5146,7 +5122,7 @@
       },
       {
         "name": "platos_tasks.run",
-        "description": "Manually dispatch a task via trigger.dev. Refuses if `isActive` is false. Requires `TRIGGER_SECRET_KEY` set in the agent environment (returns `{ queued: false, message: ... }` if missing). Optional `payload` is JSON-stringified into the execution context. Returns `{ queued: true, runId, taskId }` on success. Audit-logged (taskId + payload-key list — payload values are NOT echoed in the audit row to avoid leaking PII).",
+        "description": "Dispatch an active canonical job through Trigger.dev.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -5174,7 +5150,7 @@
       },
       {
         "name": "platos_tasks.set_enabled",
-        "description": "Toggle the `isActive` flag on a task. Disabling a task makes it non-dispatchable via `platos_tasks.run` and `run_platos_task` meta-tool. Re-enabling will run a fresh syntax check on the stored handler — if it fails, the call rejects with `{ error: 'syntax_error' }` and `isActive` stays false. Audit-logged.",
+        "description": "Enable or disable a canonical job by changing its WorkStatus.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -5201,7 +5177,7 @@
       },
       {
         "name": "platos_tasks.update",
-        "description": "Patch a task by id. Any field omitted is left untouched. If `handler` is supplied AND differs from the stored value, it is syntax-checked, `handlerVersion` is bumped, and `isActive` flips based on the syntax check (a clean handler reactivates a previously-broken task). Audit-logged (changed fields + new `handlerLength` if rewritten — never the handler source).",
+        "description": "Update canonical job fields. Handler changes are syntax checked.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -5292,7 +5268,7 @@
       },
       {
         "name": "platos_tasks.validate_handler",
-        "description": "Compile-check a JavaScript handler source without executing it. Uses `new Function(payload, ctx, source)` to surface parse errors. Returns `{ valid: true }` on a clean parse, `{ valid: false, error: '...' }` otherwise. No DB writes, no audit — pure utility for the dashboard editor + agent IDE flows.\n\n**SYNTAX: CommonJS only.** The runtime executor (platos-custom-task) wraps the handler in a function expression, so use either:\n  • a bare expression body that returns a value, or\n  • `module.exports = async (payload, ctx) => { … }`\nESM syntax (`export default`, top-level `import`, top-level `await` outside an async fn) WILL fail to compile here and at runtime — this is intentional, the executor uses CommonJS-style `new Function` rather than dynamic `import()`. If you need npm modules, use `require(\"name\")` from inside the handler body.",
+        "description": "Syntax-check CommonJS handler source without executing it.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -5790,7 +5766,7 @@
       },
       {
         "name": "runs.list_all",
-        "description": "List trigger.dev TaskRuns in the caller's scope. Filters by optional `taskIdentifier`, `status` (PENDING / EXECUTING / COMPLETED_SUCCESSFULLY / COMPLETED_WITH_ERRORS / FAILED / CANCELED / etc.), and `since` (ISO timestamp). Newest-first. Returns metadata only — payload + traceContext are NEVER echoed.",
+        "description": "Task run history is unavailable until a canonical run-history model is added to the control database.",
         "inputSchema": {
           "type": "object",
           "properties": {

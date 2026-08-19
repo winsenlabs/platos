@@ -28,9 +28,10 @@ import * as crypto from "node:crypto";
 
 import type { McpToolHandler } from "../mcp-router";
 import type { RequestScope } from "../../auth/scope.guard";
-import type { MessageCryptoService } from "../../monitoring/message-crypto.service";
 import type { ToolAuditService } from "../../monitoring/tool-audit.service";
 import { validateAgentRouting } from "../../agent-runtime/channel-routing";
+import type { ControlDatabaseClient } from "../../shared/database.provider";
+import type { ChannelPersistenceService } from "../../channels/channel-persistence.service";
 
 const CHANNEL_PROVIDERS = new Set(["slack", "telegram", "whatsapp", "discord"]);
 
@@ -44,6 +45,18 @@ function scopeTuple(scope: RequestScope) {
     projectId: scope.projectId,
     environmentId: scope.environmentId,
   };
+}
+
+function agentBindingWhere(scope: RequestScope, agentId: string) {
+  return {
+    agentId,
+    environmentId: scope.environmentId,
+    environment: {
+      projectId: scope.projectId,
+      project: { organizationId: scope.organizationId },
+    },
+    agent: { projectId: scope.projectId },
+  } as const;
 }
 
 /** The full one-time webhook path (embeds the secret) — create + rotate only. */
@@ -81,8 +94,10 @@ function webhookPathRedacted(connectionId: string): string {
  * know whether credentials are set without ever seeing them.
  */
 function projectRow(row: any) {
-  const { credentials, webhookSecret, ...rest } = row;
+  const { credentials, webhookSecret, credential, environment, ...rest } = row;
   void webhookSecret;
+  void credential;
+  void environment;
   return { ...rest, hasCredentials: credentials != null };
 }
 
@@ -162,8 +177,8 @@ function buildSlackAppManifest(appName: string, requestUrl: string) {
 }
 
 export function buildChannelToolHandlers(deps: {
-  prisma: any;
-  messageCrypto: MessageCryptoService;
+  prisma: ControlDatabaseClient;
+  channelPersistence: ChannelPersistenceService;
   toolAudit: ToolAuditService;
   /**
    * Evict the channels RUNTIME's cached Chat instance for a connection after
@@ -175,7 +190,7 @@ export function buildChannelToolHandlers(deps: {
    */
   invalidateRuntime?: (connectionId: string) => void;
 }): McpToolHandler[] {
-  const { prisma, messageCrypto, toolAudit } = deps;
+  const { prisma, channelPersistence, toolAudit } = deps;
 
   /** Best-effort runtime-cache eviction — never fails the mutation. */
   function evictRuntime(connectionId: string): void {
@@ -221,17 +236,11 @@ export function buildChannelToolHandlers(deps: {
    * validation in `entities.set_linked_agents` (org + project + env filter).
    */
   async function agentInScope(scope: RequestScope, agentId: string): Promise<boolean> {
-    const agent = await prisma.platosAgent.findFirst({
-      where: { id: agentId, ...scopeTuple(scope) },
+    const agent = await prisma.agentBinding.findFirst({
+      where: agentBindingWhere(scope, agentId),
       select: { id: true },
     });
     return !!agent;
-  }
-
-  /** Encrypt a credentials object into the stored envelope, or null to clear. */
-  function encryptCredentials(raw: unknown): string | null {
-    if (!isPlainObject(raw)) return null;
-    return JSON.stringify(messageCrypto.encryptJsonField(raw));
   }
 
   return [
@@ -301,7 +310,7 @@ export function buildChannelToolHandlers(deps: {
         const displayName =
           typeof params["displayName"] === "string" ? params["displayName"].trim() : undefined;
         const configJson = isPlainObject(params["config"]) ? params["config"] : undefined;
-        const encryptedCreds = encryptCredentials(params["credentials"]);
+        const hasCredentialInput = isPlainObject(params["credentials"]);
         const routingProvided =
           params["agentRouting"] !== undefined && params["agentRouting"] !== null;
 
@@ -311,7 +320,7 @@ export function buildChannelToolHandlers(deps: {
           provider,
           agentId,
           displayName,
-          hasCredentials: encryptedCreds !== null,
+          hasCredentials: hasCredentialInput,
           hasConfig: configJson !== undefined,
           hasAgentRouting: routingProvided,
         };
@@ -361,17 +370,14 @@ export function buildChannelToolHandlers(deps: {
 
         const webhookSecret = crypto.randomBytes(32).toString("hex");
         try {
-          const row = await prisma.platosChannelConnection.create({
-            data: {
-              ...scopeTuple(scope),
-              provider,
-              agentId,
-              ...(displayName !== undefined ? { displayName } : {}),
-              ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
-              ...(encryptedCreds !== null ? { credentials: encryptedCreds } : {}),
-              ...(configJson !== undefined ? { config: configJson } : {}),
-              webhookSecret,
-            },
+          const row = await channelPersistence.createConnection(scopeTuple(scope), {
+            provider,
+            defaultAgentId: agentId,
+            ...(displayName !== undefined ? { displayName } : {}),
+            ...(agentRoutingData !== undefined ? { agentRouting: agentRoutingData } : {}),
+            credentials: isPlainObject(params["credentials"]) ? params["credentials"] : null,
+            config: configJson ?? null,
+            webhookSecret,
           });
           const result = {
             ...projectRow(row),
@@ -468,9 +474,9 @@ export function buildChannelToolHandlers(deps: {
         }
 
         // In-scope guard (forged ids rejected) + name fallback for the manifest.
-        const agent = await prisma.platosAgent.findFirst({
-          where: { id: agentId, ...scopeTuple(scope) },
-          select: { id: true, name: true },
+        const agent = await prisma.agentBinding.findFirst({
+          where: agentBindingWhere(scope, agentId),
+          select: { agent: { select: { id: true, name: true } } },
         });
         if (!agent) {
           auditMutation(
@@ -506,21 +512,18 @@ export function buildChannelToolHandlers(deps: {
         }
 
         const appName =
-          (displayName || (agent as any).name || "Platos Agent").trim() || "Platos Agent";
+          (displayName || agent.agent.name || "Platos Agent").trim() || "Platos Agent";
 
         // (1) CREATE the connection row FIRST so its inbound URL (id + secret)
         // exists — the chicken-and-egg the manifest request_url depends on.
         const webhookSecret = crypto.randomBytes(32).toString("hex");
         let row: any;
         try {
-          row = await prisma.platosChannelConnection.create({
-            data: {
-              ...scopeTuple(scope),
-              provider,
-              agentId,
-              ...(displayName ? { displayName } : {}),
-              webhookSecret,
-            },
+          row = await channelPersistence.createConnection(scopeTuple(scope), {
+            provider,
+            defaultAgentId: agentId,
+            ...(displayName ? { displayName } : {}),
+            webhookSecret,
           });
         } catch (err: any) {
           const message = err?.message ?? String(err);
@@ -531,7 +534,7 @@ export function buildChannelToolHandlers(deps: {
         /** Best-effort rollback — a credential-less row verifies/posts nothing. */
         const rollback = async () => {
           try {
-            await prisma.platosChannelConnection.delete({ where: { id: row.id } });
+            await channelPersistence.deleteConnection(scopeTuple(scope), row.id);
           } catch {
             // Already gone / raced — nothing to undo.
           }
@@ -597,11 +600,6 @@ export function buildChannelToolHandlers(deps: {
         const oauthAuthorizeUrl =
           typeof json.oauth_authorize_url === "string" ? json.oauth_authorize_url : null;
 
-        const encryptedCreds = encryptCredentials({
-          ...(clientId ? { clientId } : {}),
-          ...(clientSecret ? { clientSecret } : {}),
-          ...(signingSecret ? { signingSecret } : {}),
-        });
         const config: Record<string, unknown> = {
           ...(appId ? { slackAppId: appId } : {}),
           // clientId is PUBLIC (rides the authorize URL) — surface it in config
@@ -611,13 +609,20 @@ export function buildChannelToolHandlers(deps: {
 
         let updated: any;
         try {
-          updated = await prisma.platosChannelConnection.update({
-            where: { id: row.id },
-            data: {
-              ...(encryptedCreds !== null ? { credentials: encryptedCreds } : {}),
+          updated = await channelPersistence.updateConnection(
+            scopeTuple(scope),
+            row.id,
+            {},
+            {
+              credentials: {
+                ...(clientId ? { clientId } : {}),
+                ...(clientSecret ? { clientSecret } : {}),
+                ...(signingSecret ? { signingSecret } : {}),
+              },
               config,
             },
-          });
+          );
+          if (!updated) throw new Error("channel connection unavailable after write");
         } catch {
           // The app WAS created at Slack but the secret store failed. Do NOT
           // roll back (that orphans a live Slack app pointing here) — return the
@@ -678,14 +683,9 @@ export function buildChannelToolHandlers(deps: {
           typeof params["provider"] === "string" ? params["provider"].trim().toLowerCase() : undefined;
         const agentId =
           typeof params["agentId"] === "string" ? params["agentId"].trim() : undefined;
-        const rows = await prisma.platosChannelConnection.findMany({
-          where: {
-            ...scopeTuple(scope),
-            ...(provider ? { provider } : {}),
-            ...(agentId ? { agentId } : {}),
-          },
-          orderBy: { createdAt: "desc" },
-        });
+        const rows = (await channelPersistence.listConnections(scopeTuple(scope))).filter(
+          (row) => (!provider || row.provider === provider) && (!agentId || row.agentId === agentId),
+        );
         return {
           channels: (rows as any[]).map((r) => ({
             ...projectRow(r),
@@ -711,9 +711,7 @@ export function buildChannelToolHandlers(deps: {
       async execute(params, scope) {
         const id = String(params["id"] ?? "").trim();
         if (!id) return { error: "invalid_params", message: "id required" };
-        const row = await prisma.platosChannelConnection.findFirst({
-          where: { id, ...scopeTuple(scope) },
-        });
+        const row = await channelPersistence.loadScopedConnection(scopeTuple(scope), id);
         if (!row) return { error: "not_found", id };
         return { ...projectRow(row), webhookPath: webhookPathRedacted(row.id) };
       },
@@ -794,10 +792,7 @@ export function buildChannelToolHandlers(deps: {
           return { error: "invalid_params", message: err };
         }
 
-        const existing = await prisma.platosChannelConnection.findFirst({
-          where: { id, ...scopeTuple(scope) },
-          select: { id: true },
-        });
+        const existing = await channelPersistence.loadScopedConnection(scopeTuple(scope), id);
         if (!existing) {
           auditMutation(scope, "channels.update", auditArgs, null, "failed", startedAt, "not_found");
           return { error: "not_found", id };
@@ -828,12 +823,12 @@ export function buildChannelToolHandlers(deps: {
             );
             return { error: "unknown_agent_id", agentId };
           }
-          data.agentId = agentId;
+          data.defaultAgentId = agentId;
         }
         if (agentRoutingKeyPresent) {
           const ar = params["agentRouting"];
           if (ar === null) {
-            data.agentRouting = null; // explicit clear → default agent only
+            data.agentRouting = []; // explicit clear → default agent only
           } else {
             // array → validate + normalize (rule agentIds checked in-scope,
             // same guard as the default agentId); anything else → error.
@@ -854,18 +849,26 @@ export function buildChannelToolHandlers(deps: {
           }
         }
         if (Object.prototype.hasOwnProperty.call(params, "config")) {
-          data.config = isPlainObject(params["config"]) ? params["config"] : null;
+          // Stored inside the channel Credential envelope.
         }
         if (hasCredentials) {
           // object → re-encrypt; null (or anything non-object) → clear.
-          data.credentials = encryptCredentials(params["credentials"]);
+          // Stored inside the channel Credential envelope.
         }
 
-        if (Object.keys(data).length === 0) {
+        const credentialData: Record<string, unknown> = {};
+        if (Object.prototype.hasOwnProperty.call(params, "config")) {
+          credentialData.config = isPlainObject(params["config"]) ? params["config"] : null;
+        }
+        if (hasCredentials) {
+          credentialData.credentials = isPlainObject(params["credentials"])
+            ? params["credentials"]
+            : null;
+        }
+
+        if (Object.keys(data).length === 0 && Object.keys(credentialData).length === 0) {
           // No-op patch — return existing without bumping updatedAt.
-          const row = await prisma.platosChannelConnection.findFirst({
-            where: { id, ...scopeTuple(scope) },
-          });
+          const row = await channelPersistence.loadScopedConnection(scopeTuple(scope), id);
           if (!row) {
             // Raced a concurrent delete between the existence check and this
             // refetch — report not_found instead of throwing on the destructure.
@@ -877,10 +880,13 @@ export function buildChannelToolHandlers(deps: {
         }
 
         try {
-          const updated = await prisma.platosChannelConnection.update({
-            where: { id },
+          const updated = await channelPersistence.updateConnection(
+            scopeTuple(scope),
+            id,
             data,
-          });
+            credentialData,
+          );
+          if (!updated) return { error: "not_found", id };
           evictRuntime(id);
           auditMutation(scope, "channels.update", auditArgs, { id }, "success", startedAt);
           return { ...projectRow(updated), webhookPath: webhookPathRedacted(updated.id) };
@@ -908,16 +914,13 @@ export function buildChannelToolHandlers(deps: {
         const startedAt = Date.now();
         const id = String(params["id"] ?? "").trim();
         if (!id) return { error: "invalid_params", message: "id required" };
-        const existing = await prisma.platosChannelConnection.findFirst({
-          where: { id, ...scopeTuple(scope) },
-          select: { id: true },
-        });
+        const existing = await channelPersistence.loadScopedConnection(scopeTuple(scope), id);
         if (!existing) {
           auditMutation(scope, "channels.delete", { id }, null, "failed", startedAt, "not_found");
           return { ok: false, error: "not_found", id };
         }
         try {
-          await prisma.platosChannelConnection.delete({ where: { id } });
+          await channelPersistence.deleteConnection(scopeTuple(scope), id);
           evictRuntime(id);
           const result = { ok: true, id };
           auditMutation(scope, "channels.delete", { id }, result, "success", startedAt);
@@ -949,10 +952,7 @@ export function buildChannelToolHandlers(deps: {
         const startedAt = Date.now();
         const id = String(params["id"] ?? "").trim();
         if (!id) return { error: "invalid_params", message: "id required" };
-        const existing = await prisma.platosChannelConnection.findFirst({
-          where: { id, ...scopeTuple(scope) },
-          select: { id: true },
-        });
+        const existing = await channelPersistence.loadScopedConnection(scopeTuple(scope), id);
         if (!existing) {
           auditMutation(
             scope,
@@ -967,10 +967,13 @@ export function buildChannelToolHandlers(deps: {
         }
         const webhookSecret = crypto.randomBytes(32).toString("hex");
         try {
-          const updated = await prisma.platosChannelConnection.update({
-            where: { id },
-            data: { webhookSecret },
-          });
+          const updated = await channelPersistence.updateConnection(
+            scopeTuple(scope),
+            id,
+            {},
+            { webhookSecret },
+          );
+          if (!updated) return { error: "not_found", id };
           evictRuntime(id);
           const result = {
             ...projectRow(updated),

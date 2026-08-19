@@ -290,6 +290,13 @@ describe("clean-slate domain schema", () => {
     expect(migration).toContain('CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_impersonation_audit_mutation"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_credential_audit_mutation"()');
+    expect(migration).toContain('CREATE FUNCTION "public"."reject_admin_audit_mutation"()');
+    for (const operation of ["update", "delete", "truncate"]) {
+      expect(migration).toContain(`CREATE TRIGGER "AdminAudit_immutable_${operation}"`);
+    }
+    expect(migration).toContain(
+      'REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."AdminAudit" FROM PUBLIC'
+    );
     expect(migration).toContain('CREATE UNIQUE INDEX "AccessKey_one_active_per_environment"');
     expect(migration).toContain('WHERE "revokedAt" IS NULL AND "validUntil" IS NULL');
     expect(migration).toContain('CONSTRAINT "OperatorSession_tokenHash_check"');

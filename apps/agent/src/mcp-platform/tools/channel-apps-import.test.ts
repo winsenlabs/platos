@@ -1,70 +1,7 @@
-/**
- * Connect v3 (operator install tier) — channel_apps.* install-import MCP tools.
- *
- * The tool surface (import_installation / revoke_installation /
- * installations_status) mirrors the REST controller byte-for-byte per the file's
- * own contract; these focused tests pin the tool-specific wiring: scope is taken
- * from the verified token (never args), the bot token is encrypted with the same
- * envelope, import is idempotent + scope-guarded, and the status tool reflects a
- * soft-revoke. Mirrors the REST test's harness.
- */
-import { describe, it, expect, beforeEach } from "vitest";
-import { buildChannelAppToolHandlers } from "./channel-apps";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { McpToolHandler } from "../mcp-router";
+import { buildChannelAppToolHandlers } from "./channel-apps";
 
-const matches = (row: any, where: Record<string, unknown>): boolean =>
-  Object.entries(where).every(([k, v]) => row[k] === v);
-
-function makePrisma(apps: any[]) {
-  const installs: any[] = [];
-  const agents: any[] = [];
-  let seq = 0;
-  return {
-    apps,
-    installs,
-    agents,
-    platosChannelApp: {
-      findFirst: async ({ where }: any) => apps.find((a) => matches(a, where)) ?? null,
-    },
-    platosAgent: {
-      findFirst: async ({ where }: any) => agents.find((a) => matches(a, where)) ?? null,
-    },
-    platosChannelInstallation: {
-      findFirst: async ({ where }: any) => installs.find((r) => matches(r, where)) ?? null,
-      findMany: async ({ where }: any) => installs.filter((r) => matches(r, where)),
-      create: async ({ data }: any) => {
-        const row = {
-          id: `inst_${++seq}`,
-          teamId: null,
-          enterpriseId: null,
-          isEnterpriseInstall: false,
-          teamName: null,
-          botUserId: null,
-          grantedScopes: [],
-          installedByUserId: null,
-          agentId: null,
-          agentRouting: null,
-          status: "active",
-          revokedAt: null,
-          lastEventAt: null,
-          ...data,
-        };
-        installs.push(row);
-        return row;
-      },
-      update: async ({ where, data }: any) => {
-        const row = installs.find((r) => r.id === where.id);
-        Object.assign(row, data);
-        return row;
-      },
-    },
-  };
-}
-
-const messageCrypto = {
-  encryptJsonField: (v: unknown) => ({ __enc: true, v }),
-  decryptJsonField: (e: any) => e?.v,
-} as any;
 const toolAudit = { record: async () => undefined } as any;
 
 const SCOPE = {
@@ -76,100 +13,224 @@ const SCOPE = {
 };
 const TOKEN = {} as any;
 
-function tools(prisma: any): Record<string, McpToolHandler> {
-  const handlers = buildChannelAppToolHandlers({ prisma, messageCrypto, toolAudit });
-  return Object.fromEntries(handlers.map((h) => [h.name, h]));
+type Installation = {
+  id: string;
+  appId: string;
+  teamId: string | null;
+  enterpriseId: string | null;
+  isEnterpriseInstall: boolean;
+  teamName: string | null;
+  botToken: string;
+  refreshToken: string | null;
+  tokenExpiresAt: Date | null;
+  botUserId: string | null;
+  grantedScopes: string[];
+  installedByUserId: string | null;
+  agentId: string | null;
+  agentRouting: unknown;
+  status: string;
+  revokedAt: Date | null;
+  lastEventAt: Date | null;
+};
+
+function app() {
+  return {
+    id: "app1",
+    organizationId: "org1",
+    projectId: "proj1",
+    environmentId: "env1",
+    provider: "slack",
+    defaultAgentId: null,
+  };
 }
 
-const app = () => ({
-  id: "app1",
-  organizationId: "org1",
-  projectId: "proj1",
-  environmentId: "env1",
-  provider: "slack",
-  defaultAgentId: null,
-});
+function harness() {
+  const apps = [app()];
+  const installs: Installation[] = [];
+  let sequence = 0;
+  const loadScopedApp = async (scope: typeof SCOPE, appId: string) =>
+    apps.find(
+      (candidate) =>
+        candidate.id === appId &&
+        candidate.organizationId === scope.organizationId &&
+        candidate.projectId === scope.projectId &&
+        candidate.environmentId === scope.environmentId,
+    ) ?? null;
+  const loadApp = async (appId: string) => apps.find((candidate) => candidate.id === appId) ?? null;
+  const loadInstallation = async (installationId: string, appId?: string) =>
+    installs.find(
+      (installation) =>
+        installation.id === installationId && (!appId || installation.appId === appId),
+    ) ?? null;
+
+  const channelPersistence = {
+    loadScopedApp,
+    loadApp,
+    loadInstallation,
+    listInstallations: async (scope: typeof SCOPE, appId: string) =>
+      (await loadScopedApp(scope, appId))
+        ? installs.filter((installation) => installation.appId === appId)
+        : null,
+    upsertInstallationGrant: async (
+      appRow: ReturnType<typeof app>,
+      coordinates: {
+        teamId: string | null;
+        enterpriseId: string | null;
+        isEnterpriseInstall: boolean;
+      },
+      grant: {
+        botToken: string;
+        refreshToken?: string | null;
+        tokenExpiresAt?: Date | null;
+        botUserId?: string | null;
+        grantedScopes: string[];
+        displayName?: string | null;
+        installedByUserId?: string | null;
+        defaultAgentId?: string | null;
+        agentRouting?: unknown;
+      },
+    ) => {
+      let installation = installs.find(
+        (candidate) =>
+          candidate.appId === appRow.id &&
+          candidate.teamId === coordinates.teamId &&
+          candidate.enterpriseId === coordinates.enterpriseId,
+      );
+      if (!installation) {
+        installation = {
+          id: `inst_${++sequence}`,
+          appId: appRow.id,
+          teamId: coordinates.teamId,
+          enterpriseId: coordinates.enterpriseId,
+          isEnterpriseInstall: coordinates.isEnterpriseInstall,
+          teamName: grant.displayName ?? null,
+          botToken: grant.botToken,
+          refreshToken: grant.refreshToken ?? null,
+          tokenExpiresAt: grant.tokenExpiresAt ?? null,
+          botUserId: grant.botUserId ?? null,
+          grantedScopes: grant.grantedScopes,
+          installedByUserId: grant.installedByUserId ?? null,
+          agentId: grant.defaultAgentId ?? null,
+          agentRouting: grant.agentRouting ?? null,
+          status: "active",
+          revokedAt: null,
+          lastEventAt: null,
+        };
+        installs.push(installation);
+      } else {
+        Object.assign(installation, {
+          isEnterpriseInstall: coordinates.isEnterpriseInstall,
+          teamName: grant.displayName ?? null,
+          botToken: grant.botToken,
+          refreshToken: grant.refreshToken ?? null,
+          tokenExpiresAt: grant.tokenExpiresAt ?? null,
+          botUserId: grant.botUserId ?? null,
+          grantedScopes: grant.grantedScopes,
+          installedByUserId: grant.installedByUserId ?? null,
+          status: "active",
+          revokedAt: null,
+          ...(grant.defaultAgentId !== undefined ? { agentId: grant.defaultAgentId } : {}),
+          ...(grant.agentRouting !== undefined ? { agentRouting: grant.agentRouting } : {}),
+        });
+      }
+      return installation;
+    },
+    revokeInstallation: async (scope: typeof SCOPE, appId: string, installationId: string) => {
+      if (!(await loadScopedApp(scope, appId))) return null;
+      const installation = await loadInstallation(installationId, appId);
+      if (!installation) return null;
+      installation.status = "revoked";
+      installation.revokedAt = new Date();
+      return installation;
+    },
+  };
+  const prisma = { agentBinding: { findFirst: async () => null } } as any;
+  const handlers = buildChannelAppToolHandlers({
+    prisma,
+    channelPersistence: channelPersistence as any,
+    toolAudit,
+  });
+  return {
+    installs,
+    tools: Object.fromEntries(handlers.map((handler) => [handler.name, handler])) as Record<
+      string,
+      McpToolHandler
+    >,
+  };
+}
 
 describe("channel_apps.import_installation (MCP)", () => {
-  let prisma: any;
-  let t: Record<string, McpToolHandler>;
+  let h: ReturnType<typeof harness>;
 
   beforeEach(() => {
-    prisma = makePrisma([app()]);
-    t = tools(prisma);
+    h = harness();
   });
 
-  it("exposes the three new tools", () => {
-    expect(t["channel_apps.import_installation"]).toBeTruthy();
-    expect(t["channel_apps.revoke_installation"]).toBeTruthy();
-    expect(t["channel_apps.installations_status"]).toBeTruthy();
+  it("exposes the three installation tools", () => {
+    expect(h.tools["channel_apps.import_installation"]).toBeTruthy();
+    expect(h.tools["channel_apps.revoke_installation"]).toBeTruthy();
+    expect(h.tools["channel_apps.installations_status"]).toBeTruthy();
   });
 
-  it("imports + encrypts the bot token, scope taken from the token", async () => {
-    const res: any = await t["channel_apps.import_installation"].execute(
+  it("imports the bot token through the canonical persistence boundary", async () => {
+    const result: any = await h.tools["channel_apps.import_installation"].execute(
       { appId: "app1", teamId: "T1", botToken: "xoxb-secret" },
       SCOPE,
       TOKEN,
     );
-    expect(res.hasBotToken).toBe(true);
-    expect(res.botToken).toBeUndefined();
-    expect(messageCrypto.decryptJsonField(JSON.parse(prisma.installs[0].botToken))).toBe(
-      "xoxb-secret",
-    );
+    expect(result.hasBotToken).toBe(true);
+    expect(result.botToken).toBeUndefined();
+    expect(h.installs[0].botToken).toBe("xoxb-secret");
   });
 
-  it("is idempotent on (appId, teamId, enterpriseId) and clears stale rotation state", async () => {
-    await t["channel_apps.import_installation"].execute(
+  it("is idempotent and clears stale rotating-grant state", async () => {
+    await h.tools["channel_apps.import_installation"].execute(
       { appId: "app1", teamId: "T1", botToken: "xoxb-1" },
       SCOPE,
       TOKEN,
     );
-    // Simulate rotation state left behind by a previous rotating OAuth install;
-    // a static-token re-import must clear it (getFreshBotToken keys the
-    // rotation decision off tokenExpiresAt).
-    prisma.installs[0].refreshToken = "old-refresh-envelope";
-    prisma.installs[0].tokenExpiresAt = new Date(Date.now() - 1000);
-    await t["channel_apps.import_installation"].execute(
+    h.installs[0].refreshToken = "old-refresh";
+    h.installs[0].tokenExpiresAt = new Date(Date.now() - 1000);
+    await h.tools["channel_apps.import_installation"].execute(
       { appId: "app1", teamId: "T1", botToken: "xoxb-2" },
       SCOPE,
       TOKEN,
     );
-    expect(prisma.installs.length).toBe(1);
-    expect(messageCrypto.decryptJsonField(JSON.parse(prisma.installs[0].botToken))).toBe("xoxb-2");
-    expect(prisma.installs[0].refreshToken).toBeNull();
-    expect(prisma.installs[0].tokenExpiresAt).toBeNull();
+    expect(h.installs).toHaveLength(1);
+    expect(h.installs[0]).toMatchObject({
+      botToken: "xoxb-2",
+      refreshToken: null,
+      tokenExpiresAt: null,
+    });
   });
 
   it("rejects a cross-scope appId", async () => {
-    const res: any = await t["channel_apps.import_installation"].execute(
+    const result: any = await h.tools["channel_apps.import_installation"].execute(
       { appId: "app1", teamId: "T1", botToken: "xoxb" },
       { ...SCOPE, organizationId: "orgX" },
       TOKEN,
     );
-    expect(res.error).toBe("not_found");
-    expect(prisma.installs.length).toBe(0);
+    expect(result.error).toBe("not_found");
+    expect(h.installs).toHaveLength(0);
   });
 
-  it("status tool reflects a soft-revoke and never leaks the token", async () => {
-    const imp: any = await t["channel_apps.import_installation"].execute(
+  it("reflects a soft revoke without leaking the token", async () => {
+    const imported: any = await h.tools["channel_apps.import_installation"].execute(
       { appId: "app1", teamId: "T1", teamName: "Acme", botToken: "xoxb" },
       SCOPE,
       TOKEN,
     );
-    let status: any = await t["channel_apps.installations_status"].execute(
+    await h.tools["channel_apps.revoke_installation"].execute(
+      { appId: "app1", installationId: imported.id },
+      SCOPE,
+      TOKEN,
+    );
+    const status: any = await h.tools["channel_apps.installations_status"].execute(
       { appId: "app1" },
       SCOPE,
       TOKEN,
     );
-    expect(status.installations[0]).toMatchObject({ teamId: "T1", status: "active" });
+    expect(status.installations[0]).toMatchObject({ teamId: "T1", status: "revoked" });
     expect(status.installations[0].botToken).toBeUndefined();
-
-    await t["channel_apps.revoke_installation"].execute(
-      { appId: "app1", installationId: imp.id },
-      SCOPE,
-      TOKEN,
-    );
-    status = await t["channel_apps.installations_status"].execute({ appId: "app1" }, SCOPE, TOKEN);
-    expect(status.installations[0].status).toBe("revoked");
   });
 });

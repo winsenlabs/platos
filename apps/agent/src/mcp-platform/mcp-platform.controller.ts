@@ -62,6 +62,7 @@ import { MessageCryptoService } from "../monitoring/message-crypto.service";
 // (resolved lazily via ModuleRef; a direct import in the constructor would
 // require importing ChannelsModule → DI cycle with AgentRuntimeModule).
 import { ChannelRuntimeService } from "../channels/channel-runtime.service";
+import { ChannelPersistenceService } from "../channels/channel-persistence.service";
 // MCPF-W6 — monitoring + settings/admin tool dependencies.
 import { TraceService } from "../monitoring/trace.service";
 import { ProviderHealthService } from "../auth/provider-health.service";
@@ -218,6 +219,7 @@ export class McpPlatformController {
         orgs: this.orgs,
         envs: this.envs,
         clusters: this.clusters,
+        channelPersistence: this.moduleRef.get(ChannelPersistenceService, { strict: false }),
         // Connect channels.* — evict the runtime's cached Chat instance after
         // update/delete/rotate so credential + routing changes take effect
         // immediately (not after the 10-min TTL). Best-effort: the runtime is

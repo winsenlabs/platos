@@ -51,6 +51,7 @@ describe("AgentController clean Entity transport routes", () => {
         environmentId: scope.environmentId,
         entityId: "support-core",
       }),
+      scope
     );
     expect(result.plaintextSecret).toBe("shown-once");
   });
@@ -123,6 +124,33 @@ describe("AgentController clean Entity transport routes", () => {
       bearerTokenCount: 2,
       consentCopy: null,
       exists: true,
+    });
+  });
+
+  it("rejects legacy linked-agent and test-credential mutations", async () => {
+    const h = harness();
+
+    await expect(
+      h.controller.patchEntity(h.req, "support-core", { linkedAgentIds: ["agent-1"] })
+    ).rejects.toMatchObject({ status: 501 });
+    await expect(
+      h.controller.patchEntity(h.req, "support-core", {
+        testCredentials: { headers: [{ name: "Authorization", value: "sentinel" }] },
+      })
+    ).rejects.toMatchObject({ status: 501 });
+  });
+
+  it("returns a stable unsupported response for legacy test-credential reads", async () => {
+    const h = harness();
+    const json = vi.fn();
+    const status = vi.fn(() => ({ json }));
+
+    await h.controller.getEntityTestCredentials(h.req, "support-core", { status } as any);
+
+    expect(status).toHaveBeenCalledWith(501);
+    expect(json).toHaveBeenCalledWith({
+      error: "unsupported",
+      message: "Entity test credentials are not supported.",
     });
   });
 });

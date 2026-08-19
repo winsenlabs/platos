@@ -1,9 +1,9 @@
 /**
  * Theme MCPF-W6 — Settings / Admin MCP tools (17 tools).
  *
- * Wraps Organization + Project + RuntimeEnvironment + SecretStore +
- * AgentCluster surfaces so an operator can manage scope topology
- * + secrets + clusters entirely via MCP.
+ * Wraps Organization + Project + Environment + AgentCluster surfaces so an
+ * operator can manage scope topology and clusters via MCP. Environment
+ * credential operations remain registered but unavailable pending WIN-124.
  *
  * Layout:
  *   • Org (7)          — list / get / update / list_members / add_member
@@ -21,7 +21,7 @@
  *   - clusters.create / clusters.add_agent
  *
  * Audit redaction discipline:
- *   - Secret writes log NAME ONLY — never the value or any prefix of it.
+ *   - Unavailable secret writes return before any audit or persistence call.
  *   - Member operations log `memberId` + `role` — never email/name/avatar.
  *   - Cluster operations log `clusterId` + `agentId` only.
  *   - Read tools don't audit (Wave 1-5 pattern).
@@ -33,6 +33,14 @@ import type { ToolAuditService } from "../../monitoring/tool-audit.service";
 import type { OrganizationService } from "../../admin/organization.service";
 import type { EnvironmentService } from "../../admin/environment.service";
 import type { AgentClusterService } from "../../agent-runtime/agent-cluster.service";
+
+function environmentCredentialsUnavailable() {
+  return {
+    error: "unavailable",
+    message:
+      "Environment credential management is unavailable pending the canonical WIN-124 persistence cutover.",
+  } as const;
+}
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -429,30 +437,18 @@ export function buildSettingsToolHandlers(deps: {
     {
       name: "environments.list_secrets",
       description:
-        "List secret NAMES (and version + timestamps) for the caller's " +
-        "(project, environment) scope. Caller must be an org member. " +
-        "**NEVER returns secret values** — use the dashboard or " +
-        "deploy-pipeline injection to read them.",
+        "Environment credential management is unavailable pending the " +
+        "canonical WIN-124 persistence cutover.",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },
-      async execute(_params, scope) {
-        const reqScope = scope as RequestScope;
-        try {
-          const secrets = await envs.listSecrets(tuple(reqScope), reqScope.userId ?? null);
-          return { secrets, count: secrets.length };
-        } catch (err: any) {
-          if (err?.message === "access_denied") return { error: "access_denied" };
-          return { error: "list_failed", message: err?.message ?? String(err) };
-        }
+      async execute() {
+        return environmentCredentialsUnavailable();
       },
     },
     {
       name: "environments.set_secret",
       description:
-        "Write a secret to the caller's (project, environment) scope. " +
-        "Owner-gated (ADMIN). Encrypted at rest with the webapp-shared " +
-        "`ENCRYPTION_KEY` (AES-256-GCM). Audit logs record the NAME " +
-        "only — never the value or any prefix. Validates name format " +
-        "(`^[A-Z][A-Z0-9_]{0,63}$`) + 8KiB value cap.",
+        "Environment credential management is unavailable pending the " +
+        "canonical WIN-124 persistence cutover.",
       inputSchema: {
         type: "object",
         required: ["name", "value"],
@@ -462,58 +458,23 @@ export function buildSettingsToolHandlers(deps: {
         },
         additionalProperties: false,
       },
-      async execute(params, scope) {
-        const startedAt = Date.now();
-        const reqScope = scope as RequestScope;
-        const name = String(params["name"]);
-        const value = String(params["value"]);
-        try {
-          const result = await envs.setSecret(tuple(reqScope), reqScope.userId ?? null, { name, value });
-          // Strip value from audit args — log NAME ONLY.
-          auditMutation(reqScope, "environments.set_secret", { name }, { ok: true, name }, "success", startedAt);
-          return result;
-        } catch (err: any) {
-          const message = err?.message ?? String(err);
-          auditMutation(reqScope, "environments.set_secret", { name }, null, "failed", startedAt, message);
-          if (message === "access_denied") return { error: "access_denied" };
-          if (message === "name_invalid") return { error: "name_invalid" };
-          if (message === "value_required") return { error: "value_required" };
-          if (message === "value_too_long") return { error: "value_too_long" };
-          if (message === "encryption_key_not_set" || message === "encryption_key_invalid_length") {
-            return { error: "agent_misconfigured", message };
-          }
-          return { error: "set_failed", message };
-        }
+      async execute() {
+        return environmentCredentialsUnavailable();
       },
     },
     {
       name: "environments.delete_secret",
       description:
-        "Remove a secret from the caller's (project, environment) " +
-        "scope. Owner-gated. Idempotent — already-missing secrets " +
-        "return `{ deleted: false }` rather than throwing. Audit logs " +
-        "the NAME only.",
+        "Environment credential management is unavailable pending the " +
+        "canonical WIN-124 persistence cutover.",
       inputSchema: {
         type: "object",
         required: ["name"],
         properties: { name: { type: "string" } },
         additionalProperties: false,
       },
-      async execute(params, scope) {
-        const startedAt = Date.now();
-        const reqScope = scope as RequestScope;
-        const name = String(params["name"]);
-        try {
-          const result = await envs.deleteSecret(tuple(reqScope), reqScope.userId ?? null, { name });
-          auditMutation(reqScope, "environments.delete_secret", { name }, result, "success", startedAt);
-          return result;
-        } catch (err: any) {
-          const message = err?.message ?? String(err);
-          auditMutation(reqScope, "environments.delete_secret", { name }, null, "failed", startedAt, message);
-          if (message === "access_denied") return { error: "access_denied" };
-          if (message === "name_invalid") return { error: "name_invalid" };
-          return { error: "delete_failed", message };
-        }
+      async execute() {
+        return environmentCredentialsUnavailable();
       },
     },
 

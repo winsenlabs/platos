@@ -56,7 +56,12 @@ export async function resolveEndUser(
     select: {
       id: true,
       identities: {
-        where: { disabledAt: null },
+        where: {
+          issuer: "platos:external",
+          channel: "external",
+          disabledAt: null,
+          verifiedAt: { not: null },
+        },
         orderBy: { createdAt: "asc" },
         take: 1,
         select: { subject: true },
@@ -67,19 +72,20 @@ export async function resolveEndUser(
     return { id: direct.id, externalId: direct.identities[0]?.subject ?? direct.id };
   }
 
-  const sessionIdentity = await prisma.endUserIdentity.findFirst({
+  const externalIdentity = await prisma.endUserIdentity.findFirst({
     where: {
       organizationId: scope.organizationId,
-      issuer: "platos",
-      channel: "session",
+      issuer: "platos:external",
+      channel: "external",
       subject: userId,
       disabledAt: null,
+      verifiedAt: { not: null },
       endUser: { disabledAt: null },
     },
     select: { endUserId: true, subject: true },
   });
-  if (sessionIdentity) {
-    return { id: sessionIdentity.endUserId, externalId: sessionIdentity.subject };
+  if (externalIdentity) {
+    return { id: externalIdentity.endUserId, externalId: externalIdentity.subject };
   }
 
   const identity = await prisma.endUserIdentity.findFirst({
