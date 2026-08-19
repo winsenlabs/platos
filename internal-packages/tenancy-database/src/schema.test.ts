@@ -80,9 +80,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(80);
-    expect(domainModelNames).toHaveLength(64);
-    expect(new Set(domainModelNames).size).toBe(64);
+    expect(models).toHaveLength(81);
+    expect(domainModelNames).toHaveLength(65);
+    expect(new Set(domainModelNames).size).toBe(65);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");
@@ -266,7 +266,7 @@ describe("clean-slate domain schema", () => {
       "20260818020000_win130_channel_durability",
     ]);
     expect(createHash("sha256").update(migration).digest("hex")).toBe(
-      "76039eaca78e84890ed9ca499890bf9579f31eff540953deda257ac50a855ad8"
+      "d915b1e0626c750750830f80d6cc0b4bd5a80837476271a3384125f1b49a0398"
     );
 
     const generated = execFileSync(resolve(packageRoot, "node_modules/.bin/prisma"), [

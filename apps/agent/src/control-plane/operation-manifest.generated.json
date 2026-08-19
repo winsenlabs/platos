@@ -11629,6 +11629,23 @@
         ]
       },
       {
+        "id": "GET /oauth/consent",
+        "method": "GET",
+        "path": "/oauth/consent",
+        "classification": "PUBLIC_TRANSPORT",
+        "policyRule": "oauth-protocol",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "OAuthController",
+            "handler": "inspectConsent",
+            "source": "apps/agent/src/oauth/oauth.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
         "id": "GET /oauth/entity/:entityId/authorize",
         "method": "GET",
         "path": "/oauth/entity/:entityId/authorize",
@@ -11842,14 +11859,14 @@
       "MAPPED": 83,
       "MCP_ONLY": 123
     },
-    "restOperations": 284,
-    "restRouteBindings": 285,
+    "restOperations": 285,
+    "restRouteBindings": 286,
     "ambiguousRestOperations": 1,
     "restClassifications": {
       "DEPRECATED": 13,
       "INTERNAL": 12,
       "MAPPED": 82,
-      "PUBLIC_TRANSPORT": 44,
+      "PUBLIC_TRANSPORT": 45,
       "REST_ONLY": 133
     }
   }
