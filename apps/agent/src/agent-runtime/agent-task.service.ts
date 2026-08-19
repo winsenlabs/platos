@@ -1,4 +1,4 @@
-import { Injectable, Inject, Optional, Logger } from "@nestjs/common";
+import { Injectable, Inject, Optional, Logger, forwardRef } from "@nestjs/common";
 import { AgentService, type AgentStreamEvent, type AgentConfig } from "./agent.service";
 import { ConversationService } from "../memory/conversation.service";
 import { SafetyService } from "../monitoring/safety.service";
@@ -128,6 +128,7 @@ export class AgentTaskService {
   private readonly logger = new Logger(AgentTaskService.name);
 
   constructor(
+    @Inject(forwardRef(() => AgentService))
     private readonly agentService: AgentService,
     private readonly conversationService: ConversationService,
     private readonly safetyService: SafetyService,

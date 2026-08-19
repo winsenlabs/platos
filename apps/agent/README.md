@@ -85,6 +85,7 @@ controllers, and strict production builds remove their compiled files.
 | `SESSION_SECRET`                     | Prod     | —                                    | Session token signing secret                                       |
 | `PLATOS_MESSAGE_ENCRYPTION_KEY`      | Prod     | —                                    | 32-byte hex for versioned message/audit-content encryption         |
 | `PLATOS_INTERNAL_AUTH_TOKEN`         | Prod     | —                                    | Dedicated scheduled/internal callback authentication only          |
+| `PLATOS_MCP_STDIO_TOKEN`             | Stdio    | —                                    | Once-revealed scoped MCP bearer for the local stdio entrypoint      |
 | `PLATOS_CORS_ORIGIN`                 | No       | `*`                                  | CORS allowed origins                                               |
 | `PLATOS_RATE_LIMIT_PER_MIN`          | No       | `60`                                 | Per-org requests/minute                                            |
 | `PLATOS_RATE_LIMIT_PER_DAY`          | No       | `1000`                               | Per-org requests/day                                               |
@@ -99,6 +100,14 @@ the active version; switch the active version everywhere; rewrap active
 credentials; verify credential status reports zero active envelopes on the old
 root and `canRemoveRoot` succeeds; only then remove the old numbered root. A
 failed read, rotate, rewrap, or audit insert fails closed.
+
+## Platform MCP stdio
+
+After `pnpm --filter platos-agent build`, Claude Code or Cursor can launch
+`node apps/agent/dist/mcp-platform/stdio-main.js` with a scoped
+`PLATOS_MCP_STDIO_TOKEN` in its process environment. Never pass the bearer as a
+command-line argument. Stdio shares the HTTP/SSE `McpRouter`, verifies persisted
+token ancestry, and reserves stdout exclusively for JSON-RPC protocol frames.
 
 ## Authentication
 

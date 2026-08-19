@@ -50,7 +50,8 @@ build
 # /-anchored so only the top-level docs/ + examples/ are excluded.
 # Without the leading /, the unanchored pattern also caught content/docs/
 # which silently broke the docs+guides pipeline at deploy time (Phase 3b).
-/docs
+/docs/*
+!/docs/control-plane-parity.generated.md
 /examples
 out
 

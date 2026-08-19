@@ -63,6 +63,39 @@ Then try the real-world query: "List the agents in my Platos project." Claude wi
 Tokens are **pinned to one `(org, project, env)` tuple**. They cannot switch scope. To use Claude Desktop against a different environment, mint a second token.
 </Note>
 
+### Local stdio transport (Claude Code / Cursor)
+
+Build the agent, then point the client at the stdio entrypoint. The token is
+accepted only through `PLATOS_MCP_STDIO_TOKEN`; do not put it in `args`, where it
+would be visible in the process list.
+
+```json
+{
+  "mcpServers": {
+    "platos": {
+      "command": "node",
+      "args": ["/absolute/path/to/platos/apps/agent/dist/mcp-platform/stdio-main.js"],
+      "env": {
+        "PLATOS_MCP_STDIO_TOKEN": "plt_mcp_replace_with_once-revealed_token"
+      }
+    }
+  }
+}
+```
+
+Claude Code and Cursor both accept this command-style MCP configuration. Keep
+the client config owner-readable only. Stdio verifies the bearer through the
+same database-backed token/OAuth verifier as HTTP+SSE, preserves the complete
+`(organizationId, projectId, environmentId, userId)` authority, and dispatches
+through the exact same `McpRouter` and 206-tool catalog. Application logs are
+routed to stderr; stdout is reserved for JSON-RPC frames.
+
+For an interactive approval, retry the stdio `tools/call` with
+`params._meta.platosApprovalId` set to the returned
+`error.data.retryMeta.platosApprovalId`. HTTP clients may use the equivalent
+`X-Platos-Approval-Id` header. The transport strips `_meta` before tool-schema
+validation and execution.
+
 ## Scope + auth model
 
 Every request to `/mcp/platform` includes `Authorization: Bearer <token>`.
@@ -106,21 +139,19 @@ Three states per tool:
 - `agents.delete`, `agents.rollback`, `agents.canary.promote`, `agents.visibility.set` — require approval.
 - `memories.import_replace`, `messages.edit_and_rerun` — require approval.
 
-## Platform MCP tool inventory (v1)
+## Platform MCP tool inventory (M0.1)
 
-The MVP ships with:
+The M0.1 baseline is the existing 206 unique dotted tool names across 35
+namespaces. Names remain stable; future compatibility names must be declared as
+explicit aliases rather than silently renaming a tool. The canonical generated
+manifest, complete JSON Schemas, REST mappings/classifications, and deterministic
+parity report live at:
 
-- **Introspection** — `platos.whoami`, `platos.list_accessible_scopes`.
-- **Agents** — `agents.list`, `.get`, `.create`, `.update`, `.delete`, `.canary.set`, `.canary.promote`.
-- **Threads** — `threads.list`, `.get`.
-- **Messages** — `messages.list`, `.rate`.
+- `apps/agent/src/control-plane/operation-manifest.generated.json`
+- `docs/control-plane-parity.generated.md`
 
-Remaining namespaces (memories / providers / skills / entities /
-approvals / budgets / evals / artifacts / monitoring / audit / gdpr /
-trigger.{tasks,runs,schedules,batches,deployments,workers,envvars,
-projects,orgs}) follow the same wrapper pattern and are tracked as
-K.5-follow-up subtasks. Every REST endpoint the dashboard uses will
-have a matching MCP tool.
+Run `pnpm --filter platos-agent check:control-plane` in CI to reject source,
+manifest, report, or generated OpenAPI drift.
 
 ## Agent MCP — connect third-party MCP servers to your agents
 
