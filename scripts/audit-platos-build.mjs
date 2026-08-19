@@ -18,10 +18,12 @@ function read(path) {
 
 const packageJson = JSON.parse(read("package.json"));
 const agentPackage = JSON.parse(read("apps/agent/package.json"));
+const agentBuildTsconfig = JSON.parse(read("apps/agent/tsconfig.build.json"));
 const tenancyDatabasePackage = JSON.parse(read("internal-packages/tenancy-database/package.json"));
 const webappPackage = JSON.parse(read("apps/webapp/package.json"));
 const agentDockerfile = read("apps/agent/Dockerfile");
 const webappDockerfile = read("apps/webapp/Dockerfile.platos");
+const agentEntrypoint = read("apps/agent/entrypoint.sh");
 const compose = read("docker-compose.platos.yml");
 
 check("root exposes build:platos", Boolean(packageJson.scripts?.["build:platos"]));
@@ -32,12 +34,33 @@ check(
   /--filter @platos\/tenancy-database build/.test(packageJson.scripts?.["build:platos:agent"] ?? "")
 );
 check(
+  "agent build does not generate the legacy database client",
+  !/--filter @platos\/database generate/.test(packageJson.scripts?.["build:platos:agent"] ?? "")
+);
+check(
+  "agent package does not depend on the legacy database graph",
+  !agentPackage.dependencies?.["@platos/database"] &&
+    !agentPackage.dependencies?.["@prisma/client"] &&
+    !agentPackage.dependencies?.["@platos/sdk"]
+);
+check(
+  "agent build audits emitted production dependencies",
+  /audit:production-dependencies/.test(packageJson.scripts?.["build:platos:agent"] ?? "") &&
+    Boolean(agentPackage.scripts?.["audit:production-dependencies"])
+);
+check(
   "tenancy database deploy includes compiled and generated runtime entries",
   ["dist", "generated"].every((path) => tenancyDatabasePackage.files?.includes(path))
 );
-check("agent exposes strict declaration build", /--declaration/.test(agentPackage.scripts?.["build:strict"] ?? ""));
+check(
+  "agent exposes a production-only strict declaration build",
+  /--project tsconfig\.build\.json/.test(agentPackage.scripts?.["build:strict"] ?? "") &&
+    ["src/**/*.test.ts", "src/**/*.spec.ts"].every((pattern) => agentBuildTsconfig.exclude?.includes(pattern))
+);
 check("webapp build is guarded by memory policy", /memory-policy\.mjs build/.test(webappPackage.scripts?.build ?? ""));
 check("agent image uses explicit Platos build graph", /build:platos:agent/.test(agentDockerfile));
+check("agent image does not copy the legacy database schema", !agentDockerfile.includes("internal-packages/database/prisma"));
+check("agent entrypoint does not generate the legacy database client", !agentEntrypoint.includes("@platos/database"));
 check("webapp image uses explicit Platos build graph", /build:platos:webapp/.test(webappDockerfile));
 const webappCompose = compose.split(/^  (?=\S)/m).find((service) => service.startsWith("webapp:")) ?? "";
 check("webapp service receives the documented runtime heap variable", /WEBAPP_NODE_MAX_OLD_SPACE_SIZE_MB/.test(webappCompose));
