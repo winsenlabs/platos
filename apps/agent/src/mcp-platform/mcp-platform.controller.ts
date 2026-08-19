@@ -68,6 +68,7 @@ import { ProviderHealthService } from "../auth/provider-health.service";
 import { OrganizationService } from "../admin/organization.service";
 import { EnvironmentService } from "../admin/environment.service";
 import { AgentClusterService } from "../agent-runtime/agent-cluster.service";
+import type { McpStdioSession } from "./stdio-transport";
 
 /**
  * Theme K.4 — Platform MCP controller.
@@ -362,6 +363,55 @@ export class McpPlatformController {
       };
     }
     return this.tokenService.verify(raw);
+  }
+
+  /**
+   * WIN-129 stdio transport authority. Keep the raw bearer at the transport
+   * boundary and re-verify it for every request so persisted expiry,
+   * revocation, permissions, tier, and ancestry changes take effect without
+   * restarting the IDE session. Dispatch still uses this controller's exact
+   * McpRouter instance and catalog.
+   */
+  async createStdioSession(rawBearer: string): Promise<McpStdioSession | null> {
+    if (!(await this.verifyAnyBearer(rawBearer))) return null;
+    const router = this.getRouter();
+    return {
+      handle: async (request) => {
+        const token = await this.verifyAnyBearer(rawBearer);
+        if (!token) {
+          return {
+            jsonrpc: "2.0",
+            id: request.id ?? null,
+            error: {
+              code: -32001,
+              message: "invalid or expired Platform MCP token",
+            },
+          };
+        }
+
+        const metadata = request.params?.["_meta"];
+        const approvalId =
+          metadata && typeof metadata === "object" && !Array.isArray(metadata)
+            ? (metadata as Record<string, unknown>)["platosApprovalId"]
+            : null;
+        const params = request.params
+          ? Object.fromEntries(Object.entries(request.params).filter(([key]) => key !== "_meta"))
+          : undefined;
+
+        return router.handle(
+          {
+            ...request,
+            ...(params ? { params } : {}),
+          },
+          token,
+          {
+            approvalId: typeof approvalId === "string" ? approvalId : null,
+            dashboardOrigin:
+              process.env["APP_ORIGIN"] ?? process.env["PLATOS_WEBAPP_ORIGIN"] ?? null,
+          },
+        );
+      },
+    };
   }
 
   @Post()

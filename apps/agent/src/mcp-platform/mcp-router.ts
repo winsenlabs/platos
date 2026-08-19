@@ -248,6 +248,9 @@ export class McpRouter {
         case "ping": {
           return { jsonrpc: "2.0", id, result: {} };
         }
+        case "notifications/initialized": {
+          return { jsonrpc: "2.0", id, result: {} };
+        }
         case "tools/list": {
           // Filter by token permission allowlist so a token only sees
           // tools it can invoke. Prevents accidental cross-scope
@@ -463,6 +466,7 @@ export class McpRouter {
                       status: "pending",
                       expiresAt: row.deadlineAt,
                       retryHeader: "X-Platos-Approval-Id",
+                      retryMeta: { platosApprovalId: inboundApprovalId },
                     },
                   },
                 };
@@ -527,6 +531,7 @@ export class McpRouter {
                     expiresAt: row.deadlineAt,
                     dashboardUrl,
                     retryHeader: "X-Platos-Approval-Id",
+                    retryMeta: { platosApprovalId: row.approvalId },
                     tier: perm.tier,
                     reason: perm.reason,
                   },

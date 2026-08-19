@@ -18,11 +18,13 @@
  *   - enum: unknown[]
  *   - minLength / maxLength                     (strings)
  *   - minimum / maximum                          (numbers)
- *   - items: schema                             (arrays)
+ *   - items / minItems / maxItems                (arrays)
+ *   - oneOf                                      (used by nullable object inputs)
+ *   - format: email | date-time                  (the emitted string formats)
  *
  * NOT supported (we never emit them in our tool schemas):
- *   - $ref / definitions / allOf / anyOf / oneOf / not / patternProperties
- *   - format / pattern (use a service-level check if needed)
+ *   - $ref / definitions / allOf / anyOf / not / patternProperties
+ *   - pattern (use a service-level check if needed)
  *   - dependencies / if/then/else
  *
  * If a future tool needs one of those, add it here — keep the validator
@@ -72,6 +74,24 @@ function validateNode(
 ): void {
   if (!schema || typeof schema !== "object") return;
 
+  // oneOf — exactly one branch must accept the value. Branch findings stay
+  // private; callers only need the stable aggregate failure at this path.
+  if (Array.isArray(schema["oneOf"])) {
+    let matches = 0;
+    for (const branch of schema["oneOf"] as AnyObj[]) {
+      const branchErrors: ValidationError[] = [];
+      validateNode(branch, value, path, branchErrors);
+      if (branchErrors.length === 0) matches += 1;
+    }
+    if (matches !== 1) {
+      errors.push({
+        path: path || "(root)",
+        message: `value must match exactly one oneOf branch (matched ${matches})`,
+      });
+      return;
+    }
+  }
+
   // type
   if (schema["type"] !== undefined) {
     if (!typeMatches(schema["type"], value)) {
@@ -104,6 +124,15 @@ function validateNode(
     if (typeof schema["maxLength"] === "number" && value.length > schema["maxLength"]) {
       errors.push({ path: path || "(root)", message: `string length > maxLength ${schema["maxLength"]}` });
     }
+    if (schema["format"] === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      errors.push({ path: path || "(root)", message: "string must be a valid email" });
+    }
+    if (
+      schema["format"] === "date-time" &&
+      (!/^\d{4}-\d{2}-\d{2}T/.test(value) || !Number.isFinite(Date.parse(value)))
+    ) {
+      errors.push({ path: path || "(root)", message: "string must be a valid date-time" });
+    }
   }
 
   // numeric facets
@@ -120,6 +149,14 @@ function validateNode(
   if (Array.isArray(value) && schema["items"]) {
     for (let i = 0; i < value.length; i++) {
       validateNode(schema["items"] as AnyObj, value[i], `${path}[${i}]`, errors);
+    }
+  }
+  if (Array.isArray(value)) {
+    if (typeof schema["minItems"] === "number" && value.length < schema["minItems"]) {
+      errors.push({ path: path || "(root)", message: `array length < minItems ${schema["minItems"]}` });
+    }
+    if (typeof schema["maxItems"] === "number" && value.length > schema["maxItems"]) {
+      errors.push({ path: path || "(root)", message: `array length > maxItems ${schema["maxItems"]}` });
     }
   }
 
@@ -194,7 +231,7 @@ export function compileSchema(schema: Record<string, unknown> | undefined) {
   return (input: unknown): ValidationResult => {
     if (!schema) return { valid: true, errors: [] };
     const errors: ValidationError[] = [];
-    validateNode(schema as AnyObj, input ?? {}, "", errors);
+    validateNode(schema as AnyObj, input === undefined ? {} : input, "", errors);
     return { valid: errors.length === 0, errors };
   };
 }

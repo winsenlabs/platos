@@ -1,17 +1,17 @@
 /**
- * Theme I.10 — serves the OpenAPI spec + an in-browser Swagger UI page.
+ * Serves the generated WIN-129 operation inventory + Swagger UI.
  *
- *   GET /api/v1/agent/openapi.json   → static OpenAPI 3.1 JSON
+ *   GET /api/v1/agent/openapi.json   → generated OpenAPI 3.1 JSON
  *   GET /openapi                     → Swagger UI HTML (CDN-loaded)
  *
- * The spec lives in `openapi.spec.ts`. Swagger UI is pulled from the
- * official unpkg CDN so we don't have to bundle assets in the agent
- * image. Both routes are whitelisted in `scope.guard.ts` so they work
- * without auth — the spec is static, no scope-dependent data.
+ * `openapi.generated.json` derives from the canonical control-plane
+ * operation manifest. It inventories every Nest route without inventing
+ * request/response schemas that the controllers do not declare. Swagger UI
+ * is pulled from the official unpkg CDN so the agent image stays lean.
  */
 
 import { Controller, Get, Header } from "@nestjs/common";
-import { platosAgentOpenApiSpec } from "./openapi.spec";
+import platosAgentOpenApiSpec from "./openapi.generated.json";
 
 @Controller()
 export class OpenApiController {
