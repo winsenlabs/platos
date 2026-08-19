@@ -8536,6 +8536,25 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/oauth/consent": {
+      "get": {
+        "operationId": "get__oauth_consent",
+        "summary": "OAuthController.inspectConsent",
+        "tags": [
+          "public_transport"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [],
+        "x-platos-classification": "PUBLIC_TRANSPORT",
+        "x-platos-auth-class": "PUBLIC_OAUTH_PROTOCOL",
+        "x-platos-policy-rule": "oauth-protocol",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/oauth/entity/{entityId}/authorize": {
       "get": {
         "operationId": "get__oauth_entity_by_entityId_authorize",
@@ -8836,6 +8855,6 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 284,
+  "x-platos-rest-operation-count": 285,
   "x-platos-mcp-tool-count": 206
 }
