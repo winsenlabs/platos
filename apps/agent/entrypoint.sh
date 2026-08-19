@@ -21,17 +21,6 @@ if [ -f ./prisma-init.sql ]; then
   " 2>/dev/null || echo "  DB init skipped"
 fi
 
-# pnpm deploy didn't include a generated client. Generate against the
-# @platos/database workspace-installed schema so the output lands in
-# node_modules/@platos/database/generated/prisma/ where dist/index.js
-# expects it (re-exports via require("../generated/prisma")).
-if [ ! -f ./node_modules/@platos/database/generated/prisma/index.js ]; then
-  echo "  Generating Prisma client..."
-  ./node_modules/.bin/prisma generate \
-    --schema=./node_modules/@platos/database/prisma/schema.prisma 2>&1 || \
-    echo "  Prisma generate failed — agent may fail on DB calls"
-fi
-
 echo "[1/2] Initializing database..."
 echo "[2/2] Starting agent service..."
 exec node dist/main.js

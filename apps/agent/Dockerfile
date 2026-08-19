@@ -1,12 +1,12 @@
 # Platos Agent — multi-stage build using pnpm deploy for workspace bundling.
 #
-# Stage 1 (builder): install the full monorepo, build workspace deps (@platos/sdk
-# + its transitive deps), generate the Prisma client, compile the agent's own
+# Stage 1 (builder): install the full monorepo, build the clean tenancy client
+# and explicit internal dependencies, compile the agent's own
 # TypeScript, then run `pnpm deploy` which produces a self-contained directory
 # with only the prod dependency tree and no symlinks.
 #
-# Stage 2 (runtime): thin node image that just copies the deployed bundle +
-# build output + Prisma schema.
+# Stage 2 (runtime): thin node image that just copies the deployed bundle and
+# build output.
 
 ARG NODE_IMAGE=node:22-slim
 
@@ -36,8 +36,8 @@ RUN sed -i '/docs/d' pnpm-workspace.yaml
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --no-frozen-lockfile
 
-# Explicit Platos agent graph: generated database client, SDK/core/database,
-# runtime-only internal packages, then the agent's strict declaration build.
+# Explicit Platos agent graph: clean tenancy client, runtime-only internal
+# packages, then the agent's strict declaration build.
 # This intentionally does not claim the deferred webapp/run-engine closure is
 # gone; WIN-132 owns that destructive extraction.
 RUN pnpm run build:platos:agent
@@ -56,17 +56,12 @@ RUN apt-get update && apt-get install -y openssl ca-certificates \
 
 WORKDIR /app
 
-# Deployed node_modules + package.json (has @platos/sdk as a real copy)
+# Deployed node_modules + package.json
 COPY --from=builder /deploy/node_modules ./node_modules
 COPY --from=builder /deploy/package.json ./package.json
 
 # Compiled agent JS
 COPY --from=builder /build/apps/agent/dist ./dist
-
-# Prisma schema + migrations for runtime migrate (used by entrypoint.sh)
-RUN mkdir -p ./prisma
-COPY --from=builder /build/internal-packages/database/prisma/schema.prisma ./prisma/schema.prisma
-COPY --from=builder /build/internal-packages/database/prisma/migrations ./prisma/migrations
 
 # Phase 3 — docs + guides catalog. The DocsMcpService walks up from cwd
 # (here `/app`) looking for `content/docs` + `content/guides` and indexes
