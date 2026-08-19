@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { Prisma as ControlPrisma } from "../generated/control";
@@ -21,7 +21,17 @@ const migration = readFileSync(
   resolve(packageRoot, "prisma/migrations/00000000000000_initial/migration.sql"),
   "utf8"
 );
-const customMigrationMarker = "-- Prisma-inexpressible value constraints.";
+const feedbackMigration = readFileSync(
+  resolve(packageRoot, "prisma/migrations/20260818000000_memory_feedback_quarantine/migration.sql"),
+  "utf8"
+);
+const memoryEntityOwnershipMigration = readFileSync(
+  resolve(
+    packageRoot,
+    "prisma/migrations/20260818010000_memory_entity_ownership_transition/migration.sql"
+  ),
+  "utf8"
+);
 
 const tenancyOnlyModels = [
   "User",
@@ -151,7 +161,10 @@ describe("clean-slate domain schema", () => {
         "sourceTurnIds",
         "extractorVersion",
         "contentHash",
+        "quarantinedAt",
+        "feedbackBaselineConfidence",
       ],
+      MessageRating: ["revision"],
       MemoryEntity: ["agentId", "clusterId"],
       MemoryRelationship: ["agentId", "clusterId", "sourceMemoryId"],
     })) {
@@ -231,25 +244,38 @@ describe("clean-slate domain schema", () => {
     }
   });
 
-  test("generates one migration from empty before custom checks and triggers", () => {
+  test("keeps the initial migration immutable and appends tenancy changes sequentially", () => {
     const migrationDirectories = readdirSync(resolve(packageRoot, "prisma/migrations"), {
       withFileTypes: true,
     }).filter((entry) => entry.isDirectory());
-    expect(migrationDirectories.map((entry) => entry.name)).toEqual(["00000000000000_initial"]);
-
-    const generated = execFileSync(resolve(packageRoot, "node_modules/.bin/prisma"), [
-      "migrate",
-      "diff",
-      "--from-empty",
-      "--to-schema-datamodel",
-      schemaPath,
-      "--script",
-    ], {
-      cwd: packageRoot,
-      env: { ...process.env, DATABASE_URL: "postgresql://generate:generate@localhost:5432/generate" },
-      encoding: "utf8",
-    });
-    expect(migration.split(customMigrationMarker)[0].trim()).toBe(generated.trim());
+    expect(migrationDirectories.map((entry) => entry.name).sort()).toEqual([
+      "00000000000000_initial",
+      "20260818000000_memory_feedback_quarantine",
+      "20260818010000_memory_entity_ownership_transition",
+    ]);
+    expect(createHash("sha256").update(migration).digest("hex")).toBe(
+      "ef1675ae7a79e3a426829892201a96c809cc2700a16426c24d69a14036dc383a"
+    );
+    expect(feedbackMigration).toContain('ADD COLUMN "quarantinedAt" TIMESTAMP(3)');
+    expect(feedbackMigration).toContain('ADD COLUMN "revision" INTEGER NOT NULL DEFAULT 1');
+    expect(feedbackMigration).toContain('"memoryFeedbackBackfillCompletedAt" TIMESTAMP(3)');
+    expect(feedbackMigration).toContain("MessageRating thumbs preflight failed");
+    expect(feedbackMigration).toContain("rating=2:%s, rating=3:%s, rating=4:%s, rating=5:%s");
+    expect(feedbackMigration.indexOf("DO $$")).toBeLessThan(
+      feedbackMigration.indexOf('ALTER TABLE "public"."Memory"')
+    );
+    expect(feedbackMigration).toContain('CHECK ("rating" IN (-1, 1))');
+    expect(feedbackMigration).toContain(
+      'CREATE INDEX "Memory_environmentId_endUserId_quarantinedAt_idx"'
+    );
+    expect(memoryEntityOwnershipMigration).toContain(
+      'CREATE UNIQUE INDEX "MemoryEntity_standalone_agent_entityKey_key"'
+    );
+    expect(memoryEntityOwnershipMigration).toContain('WHERE "clusterId" IS NULL');
+    expect(memoryEntityOwnershipMigration).toContain(
+      'CREATE FUNCTION "public"."enforce_memory_entity_owner_transition"()'
+    );
+    expect(memoryEntityOwnershipMigration).toContain('DROP TRIGGER "MemoryEntity_owner_immutable"');
     expect(migration).toContain('CREATE FUNCTION "public"."enforce_domain_ancestry"()');
     expect(migration).toContain('CREATE FUNCTION "public"."reject_canonical_owner_change"()');
     expect(migration).toContain('CREATE FUNCTION "public"."revoke_operator_sessions_for_membership_change"()');

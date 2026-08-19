@@ -683,10 +683,13 @@ export class ConversationService {
         ...(replyToMessageId ? { OR: [{ parentTurnId: null }, { parentTurnId: replyToMessageId }] } : { parentTurnId: null }),
         ...(cursor ? { sequence: { gt: cursor.sequence } } : {}),
       },
-      orderBy: { sequence: cursor ? "asc" : "desc" },
+      // Anchored history normally returns every turn after the cursor. If the
+      // emergency cap is reached, retain the newest complete turns instead of
+      // permanently hiding the live tail behind the oldest post-cursor turns.
+      orderBy: { sequence: "desc" },
       take: cursor ? Math.max(turnLimit * 4, turnLimit + 20) : turnLimit,
     });
-    const ordered = cursor ? main : main.reverse();
+    const ordered = main.reverse();
     const history = ordered.flatMap((turn) => [
       ...(turn.inputText ? [{ role: "user" as const, content: turn.inputText }] : []),
       ...(turn.outputText ? [{ role: "assistant" as const, content: turn.outputText }] : []),

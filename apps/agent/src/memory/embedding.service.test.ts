@@ -1,5 +1,5 @@
 /**
- * EmbeddingService timeout regression (latency fix, 2026-06-01).
+ * EmbeddingService timeout and scoped-cache regressions.
  *
  * A bare `await fetch` to the embedding provider with no timeout once stalled
  * a whole agent turn ~64s pre-LLM on a cold/slow provider key (the demo-site
@@ -23,6 +23,26 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { EmbeddingService } from "./embedding.service";
 
 const realFetch = global.fetch;
+const VECTOR = Array.from({ length: EmbeddingService.DIMENSION }, (_, index) => index / 1000);
+const VECTOR_B = VECTOR.map((value) => value + 1);
+
+const scopeA = {
+  organizationId: "org-1",
+  projectId: "project-1",
+  environmentId: "env-a",
+};
+const scopeB = {
+  organizationId: "org-1",
+  projectId: "project-1",
+  environmentId: "env-b",
+};
+
+function successfulEmbeddingResponse(vector = VECTOR): Response {
+  return new Response(
+    JSON.stringify({ data: [{ embedding: vector, index: 0 }], usage: { total_tokens: 1 } }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+}
 
 function makeService(): EmbeddingService {
   // No ScopedEnvService / CostService — the key path resolves from env
@@ -30,7 +50,7 @@ function makeService(): EmbeddingService {
   return new EmbeddingService();
 }
 
-describe("EmbeddingService.embed — provider timeout", () => {
+describe("EmbeddingService.embed", () => {
   afterEach(() => {
     global.fetch = realFetch;
     vi.restoreAllMocks();
@@ -77,5 +97,74 @@ describe("EmbeddingService.embed — provider timeout", () => {
       "voyage",
     );
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when another Environment requests text warmed in the cache", async () => {
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(successfulEmbeddingResponse())
+      .mockResolvedValueOnce(successfulEmbeddingResponse(VECTOR_B)) as any;
+    let environmentBHasCredential = false;
+    const scopedEnv = {
+      getForProvider: vi.fn(async (scope: typeof scopeA) =>
+        scope.environmentId === scopeA.environmentId || environmentBHasCredential
+          ? `${scope.environmentId}-key`
+          : undefined,
+      ),
+    };
+    const svc = new EmbeddingService(scopedEnv as any);
+
+    await expect(svc.embed("shared text", scopeA)).resolves.toEqual(VECTOR);
+    await expect(svc.embed("shared text", scopeB)).rejects.toThrow(
+      /not configured for this Environment/i,
+    );
+    environmentBHasCredential = true;
+    await expect(svc.embed("shared text", scopeB)).resolves.toEqual(VECTOR_B);
+
+    expect(scopedEnv.getForProvider).toHaveBeenCalledTimes(3);
+    expect(scopedEnv.getForProvider).toHaveBeenLastCalledWith(
+      scopeB,
+      "VOYAGE_API_KEY",
+      "voyage",
+    );
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("revalidates the credential but reuses a same-scope vector after key rotation", async () => {
+    global.fetch = vi.fn(async () => successfulEmbeddingResponse()) as any;
+    const scopedEnv = {
+      getForProvider: vi
+        .fn()
+        .mockResolvedValueOnce("credential-before-rotation")
+        .mockResolvedValueOnce("credential-after-rotation"),
+    };
+    const svc = new EmbeddingService(scopedEnv as any);
+
+    const first = await svc.embed("same scoped text", scopeA);
+    const second = await svc.embed("same scoped text", scopeA);
+
+    expect(first).toEqual(VECTOR);
+    expect(second).toBe(first);
+    expect(scopedEnv.getForProvider).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not return a same-scope cache hit after its credential becomes unavailable", async () => {
+    global.fetch = vi.fn(async () => successfulEmbeddingResponse()) as any;
+    const scopedEnv = {
+      getForProvider: vi
+        .fn()
+        .mockResolvedValueOnce("credential-before-revocation")
+        .mockResolvedValueOnce(undefined),
+    };
+    const svc = new EmbeddingService(scopedEnv as any);
+
+    await expect(svc.embed("revoked scoped text", scopeA)).resolves.toEqual(VECTOR);
+    await expect(svc.embed("revoked scoped text", scopeA)).rejects.toThrow(
+      /not configured for this Environment/i,
+    );
+
+    expect(scopedEnv.getForProvider).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });

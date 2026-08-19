@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { EmbeddingService } from "./embedding.service";
@@ -64,6 +65,10 @@ interface AgentReadInput {
   agentIds?: string[];
 }
 
+type GraphReadWhere =
+  | { clusterId: string }
+  | { agentId: { in: string[] } };
+
 export interface ShortestPathInput extends AgentReadInput {
   fromEntityId: string;
   toEntityId: string;
@@ -115,6 +120,35 @@ export class KnowledgeGraphService {
     return this.crypto?.decryptJsonField(value ?? null) ?? value ?? null;
   }
 
+  private async resolveGraphReadWhere(
+    scope: ScopeTuple,
+    requestedAgentId?: string | null,
+    requestedAgentIds?: string[],
+  ): Promise<GraphReadWhere> {
+    const agentIds = await resolveReadAgentIds(
+      this.prisma,
+      scope,
+      requestedAgentId,
+      requestedAgentIds,
+    );
+    const bindings = await this.prisma.agentBinding.findMany({
+      where: {
+        ...environmentScopeWhere(scope),
+        agentId: { in: agentIds },
+        agent: { projectId: scope.projectId },
+      },
+      select: { agentId: true, clusterId: true },
+    });
+    if (bindings.length !== agentIds.length) {
+      throw new Error("Memory Agent scope not found or access denied");
+    }
+    const clusterId = bindings[0]?.clusterId;
+    if (clusterId && bindings.every((binding) => binding.clusterId === clusterId)) {
+      return { clusterId };
+    }
+    return { agentId: { in: agentIds } };
+  }
+
   async getEntities(
     scope: ScopeTuple,
     input: {
@@ -129,13 +163,13 @@ export class KnowledgeGraphService {
     if (!input.userId) throw new Error("KnowledgeGraphService.getEntities: `userId` is required");
     await assertEnvironmentScope(this.prisma, scope);
     const endUser = await resolveEndUser(this.prisma, scope, input.userId);
-    const agentIds = await resolveReadAgentIds(this.prisma, scope, input.agentId, input.agentIds);
+    const readWhere = await this.resolveGraphReadWhere(scope, input.agentId, input.agentIds);
     const rows = await this.prisma.memoryEntity.findMany({
       where: {
         ...environmentScopeWhere(scope),
         endUserId: endUser.id,
         ...(input.entityType ? { entityType: input.entityType } : {}),
-        ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+        ...readWhere,
       },
       orderBy: { createdAt: "desc" },
       take: clampInt(input.limit ?? 100, 1, 500),
@@ -149,20 +183,50 @@ export class KnowledgeGraphService {
     if (!input.entityKey) throw new Error("KnowledgeGraphService.upsertEntity: `entityKey` is required");
     await assertEnvironmentScope(this.prisma, scope);
     const endUser = await resolveEndUser(this.prisma, scope, input.userId);
-    const binding = await resolveWriteBinding(this.prisma, scope, input.agentId);
-    const storedMetadata = input.metadata === undefined
-      ? undefined
-      : this.crypto?.encryptJsonField(input.metadata) ?? input.metadata;
-    const row = await this.prisma.memoryEntity.upsert({
-      where: {
-        environmentId_endUserId_agentId_entityKey: {
-          environmentId: scope.environmentId,
-          endUserId: endUser.id,
-          agentId: binding.agentId,
-          entityKey: input.entityKey,
-        },
-      },
-      create: {
+    const storedMetadata =
+      input.metadata === undefined
+        ? undefined
+        : this.crypto?.encryptJsonField(input.metadata) ?? input.metadata;
+    const update = {
+      ...(input.entityType ? { entityType: input.entityType } : {}),
+      ...(input.label ? { label: this.encString(input.label) } : {}),
+      ...(input.aliases ? { aliases: input.aliases } : {}),
+      ...(storedMetadata !== undefined ? { metadata: storedMetadata as any } : {}),
+    };
+    const row = await this.prisma.$transaction(async (tx) => {
+      const explicitAgentIds = Array.from(new Set(
+        [scope.agentId, input.agentId]
+          .filter((agentId): agentId is string => typeof agentId === "string" && agentId.length > 0),
+      )).sort();
+      for (const agentId of explicitAgentIds) {
+        await tx.$queryRaw`
+          SELECT "id"
+          FROM "AgentBinding"
+          WHERE "environmentId" = ${scope.environmentId}::uuid
+            AND "agentId" = ${agentId}::uuid
+          FOR SHARE
+        `;
+      }
+      let binding = await resolveWriteBinding(
+        tx as unknown as ControlDatabaseClient,
+        scope,
+        input.agentId,
+      );
+      if (!explicitAgentIds.includes(binding.agentId)) {
+        await tx.$queryRaw`
+          SELECT "id"
+          FROM "AgentBinding"
+          WHERE "environmentId" = ${scope.environmentId}::uuid
+            AND "agentId" = ${binding.agentId}::uuid
+          FOR SHARE
+        `;
+        binding = await resolveWriteBinding(
+          tx as unknown as ControlDatabaseClient,
+          scope,
+          input.agentId,
+        );
+      }
+      const create = {
         environmentId: scope.environmentId,
         endUserId: endUser.id,
         agentId: binding.agentId,
@@ -172,14 +236,112 @@ export class KnowledgeGraphService {
         label: this.encString(input.label || input.entityKey),
         aliases: input.aliases ?? [],
         metadata: storedMetadata as any,
-      },
-      update: {
-        clusterId: binding.clusterId,
-        ...(input.entityType ? { entityType: input.entityType } : {}),
-        ...(input.label ? { label: this.encString(input.label) } : {}),
-        ...(input.aliases ? { aliases: input.aliases } : {}),
-        ...(storedMetadata !== undefined ? { metadata: storedMetadata as any } : {}),
-      },
+      };
+      const ownershipKey = binding.clusterId
+        ? `cluster:${binding.clusterId}`
+        : `agent:${binding.agentId}`;
+      await tx.$queryRaw`
+        SELECT pg_advisory_xact_lock(
+          hashtextextended(
+            ${`MemoryEntity:${scope.environmentId}:${endUser.id}:${ownershipKey}:${input.entityKey}`},
+            0
+          )
+        ) IS NULL AS "locked"
+      `;
+
+      if (!binding.clusterId) {
+        const existing = await tx.memoryEntity.findFirst({
+          where: {
+            environmentId: scope.environmentId,
+            endUserId: endUser.id,
+            agentId: binding.agentId,
+            clusterId: null,
+            entityKey: input.entityKey,
+          },
+          select: { id: true },
+        });
+        return existing
+          ? tx.memoryEntity.update({ where: { id: existing.id }, data: update })
+          : tx.memoryEntity.create({ data: create });
+      }
+
+      const candidates = await tx.memoryEntity.findMany({
+        where: {
+          environmentId: scope.environmentId,
+          endUserId: endUser.id,
+          entityKey: input.entityKey,
+          OR: [
+            { clusterId: binding.clusterId },
+            { agentId: binding.agentId, clusterId: null },
+          ],
+        },
+        select: { id: true, agentId: true, clusterId: true },
+      });
+      const clustered = candidates.find((candidate) => candidate.clusterId === binding.clusterId);
+      const standalone = candidates.find(
+        (candidate) => candidate.agentId === binding.agentId && candidate.clusterId === null,
+      );
+      if (clustered && standalone) {
+        throw new Error(
+          "KnowledgeGraphService.upsertEntity: standalone entity conflicts with an existing clustered entity",
+        );
+      }
+      if (standalone) {
+        return tx.memoryEntity.update({
+          where: { id: standalone.id },
+          data: { clusterId: binding.clusterId, ...update },
+        });
+      }
+      if (clustered) {
+        return tx.memoryEntity.update({ where: { id: clustered.id }, data: update });
+      }
+
+      const id = randomUUID();
+      // Prisma cannot target the partial cluster unique index. The conflict
+      // clause closes the race between the cluster lookup and sibling insert.
+      const inserted = await tx.$queryRaw<Array<{ id: string }>>`
+        INSERT INTO "MemoryEntity" (
+          "id", "environmentId", "endUserId", "agentId", "clusterId",
+          "entityKey", "entityType", "label", "aliases", "metadata",
+          "createdAt", "updatedAt"
+        ) VALUES (
+          ${id}::uuid,
+          ${scope.environmentId}::uuid,
+          ${endUser.id}::uuid,
+          ${binding.agentId}::uuid,
+          ${binding.clusterId}::uuid,
+          ${input.entityKey},
+          ${input.entityType || "other"},
+          ${this.encString(input.label || input.entityKey)},
+          ${input.aliases ?? []}::text[],
+          ${storedMetadata == null ? null : JSON.stringify(storedMetadata)}::jsonb,
+          NOW(),
+          NOW()
+        )
+        ON CONFLICT ("environmentId", "endUserId", "clusterId", "entityKey")
+          WHERE "clusterId" IS NOT NULL
+        DO NOTHING
+        RETURNING "id"
+      `;
+      if (inserted[0]) {
+        return tx.memoryEntity.findUniqueOrThrow({ where: { id: inserted[0].id } });
+      }
+
+      const concurrent = await tx.memoryEntity.findFirst({
+        where: {
+          environmentId: scope.environmentId,
+          endUserId: endUser.id,
+          clusterId: binding.clusterId,
+          entityKey: input.entityKey,
+        },
+        select: { id: true },
+      });
+      if (!concurrent) {
+        throw new Error(
+          "KnowledgeGraphService.upsertEntity: clustered upsert completed without a readable row"
+        );
+      }
+      return tx.memoryEntity.update({ where: { id: concurrent.id }, data: update });
     });
 
     if (this.embeddings) {
@@ -209,18 +371,13 @@ export class KnowledgeGraphService {
   ): Promise<EntityRow | null> {
     await assertEnvironmentScope(this.prisma, scope);
     const endUser = userId ? await resolveEndUser(this.prisma, scope, userId) : null;
-    const agentIds = await resolveReadAgentIds(
-      this.prisma,
-      scope,
-      access.agentId,
-      access.agentIds,
-    );
+    const readWhere = await this.resolveGraphReadWhere(scope, access.agentId, access.agentIds);
     const row = await this.prisma.memoryEntity.findFirst({
       where: {
         id,
         ...environmentScopeWhere(scope),
         ...(endUser ? { endUserId: endUser.id } : {}),
-        ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+        ...readWhere,
       },
       include: {
         endUser: {
@@ -247,12 +404,12 @@ export class KnowledgeGraphService {
     const access = { agentId: input.agentId, agentIds: input.agentIds };
     const entity = await this.getEntityById(scope, input.entityId, userId, access);
     if (!entity) return null;
-    const agentIds = await resolveReadAgentIds(this.prisma, scope, input.agentId, input.agentIds);
+    const readWhere = await this.resolveGraphReadWhere(scope, input.agentId, input.agentIds);
     const endUser = await resolveEndUser(this.prisma, scope, userId || entity.userId);
     const where = {
       ...environmentScopeWhere(scope),
       endUserId: endUser.id,
-      ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+      ...readWhere,
     };
     const [outbound, inbound] = await Promise.all([
       this.prisma.memoryRelationship.findMany({
@@ -290,7 +447,7 @@ export class KnowledgeGraphService {
     if (start.id === target.id) return [{ entity: start, relationship: null, direction: null }];
 
     const endUser = await resolveEndUser(this.prisma, scope, input.userId);
-    const agentIds = await resolveReadAgentIds(this.prisma, scope, input.agentId, input.agentIds);
+    const readWhere = await this.resolveGraphReadWhere(scope, input.agentId, input.agentIds);
     const maxHops = clampInt(
       input.maxHops ?? KnowledgeGraphService.DEFAULT_MAX_HOPS,
       1,
@@ -310,7 +467,7 @@ export class KnowledgeGraphService {
         where: {
           ...environmentScopeWhere(scope),
           endUserId: endUser.id,
-          ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+          ...readWhere,
           OR: [{ fromEntityId: { in: frontier } }, { toEntityId: { in: frontier } }],
         },
       });
@@ -326,7 +483,7 @@ export class KnowledgeGraphService {
           direction: outbound ? "out" : "in",
         });
         if (neighbor === target.id) {
-          return this.backtrace(scope, endUser.externalId, visited, start.id, target.id, agentIds);
+          return this.backtrace(scope, endUser.externalId, visited, start.id, target.id, readWhere);
         }
         next.push(neighbor);
       }
@@ -345,7 +502,7 @@ export class KnowledgeGraphService {
     }>,
     startId: string,
     targetId: string,
-    agentIds: string[],
+    readWhere: GraphReadWhere,
   ): Promise<ShortestPathHop[]> {
     const ids: string[] = [];
     const relationships: Array<RelationshipRow | null> = [];
@@ -367,7 +524,7 @@ export class KnowledgeGraphService {
       where: {
         id: { in: ids },
         ...environmentScopeWhere(scope),
-        ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+        ...readWhere,
       },
     });
     const byId = new Map(rows.map((row) => [row.id, this.toEntityRow(row, scope, externalUserId)]));
@@ -498,7 +655,7 @@ export class KnowledgeGraphService {
     patch: { label?: string; aliases?: string[]; metadata?: unknown; entityType?: string },
   ): Promise<EntityRow | null> {
     await assertEnvironmentScope(this.prisma, scope);
-    const agentIds = await resolveReadAgentIds(this.prisma, scope);
+    const readWhere = await this.resolveGraphReadWhere(scope);
     const data: Record<string, unknown> = {};
     if (patch.label !== undefined) data.label = this.encString(patch.label);
     if (patch.aliases !== undefined) data.aliases = patch.aliases;
@@ -511,7 +668,7 @@ export class KnowledgeGraphService {
       where: {
         id,
         ...environmentScopeWhere(scope),
-        agentId: { in: agentIds },
+        ...readWhere,
       },
       data: data as any,
     });
@@ -523,12 +680,12 @@ export class KnowledgeGraphService {
     id: string,
   ): Promise<{ ok: boolean; deletedRelationships: number }> {
     await assertEnvironmentScope(this.prisma, scope);
-    const agentIds = await resolveReadAgentIds(this.prisma, scope);
+    const readWhere = await this.resolveGraphReadWhere(scope);
     const entity = await this.prisma.memoryEntity.findFirst({
       where: {
         id,
         ...environmentScopeWhere(scope),
-        agentId: { in: agentIds },
+        ...readWhere,
       },
       select: { id: true },
     });
@@ -544,7 +701,7 @@ export class KnowledgeGraphService {
         where: {
           id,
           ...environmentScopeWhere(scope),
-          agentId: { in: agentIds },
+          ...readWhere,
         },
       }),
     ]);
@@ -571,13 +728,13 @@ export class KnowledgeGraphService {
     });
     if (entities.length < 2) return { suggestions: [] };
     const endUser = await resolveEndUser(this.prisma, scope, input.userId);
-    const agentIds = await resolveReadAgentIds(this.prisma, scope, input.agentId, input.agentIds);
+    const readWhere = await this.resolveGraphReadWhere(scope, input.agentId, input.agentIds);
     const ids = entities.map((entity) => entity.id);
     const edges = await this.prisma.memoryRelationship.findMany({
       where: {
         ...environmentScopeWhere(scope),
         endUserId: endUser.id,
-        ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+        ...readWhere,
         OR: [{ fromEntityId: { in: ids } }, { toEntityId: { in: ids } }],
       },
       select: { fromEntityId: true, toEntityId: true },

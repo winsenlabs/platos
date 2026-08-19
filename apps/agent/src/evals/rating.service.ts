@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, Optional } from "@nestjs/common";
+import { Injectable, Inject, Optional } from "@nestjs/common";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 import { MemoryFeedbackService } from "../memory/memory-feedback.service";
@@ -43,7 +43,6 @@ export interface SatisfactionRow {
  */
 @Injectable()
 export class RatingService {
-  private readonly logger = new Logger(RatingService.name);
   private prisma: any;
 
   constructor(
@@ -51,7 +50,7 @@ export class RatingService {
     // Theme M.5 — optional so test harnesses that don't wire MemoryModule
     // (rating unit tests) continue to work. MemoryModule is a real import
     // in EvalsModule + app wiring so prod always has this injected.
-    @Optional() private readonly memoryFeedback?: MemoryFeedbackService,
+    @Optional() private readonly memoryFeedback?: MemoryFeedbackService
   ) {
     this.prisma = prisma;
   }
@@ -66,7 +65,7 @@ export class RatingService {
    */
   async upsert(
     scope: RequestScope,
-    input: { messageId: string; rating: 1 | -1; comment?: string | null },
+    input: { messageId: string; rating: 1 | -1; comment?: string | null }
   ): Promise<RatingRecord> {
     if (input.rating !== 1 && input.rating !== -1) {
       throw new Error("rating must be 1 or -1");
@@ -111,55 +110,47 @@ export class RatingService {
 
     const agentVersionId = turn.thread.agent.bindings[0]?.activeAgentVersionId ?? null;
 
-    const row = await this.prisma.messageRating.upsert({
-      where: {
-        turnId_endUserId: {
-          turnId: turn.id,
-          endUserId: turn.thread.endUserId,
-        },
-      },
-      update: {
-        rating: input.rating,
-        comment: input.comment ?? null,
-      },
-      create: {
-        environmentId: scope.environmentId,
-        turnId: turn.id,
-        agentId: turn.thread.agentId,
-        agentVersionId,
-        endUserId: turn.thread.endUserId,
-        rating: input.rating,
-        comment: input.comment ?? null,
-      },
-    });
-
-    // Theme M.5 — ratings feedback loop. Fire-and-forget: the persisted
-    // rating is the authoritative signal; memory confidence/flag bumps
-    // are best-effort secondary. A crashed feedback call is retried the
-    // next time the user flips the vote (upsert idempotent on rating
-    // sign). Scoped to the caller's (org, project, env, userId) tuple
-    // so cross-tenant leak is impossible.
-    if (this.memoryFeedback) {
-      void this.memoryFeedback
-        .applyRating(
-          {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
-            environmentId: scope.environmentId,
-            userId: scope.userId,
+    const row = await this.prisma.$transaction(
+      async (tx: any) => {
+        const persisted = await tx.messageRating.upsert({
+          where: {
+            turnId_endUserId: {
+              turnId: turn.id,
+              endUserId: turn.thread.endUserId,
+            },
           },
-          {
-            messageId: turn.id,
+          update: {
+            rating: input.rating,
+            comment: input.comment ?? null,
+            revision: { increment: 1 },
+          },
+          create: {
+            environmentId: scope.environmentId,
+            turnId: turn.id,
+            agentId: turn.thread.agentId,
+            agentVersionId,
+            endUserId: turn.thread.endUserId,
             rating: input.rating,
             comment: input.comment ?? null,
           },
-        )
-        .catch((err) =>
-          this.logger.warn(
-            `memory feedback apply failed: ${err?.message ?? err}`,
-          ),
-        );
-    }
+        });
+
+        // Reconciliation is keyed by the persisted row revision, never the
+        // input sign. Sharing this transaction removes the crash window between
+        // rating persistence and authoritative aggregate application.
+        if (this.memoryFeedback) {
+          await this.memoryFeedback.reconcilePersistedRating(
+            {
+              ratingId: persisted.id,
+              expectedRevision: persisted.revision,
+            },
+            tx
+          );
+        }
+        return persisted;
+      },
+      { timeout: 30_000 }
+    );
 
     return this.toRecord(row, {
       threadId: turn.threadId,
@@ -169,34 +160,55 @@ export class RatingService {
 
   /** Remove this user's rating for a message. Idempotent. */
   async remove(scope: RequestScope, messageId: string): Promise<boolean> {
-    // Scope-gate via a scope-stamped delete — PostgreSQL's deleteMany is
-    // a no-op on zero matches, so a cross-scope id can never reveal
-    // existence.
-    const turn = await this.prisma.turn.findFirst({
-      where: {
-        id: messageId,
-        thread: {
-          environmentId: scope.environmentId,
-          environment: {
-            project: {
-              id: scope.projectId,
-              organizationId: scope.organizationId,
+    // A delete without reconciliation would leave confidence/quarantine stale.
+    // Production always wires MemoryModule; fail closed if a partial test or
+    // misconfigured module invokes this mutation without the reconciler.
+    const memoryFeedback = this.memoryFeedback;
+    if (!memoryFeedback) throw new Error("Memory feedback reconciliation unavailable");
+
+    return this.prisma.$transaction(
+      async (tx: any) => {
+        // Resolve canonical provenance inside the same transaction as the
+        // delete. A forged cross-scope turn id remains indistinguishable from
+        // a missing turn and can never drive reconciliation in another scope.
+        const turn = await tx.turn.findFirst({
+          where: {
+            id: messageId,
+            thread: {
+              environmentId: scope.environmentId,
+              environment: {
+                project: {
+                  id: scope.projectId,
+                  organizationId: scope.organizationId,
+                },
+              },
             },
           },
-        },
-      },
-      select: { id: true, thread: { select: { endUserId: true } } },
-    });
-    if (!turn) return false;
+          select: { id: true, thread: { select: { endUserId: true } } },
+        });
+        if (!turn) return false;
 
-    const result = await this.prisma.messageRating.deleteMany({
-      where: {
-        turnId: messageId,
-        endUserId: turn.thread.endUserId,
-        environmentId: scope.environmentId,
+        const result = await tx.messageRating.deleteMany({
+          where: {
+            turnId: turn.id,
+            endUserId: turn.thread.endUserId,
+            environmentId: scope.environmentId,
+          },
+        });
+        if (result.count === 0) return false;
+
+        await memoryFeedback.reconcilePersistedTurnRatings(
+          {
+            environmentId: scope.environmentId,
+            endUserId: turn.thread.endUserId,
+            turnId: turn.id,
+          },
+          tx
+        );
+        return true;
       },
-    });
-    return result.count > 0;
+      { timeout: 30_000 }
+    );
   }
 
   /**
@@ -206,7 +218,7 @@ export class RatingService {
   async getForMessage(
     scope: RequestScope,
     messageId: string,
-    options: { onlyCurrentUser?: boolean } = { onlyCurrentUser: true },
+    options: { onlyCurrentUser?: boolean } = { onlyCurrentUser: true }
   ): Promise<{ userRating: RatingRecord | null; aggregate: { ups: number; downs: number } }> {
     const turn = await this.prisma.turn.findFirst({
       where: {
@@ -237,8 +249,7 @@ export class RatingService {
       where.endUserId = turn.thread.endUserId;
     }
     const rows = await this.prisma.messageRating.findMany({ where });
-    const userRow =
-      (rows as any[]).find((r) => r.endUserId === turn.thread.endUserId) ?? null;
+    const userRow = (rows as any[]).find((r) => r.endUserId === turn.thread.endUserId) ?? null;
     // Compute aggregate across ALL users (scope-filtered) for display-only.
     const [ups, downs] = await Promise.all([
       this.prisma.messageRating.count({
@@ -275,7 +286,7 @@ export class RatingService {
   async satisfactionByVersion(
     scope: ScopeTuple,
     agentId: string,
-    options: { days?: number } = {},
+    options: { days?: number } = {}
   ): Promise<{
     days: number;
     total: number;
@@ -351,7 +362,7 @@ export class RatingService {
    */
   async satisfactionByAgent(
     scope: ScopeTuple,
-    options: { days?: number } = {},
+    options: { days?: number } = {}
   ): Promise<Array<{ agentId: string; ups: number; downs: number; total: number; score: number }>> {
     const days = Math.max(1, Math.min(365, Math.floor(options.days ?? 30)));
     const since = new Date(Date.now() - days * 86400_000);
@@ -386,10 +397,7 @@ export class RatingService {
     });
   }
 
-  private toRecord(
-    r: any,
-    context: { threadId: string; userId: string },
-  ): RatingRecord {
+  private toRecord(r: any, context: { threadId: string; userId: string }): RatingRecord {
     return {
       id: r.id,
       messageId: r.turnId,

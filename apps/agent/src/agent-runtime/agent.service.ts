@@ -55,6 +55,7 @@ import { SpansService } from "../monitoring/spans.service";
 // AgentService directly without MemoryModule still boots; in production
 // AgentRuntimeModule imports MemoryModule so they're always present.
 import { MemoryService } from "../memory/memory.service";
+import { legacyFeedbackMetadataState } from "../memory/memory-feedback-legacy";
 import { KnowledgeGraphService } from "../memory/knowledge-graph.service";
 import { fuseContextRetrieval } from "../memory/retrieval/context-retrieval";
 import {
@@ -2110,7 +2111,7 @@ export class AgentService {
     // recall — multi-signal (dense ⊕ graph) retrieval over long-term memory.
     tools.recall = {
       description:
-        "Search your long-term memory for context relevant to the current conversation. Fuses semantic (cosine) recall with the knowledge graph: memories connected to people/orgs/projects in your query rank higher, and the related entities + relationships are returned alongside. Returns { results: [{ id, content, kind, score }], graph: { entities, relationships } }.",
+        "Search your long-term memory for context relevant to the current conversation. Fuses semantic (cosine) recall with the knowledge graph: memories connected to people/orgs/projects in your query rank higher, and the related entities + relationships are returned alongside. Returns { results: [{ id, content, kind, score, rankingScore }], graph: { entities, relationships } }; score is cosine similarity and rankingScore is the cosine/confidence ordering value.",
       inputSchema: z.object({
         query: z.string().describe("What to search for in memory"),
         kind: z
@@ -2148,6 +2149,10 @@ export class AgentService {
             content: h.content,
             kind: h.kind,
             score: typeof h.score === "number" ? Number(h.score.toFixed(4)) : undefined,
+            rankingScore:
+              typeof h.rankingScore === "number"
+                ? Number(h.rankingScore.toFixed(4))
+                : undefined,
             ...(Array.isArray(h.signals) ? { signals: h.signals } : {}),
             metadata: h.metadata,
             createdAt: h.createdAt,
@@ -5314,35 +5319,13 @@ export class AgentService {
         const fused = memoryFusePromise ? await memoryFusePromise : null;
         if (fused) {
           const budget = Math.max(100, env.PLATOS_MEMORY_INJECT_BUDGET_TOKENS ?? 800);
-          const hits = fused.memories;
-          // Theme M.5 — drop memories flagged by a thumbs-down rating.
-          // The metadata.flaggedByRating marker is written by
-          // MemoryFeedbackService.applyRating; we treat it as "quarantined
-          // pending human review" and exclude it from retrieval entirely.
-          const notFlagged = hits.filter((h) => {
-            const m = h.metadata;
-            if (!m || typeof m !== "object" || Array.isArray(m)) return true;
-            const flag = (m as Record<string, unknown>).flaggedByRating;
-            return !flag;
-          });
-          // Theme M.5 — rating-weighted ranking. Apply the confidence
-          // boost BEFORE sorting so high-confidence memories outrank
-          // marginally-closer-but-unconfirmed ones. Formula:
-          //     rankedScore = cosineScore * (1 + confidence * 0.25)
-          // confidence ∈ [0, 1] → up to a 25% boost; NULL confidence
-          // (pre-M.1 + manual rows) stays at 1x (no boost, no penalty).
-          // Tie-break by lastAccessedAt desc — the SQL already bumps it
-          // fire-and-forget for each returned row.
-          const prioritized = notFlagged.slice().sort((a, b) => {
-            const ac = typeof a.confidence === "number" ? a.confidence : 0;
-            const bc = typeof b.confidence === "number" ? b.confidence : 0;
-            const aRanked = a.score * (1 + ac * 0.25);
-            const bRanked = b.score * (1 + bc * 0.25);
-            if (bRanked !== aRanked) return bRanked - aRanked;
-            const ta = a.lastAccessedAt ? a.lastAccessedAt.getTime() : 0;
-            const tb = b.lastAccessedAt ? b.lastAccessedAt.getTime() : 0;
-            return tb - ta;
-          });
+          // MemoryService excludes structural quarantine before rows leave
+          // PostgreSQL. Keep the decrypt-aware legacy marker filter here as
+          // defense in depth during migration; opaque envelopes fail closed.
+          // Do not apply a second confidence formula at this boundary.
+          const prioritized = fused.memories.filter(
+            (memory) => !legacyFeedbackMetadataState(memory.metadata, memory.metadata).blocksRecall,
+          );
           const lines: string[] = [];
           let tokenTotal = 0;
           for (const h of prioritized) {
