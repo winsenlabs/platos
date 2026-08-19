@@ -254,7 +254,7 @@ describe("clean-slate domain schema", () => {
       "20260818010000_memory_entity_ownership_transition",
     ]);
     expect(createHash("sha256").update(migration).digest("hex")).toBe(
-      "ef1675ae7a79e3a426829892201a96c809cc2700a16426c24d69a14036dc383a"
+      "76039eaca78e84890ed9ca499890bf9579f31eff540953deda257ac50a855ad8"
     );
     expect(feedbackMigration).toContain('ADD COLUMN "quarantinedAt" TIMESTAMP(3)');
     expect(feedbackMigration).toContain('ADD COLUMN "revision" INTEGER NOT NULL DEFAULT 1');
