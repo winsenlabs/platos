@@ -7,10 +7,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **206** across **35** namespaces (24 admin-tier).
-- REST operations: **284** unique method/path pairs from **285** route bindings.
+- REST operations: **285** unique method/path pairs from **286** route bindings.
 - Ambiguous duplicate REST method/path pairs: **1**.
 - MCP classifications: MAPPED=83, MCP_ONLY=123.
-- REST classifications: DEPRECATED=13, INTERNAL=12, MAPPED=82, PUBLIC_TRANSPORT=44, REST_ONLY=133.
+- REST classifications: DEPRECATED=13, INTERNAL=12, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=133.
 
 ## REST inventory
 
@@ -288,6 +288,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /metrics` | PUBLIC_TRANSPORT | — | `service-observability` | `apps/agent/src/monitoring/metrics.controller.ts#scrape` |
 | `GET /oauth/authorize` | PUBLIC_TRANSPORT | — | `oauth-protocol` | `apps/agent/src/oauth/oauth.controller.ts#authorize` |
 | `POST /oauth/authorize/callback` | PUBLIC_TRANSPORT | — | `oauth-protocol` | `apps/agent/src/oauth/oauth.controller.ts#authorizeCallback` |
+| `GET /oauth/consent` | PUBLIC_TRANSPORT | — | `oauth-protocol` | `apps/agent/src/oauth/oauth.controller.ts#inspectConsent` |
 | `GET /oauth/entity/:entityId/authorize` | PUBLIC_TRANSPORT | — | `oauth-protocol` | `apps/agent/src/oauth/oauth.controller.ts#entityAuthorize` |
 | `POST /oauth/entity/:entityId/authorize/anonymous` | PUBLIC_TRANSPORT | — | `oauth-protocol` | `apps/agent/src/oauth/oauth.controller.ts#entityAnonAuthorize` |
 | `GET /oauth/entity/:entityId/oidc-callback` | PUBLIC_TRANSPORT | — | `oauth-protocol` | `apps/agent/src/oauth/oauth.controller.ts#entityOidcCallback` |
