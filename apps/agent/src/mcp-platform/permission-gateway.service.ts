@@ -1,5 +1,8 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import {
+  PRISMA_TOKEN,
+  type ControlDatabaseClient,
+} from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 
 /**
@@ -335,6 +338,16 @@ function normalizePolicy(raw: unknown): McpPermissionState | null {
   return null;
 }
 
+function fromPolicyEffect(effect: "ALLOW" | "DENY"): McpPermissionState {
+  return effect === "DENY" ? "block" : "auto_allow";
+}
+
+function toPolicyEffect(policy: McpPermissionState): "ALLOW" | "DENY" {
+  if (policy === "block") return "DENY";
+  if (policy === "auto_allow") return "ALLOW";
+  throw new Error("organization MCP policies support only auto_allow or block");
+}
+
 export interface ResolvePermissionInput {
   scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
   agentId: string | null;
@@ -360,7 +373,7 @@ export interface ResolvedPermission {
 export class MCPPermissionGatewayService {
   private readonly logger = new Logger(MCPPermissionGatewayService.name);
 
-  constructor(@Inject(PRISMA_TOKEN) private readonly prisma: any) {}
+  constructor(@Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient) {}
 
   /** Tier-1 platform baseline. Matches pattern list to get the minimum. */
   private readPlatformMinimum(toolName: string): McpPermissionState {
@@ -375,18 +388,14 @@ export class MCPPermissionGatewayService {
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
     toolName: string,
   ): Promise<McpPermissionState | null> {
-    const rows = await this.prisma.platosOrgMcpPolicy.findMany({
-      where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-      },
-      select: { pattern: true, policy: true },
+    const rows = await this.prisma.organizationMcpPolicy.findMany({
+      where: { organizationId: scope.organizationId },
+      select: { pattern: true, effect: true },
     });
     let winner: McpPermissionState | null = null;
     for (const row of rows) {
       if (matchesPattern(row.pattern, toolName)) {
-        const normalized = normalizePolicy(row.policy);
+        const normalized = fromPolicyEffect(row.effect);
         if (normalized && (!winner || stateOrder(normalized) > stateOrder(winner))) {
           winner = normalized;
         }
@@ -395,30 +404,43 @@ export class MCPPermissionGatewayService {
     return winner;
   }
 
-  /** Tier-3 per-agent override — JSON column lookup. */
+  /** Tier-3 per-agent override from the active version's typed tool policy. */
   private async readAgentOverride(
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
     agentId: string,
     toolName: string,
   ): Promise<McpPermissionState | null> {
-    const agent = await this.prisma.platosAgent.findUnique({
-      where: { id: agentId },
-      select: { mcpPermissions: true },
+    const binding = await this.prisma.agentBinding.findFirst({
+      where: {
+        agentId,
+        environmentId: scope.environmentId,
+        environment: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
+        agent: { projectId: scope.projectId },
+      },
+      select: {
+        activeAgentVersion: {
+          select: {
+            toolDefaultPolicy: true,
+            toolPolicies: {
+              where: { tool: { name: toolName } },
+              orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+              take: 1,
+              select: { effect: true },
+            },
+          },
+        },
+      },
     });
-    const perms = agent?.mcpPermissions as Record<string, unknown> | null;
-    if (!perms || typeof perms !== "object") return null;
-    // Exact match first; fall back to prefix glob.
-    if (toolName in perms) {
-      return normalizePolicy(perms[toolName]);
+    if (!binding) {
+      this.logger.warn("MCP permission denied: scoped AgentBinding was not found");
+      return "block";
     }
-    let winner: McpPermissionState | null = null;
-    for (const [pattern, policy] of Object.entries(perms)) {
-      if (pattern === toolName || !matchesPattern(pattern, toolName)) continue;
-      const normalized = normalizePolicy(policy);
-      if (normalized && (!winner || stateOrder(normalized) > stateOrder(winner))) {
-        winner = normalized;
-      }
-    }
-    return winner;
+    const explicit = binding.activeAgentVersion.toolPolicies[0];
+    if (explicit) return fromPolicyEffect(explicit.effect);
+    return binding.activeAgentVersion.toolDefaultPolicy === "ALL" ? "auto_allow" : "block";
   }
 
   /** Tier-4 session override — passed in by the caller; no DB touch. */
@@ -442,7 +464,7 @@ export class MCPPermissionGatewayService {
     if (t2 === "block") return { state: "block", tier: 2, reason: "org-policy block" };
 
     const t3 = input.agentId
-      ? await this.readAgentOverride(input.agentId, input.toolName)
+      ? await this.readAgentOverride(input.scope, input.agentId, input.toolName)
       : null;
     if (t3 === "block") return { state: "block", tier: 3, reason: "agent-policy block" };
 
@@ -504,14 +526,11 @@ export class MCPPermissionGatewayService {
   async listOrgPolicies(
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
   ) {
-    return this.prisma.platosOrgMcpPolicy.findMany({
-      where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-      },
+    const rows = await this.prisma.organizationMcpPolicy.findMany({
+      where: { organizationId: scope.organizationId },
       orderBy: [{ pattern: "asc" }],
     });
+    return rows.map(({ effect, ...row }) => ({ ...row, policy: fromPolicyEffect(effect) }));
   }
 
   async upsertOrgPolicy(
@@ -522,51 +541,41 @@ export class MCPPermissionGatewayService {
     if (!pattern || pattern.length < 1 || pattern.length > 200) {
       throw new Error("pattern must be 1–200 chars");
     }
-    if (normalizePolicy(policy) === null) {
-      throw new Error(`policy must be auto_allow | require_approval | block`);
-    }
+    const effect = toPolicyEffect(policy);
     // Upsert via find + update/create since the unique key is composite.
-    const existing = await this.prisma.platosOrgMcpPolicy.findFirst({
-      where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-        pattern,
-      },
+    const existing = await this.prisma.organizationMcpPolicy.findFirst({
+      where: { organizationId: scope.organizationId, pattern },
       select: { id: true },
     });
     if (existing) {
-      return this.prisma.platosOrgMcpPolicy.update({
+      const updated = await this.prisma.organizationMcpPolicy.update({
         where: { id: existing.id },
-        data: { policy },
+        data: { effect },
       });
+      const { effect: savedEffect, ...row } = updated;
+      return { ...row, policy: fromPolicyEffect(savedEffect) };
     }
-    return this.prisma.platosOrgMcpPolicy.create({
+    const created = await this.prisma.organizationMcpPolicy.create({
       data: {
         organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
         pattern,
-        policy,
+        effect,
       },
     });
+    const { effect: savedEffect, ...row } = created;
+    return { ...row, policy: fromPolicyEffect(savedEffect) };
   }
 
   async deleteOrgPolicy(
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
     id: string,
   ) {
-    const existing = await this.prisma.platosOrgMcpPolicy.findFirst({
-      where: {
-        id,
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
-      },
+    const existing = await this.prisma.organizationMcpPolicy.findFirst({
+      where: { id, organizationId: scope.organizationId },
       select: { id: true },
     });
     if (!existing) return false;
-    await this.prisma.platosOrgMcpPolicy.delete({ where: { id } });
+    await this.prisma.organizationMcpPolicy.delete({ where: { id } });
     return true;
   }
 

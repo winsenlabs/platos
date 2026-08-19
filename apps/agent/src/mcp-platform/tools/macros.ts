@@ -41,6 +41,7 @@ import type { McpRouter, McpToolHandler, JsonRpcRequest } from "../mcp-router";
 import type { VerifiedToken } from "../token.service";
 import type { RequestScope } from "../../auth/scope.guard";
 import { resolvePath } from "../../agent-runtime/context-resolver";
+import type { ControlDatabaseClient } from "../../shared/database.provider";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -50,6 +51,21 @@ function tuple(scope: RequestScope): ScopeTuple {
     projectId: scope.projectId,
     environmentId: scope.environmentId,
   };
+}
+
+function macroScopeWhere(scope: ScopeTuple) {
+  return {
+    environmentId: scope.environmentId,
+    environment: {
+      projectId: scope.projectId,
+      project: { organizationId: scope.organizationId },
+    },
+  } as const;
+}
+
+function publicMacro<T extends { sharedWithOrganization: boolean }>(row: T) {
+  const { sharedWithOrganization, ...rest } = row;
+  return { ...rest, sharedWithOrg: sharedWithOrganization };
 }
 
 export interface MacroStep {
@@ -145,30 +161,26 @@ function substitutePlaceholders(value: unknown, params: unknown): unknown {
 
 function isOwnerOrSharedInScope(
   row: {
-    organizationId: string;
-    projectId: string;
     environmentId: string;
     createdBy: string;
-    sharedWithOrg: boolean;
+    sharedWithOrganization: boolean;
   },
   scope: ScopeTuple,
   userId: string | null,
 ): "owner" | "shared" | null {
   if (
-    row.organizationId !== scope.organizationId ||
-    row.projectId !== scope.projectId ||
     row.environmentId !== scope.environmentId
   ) {
     return null;
   }
   if (userId && row.createdBy === userId) return "owner";
-  if (row.sharedWithOrg) return "shared";
+  if (row.sharedWithOrganization) return "shared";
   return null;
 }
 
 export function buildMacroToolHandlers(deps: {
   state: MacroRecordingState;
-  prisma: any;
+  prisma: ControlDatabaseClient;
   /**
    * Back-reference so `macros.replay` can re-dispatch each step through
    * the same JSON-RPC router (same permission gate + audit + scope
@@ -226,9 +238,9 @@ export function buildMacroToolHandlers(deps: {
         if (!finalized) {
           throw new Error(`no active recording with id '${recordingId}' for this token`);
         }
-        const macro = await prisma.platosMacro.create({
+        const macro = await prisma.macro.create({
           data: {
-            ...tuple(scope),
+            environmentId: scope.environmentId,
             name,
             description,
             steps: finalized.steps as any,
@@ -236,7 +248,7 @@ export function buildMacroToolHandlers(deps: {
             createdBy: finalized.createdBy,
           },
         });
-        return { macro };
+        return { macro: publicMacro(macro) };
       },
     },
     {
@@ -253,15 +265,15 @@ export function buildMacroToolHandlers(deps: {
       async execute(params, scope, token) {
         const limit = (params["limit"] as number) ?? 100;
         const userId = token.mintedByUserId;
-        const macros = await prisma.platosMacro.findMany({
+        const macros = await prisma.macro.findMany({
           where: {
-            ...tuple(scope),
-            OR: [{ createdBy: userId }, { sharedWithOrg: true }],
+            ...macroScopeWhere(tuple(scope)),
+            OR: [{ createdBy: userId }, { sharedWithOrganization: true }],
           },
           orderBy: [{ updatedAt: "desc" }],
           take: limit,
         });
-        return { macros };
+        return { macros: macros.map(publicMacro) };
       },
     },
     {
@@ -275,12 +287,14 @@ export function buildMacroToolHandlers(deps: {
       },
       async execute(params, scope, token) {
         const macroId = String(params["macroId"]);
-        const row = await prisma.platosMacro.findUnique({ where: { id: macroId } });
+        const row = await prisma.macro.findFirst({
+          where: { id: macroId, ...macroScopeWhere(tuple(scope)) },
+        });
         if (!row) throw new Error(`macro ${macroId} not found`);
         if (!isOwnerOrSharedInScope(row, tuple(scope), token.mintedByUserId)) {
           throw new Error(`macro ${macroId} not found in scope`);
         }
-        return { macro: row };
+        return { macro: publicMacro(row) };
       },
     },
     {
@@ -301,13 +315,12 @@ export function buildMacroToolHandlers(deps: {
       },
       async execute(params, scope, token) {
         const macroId = String(params["macroId"]);
-        const row = await prisma.platosMacro.findUnique({ where: { id: macroId } });
+        const row = await prisma.macro.findFirst({
+          where: { id: macroId, ...macroScopeWhere(tuple(scope)) },
+        });
         if (!row) throw new Error(`macro ${macroId} not found`);
         // Scope-match + owner gate (shared readers cannot mutate).
         if (
-          row.organizationId !== scope.organizationId ||
-          row.projectId !== scope.projectId ||
-          row.environmentId !== scope.environmentId ||
           row.createdBy !== token.mintedByUserId
         ) {
           throw new Error(`macro ${macroId} not editable by this token`);
@@ -315,10 +328,12 @@ export function buildMacroToolHandlers(deps: {
         const data: Record<string, unknown> = {};
         if (typeof params["name"] === "string") data["name"] = params["name"];
         if ("description" in params) data["description"] = params["description"] ?? null;
-        if (typeof params["sharedWithOrg"] === "boolean") data["sharedWithOrg"] = params["sharedWithOrg"];
+        if (typeof params["sharedWithOrg"] === "boolean") {
+          data["sharedWithOrganization"] = params["sharedWithOrg"];
+        }
         if ("paramSchema" in params) data["paramSchema"] = params["paramSchema"] ?? null;
-        const updated = await prisma.platosMacro.update({ where: { id: macroId }, data });
-        return { macro: updated };
+        const updated = await prisma.macro.update({ where: { id: macroId }, data });
+        return { macro: publicMacro(updated) };
       },
     },
     {
@@ -333,17 +348,16 @@ export function buildMacroToolHandlers(deps: {
       },
       async execute(params, scope, token) {
         const macroId = String(params["macroId"]);
-        const row = await prisma.platosMacro.findUnique({ where: { id: macroId } });
+        const row = await prisma.macro.findFirst({
+          where: { id: macroId, ...macroScopeWhere(tuple(scope)) },
+        });
         if (!row) return { ok: false, macroId };
         if (
-          row.organizationId !== scope.organizationId ||
-          row.projectId !== scope.projectId ||
-          row.environmentId !== scope.environmentId ||
           row.createdBy !== token.mintedByUserId
         ) {
           throw new Error(`macro ${macroId} not deletable by this token`);
         }
-        await prisma.platosMacro.delete({ where: { id: macroId } });
+        await prisma.macro.delete({ where: { id: macroId } });
         return { ok: true, macroId };
       },
     },
@@ -363,21 +377,20 @@ export function buildMacroToolHandlers(deps: {
       async execute(params, scope, token) {
         const macroId = String(params["macroId"]);
         const sharedWithOrg = Boolean(params["sharedWithOrg"]);
-        const row = await prisma.platosMacro.findUnique({ where: { id: macroId } });
+        const row = await prisma.macro.findFirst({
+          where: { id: macroId, ...macroScopeWhere(tuple(scope)) },
+        });
         if (!row) throw new Error(`macro ${macroId} not found`);
         if (
-          row.organizationId !== scope.organizationId ||
-          row.projectId !== scope.projectId ||
-          row.environmentId !== scope.environmentId ||
           row.createdBy !== token.mintedByUserId
         ) {
           throw new Error(`macro ${macroId} not editable by this token`);
         }
-        const updated = await prisma.platosMacro.update({
+        const updated = await prisma.macro.update({
           where: { id: macroId },
-          data: { sharedWithOrg },
+          data: { sharedWithOrganization: sharedWithOrg },
         });
-        return { macro: updated };
+        return { macro: publicMacro(updated) };
       },
     },
     {
@@ -396,12 +409,14 @@ export function buildMacroToolHandlers(deps: {
       async execute(params, scope, token) {
         const macroId = String(params["macroId"]);
         const replayParams = (params["params"] as Record<string, unknown> | undefined) ?? {};
-        const row = await prisma.platosMacro.findUnique({ where: { id: macroId } });
+        const row = await prisma.macro.findFirst({
+          where: { id: macroId, ...macroScopeWhere(tuple(scope)) },
+        });
         if (!row) throw new Error(`macro ${macroId} not found`);
         if (!isOwnerOrSharedInScope(row, tuple(scope), token.mintedByUserId)) {
           throw new Error(`macro ${macroId} not found in scope`);
         }
-        const steps = Array.isArray(row.steps) ? (row.steps as MacroStep[]) : [];
+        const steps = Array.isArray(row.steps) ? (row.steps as unknown as MacroStep[]) : [];
         const router = getRouter();
 
         const results: Array<{

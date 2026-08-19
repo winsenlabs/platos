@@ -18,6 +18,7 @@ describe("ProviderRegistryService clean provider state", () => {
       },
     };
     const scopedEnv = {
+      setMapForProvider: vi.fn().mockResolvedValue({ OPENAI_API_KEY: true }),
       hasProviderCredential: vi.fn().mockResolvedValue(true),
       get: vi.fn().mockResolvedValue(undefined),
     };
@@ -61,8 +62,12 @@ describe("ProviderRegistryService clean provider state", () => {
     };
     const service = new ProviderRegistryService(
       prisma as any,
-      { hasProviderCredential: vi.fn().mockResolvedValue(false), get: vi.fn() } as any,
-      { listFor: vi.fn() } as any,
+      {
+        setMapForProvider: vi.fn().mockResolvedValue({ OPENAI_API_KEY: false }),
+        hasProviderCredential: vi.fn().mockResolvedValue(false),
+        get: vi.fn(),
+      } as any,
+      { listFor: vi.fn() } as any
     );
 
     await service.link(scope, "openai");
@@ -74,13 +79,15 @@ describe("ProviderRegistryService clean provider state", () => {
       },
       select: { id: true },
     });
-    expect(tx.environmentProvider.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      where: {
-        environmentId_providerId: {
-          environmentId: scope.environmentId,
-          providerId: "openai",
+    expect(tx.environmentProvider.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          environmentId_providerId: {
+            environmentId: scope.environmentId,
+            providerId: "openai",
+          },
         },
-      },
-    }));
+      })
+    );
   });
 });

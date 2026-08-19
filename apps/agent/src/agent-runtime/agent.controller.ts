@@ -81,6 +81,29 @@ import {
   type UpdateGoldenSetDto,
 } from "../evals/golden-set.service";
 import { env } from "../shared/env";
+import { Prisma } from "@platos/tenancy-database";
+import {
+  type ControlDatabaseClient,
+  environmentScopeWhere,
+} from "../shared/database.provider";
+
+const EXTERNAL_END_USER_IDENTITY = {
+  issuer: "platos:external",
+  channel: "external",
+  disabledAt: null,
+} as const;
+
+function currentEnvironmentEndUserPresence(environmentId: string) {
+  return {
+    OR: [
+      { threads: { some: { environmentId } } },
+      { memories: { some: { environmentId } } },
+      { messageAttachments: { some: { environmentId } } },
+      { toolCallAudits: { some: { environmentId } } },
+      { safetyEvents: { some: { environmentId } } },
+    ],
+  };
+}
 
 /**
  * Agent REST API — every endpoint calls real services.
@@ -157,6 +180,10 @@ export class AgentController {
       projectId: scope.projectId,
       environmentId: scope.environmentId,
     };
+  }
+
+  private get prisma(): ControlDatabaseClient {
+    return (this.agentService as unknown as { prisma: ControlDatabaseClient }).prisma;
   }
 
   /**
@@ -1194,7 +1221,7 @@ export class AgentController {
       entityExternalId: string | null;
       environmentId: string;
       lastStatus: string | null;
-    }> = await (this.agentService as any).prisma.toolHealth.findMany({
+    }> = await this.prisma.toolHealth.findMany({
       where: { environmentId: scope.environmentId },
     });
     const healthByKey = new Map<string, string | null>();
@@ -1672,7 +1699,7 @@ export class AgentController {
       enabledOnly: false,
     });
 
-    const healthRows = await (this.agentService as any).prisma.toolHealth.findMany({
+    const healthRows = await this.prisma.toolHealth.findMany({
       where: { environmentId: scope.environmentId },
     });
     const healthByKey = new Map<string, any>();
@@ -1868,170 +1895,38 @@ export class AgentController {
       );
     }
 
-    // Load entity for serviceSecret (HMAC signing). Scope-gate via
-    // organizationId + projectId so a token from another scope can't hit this.
-    const prisma = (this.agentService as any).prisma;
-    const entity = await prisma.platosConnectedEntity.findFirst({
+    // Canonical Entity rows do not carry a legacy serviceSecret. Verify the
+    // entity through Project ancestry, then dispatch through the canonical
+    // executor for both wire and MCP transports.
+    const entity = await this.prisma.entity.findFirst({
       where: {
         id: toolEntry.entityPk,
-        organizationId: scope.organizationId,
         projectId: scope.projectId,
+        project: { organizationId: scope.organizationId },
       },
-      // GAP-4 — also load the transport discriminator so mcp-kind entities take
-      // the executor-delegated path below instead of the wire HMAC-POST.
-      select: { serviceSecret: true, entityId: true, connectionKind: true },
+      select: { id: true },
     });
     if (!entity) {
       throw new NotFoundException({ error: "Entity not found for this tool", toolId });
     }
 
-    // GAP-4 (design §4) — mcp-kind entities have no serviceSecret to HMAC-sign
-    // and no callbackUrl to POST (dummy secret + "mcp:noop"/null callback), so
-    // the wire dispatch below is meaningless for them. Delegate to the executor
-    // so the call runs through the mcpDispatch branch (pooled SDK client.callTool
-    // + per-user {{endUserId}} resolution) — full parity, one branch. This
-    // dashboard test carries no end-user context, so a {{endUserId}}-templated
-    // tool fails closed at the §3.2 boundary (never a shared identity). The
-    // endpoint must NEVER read entity.serviceSecret or toolEntry.callbackUrl for
-    // an mcp row — the branch returns before either is touched.
-    if (entity.connectionKind === "mcp") {
-      const t0 = Date.now();
-      const execResult = await this.toolExecutor.execute(
-        { tool: toolEntry.toolName, params: body.params ?? {}, purpose: "ui_test" },
-        scope,
-        { source: "wire_test" },
-      );
-      const durationMs = Date.now() - t0;
-      const ok = execResult.status === "success";
-      return {
-        status: ok ? 200 : 502,
-        headers: {},
-        body: ok
-          ? execResult.result ?? null
-          : { error: execResult.error ?? "MCP dispatch failed" },
-        durationMs,
-        ...(ok ? {} : { error: execResult.error ?? "MCP dispatch failed" }),
-      };
-    }
-
-    // Build request body — same shape as production path.
-    const requestParams = body.params ?? {};
-    const mcpBody = JSON.stringify({
-      method: "tools/call",
-      params: { name: toolEntry.toolName, arguments: requestParams },
-    });
-
-    const timestamp = new Date().toISOString();
-    const nonce = crypto.randomBytes(16).toString("hex");
-    const sigMessage = `${timestamp}.${nonce}.${mcpBody}`;
-    const signature = crypto
-      .createHmac("sha256", entity.serviceSecret)
-      .update(sigMessage)
-      .digest("hex");
-
-    // Validate callback URL against SSRF blocklist (same check as production).
-    {
-      const { validatePublicUrl, describeUrlValidationError } = await import("../shared/url-validator");
-      const check = await validatePublicUrl(toolEntry.callbackUrl);
-      if (!check.ok) {
-        throw new HttpException(
-          { error: `Blocked: ${describeUrlValidationError(check.error)}` },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
-
-    const callId = crypto.randomUUID();
-    const startTime = Date.now();
-
-    // Merge test headers + Platos standard headers. Caller-supplied headers
-    // go first so they can be overridden by the platform X-Platos-* ones.
-    const mergedHeaders: Record<string, string> = {
-      ...(body.headers ?? {}),
-      "Content-Type": "application/json",
-      "X-Platos-Signature": signature,
-      "X-Platos-Organization-Id": scope.organizationId,
-      "X-Platos-Project-Id": scope.projectId,
-      "X-Platos-Environment-Id": scope.environmentId,
-      "X-Platos-Entity-Id": entity.entityId,
-      "X-Platos-User-Id": scope.userId,
-      "X-Platos-Agent-Id": "dashboard",
-      "X-Platos-Thread-Id": "",
-      "X-Platos-Call-Id": callId,
-      "X-Platos-Timestamp": timestamp,
-      "X-Platos-Nonce": nonce,
-      "X-Platos-Test": "true",
+    const startedAt = Date.now();
+    const execResult = await this.toolExecutor.execute(
+      { tool: toolEntry.toolName, params: body.params ?? {}, purpose: "ui_test" },
+      scope,
+      { source: "wire_test" },
+    );
+    const durationMs = Date.now() - startedAt;
+    const ok = execResult.status === "success";
+    return {
+      status: ok ? 200 : 502,
+      headers: {},
+      body: ok
+        ? execResult.result ?? null
+        : { error: execResult.error ?? "Tool dispatch failed" },
+      durationMs,
+      ...(ok ? {} : { error: execResult.error ?? "Tool dispatch failed" }),
     };
-
-    try {
-      const abortCtl = new AbortController();
-      const timeout = setTimeout(() => abortCtl.abort(), 30_000);
-      // Rename to `fetchResp` to avoid shadowing the Express `Response` import.
-      let fetchResp: globalThis.Response;
-      try {
-        fetchResp = await fetch(toolEntry.callbackUrl, {
-          method: "POST",
-          headers: mergedHeaders,
-          body: mcpBody,
-          signal: abortCtl.signal,
-        });
-      } finally {
-        clearTimeout(timeout);
-      }
-
-      const durationMs = Date.now() - startTime;
-      const respHeaders: Record<string, string> = {};
-      fetchResp.headers.forEach((v: string, k: string) => { respHeaders[k] = v; });
-
-      let respBody: unknown;
-      const contentType = fetchResp.headers.get("content-type") ?? "";
-      if (contentType.includes("application/json")) {
-        respBody = await fetchResp.json().catch(() => null);
-      } else {
-        respBody = await fetchResp.text().catch(() => "");
-      }
-
-      // Write audit row tagged as wire_test (dashboard tool-test button).
-      try {
-        await this.toolAuditService.record({
-          scope: this.scopeTuple(scope),
-          toolId: toolEntry.toolId,
-          toolName: toolEntry.toolName,
-          entityId: toolEntry.sourceEntityId,
-          entityPk: toolEntry.entityPk,
-          agentId: "dashboard",
-          threadId: "",
-          userId: scope.userId,
-          args: requestParams,
-          result: fetchResp.ok ? respBody ?? null : null,
-          error: fetchResp.ok ? null : `HTTP ${fetchResp.status}`,
-          status: fetchResp.ok ? "success" : "failed",
-          latencyMs: durationMs,
-          source: "wire_test",
-          mcpUserId: null,
-          mcpClientId: null,
-        });
-      } catch {
-        // Audit is best-effort — never fail the test call for it.
-      }
-
-      if (!fetchResp.ok) {
-        return {
-          status: fetchResp.status,
-          headers: respHeaders,
-          body: respBody,
-          durationMs,
-          error: `HTTP ${fetchResp.status}`,
-          upstreamStatus: fetchResp.status,
-        };
-      }
-      return { status: fetchResp.status, headers: respHeaders, body: respBody, durationMs };
-    } catch (err: unknown) {
-      const durationMs = Date.now() - startTime;
-      const isAbort = err instanceof Error && err.name === "AbortError";
-      const msg = isAbort ? "Request timed out (30s)" : (err instanceof Error ? err.message : "fetch failed");
-      throw new HttpException({ error: msg, durationMs }, HttpStatus.BAD_GATEWAY);
-    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -2141,7 +2036,7 @@ export class AgentController {
     ).filter((c) => AgentController.ENTITY_ID_REGEX.test(c));
 
     // One bulk lookup — filter out any suggestions that are also taken.
-    const prisma = (this.agentService as any).prisma;
+    const prisma = this.prisma;
     const taken = new Set<string>();
     try {
       const rows = await prisma.entity.findMany({
@@ -2531,52 +2426,12 @@ export class AgentController {
     }
 
     if (body.linkedAgentIds !== undefined) {
-      if (!Array.isArray(body.linkedAgentIds)) {
-        throw new HttpException(
-          { error: "linkedAgentIds must be an array of agent IDs" },
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      const cleaned = Array.from(
-        new Set(
-          body.linkedAgentIds
-            .map((x) => (typeof x === "string" ? x.trim() : ""))
-            .filter((x) => x.length > 0),
-        ),
-      );
-      // Validate every id belongs to THIS scope so a forged agent id from
-      // another org can't be persisted into the allow-list.
-      if (cleaned.length > 0) {
-        const prisma = (this.agentService as any).prisma;
-        const known = await prisma.agentBinding.findMany({
-          where: {
-            environmentId: scope.environmentId,
-            agentId: { in: cleaned },
-            environment: {
-              projectId: scope.projectId,
-              project: { organizationId: scope.organizationId },
-            },
-          },
-          select: { agentId: true },
-        });
-        const knownIds = new Set(known.map((binding: { agentId: string }) => binding.agentId));
-        const bogus = cleaned.filter((id) => !knownIds.has(id));
-        if (bogus.length > 0) {
-          throw new HttpException(
-            {
-              error: "One or more agent IDs are not in this scope",
-              unknownAgentIds: bogus,
-            },
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-      }
-      // The retired Entity-linked allowlist has no clean persistence column.
-      // Canonical visibility is AgentToolPolicy-owned; retain this boundary as
-      // a compatibility no-op until the route moves to policy mutations.
-      this.toolRegistry.syncEntityLinkedAgents(
-        (entity as { id: string }).id,
-        cleaned,
+      throw new HttpException(
+        {
+          error: "unsupported",
+          message: "Entity-level agent allow-lists are not supported.",
+        },
+        HttpStatus.NOT_IMPLEMENTED,
       );
     }
 
@@ -2643,98 +2498,13 @@ export class AgentController {
       );
     }
 
-    // PIFSP-3 Deliverable 9 — test-credentials write path.
+    // The canonical Entity graph has no testCredentials field. Do not persist
+    // secret material in an unrelated JSON column.
     if (body.testCredentials !== undefined) {
-      const prisma = (this.agentService as any).prisma;
-      if (body.testCredentials === null) {
-        await prisma.platosConnectedEntity.update({
-          where: { id: (entity as { id: string }).id },
-          data: { testCredentials: null },
-        });
-      } else {
-        const raw = body.testCredentials;
-        if (
-          !raw ||
-          typeof raw !== "object" ||
-          !Array.isArray(raw.headers)
-        ) {
-          throw new HttpException(
-            { error: "testCredentials.headers must be an array" },
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-        if (raw.headers.length > 32) {
-          throw new HttpException(
-            {
-              error: "Too many test-credential headers (max 32).",
-              limit: 32,
-            },
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-        // RFC 7230 token regex for header names. Enforced server-side to
-        // mirror the form-level validation, so direct API callers can't
-        // smuggle in \r\n and split a header.
-        const HEADER_NAME_RE = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
-        const invalidHeaders: string[] = [];
-        const cleaned: Array<{ name: string; value: string }> = [];
-        for (const h of raw.headers) {
-          if (
-            !h ||
-            typeof h !== "object" ||
-            typeof h.name !== "string" ||
-            typeof h.value !== "string"
-          ) {
-            throw new HttpException(
-              { error: "Every header needs a string name + string value." },
-              HttpStatus.BAD_REQUEST,
-            );
-          }
-          const name = h.name.trim();
-          const value = h.value.trim();
-          if (!HEADER_NAME_RE.test(name)) {
-            invalidHeaders.push(name);
-            continue;
-          }
-          if (value.length > 4096) {
-            throw new HttpException(
-              {
-                error:
-                  "Header values capped at 4096 chars (matches most gateway limits).",
-                headerName: name,
-              },
-              HttpStatus.BAD_REQUEST,
-            );
-          }
-          cleaned.push({ name, value });
-        }
-        if (invalidHeaders.length > 0) {
-          throw new HttpException(
-            {
-              error: "One or more header names violate RFC 7230.",
-              invalidHeaders,
-            },
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-        const userId =
-          typeof raw.userId === "string" && raw.userId.trim().length > 0
-            ? raw.userId.trim()
-            : undefined;
-        const stash = {
-          headers: cleaned,
-          userId,
-          updatedAt: new Date().toISOString(),
-          updatedByUserId: scope.userId,
-        };
-        // Encrypt via the standard JSON envelope (reused from H.4). Stored
-        // as TEXT — opaque base64 ciphertext, not indexable JSON.
-        const encrypted = this.messageCrypto.encryptJsonField(stash);
-        await prisma.platosConnectedEntity.update({
-          where: { id: (entity as { id: string }).id },
-          data: { testCredentials: JSON.stringify(encrypted) },
-        });
-      }
+      throw new HttpException(
+        { error: "unsupported", message: "Entity test credentials are not supported." },
+        HttpStatus.NOT_IMPLEMENTED,
+      );
     }
 
     const updated = await this.authService.getEntity(
@@ -2745,15 +2515,7 @@ export class AgentController {
     return updated;
   }
 
-  /**
-   * PIFSP-3 Deliverable 9 — decrypted test-credentials fetch used by the
-   * entity detail page + the PIFSP-4 Postman-style test sheet. Scope-gated
-   * via the same (org, project, entityId) lookup as GET /entities/:entityId.
-   *
-   * Returns 204 when no stash has been saved. Header values are returned
-   * in plaintext — operator already has scope access, encryption is purely
-   * an at-rest defence.
-   */
+  /** Legacy route retained as an explicit unsupported boundary. */
   @Get("entities/:entityId/test-credentials")
   async getEntityTestCredentials(
     @Req() req: Request,
@@ -2772,42 +2534,10 @@ export class AgentController {
       res.status(404).json({ error: "Entity not found", entityId });
       return;
     }
-    const encrypted = (entity as { testCredentials?: string | null })
-      .testCredentials;
-    if (!encrypted) {
-      res.status(204).end();
-      return;
-    }
-    try {
-      const envelope = JSON.parse(encrypted);
-      const decrypted = this.messageCrypto.decryptJsonField(envelope) as {
-        headers?: Array<{ name: string; value: string }>;
-        userId?: string;
-        updatedAt?: string;
-        updatedByUserId?: string;
-      } | null;
-      if (
-        !decrypted ||
-        (decrypted as any).__platos_enc === 1 // decryption failed sentinel
-      ) {
-        res.status(500).json({
-          error: "decryption_failed",
-          message: "Test credentials present but the encryption key changed.",
-        });
-        return;
-      }
-      res.status(200).json({
-        headers: decrypted.headers ?? [],
-        userId: decrypted.userId,
-        updatedAt: decrypted.updatedAt,
-        updatedByUserId: decrypted.updatedByUserId,
-      });
-    } catch (err: any) {
-      res.status(500).json({
-        error: "decryption_failed",
-        message: err?.message ?? "failed to decrypt test credentials",
-      });
-    }
+    res.status(HttpStatus.NOT_IMPLEMENTED).json({
+      error: "unsupported",
+      message: "Entity test credentials are not supported.",
+    });
   }
 
   // ═══════════════════════════════════════════════════════
@@ -2834,7 +2564,7 @@ export class AgentController {
     if (!entity) {
       throw new NotFoundException({ error: "Entity not found", entityId });
     }
-    const prisma = (this.agentService as any).prisma;
+    const prisma = this.prisma;
     const entityPk = (entity as { id: string }).id;
     const [config, bearerTokenCount] = await Promise.all([
       prisma.entityMcpConfig.findUnique({ where: { entityId: entityPk } }),
@@ -2901,7 +2631,7 @@ export class AgentController {
       throw new NotFoundException({ error: "Entity not found", entityId });
     }
     const entityPk = (entity as { id: string }).id;
-    const prisma = (this.agentService as any).prisma;
+    const prisma = this.prisma;
 
     const update: Record<string, unknown> = {};
     if (typeof body.enabled === "boolean") update.enabled = body.enabled;
@@ -2935,8 +2665,9 @@ export class AgentController {
       where: { entityId: entityPk },
       create: {
         entityId: entityPk,
-        enabled: update.enabled ?? false,
-        identityMode: update.identityMode ?? "bearer",
+        enabled: typeof update.enabled === "boolean" ? update.enabled : false,
+        identityMode:
+          typeof update.identityMode === "string" ? update.identityMode : "bearer",
         identityProviders: update.identityProviders ?? [],
         branding: update.branding ?? {},
         toolAllowlist: (update.toolAllowlist as string[] | undefined) ?? [],
@@ -2953,6 +2684,9 @@ export class AgentController {
         where: { entityId: entityPk, revokedAt: null },
       }),
     ]);
+    if (!fresh) {
+      throw new ServiceUnavailableException("Failed to load canonical entity MCP configuration");
+    }
     return {
       entityPk,
       entityId,
@@ -3087,20 +2821,21 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const prisma = (this.costService as any).prisma;
+    const prisma = this.prisma;
     if (!prisma) return { rows: [], windowHours: 24, fetchedAt: new Date().toISOString() };
     const limit = Math.min(20, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 5 : 5));
     const since = new Date(Date.now() - 24 * 86_400_000);
 
     // Aggregate memory rows by agentId + kind (last 24h)
-    const rows: Array<{ agentId: string | null; kind: string; confidence: number | null; createdAt: Date; id: string; content: string }> =
-      await prisma.platosMemory.findMany({
+    const rows: Array<{ agentId: string; kind: string; confidence: number | null; createdAt: Date; id: string; content: string }> =
+      await prisma.memory.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          agent: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
           createdAt: { gte: since },
-          agentId: { not: null },
         },
         select: { agentId: true, kind: true, confidence: true, createdAt: true, id: true, content: true },
         orderBy: { createdAt: "desc" },
@@ -3134,7 +2869,7 @@ export class AgentController {
 
     // Fetch agent names
     const agentNameRows: Array<{ id: string; name: string }> = agentIds.length
-      ? await prisma.platosAgent.findMany({ where: { id: { in: agentIds } }, select: { id: true, name: true } })
+      ? await prisma.agent.findMany({ where: { id: { in: agentIds } }, select: { id: true, name: true } })
       : [];
     const nameMap = new Map(agentNameRows.map((a) => [a.id, a.name]));
 
@@ -3215,7 +2950,7 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const prisma = (this.costService as any).prisma;
+    const prisma = this.prisma;
     if (!prisma) return { users: [], nextCursor: null, fetchedAt: new Date().toISOString() };
 
     const limit = Math.min(100, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 50 : 50));
@@ -3224,30 +2959,34 @@ export class AgentController {
     const cost7dSince = new Date(Date.now() - 7 * 86_400_000);
 
     // 1. Thread-level aggregation by userId
-    const threadRows: Array<{
-      userId: string;
-      agentId: string;
-      id: string;
-      createdAt: Date;
-    }> = await prisma.platosAgentThread.findMany({
+    const canonicalThreadRows = await prisma.thread.findMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
+        agent: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
         ...(agentIdFilter ? { agentId: agentIdFilter } : {}),
         updatedAt: { gte: since },
       },
-      select: { userId: true, agentId: true, id: true, createdAt: true },
+      select: { endUserId: true, agentId: true, id: true, createdAt: true },
     });
+    const threadRows = canonicalThreadRows.map((thread) => ({
+      userId: thread.endUserId,
+      agentId: thread.agentId,
+      id: thread.id,
+      createdAt: thread.createdAt,
+    }));
 
     // 2. Turn (user-message) counts + lastActive per userId
-    const msgRows: Array<{ threadId: string; createdAt: Date }> = await prisma.platosAgentMessage.findMany({
+    const msgRows: Array<{ threadId: string; createdAt: Date }> = await prisma.turn.findMany({
       where: {
-        role: "user",
         thread: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          agent: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
         },
         createdAt: { gte: since },
       },
@@ -3271,52 +3010,85 @@ export class AgentController {
     ]));
 
     // 4. Safety events (7d) per userId
-    const safetyRows: Array<{ userId: string | null }> = await prisma.platosSafetyEvent.findMany({
+    const safetyRows = await prisma.safetyEvent.findMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
         createdAt: { gte: cost7dSince },
       },
-      select: { userId: true },
+      select: { endUserId: true, metadata: true },
     });
-    const safetyMap = new Map<string, number>();
-    for (const s of safetyRows) {
-      if (s.userId) safetyMap.set(s.userId, (safetyMap.get(s.userId) ?? 0) + 1);
-    }
 
-    // 5a. PlatosEndUser displayName/email (primary alias source)
-    const endUserRows: Array<{ externalUserId: string; displayName: string | null; email: string | null }> =
-      await (prisma as any).platosEndUser.findMany({
-        where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
+    // 5a. Canonical EndUser display name / verified identity profile.
+    const endUserRows = await prisma.endUser.findMany({
+      where: {
+        organizationId: scope.organizationId,
+        id: { in: [...new Set(threadRows.map((thread) => thread.userId))] },
+      },
+      select: {
+        id: true,
+        displayName: true,
+        identities: {
+          where: { disabledAt: null },
+          select: { issuer: true, channel: true, subject: true, profile: true },
         },
-        select: { externalUserId: true, displayName: true, email: true },
-      }).catch(() => []);
+      },
+    });
     const aliasMap = new Map<string, string>();
+    const externalUserIdMap = new Map<string, string>();
+    const canonicalByExternalUserId = new Map<string, string>();
     for (const eu of endUserRows) {
-      const alias = eu.displayName || eu.email;
-      if (alias) aliasMap.set(eu.externalUserId, alias);
+      const externalIdentity = eu.identities.find(
+        (identity) =>
+          identity.issuer === EXTERNAL_END_USER_IDENTITY.issuer &&
+          identity.channel === EXTERNAL_END_USER_IDENTITY.channel,
+      );
+      if (externalIdentity) {
+        externalUserIdMap.set(eu.id, externalIdentity.subject);
+        canonicalByExternalUserId.set(externalIdentity.subject, eu.id);
+      }
+      const profileValue = eu.identities
+        .map((identity) => identity.profile)
+        .find((value) =>
+          !!value && typeof value === "object" && !Array.isArray(value),
+        );
+      const profile = profileValue as unknown as Record<string, unknown> | undefined;
+      const email = typeof profile?.["email"] === "string" ? profile["email"] : null;
+      const alias = eu.displayName || email;
+      if (alias) aliasMap.set(eu.id, alias);
+    }
+    const safetyMap = new Map<string, number>();
+    for (const safety of safetyRows) {
+      const metadata = safety.metadata && typeof safety.metadata === "object" && !Array.isArray(safety.metadata)
+        ? safety.metadata as Record<string, unknown>
+        : null;
+      const adapter = metadata?.["__platosSafety"];
+      const externalUserId = adapter && typeof adapter === "object" && !Array.isArray(adapter)
+        ? (adapter as Record<string, unknown>)["userId"]
+        : null;
+      const canonicalUserId = safety.endUserId ?? (
+        typeof externalUserId === "string"
+          ? canonicalByExternalUserId.get(externalUserId) ?? null
+          : null
+      );
+      if (canonicalUserId) {
+        safetyMap.set(canonicalUserId, (safetyMap.get(canonicalUserId) ?? 0) + 1);
+      }
     }
 
     // 5b. Fallback: profile aliases from PlatosMemory (kind=profile, metadata.name)
-    const profileRows: Array<{ userId: string; content: string; metadata: any }> = await prisma.platosMemory.findMany({
+    const profileRows = await prisma.memory.findMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
         kind: "profile",
       },
-      select: { userId: true, content: true, metadata: true },
-    }).catch(() => []);
+      select: { endUserId: true, content: true, metadata: true },
+    });
     for (const p of profileRows) {
-      if (aliasMap.has(p.userId)) continue; // PlatosEndUser takes priority
+      if (aliasMap.has(p.endUserId)) continue; // EndUser takes priority
       const meta = p.metadata as Record<string, unknown> | null;
       if (meta?.profileKey === "name" || p.content?.startsWith("Name:")) {
         const name = String(meta?.value ?? p.content.replace(/^Name:\s*/i, "")).trim();
-        if (name) aliasMap.set(p.userId, name);
+        if (name) aliasMap.set(p.endUserId, name);
       }
     }
 
@@ -3377,7 +3149,8 @@ export class AgentController {
     const users = Array.from(byUser.values()).map((b) => {
       const riskFlagCount = safetyMap.get(b.userId) ?? 0;
       const score = computeScore(b, riskFlagCount, b.turns);
-      const tokens = tokensMap.get(b.userId) ?? {
+      const externalUserId = externalUserIdMap.get(b.userId) ?? null;
+      const tokens = (externalUserId ? tokensMap.get(externalUserId) : undefined) ?? {
         inputTokens: 0,
         outputTokens: 0,
         cacheReadInputTokens: 0,
@@ -3386,12 +3159,13 @@ export class AgentController {
       };
       return {
         userId: b.userId,
+        externalUserId,
         alias: aliasMap.get(b.userId) ?? null,
         totalConversations: b.threadIds.size,
         agentsTouched: b.agentIds.size,
         totalTurns: b.turns,
         lastActiveAt: b.lastActiveAt.toISOString(),
-        cost7dCents: costMap.get(b.userId) ?? 0,
+        cost7dCents: externalUserId ? costMap.get(externalUserId) ?? 0 : 0,
         // PRELAUNCH-A1-10 — token breakdown for the monitoring table.
         inputTokens: tokens.inputTokens,
         outputTokens: tokens.outputTokens,
@@ -3430,40 +3204,56 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const prisma = (this.costService as any).prisma;
+    const prisma = this.prisma;
     if (!prisma) return { agents: [], fetchedAt: new Date().toISOString() };
     const sinceDays = Math.min(90, Math.max(1, sinceDaysRaw ? parseInt(sinceDaysRaw, 10) || 30 : 30));
     const since = new Date(Date.now() - sinceDays * 86_400_000);
 
     // Threads in scope within window
-    const threads: Array<{ id: string; agentId: string; userId: string; createdAt: Date; updatedAt: Date }> =
-      await prisma.platosAgentThread.findMany({
+    const canonicalThreads = await prisma.thread.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          agent: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
           updatedAt: { gte: since },
         },
-        select: { id: true, agentId: true, userId: true, createdAt: true, updatedAt: true },
+        select: { id: true, agentId: true, endUserId: true, createdAt: true, updatedAt: true },
       });
+    const threads = canonicalThreads.map((thread) => ({
+      id: thread.id,
+      agentId: thread.agentId,
+      userId: thread.endUserId,
+      createdAt: thread.createdAt,
+      updatedAt: thread.updatedAt,
+    }));
 
     // Agent names + model
     const agentIds = [...new Set(threads.map((t) => t.agentId))];
-    const agentRows: Array<{ id: string; name: string; model: string | null }> =
-      await prisma.platosAgent.findMany({
-        where: { id: { in: agentIds } },
-        select: { id: true, name: true, model: true },
-      });
+    const agentBindings = await prisma.agentBinding.findMany({
+      where: { environmentId: scope.environmentId, agentId: { in: agentIds } },
+      select: {
+        agent: { select: { id: true, name: true } },
+        activeAgentVersion: { select: { model: true } },
+      },
+    });
+    const agentRows = agentBindings.map((binding) => ({
+      id: binding.agent.id,
+      name: binding.agent.name,
+      model: binding.activeAgentVersion.model,
+    }));
     const agentMeta = new Map(agentRows.map((a: { id: string; name: string; model: string | null }) => [a.id, a]));
 
     // User-turn counts per agentId (proxy for "turns")
-    const msgRows: Array<{ threadId: string }> = await prisma.platosAgentMessage.findMany({
+    const msgRows: Array<{ threadId: string }> = await prisma.turn.findMany({
       where: {
-        role: "user",
         thread: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
+          agent: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
         },
         createdAt: { gte: since },
       },
@@ -3547,7 +3337,7 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const prisma = (this.costService as any).prisma;
+    const prisma = this.prisma;
     const days = Math.min(365, Math.max(1, daysRaw ? parseInt(daysRaw, 10) || 7 : 7));
     if (!prisma) {
       return { days, agents: [], fetchedAt: new Date().toISOString() };
@@ -3562,42 +3352,53 @@ export class AgentController {
         // appear as rows with zeroed metrics.
         this.agentCrud.list(scope),
         // Windowed threads → conversation count + thread→agent map for messages.
-        prisma.platosAgentThread.findMany({
+        prisma.thread.findMany({
           where: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
             environmentId: scope.environmentId,
+            agent: {
+              projectId: scope.projectId,
+              project: { organizationId: scope.organizationId },
+            },
             updatedAt: { gte: since },
           },
           select: { id: true, agentId: true },
-        }) as Promise<Array<{ id: string; agentId: string }>>,
+        }),
         // All-time last-active per agent (max thread.updatedAt) — one aggregate
         // row per agent, so "Last active" stays truthful for dormant agents.
-        prisma.platosAgentThread.groupBy({
+        prisma.thread.groupBy({
           by: ["agentId"],
           where: {
-            organizationId: scope.organizationId,
-            projectId: scope.projectId,
             environmentId: scope.environmentId,
+            agent: {
+              projectId: scope.projectId,
+              project: { organizationId: scope.organizationId },
+            },
           },
           _max: { updatedAt: true },
-        }) as Promise<Array<{ agentId: string; _max: { updatedAt: Date | null } }>>,
-        // Windowed message counts (all roles) → message volume via thread map.
-        // groupBy aggregates in Postgres: one row per thread instead of one row
-        // per message, so a busy 30d window doesn't materialize hundreds of
-        // thousands of rows in Node memory.
-        prisma.platosAgentMessage.groupBy({
-          by: ["threadId"],
+        }),
+        // Canonical message projection: each Turn contributes its input and at
+        // most one assistant side. Steps are implementation detail within that
+        // assistant response, not additional chat messages.
+        prisma.turn.findMany({
           where: {
             createdAt: { gte: since },
             thread: {
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
               environmentId: scope.environmentId,
+              agent: {
+                projectId: scope.projectId,
+                project: { organizationId: scope.organizationId },
+              },
             },
           },
-          _count: { _all: true },
-        }) as Promise<Array<{ threadId: string; _count: { _all: number } }>>,
+          select: {
+            threadId: true,
+            inputText: true,
+            input: true,
+            outputText: true,
+            output: true,
+            _count: { select: { steps: true } },
+          },
+        }),
         this.costService.getCostByAgent(scopeTuple, { days, limit: 10_000 }),
         this.ratingService.satisfactionByAgent(scopeTuple, { days }),
       ]);
@@ -3612,9 +3413,13 @@ export class AgentController {
 
     // message volume per agent (windowed)
     const messagesPerAgent = new Map<string, number>();
-    for (const g of msgRows) {
-      const aid = threadIdToAgent.get(g.threadId);
-      if (aid) messagesPerAgent.set(aid, (messagesPerAgent.get(aid) ?? 0) + g._count._all);
+    for (const turn of msgRows) {
+      const aid = threadIdToAgent.get(turn.threadId);
+      if (!aid) continue;
+      const projectedMessages =
+        (turn.inputText !== null || turn.input !== null ? 1 : 0) +
+        (turn.outputText !== null || turn.output !== null || turn._count.steps > 0 ? 1 : 0);
+      messagesPerAgent.set(aid, (messagesPerAgent.get(aid) ?? 0) + projectedMessages);
     }
 
     // all-time last active per agent
@@ -3668,11 +3473,43 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const prisma = (this.costService as any).prisma;
+    const prisma = this.prisma;
     if (!prisma) return { error: "service unavailable", status: 503 };
 
     const cost7dSince = new Date(Date.now() - 7 * 86_400_000);
     const cost30dSince = new Date(Date.now() - 30 * 86_400_000);
+
+    const endUserRow = await prisma.endUser.findFirst({
+      where: {
+        id: targetUserId,
+        organizationId: scope.organizationId,
+        ...currentEnvironmentEndUserPresence(scope.environmentId),
+      },
+      select: {
+        id: true,
+        displayName: true,
+        identities: {
+          where: { disabledAt: null },
+          select: { issuer: true, channel: true, subject: true, profile: true },
+        },
+      },
+    });
+    if (!endUserRow) throw new NotFoundException("End user not found in this Environment");
+    const externalUserId = endUserRow.identities.find(
+      (identity) =>
+        identity.issuer === EXTERNAL_END_USER_IDENTITY.issuer &&
+        identity.channel === EXTERNAL_END_USER_IDENTITY.channel,
+    )?.subject ?? null;
+    const emailIdentity = endUserRow.identities.find((identity) => identity.channel === "email");
+    const profileEmail = endUserRow.identities
+      .map((identity) => identity.profile)
+      .map((value) =>
+        value && typeof value === "object" && !Array.isArray(value)
+          ? (value as unknown as Record<string, unknown>)["email"]
+          : null,
+      )
+      .find((value): value is string => typeof value === "string") ?? null;
+    const endUserEmail = emailIdentity?.subject ?? profileEmail;
 
     // Threads for this user
     const threads: Array<{
@@ -3682,12 +3519,14 @@ export class AgentController {
       createdAt: Date;
       updatedAt: Date;
       status: string;
-    }> = await prisma.platosAgentThread.findMany({
+    }> = await prisma.thread.findMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
-        userId: targetUserId,
+        endUserId: targetUserId,
+        agent: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
       },
       select: { id: true, agentId: true, title: true, createdAt: true, updatedAt: true, status: true },
       orderBy: { updatedAt: "desc" },
@@ -3696,7 +3535,7 @@ export class AgentController {
 
     // Agent names
     const agentIds = [...new Set(threads.map((t) => t.agentId))];
-    const agentRows: Array<{ id: string; name: string }> = await prisma.platosAgent.findMany({
+    const agentRows: Array<{ id: string; name: string }> = await prisma.agent.findMany({
       where: { id: { in: agentIds } },
       select: { id: true, name: true },
     });
@@ -3723,69 +3562,56 @@ export class AgentController {
 
     // Profile memories
     const profileMemories: Array<{ id: string; kind: string; content: string; metadata: any; createdAt: Date }> =
-      await prisma.platosMemory.findMany({
+      await prisma.memory.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
-          userId: targetUserId,
+          endUserId: targetUserId,
           kind: "profile",
         },
         select: { id: true, kind: true, content: true, metadata: true, createdAt: true },
         orderBy: { createdAt: "desc" },
         take: 50,
-      }).catch(() => []);
+      });
 
     // Risk events (7d)
-    const riskEvents = await this.safetyEventService.list(this.scopeTuple(scope), {
-      userId: targetUserId,
-      limit: 50,
-    });
+    const riskEvents = externalUserId
+      ? await this.safetyEventService.list(this.scopeTuple(scope), {
+          userId: externalUserId,
+          limit: 50,
+        })
+      : { rows: [] };
 
     // Cost
     const cost7dRows = await this.costService.getCostByUser(this.scopeTuple(scope), { days: 7, limit: 500 });
     const cost30dRows = await this.costService.getCostByUser(this.scopeTuple(scope), { days: 30, limit: 500 });
-    const cost7dCents = cost7dRows.find((r) => r.userId === targetUserId)?.costCents ?? 0;
-    const cost30dCents = cost30dRows.find((r) => r.userId === targetUserId)?.costCents ?? 0;
-
-    // PlatosEndUser metadata
-    const endUserRow: { displayName: string | null; email: string | null } | null =
-      await (prisma as any).platosEndUser.findFirst({
-        where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-          externalUserId: targetUserId,
-        },
-        select: { displayName: true, email: true },
-      }).catch(() => null);
+    const cost7dCents = externalUserId
+      ? cost7dRows.find((r) => r.userId === externalUserId)?.costCents ?? 0
+      : 0;
+    const cost30dCents = externalUserId
+      ? cost30dRows.find((r) => r.userId === externalUserId)?.costCents ?? 0
+      : 0;
 
     // Ratings summary
     // PlatosMessageRating has direct scope + userId columns — no relation needed.
-    const ratings: Array<{ rating: number }> = await prisma.platosMessageRating.findMany({
+    const ratings: Array<{ rating: number }> = await prisma.messageRating.findMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
-        userId: targetUserId,
+        endUserId: targetUserId,
       },
       select: { rating: true },
-    }).catch(() => []);
+    });
     const ratingsUps = ratings.filter((r) => r.rating > 0).length;
     const ratingsDowns = ratings.filter((r) => r.rating < 0).length;
 
     // Memory count by kind
-    const memoryCounts: Array<{ kind: string; _count: { id: number } }> =
-      await prisma.platosMemory.groupBy({
+    const memoryCounts = await prisma.memory.groupBy({
         by: ["kind"],
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
-          userId: targetUserId,
+          endUserId: targetUserId,
         },
         _count: { id: true },
-      }).catch(() => []);
+      });
     const memoryBreakdown: Record<string, number> = Object.fromEntries(
       memoryCounts.map((r) => [r.kind, r._count.id]),
     );
@@ -3799,8 +3625,9 @@ export class AgentController {
 
     return {
       userId: targetUserId,
-      displayName: endUserRow?.displayName ?? null,
-      email: endUserRow?.email ?? null,
+      externalUserId,
+      displayName: endUserRow.displayName ?? null,
+      email: endUserEmail,
       conversationsByAgent,
       profileMemories: profileMemories.map((m) => ({
         id: m.id,
@@ -3836,7 +3663,24 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    return this.budgetService.getUserConsumptionSummary(scope, targetUserId);
+    const endUser = await this.prisma.endUser.findFirst({
+      where: {
+        id: targetUserId,
+        organizationId: scope.organizationId,
+        ...currentEnvironmentEndUserPresence(scope.environmentId),
+      },
+      select: {
+        identities: {
+          where: EXTERNAL_END_USER_IDENTITY,
+          select: { subject: true },
+          take: 1,
+        },
+      },
+    });
+    if (!endUser) throw new NotFoundException("End user not found in this Environment");
+    const externalUserId = endUser.identities[0]?.subject;
+    if (!externalUserId) throw new NotFoundException("External user identity not found");
+    return this.budgetService.getUserConsumptionSummary(scope, externalUserId);
   }
 
   /**
@@ -3869,49 +3713,76 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const prisma = (this.costService as any).prisma;
+    const prisma = this.prisma;
     if (!prisma) return { error: "service unavailable" };
+
+    const endUser = await prisma.endUser.findFirst({
+      where: {
+        id: targetUserId,
+        organizationId: scope.organizationId,
+        ...currentEnvironmentEndUserPresence(scope.environmentId),
+      },
+      select: {
+        identities: {
+          where: EXTERNAL_END_USER_IDENTITY,
+          select: { subject: true },
+          take: 1,
+        },
+      },
+    });
+    if (!endUser) throw new NotFoundException("End user not found in this Environment");
+    const externalUserId = endUser.identities[0]?.subject ?? null;
 
     // Collect compact data for the prompt
     const [threads, memories, safetyRows] = await Promise.all([
-      prisma.platosAgentThread.findMany({
+      prisma.thread.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
-          userId: targetUserId,
+          endUserId: targetUserId,
+          agent: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
         },
         select: { id: true, agentId: true, title: true, updatedAt: true },
         orderBy: { updatedAt: "desc" },
         take: 50,
       }),
-      prisma.platosMemory.findMany({
+      prisma.memory.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
-          userId: targetUserId,
+          endUserId: targetUserId,
         },
         select: { kind: true, content: true, createdAt: true },
         orderBy: { createdAt: "desc" },
         take: 30,
       }),
-      prisma.platosSafetyEvent.findMany({
+      prisma.safetyEvent.findMany({
         where: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
           environmentId: scope.environmentId,
-          userId: targetUserId,
+          OR: [
+            { endUserId: targetUserId },
+            ...(externalUserId
+              ? [{
+                  metadata: {
+                    path: ["__platosSafety", "userId"],
+                    equals: externalUserId,
+                  },
+                }]
+              : []),
+          ],
         },
         select: { detector: true, severity: true, detail: true, createdAt: true },
         orderBy: { createdAt: "desc" },
         take: 10,
-      }).catch(() => []),
+      }),
     ]);
 
     // Cost data
     const costRows = await this.costService.getCostByUser(this.scopeTuple(scope), { days: 30, limit: 500 });
-    const cost30d = costRows.find((r) => r.userId === targetUserId)?.costCents ?? 0;
+    const cost30d = externalUserId
+      ? costRows.find((r) => r.userId === externalUserId)?.costCents ?? 0
+      : 0;
 
     // Resolve Anthropic key
     const anthropicKey = await this.agentService.resolvePublicApiKey(this.scopeTuple(scope), "anthropic");
@@ -3923,7 +3794,7 @@ export class AgentController {
 
     // Build compact context
     const agentIds = [...new Set((threads as Array<{ agentId: string }>).map((t) => t.agentId))];
-    const agentRows: Array<{ id: string; name: string }> = await prisma.platosAgent.findMany({
+    const agentRows: Array<{ id: string; name: string }> = await prisma.agent.findMany({
       where: { id: { in: agentIds } },
       select: { id: true, name: true },
     });
@@ -4999,7 +4870,7 @@ Write the summary now:`;
     const scopeTuple = this.scopeTuple(scope);
 
     const [threadCountAll, threadCountDay, cost7d] = await Promise.all([
-      (this.agentService as any).prisma.thread.count({
+      this.prisma.thread.count({
         where: {
           environmentId: scope.environmentId,
           environment: {
@@ -5007,7 +4878,7 @@ Write the summary now:`;
           },
         },
       }),
-      (this.agentService as any).prisma.thread.count({
+      this.prisma.thread.count({
         where: {
           environmentId: scope.environmentId,
           environment: {
@@ -5023,7 +4894,7 @@ Write the summary now:`;
     // traverse the canonical Environment → Project relation to re-check the
     // full tuple instead of relying on a legacy RuntimeEnvironment delegate.
     const activeToolsRows: Array<{ totalCalls: number; lastCalledAt: Date | null }> =
-      await (this.agentService as any).prisma.toolHealth.findMany({
+      await this.prisma.toolHealth.findMany({
         where: {
           environmentId: scope.environmentId,
           environment: {
@@ -5121,7 +4992,7 @@ Write the summary now:`;
    *   1. PlatosAgentMessage (assistant turns)
    *   2. PlatosConnectedEntity (connect/disconnect)
    *   3. PlatosMemory (extraction events, source="extractor")
-   *   4. PlatosAgentVersion (version promotions)
+   *   4. AdminAudit (immutable version-promotion events)
    *   5. PlatosSafetyEvent
    * Each source is fetched independently with take=limit, then merged and
    * sorted descending in-memory. Max 50 items.
@@ -5134,15 +5005,8 @@ Write the summary now:`;
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const prisma = (this.agentService as any).prisma;
+    const prisma = this.prisma;
     const limit = Math.min(50, Math.max(1, limitStr ? parseInt(limitStr, 10) : 15));
-    const scopeWhere = {
-      organizationId: scope.organizationId,
-      projectId: scope.projectId,
-      environmentId: scope.environmentId,
-      ...(agentId ? { agentId } : {}),
-    };
-
     type ActivityItem = {
       kind: string;
       at: string;
@@ -5158,11 +5022,24 @@ Write the summary now:`;
 
     // 1. Recently active threads (PlatosAgentMessage has no scope columns —
     //    scope lives on the thread; query threads instead).
-    const turns = await prisma.platosAgentThread.findMany({
-      where: { ...scopeWhere },
+    const turns = await prisma.thread.findMany({
+      where: {
+        environmentId: scope.environmentId,
+        ...(agentId ? { agentId } : {}),
+        agent: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
+      },
       orderBy: { updatedAt: "desc" },
       take: limit,
-      select: { id: true, agentId: true, userId: true, updatedAt: true, turnCount: true },
+      select: {
+        id: true,
+        agentId: true,
+        endUserId: true,
+        updatedAt: true,
+        _count: { select: { turns: true } },
+      },
     });
     for (const t of turns) {
       items.push({
@@ -5170,23 +5047,22 @@ Write the summary now:`;
         at: t.updatedAt.toISOString(),
         agentId: t.agentId,
         threadId: t.id,
-        userId: t.userId ?? undefined,
-        summary: `Thread active · ${t.turnCount} turn${t.turnCount !== 1 ? "s" : ""}`,
+        userId: t.endUserId,
+        summary: `Thread active · ${t._count.turns} turn${t._count.turns !== 1 ? "s" : ""}`,
         severity: "info",
-        payload: { turnCount: t.turnCount },
+        payload: { turnCount: t._count.turns },
       });
     }
 
     // 2. Entity connect/disconnect (recent updates)
-    const entities = await prisma.platosConnectedEntity.findMany({
+    const entities = await prisma.entity.findMany({
       where: {
-        organizationId: scope.organizationId,
         projectId: scope.projectId,
-        ...(agentId ? {} : {}),
+        project: { organizationId: scope.organizationId },
       },
       orderBy: { updatedAt: "desc" },
       take: limit,
-      select: { entityId: true, updatedAt: true, lastConnectedAt: true },
+      select: { externalId: true, updatedAt: true, lastConnectedAt: true },
     });
     for (const e of entities) {
       const connected = !!e.lastConnectedAt &&
@@ -5194,20 +5070,22 @@ Write the summary now:`;
       items.push({
         kind: connected ? "entity.connected" : "entity.disconnected",
         at: e.updatedAt.toISOString(),
-        summary: `Entity ${e.entityId} ${connected ? "connected" : "disconnected"}`,
+        summary: `Entity ${e.externalId} ${connected ? "connected" : "disconnected"}`,
         severity: "info",
-        payload: { entityId: e.entityId },
+        payload: { entityId: e.externalId },
       });
     }
 
     // 3. Memory extraction events
-    const memories = await prisma.platosMemory.findMany({
+    const memories = await prisma.memory.findMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
         source: "extractor",
         ...(agentId ? { agentId } : {}),
+        agent: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
       },
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -5224,49 +5102,58 @@ Write the summary now:`;
       });
     }
 
-    // 4. Agent version promotions.
-    // PlatosAgentVersion has no scope columns of its own — scope through the
-    // `agent` relation (PlatosAgent owns organizationId/projectId/environmentId).
-    const versions = await prisma.platosAgentVersion.findMany({
+    // 4. Agent version promotions. AgentVersion.createdAt records version
+    // creation, not promotion; use the immutable admin event instead.
+    const promotions = await prisma.adminAudit.findMany({
       where: {
-        agent: {
-          organizationId: scope.organizationId,
+        environmentId: scope.environmentId,
+        environment: {
           projectId: scope.projectId,
-          environmentId: scope.environmentId,
+          project: { organizationId: scope.organizationId },
         },
-        ...(agentId ? { agentId } : {}),
+        action: "agent.canary.promote",
+        ...(agentId ? { subjectId: agentId } : {}),
       },
       orderBy: { createdAt: "desc" },
       take: limit,
-      select: { agentId: true, createdAt: true, versionNumber: true },
+      select: { subjectId: true, createdAt: true, before: true, after: true },
     });
-    for (const v of versions) {
+    for (const promotion of promotions) {
+      const after = promotion.after && typeof promotion.after === "object" && !Array.isArray(promotion.after)
+        ? promotion.after as Record<string, unknown>
+        : null;
+      const currentVersionId = typeof after?.["currentVersionId"] === "string"
+        ? after["currentVersionId"]
+        : null;
       items.push({
         kind: "version.promoted",
-        at: v.createdAt.toISOString(),
-        agentId: v.agentId,
-        summary: `Agent version v${v.versionNumber} created`,
+        at: promotion.createdAt.toISOString(),
+        agentId: promotion.subjectId ?? undefined,
+        summary: "Canary version promoted to current",
         severity: "info",
-        payload: { versionNumber: v.versionNumber },
+        payload: { currentVersionId },
       });
     }
 
     // 5. Safety events
-    const safety = await prisma.platosSafetyEvent.findMany({
-      where: { ...scopeWhere },
+    const safety = await prisma.safetyEvent.findMany({
+      where: {
+        environmentId: scope.environmentId,
+        ...(agentId ? { agentId } : {}),
+      },
       orderBy: { createdAt: "desc" },
       take: limit,
-      select: { agentId: true, threadId: true, createdAt: true, kind: true, severity: true, detector: true },
-    }).catch(() => []);
+      select: { agentId: true, threadId: true, createdAt: true, action: true, severity: true, detector: true },
+    });
     for (const s of safety) {
       items.push({
         kind: "safety.event",
         at: s.createdAt.toISOString(),
         agentId: s.agentId ?? undefined,
         threadId: s.threadId ?? undefined,
-        summary: `Safety event · ${s.kind} (${s.severity})`,
+        summary: `Safety event · ${s.action} (${s.severity})`,
         severity: s.severity === "high" ? "error" : s.severity === "medium" ? "warn" : "info",
-        payload: { kind: s.kind, severity: s.severity, detector: s.detector },
+        payload: { kind: s.action, severity: s.severity, detector: s.detector },
       });
     }
 
@@ -5895,13 +5782,11 @@ Write the summary now:`;
   @Get("postman-templates")
   async listPostmanTemplates(@Req() req: Request, @Query("agentId") agentId?: string) {
     const scope = this.getScope(req);
-    const prisma = (this.costService as any).prisma;
+    const prisma = this.prisma;
     if (!prisma) return { templates: [] };
-    const templates = await (prisma as any).platosPostmanTemplate.findMany({
+    const templates = await prisma.postmanTemplate.findMany({
       where: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
-        environmentId: scope.environmentId,
+        ...environmentScopeWhere(scope),
         ...(agentId ? { agentId } : {}),
       },
       orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
@@ -5916,23 +5801,36 @@ Write the summary now:`;
     @Body() body: { agentId: string; name: string; simulateUserId: string; sessionContext?: unknown; isDefault?: boolean },
   ) {
     const scope = this.getScope(req);
-    const prisma = (this.costService as any).prisma;
+    const prisma = this.prisma;
     if (!prisma) return { error: "unavailable" };
+    const binding = await prisma.agentBinding.findFirst({
+      where: {
+        environmentId: scope.environmentId,
+        agentId: body.agentId,
+        agent: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
+      },
+      select: { id: true },
+    });
+    if (!binding) throw new NotFoundException("Agent not found in scope");
     if (body.isDefault) {
-      await (prisma as any).platosPostmanTemplate.updateMany({
-        where: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId, agentId: body.agentId },
+      await prisma.postmanTemplate.updateMany({
+        where: { ...environmentScopeWhere(scope), agentId: body.agentId },
         data: { isDefault: false },
       });
     }
-    const template = await (prisma as any).platosPostmanTemplate.create({
+    const template = await prisma.postmanTemplate.create({
       data: {
-        organizationId: scope.organizationId,
-        projectId: scope.projectId,
         environmentId: scope.environmentId,
         agentId: body.agentId,
         name: body.name,
         simulateUserId: body.simulateUserId,
-        sessionContext: body.sessionContext ?? null,
+        sessionContext:
+          body.sessionContext === undefined || body.sessionContext === null
+            ? Prisma.JsonNull
+            : (body.sessionContext as Prisma.InputJsonValue),
         isDefault: body.isDefault ?? false,
         createdBy: scope.userId,
       },
@@ -5947,24 +5845,31 @@ Write the summary now:`;
     @Body() body: { name?: string; simulateUserId?: string; sessionContext?: unknown; isDefault?: boolean },
   ) {
     const scope = this.getScope(req);
-    const prisma = (this.costService as any).prisma;
+    const prisma = this.prisma;
     if (!prisma) return { error: "unavailable" };
-    const existing = await (prisma as any).platosPostmanTemplate.findFirst({
-      where: { id, organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
+    const existing = await prisma.postmanTemplate.findFirst({
+      where: { id, ...environmentScopeWhere(scope) },
     });
     if (!existing) throw new NotFoundException("Template not found");
     if (body.isDefault) {
-      await (prisma as any).platosPostmanTemplate.updateMany({
-        where: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId, agentId: existing.agentId },
+      await prisma.postmanTemplate.updateMany({
+        where: { ...environmentScopeWhere(scope), agentId: existing.agentId },
         data: { isDefault: false },
       });
     }
-    const updated = await (prisma as any).platosPostmanTemplate.update({
+    const updated = await prisma.postmanTemplate.update({
       where: { id },
       data: {
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...(body.simulateUserId !== undefined ? { simulateUserId: body.simulateUserId } : {}),
-        ...(body.sessionContext !== undefined ? { sessionContext: body.sessionContext } : {}),
+        ...(body.sessionContext !== undefined
+          ? {
+              sessionContext:
+                body.sessionContext === null
+                  ? Prisma.JsonNull
+                  : (body.sessionContext as Prisma.InputJsonValue),
+            }
+          : {}),
         ...(body.isDefault !== undefined ? { isDefault: body.isDefault } : {}),
       },
     });
@@ -5974,10 +5879,10 @@ Write the summary now:`;
   @Delete("postman-templates/:id")
   async deletePostmanTemplate(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
-    const prisma = (this.costService as any).prisma;
+    const prisma = this.prisma;
     if (!prisma) return { error: "unavailable" };
-    await (prisma as any).platosPostmanTemplate.deleteMany({
-      where: { id, organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
+    await prisma.postmanTemplate.deleteMany({
+      where: { id, ...environmentScopeWhere(scope) },
     });
     return { ok: true };
   }

@@ -5,7 +5,7 @@
  * trace viewer + cost rollups + provider health entirely via MCP.
  *
  * Tools:
- *   • `runs.list_all`   — list trigger.dev TaskRuns in scope
+ *   • `runs.list_all`   — stable unavailable response until canonical run history exists
  *   • `runs.get_trace`  — fetch full thread trace (messages + spans + rollup)
  *   • `traces.list`     — list threads with cost rollups (lightweight sibling)
  *   • `traces.get`      — alias for `runs.get_trace` (operator-friendly name)
@@ -36,17 +36,14 @@ export function buildMonitoringToolHandlers(deps: {
   providerHealth: ProviderHealthService;
   prisma: any;
 }): McpToolHandler[] {
-  const { traces, providerHealth, prisma } = deps;
+  const { traces, providerHealth } = deps;
 
   return [
     {
       name: "runs.list_all",
       description:
-        "List trigger.dev TaskRuns in the caller's scope. Filters by " +
-        "optional `taskIdentifier`, `status` (PENDING / EXECUTING / " +
-        "COMPLETED_SUCCESSFULLY / COMPLETED_WITH_ERRORS / FAILED / " +
-        "CANCELED / etc.), and `since` (ISO timestamp). Newest-first. " +
-        "Returns metadata only — payload + traceContext are NEVER echoed.",
+        "Task run history is unavailable until a canonical run-history " +
+        "model is added to the control database.",
       inputSchema: {
         type: "object",
         properties: {
@@ -58,44 +55,11 @@ export function buildMonitoringToolHandlers(deps: {
         },
         additionalProperties: false,
       },
-      async execute(params, scope) {
-        const reqScope = scope as RequestScope;
-        const limit = Math.max(1, Math.min((params["limit"] as number) ?? 50, 200));
-        const offset = Math.max(0, (params["offset"] as number) ?? 0);
-        const where: Record<string, unknown> = {
-          runtimeEnvironmentId: reqScope.environmentId,
-          projectId: reqScope.projectId,
+      async execute() {
+        return {
+          error: "unavailable",
+          message: "Task run history is not available through the canonical control database.",
         };
-        if (params["taskIdentifier"]) where["taskIdentifier"] = String(params["taskIdentifier"]);
-        if (params["status"]) where["status"] = String(params["status"]);
-        if (params["since"]) {
-          const since = new Date(String(params["since"]));
-          if (!isNaN(since.getTime())) where["createdAt"] = { gte: since };
-        }
-        const runs = await prisma.taskRun.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          take: limit,
-          skip: offset,
-          select: {
-            id: true,
-            friendlyId: true,
-            taskIdentifier: true,
-            status: true,
-            traceId: true,
-            spanId: true,
-            attemptNumber: true,
-            usageDurationMs: true,
-            costInCents: true,
-            baseCostInCents: true,
-            startedAt: true,
-            executedAt: true,
-            completedAt: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-        });
-        return { runs, count: runs.length };
       },
     },
     {

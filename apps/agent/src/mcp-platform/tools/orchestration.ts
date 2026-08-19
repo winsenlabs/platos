@@ -31,6 +31,7 @@ import type { SkillRegistryService } from "../../skills/skill-registry.service";
 import type { MemoryService } from "../../memory/memory.service";
 import type { GoldenSetService } from "../../evals/golden-set.service";
 import type { McpToolHandler } from "../mcp-router";
+import type { ControlDatabaseClient } from "../../shared/database.provider";
 import type { RequestScope } from "../../auth/scope.guard";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
@@ -54,7 +55,7 @@ export interface OrchestrationDeps {
    * agent contextMapping update + the entities.provision tool-mapping
    * stubs, both of which have no dedicated service method.
    */
-  prisma: any;
+  prisma: ControlDatabaseClient;
 }
 
 export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpToolHandler[] {
@@ -66,7 +67,8 @@ export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpTool
       name: "agents.deploy_with_skills",
       description:
         "Composite — create a new agent + enable a list of scope-resident skills on it + " +
-        "(optionally) set its contextMapping. Returns the fully-configured agent. " +
+        "return the fully-configured agent. contextMapping is rejected because it has no " +
+        "canonical persistence field. " +
         "Destructive — defaults to require_approval at platform tier.",
       inputSchema: {
         type: "object",
@@ -94,6 +96,13 @@ export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpTool
         const systemPrompt = params["systemPrompt"] as string | undefined;
         const skillSlugs = (params["skillSlugs"] as string[]) ?? [];
         const contextMapping = params["contextMapping"] as Record<string, unknown> | null | undefined;
+
+        if (contextMapping !== undefined && contextMapping !== null) {
+          return {
+            error: "unsupported",
+            message: "contextMapping is not supported by the canonical control schema",
+          };
+        }
 
         // Step 1 — create the agent. Hard fail — nothing to return otherwise.
         const dto: CreateAgentDto = {
@@ -128,33 +137,16 @@ export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpTool
           }
         }
 
-        // Step 3 — optional contextMapping. Fail-open: surface in warnings,
-        // keep the agent.
-        let contextMappingApplied = false;
-        let contextMappingWarning: string | null = null;
-        if (contextMapping !== undefined && contextMapping !== null) {
-          try {
-            await prisma.platosAgent.update({
-              where: { id: agent.id },
-              data: { contextMapping: contextMapping as any },
-            });
-            contextMappingApplied = true;
-          } catch (err: any) {
-            contextMappingWarning = err?.message || String(err);
-          }
-        }
-
-        // Step 4 — re-fetch so the returned record reflects the contextMapping
-        // + versioning side-effects from skill enablement.
+        // Step 4 — re-fetch so the returned record reflects versioning
+        // side-effects from skill enablement.
         const fresh = await agentCrud.findById(agent.id, scope);
 
         return {
           agent: fresh ?? agent,
           enabledSkills,
-          contextMappingApplied,
+          contextMappingApplied: false,
           warnings: {
             skills: skillWarnings,
-            ...(contextMappingWarning ? { contextMapping: contextMappingWarning } : {}),
           },
         };
       },
@@ -222,34 +214,30 @@ export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpTool
             // owns that name, and post-migration `findUnique({name})` throws
             // (name is no longer a unique key) — silently swallowed into
             // toolWarnings, so stubs would stop being created.
-            const existing = await prisma.platosToolDefinition.findFirst({
+            const existing = await prisma.tool.findFirst({
               where: {
                 name: toolName,
-                organizationId: scope.organizationId,
-                projectId: scope.projectId,
+                schemaHash: "stub",
               },
             });
             const toolDef = existing
               ? existing
-              : await prisma.platosToolDefinition.create({
+              : await prisma.tool.create({
                   data: {
                     name: toolName,
-                    organizationId: scope.organizationId,
-                    projectId: scope.projectId,
                     description: `[stub] ${toolName} — schema pending tool-sync handshake.`,
                     paramSchema: { type: "object", additionalProperties: true } as any,
                     schemaHash: "stub",
-                    bm25Tokens: [toolName],
                     category: null,
                   },
                 });
             // Then upsert the per-(tool, entity, env) mapping stub.
-            await prisma.platosEntityToolMapping.upsert({
+            await prisma.environmentEntityTool.upsert({
               where: {
-                toolId_entityId_environmentId: {
+                environmentId_entityId_toolId: {
+                  environmentId: scope.environmentId,
                   toolId: toolDef.id,
                   entityId: entity.id,
-                  environmentId: scope.environmentId,
                 },
               },
               update: { enabled: false, callbackUrl },
@@ -379,7 +367,8 @@ export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpTool
       description:
         "Composite — snapshot an existing agent's config and create a fresh copy in the " +
         "SAME scope with a new name + slug. Copies promptBlocks, dynamicBlocks, tool + " +
-        "meta-tool config, memory/extraction policy, output schema, and contextMapping. " +
+        "meta-tool config, memory/extraction policy, and output schema. contextMapping " +
+        "is not part of the canonical agent graph and is not copied. " +
         "Does NOT copy threads, versions, or canary pointers — the clone starts clean.",
       inputSchema: {
         type: "object",
@@ -432,32 +421,9 @@ export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpTool
         };
         const cloned = await agentCrud.create(scope, createDto);
 
-        // Step 2 — copy contextMapping via direct Prisma update. The CRUD
-        // service's create/update DTOs don't expose this field today; the
-        // schema does (CTX.1). Fail-open: if the copy errors, the clone
-        // still exists, we just note it in warnings.
-        let contextMappingCopied = false;
-        let contextMappingWarning: string | null = null;
-        try {
-          const srcRow = await prisma.platosAgent.findFirst({
-            where: {
-              id: sourceAgentId,
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-            },
-            select: { contextMapping: true },
-          });
-          if (srcRow?.contextMapping != null) {
-            await prisma.platosAgent.update({
-              where: { id: cloned.id },
-              data: { contextMapping: srcRow.contextMapping as any },
-            });
-            contextMappingCopied = true;
-          }
-        } catch (err: any) {
-          contextMappingWarning = err?.message || String(err);
-        }
+        const contextMappingCopied = false;
+        const contextMappingWarning =
+          "contextMapping is not supported by the canonical control schema";
 
         const fresh = await agentCrud.findById(cloned.id, scope);
         return {

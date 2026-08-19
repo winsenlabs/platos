@@ -227,8 +227,9 @@ export class ToolExecutorService {
    * so BLPOP doesn't queue every other ioredis op behind it, double-
    * write of the resolve transition for ledger consistency.
    *
-   * Fails open on any infrastructure error so the gate is strict
-   * defense-in-depth, never the failure point that loses a dispatch.
+   * Fails closed when the enabled gateway is unavailable or cannot resolve
+   * policy. Dispatch must not bypass an enabled authorization boundary merely
+   * because its persistence layer is unhealthy.
    *
    * The flag is off by default. Rollout: enable in staging, watch the
    * safety-event ledger for `dispatcher_permission_gate` entries,
@@ -245,7 +246,18 @@ export class ToolExecutorService {
     if (process.env.PLATOS_TOOL_DISPATCH_PERMISSION_GATE !== "1") {
       return { kind: "allow" };
     }
-    if (!this.permissionGateway) return { kind: "allow" };
+    if (!this.permissionGateway) {
+      this.logger.error("Tool dispatch permission gateway unavailable");
+      return {
+        kind: "deny",
+        result: {
+          tool: call.tool,
+          status: "failed",
+          error: "Tool dispatch denied because permission policy could not be evaluated.",
+          latencyMs: Date.now() - startTime,
+        },
+      };
+    }
     let resolved;
     try {
       resolved = await this.permissionGateway.resolve({
@@ -258,11 +270,17 @@ export class ToolExecutorService {
         userId: scope.userId ?? null,
         toolName: call.tool,
       });
-    } catch (err) {
-      // Fail-open on resolver errors — the gate is defense-in-depth,
-      // not the primary safety mechanism. Safety + rate-limit gates
-      // above still ran.
-      return { kind: "allow" };
+    } catch {
+      this.logger.error("Tool dispatch permission resolution failed");
+      return {
+        kind: "deny",
+        result: {
+          tool: call.tool,
+          status: "failed",
+          error: "Tool dispatch denied because permission policy could not be evaluated.",
+          latencyMs: Date.now() - startTime,
+        },
+      };
     }
     if (resolved.state === "auto_allow") return { kind: "allow" };
 
@@ -384,13 +402,14 @@ export class ToolExecutorService {
         timeoutSeconds,
         actionLabel: `Tool dispatch: ${call.tool}`,
       });
-    } catch (err: any) {
+    } catch {
+      this.logger.error("Tool approval persistence failed");
       return {
         kind: "deny",
         result: {
           tool: call.tool,
           status: "failed",
-          error: `Tool ${call.tool} requires approval; failed to persist approval row: ${err?.message ?? String(err)}`,
+          error: "Tool approval could not be requested.",
           latencyMs: Date.now() - startTime,
         },
       };
@@ -511,13 +530,14 @@ export class ToolExecutorService {
         kind: "allow",
         params: parsed.editedArgs ?? call.params,
       };
-    } catch (err: any) {
+    } catch {
+      this.logger.error("Tool approval wait failed");
       return {
         kind: "deny",
         result: {
           tool: call.tool,
           status: "failed",
-          error: `Tool ${call.tool} approval wait failed: ${err?.message ?? String(err)}`,
+          error: "Tool approval could not be completed.",
           latencyMs: Date.now() - startTime,
         },
       };

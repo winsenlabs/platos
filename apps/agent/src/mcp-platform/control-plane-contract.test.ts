@@ -82,7 +82,7 @@ const REPRESENTATIVE_REAL_TOOLS: Record<string, string> = {
   audit: "audit.safety_events.query",
   budgets: "budgets.delete",
   channel_apps: "channel_apps.bind_installation",
-  channels: "channels.create",
+  channels: "channels.list",
   clusters: "clusters.add_agent",
   end_users: "end_users.bind_external_id",
   entities: "entities.regenerate_secret",
@@ -121,13 +121,15 @@ const AUTHORITY = {
 };
 
 // These representative handlers do not pass the complete Environment tuple to
-// one dependency call: macros are token-local in-memory state, while the mcp
-// inventory adapter uses an existing project-scoped AuthService contract, and
-// projects.list_all is intentionally membership-scoped across the caller's
-// organizations. They are covered by router scope pinning/schema rejection
-// here, not claimed as full downstream database-tuple coverage.
+// one dependency call: canonical EndUser rows are Organization-owned, macros
+// are token-local in-memory state, the mcp inventory adapter uses an existing
+// project-scoped AuthService contract, and projects.list_all is intentionally
+// membership-scoped across the caller's organizations. They are covered by
+// router scope pinning/schema rejection here, not claimed as full downstream
+// database-tuple coverage.
 const ROUTER_PINNED_NAMESPACES = new Set([
   "alert_channels",
+  "end_users",
   "macros",
   "mcp",
   "oauth",
@@ -159,6 +161,26 @@ function strictScopedDependencies() {
       if (record.environmentId !== AUTHORITY.environmentId)
         violations.push(`environmentId=${String(record.environmentId)}`);
       canonicalTuples.push(record);
+    }
+    const environment = record["environment"];
+    if (
+      "environmentId" in record &&
+      environment &&
+      typeof environment === "object" &&
+      !Array.isArray(environment)
+    ) {
+      const environmentWhere = environment as Record<string, unknown>;
+      const project = environmentWhere["project"];
+      if (project && typeof project === "object" && !Array.isArray(project)) {
+        const projectWhere = project as Record<string, unknown>;
+        if (record.environmentId !== AUTHORITY.environmentId)
+          violations.push(`environmentId=${String(record.environmentId)}`);
+        if (environmentWhere["projectId"] !== AUTHORITY.projectId)
+          violations.push(`projectId=${String(environmentWhere["projectId"])}`);
+        if (projectWhere["organizationId"] !== AUTHORITY.organizationId)
+          violations.push(`organizationId=${String(projectWhere["organizationId"])}`);
+        canonicalTuples.push(record);
+      }
     }
     for (const key of ["organizationId", "projectId", "environmentId"] as const) {
       const forged = { organizationId: "org-b", projectId: "project-b", environmentId: "env-b" };

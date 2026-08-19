@@ -27,6 +27,7 @@ import type { ToolAuditService } from "../../monitoring/tool-audit.service";
 import type { CostService } from "../../monitoring/cost.service";
 import type { MemoryService } from "../../memory/memory.service";
 import type { KnowledgeGraphService } from "../../memory/knowledge-graph.service";
+import type { ControlDatabaseClient } from "../../shared/database.provider";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -37,11 +38,11 @@ interface ScopeRow {
   projectSlug: string;
   environmentId: string;
   environmentSlug: string;
-  environmentType: string;
+  environmentType: string | null;
 }
 
 export interface AdminToolsDeps {
-  prisma: any;
+  prisma: ControlDatabaseClient;
   toolAudit: ToolAuditService;
   cost: CostService;
   memory: MemoryService;
@@ -54,19 +55,25 @@ export interface AdminToolsDeps {
  * provided org ids.
  */
 async function loadOrgScopes(
-  prisma: any,
+  prisma: ControlDatabaseClient,
   organizationId: string,
 ): Promise<ScopeRow[]> {
-  const envs = await prisma.runtimeEnvironment.findMany({
-    where: { organizationId, archivedAt: null },
+  const envs = await prisma.environment.findMany({
+    where: {
+      archivedAt: null,
+      project: { organizationId, archivedAt: null },
+    },
     select: {
       id: true,
       slug: true,
-      type: true,
-      organizationId: true,
-      organization: { select: { slug: true } },
       projectId: true,
-      project: { select: { slug: true, deletedAt: true } },
+      project: {
+        select: {
+          slug: true,
+          organizationId: true,
+          organization: { select: { slug: true } },
+        },
+      },
     },
     orderBy: [{ projectId: "asc" }, { slug: "asc" }],
   });
@@ -74,22 +81,21 @@ async function loadOrgScopes(
   for (const e of envs as Array<{
     id: string;
     slug: string;
-    type: string;
-    organizationId: string;
-    organization: { slug: string } | null;
     projectId: string;
-    project: { slug: string; deletedAt: Date | null } | null;
+    project: {
+      slug: string;
+      organizationId: string;
+      organization: { slug: string };
+    };
   }>) {
-    // Skip soft-deleted projects — they're effectively dead scopes.
-    if (!e.project || e.project.deletedAt) continue;
     out.push({
-      organizationId: e.organizationId,
-      organizationSlug: e.organization?.slug ?? "",
+      organizationId: e.project.organizationId,
+      organizationSlug: e.project.organization.slug,
       projectId: e.projectId,
       projectSlug: e.project.slug,
       environmentId: e.id,
       environmentSlug: e.slug,
-      environmentType: e.type,
+      environmentType: null,
     });
   }
   return out;
@@ -292,34 +298,38 @@ export function buildAdminToolHandlers(deps: AdminToolsDeps): McpToolHandler[] {
         const limitPerScope = (params["limitPerScope"] as number) ?? 100;
         const scopes = await loadOrgScopes(prisma, scope.organizationId);
 
-        const rows = await prisma.platosAgent.findMany({
+        const rows = await prisma.agentBinding.findMany({
           where: {
-            organizationId: scope.organizationId,
-            ...(includeInactive ? {} : { isActive: true }),
+            environment: { project: { organizationId: scope.organizationId } },
+            ...(includeInactive ? {} : { agent: { isActive: true } }),
           },
           select: {
-            id: true,
-            projectId: true,
             environmentId: true,
-            name: true,
-            slug: true,
-            model: true,
-            isActive: true,
+            agent: {
+              select: {
+                id: true,
+                projectId: true,
+                name: true,
+                slug: true,
+                isActive: true,
+              },
+            },
+            activeAgentVersion: { select: { model: true } },
           },
           orderBy: { createdAt: "desc" },
         });
 
         const byKey = new Map<string, Array<any>>();
         for (const a of rows as Array<any>) {
-          const key = `${a.projectId}::${a.environmentId}`;
+          const key = `${a.agent.projectId}::${a.environmentId}`;
           const list = byKey.get(key) ?? [];
           if (list.length < limitPerScope) {
             list.push({
-              id: a.id,
-              name: a.name,
-              slug: a.slug,
-              model: a.model,
-              isActive: a.isActive,
+              id: a.agent.id,
+              name: a.agent.name,
+              slug: a.agent.slug,
+              model: a.activeAgentVersion.model,
+              isActive: a.agent.isActive,
             });
           }
           byKey.set(key, list);
@@ -361,13 +371,12 @@ export function buildAdminToolHandlers(deps: AdminToolsDeps): McpToolHandler[] {
       },
       async execute(_params, scope) {
         const scopes = await loadOrgScopes(prisma, scope.organizationId);
-        const entities = await prisma.platosConnectedEntity.findMany({
-          where: { organizationId: scope.organizationId },
+        const entities = await prisma.entity.findMany({
+          where: { project: { organizationId: scope.organizationId } },
           select: {
             id: true,
-            organizationId: true,
             projectId: true,
-            entityId: true,
+            externalId: true,
             displayName: true,
             connectionStatus: true,
             lastConnectedAt: true,
@@ -381,7 +390,7 @@ export function buildAdminToolHandlers(deps: AdminToolsDeps): McpToolHandler[] {
           const list = byProject.get(e.projectId) ?? [];
           list.push({
             id: e.id,
-            entityId: e.entityId,
+            entityId: e.externalId,
             displayName: e.displayName,
             connectionStatus: e.connectionStatus,
             lastConnectedAt: e.lastConnectedAt,

@@ -93,6 +93,7 @@ function makeHarness(options: { cloneError?: Error; targetVersion?: ReturnType<t
         : vi.fn().mockResolvedValue({ count: assignedSkills.length }),
     },
     agentBinding: { update: vi.fn().mockResolvedValue({}) },
+    adminAudit: { create: vi.fn().mockResolvedValue({}) },
   };
   const findBinding = vi.fn().mockResolvedValue(binding);
   const prisma = {
@@ -176,6 +177,53 @@ describe("AgentCrudService AgentSkill version rollover", () => {
     expect(h.tx.agentVersion.create).toHaveBeenCalledOnce();
     expect(h.tx.agentSkill.createMany).toHaveBeenCalledOnce();
     expect(h.tx.agentBinding.update).not.toHaveBeenCalled();
+    expect(h.redis.del).not.toHaveBeenCalled();
+  });
+});
+
+describe("AgentCrudService canary promotion audit", () => {
+  it("writes the binding promotion and immutable audit in one transaction", async () => {
+    const h = makeHarness();
+    vi.spyOn(h.service, "findById").mockResolvedValue({ id: "agent-a" } as any);
+
+    await h.service.promoteCanary("agent-a", scope);
+
+    expect(h.tx.agentBinding.update).toHaveBeenCalledWith({
+      where: { id: "binding-a" },
+      data: {
+        activeAgentVersionId: "version-canary",
+        canaryAgentVersionId: null,
+        canaryPercent: 0,
+      },
+    });
+    expect(h.tx.adminAudit.create).toHaveBeenCalledWith({
+      data: {
+        environmentId: "env-a",
+        actorUserId: "user-a",
+        action: "agent.canary.promote",
+        subjectType: "Agent",
+        subjectId: "agent-a",
+        before: {
+          previousCurrentVersionId: "version-current",
+          previousCanaryVersionId: "version-canary",
+          previousCanaryPercent: 25,
+        },
+        after: { currentVersionId: "version-canary" },
+        source: "api",
+      },
+    });
+    expect(h.tx.agentBinding.update.mock.invocationCallOrder[0]).toBeLessThan(
+      h.tx.adminAudit.create.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("fails promotion without cache invalidation when the audit insert fails", async () => {
+    const h = makeHarness();
+    h.tx.adminAudit.create.mockRejectedValueOnce(new Error("audit unavailable"));
+
+    await expect(h.service.promoteCanary("agent-a", scope)).rejects.toThrow("audit unavailable");
+
+    expect(h.tx.agentBinding.update).toHaveBeenCalledOnce();
     expect(h.redis.del).not.toHaveBeenCalled();
   });
 });

@@ -11,6 +11,7 @@
  * wraps it in a `data: <json>\n\n` frame.
  */
 
+import { Logger } from "@nestjs/common";
 import type { RequestScope } from "../auth/scope.guard";
 import type { VerifiedToken } from "./token.service";
 import { PlatosMCPTokenService } from "./token.service";
@@ -162,6 +163,7 @@ export interface McpApprovalGate {
 }
 
 export class McpRouter {
+  private readonly logger = new Logger(McpRouter.name);
   private handlers = new Map<string, McpToolHandler>();
   private recorder: McpMacroRecorder | null = null;
   private approvalGate: McpApprovalGate | null = null;
@@ -636,13 +638,14 @@ export class McpRouter {
             },
           };
       }
-    } catch (err: any) {
+    } catch {
+      this.logger.error("Platform MCP request failed");
       return {
         jsonrpc: "2.0",
         id,
         error: {
           code: RPC_ERRORS.INTERNAL_ERROR,
-          message: err?.message || "internal error",
+          message: "internal error",
         },
       };
     }

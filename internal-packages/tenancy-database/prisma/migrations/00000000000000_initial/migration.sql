@@ -3408,6 +3408,28 @@ CREATE TRIGGER "CredentialAudit_immutable_truncate"
   FOR EACH STATEMENT EXECUTE FUNCTION "public"."reject_credential_audit_mutation"();
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."CredentialAudit" FROM PUBLIC;
 
+-- Administrative audit evidence is append-only. Promotion and other control
+-- plane mutations may insert evidence transactionally, but no role can rewrite
+-- or remove an accepted event. Corrections must be represented by a new row.
+CREATE FUNCTION "public"."reject_admin_audit_mutation"() RETURNS trigger
+  LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'AdminAudit is immutable' USING ERRCODE = '23514';
+END;
+$$;
+
+CREATE TRIGGER "AdminAudit_immutable_update"
+  BEFORE UPDATE ON "public"."AdminAudit"
+  FOR EACH ROW EXECUTE FUNCTION "public"."reject_admin_audit_mutation"();
+CREATE TRIGGER "AdminAudit_immutable_delete"
+  BEFORE DELETE ON "public"."AdminAudit"
+  FOR EACH ROW EXECUTE FUNCTION "public"."reject_admin_audit_mutation"();
+CREATE TRIGGER "AdminAudit_immutable_truncate"
+  BEFORE TRUNCATE ON "public"."AdminAudit"
+  FOR EACH STATEMENT EXECUTE FUNCTION "public"."reject_admin_audit_mutation"();
+REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."AdminAudit" FROM PUBLIC;
+
 -- -----------------------------------------------------------------------------
 -- Memory feedback quarantine and thumbs-feedback constraints
 -- -----------------------------------------------------------------------------
