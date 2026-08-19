@@ -65,6 +65,10 @@ services:
 services:
   webapp:
     image: ghcr.io/platos-dev/platos-webapp:latest
+    environment:
+      DATABASE_URL: ${DATABASE_URL} # retained legacy dashboard database
+      DIRECT_URL: ${DIRECT_URL}
+      PLATOS_CONTROL_DATABASE_URL: ${PLATOS_CONTROL_DATABASE_URL}
   agent:
     image: ghcr.io/platos-dev/platos-agent:latest
     ports: ["3100:3100"]
@@ -83,17 +87,23 @@ On boot, migrations run additively. Existing tables are unchanged. New tables ar
 
 ### Step 2 — Update `.env`
 
-Add the three required Platos env vars:
+Add the required Platos env vars, including a distinct clean control database:
 
 ```bash
 PLATOS_ENCRYPTION_KEY=$(openssl rand -hex 32)              # 64 hex chars = 32 bytes
 PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)      # distinct 64-hex value
 ANTHROPIC_API_KEY=sk-ant-...
+PLATOS_CONTROL_DATABASE_URL=postgresql://user:pass@postgres:5432/platos_control?schema=public
 ```
 
 > Generate new encryption-domain keys as 64 hex chars (32 bytes decoded), with a different value for every domain. Existing exact 32-byte UTF-8 `ENCRYPTION_KEY` values continue working verbatim and must not be replaced without re-encryption. See [env-vars.md](./env-vars.md#core).
 
-Nothing else changes. Your existing `SESSION_SECRET`, `ENCRYPTION_KEY`, `DATABASE_URL`, `REDIS_URL`, `TRIGGER_SECRET_KEY` keep working verbatim.
+Your existing `SESSION_SECRET`, `ENCRYPTION_KEY`, legacy dashboard
+`DATABASE_URL`/`DIRECT_URL`, `REDIS_URL`, and `TRIGGER_SECRET_KEY` keep working
+verbatim. Provision and migrate the clean database separately, point the agent's
+`DATABASE_URL` at it, and point only the webapp's
+`PLATOS_CONTROL_DATABASE_URL` at it. Do not globally repoint the webapp's legacy
+URLs before M4.
 
 ### Step 3 — (Optional) Rename SDK imports
 

@@ -1,10 +1,16 @@
 import type { Authenticator } from "remix-auth";
 import { GoogleStrategy } from "remix-auth-google";
 import { env } from "~/env.server";
-import { findOrCreateUser } from "~/models/user.server";
 import type { AuthUser } from "./authUser";
 import { logger } from "./logger.server";
-import { postAuthentication } from "./postAuth.server";
+import { OperatorIdentityProvider } from "@platos/tenancy-database";
+import { assertEmailAllowed } from "~/utils/email";
+import { canonicalUserId } from "./dashboardIdentity.server";
+import {
+  authEmailRateLimitIdentifier,
+  canonicalEmailForUser,
+  platosDashboardAuth,
+} from "./platosDashboardAuth.server";
 
 export function addGoogleStrategy(
   authenticator: Authenticator<AuthUser>,
@@ -17,7 +23,7 @@ export function addGoogleStrategy(
       clientSecret,
       callbackURL: `${env.LOGIN_ORIGIN}/auth/google/callback`,
     },
-    async ({ extraParams, profile }) => {
+    async ({ profile }) => {
       const emails = profile.emails;
 
       if (!emails?.length) {
@@ -25,23 +31,24 @@ export function addGoogleStrategy(
       }
 
       try {
-        logger.debug("Google login", {
-          emails,
-          profile,
-          extraParams,
+        const email = emails[0].value;
+        assertEmailAllowed(email);
+        const session = await platosDashboardAuth.completeOAuthLogin({
+          provider: OperatorIdentityProvider.GOOGLE,
+          subject: profile.id,
+          email,
+          emailVerified: profile._json.email_verified === true,
+          rateLimitIdentifier: authEmailRateLimitIdentifier(email),
         });
-
-        const { user, isNewUser } = await findOrCreateUser({
-          email: emails[0].value,
-          authenticationMethod: "GOOGLE",
-          authenticationProfile: profile,
-          authenticationExtraParams: extraParams,
-        });
-
-        await postAuthentication({ user, isNewUser, loginMethod: "GOOGLE" });
+        const canonicalId = canonicalUserId(session.userId);
+        const canonicalEmail = await canonicalEmailForUser(canonicalId);
+        if (!canonicalEmail) throw new Error("Canonical OAuth user was not found");
 
         return {
-          userId: user.id,
+          canonicalUserId: canonicalId,
+          email: canonicalEmail,
+          sessionToken: session.token,
+          sessionExpiresAt: session.expiresAt.toISOString(),
         };
       } catch (error) {
         logger.error("Google login failed", { error: JSON.stringify(error) });

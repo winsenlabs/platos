@@ -1,60 +1,69 @@
-import type { LoaderFunctionArgs } from "@remix-run/server-runtime";
-import { redirect } from "@remix-run/server-runtime";
-import { prisma } from "~/db.server";
+import { redirect, type LoaderFunctionArgs } from "@remix-run/server-runtime";
 import { redirectWithErrorMessage } from "~/models/message.server";
-import { authenticator } from "~/services/auth.server";
 import { setLastAuthMethodHeader } from "~/services/lastAuthMethod.server";
 import { getRedirectTo } from "~/services/redirectTo.server";
 import { commitSession, getSession } from "~/services/sessionStorage.server";
 import { trackAndClearReferralSource } from "~/services/referralSource.server";
+import { destroyImpersonationSession } from "~/services/impersonation.server";
+import {
+  bridgeVerifiedEmailToLegacyUser,
+  canonicalEmailForUser,
+  commitOperatorSession,
+  isMfaRequired,
+  platosDashboardAuth,
+} from "~/services/platosDashboardAuth.server";
+import type { CanonicalUserId } from "~/services/dashboardIdentity.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const redirectTo = await getRedirectTo(request);
 
-  const auth = await authenticator.authenticate("email-link", request, {
-    failureRedirect: "/login/magic", // If auth fails, the failureRedirect will be thrown as a Response
-  });
+  const token = new URL(request.url).searchParams.get("token");
+  if (!token) {
+    return redirectWithErrorMessage("/login/magic", request, "This magic link is invalid or expired.");
+  }
+
+  let auth;
+  try {
+    auth = await platosDashboardAuth.consumeMagicLink(token);
+  } catch {
+    return redirectWithErrorMessage("/login/magic", request, "This magic link is invalid or expired.");
+  }
 
   // manually get the session
   const session = await getSession(request.headers.get("cookie"));
 
-  const userRecord = await prisma.user.findFirst({
-    where: {
-      id: auth.userId,
-    },
-    select: {
-      id: true,
-      mfaEnabledAt: true,
-    },
-  });
-
-  if (!userRecord) {
+  const email = await canonicalEmailForUser(auth.userId as CanonicalUserId);
+  const bridge = email ? await bridgeVerifiedEmailToLegacyUser(email) : null;
+  if (!bridge) {
     return redirectWithErrorMessage(
       "/login/magic",
       request,
-      "Could not find your account. Please contact support."
+      "Could not safely match your dashboard account. Please contact support."
     );
   }
 
-  if (userRecord.mfaEnabledAt) {
-    session.set("pending-mfa-user-id", userRecord.id);
+  try {
+    await platosDashboardAuth.authorizeOperatorSession(auth.token);
+  } catch (error) {
+    if (!isMfaRequired(error)) throw error;
     session.set("pending-mfa-redirect-to", redirectTo ?? "/");
 
     const headers = new Headers();
     headers.append("Set-Cookie", await commitSession(session));
+    headers.append("Set-Cookie", await commitOperatorSession(auth.token, auth.expiresAt));
+    headers.append("Set-Cookie", await destroyImpersonationSession(request));
     headers.append("Set-Cookie", await setLastAuthMethodHeader("email"));
 
     return redirect("/login/mfa", { headers });
   }
 
-  // and store the user data
-  session.set(authenticator.sessionKey, auth);
-
   const headers = new Headers();
   headers.append("Set-Cookie", await commitSession(session));
+  headers.append("Set-Cookie", await commitOperatorSession(auth.token, auth.expiresAt));
+  headers.append("Set-Cookie", await destroyImpersonationSession(request));
   headers.append("Set-Cookie", await setLastAuthMethodHeader("email"));
 
-  await trackAndClearReferralSource(request, auth.userId, headers);
+  await trackAndClearReferralSource(request, bridge.legacyUserId, headers);
 
   return redirect(redirectTo ?? "/", { headers });
 }

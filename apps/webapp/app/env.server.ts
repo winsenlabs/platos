@@ -98,6 +98,12 @@ const EnvironmentSchema = z
         isValidDatabaseUrl,
         "DATABASE_URL is invalid, for details please check the additional output above this message."
       ),
+    PLATOS_CONTROL_DATABASE_URL: z
+      .string()
+      .refine(
+        isValidDatabaseUrl,
+        "PLATOS_CONTROL_DATABASE_URL is invalid, for details please check the additional output above this message."
+      ),
     DATABASE_CONNECTION_LIMIT: z.coerce.number().int().default(10),
     DATABASE_POOL_TIMEOUT: z.coerce.number().int().default(60),
     DATABASE_CONNECTION_TIMEOUT: z.coerce.number().int().default(20),

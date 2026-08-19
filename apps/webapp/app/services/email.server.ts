@@ -3,7 +3,6 @@ import { EmailClient, MailTransportOptions } from "emails";
 import type { SendEmailOptions } from "remix-auth-email-link";
 import { redirect } from "remix-typedjson";
 import { env } from "~/env.server";
-import type { AuthUser } from "./authUser";
 import { commonWorker } from "~/v3/commonWorker.server";
 import { logger } from "./logger.server";
 import { singleton } from "~/utils/singleton";
@@ -83,7 +82,9 @@ function buildTransportOptions(alerts?: boolean): MailTransportOptions {
   }
 }
 
-export async function sendMagicLinkEmail(options: SendEmailOptions<AuthUser>): Promise<void> {
+export async function sendMagicLinkEmail(
+  options: SendEmailOptions<{ userId: string }>
+): Promise<void> {
   // Promoted to INFO so operators can see the full dispatch timing on
   // every magic-link login attempt without flipping debug on. If a user
   // reports "no email received", grep for "Magic link email" in logs to
@@ -95,19 +96,8 @@ export async function sendMagicLinkEmail(options: SendEmailOptions<AuthUser>): P
     from: env.FROM_EMAIL ?? "(default)",
   });
 
-  assertEmailAllowed(options.emailAddress);
-
-  // Auto redirect when in development mode
-  if (env.NODE_ENV === "development") {
-    throw redirect(options.magicLink);
-  }
-
   try {
-    await client.send({
-      email: "magic_link",
-      to: options.emailAddress,
-      magicLink: options.magicLink,
-    });
+    await sendDashboardMagicLink(options.emailAddress, options.magicLink);
     logger.info("Magic link email: client.send resolved", {
       emailAddress: options.emailAddress,
     });
@@ -122,6 +112,22 @@ export async function sendMagicLinkEmail(options: SendEmailOptions<AuthUser>): P
     });
     throw error;
   }
+}
+
+export async function sendDashboardMagicLink(emailAddress: string, magicLink: string): Promise<void> {
+  assertEmailAllowed(emailAddress);
+
+  // Preserve the existing local-development UX: clicking "send" follows the
+  // generated link immediately instead of requiring an email transport.
+  if (env.NODE_ENV === "development") {
+    throw redirect(magicLink);
+  }
+
+  await client.send({
+    email: "magic_link",
+    to: emailAddress,
+    magicLink,
+  });
 }
 
 export async function sendPlainTextEmail(options: SendPlainTextOptions) {

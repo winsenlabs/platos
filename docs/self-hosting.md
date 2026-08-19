@@ -53,12 +53,66 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: platos
+      POSTGRES_DB: platos_control
     volumes:
       - pgdata:/var/lib/postgresql/data
     command:
       ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=2GB"]
     restart: always
+
+  migrations-control:
+    image: node:22-alpine
+    depends_on:
+      postgres:
+        condition: service_started
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_control?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_control?schema=public
+    volumes:
+      - ./internal-packages/tenancy-database:/work
+    working_dir: /work
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        apk add --no-cache postgresql-client > /dev/null
+        until pg_isready -h postgres -U "${POSTGRES_USER}"; do sleep 1; done
+        psql -h postgres -U "${POSTGRES_USER}" -d postgres -tAc \
+          "SELECT 1 FROM pg_database WHERE datname='platos_control'" \
+          | grep -q 1 || psql -h postgres -U "${POSTGRES_USER}" -d postgres \
+          -c 'CREATE DATABASE "platos_control"'
+        npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
+        npx prisma migrate deploy
+    restart: "no"
+
+  migrations-legacy:
+    image: node:22-alpine
+    depends_on:
+      postgres:
+        condition: service_started
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_legacy?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_legacy?schema=public
+    volumes:
+      - ./internal-packages/database:/work
+    working_dir: /work
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        apk add --no-cache postgresql-client > /dev/null
+        until pg_isready -h postgres -U "${POSTGRES_USER}"; do sleep 1; done
+        psql -h postgres -U "${POSTGRES_USER}" -d postgres -tAc \
+          "SELECT 1 FROM pg_database WHERE datname='platos_legacy'" \
+          | grep -q 1 || psql -h postgres -U "${POSTGRES_USER}" -d postgres \
+          -c 'CREATE DATABASE "platos_legacy"'
+        npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
+        npx prisma migrate deploy
+    restart: "no"
 
   redis:
     image: redis:7-alpine
@@ -70,7 +124,9 @@ services:
   webapp:
     image: ghcr.io/platos-dev/platos-webapp:${PLATOS_VERSION:-latest}
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_legacy
+      DIRECT_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_legacy
+      PLATOS_CONTROL_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_control
       REDIS_URL: redis://redis:6379
       SESSION_SECRET: ${SESSION_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
@@ -81,7 +137,13 @@ services:
       OTEL_SERVICE_NAME: platos-webapp
       PROMETHEUS_METRICS_ENABLED: "true"
     ports: ["3030:3030"]
-    depends_on: [postgres, redis]
+    depends_on:
+      migrations-control:
+        condition: service_completed_successfully
+      migrations-legacy:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
     restart: always
     deploy:
       replicas: 2
@@ -89,7 +151,7 @@ services:
   agent:
     image: ghcr.io/platos-dev/platos-agent:${PLATOS_VERSION:-latest}
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/platos_control
       REDIS_URL: redis://redis:6379
       PLATOS_ENCRYPTION_KEY: ${PLATOS_ENCRYPTION_KEY}
       PLATOS_MESSAGE_ENCRYPTION_KEY: ${PLATOS_MESSAGE_ENCRYPTION_KEY}
@@ -100,7 +162,13 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: platos-agent
     ports: ["3100:3100"]
-    depends_on: [postgres, redis, webapp]
+    depends_on:
+      migrations-control:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+      webapp:
+        condition: service_started
     restart: always
     deploy:
       replicas: 2
@@ -124,7 +192,11 @@ TRIGGER_INTERNAL_SECRET=...  # any strong random string
 # DB
 POSTGRES_USER=platos
 POSTGRES_PASSWORD=<strong-random>
-DATABASE_URL=postgresql://platos:xxx@postgres:5432/platos
+POSTGRES_DB=platos_control
+POSTGRES_LEGACY_DB=platos_legacy
+DATABASE_URL=postgresql://platos:xxx@postgres:5432/platos_legacy
+DIRECT_URL=postgresql://platos:xxx@postgres:5432/platos_legacy
+PLATOS_CONTROL_DATABASE_URL=postgresql://platos:xxx@postgres:5432/platos_control
 
 # Redis
 REDIS_URL=redis://redis:6379
@@ -141,6 +213,12 @@ PLATOS_VERSION=0.5.2
 ```
 
 **Never** use `latest` in production; pin to a release tag for reproducible deploys.
+
+The dashboard split requires both `platos_legacy` and `platos_control` to exist
+before the webapp starts. The webapp uses the first for retained dashboard
+resources and the second for Platos auth/MFA/credentials; the agent uses only
+`platos_control`. The repository `docker-compose.platos.yml` creates and
+migrates both databases in the required order.
 
 ## First production boot
 
@@ -174,6 +252,11 @@ Plus the application config — most have safe defaults but a production deploy 
 | `NODE_ENV` | `production` |
 | `LOGIN_ORIGIN` | `https://your.host` |
 | `APP_ORIGIN` | `https://your.host` |
+| `POSTGRES_DB` | `platos_control` |
+| `POSTGRES_LEGACY_DB` | `platos_legacy` |
+| `DATABASE_URL` / `DIRECT_URL` (webapp) | legacy `platos_legacy` connection |
+| `PLATOS_CONTROL_DATABASE_URL` (webapp) | clean `platos_control` connection |
+| `DATABASE_URL` (agent) | clean `platos_control` connection |
 | `PLATOS_CORS_ORIGIN` | `https://your.host` (comma-separated for multiple) |
 | `MINIO_PUBLIC_ENDPOINT` | `https://minio.your.host` (see §3 below — **boot will fail without this**) |
 | `ANTHROPIC_API_KEY` (or other provider) | your key |
@@ -196,35 +279,30 @@ docker compose -f docker-compose.platos.yml up -d --no-deps \
 # Wait for healthchecks (~15-20s).
 docker compose -f docker-compose.platos.yml ps
 
-# 2. Webapp first (it bootstraps the worker token — see §4).
-docker compose -f docker-compose.platos.yml up -d --no-deps webapp
+# 2. Create/migrate both database graphs before webapp startup. The legacy
+#    initializer targets POSTGRES_LEGACY_DB; the clean initializer targets
+#    POSTGRES_DB. Do not point either initializer at the other database.
+docker compose -f docker-compose.platos.yml up \
+  migrations-init-legacy migrations-init clickhouse-migrate
 
-# 3. Run Postgres migrations from inside the webapp container. The
-#    `migrations-init` sidecar uses goose from ghcr.io which is sometimes
-#    rate-limited on first pull — running migrations via Prisma directly
-#    is more reliable and produces identical schema.
-PG_PWD=$(grep ^POSTGRES_PASSWORD .env | cut -d= -f2)
-docker exec -e DIRECT_URL="postgresql://postgres:${PG_PWD}@postgres:5432/postgres?schema=public" \
-  platos-webapp-1 \
-  /triggerdotdev/node_modules/.bin/prisma migrate deploy \
-  --schema /triggerdotdev/internal-packages/database/prisma/schema.prisma
+# 3. Start webapp after both migration jobs complete. It bootstraps the worker
+#    token on the retained legacy resource graph (see §4).
+docker compose -f docker-compose.platos.yml up -d webapp
 
-# 4. Restart webapp so its bootstrap routine sees the full schema +
-#    creates the `bootstrap` worker group (see §4).
-docker compose -f docker-compose.platos.yml restart webapp
-
-# 5. Capture the worker token from webapp logs (see §4).
+# 4. Capture the worker token from webapp logs (see §4).
 docker logs platos-webapp-1 2>&1 | grep TRIGGER_WORKER_TOKEN
 
 # Append the token to .env, then bring up agent + worker.
 echo "TRIGGER_WORKER_TOKEN=tr_wgt_..." >> .env
 docker compose -f docker-compose.platos.yml up -d --no-deps agent worker
 
-# 6. Verify all services healthy.
+# 5. Verify all services healthy.
 docker compose -f docker-compose.platos.yml ps
 ```
 
-If you used `up -d` once and Compose failed pulling `ghcr.io/pressly/goose:3` (registry denial), this is harmless — that's the optional ClickHouse-migrate sidecar we're skipping above. Run the migration manually via the agent container as shown.
+If an initializer fails, do not bypass it by repointing `DATABASE_URL` or
+`PLATOS_CONTROL_DATABASE_URL`. Resolve the image/database failure and rerun the
+same one-shot service so the legacy and clean graphs remain isolated.
 
 ### 3. MinIO needs a public-reachable endpoint
 

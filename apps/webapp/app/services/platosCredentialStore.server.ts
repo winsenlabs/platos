@@ -2,25 +2,18 @@ import {
   CredentialRootKeyRing,
   PlatosSecretStore,
   PROVIDER_KEY_SAFE_SELECT,
-  PrismaClient,
-  authorizeEnvironmentOperator,
-  type EnvironmentAuthorizationAccess,
-  type OperatorAuthorization,
+  type EnvironmentOperatorAuthorization,
 } from "@platos/tenancy-database";
 import { singleton } from "~/utils/singleton";
+import { platosControlDatabase } from "./platosControlDatabase.server";
 
 const DEVELOPMENT_ROOT_KEY = "feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface";
-
-const database = singleton(
-  "platos-tenancy-prisma",
-  () => new PrismaClient({ datasourceUrl: requiredEnvironmentValue("DATABASE_URL") })
-);
 
 const secretStore = singleton(
   "platos-credential-store",
   () =>
     new PlatosSecretStore(
-      database,
+      platosControlDatabase,
       new CredentialRootKeyRing({
         activeVersion: credentialRootKeyVersion(),
         keys: credentialRootKeys(),
@@ -29,16 +22,11 @@ const secretStore = singleton(
 );
 
 export async function listProviderCredentialMetadata(params: {
-  userId: string;
-  environmentId: string;
+  authorization: EnvironmentOperatorAuthorization;
 }) {
-  const authorization = await environmentAuthorization(
-    params.userId,
-    params.environmentId,
-    "metadata"
-  );
+  const authorization = params.authorization;
   const [providerKeys, credentials] = await Promise.all([
-    database.providerKey.findMany({
+    platosControlDatabase.providerKey.findMany({
       where: { environmentId: authorization.environmentId },
       orderBy: [{ provider: "asc" }, { isDefault: "desc" }, { createdAt: "asc" }],
       select: PROVIDER_KEY_SAFE_SELECT,
@@ -63,19 +51,14 @@ export async function listProviderCredentialMetadata(params: {
 }
 
 export async function createProviderCredential(params: {
-  userId: string;
-  environmentId: string;
+  authorization: EnvironmentOperatorAuthorization;
   provider: string;
   referenceName: string;
   plaintext: string;
   label: string;
   isDefault: boolean;
 }) {
-  const authorization = await environmentAuthorization(
-    params.userId,
-    params.environmentId,
-    "secret:mutate"
-  );
+  const authorization = params.authorization;
   return secretStore.createProviderCredentialAndKey({
     authorization,
     name: params.referenceName,
@@ -87,18 +70,13 @@ export async function createProviderCredential(params: {
 }
 
 export async function rotateProviderCredential(params: {
-  userId: string;
-  environmentId: string;
+  authorization: EnvironmentOperatorAuthorization;
   provider: string;
   keyId: string;
   credentialId: string;
   plaintext: string;
 }) {
-  const authorization = await environmentAuthorization(
-    params.userId,
-    params.environmentId,
-    "secret:mutate"
-  );
+  const authorization = params.authorization;
   return secretStore.rotateProviderCredentialAndKey({
     authorization,
     keyId: params.keyId,
@@ -106,23 +84,6 @@ export async function rotateProviderCredential(params: {
     provider: params.provider,
     plaintext: params.plaintext,
   });
-}
-
-async function environmentAuthorization(
-  userId: string,
-  environmentId: string,
-  access: EnvironmentAuthorizationAccess
-) {
-  const operator: OperatorAuthorization = {
-    sessionId: "platos-webapp-session",
-    actorUserId: userId,
-    effectiveUserId: userId,
-    email: "",
-    expiresAt: new Date(Date.now() + 60_000),
-    mfaVerifiedAt: null,
-    impersonation: null,
-  };
-  return authorizeEnvironmentOperator(database, operator, environmentId, access);
 }
 
 function credentialRootKeyVersion(): number {
@@ -164,10 +125,4 @@ function credentialRootKeys(): Record<number, string> {
   }
   if (Object.keys(keys).length === 0) throw new Error("Credential store configuration is invalid");
   return keys;
-}
-
-function requiredEnvironmentValue(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is required`);
-  return value;
 }

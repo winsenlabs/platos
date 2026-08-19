@@ -12,8 +12,9 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 
 | Variable | Default | Required | Purpose |
 |---|---|---|---|
-| `DATABASE_URL` | — | Yes | Postgres connection string. Use `postgresql://user:pass@host:5432/db?schema=public`. Both webapp and agent read this. |
-| `DIRECT_URL` | `$DATABASE_URL` | No | Unpooled connection used for Prisma migrations. Set to bypass PgBouncer. |
+| `DATABASE_URL` | — | Yes | Service-primary Postgres connection string. During the dashboard M1–M4 split, the webapp must point this at the legacy dashboard database (for example `platos_legacy`), while the agent points it at the clean control database (for example `platos_control`). Never repoint the webapp value globally before M4. |
+| `DIRECT_URL` | `$DATABASE_URL` | No | Unpooled connection used for migrations against the same database as that service's `DATABASE_URL`. The webapp value remains legacy until M4. |
+| `PLATOS_CONTROL_DATABASE_URL` | — | **Yes (webapp)** | Webapp-only connection to the distinct clean control database used for `OperatorSession`, canonical authorization, MFA, and credential metadata/mutations. It must not name the legacy `DATABASE_URL` database. |
 | `REDIS_URL` | — | Yes | Redis connection string. Both services. ACL-enabled URIs supported. |
 | `REDIS_TLS_DISABLED` | `false` | No | Set `true` to disable TLS for Redis (e.g. local Docker). |
 | `SESSION_SECRET` | — | Yes | Strong random value (minimum 16 chars; recommended: `openssl rand -base64 24`). Signs webapp cookies and platform bridge JWTs; the same value is supplied to the agent. Rotating invalidates all sessions. |
@@ -178,7 +179,9 @@ Platos stores multimodal attachments (images, audio, video, documents) in MinIO 
 The shortest env file that will boot a working Platos:
 
 ```bash
-DATABASE_URL=postgresql://platos:platos@localhost:5432/platos
+DATABASE_URL=postgresql://platos:platos@localhost:5432/platos_legacy
+DIRECT_URL=postgresql://platos:platos@localhost:5432/platos_legacy
+PLATOS_CONTROL_DATABASE_URL=postgresql://platos:platos@localhost:5432/platos_control
 REDIS_URL=redis://localhost:6379
 SESSION_SECRET=$(openssl rand -base64 24 | tr -d '\n')
 MAGIC_LINK_SECRET=$(openssl rand -base64 24 | tr -d '\n')
@@ -190,4 +193,6 @@ PLATOS_INTERNAL_AUTH_TOKEN=$(openssl rand -hex 32)
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-That's it. Everything else has sensible defaults.
+The agent's `DATABASE_URL` must use the same `platos_control` database named by
+the webapp's `PLATOS_CONTROL_DATABASE_URL`. The two webapp database URLs remain
+distinct until the M4 dashboard resource cutover.

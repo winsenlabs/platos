@@ -1,26 +1,13 @@
 import { redirect } from "@remix-run/node";
 import { getUserById } from "~/models/user.server";
-import { authenticator } from "./auth.server";
-import { getImpersonationId } from "./impersonation.server";
+import {
+  getDashboardIdentity,
+  requireDashboardIdentity,
+} from "./platosDashboardAuth.server";
+import type { LegacyUserId } from "./dashboardIdentity.server";
 
-export async function getUserId(request: Request): Promise<string | undefined> {
-  const impersonatedUserId = await getImpersonationId(request);
-
-  if (impersonatedUserId) {
-    // Verify the real user (from the session cookie) is still an admin
-    const authUser = await authenticator.isAuthenticated(request);
-    if (authUser?.userId) {
-      const realUser = await getUserById(authUser.userId);
-      if (realUser?.admin) {
-        return impersonatedUserId;
-      }
-    }
-    // Admin revoked or session invalid — fall through to return the real user's ID
-    return authUser?.userId;
-  }
-
-  let authUser = await authenticator.isAuthenticated(request);
-  return authUser?.userId;
+export async function getUserId(request: Request): Promise<LegacyUserId | undefined> {
+  return (await getDashboardIdentity(request))?.legacyEffectiveUserId;
 }
 
 export async function getUser(request: Request) {
@@ -34,23 +21,14 @@ export async function getUser(request: Request) {
 }
 
 export async function requireUserId(request: Request, redirectTo?: string) {
-  const userId = await getUserId(request);
-  if (!userId) {
-    const url = new URL(request.url);
-    const searchParams = new URLSearchParams([
-      ["redirectTo", redirectTo ?? `${url.pathname}${url.search}`],
-    ]);
-    throw redirect(`/login?${searchParams}`);
-  }
-  return userId;
+  return (await requireDashboardIdentity(request, redirectTo)).legacyEffectiveUserId;
 }
 
 export type UserFromSession = Awaited<ReturnType<typeof requireUser>>;
 
 export async function requireUser(request: Request) {
-  const userId = await requireUserId(request);
-
-  const impersonationId = await getImpersonationId(request);
+  const identity = await requireDashboardIdentity(request);
+  const userId = identity.legacyEffectiveUserId;
   const user = await getUserById(userId);
   if (user) {
     return {
@@ -64,8 +42,8 @@ export async function requireUser(request: Request) {
       updatedAt: user.updatedAt,
       dashboardPreferences: user.dashboardPreferences,
       confirmedBasicDetails: user.confirmedBasicDetails,
-      mfaEnabledAt: user.mfaEnabledAt,
-      isImpersonating: !!impersonationId && impersonationId === userId,
+      mfaEnabledAt: identity.mfaEnabledAt,
+      isImpersonating: identity.isImpersonating,
     };
   }
 

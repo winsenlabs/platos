@@ -20,14 +20,12 @@ import { InputGroup } from "~/components/primitives/InputGroup";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { Spinner } from "~/components/primitives/Spinner";
 import { TextLink } from "~/components/primitives/TextLink";
-import { authenticator } from "~/services/auth.server";
 import { commitSession, getUserSession } from "~/services/sessionStorage.server";
 import { setRedirectTo, commitSession as commitRedirectSession } from "~/services/redirectTo.server";
 import {
   checkMagicLinkEmailRateLimit,
   checkMagicLinkEmailDailyRateLimit,
   MagicLinkRateLimitError,
-  checkMagicLinkIpRateLimit,
 } from "~/services/magicLinkRateLimiter.server";
 // `logger` from `@platos/core/v3` is the TASK-scoped LoggerAPI — it
 // delegates to a NoopTaskLogger outside a trigger.dev task run, so every
@@ -37,7 +35,12 @@ import {
 import { tryCatch } from "@platos/core/v3";
 import { logger } from "~/services/logger.server";
 import { env } from "~/env.server";
-import { extractClientIp } from "~/utils/extractClientIp.server";
+import { getUserId } from "~/services/session.server";
+import {
+  authEmailRateLimitIdentifier,
+  platosDashboardAuth,
+} from "~/services/platosDashboardAuth.server";
+import { sendDashboardMagicLink } from "~/services/email.server";
 
 export const meta: MetaFunction = ({ matches }) => {
   const parentMeta = matches
@@ -59,9 +62,7 @@ export const meta: MetaFunction = ({ matches }) => {
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  await authenticator.isAuthenticated(request, {
-    successRedirect: "/",
-  });
+  if (await getUserId(request)) throw redirect("/");
 
   const session = await getUserSession(request);
   const error = session.get("auth:error");
@@ -117,59 +118,25 @@ export async function action({ request }: ActionFunctionArgs) {
 
   switch (data.action) {
     case "send": {
-      if (!env.LOGIN_RATE_LIMITS_ENABLED) {
-        logger.info("Magic link: invoking authenticator.authenticate", {
-          email: data.email,
-          hasRedirectTo: new URL(request.url).searchParams.has("redirectTo"),
-        });
-        try {
-          return await authenticator.authenticate("email-link", request, {
-            successRedirect: "/login/magic",
-            failureRedirect: "/login/magic",
-          });
-        } catch (err: any) {
-          // `authenticator.authenticate` throws a Response for redirects
-          // (both success + failure) — re-throw those as-is. Only log when
-          // it throws a real Error (strategy-internal bug, signing failure,
-          // DB hiccup in the verify callback, etc.). Without this wrapper
-          // the error is silently swallowed into the failureRedirect and
-          // "auth:error" session message, leaving operators chasing ghosts.
-          if (err instanceof Response) {
-            throw err;
-          }
-          logger.error("Magic link: authenticator.authenticate threw", {
-            email: data.email,
-            error:
-              err instanceof Error
-                ? { name: err.name, message: err.message, stack: err.stack }
-                : JSON.stringify(err),
-          });
-          throw err;
-        }
-      }
-
       const { email } = data;
-      const xff = request.headers.get("x-forwarded-for");
-      const clientIp = extractClientIp(xff);
 
-      const [error] = await tryCatch(
-        Promise.all([
-          clientIp ? checkMagicLinkIpRateLimit(clientIp) : Promise.resolve(),
-          checkMagicLinkEmailRateLimit(email),
-          checkMagicLinkEmailDailyRateLimit(email),
-        ])
-      );
+      const [error] = env.LOGIN_RATE_LIMITS_ENABLED
+        ? await tryCatch(
+            Promise.all([
+              checkMagicLinkEmailRateLimit(email),
+              checkMagicLinkEmailDailyRateLimit(email),
+            ])
+          )
+        : [null];
 
       if (error) {
         if (error instanceof MagicLinkRateLimitError) {
           logger.warn("Login magic link rate limit exceeded", {
-            clientIp,
             email,
             error,
           });
         } else {
           logger.error("Failed sending login magic link", {
-            clientIp,
             email,
             error,
           });
@@ -191,9 +158,18 @@ export async function action({ request }: ActionFunctionArgs) {
       }
 
       try {
-        return await authenticator.authenticate("email-link", request, {
-          successRedirect: "/login/magic",
-          failureRedirect: "/login/magic",
+        const issued = await platosDashboardAuth.issueMagicLink({
+          email,
+          rateLimitIdentifier: authEmailRateLimitIdentifier(email),
+        });
+        const link = new URL("/magic", env.LOGIN_ORIGIN);
+        link.searchParams.set("token", issued.token);
+        await sendDashboardMagicLink(email, link.toString());
+
+        const session = await getUserSession(request);
+        session.set("triggerdotdev:magiclink", true);
+        return redirect("/login/magic", {
+          headers: { "Set-Cookie": await commitSession(session) },
         });
       } catch (err: any) {
         if (err instanceof Response) {

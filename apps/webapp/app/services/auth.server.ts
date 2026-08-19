@@ -1,14 +1,26 @@
+import { createCookieSessionStorage } from "@remix-run/node";
 import { Authenticator } from "remix-auth";
 import type { AuthUser } from "./authUser";
-import { addEmailLinkStrategy } from "./emailAuth.server";
 import { addGitHubStrategy } from "./gitHubAuth.server";
 import { addGoogleStrategy } from "./googleAuth.server";
-import { sessionStorage } from "./sessionStorage.server";
 import { env } from "~/env.server";
 
-// Create an instance of the authenticator, pass a generic with what
-// strategies will return and will store in the session
-const authenticator = new Authenticator<AuthUser>(sessionStorage);
+// Remix Auth is retained only for the OAuth handshake. Keep its transient
+// state isolated from the legacy dashboard `__session` cookie so an inherited
+// Trigger auth payload can never be treated as a successful OAuth result.
+const oauthSessionStorage = createCookieSessionStorage({
+  cookie: {
+    name: env.NODE_ENV === "production" ? "__Host-platos_oauth" : "platos_oauth",
+    httpOnly: true,
+    path: "/",
+    sameSite: "lax",
+    secrets: [env.SESSION_SECRET],
+    secure: env.NODE_ENV === "production",
+    maxAge: 15 * 60,
+  },
+});
+
+const authenticator = new Authenticator<AuthUser>(oauthSessionStorage);
 
 const isGithubAuthSupported =
   typeof env.AUTH_GITHUB_CLIENT_ID === "string" &&
@@ -26,6 +38,9 @@ if (env.AUTH_GOOGLE_CLIENT_ID && env.AUTH_GOOGLE_CLIENT_SECRET) {
   addGoogleStrategy(authenticator, env.AUTH_GOOGLE_CLIENT_ID, env.AUTH_GOOGLE_CLIENT_SECRET);
 }
 
-addEmailLinkStrategy(authenticator);
-
 export { authenticator, isGithubAuthSupported, isGoogleAuthSupported };
+
+export async function clearOAuthSession(request: Request): Promise<string> {
+  const session = await oauthSessionStorage.getSession(request.headers.get("Cookie"));
+  return oauthSessionStorage.destroySession(session);
+}

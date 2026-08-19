@@ -11,6 +11,10 @@ import { Form, useFetcher, useNavigation, type MetaFunction } from "@remix-run/r
 import { useEffect, useRef, useState } from "react";
 import { type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/server-runtime";
 import { typedjson, useTypedLoaderData } from "remix-typedjson";
+import {
+  PlatosAuthError,
+  type EnvironmentOperatorAuthorization,
+} from "@platos/tenancy-database";
 import { PageBody, PageContainer } from "~/components/layout/AppLayout";
 import { Button } from "~/components/primitives/Buttons";
 import { Header3 } from "~/components/primitives/Headers";
@@ -20,6 +24,7 @@ import { Paragraph } from "~/components/primitives/Paragraph";
 import { findProjectBySlug } from "~/models/project.server";
 import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
+import { requireCanonicalEnvironmentAuthorization } from "~/services/platosDashboardAuth.server";
 import {
   sanitizeProviderKeysPayload,
   type SafeProviderKey,
@@ -30,6 +35,7 @@ import {
   rotateProviderCredential,
 } from "~/services/platosCredentialStore.server";
 import { EnvironmentParamSchema } from "~/utils/pathBuilder";
+import type { CanonicalUserId } from "~/services/dashboardIdentity.server";
 
 export const meta: MetaFunction = () => [{ title: "Providers | Platos" }];
 
@@ -41,7 +47,7 @@ type Scope = {
   organizationId: string;
   projectId: string;
   environmentId: string;
-  userId: string;
+  userId: CanonicalUserId;
 };
 
 type ProviderState = {
@@ -173,7 +179,10 @@ async function agentMutate(
 }
 
 function mutationError(error: unknown) {
-  if (error instanceof AgentApiError && error.status === 403) {
+  if (
+    (error instanceof AgentApiError && error.status === 403) ||
+    (error instanceof PlatosAuthError && error.code === "forbidden")
+  ) {
     return typedjson(
       { error: "Project admin or organization admin access is required." },
       { status: 403 }
@@ -190,6 +199,7 @@ async function scopeFromRequest(
   params: Record<string, string | undefined>
 ): Promise<{
   scope: Scope;
+  credentialAuthorization: EnvironmentOperatorAuthorization;
   organization: { id: string; slug: string };
   project: { id: string; slug: string };
   environment: { id: string; slug: string; parentEnvironmentId: string | null };
@@ -206,13 +216,17 @@ async function scopeFromRequest(
     throw new Response(undefined, { status: 404, statusText: "Environment not found" });
   }
 
+  const canonical = await requireCanonicalEnvironmentAuthorization({
+    request,
+    organizationSlug,
+    projectSlug: projectParam,
+    environmentSlug: envParam,
+    access: "metadata",
+  });
+
   return {
-    scope: {
-      organizationId: project.organizationId,
-      projectId: project.id,
-      environmentId: environment.id,
-      userId,
-    },
+    scope: canonical.scope,
+    credentialAuthorization: canonical.authorization,
     organization: { id: project.organizationId, slug: organizationSlug },
     project: { id: project.id, slug: projectParam },
     environment: {
@@ -233,7 +247,7 @@ async function scopeFromRequest(
  *      environment variables.
  */
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const { scope } = await scopeFromRequest(request, params);
+  const { scope, credentialAuthorization } = await scopeFromRequest(request, params);
 
   let providers: ProviderState[] = [];
   let agentReachable = false;
@@ -264,8 +278,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   try {
     providerKeys = sanitizeProviderKeysPayload(
       await listProviderCredentialMetadata({
-        userId: scope.userId,
-        environmentId: scope.environmentId,
+        authorization: credentialAuthorization,
       })
     );
   } catch {
@@ -297,7 +310,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const { scope } = await scopeFromRequest(request, params);
+  const routeScope = await scopeFromRequest(request, params);
+  const { scope } = routeScope;
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
   const providerId = String(formData.get("provider") ?? "");
@@ -356,8 +370,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
         );
       }
       await createProviderCredential({
-        userId: scope.userId,
-        environmentId: scope.environmentId,
+        authorization: (
+          await requireCanonicalEnvironmentAuthorization({
+            request,
+            organizationSlug: routeScope.organization.slug,
+            projectSlug: routeScope.project.slug,
+            environmentSlug: routeScope.environment.slug,
+            access: "secret:mutate",
+          })
+        ).authorization,
         provider,
         referenceName,
         plaintext: credentialValue,
@@ -378,8 +399,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
         );
       }
       await rotateProviderCredential({
-        userId: scope.userId,
-        environmentId: scope.environmentId,
+        authorization: (
+          await requireCanonicalEnvironmentAuthorization({
+            request,
+            organizationSlug: routeScope.organization.slug,
+            projectSlug: routeScope.project.slug,
+            environmentSlug: routeScope.environment.slug,
+            access: "secret:mutate",
+          })
+        ).authorization,
         provider: providerId,
         keyId,
         credentialId,
