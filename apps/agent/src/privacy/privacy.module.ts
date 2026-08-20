@@ -3,6 +3,7 @@ import { DatabaseModule } from "../shared/database.provider";
 import { RedisModule } from "../shared/redis.provider";
 import { ErasureService } from "./erasure.service";
 import { ErasureObjectStore } from "./object-store";
+import { ErasureClickhouse } from "./clickhouse";
 import { ErasureController } from "./erasure.controller";
 import { PlatosMCPTokenService } from "../mcp-platform/token.service";
 
@@ -16,7 +17,7 @@ import { PlatosMCPTokenService } from "../mcp-platform/token.service";
 @Module({
   imports: [DatabaseModule, RedisModule],
   controllers: [ErasureController],
-  providers: [ErasureService, ErasureObjectStore, PlatosMCPTokenService],
+  providers: [ErasureService, ErasureObjectStore, ErasureClickhouse, PlatosMCPTokenService],
   exports: [ErasureService],
 })
 export class PrivacyModule {}

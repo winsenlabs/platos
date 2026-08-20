@@ -1,7 +1,7 @@
 # Hard erasure — contract and evidence
 
-Status: **API implemented, migration NOT applied, ClickHouse NOT provisioned.**
-Read "Deployment prerequisites" before integrating.
+Status: **API implemented, migration NOT applied. ClickHouse erasure implemented;
+provisioned per deployment.** Read "Deployment prerequisites" before integrating.
 
 ## Endpoints
 
@@ -75,7 +75,7 @@ load-bearing:
 |---|---|---|
 | MinIO | Deletes objects by `storageKey` | Re-probes each key; `unknown` if no probe available |
 | Redis | Deletes subject keys, **retains** aggregates | Re-checks each deleted key |
-| ClickHouse | Probes for `platos_spans_v1` | `not_provisioned` when absent |
+| ClickHouse | Mutates the turn-shaped tables + the legacy span projection | Polls `system.mutations` for `is_done`, then re-counts; `not_provisioned` only when absent |
 | Postgres | Transactional, children → parents → identity | Counts survivors across threads/memories/audits/end-users |
 
 ### Redis key prefix
@@ -131,16 +131,23 @@ persist a receipt containing a subject identifier.
    generate and apply before use, or every request 500s.
 2. Mint an organization-bound, admin-tier `plt_mcp_` control-plane credential.
 3. **`PLATOS_ERASURE_HASH_SALT`** must be set in production and must be independent from authentication credentials.
-4. **ClickHouse is unprovisioned** on test.platos — zero user tables. Its
-   executor returns `not_provisioned`. Do **not** integrate expecting verified
-   ClickHouse erasure until the table exists and the mutation path is written.
+4. **ClickHouse is optional.** The executor reads `PLATOS_OTEL_CLICKHOUSE_URL`
+   (the variable the agent process receives), falling back to `CLICKHOUSE_URL`.
+   Unset — as in local/dev, where ClickHouse is deliberately not in compose —
+   the store reports `not_provisioned` with every deletion counter pinned to
+   zero. Configured but unreachable, unauthorized or schema-drifted reports
+   `failed`/`unknown` instead: only true absence settles an operation.
 5. **MinIO object deletion requires an attachments client** with
    `deleteObject`/`objectExists`. Without it the store reports
    `not_provisioned` rather than pretending.
 
 ## Known gaps
 
-- ClickHouse mutation submission/polling is **not implemented**. If the spans
-  table is present the executor reports `failed`, not success.
+- ClickHouse erasure has not been exercised against a running server: the
+  mutate → poll → verify sequence is covered by unit tests only, per the
+  standing instruction not to stand ClickHouse up locally.
+- The turn-shaped tables (`platos_observability.turns_v1`, `steps_v1`,
+  `tool_calls_v1`, `usage_events_v1`) have no writer yet; the executor mutates
+  whichever of them a deployment actually has and skips the rest.
 - The MinIO client is optional-injected; wire it in `PrivacyModule` before
   relying on object deletion.

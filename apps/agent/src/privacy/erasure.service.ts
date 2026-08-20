@@ -17,6 +17,8 @@ import { runErasure, retryErasure, type StoreExecutors } from "./erasure-orchest
 import { findLegalHold, parseLegalHoldList } from "./legal-hold";
 import { planDeletions, subjectKeyPatterns, retainedAggregatePatterns } from "./redis-keys";
 import { ErasureObjectStore } from "./object-store";
+import { ErasureClickhouse } from "./clickhouse";
+import { eraseClickhouseSubject } from "./clickhouse-erasure";
 
 /**
  * Hard erasure across Postgres, Redis, ClickHouse and object storage.
@@ -90,6 +92,7 @@ export class ErasureService {
     @Inject(PRISMA_TOKEN) prisma: ControlDatabaseClient,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
     @Optional() private readonly attachments?: ErasureObjectStore,
+    @Optional() private readonly clickhouse?: ErasureClickhouse,
   ) {
     this.prisma = prisma;
     // Per-deployment salt. Without one, a hash of an email is trivially
@@ -290,33 +293,38 @@ export class ErasureService {
   };
 
   /**
-   * ClickHouse. Measured on this deployment: zero user tables, so there is
-   * nothing to erase and a verification query returns nothing trivially. That
-   * reports as not_provisioned, which settles the operation but is NEVER
-   * verified — the day it is provisioned, an unexercised guarantee must not
-   * silently become false.
+   * ClickHouse. Submits the erasure mutation, waits for `system.mutations` to
+   * report it done, then re-counts. The sequence lives in clickhouse-erasure.ts
+   * so it is testable without a server; this method's only job is to address
+   * the subject.
+   *
+   * Runs THIRD, before Postgres, for the same reason Redis does: the thread ids
+   * that address the subject's rows here are Postgres rows, and Postgres is
+   * about to delete them.
+   *
+   * A deployment without ClickHouse — which includes local and dev, where it is
+   * deliberately not in compose — reports not_provisioned. A deployment WITH
+   * ClickHouse that cannot be reached reports failed/unknown. The two must
+   * never collapse into one another: only the first settles the operation.
    */
-  private clickhouseExecutor = async (): Promise<StoreOutcome> => {
-    const o = pendingStore("clickhouse");
-    const base = process.env.CLICKHOUSE_URL;
-    if (!base) return { ...o, status: "not_provisioned", note: "CLICKHOUSE_URL unset" };
-    try {
-      const res = await fetch(`${base.replace(/\/+$/, "")}/?query=${encodeURIComponent(
-        "SELECT count() FROM system.tables WHERE name = 'platos_spans_v1'")}`,
-        { signal: AbortSignal.timeout(10_000) });
-      const n = parseInt((await res.text()).trim(), 10);
-      if (!Number.isFinite(n) || n === 0) {
-        return { ...o, status: "not_provisioned", note: "platos_spans_v1 does not exist in this deployment" };
-      }
-      // Table exists: a real mutation path is required before this can claim
-      // anything. Refusing to report success is the correct behaviour until
-      // that path is implemented and exercised against real rows.
-      return { ...o, status: "failed", failures: 1, verificationStatus: "unknown",
-               note: "spans table present but mutation path not implemented" };
-    } catch (err: any) {
-      return { ...o, status: "failed", failures: 1, verificationStatus: "unknown",
-               note: `clickhouse probe failed (${err?.name ?? "Error"})` };
-    }
+  private clickhouseExecutor = async (
+    subject: SubjectKeys,
+    organizationId: string,
+    subjectKeyHash: string,
+  ): Promise<StoreOutcome> => {
+    const threadRows: any[] = this.clickhouse?.available
+      ? await this.prisma.thread.findMany({
+          where: { endUserId: { in: subject.platosEndUserIds } },
+          select: { id: true },
+        })
+      : [];
+    return eraseClickhouseSubject({
+      clickhouse: this.clickhouse,
+      subject,
+      organizationId,
+      subjectKeyHash,
+      threadIds: threadRows.map((t) => t.id),
+    });
   };
 
   /** Postgres. Runs LAST: it holds the identifiers every other store uses. */
@@ -426,11 +434,11 @@ export class ErasureService {
     return o;
   };
 
-  private executors(organizationId: string): StoreExecutors {
+  private executors(organizationId: string, subjectKeyHash: string): StoreExecutors {
     return {
       minio: this.minioExecutor,
       redis: this.redisExecutor,
-      clickhouse: this.clickhouseExecutor,
+      clickhouse: (subject) => this.clickhouseExecutor(subject, organizationId, subjectKeyHash),
       postgres: (subject) => this.postgresExecutor(subject, organizationId),
     };
   }
@@ -500,7 +508,7 @@ export class ErasureService {
     // the operator has to be able to evidence later.
     if (heldBy) return this.toReceipt(row);
 
-    const started = await runErasure(this.toReceipt(row), subject, this.executors(args.organizationId), {
+    const started = await runErasure(this.toReceipt(row), subject, this.executors(args.organizationId, hash), {
       legalHold: args.legalHoldPolicyId ? { policyId: args.legalHoldPolicyId } : null,
     });
     return this.persist(started, [args.externalUserId, ...subject.legacyUserIds]);
@@ -523,10 +531,11 @@ export class ErasureService {
   async retryErasureById(operationId: string, externalUserId: string): Promise<ErasureReceipt | null> {
     const row = await this.prisma.erasureOperation.findFirst({ where: { id: operationId } });
     if (!row) return null;
-    if (!this.hashMatches(this.hash(externalUserId, row.organizationId), row.subjectKeyHash)) return null;
+    const hash = this.hash(externalUserId, row.organizationId);
+    if (!this.hashMatches(hash, row.subjectKeyHash)) return null;
     const receipt = this.toReceipt(row);
     const subject = await this.discoverSubject(externalUserId, row.organizationId);
-    const next = await retryErasure(receipt, subject, this.executors(row.organizationId), {
+    const next = await retryErasure(receipt, subject, this.executors(row.organizationId, hash), {
       legalHold: row.legalHoldPolicyId ? { policyId: row.legalHoldPolicyId } : null,
     });
     return this.persist(next, [externalUserId, ...subject.legacyUserIds]);
