@@ -319,7 +319,30 @@ export class PlatoolsClient {
         return;
       case "welcome":
       case "heartbeat_ack":
+      case "tools_registered":
         // informational — no action required
+        return;
+      case "register_throttled":
+        // The platform refused the batch; the reconnect/re-register path will
+        // try again. Surface it so a persistent throttle is visible rather
+        // than looking like silent registration success.
+        this.logger.warn(
+          `platools registration throttled: ${message.error}${
+            message.retry_after_ms === undefined
+              ? ""
+              : ` (retry in ${Math.ceil(message.retry_after_ms / 1000)}s)`
+          }`,
+        );
+        return;
+      case "tool_health_alert":
+        this.logger.warn(
+          `platools tool health: ${message.tool} is ${message.status}`,
+        );
+        return;
+      case "error":
+        // Terminal: the platform closes the socket after sending this, so the
+        // reason has to be logged here or it is lost to a bare close event.
+        this.logger.error(`platools platform error: ${message.error}`);
         return;
     }
   }
