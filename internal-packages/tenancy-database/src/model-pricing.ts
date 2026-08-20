@@ -217,6 +217,26 @@ function dateOrNull(value: string | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * Token counts arrive from parsed JSON, so the declared `number` on
+ * LiteLlmEntry is an assertion rather than a guarantee — some upstream entries
+ * carry these as strings. Prisma then rejects the write with `Expected Int or
+ * Null, provided String`, which crashes the bootstrap and takes the whole agent
+ * down on boot.
+ *
+ * Coerce at the boundary: accept a number or a numeric string, and treat
+ * anything else — a float, an empty string, "unlimited" — as absent rather than
+ * guessing.
+ */
+export function tokenCountOrNull(value: unknown): number | null {
+  if (typeof value === "number") return Number.isSafeInteger(value) ? value : null;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  const parsed = Number(trimmed);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
 function verifiedObservedAt(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
 }
@@ -583,8 +603,8 @@ export class PlatosModelPricing {
               name: key,
               displayName: entry.model_name ?? null,
               description: entry.description ?? null,
-              contextWindow: entry.max_input_tokens ?? entry.max_tokens ?? null,
-              maxOutputTokens: entry.max_output_tokens ?? null,
+              contextWindow: tokenCountOrNull(entry.max_input_tokens) ?? tokenCountOrNull(entry.max_tokens),
+              maxOutputTokens: tokenCountOrNull(entry.max_output_tokens),
               capabilities: capabilitiesFor(entry),
               releaseDate: dateOrNull(entry.release_date),
               deprecationDate: dateOrNull(entry.deprecation_date),
@@ -594,8 +614,8 @@ export class PlatosModelPricing {
               provider,
               displayName: entry.model_name ?? null,
               description: entry.description ?? null,
-              contextWindow: entry.max_input_tokens ?? entry.max_tokens ?? null,
-              maxOutputTokens: entry.max_output_tokens ?? null,
+              contextWindow: tokenCountOrNull(entry.max_input_tokens) ?? tokenCountOrNull(entry.max_tokens),
+              maxOutputTokens: tokenCountOrNull(entry.max_output_tokens),
               capabilities: capabilitiesFor(entry),
               releaseDate: dateOrNull(entry.release_date),
               deprecationDate: dateOrNull(entry.deprecation_date),

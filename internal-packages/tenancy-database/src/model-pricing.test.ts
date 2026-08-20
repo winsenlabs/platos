@@ -4,6 +4,7 @@ import {
   calculateCanonicalModelCost,
   ModelPricingUnavailableError,
   modelPricingLookupKeys,
+  tokenCountOrNull,
   type CanonicalModelPriceSnapshot,
 } from "./model-pricing";
 
@@ -117,5 +118,35 @@ describe("canonical model pricing math", () => {
         cacheWriteInputTokens: 10,
       })
     ).toThrow(ModelPricingUnavailableError);
+  });
+});
+
+describe("tokenCountOrNull", () => {
+  // The agent crash-looped on boot with `Argument contextWindow: Invalid value
+  // provided. Expected Int or Null, provided String`. LiteLlmEntry declares
+  // these as `number`, but the catalogue is parsed JSON and some upstream rows
+  // carry them as strings, so the annotation is an assertion rather than a
+  // guarantee.
+  test("passes through safe integers", () => {
+    expect(tokenCountOrNull(128000)).toBe(128000);
+    expect(tokenCountOrNull(0)).toBe(0);
+  });
+
+  test("parses the numeric strings that crashed the bootstrap", () => {
+    expect(tokenCountOrNull("128000")).toBe(128000);
+    expect(tokenCountOrNull("  9000  ")).toBe(9000);
+  });
+
+  test("treats anything it cannot represent as absent rather than guessing", () => {
+    for (const value of [undefined, null, "", "   ", "unlimited", "12k", {}, [], NaN, Infinity]) {
+      expect(tokenCountOrNull(value)).toBeNull();
+    }
+  });
+
+  test("rejects non-integers rather than silently truncating", () => {
+    // Prisma's Int column would reject these anyway; failing here keeps the
+    // rejection at the boundary instead of at the write.
+    expect(tokenCountOrNull(1024.5)).toBeNull();
+    expect(tokenCountOrNull("1024.5")).toBeNull();
   });
 });
