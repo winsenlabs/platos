@@ -39,7 +39,14 @@ Responds `201` on create, `200` on a repeat, with an `ErasureReceipt`.
 Supplying it gives the pass the same reach as the original, so its
 verifications count for as much. Omitting it resumes from the persisted plan
 instead — see "Resuming an unsettled store" below. A retry under legal hold
-returns `409`.
+returns `409`, including a hold filed after the operation was created.
+
+An operation with **no** resume plan — every operation created before that
+column existed — cannot be resumed by either route once Postgres has run: the
+identity row discovery matches on is gone, and there is nothing left to address
+the subject by. Both routes refuse rather than sweeping, and record the refusal.
+Supplying `externalUserId` does not change this; the id proves who the operation
+is about, it does not make them addressable.
 
 ## Subject mapping
 
@@ -84,10 +91,21 @@ load-bearing:
 
 ### Redis key prefix
 
-The client sets `keyPrefix: "platos:"`. `keys()`/`scan()` return **prefixed**
-keys and `del()` **re-prefixes**, so passing scan output straight to `del()`
-produces `platos:platos:…`, matches nothing, and reports success. Real keys are
-`platos:trace:thread:<id>`, `platos:cost:user:<scope>:<userId>:<date>`.
+The client sets `keyPrefix: "platos:"`, and it applies to **key arguments
+only**. Real keys are `platos:trace:thread:<id>`,
+`platos:cost:user:<scope>:<userId>:<date>`, and the sweep has to get the prefix
+right in two opposite directions:
+
+- `del()` and `exists()` **prefix what they are given**, so a scan result must be
+  stripped first. Passing it straight through produces `platos:platos:…`, which
+  matches nothing and reports success.
+- `keys()`/`scan()` **do not prefix the pattern** — a pattern is not a key
+  argument — and do not strip the reply. So a pattern must carry the prefix
+  itself. Without it the scan matches nothing, and a sweep that finds nothing
+  deletes nothing, probes nothing, and certifies all of it.
+
+Either mistake produces the same receipt: every store green, every key still
+there.
 
 ### Retention exceptions
 
@@ -277,7 +295,7 @@ touches.
 |---|---|
 | `pending` | Created, not started |
 | `running` | Stores in flight |
-| `blocked_legal_hold` | Nothing ran; `legalHoldPolicyId` set |
+| `blocked_legal_hold` | Stopped by a hold; `legalHoldPolicyId` names the register entry. Nothing ran, unless a hold was filed after an earlier pass had already swept — in which case the stores it settled stay settled and are still on the receipt |
 | `partial_failure` | A store failed **or** finished unproven |
 | `verification_failed` | Data survived, **or** discovery resolved to zero keys |
 | `completed` | Every required store settled and verified |

@@ -244,6 +244,27 @@ describe("the Redis sweep over a seeded keyspace", () => {
     expect(redis.deleteTargets).toHaveLength(21);
   });
 
+  it("scans in the form the wire uses, not the form the planner emits", async () => {
+    // The other half of the prefix asymmetry, and the direction that produces
+    // no evidence at all: ioredis prefixes key ARGUMENTS, and a pattern is not
+    // one. "trace:thread:x" therefore reaches a server whose keys are all
+    // "platos:trace:thread:…", matches nothing, and the sweep deletes nothing,
+    // verifies nothing and reports every step a success.
+    await sweep();
+
+    expect(redis.scanPatterns).toHaveLength(16);
+    expect(redis.scanPatterns.filter((p) => !p.startsWith("platos:"))).toEqual([]);
+    expect(redis.scanPatterns).toContain(`platos:trace:thread:${ALICE.threads[0]}`);
+    // The planner's own form is deliberately NOT what went out; it is what
+    // del() takes, and the two are not interchangeable.
+    expect(subjectKeyPatterns({
+      threadIds: ALICE.threads,
+      legacyUserIds: [ALICE.external],
+      platosEndUserIds: [ALICE.endUserId],
+      scopes: SCOPES,
+    })).toContain(`trace:thread:${ALICE.threads[0]}`);
+  });
+
   it("refuses to certify a key that a successful delete did not remove", async () => {
     // Exactly the shape of the double-prefix bug from the store's side: del
     // reports success, the key stays. Verification re-reads on the wire rather
@@ -278,7 +299,33 @@ describe("the Redis sweep over a seeded keyspace", () => {
     // Sixteen patterns, sixteen failed scans. Nothing was deleted and nothing
     // may be claimed: the operation stays open for a later pass.
     expect(outcome).toMatchObject({ status: "failed", discovered: 0, deleted: 0, failures: 16 });
+    // Zero survivors out of zero probes is not a clean bill of health. With no
+    // scan there is no key list, so the verification loop runs no probes at all
+    // — and "passed" there is the same round-an-unknown-down-to-gone the module
+    // forbids everywhere else, printed onto the durable receipt an operator
+    // reads. The store stays unsettled either way; what changes is what the
+    // receipt claims about it.
+    expect(outcome.verificationStatus).toBe("unknown");
+    expect(outcome.note).toContain("16 patterns could not be scanned");
     expect(isStoreSettled(outcome)).toBe(false);
     expect(remainingKeys(redis)).toEqual(before);
+  });
+
+  it("will not certify the whole keyspace on the strength of a partial scan", async () => {
+    // One pattern unreadable, fifteen fine. Everything the sweep DID see is
+    // deleted and probed absent — so survivors is honestly zero — and the store
+    // still cannot be signed for, because the keys behind the failed pattern
+    // were never enumerated to be probed.
+    redis.state.unscannable.add(`platos:trace:thread:${ALICE.threads[0]}`);
+
+    const outcome = await sweep();
+
+    expect(outcome).toMatchObject({ status: "failed", failures: 1, deleted: 20 });
+    expect(outcome.verificationStatus).toBe("unknown");
+    expect(outcome.note).toContain("0 survivors");
+    expect(outcome.note).toContain("1 patterns could not be scanned");
+    // Positive evidence still outranks it: an unscanned pattern makes the
+    // result unknown, a key found still present makes it failed.
+    expect(remainingKeys(redis)).toContain(`trace:thread:${ALICE.threads[0]}`);
   });
 });

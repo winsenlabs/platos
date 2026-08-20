@@ -216,6 +216,129 @@ describe("a second pass cannot overlap the first", () => {
     expect(redis.store.size).toBe(0);
     expect(row.leaseToken).toBeNull();
   });
+
+  it("does not act on a view of the row taken before it held the lease", async () => {
+    await sweep();
+    const row = db.erasureOperation.rows[0]!;
+    // The row exactly as a second pass would have read it before the first
+    // committed. Real Prisma hands back a snapshot of the row at read time; the
+    // in-memory double hands back the live object, so the staleness the lease
+    // does NOT protect against has to be introduced deliberately — otherwise
+    // every concurrency test here reads the future.
+    const beforeTheOtherPass = { ...row };
+
+    // The other pass runs to completion and releases the lease.
+    const finished = await erasure.retryErasureById(row.id, REQUESTED_EXTERNAL_ID, actor);
+    expect(finished!.status).toBe("completed");
+    expect(row.status).toBe("SUCCEEDED");
+    const deletesAfterTheOtherPass = redis.deleteTargets.length;
+
+    // Now this pass legitimately takes the free lease, holding its stale view.
+    const liveFindFirst = db.erasureOperation.findFirst;
+    db.erasureOperation.findFirst = async () => {
+      db.erasureOperation.findFirst = liveFindFirst;
+      return beforeTheOtherPass;
+    };
+    const receipt = await erasure.resumeErasure(row.id, actor);
+
+    // The lease serializes passes; it does not refresh a view taken before it.
+    // Re-reading under the lease is what turns "nobody else is running" into
+    // "nothing is left to run".
+    expect(redis.deleteTargets).toHaveLength(deletesAfterTheOtherPass);
+    expect(receipt!.status).toBe("completed");
+    expect(receipt!.stores.find((s) => s.store === "redis")!.verificationStatus).toBe("passed");
+    // And the settled receipt is not overwritten with this pass's account of
+    // work it did not do, nor re-armed for a queue that would keep demoting it.
+    expect(row.status).toBe("SUCCEEDED");
+    expect(row.nextAttemptAt).toBeNull();
+    expect(row.leaseToken).toBeNull();
+  });
+});
+
+describe("a pass that claims the lease and cannot proceed gives it back", () => {
+  let db: Row;
+  let redis: ReturnType<typeof redisDouble>;
+  let erasure: ErasureService;
+
+  beforeEach(async () => {
+    process.env.PLATOS_ERASURE_HASH_SALT = "resume-test-salt";
+    delete process.env.PLATOS_ERASURE_MAX_ATTEMPTS;
+    delete process.env.PLATOS_LEGAL_HOLD_USER_IDS;
+    db = database();
+    redis = redisDouble();
+    seed(db);
+    redis.store.set("platos:trace:thread:thread_1", "{}");
+    erasure = new ErasureService(db as any, redis as any, undefined, undefined,
+      new AdminAuditService(db as any));
+    redis.state.scanFails = true;
+    await erasure.requestErasure({
+      externalUserId: REQUESTED_EXTERNAL_ID,
+      organizationId: ORG,
+      idempotencyKey: "key_1",
+      actor,
+    });
+    redis.state.scanFails = false;
+  });
+
+  const operationRow = () => db.erasureOperation.rows[0]!;
+
+  it("releases the lease and counts the attempt when it cannot record its intent", async () => {
+    const row = operationRow();
+    const attemptsBefore = row.retryCount;
+    // The intent record raises rather than degrading: if we cannot record who
+    // asked for an irreversible deletion, we do not perform it. That is
+    // correct, and it happens AFTER the lease is taken — so the failure has to
+    // hand the lease back on its way out.
+    db.adminAudit.create = async () => {
+      throw new Error("audit sink unavailable");
+    };
+
+    await expect(erasure.resumeErasure(row.id, actor)).rejects.toThrow(/audit sink unavailable/);
+
+    // Nothing swept, which is the point of raising.
+    expect(redis.store.size).toBe(1);
+    // But not pinned behind a lease nobody holds for the next fifteen minutes,
+    // during which an operator's retry returns a 200 and a shrug.
+    expect(row.leaseToken).toBeNull();
+    expect(row.leaseExpiresAt).toBeNull();
+    // And the attempt counts, so a permanently unhealthy sink eventually parks
+    // the operation for a human instead of re-driving it forever.
+    expect(row.retryCount).toBe(attemptsBefore + 1);
+    expect(row.nextAttemptAt).toBeInstanceOf(Date);
+  });
+
+  it("releases the lease when the barrier cannot be written either", async () => {
+    const row = operationRow();
+    db.erasureTombstone.createMany = async () => {
+      throw new Error("tombstone write failed");
+    };
+
+    await expect(erasure.resumeErasure(row.id, actor)).rejects.toThrow(/tombstone write failed/);
+
+    // Barrier first, destruction second — so a barrier that cannot be written
+    // stops the pass, and the pass still tidies up after itself.
+    expect(redis.store.size).toBe(1);
+    expect(row.leaseToken).toBeNull();
+    expect(row.retryCount).toBe(2);
+  });
+
+  it("stops re-driving a pass that keeps failing before it starts", async () => {
+    const row = operationRow();
+    // One attempt already spent on the sweep, and a ceiling of two.
+    process.env.PLATOS_ERASURE_MAX_ATTEMPTS = "2";
+    db.adminAudit.create = async () => {
+      throw new Error("audit sink unavailable");
+    };
+
+    await expect(erasure.resumeErasure(row.id, actor)).rejects.toThrow(/audit sink unavailable/);
+    delete process.env.PLATOS_ERASURE_MAX_ATTEMPTS;
+
+    // Exhausted rather than pinned: the row keeps its receipt and its plan and
+    // waits for an operator, which is what the attempt budget is for.
+    expect(row.retryCount).toBe(2);
+    expect(row.nextAttemptAt).toBeNull();
+    expect(row.leaseToken).toBeNull();
+  });
 });
 
 describe("a resume without the identifier may delete but may not certify", () => {

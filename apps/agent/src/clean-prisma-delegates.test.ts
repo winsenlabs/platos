@@ -333,7 +333,7 @@ describe("clean tenancy Prisma boundary", () => {
     expect(violations).toEqual([]);
     // Independently pin both call-site count and unique operation inventory so
     // the audit cannot pass because its discovery silently stopped working.
-    expect(analysis.calls.length).toBe(735);
+    expect(analysis.calls.length).toBe(739);
     expect(inventory).toHaveLength(299);
     expect(inventoryDigest).toBe(
       "a3b059eca74e1e3768e12fb7e252d82b568ca276385f7dc805cfee4fd98c7970",

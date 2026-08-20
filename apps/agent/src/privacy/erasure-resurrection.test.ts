@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ErasureService } from "./erasure.service";
+import { AdminAuditService } from "../monitoring/admin-audit.service";
 import { SubjectErasedError } from "./erasure-register";
+import { LEASE_TTL_MS } from "./erasure-queue";
 import { ConversationService } from "../memory/conversation.service";
+import type { ErasureAuditActor } from "./erasure-audit";
 import { database, redisDouble, type Row } from "./erasure-doubles.test-fixture";
 
 /**
@@ -154,6 +157,58 @@ describe("an erased subject cannot be reintroduced by a later write", () => {
       /Erasure register unavailable/,
     );
     // Fail closed: the unrelated person is refused rather than admitted blind.
+    expect(db.endUser.rows).toHaveLength(0);
+  });
+
+  it("seals a pass the queue drove, not just one an operator asked for", async () => {
+    // The request path abandons before sealing when the intent record cannot be
+    // written — deliberately, and its comment nominates the queue as the
+    // recovery. So the queue is the pass that actually sweeps this subject, and
+    // a queue pass that does not seal destroys them with no barrier: the next
+    // turn from a live session token rebuilds the person under a fresh uuid the
+    // receipt cannot see, which is the whole hole this register closes.
+    const actor: ErasureAuditActor = {
+      credentialId: "credential_1",
+      userId: "operator_7",
+      environmentId: "env_1",
+      projectId: "project_1",
+    };
+    const audited = new ErasureService(db as any, redis as any, undefined, undefined,
+      new AdminAuditService(db as any));
+    const realCreate = db.adminAudit.create;
+    db.adminAudit.create = async () => {
+      throw new Error("audit sink unavailable");
+    };
+    await expect(
+      audited.requestErasure({
+        externalUserId: REQUESTED_EXTERNAL_ID,
+        organizationId: ORG,
+        idempotencyKey: "key_1",
+        actor,
+      }),
+    ).rejects.toThrow(/audit sink unavailable/);
+    db.adminAudit.create = realCreate;
+    // Nothing swept and nothing sealed: the request never got past its intent.
+    expect(db.endUser.rows).toHaveLength(1);
+    expect(db.erasureTombstone.rows).toEqual([]);
+
+    // The queue picks it up once the lease lapses. It has no external id — only
+    // the locators — so the aliases come from the identity rows, which are
+    // still there because this is the pass that is about to delete them.
+    await audited.resumeDueErasures({
+      organizationId: ORG,
+      actor,
+      now: new Date(Date.now() + LEASE_TTL_MS + 1000),
+    });
+
+    expect(db.endUser.rows).toHaveLength(0);
+    expect(db.endUserIdentity.rows).toHaveLength(0);
+    expect(db.erasureTombstone.rows).toHaveLength(5);
+    // The barrier is what has to hold, so the barrier is what is asserted: a
+    // turn over Slack, under a handle nobody named in the request.
+    await expect(conversations.resolveEndUser(slackTurn(SLACK_HANDLE))).rejects.toBeInstanceOf(
+      SubjectErasedError,
+    );
     expect(db.endUser.rows).toHaveLength(0);
   });
 

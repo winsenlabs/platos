@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   toDeletableKey, toWireKey, subjectKeyPatterns, retainedAggregatePatterns,
-  isRetainedAggregateKey, planDeletions, REDIS_KEY_PREFIX,
+  isRetainedAggregateKey, planDeletions, wireScanPatterns, REDIS_KEY_PREFIX,
 } from "./redis-keys";
 
 const refs = {
@@ -29,11 +29,32 @@ describe("the prefix asymmetry that already caused a live bug", () => {
     expect(toWireKey("platos:trace:thread:x")).toBe("platos:trace:thread:x");
   });
 
-  it("emits scan patterns WITHOUT the prefix", () => {
-    // ioredis prefixes scan patterns too; a prefixed pattern matches nothing.
+  it("plans in the logical form, which is the form del() takes", () => {
+    // del() prefixes what it is given, so the planner speaks the stripped
+    // vocabulary throughout and converts once, at the scan boundary.
     for (const p of subjectKeyPatterns(refs)) {
       expect(p.startsWith(REDIS_KEY_PREFIX)).toBe(false);
     }
+  });
+
+  it("puts the prefix back for the scan, because ioredis will not", () => {
+    // Measured against the pinned client: getKeyIndexes("keys", [pattern])
+    // returns [], so `_iterateKeys` prefixes nothing and the pattern goes out
+    // verbatim. ioredis says so too — "this feature won't apply to commands
+    // like KEYS and SCAN that take patterns rather than actual keys" (#239).
+    // An unprefixed pattern therefore scans a keyspace that does not exist:
+    // nothing found, nothing deleted, nothing probed, everything "verified".
+    const patterns = wireScanPatterns(refs);
+
+    expect(patterns).toHaveLength(subjectKeyPatterns(refs).length);
+    for (const p of patterns) expect(p.startsWith(REDIS_KEY_PREFIX)).toBe(true);
+    expect(patterns).toContain("platos:trace:thread:t1");
+    expect(patterns).toContain("platos:wm:t1:*");
+  });
+
+  it("does not double-prefix a pattern that already carries one", () => {
+    expect(wireScanPatterns({ ...refs, threadIds: ["t1"] }).filter((p) =>
+      p.startsWith(`${REDIS_KEY_PREFIX}${REDIS_KEY_PREFIX}`))).toEqual([]);
   });
 });
 

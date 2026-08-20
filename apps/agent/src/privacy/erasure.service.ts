@@ -14,14 +14,14 @@ import {
   type ErasureReceipt, type ErasureStatus, type StoreOutcome,
 } from "./erasure-receipt";
 import { runErasure, retryErasure, EXECUTION_ORDER, type StoreExecutors } from "./erasure-orchestrator";
-import { findLegalHold, parseLegalHoldList } from "./legal-hold";
-import { planDeletions, subjectKeyPatterns, retainedAggregatePatterns } from "./redis-keys";
+import { findLegalHold, legalHoldReference, parseLegalHoldList } from "./legal-hold";
+import { planDeletions, retainedAggregatePatterns, wireScanPatterns } from "./redis-keys";
 import { ErasureObjectStore } from "./object-store";
 import { ErasureClickhouse } from "./clickhouse";
 import { eraseClickhouseSubject } from "./clickhouse-erasure";
 import { erasureHashSalt, sealErasedSubject } from "./erasure-register";
 import {
-  buildResumePlan, leaseUntil, objectMapLost, resumePlanFrom,
+  appendNote, buildResumePlan, leaseUntil, objectMapLost, resumePlanFrom,
   scheduleAfterAttempt, subjectFromResumePlan,
   type ErasureResumePlan, type ResumeCoverage,
 } from "./erasure-queue";
@@ -217,6 +217,49 @@ export class ErasureService {
       .filter((alias) => typeof alias === "string" && alias.length > 0);
   }
 
+  /**
+   * Consult the operator's hold register for this subject.
+   *
+   * Read from the environment on EVERY pass rather than taken from the
+   * operation row. The row records the holds that existed when it was created;
+   * counsel files them when they file them, and this branch added an automated
+   * drain, so a register consulted once at request time is a register that does
+   * not stop a cron destroying a subject placed on hold an hour later.
+   *
+   * Returns the aliases alongside the match because the caller needs them for a
+   * second purpose: they are the subject's own handles, so they are also
+   * needles the receipt and the audit trail must be scanned for.
+   */
+  private async holdCheck(
+    subject: SubjectKeys,
+    organizationId: string,
+    externalUserId?: string,
+  ): Promise<{ aliases: string[]; heldBy: string | null }> {
+    const register = parseLegalHoldList(process.env.PLATOS_LEGAL_HOLD_USER_IDS);
+    // Read only when there is a register to compare them against: with no hold
+    // configured there is no reason to pull the subject's handles into memory.
+    if (!register.length) return { aliases: [], heldBy: null };
+
+    // The alias set is read here rather than taken from `subject`: discovery
+    // resolves the person FROM one identity tuple and reports that one id back,
+    // so matching the subject as-discovered compares the register against the
+    // requested id and the canonical uuid and nothing else. A hold registered
+    // under someone's Slack handle would then not stop an erasure requested
+    // under their email — which is the hole this module was written to close
+    // for deletion, reopened one layer up.
+    const aliases = await this.subjectAliases(subject, organizationId);
+    const match = findLegalHold(
+      { ...subject, legacyUserIds: [...subject.legacyUserIds, ...aliases] },
+      externalUserId ?? "",
+      register,
+    );
+    return {
+      aliases,
+      // Never the matched entry itself — see legalHoldReference.
+      heldBy: match ? legalHoldReference(match, this.hash(match.value, organizationId)) : null,
+    };
+  }
+
   /** Content-free inventory: counts and scope ids, never content. */
   async inventory(
     subject: SubjectKeys,
@@ -329,13 +372,21 @@ export class ErasureService {
     };
 
     const scanned: string[] = [];
-    for (const pattern of subjectKeyPatterns(refs)) {
+    // Scans that never ran, counted apart from delete failures: they are the
+    // difference between "we looked and found nothing" and "we could not look",
+    // and only the first of those can support a verification.
+    let unscanned = 0;
+    // ON THE WIRE. ioredis prefixes key arguments but NOT patterns, so a
+    // logical pattern here scans a keyspace that does not exist — and finding
+    // nothing looks identical to having deleted everything.
+    for (const pattern of wireScanPatterns(refs)) {
       try {
-        // keys() returns PREFIXED keys; planDeletions strips them. Feeding them
-        // back to del() unstripped double-prefixes and silently deletes nothing.
+        // keys() returns keys verbatim, so they arrive PREFIXED; planDeletions
+        // strips them. Feeding them back to del() unstripped double-prefixes
+        // and silently deletes nothing.
         const found = await this.redis.keys(pattern);
         scanned.push(...found);
-      } catch { o.failures++; }
+      } catch { unscanned++; o.failures++; }
     }
     const { deletable, retained } = planDeletions(scanned);
     o.discovered = deletable.length + retained.length;
@@ -350,9 +401,14 @@ export class ErasureService {
     for (const k of deletable) {
       try { if (await this.redis.exists(k)) survivors++; } catch { survivors++; }
     }
-    o.verificationStatus = survivors === 0 ? "passed" : "failed";
+    // A key found still present is positive evidence and outranks everything. An
+    // empty survivor list means nothing at all when the scan that produced it
+    // failed: zero probes over an unread keyspace is an inconclusive result, and
+    // rounding it down to "gone" is the exact failure this module forbids.
+    o.verificationStatus = survivors > 0 ? "failed" : unscanned > 0 ? "unknown" : "passed";
     o.status = o.failures > 0 ? "failed" : "done";
     o.note = `${o.deleted} deleted, ${o.retained} aggregate keys retained (${retainedAggregatePatterns(refs).length} patterns); ${survivors} survivors`;
+    if (unscanned > 0) o.note = appendNote(o.note, `${unscanned} patterns could not be scanned`);
     return o;
   };
 
@@ -512,7 +568,7 @@ export class ErasureService {
    */
   private async seal(
     subject: SubjectKeys,
-    args: { operationId: string; organizationId: string; externalUserId: string },
+    args: { operationId: string; organizationId: string; externalUserId?: string },
   ): Promise<void> {
     const sealed = await sealErasedSubject(this.prisma, {
       organizationId: args.organizationId,
@@ -521,10 +577,18 @@ export class ErasureService {
       platosEndUserIds: subject.platosEndUserIds,
       // The requested id under the tuple discoverSubject matched it by, plus
       // every denormalized handle seen historically for the same person.
-      extraAliases: [args.externalUserId, ...subject.legacyUserIds].flatMap((id) => [
-        { channel: "external", subject: id },
-        { channel: "session", subject: id },
-      ]),
+      //
+      // Both are absent on a queue-driven pass, which knows the subject only by
+      // its locators. That narrows the extra aliases to nothing; it does not
+      // narrow the seal to nothing, because the canonical ids still enumerate
+      // the identity rows — and if Postgres has already taken those, the first
+      // pass sealed the handles they carried.
+      extraAliases: [args.externalUserId, ...subject.legacyUserIds]
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
+        .flatMap((id) => [
+          { channel: "external", subject: id },
+          { channel: "session", subject: id },
+        ]),
       salt: this.salt,
     });
     this.logger.log(
@@ -717,36 +781,23 @@ export class ErasureService {
 
     const subject = await this.discoverSubject(args.externalUserId, args.organizationId);
     const inventory = await this.inventory(subject, args.organizationId);
-    // Every identifier this subject is known by, once discovery has found them.
-    // Wider than the requested id, and the guards below scan for all of them.
-    const subjectForbidden = [args.externalUserId, ...subject.legacyUserIds];
 
     // Server-side hold check, over every alias the subject resolves to. Runs
     // before the operation row is created so a held subject leaves no
     // half-started operation, and before any executor can touch a store.
     // A caller-supplied legalHoldPolicyId still wins if present; this only adds
     // the holds the caller did not know about.
+    const hold = await this.holdCheck(subject, args.organizationId, args.externalUserId);
+    const heldBy = args.legalHoldPolicyId ?? hold.heldBy;
+
+    // Every identifier this subject is known by, once discovery has found them.
+    // Wider than the requested id, and the guards below scan for all of them.
     //
-    // The alias set is read here rather than taken from `subject`: discovery
-    // resolves the person FROM one identity tuple and reports that one id back,
-    // so matching the subject as-discovered compares the register against the
-    // requested id and the canonical uuid and nothing else. A hold registered
-    // under someone's Slack handle would then not stop an erasure requested
-    // under their email — which is the hole this module was written to close
-    // for deletion, reopened one layer up.
-    const register = parseLegalHoldList(process.env.PLATOS_LEGAL_HOLD_USER_IDS);
-    // Read only when there is a register to compare them against: with no hold
-    // configured there is no reason to pull the subject's handles into memory.
-    const holdAliases = register.length
-      ? await this.subjectAliases(subject, args.organizationId)
-      : [];
-    const heldBy =
-      args.legalHoldPolicyId ??
-      findLegalHold(
-        { ...subject, legacyUserIds: [...subject.legacyUserIds, ...holdAliases] },
-        args.externalUserId,
-        register,
-      );
+    // The hold aliases belong in here even though they are deliberately kept out
+    // of the SUBJECT: they are channel handles — Slack ids, email addresses —
+    // and the guards are the only thing standing between one of them and a
+    // durable record of the person it names.
+    const subjectForbidden = [args.externalUserId, ...subject.legacyUserIds, ...hold.aliases];
 
     // Captured here and nowhere else. This is the last moment at which every
     // locator is still resolvable: Postgres holds the threads, the attachment
@@ -952,9 +1003,46 @@ export class ErasureService {
     if (!this.hashMatches(hash, row.subjectKeyHash)) return null;
     const plan = resumePlanFrom(row.resumePlan);
     const discovered = await this.discoverSubject(externalUserId, row.organizationId);
+    // The LOCATORS, before the caller's id is folded in. Emptiness has to be
+    // decided on these alone: the id proves who the subject is, it does not make
+    // them addressable. An operation created before the plan column existed —
+    // which is every operation on the deployment this work upgrades — resolves
+    // to nothing here once Postgres has run, and merging the id in first would
+    // produce a subject that is non-empty by `isEmptySubject`, sails past the
+    // orchestrator's guard, addresses no thread, no scope and no attachment row,
+    // and certifies "0 discovered, 0 survivors, passed" for every store.
+    const located = mergeSubjectKeys(discovered, plan ? subjectFromResumePlan(plan) : null);
+    if (isEmptySubject(located)) {
+      const receipt = this.toReceipt(row);
+      // The same call `resumeErasure` makes for a plan-less row, and for the
+      // same reason: stop rather than sweep against a subject nothing can
+      // address. The difference is that this route was the documented fallback
+      // for exactly that row, so the refusal has to be recorded — an operator
+      // whose retry silently no-ops learns nothing.
+      await this.auditBestEffort(
+        {
+          organizationId: row.organizationId,
+          scopes: receipt.scopes,
+          actor,
+          forbidden: [externalUserId],
+        },
+        (auditActor) =>
+          refusedAudit({
+            subjectKeyHash: receipt.subjectKeyHash,
+            reason: "no resume plan and nothing left to discover; subject is unaddressable",
+            actor: auditActor,
+            operationId: receipt.operationId,
+            policyVersion: receipt.policyVersion,
+            legalHoldPolicyId: receipt.legalHoldPolicyId ?? null,
+          }),
+      );
+      this.logger.warn(
+        `[erasure] ${row.id} has no addressable subject; refusing to sweep and verify nothing`,
+      );
+      return receipt;
+    }
     const subject = mergeSubjectKeys(
-      discovered,
-      plan ? subjectFromResumePlan(plan) : null,
+      located,
       // Safe to assert: the hash comparison above already proved this id is
       // this operation's subject. Discovery cannot prove it a second time
       // because the row it would prove it from is what the first pass deleted.
@@ -1063,6 +1151,14 @@ export class ErasureService {
    * Order here is load-bearing: refuse before claiming, claim before sealing,
    * seal before sweeping. Claiming first would leave a lease on an operation
    * that was never allowed to run.
+   *
+   * And re-read before doing any of it. Everything this pass decides — whether
+   * a retry is permitted, which stores are outstanding, what receipt the next
+   * one is written on top of — comes from a row that was read before the lease
+   * existed. The lease serializes passes; it does not refresh a view taken
+   * before it was taken. A pass that claims on a stale view re-sweeps stores
+   * another pass has already settled and writes a superseded receipt back over
+   * a signed-off one.
    */
   private async runResumePass(
     row: any,
@@ -1104,8 +1200,41 @@ export class ErasureService {
       return receipt;
     }
 
-    const outstanding = storesNeedingRetry(receipt);
-    if (outstanding.length === 0) {
+    // The register, not the row. `canRetry` reads `legalHoldPolicyId` off the
+    // operation, which records only the holds that existed when it was created
+    // — and the queue drains without a human in the loop, so a hold filed after
+    // that row was written would otherwise be destroyed by a cron that never
+    // asked whether one existed.
+    const hold = await this.holdCheck(args.subject, row.organizationId, args.externalUserId);
+    if (hold.heldBy) {
+      // Recorded on the row, which takes it out of the drain's selection: the
+      // queue skips anything held. Deliberately leaves the store outcomes and
+      // the database status alone — a pass stopped by a hold has nothing new to
+      // say about what earlier passes destroyed, and `toReceipt` derives the
+      // blocked status from the hold itself.
+      await this.prisma.erasureOperation.update({
+        where: { id: row.id },
+        data: { legalHoldPolicyId: hold.heldBy, nextAttemptAt: null },
+      });
+      await this.auditBestEffort(
+        // The aliases join the needles for this record: matching one of them is
+        // exactly what happened, and it must not be what gets written down.
+        { ...auditScope, forbidden: [...args.forbidden, ...hold.aliases] },
+        (actor) =>
+          refusedAudit({
+            subjectKeyHash: receipt.subjectKeyHash,
+            reason: "legal hold in force",
+            actor,
+            operationId: receipt.operationId,
+            policyVersion: receipt.policyVersion,
+            legalHoldPolicyId: hold.heldBy,
+          }),
+      );
+      this.logger.warn(`[erasure] ${row.id} stopped by a legal hold; leaving it for an operator`);
+      return { ...receipt, status: "blocked_legal_hold", legalHoldPolicyId: hold.heldBy };
+    }
+
+    if (storesNeedingRetry(receipt).length === 0) {
       // Nothing to do, so nothing to schedule. Clearing the due marker stops
       // the queue picking the row up again every tick.
       await this.prisma.erasureOperation.update({
@@ -1124,42 +1253,73 @@ export class ErasureService {
       return receipt;
     }
 
-    await this.audit(auditScope, (actor) =>
-      requestedAudit({
-        operationId: receipt.operationId,
-        subjectKeyHash: receipt.subjectKeyHash,
-        policyVersion: receipt.policyVersion,
-        trigger: args.trigger,
-        coverage: args.coverage,
-        actor,
-        stores: outstanding,
-        attempts: receipt.attempts,
-      }),
-    );
+    // Under the lease, and only now, is what the row says stable. Everything
+    // from here is decided on THIS view: the pass that just released the lease
+    // may have settled stores, changed the attempt count and completed the
+    // operation between the read at the top and the claim above.
+    const claimed = await this.prisma.erasureOperation.findFirst({ where: { id: row.id } });
+    const current = claimed ? this.toReceipt(claimed) : receipt;
+    const outstanding = storesNeedingRetry(current);
+    const stillPermitted = canRetry(current);
+    if (!stillPermitted.allowed || outstanding.length === 0) {
+      // Another pass finished the job while this one was queueing for the lease.
+      // Hand back what it achieved rather than re-running its stores and
+      // overwriting its receipt with this pass's account of work it did not do.
+      await this.releaseLease(row.id, leaseToken, { clearSchedule: outstanding.length === 0 });
+      this.logger.log(`[erasure] ${row.id} settled by a concurrent pass; nothing left to run`);
+      return current;
+    }
 
-    // Re-seal before re-sweeping, on the same terms as the first pass. The
-    // alias set is narrower than the first pass (Postgres has already taken the
-    // identity rows), which is why the original tombstones matter: this extends
-    // them rather than rebuilding them. A held operation never reaches here —
-    // `canRetry` refused above — so a subject we are forbidden to erase is
-    // never tombstoned.
-    if (args.externalUserId) {
+    try {
+      await this.audit(auditScope, (actor) =>
+        requestedAudit({
+          operationId: current.operationId,
+          subjectKeyHash: current.subjectKeyHash,
+          policyVersion: current.policyVersion,
+          trigger: args.trigger,
+          coverage: args.coverage,
+          actor,
+          stores: outstanding,
+          attempts: current.attempts,
+        }),
+      );
+
+      // Re-seal before re-sweeping, on the same terms as the first pass. The
+      // alias set is narrower than the first pass (Postgres has already taken
+      // the identity rows), which is why the original tombstones matter: this
+      // extends them rather than rebuilding them. A held operation never
+      // reaches here — the register and `canRetry` both refused above — so a
+      // subject we are forbidden to erase is never tombstoned.
+      //
+      // Sealed on every pass, including the ones with no external id in hand.
+      // A queue-driven pass is reached precisely when the first one aborted
+      // before sealing — that is the recovery the intent record's failure
+      // nominates — so treating the barrier as the request path's job leaves
+      // the drain destroying a subject with no tombstone to keep them erased.
       await this.seal(args.subject, {
         operationId: row.id,
         organizationId: row.organizationId,
         externalUserId: args.externalUserId,
       });
+    } catch (error) {
+      // Both of those raise rather than degrade, on purpose, and the lease
+      // release lives in `finish` — which this pass will never reach. Left
+      // alone the operation keeps a lease nobody holds for the full TTL, and
+      // keeps an attempt count that never advances, so an unhealthy audit sink
+      // re-drives it forever instead of parking it for an operator.
+      await this.abandonPass(current, leaseToken, args.now);
+      throw error;
     }
 
     const next = await retryErasure(
-      receipt,
+      current,
       args.subject,
-      this.executors(row.organizationId, receipt.subjectKeyHash, args.plan ?? null),
+      this.executors(row.organizationId, current.subjectKeyHash, args.plan ?? null),
       { legalHold: null, coverage: args.coverage },
     );
     return this.finish(next, {
       organizationId: row.organizationId,
-      scopes: receipt.scopes,
+      scopes: current.scopes,
       forbidden: args.forbidden,
       trigger: args.trigger,
       coverage: args.coverage,
@@ -1167,6 +1327,63 @@ export class ErasureService {
       actor: args.actor,
       now: args.now,
     });
+  }
+
+  /**
+   * Give the lease back, so the next pass does not have to wait it out.
+   *
+   * Conditional on still holding it: a pass whose lease expired mid-sweep has
+   * been superseded, and clearing the token would strip the lease of whoever
+   * took over.
+   */
+  private async releaseLease(
+    operationId: string,
+    leaseToken: string,
+    opts: { clearSchedule?: boolean } = {},
+  ): Promise<void> {
+    const released = await this.prisma.erasureOperation.updateMany({
+      where: { id: operationId, leaseToken },
+      data: {
+        leaseToken: null,
+        leaseExpiresAt: null,
+        ...(opts.clearSchedule ? { nextAttemptAt: null } : {}),
+      },
+    });
+    if (released.count === 0) {
+      this.logger.warn(`[erasure] ${operationId} lease was taken over mid-pass`);
+    }
+  }
+
+  /**
+   * Abandon a pass that claimed the lease and then could not proceed.
+   *
+   * The attempt COUNTS. Nothing was destroyed, so counting it is not a
+   * statement about the subject's data — it is the only thing that stops a
+   * permanently unhealthy dependency re-driving the same operation until
+   * somebody notices, and `isExhausted` is what eventually parks it for a human.
+   */
+  private async abandonPass(
+    receipt: ErasureReceipt,
+    leaseToken: string,
+    now: Date,
+  ): Promise<void> {
+    const attempts = receipt.attempts + 1;
+    const schedule = scheduleAfterAttempt({ ...receipt, attempts }, now);
+    const released = await this.prisma.erasureOperation.updateMany({
+      where: { id: receipt.operationId, leaseToken },
+      data: {
+        retryCount: attempts,
+        nextAttemptAt: schedule.nextAttemptAt,
+        leaseToken: null,
+        leaseExpiresAt: null,
+      },
+    });
+    if (released.count === 0) {
+      this.logger.warn(`[erasure] ${receipt.operationId} lease was taken over mid-pass`);
+    }
+    this.logger.warn(
+      `[erasure] ${receipt.operationId} pass abandoned before sweeping at attempt ${attempts}; next=${schedule.nextAttemptAt?.toISOString() ?? "none"}`,
+    );
   }
 
   /** Thread ids the subject owns, read while Postgres still has them. */
@@ -1231,15 +1448,7 @@ export class ErasureService {
     const schedule = scheduleAfterAttempt(r, opts.now);
     await this.persist(r, opts.forbidden, schedule.nextAttemptAt);
 
-    if (opts.leaseToken) {
-      const released = await this.prisma.erasureOperation.updateMany({
-        where: { id: r.operationId, leaseToken: opts.leaseToken },
-        data: { leaseToken: null, leaseExpiresAt: null },
-      });
-      if (released.count === 0) {
-        this.logger.warn(`[erasure] ${r.operationId} lease was taken over mid-pass`);
-      }
-    }
+    if (opts.leaseToken) await this.releaseLease(r.operationId, opts.leaseToken);
 
     if (schedule.reason === "exhausted") {
       this.logger.warn(

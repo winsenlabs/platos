@@ -23,6 +23,19 @@
  * alias they were not registered under, which is the same hole the subject
  * graph exists to close for deletion.
  *
+ * WHAT THE REFUSAL IS ALLOWED TO SAY
+ *
+ * The match itself never leaves this module. A register is written by a human,
+ * so its entries ARE the subject's handles — a Slack id, an email address — and
+ * the erasure record is forbidden to carry one. Writing the matched entry into
+ * the operation row would persist, indefinitely and in the very record that
+ * documents a person's destruction, the one value that record must not hold.
+ *
+ * So a match reports WHERE it was found rather than WHAT was found, and
+ * `legalHoldReference` renders that as a register position plus a salted hash
+ * of the entry. An operator can find the line of their own register that
+ * stopped the erasure; nobody can read the handle back out of the receipt.
+ *
  * Pure and dependency-free, like the subject graph: this is a security
  * boundary, so it is testable without a database or an environment.
  */
@@ -44,18 +57,34 @@ export function parseLegalHoldList(raw: string | undefined | null): string[] {
     .filter((s) => s.length > 0);
 }
 
+/** The register entry that stopped an erasure, and where in the register it sits. */
+export interface LegalHoldMatch {
+  /**
+   * The entry as the operator wrote it.
+   *
+   * The subject's own handle, so it stays in memory: it is what gets hashed,
+   * never what gets stored. See `legalHoldReference`.
+   */
+  value: string;
+  /** 1-based position in the register, as the operator reads it. */
+  position: number;
+}
+
+/** Prefix every stored hold reference carries, so its shape is recognizable. */
+export const LEGAL_HOLD_REFERENCE_PREFIX = "legal-hold-register#";
+
 /**
- * The identifier that placed this subject on hold, or null if none did.
+ * The entry that placed this subject on hold, or null if none did.
  *
- * Returns the held identifier rather than a boolean so the refusal can name
- * which registry entry stopped it — an operator seeing "blocked" with no
- * reason cannot tell a hold from a bug.
+ * Returns the match rather than a boolean so the refusal can name which
+ * register entry stopped it — an operator seeing "blocked" with no reason
+ * cannot tell a hold from a bug.
  */
 export function findLegalHold(
   subject: SubjectKeys,
   requestedExternalUserId: string,
   holdList: string[],
-): string | null {
+): LegalHoldMatch | null {
   if (holdList.length === 0) return null;
 
   const aliases = new Set(
@@ -64,8 +93,23 @@ export function findLegalHold(
       .map((a) => a.toLowerCase()),
   );
 
-  for (const held of holdList) {
-    if (aliases.has(held.toLowerCase())) return held;
+  for (const [index, held] of holdList.entries()) {
+    if (aliases.has(held.toLowerCase())) return { value: held, position: index + 1 };
   }
   return null;
+}
+
+/**
+ * How a matched hold is NAMED in the receipt, the operation row and the audit
+ * trail — everywhere the raw entry is forbidden, which is everywhere durable.
+ *
+ * Two parts, because either alone is too weak. The POSITION is what an operator
+ * actually navigates by, but a register is an environment variable somebody
+ * will reorder. The HASH is stable and verifiable — the same salted,
+ * organization-scoped primitive the receipt identifies its subject by — but on
+ * its own it names nothing a human can find. Truncated because this is an
+ * identifier to recognize, not a secret to compare in constant time.
+ */
+export function legalHoldReference(match: LegalHoldMatch, entryHash: string): string {
+  return `${LEGAL_HOLD_REFERENCE_PREFIX}${match.position}:${entryHash.slice(0, 12)}`;
 }

@@ -11,12 +11,17 @@
  * Each double therefore reproduces the one semantic of its real counterpart
  * that erasure can get wrong:
  *
- *   REDIS   ioredis's `keyPrefix` is asymmetric. keys()/scan() hand back
- *           PREFIXED keys and del()/exists() prefix again, so feeding a scan
- *           result straight into del() addresses "platos:platos:…" and deletes
- *           nothing — successfully, because deleting an absent key is a no-op.
- *           The double prefixes on both sides exactly as ioredis does, which is
- *           what makes a state assertion able to catch the bug at all.
+ *   REDIS   ioredis's `keyPrefix` applies to KEY ARGUMENTS ONLY. del()/exists()
+ *           prefix what they are given; keys() does not — a pattern is not a key
+ *           argument, so it goes out verbatim and the reply comes back verbatim.
+ *           The double reproduces exactly that: scans match against the stored
+ *           key as it physically is, mutations prefix. Both directions are traps
+ *           and they pull opposite ways — a pattern that forgets the prefix
+ *           matches nothing, a delete that keeps it addresses "platos:platos:…"
+ *           and removes nothing, successfully, because deleting an absent key is
+ *           a no-op. Prefixing the scan side here too, as an earlier version of
+ *           this fixture did, makes the suite agree with the bug: every test
+ *           passes while the same code against a real Redis finds zero keys.
  *
  *   BUCKET  S3-compatible delete is idempotent and returns success for a key
  *           that was never there. So a successful delete is not evidence, and
@@ -241,15 +246,19 @@ export function database(environments: Row[] = [{ id: "env_1", projectId: "proje
 /**
  * ioredis stand-in. Keys are stored on the wire, WITH the prefix attached.
  *
- * That is the whole design: scans hand back the physical key and mutations
- * prefix what they are given, so code that forgets to strip addresses a key
- * that does not exist and the store keeps the data. Assertions against `store`
- * are therefore assertions about the keyspace, not about call arguments.
+ * That is the whole design: scans see the physical key and match a pattern
+ * against it verbatim, while mutations prefix what they are given. So code that
+ * forgets to prefix a pattern scans an empty universe, and code that forgets to
+ * strip a scan result addresses a key that does not exist — in both cases the
+ * store keeps the data and every call reports success. Assertions against
+ * `store` are therefore assertions about the keyspace, not about call arguments.
  */
 export function redisDouble() {
   const keys = new Map<string, string>();
   const state = {
     scanFails: false,
+    /** Patterns whose scan raises, leaving the rest of the sweep to proceed. */
+    unscannable: new Set<string>(),
     /** del() raises, as a read-only replica or a severed connection would. */
     undeletable: new Set<string>(),
     /**
@@ -261,14 +270,21 @@ export function redisDouble() {
   };
   /** Every key handed to del(), exactly as the caller addressed it. */
   const deleteTargets: string[] = [];
+  /** Every pattern handed to keys(), exactly as it would go on the wire. */
+  const scanPatterns: string[] = [];
   return {
     store: keys,
     state,
     deleteTargets,
+    scanPatterns,
     keys: async (pattern: string) => {
-      if (state.scanFails) throw new Error("connection reset");
+      scanPatterns.push(pattern);
+      if (state.scanFails || state.unscannable.has(pattern)) throw new Error("connection reset");
+      // Matched against the key AS STORED. Redis is given the pattern verbatim
+      // and knows nothing of the client's prefix, so a caller that does not put
+      // it there gets an empty reply rather than a helpful one.
       const re = new RegExp(
-        `^platos:${pattern.split("*").map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`,
+        `^${pattern.split("*").map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`,
       );
       return [...keys.keys()].filter((k) => re.test(k));
     },
