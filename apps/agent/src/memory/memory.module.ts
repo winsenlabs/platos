@@ -12,6 +12,7 @@ import { ProfileCacheService } from "./profile-cache.service";
 import { MemorySchedulerService } from "./memory-scheduler.service";
 import { MemoryController } from "./memory.controller";
 import { MonitoringModule } from "../monitoring/monitoring.module";
+import { ObservabilityModule } from "../observability/observability.module";
 import { ProvidersModule } from "../providers/providers.module";
 import { AuthModule } from "../auth/auth.module";
 
@@ -24,7 +25,11 @@ import { AuthModule } from "../auth/auth.module";
   // the OPENAI_API_KEY from the scoped Environment credential service.
   // Theme O — MemoryExtractionService uses ScopedEnvService to resolve the
   // judge-LLM API key; same provider module covers both.
-  imports: [MonitoringModule, ProvidersModule, AuthModule],
+  //
+  // WIN-133 — ObservabilityModule supplies the sink ConversationService queues
+  // a Turn's analytical projection into, inside the same transaction that
+  // finalizes the Turn. It depends only on Prisma, so no cycle either.
+  imports: [MonitoringModule, ObservabilityModule, ProvidersModule, AuthModule],
   controllers: [MemoryController, MemoryFeedbackAdminController],
   providers: [
     ConversationService,

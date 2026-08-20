@@ -6,13 +6,42 @@ This document defines the target boundary and schema. It does not repair or depl
 
 ## Storage decision
 
-**Postgres remains the transactional source of truth; ClickHouse is the optional analytical projection.**
+**Decision: Postgres carries observability at Platos's current scale. ClickHouse is wired, optional, and off by default.**
 
-At current scale, Postgres is sufficient for authoritative Thread, Turn, message, approval, artifact, and billing-ledger records. Correctness-critical behavior—budgets, invoices, user-visible history, idempotency, and erasure discovery—must not depend on ClickHouse availability or eventual consistency.
+This is the question WIN-133 was asked to settle explicitly, and the answer is not "ClickHouse, eventually" — it is "Postgres now, ClickHouse when a number says so."
 
-ClickHouse remains the right wired analytical store for high-cardinality Steps, Tool Calls, usage events, trace timelines, and long-window aggregates. The application writes one versioned observability event through a single client boundary; a Postgres outbox guarantees delivery when ClickHouse is configured. With ClickHouse absent, Platos boots and all turns complete. The outbox is retained, metrics and error logs report the unavailable sink loudly, and no write is silently discarded.
+### Why not ClickHouse today
 
-The ClickHouse database is `platos_observability`. No table, column, or client API uses `trigger_dev`, task-run, queue, attempt, waitpoint, worker, or deployment vocabulary.
+Two datastores is a real operational cost, and Platos has already paid it once without getting anything back: the existing `trigger_dev` span pipeline has been broken in production and nothing said so (WIN-150). A second store that no one is watching is worse than no second store, because it converts a visible gap into an invisible one.
+
+At current volume the analytical questions Platos actually asks — cost by model, by agent, by user, over a day or a month — are aggregations over thousands of `Step` rows, not billions. Postgres answers them with an index. ClickHouse's advantage begins where a scan stops fitting in a query budget, and Platos is not there.
+
+Meanwhile, the things that must never be wrong — budgets, invoices, user-visible history, idempotency, and erasure discovery — are exactly the things that must not depend on an eventually consistent replica. Those stay in Postgres regardless of what else exists.
+
+### What was built instead
+
+The projection is defined, wired end to end, and disabled unless an operator configures an endpoint:
+
+- the DDL is committed (`internal-packages/clickhouse/schema/033_create_platos_observability_v1.sql`);
+- one `ObservabilitySink` boundary owns every write, and re-resolves its endpoint per call so credentials rotate without a restart;
+- `ObservabilityOutbox` is a Postgres table written in the same transaction that finalizes a Turn;
+- a startup probe reports, at error level, when a configured endpoint is unreachable or missing its schema.
+
+With no endpoint configured, Platos boots, every turn completes, and **nothing is queued at all**. That last part is deliberate: Postgres already holds every fact the projection contains, so queueing for a store that does not exist would accumulate rows forever in exchange for nothing. The projection can be rebuilt from `Turn`/`Step`/`ToolCall` on the day a store is provisioned. Not writing is the honest option here, and it is why the disabled path costs a boolean instead of a table.
+
+### The trigger that flips this decision
+
+Adopt ClickHouse when one of these is true, not before:
+
+- a single environment's `Step` table passes roughly 50 million rows, or the monitoring page's aggregate queries stop returning inside a second;
+- retention requirements force `Step`/`ToolCall` detail to be kept longer than Postgres can hold cheaply;
+- someone is on the hook for watching it. A store nobody monitors is the failure this decision is a reaction to.
+
+Until then `platos_observability` exists as schema and as code paths, and is not part of any Compose stack.
+
+### Naming
+
+The ClickHouse database is `platos_observability`. No table, column, or client API uses `trigger_dev`, task-run, queue, attempt, waitpoint, worker, or deployment vocabulary. `observability-erasure-contract.test.ts` enforces this against the committed DDL.
 
 ## Event hierarchy
 
@@ -122,6 +151,11 @@ TTL deletes are partition-aligned where possible. Tenant-specific shorter retent
 ## ClickHouse DDL
 
 The schema is deliberately explicit and versioned. IDs are application-generated UUIDs; retries insert the same ID. `ReplacingMergeTree(inserted_at)` provides idempotent eventual projection, while queries use `FINAL` only where exact deduplication is required.
+
+**The committed schema is `internal-packages/clickhouse/schema/033_create_platos_observability_v1.sql`.** It is that file, not this block, that ships. Two things there go beyond what is reproduced below:
+
+- `user_display_name` and `user_email` carry a 30-day column TTL, implementing the retention table above. Column TTL resets to the column default, which for a `Nullable(String)` is `NULL` — so an expired value still reads as absent to the erasure residue check.
+- `turns_v1` deliberately omits `ttl_only_drop_parts`, because dropping whole parts skips the per-column materialization those expiries depend on. The other three tables set it, since they have no column TTL.
 
 ```sql
 CREATE DATABASE IF NOT EXISTS platos_observability;
@@ -320,7 +354,7 @@ TTL toDateTime(occurred_at) + INTERVAL 7 YEAR DELETE;
 
 ## Client and delivery boundary
 
-One `ObservabilitySink` interface owns projection writes:
+One `ObservabilitySink` interface owns projection writes (`apps/agent/src/observability/observability-sink.ts`):
 
 ```ts
 interface ObservabilitySink {
@@ -328,19 +362,57 @@ interface ObservabilitySink {
   writeStep(event: StepObserved): Promise<void>;
   writeToolCall(event: ToolCallObserved): Promise<void>;
   writeUsage(event: UsageObserved): Promise<void>;
-  health(): Promise<{ configured: boolean; available: boolean; detail: string }>;
+  /** Batched form the outbox drain uses; the four above are its one-row case. */
+  writeRows(rows: ObservabilityRows): Promise<void>;
+  health(): Promise<ObservabilitySinkHealth>;
 }
 ```
 
-The runtime commits authoritative Postgres state and an outbox event in one transaction. A bounded worker delivers to ClickHouse and marks the event acknowledged. Behavior is explicit:
+Nothing else in the agent holds a ClickHouse client for observability. In particular this does **not** go through `@internal/clickhouse`: every one of that package's consumers is Trigger's task-run and run-replication machinery, and importing it would tie this projection's availability to a pipeline that is currently broken.
 
-- unconfigured: startup logs `observability sink=disabled`; product behavior remains available;
-- configured and healthy: delivery proceeds and lag/error metrics are emitted;
-- configured and unavailable: startup and each bounded retry window log at warn/error, health reports degraded, and events remain in the outbox;
-- outbox capacity pressure: reject additional observability projection work loudly while preserving the authoritative Turn; never report a successful projection and never evict unacknowledged events silently;
-- reads: analytical screens return a clear unavailable/degraded state, not an empty success response that looks like zero activity.
+### Where the outbox row is written
 
-Credentials and URLs are read through configuration at call/reconnect time so rotation does not require rebuilding. The client never prints credentials. ClickHouse is not a required Docker Compose service for Platos.
+`ConversationService.storeMessage` calls `ObservabilityService.enqueueTurnBestEffort` **inside the same `prisma.$transaction`** that updates the `Turn` and creates its `Step` and `ToolCall` rows. Either both commit or neither does. `failTurn` does the same for the failed path, so a Turn that spent money without completing is still projected — with `status = 'failed'`, which keeps `billable_unit` at zero while the cost stays visible.
+
+Attaching this to the span path instead would put it behind `PLATOS_OTEL_SAMPLE_RATE`, and a sampled projection reconciled against an unsampled ledger never agrees.
+
+`ObservabilityOutbox.turnId` has an `ON DELETE CASCADE` foreign key to `Turn`. That is a privacy control, not a tidiness one: erasure deletes the subject's Threads and Turns, and an undelivered row surviving that would project a just-erased identity into ClickHouse *after* the erasure mutation had run and been verified.
+
+### The four states, and what each one does
+
+| State | Startup log | Turns | Outbox |
+| --- | --- | --- | --- |
+| `disabled` — no endpoint variable set | `log` | complete | **nothing queued** |
+| `misconfigured` — set, not a usable http(s) URL | `error` | complete | queued, retained |
+| `unreachable` — set, endpoint does not answer | `warn` | complete | queued, retained |
+| `schema_missing` — reachable, tables absent | `error` | complete | queued, retained |
+| `ready` | `log` | complete | queued and delivered |
+
+`disabled` and `schema_missing` are deliberately different words. The first is a choice; the second is a deployment that believes it has an analytical store and does not. Reporting the second as the first is how the previous pipeline stayed broken without anyone being told.
+
+Startup never throws by default — the product must run with no analytical store. `PLATOS_OBSERVABILITY_REQUIRE_SINK=true` converts a non-`ready` sink into a boot failure for a deployment that has decided losing analytics is not acceptable.
+
+### Delivery, retry, and parking
+
+`platos.observability.dlq_drain` POSTs to `/api/v1/agent/monitoring/dlq/drain`, which drains two queues and reports them separately: the legacy Redis span DLQ (best-effort, drops its oldest entries under pressure) and `ObservabilityOutbox` (durable, drops nothing).
+
+A delivery either succeeds, is rescheduled with exponential back-off from 30 seconds capped at an hour, or is **parked** as `FAILED`. Parking is the loud version of giving up; giving up quietly is the failure mode this design replaced. A payload the current writer cannot interpret — wrong shape, or a `payloadVersion` from a newer writer — is parked immediately rather than retried, because a shape mismatch does not heal with time. Only `DELIVERED` rows are pruned, after seven days. A `PENDING` or `FAILED` row is never removed by age.
+
+Retries are idempotent three ways over: the same `turnId` upserts one outbox row, `insert_deduplicate=1` discards an identical re-POST server-side, and `ReplacingMergeTree` collapses whatever lands twice outside that window.
+
+### Configuration
+
+Endpoint variables, in precedence order:
+
+1. `PLATOS_OBSERVABILITY_CLICKHOUSE_URL`
+2. `PLATOS_OTEL_CLICKHOUSE_URL`
+3. `CLICKHOUSE_URL`
+
+`apps/agent/src/privacy/clickhouse.ts` reads the same list, in the same order, from its own copy — the erasure module must not import the runtime that produces the data it destroys. A writer pointing at a store the eraser never probes is a store that quietly retains erased people, so `observability-erasure-contract.test.ts` pins the two resolutions equal.
+
+Credentials are read at call time so rotation does not require a restart, and travel in a `Authorization: Basic` header because Node's `fetch` refuses a URL carrying credentials. The client never prints credentials, and never lets a ClickHouse error body escape: those bodies quote the failing statement, and a failing `INSERT` quotes the rows. Only the HTTP status and the numeric `Code: <n>` survive.
+
+ClickHouse is not a Docker Compose service for Platos, in any environment.
 
 ## What Platos does not need from Trigger's event model
 
@@ -363,12 +435,21 @@ This is a clean-slate schema: no historical ClickHouse data is migrated. Existin
 
 Implementation verification must prove:
 
-1. Platos boots and completes direct Turns with no ClickHouse configuration.
-2. A configured-but-unreachable sink leaves durable outbox rows, emits visible degraded health/logs, and does not fail the Turn.
-3. Replaying an event ID produces one logical analytical row.
-4. A completed Turn yields `billable_unit = 1` regardless of Step or Tool Call count.
-5. Cache lanes sum correctly without double-counting total input, and changing the current catalogue does not change historical cost.
-6. Hard erasure removes all plaintext identity and canonical end-user IDs, waits for mutations, and verifies zero survivors.
-7. Queries are scope-filtered by Organization, Project, and Environment before execution.
+| # | Criterion | Status |
+| --- | --- | --- |
+| 1 | Platos boots and completes direct Turns with no ClickHouse configuration. | **Verified.** Nothing is queued and no call is made; `observability.service.test.ts`, `clickhouse-observability-sink.test.ts`. |
+| 2 | A configured-but-unreachable sink leaves durable outbox rows, emits visible degraded health/logs, and does not fail the Turn. | **Verified** against a scripted transport and a real in-memory outbox enforcing the migration's constraints. |
+| 3 | Replaying an event ID produces one logical analytical row. | **Partly verified.** The three mechanisms are exercised — outbox upsert on `turnId`, `insert_deduplicate=1` on the request, derived-stable `usage_event_id`. That `ReplacingMergeTree` then collapses the row is a ClickHouse behaviour and is **blocked** on a live instance. |
+| 4 | A completed Turn yields `billable_unit = 1` regardless of Step or Tool Call count. | **Structurally guaranteed, not end-to-end verified.** The column is `MATERIALIZED` from `status`, and the writer is asserted never to emit it, so no writer can disagree with it. Observing the value requires a live instance. |
+| 5 | Cache lanes sum correctly without double-counting total input, and changing the current catalogue does not change historical cost. | **Verified.** `resolveLanes` keeps cache a subset of input and clamps a provider over-report; rates are copied from the Step's frozen snapshot and no catalogue is consulted. |
+| 6 | Hard erasure removes all plaintext identity and canonical end-user IDs, waits for mutations, and verifies zero survivors. | **Contract verified, execution blocked.** `observability-erasure-contract.test.ts` proves the DDL is addressable by `CLICKHOUSE_ERASURE_PLAN`, that only `turns_v1` declares plaintext identity, and that no identity column is `MATERIALIZED` or non-empty-defaulted. Running the mutation needs a live instance. |
+| 7 | Queries are scope-filtered by Organization, Project, and Environment before execution. | **Structural.** All four tables lead their `ORDER BY` with the scope tuple, and every row the writer emits carries all three. There are no read paths yet — M3.1 ships the write side. |
 
-Per project instruction, these paths are wired and compiled without standing up ClickHouse locally. Criteria requiring a running ClickHouse remain blocked until a separate approved integration environment exists.
+Per project instruction, these paths are wired and compiled without standing up ClickHouse locally, and ClickHouse is not added to any Compose stack. Criteria marked blocked above require a running instance and a separate approved integration environment.
+
+### Known gaps at the end of M3.1
+
+- **Steps are still one-per-Turn.** `ConversationService.storeMessage` writes exactly one `Step` per assistant turn (`sequence: 1`), collapsing a multi-step turn into a single row. The schema and the projection both handle N steps correctly; the Postgres write path does not yet produce them. Until it does, `steps_v1` and `turns_v1` carry the same token totals.
+- **Only the `inference` usage lane is routed.** Each projected `Step` emits one `inference` usage event. The `embedding`, `extraction`, `judge` and `skill` lanes are produced elsewhere in the runtime (`CostService.recordAuxiliaryCost`, `recordSkillUsage`) and are not wired to this path yet.
+- **No read surface consumes the projection.** `TraceService` and the monitoring endpoints still read Postgres and Redis. Nothing degrades, because nothing depends on the projection yet.
+- **The legacy `trigger_dev.platos_spans_v1` pipeline is untouched.** Its breakage is WIN-150 and is explicitly out of scope here.

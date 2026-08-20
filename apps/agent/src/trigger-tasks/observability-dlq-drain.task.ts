@@ -2,23 +2,28 @@ import { schedules, logger, metadata } from "@trigger.dev/sdk";
 const env = process.env;
 
 /**
- * EOBD.100 — ClickHouse DLQ drain.
+ * EOBD.100 / WIN-133 — analytical delivery drain.
  *
- * SpansService (and CostService, when wired) pushes failed CH inserts
- * onto `platos:dlq:spans` / `platos:dlq:cost` Redis lists. This task
- * periodically drains them by POSTing to the agent's admin retry
- * endpoint, which re-attempts the ClickHouse write. Successful retries
- * leave the list empty; permanent failures (after N attempts) are
- * moved to `platos:dlq:spans:dead` for manual review.
+ * TWO QUEUES, DELIBERATELY REPORTED APART.
  *
- * Runs every 2 min. Fast cron keeps drain latency low so telemetry
- * recovers quickly after a CH hiccup.
+ * The legacy one is Redis: SpansService (and CostService, when wired) pushes
+ * failed span inserts onto `platos:dlq:spans` / `platos:dlq:cost`. It is a
+ * best-effort hold-queue that drops its oldest entries under pressure, and
+ * permanent failures move to `platos:dlq:spans:dead` for manual review.
+ *
+ * The turn-shaped one is Postgres: `ObservabilityOutbox`, written in the same
+ * transaction that finalizes a Turn. It never drops a row. What it cannot
+ * deliver it PARKS, and `observability.parked` is a number someone has to
+ * explain. Folding the two into one counter would let a bounded loss hide
+ * inside an unbounded guarantee, so the payload keeps them separate.
+ *
+ * Both are drained by one POST to the agent's admin endpoint.
  */
 
 export const observabilityDlqDrain = schedules.task({
   id: "platos.observability.dlq_drain",
   description:
-    "Drain the ClickHouse dual-write DLQ (Redis list). Retries failed span + cost inserts so transient CH outages don't lose telemetry.",
+    "Drain the analytical delivery queues: the durable ObservabilityOutbox (turn-shaped projection) and the Redis span/cost DLQ, so an outage delays telemetry instead of losing it.",
   cron: "0 * * * *",
   maxDuration: 90,
   // EOBD.45 — singleton. Two drainers racing would double-fire retries.
@@ -56,10 +61,37 @@ export const observabilityDlqDrain = schedules.task({
       const json = (await res.json()) as {
         drained?: { spans?: number; cost?: number };
         deadLettered?: { spans?: number; cost?: number };
+        observability?: {
+          claimed?: number;
+          delivered?: number;
+          retried?: number;
+          parked?: number;
+          pruned?: number;
+          skipped?: string;
+        };
       };
       metadata.set("status", "ok");
       metadata.set("drained", json.drained ?? {});
       metadata.set("deadLettered", json.deadLettered ?? {});
+      metadata.set("observability", json.observability ?? {});
+
+      // A parked row is an undelivered projection for a Turn that already
+      // happened. It is the one outcome here that is not self-healing, so it
+      // gets a log line of its own rather than living inside a metadata blob.
+      const parked = json.observability?.parked ?? 0;
+      if (parked > 0) {
+        logger.error("observability-dlq-drain: outbox rows parked undelivered", {
+          parked,
+          hint: "SELECT id, turnId, attempts, lastErrorCode FROM \"ObservabilityOutbox\" WHERE status = 'FAILED'",
+        });
+      }
+      // Not an error: an absent or unreachable sink is a state the runtime is
+      // designed for. It is still worth saying which one, every pass.
+      if (json.observability?.skipped) {
+        logger.warn("observability-dlq-drain: outbox drain skipped", {
+          reason: json.observability.skipped,
+        });
+      }
       return { status: "ok", ...json };
     } catch (err: any) {
       logger.error("observability-dlq-drain: agent call failed", {

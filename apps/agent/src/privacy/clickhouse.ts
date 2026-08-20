@@ -142,12 +142,26 @@ export class ErasureClickhouse implements ClickhouseErasureTransport {
   private readonly target: ClickhouseEndpoint | null;
 
   constructor() {
-    // PLATOS_OTEL_CLICKHOUSE_URL first: that is the variable the AGENT process
-    // receives in compose, and therefore the endpoint the spans this executor
-    // erases were actually written to. Reading only CLICKHOUSE_URL — which is
-    // set on the webapp service, not this one — is why the previous executor
-    // reported "no ClickHouse" on a stack that was writing to it all along.
-    const raw = (process.env.PLATOS_OTEL_CLICKHOUSE_URL ?? process.env.CLICKHOUSE_URL)?.trim();
+    // The endpoint order is the WRITER'S order, read independently.
+    //
+    // PLATOS_OBSERVABILITY_CLICKHOUSE_URL first, then PLATOS_OTEL_CLICKHOUSE_URL:
+    // those are the variables the AGENT process receives in compose, and
+    // therefore the endpoints the rows this executor erases were actually
+    // written to. Reading only CLICKHOUSE_URL — which is set on the webapp
+    // service, not this one — is why the previous executor reported "no
+    // ClickHouse" on a stack that was writing to it all along.
+    //
+    // This list is duplicated from observability-config.ts rather than imported,
+    // for the reason in the header: the module whose only job is destroying data
+    // must not import the runtime that produces it. The two are pinned equal by
+    // observability-erasure-contract.test.ts, because a writer pointing at a
+    // store this executor never probes is a store that quietly retains erased
+    // people.
+    const raw = (
+      process.env.PLATOS_OBSERVABILITY_CLICKHOUSE_URL ??
+      process.env.PLATOS_OTEL_CLICKHOUSE_URL ??
+      process.env.CLICKHOUSE_URL
+    )?.trim();
     this.configured = Boolean(raw);
     this.target = parseClickhouseEndpoint(raw);
     if (!this.configured) {

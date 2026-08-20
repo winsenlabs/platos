@@ -108,6 +108,7 @@ export const supportDomainModels = [
   "OAuthConsentTransaction",
   "Model",
   "ModelPrice",
+  "ObservabilityOutbox",
 ] as const;
 
 /** All source target models plus independently required clean-slate support models. */

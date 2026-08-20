@@ -39,6 +39,8 @@ import { CostService } from "../monitoring/cost.service";
 import { assertCostCatalogIngestion } from "../monitoring/cost-catalog-ingestion";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 import { SpansService } from "../monitoring/spans.service";
+import { ObservabilityService } from "../observability/observability.service";
+import { emptyDrainSummary } from "../observability/observability-outbox";
 import { TraceService } from "../monitoring/trace.service";
 import { UtilizationService } from "../monitoring/utilization.service";
 import { ToolAuditService } from "../monitoring/tool-audit.service";
@@ -159,6 +161,8 @@ export class AgentController {
     // missing, retrieval blocks fail-open to empty per PromptBuilder policy.
     // PRA-AC — cluster management
     private readonly clusterService: AgentClusterService,
+    // WIN-133 — turn-shaped analytical projection: outbox drain + sink health.
+    private readonly observability: ObservabilityService,
     // RG.1.5 — optional SkillRuntimeService (must come last — optional params follow required)
     @Optional() private readonly skillRuntime?: SkillRuntimeService,
     // MCP-connected-entity (design Commit 5) — kicks discovery on mcp-kind
@@ -4757,6 +4761,13 @@ Write the summary now:`;
    * and count per-DLQ successes + permanent failures. Permanent
    * failures (after N internal attempts) move to a `:dead` list for
    * manual operator review.
+   *
+   * WIN-133 — this endpoint now also drains the durable observability outbox.
+   * The two queues are different in kind and the response keeps them apart:
+   * the Redis span DLQ is a best-effort hold-queue that drops its oldest
+   * entries under pressure, while `ObservabilityOutbox` is a Postgres table
+   * that never drops a row and parks what it cannot deliver. Reporting them as
+   * one number would let a bounded loss hide inside an unbounded guarantee.
    */
   @Post("monitoring/dlq/drain")
   async drainDlq(
@@ -4810,7 +4821,20 @@ Write the summary now:`;
       /* cost DLQ not yet wired — tolerate */
     }
 
-    return { status: "ok", drained, deadLettered };
+    // The outbox drain reports its own summary rather than folding into the
+    // two counters above: `parked` is a number that has to be explained, and
+    // `skipped` is the honest answer when the sink is absent or unreachable.
+    // A thrown drain is surfaced, not swallowed — the whole point of the
+    // outbox is that nothing about it is quiet.
+    const observability = await this.observability
+      .drain(maxBatch)
+      .catch((err: unknown) => ({
+        ...emptyDrainSummary(
+          `drain threw (${err instanceof Error ? err.name : "Error"})`,
+        ),
+      }));
+
+    return { status: "ok", drained, deadLettered, observability };
   }
 
   /**

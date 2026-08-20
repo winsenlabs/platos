@@ -1089,6 +1089,7 @@ model Turn {
   messageRatings             MessageRating[]
   agentEvals                 AgentEval[]
   channelEventInbox          ChannelEventInbox?
+  observabilityOutbox        ObservabilityOutbox?
 
   @@unique([threadId, sequence])
   @@unique([threadId, idempotencyKey])
@@ -1165,6 +1166,42 @@ model ToolCall {
 
   @@unique([stepId, sequence])
   @@index([toolId])
+}
+
+/// Durable delivery queue for the analytical observability projection.
+///
+/// Written in the SAME transaction that finalizes the Turn, so a projection is
+/// never promised for work Postgres did not commit, and committed work never
+/// loses its projection to a sink that was down. Only written when a sink is
+/// configured: Postgres already holds everything the projection contains, so
+/// queueing for a store that does not exist would accumulate garbage in place
+/// of a backfill.
+///
+/// The Turn foreign key CASCADES on purpose. Erasing a subject deletes their
+/// Threads and Turns, and an undelivered row here would otherwise project a
+/// just-erased identity into the analytical store after the erasure mutation
+/// ran and was verified.
+model ObservabilityOutbox {
+  id             String    @id @default(uuid()) @db.Uuid
+  turnId         String    @unique @db.Uuid
+  organizationId String    @db.Uuid
+  payloadVersion Int       @default(1)
+  /// Object root containing the redacted turn-shaped projection; validated by jsonShapeRegistry.
+  payload        Json
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  availableAt    DateTime  @default(now())
+  /// Error CLASS only. ClickHouse quotes the failing statement in its bodies.
+  lastErrorCode  String?
+  deliveredAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  turn Turn @relation(fields: [turnId], references: [id], onDelete: Cascade)
+
+  @@index([status, availableAt])
+  @@index([organizationId, status])
+  @@index([deliveredAt])
 }
 
 model Artifact {
