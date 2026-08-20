@@ -72,7 +72,7 @@ export async function getMissingLlmModels(opts: {
   // The registry's match() handles prefix stripping for gateway/openrouter models.
   if (!llmPricingRegistry || !llmPricingRegistry.isLoaded) return candidates;
   const registry = llmPricingRegistry;
-  return candidates.filter((c) => !registry.match(c.model));
+  return candidates.filter((c) => !registry.hasCompletePrice(c.model));
 }
 
 export type MissingModelSample = {

@@ -20,6 +20,7 @@ process.env.VOYAGE_API_KEY = process.env.VOYAGE_API_KEY || "test-voyage-key";
 process.env.PLATOS_EMBEDDING_TIMEOUT_MS = "600";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ModelRateSource } from "@platos/tenancy-database";
 import { EmbeddingService } from "./embedding.service";
 
 const realFetch = global.fetch;
@@ -44,10 +45,19 @@ function successfulEmbeddingResponse(vector = VECTOR): Response {
   );
 }
 
-function makeService(): EmbeddingService {
-  // No ScopedEnvService / CostService — the key path resolves from env
-  // (voyage), and cost recording is fire-and-forget optional.
-  return new EmbeddingService();
+function makeCostService(resolvePrice = vi.fn(async () => ({
+  input: { source: ModelRateSource.LITELLM },
+  output: { source: ModelRateSource.LITELLM },
+}))) {
+  return {
+    resolvePrice,
+    priceUsageFromSnapshot: vi.fn(() => ({ costCents: 0 })),
+    recordAuxiliaryCost: vi.fn(),
+  };
+}
+
+function makeService(scopedEnv?: unknown): EmbeddingService {
+  return new EmbeddingService(makeCostService() as any, scopedEnv as any);
 }
 
 describe("EmbeddingService.embed", () => {
@@ -82,7 +92,7 @@ describe("EmbeddingService.embed", () => {
   it("does not use a populated deployment key when a scoped credential is missing", async () => {
     global.fetch = vi.fn() as any;
     const scopedEnv = { getForProvider: vi.fn(async () => undefined) };
-    const svc = new EmbeddingService(scopedEnv as any);
+    const svc = makeService(scopedEnv);
 
     await expect(
       svc.embed("scoped text", {
@@ -112,7 +122,7 @@ describe("EmbeddingService.embed", () => {
           : undefined,
       ),
     };
-    const svc = new EmbeddingService(scopedEnv as any);
+    const svc = makeService(scopedEnv);
 
     await expect(svc.embed("shared text", scopeA)).resolves.toEqual(VECTOR);
     await expect(svc.embed("shared text", scopeB)).rejects.toThrow(
@@ -138,7 +148,7 @@ describe("EmbeddingService.embed", () => {
         .mockResolvedValueOnce("credential-before-rotation")
         .mockResolvedValueOnce("credential-after-rotation"),
     };
-    const svc = new EmbeddingService(scopedEnv as any);
+    const svc = makeService(scopedEnv);
 
     const first = await svc.embed("same scoped text", scopeA);
     const second = await svc.embed("same scoped text", scopeA);
@@ -157,7 +167,7 @@ describe("EmbeddingService.embed", () => {
         .mockResolvedValueOnce("credential-before-revocation")
         .mockResolvedValueOnce(undefined),
     };
-    const svc = new EmbeddingService(scopedEnv as any);
+    const svc = makeService(scopedEnv);
 
     await expect(svc.embed("revoked scoped text", scopeA)).resolves.toEqual(VECTOR);
     await expect(svc.embed("revoked scoped text", scopeA)).rejects.toThrow(
@@ -166,5 +176,16 @@ describe("EmbeddingService.embed", () => {
 
     expect(scopedEnv.getForProvider).toHaveBeenCalledTimes(2);
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects unavailable pricing before calling the embedding provider", async () => {
+    global.fetch = vi.fn() as any;
+    const costService = makeCostService(vi.fn().mockRejectedValue(new Error("missing")));
+    const svc = new EmbeddingService(costService as any);
+
+    await expect(svc.embed("unpriced text")).rejects.toMatchObject({
+      code: "model_pricing_unavailable",
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

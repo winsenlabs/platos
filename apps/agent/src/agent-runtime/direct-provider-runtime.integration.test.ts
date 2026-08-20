@@ -5,6 +5,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import {
   CredentialKind,
   CredentialRootKeyRing,
+  ModelRateSource,
   PlatosSecretStore,
   PrismaClient,
 } from "@platos/tenancy-database";
@@ -167,6 +168,37 @@ describe("direct provider runtime on a clean database", () => {
     await prisma.environmentProvider.create({
       data: { environmentId: environment.id, providerId: "openai", enabled: true },
     });
+    const observedAt = new Date("2026-08-20T00:00:00.000Z");
+    const canonicalModel = await prisma.model.create({
+      data: {
+        key: "openai/fixture-model",
+        provider: "openai",
+        name: "fixture-model",
+        sourceUpdatedAt: observedAt,
+      },
+    });
+    const canonicalPrice = await prisma.modelPrice.create({
+      data: {
+        modelId: canonicalModel.id,
+        effectiveFrom: observedAt,
+        inputRate: 1e-7,
+        outputRate: 1e-7,
+        cacheReadRate: 1e-7,
+        cacheWriteRate: 1e-7,
+        inputSource: ModelRateSource.LITELLM,
+        outputSource: ModelRateSource.LITELLM,
+        cacheReadSource: ModelRateSource.LITELLM,
+        cacheWriteSource: ModelRateSource.LITELLM,
+        inputObservedAt: observedAt,
+        outputObservedAt: observedAt,
+        cacheReadObservedAt: observedAt,
+        cacheWriteObservedAt: observedAt,
+        inputSourceRef: "fixture",
+        outputSourceRef: "fixture",
+        cacheReadSourceRef: "fixture",
+        cacheWriteSourceRef: "fixture",
+      },
+    });
 
     const secretStore = new PlatosSecretStore(
       prisma,
@@ -224,6 +256,40 @@ describe("direct provider runtime on a clean database", () => {
       calculateCost: vi.fn().mockResolvedValue(0),
       calculateCostWithCache: vi.fn().mockResolvedValue(0),
       recordUsage: vi.fn(),
+      resolvePrice: vi.fn().mockResolvedValue({
+        modelPriceId: canonicalPrice.id,
+        modelId: canonicalModel.id,
+        modelKey: "openai/fixture-model",
+        provider: "openai",
+        modelName: "fixture-model",
+        effectiveFrom: observedAt,
+        input: {
+          usdPerToken: 1e-7,
+          source: ModelRateSource.LITELLM,
+          observedAt,
+          sourceRef: "fixture",
+        },
+        output: {
+          usdPerToken: 1e-7,
+          source: ModelRateSource.LITELLM,
+          observedAt,
+          sourceRef: "fixture",
+        },
+        cacheRead: {
+          usdPerToken: 1e-7,
+          source: ModelRateSource.LITELLM,
+          observedAt,
+          sourceRef: "fixture",
+        },
+        cacheWrite: {
+          usdPerToken: 1e-7,
+          source: ModelRateSource.LITELLM,
+          observedAt,
+          sourceRef: "fixture",
+        },
+      }),
+      priceUsageFromSnapshot: vi.fn((_model, price) => ({ price, costCents: 0 })),
+      recordAuxiliaryCost: vi.fn(),
     };
     const spans = {
       startTrace: () => ({ traceId: "a".repeat(32), rootSpanId: "b".repeat(16) }),
@@ -248,7 +314,7 @@ describe("direct provider runtime on a clean database", () => {
         undefined,
         undefined,
         undefined,
-        undefined,
+        cost as any,
         undefined,
         withProviderGate ? registry : undefined,
       );

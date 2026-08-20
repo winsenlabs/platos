@@ -9,9 +9,8 @@ import {
 } from "./app/v3/eventRepository/common.server";
 import {
   enrichCreatableEvents,
-  setLlmPricingRegistry,
 } from "./app/v3/utils/enrichCreatableEvents.server";
-import { ModelPricingRegistry, seedLlmPricing } from "@internal/llm-model-catalog";
+import { llmPricingRegistry } from "./app/v3/llmPricingRegistry.server";
 import { nanoid } from "nanoid";
 import { unflattenAttributes } from "@platos/core/v3/utils/flattenAttributes";
 import type { Attributes } from "@opentelemetry/api";
@@ -372,15 +371,8 @@ Please structure your response with clear headings, use tables for comparative d
 
   console.log(`Built ${events.length} spans`);
 
-  // 10. Seed LLM pricing and enrich
-  const seedResult = await seedLlmPricing(prisma);
-  console.log(
-    `LLM pricing: ${seedResult.modelsCreated} created, ${seedResult.modelsSkipped} skipped`
-  );
-
-  const registry = new ModelPricingRegistry(prisma);
-  setLlmPricingRegistry(registry);
-  await registry.loadFromDatabase();
+  // 10. Load the canonical Platos pricing view and enrich.
+  await llmPricingRegistry?.reload();
 
   const enriched = enrichCreatableEvents(events);
 

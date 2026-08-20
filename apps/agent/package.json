@@ -34,7 +34,6 @@
     "@chat-adapter/telegram": "^4.34.0",
     "@chat-adapter/whatsapp": "^4.34.0",
     "@e2b/code-interpreter": "^2.4.0",
-    "@internal/cost-rates": "workspace:*",
     "@internal/docs": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@nestjs/common": "^11.0.0",

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ModelRateSource } from "@platos/tenancy-database";
 
 const generateText = vi.hoisted(() => vi.fn());
 
@@ -80,6 +81,14 @@ describe("EvalService clean Turn projection", () => {
       prisma as any,
       scopedEnv as any,
       criterionService as any,
+      {
+        resolvePrice: vi.fn().mockResolvedValue({
+          input: { source: ModelRateSource.LITELLM },
+          output: { source: ModelRateSource.LITELLM },
+        }),
+        priceUsageFromSnapshot: vi.fn().mockReturnValue({ costCents: 0 }),
+        recordAuxiliaryCost: vi.fn(),
+      } as any,
     );
     const scope = {
       organizationId: "org-a",

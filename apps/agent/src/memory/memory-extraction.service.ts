@@ -10,6 +10,8 @@ import { MemoryService, type ScopeTuple, type MemoryKind } from "./memory.servic
 import { KnowledgeGraphService } from "./knowledge-graph.service";
 import { validateMemoryPayload } from "./memory-kind.validator";
 import { CostService } from "../monitoring/cost.service";
+import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
+import { ProviderRuntimeError } from "../providers/provider-runtime.error";
 import { ProfileCacheService } from "./profile-cache.service";
 import { env } from "../shared/env";
 
@@ -34,7 +36,7 @@ import { env } from "../shared/env";
  * Redis watermark is only a scheduler optimization.
  */
 
-const DEFAULT_EXTRACTION_MODEL = "anthropic:claude-haiku-4-5-20251001";
+export const DEFAULT_EXTRACTION_MODEL = "anthropic:claude-haiku-4-5-20251001";
 const EXTRACTOR_VERSION = "v1";
 
 export interface ExtractionPolicy {
@@ -131,8 +133,8 @@ export class MemoryExtractionService {
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
     private readonly memoryService: MemoryService,
     private readonly graph: KnowledgeGraphService,
+    private readonly costService: CostService,
     @Optional() private readonly scopedEnv?: ScopedEnvService,
-    @Optional() private readonly costService?: CostService,
     @Optional() private readonly profileCache?: ProfileCacheService,
     @Optional() @Inject(REDIS_TOKEN) private readonly redis?: any,
   ) {}
@@ -444,17 +446,20 @@ export class MemoryExtractionService {
 
       const transcript = atoms.map((a) => `(${a.kind}) ${a.content}`).join("\n");
       const modelString = env.PLATOS_MEMORY_EXTRACTION_MODEL || DEFAULT_EXTRACTION_MODEL;
+      const price = await preflightModelPricing(this.costService, modelString);
       const envVar = apiKeyEnvVarFor(modelString);
       const apiKey = envVar && this.scopedEnv ? await this.scopedEnv.get(scope, envVar) : undefined;
       const resolved = resolveJudgeModel(modelString, apiKey);
       if (!resolved) return { ok: false, reason: "judge-unavailable" };
 
-      const { text } = await generateText({
+      const generated = await generateText({
         model: resolved,
         system:
           'You maintain a living profile of a user for an AI assistant. From the durable facts below, write a concise profile: who they are, their role and context, how they communicate and work, their key preferences, and the important people, projects, and organisations in their world. 2-4 short paragraphs, present tense, second person ("You are…"). State ONLY what the facts support — never invent. No preamble, no headings.',
         prompt: transcript,
       });
+      await this.recordExtractionCost(scope, modelString, generated, price);
+      const { text } = generated;
       const narrative = (text || "").trim();
       if (!narrative) return { ok: false, reason: "empty" };
 
@@ -491,7 +496,10 @@ export class MemoryExtractionService {
       return { ok: true };
     } catch (err: any) {
       this.logger.error(`[profile-synth] failed for ${userId}/${agentId}: ${err?.message ?? err}`);
-      return { ok: false, reason: err?.message || "error" };
+      return {
+        ok: false,
+        reason: err instanceof ProviderRuntimeError ? err.code : err?.message || "error",
+      };
     }
   }
 
@@ -509,6 +517,7 @@ export class MemoryExtractionService {
     relationships: CandidateRelationship[];
   } | null> {
     const modelString = env.PLATOS_MEMORY_EXTRACTION_MODEL || DEFAULT_EXTRACTION_MODEL;
+    const price = await preflightModelPricing(this.costService, modelString);
     const envVar = apiKeyEnvVarFor(modelString);
     const apiKey = envVar && this.scopedEnv ? await this.scopedEnv.get(scope, envVar) : undefined;
     const resolved = resolveJudgeModel(modelString, apiKey);
@@ -534,41 +543,37 @@ export class MemoryExtractionService {
       `Max memories: ${policy.maxPerSession}.\n\n` +
       `Conversation:\n\n${transcript}`;
 
+    let result: Awaited<ReturnType<typeof generateText>>;
     try {
       // PRELAUNCH-A2-9 — propagate abort signal.
-      const result = await generateText({
+      result = await generateText({
         model: resolved,
         system,
         messages: [{ role: "user" as const, content: user }],
         abortSignal,
       });
-      // EOBD.33 — record extraction cost against the scope so dashboards
-      // don't undercount shadow LLM spend. Uses ai SDK's usage object
-      // (promptTokens + completionTokens). Cost-per-token comes from
-      // LiteLLM catalog (maintained by the litellm-cost-refresh task).
-      // PRELAUNCH-A1-7 (follow-up) — pass full result so cache + reasoning
-      // attribution lands on the dashboard slices.
-      this.recordExtractionCost(scope, modelString, result).catch(() => undefined);
-      const parsed = parseExtractorJson(result.text);
-      return parsed;
     } catch (err: any) {
       this.logger.warn(`extractor judge call failed: ${err?.message || err}`);
       return null;
     }
+    // Price attribution is outside the provider-error fallback. Once spend was
+    // incurred, a rollup failure must surface rather than becoming an
+    // indistinguishable "judge unavailable" result.
+    await this.recordExtractionCost(scope, modelString, result, price);
+    return parseExtractorJson(result.text);
   }
 
   /**
    * EOBD.33 — compute + persist extraction cost via CostService.
-   * Best-effort: the CostService calculates $-per-token from the
-   * LiteLLM catalog (or a hard-coded fallback). Failure never breaks
-   * extraction.
+   * Uses the exact card resolved before invocation and awaits attribution.
    */
   private async recordExtractionCost(
     scope: ScopeTuple,
     modelString: string,
     result: any,
+    price: Awaited<ReturnType<typeof preflightModelPricing>>,
   ): Promise<void> {
-    if (!this.costService || !result) return;
+    if (!result) return;
     const usage = result.usage as
       | {
           inputTokens?: number;
@@ -603,17 +608,20 @@ export class MemoryExtractionService {
       Number(meta?.google?.usageMetadata?.thoughtsTokenCount ?? 0) ||
       Number(meta?.vertex?.usageMetadata?.thoughtsTokenCount ?? 0);
     try {
-      const costCents = await this.costService.calculateCost(
+      const pricedUsage = this.costService.priceUsageFromSnapshot(
         modelString,
+        price,
         inputTokens,
         outputTokens,
+        cacheCreation,
+        cacheRead,
       );
-      if (costCents > 0) {
+      if (pricedUsage.costCents > 0) {
         await this.costService.recordAuxiliaryCost({
           scope,
           kind: "extraction",
           model: modelString,
-          costCents,
+          costCents: pricedUsage.costCents,
           inputTokens,
           outputTokens,
           cacheReadInputTokens: cacheRead > 0 ? cacheRead : undefined,
@@ -621,8 +629,9 @@ export class MemoryExtractionService {
           reasoningTokens: reasoning > 0 ? reasoning : undefined,
         });
       }
-    } catch {
-      // Fire-and-forget: CostService hiccup should never fail extraction.
+    } catch (error: any) {
+      this.logger.warn(`[memory-extraction] auxiliary cost recording failed: ${error?.message ?? error}`);
+      throw error;
     }
   }
 }

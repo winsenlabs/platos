@@ -18,6 +18,7 @@ import {
   WorkStatus,
   AuthRateLimitAction,
   ImpersonationAction,
+  ModelRateSource,
   OperatorIdentityProvider,
 } from "../generated/control";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
@@ -63,7 +64,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(87);
+    expect(modelNames).toHaveLength(89);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -1368,6 +1369,36 @@ async function seedEveryModel(control: PrismaClient) {
       sessionContext: {},
     },
   }));
+  const model = track("Model", await control.model.create({
+    data: {
+      key: "test:model",
+      provider: "test",
+      name: "test:model",
+      sourceUpdatedAt: new Date("2026-08-20T00:00:00.000Z"),
+    },
+  }));
+  const modelPrice = track("ModelPrice", await control.modelPrice.create({
+    data: {
+      modelId: model.id,
+      effectiveFrom: new Date("2026-08-20T00:00:00.000Z"),
+      inputRate: 0.000001,
+      outputRate: 0.000002,
+      cacheReadRate: 0.0000001,
+      cacheWriteRate: 0.00000125,
+      inputSource: ModelRateSource.LITELLM,
+      outputSource: ModelRateSource.LITELLM,
+      cacheReadSource: ModelRateSource.LITELLM,
+      cacheWriteSource: ModelRateSource.LITELLM,
+      inputObservedAt: new Date("2026-08-20T00:00:00.000Z"),
+      outputObservedAt: new Date("2026-08-20T00:00:00.000Z"),
+      cacheReadObservedAt: new Date("2026-08-20T00:00:00.000Z"),
+      cacheWriteObservedAt: new Date("2026-08-20T00:00:00.000Z"),
+      inputSourceRef: "https://example.test/prices",
+      outputSourceRef: "https://example.test/prices",
+      cacheReadSourceRef: "https://example.test/prices",
+      cacheWriteSourceRef: "https://example.test/prices",
+    },
+  }));
   const turn = track("Turn", await control.turn.create({
     data: {
       threadId: thread.id,
@@ -1392,6 +1423,23 @@ async function seedEveryModel(control: PrismaClient) {
       cacheReadInputTokens: 5,
       reasoningTokens: 4,
       costCents: 0.2,
+      modelPriceId: modelPrice.id,
+      inputRate: modelPrice.inputRate,
+      outputRate: modelPrice.outputRate,
+      cacheReadRate: modelPrice.cacheReadRate,
+      cacheWriteRate: modelPrice.cacheWriteRate,
+      inputRateSource: modelPrice.inputSource,
+      outputRateSource: modelPrice.outputSource,
+      cacheReadRateSource: modelPrice.cacheReadSource,
+      cacheWriteRateSource: modelPrice.cacheWriteSource,
+      inputRateObservedAt: modelPrice.inputObservedAt,
+      outputRateObservedAt: modelPrice.outputObservedAt,
+      cacheReadRateObservedAt: modelPrice.cacheReadObservedAt,
+      cacheWriteRateObservedAt: modelPrice.cacheWriteObservedAt,
+      inputRateSourceRef: modelPrice.inputSourceRef,
+      outputRateSourceRef: modelPrice.outputSourceRef,
+      cacheReadRateSourceRef: modelPrice.cacheReadSourceRef,
+      cacheWriteRateSourceRef: modelPrice.cacheWriteSourceRef,
       latencyMs: 100,
     },
   }));
@@ -1894,6 +1942,8 @@ async function seedEveryModel(control: PrismaClient) {
     credential,
     cluster,
     thread,
+    model,
+    modelPrice,
     turn,
     step,
     memory,

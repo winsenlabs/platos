@@ -49,6 +49,7 @@ import { SkillRuntimeService } from "../skills/skill-runtime.service";
 import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
 import { CostService } from "../monitoring/cost.service";
+import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 import { SpansService } from "../monitoring/spans.service";
 // Theme L — pgvector-backed semantic memory + knowledge-graph services.
 // Both are @Optional so the existing unit-test harness that constructs
@@ -1174,6 +1175,8 @@ export class AgentService {
     apiKey: string | undefined;
     model: ReturnType<typeof resolveModel>;
     routeLabel: string | null;
+    modelString: string;
+    price: Awaited<ReturnType<typeof preflightModelPricing>>;
   }> {
     const primaryApiKey = await this.resolveApiKey(
       agentConfig.model,
@@ -1197,7 +1200,10 @@ export class AgentService {
           .map((r) => r.fallbackToRouteLabel as string),
       ),
     );
-    if (fallbackLabels.length === 0) return primary;
+    if (fallbackLabels.length === 0) {
+      const price = await preflightModelPricing(this.costService, primary.modelString);
+      return { ...primary, price };
+    }
 
     const routes = (agentConfig.modelRoutes ?? []) as Array<{
       label: string;
@@ -1207,7 +1213,10 @@ export class AgentService {
     const fallbackRoutes = fallbackLabels
       .map((label) => routes.find((r) => r.label === label))
       .filter((r): r is { label: string; model: string; providerKeyId?: string | null } => !!r);
-    if (fallbackRoutes.length === 0) return primary;
+    if (fallbackRoutes.length === 0) {
+      const price = await preflightModelPricing(this.costService, primary.modelString);
+      return { ...primary, price };
+    }
 
     // Resolve all fallback API keys in parallel — saves ~50ms vs sequential.
     const fallbackCandidates = await Promise.all(
@@ -1223,61 +1232,102 @@ export class AgentService {
       }),
     );
     const candidates = [primary, ...fallbackCandidates];
+    let firstPricedCandidate: {
+      candidate: (typeof candidates)[number];
+      price: Awaited<ReturnType<typeof preflightModelPricing>>;
+    } | null = null;
 
     for (const c of candidates) {
+      let routePrice: Awaited<ReturnType<typeof preflightModelPricing>>;
       try {
-        // LATENCY (audit F9) — skip the ping when this exact (model, key) was
-        // proven healthy within the TTL. Only SUCCESS is cached, so a failing
-        // route is always re-pinged and a recovered one is picked up on the
-        // next turn. Key never contains the raw api key.
-        const pingKey = `${c.modelString}:${crypto
-          .createHash("sha256")
-          .update(String(c.apiKey ?? ""))
-          .digest("hex")
-          .slice(0, 12)}`;
-        const okAt = this.pingOkCache.get(pingKey);
-        if (okAt !== undefined && Date.now() - okAt < AgentService.PING_OK_TTL_MS) {
-          if (c.routeLabel) {
-            this.logger.log(
-              `[agent.stream] LAUNCH-4 ping cache hit for route '${c.routeLabel}' (model=${c.modelString})`,
-            );
-          }
-          return { apiKey: c.apiKey, model: c.model, routeLabel: c.routeLabel };
+        routePrice = await preflightModelPricing(this.costService, c.modelString);
+      } catch (err: any) {
+        this.logFallbackPreflightFailure(c.routeLabel, c.modelString, err);
+        continue;
+      }
+      firstPricedCandidate ??= { candidate: c, price: routePrice };
+      // LATENCY (audit F9) — skip the ping when this exact (model, key) was
+      // proven healthy within the TTL. Only SUCCESS is cached, so a failing
+      // route is always re-pinged and a recovered one is picked up on the
+      // next turn. Key never contains the raw api key.
+      const pingKey = `${c.modelString}:${crypto
+        .createHash("sha256")
+        .update(String(c.apiKey ?? ""))
+        .digest("hex")
+        .slice(0, 12)}`;
+      const okAt = this.pingOkCache.get(pingKey);
+      if (okAt !== undefined && Date.now() - okAt < AgentService.PING_OK_TTL_MS) {
+        if (c.routeLabel) {
+          this.logger.log(
+            `[agent.stream] LAUNCH-4 ping cache hit for route '${c.routeLabel}' (model=${c.modelString})`,
+          );
         }
+        return { ...c, price: routePrice };
+      }
+      let pingResult: Awaited<ReturnType<typeof generateText>>;
+      try {
         // Tiny ping. Retry-fetch (LAUNCH-2) will already retry transient
         // 429/5xx; this ping fails on permanent issues only (bad key,
         // sustained outage, unknown model). The 5s timeout caps how long
         // a single dead route can stall us before walking on.
-        await generateText({
+        pingResult = await generateText({
           model: c.model,
           prompt: ".",
           maxOutputTokens: 1,
           abortSignal: AbortSignal.timeout(5_000),
         });
-        this.pingOkCache.set(pingKey, Date.now());
-        // Bound the map (many models × keys over a long-lived process).
-        if (this.pingOkCache.size > 200) {
-          const oldest = [...this.pingOkCache.entries()].sort((a, b) => a[1] - b[1])[0];
-          if (oldest) this.pingOkCache.delete(oldest[0]);
-        }
-        if (c.routeLabel) {
-          this.logger.log(
-            `[agent.stream] LAUNCH-4 ping selected fallback route '${c.routeLabel}' (model=${c.modelString})`,
-          );
-        }
-        return { apiKey: c.apiKey, model: c.model, routeLabel: c.routeLabel };
       } catch (err: any) {
         this.logFallbackPreflightFailure(c.routeLabel, c.modelString, err);
+        continue;
       }
+      const pingUsage = pingResult.usage;
+      const pingInputTokens = pingUsage?.inputTokens ?? 0;
+      const pingOutputTokens = pingUsage?.outputTokens ?? 0;
+      if (pingInputTokens > 0 || pingOutputTokens > 0) {
+        const pricedPing = this.costService!.priceUsageFromSnapshot(
+          c.modelString,
+          routePrice,
+          pingInputTokens,
+          pingOutputTokens,
+        );
+        await this.costService!.recordAuxiliaryCost({
+          scope,
+          kind: "route-preflight",
+          model: c.modelString,
+          costCents: pricedPing.costCents,
+          inputTokens: pingInputTokens,
+          outputTokens: pingOutputTokens,
+          agentId: scope.agentId,
+          userId: scope.userId,
+        });
+      }
+      this.pingOkCache.set(pingKey, Date.now());
+      // Bound the map (many models × keys over a long-lived process).
+      if (this.pingOkCache.size > 200) {
+        const oldest = [...this.pingOkCache.entries()].sort((a, b) => a[1] - b[1])[0];
+        if (oldest) this.pingOkCache.delete(oldest[0]);
+      }
+      if (c.routeLabel) {
+        this.logger.log(
+          `[agent.stream] LAUNCH-4 ping selected fallback route '${c.routeLabel}' (model=${c.modelString})`,
+        );
+      }
+      return { ...c, price: routePrice };
     }
 
-    // All routes failed pre-stream pings. Return primary so the caller's
-    // existing error handling fires — at worst the UX is identical to
-    // pre-LAUNCH-4 behavior.
+    if (!firstPricedCandidate) {
+      throw new ProviderRuntimeError("model_pricing_unavailable");
+    }
+    // All priced routes failed pre-stream pings. Return a priced candidate so
+    // the actual call can surface its provider error without ever spending on
+    // a route whose cost cannot be attributed.
     this.logger.warn(
       `[agent.stream] LAUNCH-4 all ${candidates.length} routes failed ping; falling back to primary for the actual streamText (will surface real error)`,
     );
-    return { apiKey: primary.apiKey, model: primary.model, routeLabel: null };
+    return {
+      ...firstPricedCandidate.candidate,
+      price: firstPricedCandidate.price,
+    };
   }
 
   private logFallbackPreflightFailure(
@@ -4489,6 +4539,7 @@ export class AgentService {
     abortSignal?: AbortSignal;
   }): Promise<{ status: "success" | "failed"; text: string; toolCalls: any[]; steps: number; error?: string }> {
     const subModel = args.subAgentConfig?.model || "anthropic:claude-haiku-4-5-20251001";
+    const subPrice = await preflightModelPricing(this.costService, subModel);
     const maxSteps = args.subAgentConfig?.maxSteps || 10;
     const baseSystemPrompt = args.subAgentConfig?.systemPrompt ||
       `You are a dedicated tool-calling sub-agent. You receive an intent from a parent agent and execute it using the available tools. Be precise, literal, and efficient. Return a concise summary of what you did and the results. Do not add commentary or soft language.`;
@@ -4638,7 +4689,14 @@ export class AgentService {
     // — losing 100% of sub-agent reasoning attribution on the parent.
     let subCostCents = 0;
     if (this.costService && threadId) {
-      try {
+      const pricedUsage = this.costService.priceUsageFromSnapshot(
+        subModel,
+        subPrice,
+        subPromptTokens,
+        subCompletionTokens,
+        subCacheCreation,
+        subCacheRead,
+      );
         const rec = await this.costService.recordUsage(
           {
             organizationId: args.scope.organizationId,
@@ -4655,14 +4713,10 @@ export class AgentService {
             cacheCreationInputTokens: subCacheCreation,
             cacheReadInputTokens: subCacheRead,
             reasoningTokens: subReasoning,
+            pricedUsage,
           },
         );
         subCostCents = rec.costCents;
-      } catch (err: any) {
-        this.logger.warn(
-          `[agent.runSubAgent] cost recordUsage failed: ${err?.message ?? String(err)}`,
-        );
-      }
     }
 
     // Theme E.9 — emit a child `llm.inference.sub_agent` span under the turn
@@ -4777,6 +4831,11 @@ export class AgentService {
        * intact (normal turn path).
        */
       allowedTools?: string[];
+      /** Internal handoff so the turn owner persists the exact routed card. */
+      onPricingResolved?: (
+        model: string,
+        price: Awaited<ReturnType<typeof preflightModelPricing>>,
+      ) => void;
     },
   ): AsyncGenerator<AgentStreamEvent> {
     // Provider credentials are resolved only from the authenticated Platos
@@ -5075,11 +5134,12 @@ export class AgentService {
     // Cost: one ~10-token round-trip when fallback is configured (~$0.0001).
     // No cost when an agent has no fallback rules — the helper returns the
     // primary route immediately.
-    const { apiKey, model, routeLabel } = await this.resolveRouteWithFallback(
+    const { apiKey, model, routeLabel, modelString, price } = await this.resolveRouteWithFallback(
       agentConfig,
       scope,
       agentRetryRules,
     );
+    turnOverrides?.onPricingResolved?.(modelString, price);
     if (routeLabel) {
       this.logger.log(
         `[agent.stream] LAUNCH-4 fallback route '${routeLabel}' selected after primary failed pre-stream ping`,
@@ -6584,6 +6644,7 @@ export class AgentService {
       abortSignal?: AbortSignal;
     },
   ): Promise<any> {
+    await preflightModelPricing(this.costService, agentConfig.model);
     const apiKey = await this.resolveApiKey(agentConfig.model, scope, agentConfig.providerKeyId);
     const runtime = await this.resolveProviderRuntimeOptions(agentConfig.model, scope);
     // LAUNCH-2 — per-agent retry rules override the built-in defaults.

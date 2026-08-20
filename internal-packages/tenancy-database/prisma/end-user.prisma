@@ -39,6 +39,12 @@ enum ApprovalStatus {
   EXPIRED
 }
 
+enum ModelRateSource {
+  LITELLM
+  VERIFIED_PROVIDER
+  UNAVAILABLE
+}
+
 /// Restricted data-plane projection. Environment, Agent, Tool, credentials,
 /// policy, and every operator/configuration model are intentionally absent.
 model EndUser {
@@ -186,6 +192,24 @@ model Step {
   cacheReadInputTokens     Int?
   reasoningTokens          Int?
   costCents                Decimal?   @db.Decimal(18, 6)
+  /// Immutable USD-per-token rates and provenance used to compute costCents.
+  modelPriceId             String?    @db.Uuid
+  inputRate                Decimal?   @db.Decimal(24, 12)
+  outputRate               Decimal?   @db.Decimal(24, 12)
+  cacheReadRate            Decimal?   @db.Decimal(24, 12)
+  cacheWriteRate           Decimal?   @db.Decimal(24, 12)
+  inputRateSource          ModelRateSource?
+  outputRateSource         ModelRateSource?
+  cacheReadRateSource      ModelRateSource?
+  cacheWriteRateSource     ModelRateSource?
+  inputRateObservedAt      DateTime?
+  outputRateObservedAt     DateTime?
+  cacheReadRateObservedAt  DateTime?
+  cacheWriteRateObservedAt DateTime?
+  inputRateSourceRef       String?
+  outputRateSourceRef      String?
+  cacheReadRateSourceRef   String?
+  cacheWriteRateSourceRef  String?
   latencyMs                Int?
   error                    String?
   startedAt                DateTime?
@@ -196,6 +220,7 @@ model Step {
   toolCalls ToolCall[]
 
   @@unique([turnId, sequence])
+  @@index([modelPriceId])
 }
 
 model ToolCall {

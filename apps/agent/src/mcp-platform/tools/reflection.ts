@@ -36,6 +36,7 @@ import type { SpansService, PlatosSpan } from "../../monitoring/spans.service";
 import type { ToolAuditService } from "../../monitoring/tool-audit.service";
 import type { MonitoringApprovalsService } from "../../monitoring/approvals.service";
 import type { CostService } from "../../monitoring/cost.service";
+import { preflightModelPricing } from "../../monitoring/model-pricing-preflight";
 import type { McpToolHandler } from "../mcp-router";
 import type { ControlDatabaseClient } from "../../shared/database.provider";
 import type { RequestScope } from "../../auth/scope.guard";
@@ -476,6 +477,18 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
             : "\n\n--- SIMULATION MODE ---\nNo tools are available. Respond based on the user message alone.\n--- END SIMULATION ---\n";
 
         const model = resolveModelForSimulation(agent.model);
+        let simulationPrice: Awaited<ReturnType<typeof preflightModelPricing>>;
+        try {
+          simulationPrice = await preflightModelPricing(cost, agent.model);
+        } catch (err: any) {
+          return {
+            agentId,
+            simulated: true,
+            code: err?.code ?? "model_pricing_unavailable",
+            error: err?.message ?? "Canonical model pricing is unavailable.",
+            durationMs: 0,
+          };
+        }
 
         const startMs = Date.now();
         // PRELAUNCH-A2-2 — Vercel AI SDK v6 renamed `promptTokens` →
@@ -535,9 +548,7 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
           ? { note: "LLM output appears to reference a tool call — text-match heuristic only.", hint: "Add a mockToolResults entry keyed by the tool name to feed a canned result." }
           : null;
 
-        // Rough cost estimate via token counts. No provider-specific
-        // per-token pricing table here — callers can derive cents from
-        // the CostService schema if they need exact numbers.
+        // Resolve the exact canonical four-rate cost from the token counts.
         // PRELAUNCH-A2-2 — read v6 token field names.
         const promptTokens = Number(result.usage?.inputTokens ?? 0) || 0;
         const completionTokens = Number(result.usage?.outputTokens ?? 0) || 0;
@@ -561,51 +572,34 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
           Number(reflMeta?.google?.usageMetadata?.thoughtsTokenCount ?? 0) ||
           Number(reflMeta?.vertex?.usageMetadata?.thoughtsTokenCount ?? 0);
 
-        // Phase-3 S3 — record the real provider spend through CostService
-        // so the dashboard doesn't undercount (shadow-spend fix). Coarse
-        // $0.80/1M input + $4/1M output estimate matches the eval-judge
-        // path until a generic per-model pricing helper exists. Fail-open:
-        // cost recording must NEVER break the simulation response.
-        const costCentsEstimate =
-          promptTokens > 0 || completionTokens > 0
-            ? Math.round(
-                ((promptTokens / 1_000_000) * 80 +
-                  (completionTokens / 1_000_000) * 400) *
-                  100,
-              ) / 100
-            : 0;
-        if (cost && costCentsEstimate > 0) {
-          try {
-            cost
-              .recordAuxiliaryCost({
-                scope: tuple(scope),
-                kind: "mcp.simulate_turn",
-                model: agent.model,
-                costCents: costCentsEstimate,
-                inputTokens: promptTokens,
-                outputTokens: completionTokens,
-                // PRELAUNCH-A1-7 — fan out cache + reasoning slices so
-                // simulate_turn spend on Sonnet (cache hits) / o-series
-                // (reasoning tokens) is fully attributed.
-                cacheReadInputTokens: reflCacheRead > 0 ? reflCacheRead : undefined,
-                cacheCreationInputTokens:
-                  reflCacheCreation > 0 ? reflCacheCreation : undefined,
-                reasoningTokens: reflReasoning > 0 ? reflReasoning : undefined,
-                agentId: agent.id,
-              })
-              .catch((err) => {
-                // eslint-disable-next-line no-console
-                console.warn(
-                  "[mcp.simulate_turn] recordAuxiliaryCost failed (fail-open):",
-                  err?.message ?? err,
-                );
-              });
-          } catch (err: any) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              "[mcp.simulate_turn] recordAuxiliaryCost threw sync (fail-open):",
-              err?.message ?? err,
-            );
+        // Pricing was resolved before provider invocation. Attribution is
+        // awaited so a successful response cannot silently lose its cost.
+        let costEstimateCents: number | null = null;
+        if (promptTokens > 0 || completionTokens > 0) {
+          const pricingCost = cost!;
+          const pricedUsage = pricingCost.priceUsageFromSnapshot(
+            agent.model,
+            simulationPrice,
+            promptTokens,
+            completionTokens,
+            reflCacheCreation,
+            reflCacheRead,
+          );
+          costEstimateCents = pricedUsage.costCents;
+          if (pricedUsage.costCents > 0) {
+            await pricingCost.recordAuxiliaryCost({
+              scope: tuple(scope),
+              kind: "mcp.simulate_turn",
+              model: agent.model,
+              costCents: pricedUsage.costCents,
+              inputTokens: promptTokens,
+              outputTokens: completionTokens,
+              cacheReadInputTokens: reflCacheRead > 0 ? reflCacheRead : undefined,
+              cacheCreationInputTokens:
+                reflCacheCreation > 0 ? reflCacheCreation : undefined,
+              reasoningTokens: reflReasoning > 0 ? reflReasoning : undefined,
+              agentId: agent.id,
+            });
           }
         }
 
@@ -629,7 +623,7 @@ export function buildReflectionToolHandlers(deps: ReflectionDeps): McpToolHandle
             outputTokens: completionTokens,
             totalTokens: promptTokens + completionTokens,
           },
-          costEstimateCents: costCentsEstimate || null,
+          costEstimateCents,
           durationMs,
           // eslint-disable-next-line max-len
           note: "Simplified K.16 simulate_turn — single LLM hop, no tool dispatch. See TODO(K.16.1) for multi-hop mock-executor variant.",

@@ -36,6 +36,8 @@ import { ToolSyncWsService } from "../tool-gateway/tool-sync-ws.service";
 import { AuthService } from "../auth/auth.service";
 import { StreamingService } from "../streaming/streaming.service";
 import { CostService } from "../monitoring/cost.service";
+import { assertCostCatalogIngestion } from "../monitoring/cost-catalog-ingestion";
+import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 import { SpansService } from "../monitoring/spans.service";
 import { TraceService } from "../monitoring/trace.service";
 import { UtilizationService } from "../monitoring/utilization.service";
@@ -3785,6 +3787,17 @@ export class AgentController {
       ? costRows.find((r) => r.userId === externalUserId)?.costCents ?? 0
       : 0;
 
+    const summaryModel = "anthropic:claude-haiku-4-5-20251001";
+    let summaryPrice: Awaited<ReturnType<typeof preflightModelPricing>>;
+    try {
+      summaryPrice = await preflightModelPricing(this.costService, summaryModel);
+    } catch (error: any) {
+      return {
+        code: error?.code ?? "model_pricing_unavailable",
+        error: error?.message ?? "Canonical model pricing is unavailable.",
+      };
+    }
+
     // Resolve Anthropic key
     const anthropicKey = await this.agentService.resolvePublicApiKey(this.scopeTuple(scope), "anthropic");
     if (!anthropicKey) {
@@ -3843,14 +3856,37 @@ Write the summary now:`;
       // Express Request under Node 18+. Without this, an admin who
       // navigates away mid-summary keeps Anthropic billing.
       const reqSignal = (req as unknown as { signal?: AbortSignal }).signal;
-      const { text } = await generateText({
+      const generated = await generateText({
         model: anthropicClient("claude-haiku-4-5-20251001"),
         messages: [{ role: "user", content: prompt }],
         maxOutputTokens: 600,
         temperature: 0.3,
         abortSignal: reqSignal,
       });
-      return { summary: text.trim(), generatedAt: new Date().toISOString() };
+      const usage = generated.usage;
+      const inputTokens = usage?.inputTokens ?? 0;
+      const outputTokens = usage?.outputTokens ?? 0;
+      if (inputTokens > 0 || outputTokens > 0) {
+        const pricedUsage = this.costService.priceUsageFromSnapshot(
+          summaryModel,
+          summaryPrice,
+          inputTokens,
+          outputTokens,
+          usage?.inputTokenDetails?.cacheWriteTokens ?? 0,
+          usage?.inputTokenDetails?.cacheReadTokens ?? 0,
+        );
+        await this.costService.recordAuxiliaryCost({
+          scope: this.scopeTuple(scope),
+          kind: "monitoring-user-summary",
+          model: summaryModel,
+          costCents: pricedUsage.costCents,
+          inputTokens,
+          outputTokens,
+          agentId: scope.agentId,
+          userId: scope.userId,
+        });
+      }
+      return { summary: generated.text.trim(), generatedAt: new Date().toISOString() };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "unknown error";
       return { error: `Summary generation failed: ${msg}` };
@@ -4700,34 +4736,18 @@ Write the summary now:`;
   @Post("monitoring/cost/catalog")
   async ingestCostCatalog(
     @Req() req: Request,
-    @Body() body: { catalog: Record<string, Record<string, unknown>> },
+    @Body() body: { catalog: Record<string, Record<string, unknown>>; fetchedAt: string },
   ) {
-    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
-    if (!expected) {
-      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
-    }
-    // PPR-14: timing-safe compare to prevent brute-force token recovery
-    // via response-time analysis. `!==` / `===` compares byte-by-byte with
-    // early exit, leaking position of first differing byte.
-    const provided = req.headers["x-platos-internal-auth"];
-    const isValid =
-      typeof provided === "string" &&
-      provided.length === expected.length &&
-      (() => {
-        try {
-          return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
-        } catch {
-          return false;
-        }
-      })();
-    if (!isValid) {
-      return { status: "forbidden" };
-    }
-    if (!body?.catalog || typeof body.catalog !== "object") {
-      return { status: "invalid", reason: "catalog missing" };
-    }
-    await this.costService.ingestCatalog(body.catalog as any);
-    return { status: "ok", modelCount: Object.keys(body.catalog).length };
+    const accepted = assertCostCatalogIngestion(
+      env.PLATOS_INTERNAL_AUTH_TOKEN,
+      req.headers["x-platos-internal-auth"],
+      body,
+    );
+    const result = await this.costService.ingestCatalog(
+      accepted.catalog,
+      accepted.fetchedAt,
+    );
+    return { status: "ok", ...result };
   }
 
   /**

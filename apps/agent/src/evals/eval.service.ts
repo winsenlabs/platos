@@ -1,4 +1,4 @@
-import { Injectable, Inject, Optional } from "@nestjs/common";
+import { Injectable, Inject, Logger } from "@nestjs/common";
 import { generateText } from "ai";
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import { openai, createOpenAI } from "@ai-sdk/openai";
@@ -9,6 +9,7 @@ import type { RequestScope } from "../auth/scope.guard";
 import type { EvalCriterionRecord } from "./criterion.service";
 import { CriterionService } from "./criterion.service";
 import { CostService } from "../monitoring/cost.service";
+import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -76,7 +77,7 @@ export class SelfEvaluationError extends Error {
   }
 }
 
-const DEFAULT_JUDGE_MODEL = "anthropic:claude-haiku-4-5-20251001";
+export const DEFAULT_JUDGE_MODEL = "anthropic:claude-haiku-4-5-20251001";
 
 function resolveJudgeModel(modelString: string, apiKey?: string) {
   const colonIdx = modelString.indexOf(":");
@@ -184,6 +185,8 @@ function parseJudgeResponse(
  */
 @Injectable()
 export class EvalService {
+  private readonly logger = new Logger(EvalService.name);
+
   private prisma: any;
 
   constructor(
@@ -192,7 +195,7 @@ export class EvalService {
     private readonly criterionService: CriterionService,
     // EOBD.34 — inject optional CostService so judge-LLM cost flows
     // into the central cost table, not just AgentEval.costCents.
-    @Optional() private readonly costService?: CostService,
+    private readonly costService: CostService,
   ) {
     this.prisma = prisma;
   }
@@ -267,6 +270,7 @@ export class EvalService {
     }
 
     const judgeModelString = criterion.judgeModel || DEFAULT_JUDGE_MODEL;
+    const judgePrice = await preflightModelPricing(this.costService, judgeModelString);
 
     // Theme J invariant §5 — no self-evaluation.
     const agentModel = binding.activeAgentVersion.model;
@@ -399,24 +403,25 @@ export class EvalService {
       ? { score: 0, rationale: judgeError, passed: false }
       : parseJudgeResponse(rawText, criterion);
 
-    // Cost accounting — cheap coarse estimate (the full CostService wiring
-    // lives in Theme E.3; this keeps the judge costs locally visible until
-    // a generic post-turn cost calculator is available here too).
-    const costCents =
-      usage.inputTokens && usage.outputTokens
-        ? Math.round(
-            ((usage.inputTokens / 1_000_000) * 80 +
-              (usage.outputTokens / 1_000_000) * 400) *
-              100,
-          ) / 100
-        : null;
+    let costCents: number | null = null;
+    if ((usage.inputTokens ?? 0) > 0 || (usage.outputTokens ?? 0) > 0) {
+        const pricedUsage = this.costService.priceUsageFromSnapshot(
+          judgeModelString,
+          judgePrice,
+          usage.inputTokens ?? 0,
+          usage.outputTokens ?? 0,
+          usage.cacheCreationInputTokens ?? 0,
+          usage.cacheReadInputTokens ?? 0,
+        );
+        costCents = pricedUsage.costCents;
+    }
 
     // EOBD.34 — bump central cost table too so dashboards don't
     // understate spend by the judge budget. Best-effort; never fails
     // the eval.
-    if (this.costService && costCents && costCents > 0) {
-      this.costService
-        .recordAuxiliaryCost({
+    if (costCents && costCents > 0) {
+      try {
+        await this.costService.recordAuxiliaryCost({
           scope,
           kind: "eval-judge",
           model: judgeModelString,
@@ -430,8 +435,12 @@ export class EvalService {
           cacheCreationInputTokens: usage.cacheCreationInputTokens,
           reasoningTokens: usage.reasoningTokens,
           agentId: input.agentId,
-        })
-        .catch(() => undefined);
+        });
+      } catch (error: any) {
+        // AgentEval below still persists the exact cost, so attribution is not
+        // lost when the rebuildable Redis rollup is temporarily unavailable.
+        this.logger.warn(`[eval] auxiliary cost recording failed: ${error?.message ?? error}`);
+      }
     }
 
     const row = await this.prisma.agentEval.create({

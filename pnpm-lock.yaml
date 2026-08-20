@@ -151,9 +151,6 @@ importers:
       '@e2b/code-interpreter':
         specifier: ^2.4.0
         version: 2.4.0
-      '@internal/cost-rates':
-        specifier: workspace:*
-        version: link:../../internal-packages/cost-rates
       '@internal/docs':
         specifier: workspace:*
         version: link:../../internal-packages/docs
@@ -353,15 +350,9 @@ importers:
       '@internal/compute':
         specifier: workspace:*
         version: link:../../internal-packages/compute
-      '@internal/cost-rates':
-        specifier: workspace:*
-        version: link:../../internal-packages/cost-rates
       '@internal/docs':
         specifier: workspace:*
         version: link:../../internal-packages/docs
-      '@internal/llm-model-catalog':
-        specifier: workspace:*
-        version: link:../../internal-packages/llm-model-catalog
       '@internal/redis':
         specifier: workspace:*
         version: link:../../internal-packages/redis

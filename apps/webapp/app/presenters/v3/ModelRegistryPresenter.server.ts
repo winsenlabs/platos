@@ -1,6 +1,6 @@
 import { ClickHouse } from "@internal/clickhouse";
-import { modelCatalog } from "@internal/llm-model-catalog";
 import { PrismaClientOrTransaction } from "~/db.server";
+import { platosControlDatabase } from "~/services/platosControlDatabase.server";
 import { BasePresenter } from "./basePresenter.server";
 import { z } from "zod";
 
@@ -10,42 +10,6 @@ function formatDateForCH(date: Date): string {
 }
 
 // --- Helpers ---
-
-/** Infer provider from model name when not stored in the DB. */
-function inferProvider(modelName: string): string {
-  const lower = modelName.toLowerCase();
-  // OpenAI
-  if (/^(gpt-|o[1-9]|chatgpt|davinci|babbage|curie|ada|text-embedding|text-davinci|text-ada|text-babbage|text-curie|ft:)/.test(lower)) return "openai";
-  // Anthropic
-  if (lower.startsWith("claude-")) return "anthropic";
-  // Google
-  if (/^(gemini-|palm-|text-bison|chat-bison|code-bison|codechat-bison|text-unicorn|textembedding-gecko)/.test(lower)) return "google";
-  // Meta
-  if (/^(llama|code-llama|codellama)/.test(lower)) return "meta";
-  // Mistral
-  if (/^(mistral|mixtral|codestral|pixtral|ministral)/.test(lower)) return "mistral";
-  // xAI
-  if (lower.startsWith("grok")) return "xai";
-  // DeepSeek
-  if (lower.startsWith("deepseek")) return "deepseek";
-  // Cohere
-  if (/^(command|embed-|rerank-)/.test(lower)) return "cohere";
-  // AI21
-  if (/^(jamba|j2-)/.test(lower)) return "ai21";
-  // Amazon
-  if (/^(amazon\.|titan)/.test(lower)) return "amazon";
-  // Qwen (Alibaba)
-  if (lower.startsWith("qwen")) return "qwen";
-  // Perplexity
-  if (/^(pplx-|sonar-)/.test(lower)) return "perplexity";
-  // Nous
-  if (lower.startsWith("nous-")) return "nous";
-  // Provider prefix format: "provider/model" (e.g. "openai/gpt-4o")
-  if (lower.includes("/")) {
-    return lower.split("/")[0];
-  }
-  return "unknown";
-}
 
 /** Format a model as provider:name (e.g. "openai:gpt-5"). */
 export function formatModelId(provider: string, modelName: string): string {
@@ -68,10 +32,27 @@ export type ModelCatalogItem = {
   features: string[];
   inputPrice: number | null;
   outputPrice: number | null;
-  /** When the model was publicly released (from startDate on LlmModel). */
+  cacheReadPrice: number | null;
+  cacheWritePrice: number | null;
+  priceEffectiveFrom: string | null;
+  priceProvenance: ModelPriceProvenance | null;
+  /** When the model was publicly released. */
   releaseDate: string | null;
   /** Dated variants of this model (only populated on base models). */
   variants: ModelVariant[];
+};
+
+export type ModelRateProvenance = {
+  source: string;
+  observedAt: string;
+  sourceRef: string | null;
+};
+
+export type ModelPriceProvenance = {
+  input: ModelRateProvenance;
+  output: ModelRateProvenance;
+  cacheRead: ModelRateProvenance;
+  cacheWrite: ModelRateProvenance;
 };
 
 export type ModelVariant = {
@@ -93,18 +74,52 @@ export type ModelDetail = ModelCatalogItem & {
     name: string;
     isDefault: boolean;
     prices: Record<string, number>;
+    provenance: ModelPriceProvenance;
   }>;
 };
 
-function buildFeatures(
-  capabilities: string[],
-  catalogEntry: { supportsStructuredOutput: boolean; supportsParallelToolCalls: boolean; supportsStreamingToolCalls: boolean } | undefined
-): string[] {
-  const features = new Set(capabilities);
-  if (catalogEntry?.supportsStructuredOutput) features.add("structured_output");
-  if (catalogEntry?.supportsParallelToolCalls) features.add("parallel_tool_calls");
-  if (catalogEntry?.supportsStreamingToolCalls) features.add("streaming_tool_calls");
-  return Array.from(features);
+function buildFeatures(capabilities: string[]): string[] {
+  return Array.from(new Set(capabilities));
+}
+
+type CanonicalPriceForDisplay = {
+  inputSource: string;
+  outputSource: string;
+  cacheReadSource: string;
+  cacheWriteSource: string;
+  inputObservedAt: Date;
+  outputObservedAt: Date;
+  cacheReadObservedAt: Date;
+  cacheWriteObservedAt: Date;
+  inputSourceRef: string | null;
+  outputSourceRef: string | null;
+  cacheReadSourceRef: string | null;
+  cacheWriteSourceRef: string | null;
+};
+
+function priceProvenance(price: CanonicalPriceForDisplay): ModelPriceProvenance {
+  return {
+    input: {
+      source: price.inputSource,
+      observedAt: price.inputObservedAt.toISOString(),
+      sourceRef: price.inputSourceRef,
+    },
+    output: {
+      source: price.outputSource,
+      observedAt: price.outputObservedAt.toISOString(),
+      sourceRef: price.outputSourceRef,
+    },
+    cacheRead: {
+      source: price.cacheReadSource,
+      observedAt: price.cacheReadObservedAt.toISOString(),
+      sourceRef: price.cacheReadSourceRef,
+    },
+    cacheWrite: {
+      source: price.cacheWriteSource,
+      observedAt: price.cacheWriteObservedAt.toISOString(),
+      sourceRef: price.cacheWriteSourceRef,
+    },
+  };
 }
 
 export type ModelMetricsPoint = {
@@ -189,165 +204,108 @@ export class ModelRegistryPresenter extends BasePresenter {
     this.clickhouse = clickhouse;
   }
 
-  /** List all visible global models with pricing, grouped by provider. */
+  /** List all visible canonical models with their current four-rate card. */
   async getModelCatalog(): Promise<ModelCatalogGroup[]> {
-    const models = await this._replica.llmModel.findMany({
-      where: {
-        projectId: null,
-        isHidden: false,
-      },
-      include: {
-        pricingTiers: {
-          where: { isDefault: true },
-          include: { prices: true },
-          take: 1,
-        },
-      },
-      orderBy: { modelName: "asc" },
+    const models = await platosControlDatabase.model.findMany({
+      where: { isHidden: false },
+      include: { prices: { orderBy: { effectiveFrom: "desc" }, take: 1 } },
+      orderBy: { name: "asc" },
     });
 
     type CatalogItemWithBase = ModelCatalogItem & { _baseModelName: string | null };
-    const items: CatalogItemWithBase[] = models.map((m) => {
-      const defaultTier = m.pricingTiers[0];
-      const prices = defaultTier?.prices ?? [];
-      const inputPrice = prices.find((p) => p.usageType === "input");
-      const outputPrice = prices.find((p) => p.usageType === "output");
-      const provider = m.provider ?? inferProvider(m.modelName);
-      const catalogEntry = modelCatalog[m.modelName];
-
+    const items: CatalogItemWithBase[] = models.map((model) => {
+      const price = model.prices[0];
       return {
-        friendlyId: m.friendlyId,
-        modelName: m.modelName,
-        provider,
-        displayId: formatModelId(provider, m.modelName),
-        description: m.description,
-        contextWindow: m.contextWindow,
-        maxOutputTokens: m.maxOutputTokens,
-        features: buildFeatures(m.capabilities, catalogEntry),
-        inputPrice: inputPrice ? Number(inputPrice.price) : null,
-        outputPrice: outputPrice ? Number(outputPrice.price) : null,
-        releaseDate: m.startDate ? m.startDate.toISOString().split("T")[0] : null,
+        friendlyId: model.id,
+        modelName: model.name,
+        provider: model.provider,
+        displayId: formatModelId(model.provider, model.name),
+        description: model.description,
+        contextWindow: model.contextWindow,
+        maxOutputTokens: model.maxOutputTokens,
+        features: buildFeatures(model.capabilities),
+        inputPrice: price ? Number(price.inputRate) : null,
+        outputPrice: price ? Number(price.outputRate) : null,
+        cacheReadPrice: price ? Number(price.cacheReadRate) : null,
+        cacheWritePrice: price ? Number(price.cacheWriteRate) : null,
+        priceEffectiveFrom: price?.effectiveFrom.toISOString() ?? null,
+        priceProvenance: price ? priceProvenance(price) : null,
+        releaseDate: model.releaseDate?.toISOString().split("T")[0] ?? null,
         variants: [],
-        _baseModelName: m.baseModelName,
+        _baseModelName: model.baseModelName,
       };
     });
 
-    // Normalize version dots for grouping: "3.5" → "3-5", "4.1" → "4-1"
     const normalizeForGrouping = (name: string) => name.replace(/(\d)\.(\d)/g, "$1-$2");
-
-    // Group variants by their normalized base model name
     const variantGroups = new Map<string, CatalogItemWithBase[]>();
-
     for (const item of items) {
-      const groupKey = normalizeForGrouping(item._baseModelName ?? item.modelName);
-      const group = variantGroups.get(groupKey) ?? [];
-      group.push(item);
-      variantGroups.set(groupKey, group);
+      const key = normalizeForGrouping(item._baseModelName ?? item.modelName);
+      variantGroups.set(key, [...(variantGroups.get(key) ?? []), item]);
     }
 
-    // For each group, pick the best representative as the "card" model
-    // and nest the rest as variants
     const baseModels: ModelCatalogItem[] = [];
-
-    for (const [groupKey, group] of variantGroups) {
-      if (group.length === 1) {
-        // Standalone model, no variants
-        baseModels.push(group[0]);
-        continue;
-      }
-
-      // Pick representative: prefer the actual base model (no _baseModelName),
-      // then "-latest" variant, then the newest by release date
-      let representative = group.find((m) => !m._baseModelName)
-        ?? group.find((m) => m.modelName.endsWith("-latest"))
-        ?? group.sort((a, b) => {
-            if (!a.releaseDate && !b.releaseDate) return 0;
-            if (!a.releaseDate) return 1;
-            if (!b.releaseDate) return -1;
-            return b.releaseDate.localeCompare(a.releaseDate);
-          })[0];
-
-      // Nest the others as variants, sorted newest first
-      const others = group
-        .filter((m) => m !== representative)
-        .sort((a, b) => {
-          if (!a.releaseDate && !b.releaseDate) return a.modelName.localeCompare(b.modelName);
-          if (!a.releaseDate) return 1;
-          if (!b.releaseDate) return -1;
-          return b.releaseDate.localeCompare(a.releaseDate);
-        });
-
-      representative.variants = others.map((m) => ({
-        friendlyId: m.friendlyId,
-        modelName: m.modelName,
-        displayId: m.displayId,
-        releaseDate: m.releaseDate,
-      }));
-
+    for (const group of variantGroups.values()) {
+      const representative = group.find((model) => !model._baseModelName)
+        ?? group.find((model) => model.modelName.endsWith("-latest"))
+        ?? group[0];
+      if (!representative) continue;
+      representative.variants = group
+        .filter((model) => model !== representative)
+        .map((model) => ({
+          friendlyId: model.friendlyId,
+          modelName: model.modelName,
+          displayId: model.displayId,
+          releaseDate: model.releaseDate,
+        }));
       baseModels.push(representative);
     }
 
-    // Group by provider, sort models within each group by release date (newest first)
     const groups = new Map<string, ModelCatalogItem[]>();
-    for (const item of baseModels) {
-      const group = groups.get(item.provider) ?? [];
-      group.push(item);
-      groups.set(item.provider, group);
+    for (const model of baseModels) {
+      groups.set(model.provider, [...(groups.get(model.provider) ?? []), model]);
     }
-
     return Array.from(groups.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([provider, models]) => ({
-        provider,
-        models: models.sort((a, b) => {
-          if (!a.releaseDate && !b.releaseDate) return a.modelName.localeCompare(b.modelName);
-          if (!a.releaseDate) return 1;
-          if (!b.releaseDate) return -1;
-          return b.releaseDate.localeCompare(a.releaseDate);
-        }),
-      }));
+      .map(([provider, groupedModels]) => ({ provider, models: groupedModels }));
   }
 
-  /** Get a single model with full pricing details. */
+  /** Get one canonical model and its complete append-only price history. */
   async getModelDetail(friendlyId: string): Promise<ModelDetail | null> {
-    const model = await this._replica.llmModel.findFirst({
-      where: { friendlyId },
-      include: {
-        pricingTiers: {
-          include: { prices: true },
-          orderBy: { priority: "asc" },
-        },
-      },
+    const model = await platosControlDatabase.model.findUnique({
+      where: { id: friendlyId },
+      include: { prices: { orderBy: { effectiveFrom: "desc" } } },
     });
-
     if (!model) return null;
-
-    const defaultTier = model.pricingTiers.find((t) => t.isDefault) ?? model.pricingTiers[0];
-    const defaultPrices = defaultTier?.prices ?? [];
-    const inputPrice = defaultPrices.find((p) => p.usageType === "input");
-    const outputPrice = defaultPrices.find((p) => p.usageType === "output");
-    const provider = model.provider ?? inferProvider(model.modelName);
-    const catalogEntry = modelCatalog[model.modelName];
-
+    const current = model.prices[0];
     return {
-      friendlyId: model.friendlyId,
-      modelName: model.modelName,
-      provider,
-      displayId: formatModelId(provider, model.modelName),
+      friendlyId: model.id,
+      modelName: model.name,
+      provider: model.provider,
+      displayId: formatModelId(model.provider, model.name),
       description: model.description,
       contextWindow: model.contextWindow,
       maxOutputTokens: model.maxOutputTokens,
-      features: buildFeatures(model.capabilities, catalogEntry),
-      inputPrice: inputPrice ? Number(inputPrice.price) : null,
-      outputPrice: outputPrice ? Number(outputPrice.price) : null,
-      releaseDate: model.startDate ? model.startDate.toISOString().split("T")[0] : null,
+      features: buildFeatures(model.capabilities),
+      inputPrice: current ? Number(current.inputRate) : null,
+      outputPrice: current ? Number(current.outputRate) : null,
+      cacheReadPrice: current ? Number(current.cacheReadRate) : null,
+      cacheWritePrice: current ? Number(current.cacheWriteRate) : null,
+      priceEffectiveFrom: current?.effectiveFrom.toISOString() ?? null,
+      priceProvenance: current ? priceProvenance(current) : null,
+      releaseDate: model.releaseDate?.toISOString().split("T")[0] ?? null,
       variants: [],
-      matchPattern: model.matchPattern,
-      source: model.source,
-      pricingTiers: model.pricingTiers.map((t) => ({
-        name: t.name,
-        isDefault: t.isDefault,
-        prices: Object.fromEntries(t.prices.map((p) => [p.usageType, Number(p.price)])),
+      matchPattern: model.key,
+      source: "canonical",
+      pricingTiers: model.prices.map((price) => ({
+        name: price.effectiveFrom.toISOString(),
+        isDefault: price.id === current?.id,
+        prices: {
+          input: Number(price.inputRate),
+          output: Number(price.outputRate),
+          cacheRead: Number(price.cacheReadRate),
+          cacheWrite: Number(price.cacheWriteRate),
+        },
+        provenance: priceProvenance(price),
       })),
     };
   }

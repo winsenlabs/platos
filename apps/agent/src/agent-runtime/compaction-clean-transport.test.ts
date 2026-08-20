@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ModelRateSource } from "@platos/tenancy-database";
 
 const { generateTextMock } = vi.hoisted(() => ({ generateTextMock: vi.fn() }));
 vi.mock("ai", async () => {
@@ -62,11 +63,19 @@ function setup() {
     })),
   };
   const conversationService = { prisma };
+  const costService = {
+    resolvePrice: vi.fn().mockResolvedValue({
+      input: { source: ModelRateSource.LITELLM },
+      output: { source: ModelRateSource.LITELLM },
+    }),
+    priceUsageFromSnapshot: vi.fn(),
+    recordAuxiliaryCost: vi.fn(),
+  };
   const service = new AgentTaskService(
     agentService as any,
     conversationService as any,
     {} as any,
-    {} as any,
+    costService as any,
     {} as any,
     {} as any,
     {} as any,

@@ -521,7 +521,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      # A fresh control database bootstraps the canonical LiteLLM catalogue
+      # before the agent listens for turn traffic. Allow its bounded fetch and
+      # transactional ingestion to complete on slower hosts.
+      start_period: 180s
 
   webapp:
     build:

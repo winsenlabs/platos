@@ -20,6 +20,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { env } from "../shared/env";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 import { ProviderRuntimeError } from "../providers/provider-runtime.error";
+import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 import { randomUUID } from "node:crypto";
 
 export const TURN_MUTEX_TTL_MS = 30_000;
@@ -624,6 +625,8 @@ export class AgentTaskService {
       }
     }
     openStepModel = config.model;
+    let pricedModel = config.model;
+    let turnPrice: Awaited<ReturnType<typeof preflightModelPricing>> | null = null;
 
     // PRA-AC: stamp clusteringId onto scope so createThread + getThread use it.
     // This propagates into conversation.service.ts createThread (clusteringId on thread)
@@ -805,6 +808,11 @@ export class AgentTaskService {
         abortSignal: composedSignal,
         // W.1 — narrow the meta-tool matrix for per-item batch turns.
         allowedTools: options.allowedTools,
+        onPricingResolved: (model, price) => {
+          pricedModel = model;
+          turnPrice = price;
+          openStepModel = model;
+        },
       },
     )) {
       if (event.type === "error" && event.code === "provider_unavailable") {
@@ -943,27 +951,17 @@ export class AgentTaskService {
     // slice only — otherwise we double-bill cache hits at 1.0× input on top
     // of the cache-discounted rate. `calculateCostWithCache` does the same
     // strip internally, so passing the total to it is correct.
-    const noCacheInputTokens = Math.max(
-      0,
-      totalInputTokens - totalCacheCreationTokens - totalCacheReadTokens,
-    );
-    const costCents = await this.costService.calculateCost(
-      config.model,
-      noCacheInputTokens,
+    if (!turnPrice) throw new ProviderRuntimeError("model_pricing_unavailable");
+    const pricedUsage = this.costService.priceUsageFromSnapshot(
+      pricedModel,
+      turnPrice,
+      totalInputTokens,
       totalOutputTokens,
+      totalCacheCreationTokens,
+      totalCacheReadTokens,
     );
-    // PRELAUNCH-A1-2 — provider-aware cache surcharge. Collapses to
-    // `costCents` when cache telemetry is absent (no cache write/read).
-    const costWithCacheCents =
-      totalCacheCreationTokens > 0 || totalCacheReadTokens > 0
-        ? await this.costService.calculateCostWithCache(
-            config.model,
-            totalInputTokens,
-            totalOutputTokens,
-            totalCacheCreationTokens,
-            totalCacheReadTokens,
-          )
-        : costCents;
+    const costCents = pricedUsage.costCents;
+    const costWithCacheCents = costCents;
 
     // 8a. EOBD.36 — Postgres-first: persist the assistant message
     //     (source of truth) BEFORE any Redis/CH side effect. If
@@ -980,7 +978,7 @@ export class AgentTaskService {
       threadReplyToId: options.replyToMessageId ?? null,
       // PRA-AC: attribute assistant response to the calling agent when in a cluster.
       authorAgentId: config.clusteringId ? agentId : null,
-      model: config.model,
+      model: pricedModel,
       usage: {
         inputTokens: totalInputTokens,
         outputTokens: totalOutputTokens,
@@ -989,6 +987,7 @@ export class AgentTaskService {
         reasoningTokens: totalReasoningTokens,
       },
       costCents: costWithCacheCents,
+      pricing: pricedUsage.price,
       latencyMs: Date.now() - turnStartMs,
       structuredOutput: structuredOutput
         ? { object: structuredOutput.object, attempts: structuredOutput.attempts }
@@ -1031,7 +1030,7 @@ export class AgentTaskService {
           projectId: scope.projectId,
           environmentId: scope.environmentId,
         },
-        thread.id, agentId, config.model,
+        thread.id, agentId, pricedModel,
         totalInputTokens, totalOutputTokens,
         {
           // MC.1 — push cache telemetry through to Redis fan-out.
@@ -1043,6 +1042,7 @@ export class AgentTaskService {
           // doesn't double-bill. `:cost` suffix disambiguates from any
           // future `:reservation` keys under the same prefix.
           idempotencyKey: storedAssistant.id ? `${storedAssistant.id}:cost` : null,
+          pricedUsage,
         },
       );
     } catch {
@@ -1128,8 +1128,8 @@ export class AgentTaskService {
           durationMs: Math.round((llmEndNs - turnStartNs) / 1_000_000),
           status: "ok",
           attributes: {
-            "platos.model": config.model,
-            "platos.provider": config.model.includes(":") ? config.model.split(":")[0]! : "",
+            "platos.model": pricedModel,
+            "platos.provider": pricedModel.includes(":") ? pricedModel.split(":")[0]! : "",
             "platos.input_tokens": totalInputTokens,
             "platos.output_tokens": totalOutputTokens,
             // PRELAUNCH-A1-6 — promote cache + reasoning onto the LLM span.
@@ -1196,7 +1196,7 @@ export class AgentTaskService {
       this.metrics?.turnsTotal.inc({ status: "success" });
       const durSeconds = (Date.now() - turnStartMs) / 1000;
       this.metrics?.turnDurationSeconds.observe({ status: "success" }, durSeconds);
-      const provider = config.model.includes(":") ? config.model.split(":")[0]! : "";
+      const provider = pricedModel.includes(":") ? pricedModel.split(":")[0]! : "";
       // PRELAUNCH-A1-12 — emit one counter per (direction, kind) tuple.
       // `text` is the fresh-token slice (input − cache_read − cache_write
       // for input; output − reasoning for output).
@@ -1207,31 +1207,31 @@ export class AgentTaskService {
       const textOutputTokens = Math.max(0, totalOutputTokens - totalReasoningTokens);
       if (noCacheInput > 0) {
         this.metrics?.tokensTotal.inc(
-          { direction: "input", model: config.model, kind: "text", provider },
+          { direction: "input", model: pricedModel, kind: "text", provider },
           noCacheInput,
         );
       }
       if (totalCacheReadTokens > 0) {
         this.metrics?.tokensTotal.inc(
-          { direction: "input", model: config.model, kind: "cache_read", provider },
+          { direction: "input", model: pricedModel, kind: "cache_read", provider },
           totalCacheReadTokens,
         );
       }
       if (totalCacheCreationTokens > 0) {
         this.metrics?.tokensTotal.inc(
-          { direction: "input", model: config.model, kind: "cache_write", provider },
+          { direction: "input", model: pricedModel, kind: "cache_write", provider },
           totalCacheCreationTokens,
         );
       }
       if (textOutputTokens > 0) {
         this.metrics?.tokensTotal.inc(
-          { direction: "output", model: config.model, kind: "text", provider },
+          { direction: "output", model: pricedModel, kind: "text", provider },
           textOutputTokens,
         );
       }
       if (totalReasoningTokens > 0) {
         this.metrics?.tokensTotal.inc(
-          { direction: "output", model: config.model, kind: "reasoning", provider },
+          { direction: "output", model: pricedModel, kind: "reasoning", provider },
           totalReasoningTokens,
         );
       }
@@ -1537,12 +1537,34 @@ export class AgentTaskService {
         ...(turn.outputText ? [`ASSISTANT: ${turn.outputText}`] : []),
       ]).join("\n\n");
       const { model, modelString, source } = await this.agentService.resolveCompactionModel(config, scope);
+      const compactionPrice = await preflightModelPricing(this.costService, modelString);
       const summary = await generateText({
         model,
         instructions: "You are a conversation summarizer. Produce a concise, factual summary that preserves key facts, decisions, preferences, and context, without quoting messages verbatim. Keep under 500 words.",
         messages: [{ role: "user" as const, content: conversationText }],
         abortSignal,
       });
+      const compactionUsage = (summary as any).usage;
+      if ((compactionUsage?.inputTokens ?? 0) > 0 || (compactionUsage?.outputTokens ?? 0) > 0) {
+        const priced = this.costService.priceUsageFromSnapshot(
+          modelString,
+          compactionPrice,
+          compactionUsage?.inputTokens ?? 0,
+          compactionUsage?.outputTokens ?? 0,
+          compactionUsage?.inputTokenDetails?.cacheWriteTokens ?? 0,
+          compactionUsage?.inputTokenDetails?.cacheReadTokens ?? 0,
+        );
+        await this.costService.recordAuxiliaryCost({
+          scope: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
+          kind: "compaction",
+          model: modelString,
+          costCents: priced.costCents,
+          inputTokens: compactionUsage?.inputTokens ?? 0,
+          outputTokens: compactionUsage?.outputTokens ?? 0,
+          agentId: scope.agentId,
+          userId: scope.userId,
+        });
+      }
       const lastCompacted = toCompact.at(-1)!;
       const merged = thread.summary ? `${thread.summary}\n\n---\n\n${summary.text}` : summary.text;
       await prisma.$transaction(async (tx: any) => {
@@ -1642,9 +1664,11 @@ export class AgentTaskService {
     });
     if (!row) return;
 
+    const autoNameModel = "anthropic:claude-haiku-4-5-20251001";
+    const autoNamePrice = await preflightModelPricing(this.costService, autoNameModel);
     const model = anthropic("claude-haiku-4-5-20251001");
     // PRELAUNCH-A2-8 — propagate abort signal.
-    const { text } = await generateText({
+    const generated = await generateText({
       model,
       instructions:
         "You generate concise conversation titles. Respond with ONLY the title — no punctuation, no quotes, no explanation. 3-5 words maximum.",
@@ -1656,6 +1680,26 @@ export class AgentTaskService {
       ],
       abortSignal,
     });
+    const { text } = generated;
+    const usage = (generated as any).usage;
+    if ((usage?.inputTokens ?? 0) > 0 || (usage?.outputTokens ?? 0) > 0) {
+      const priced = this.costService.priceUsageFromSnapshot(
+        autoNameModel,
+        autoNamePrice,
+        usage?.inputTokens ?? 0,
+        usage?.outputTokens ?? 0,
+      );
+      await this.costService.recordAuxiliaryCost({
+        scope: { organizationId: scope.organizationId, projectId: scope.projectId, environmentId: scope.environmentId },
+        kind: "thread-auto-name",
+        model: autoNameModel,
+        costCents: priced.costCents,
+        inputTokens: usage?.inputTokens ?? 0,
+        outputTokens: usage?.outputTokens ?? 0,
+        agentId: scope.agentId,
+        userId: scope.userId,
+      });
+    }
 
     const title = text.trim().replace(/[\r\n"'`]/g, "").slice(0, 100);
     if (!title) return;

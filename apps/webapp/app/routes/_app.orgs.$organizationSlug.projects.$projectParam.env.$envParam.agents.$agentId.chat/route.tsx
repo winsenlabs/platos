@@ -38,7 +38,6 @@ import { env as envServer } from "~/env.server";
 import { requireUserId } from "~/services/session.server";
 import { mintPlatosSessionToken } from "~/services/platosSessionToken.server";
 import { agentConversationPath, EnvironmentParamSchema } from "~/utils/pathBuilder";
-import { cacheDiscountLabel } from "~/utils/cacheRates";
 
 export const meta: MetaFunction = () => [{ title: "Agent Chat | Platos" }];
 
@@ -2217,7 +2216,6 @@ export default function AgentChatPage() {
                         const cacheCreationTokens = Number(step.cacheCreation ?? u.inputTokenDetails?.cacheWriteTokens ?? 0);
                         const reasoningTokens = Number(u.reasoningTokens ?? u.outputTokenDetails?.reasoningTokens ?? 0);
                         const noCacheInputTokens = Math.max(0, inputTokens - cacheReadTokens - cacheCreationTokens);
-                        const discountLabel = cacheDiscountLabel(agentModel);
                         return (
                           <div key={i} className="rounded border border-charcoal-700 bg-charcoal-800/50 p-2 space-y-1.5">
                             <div className="flex items-center justify-between">
@@ -2245,7 +2243,7 @@ export default function AgentChatPage() {
                               )}
                               <span>Cache creation</span><span className="text-blue-300 text-right">{cacheCreationTokens}</span>
                               <span>Cache read</span><span className={`text-right ${cacheHit ? "text-emerald-400 font-semibold" : "text-text-dimmed"}`}>
-                                {cacheReadTokens}{cacheHit ? ` ✓ ${discountLabel}` : ""}
+                                {cacheReadTokens}{cacheHit ? " ✓ canonical rate" : ""}
                               </span>
                             </div>
                             {Array.isArray(step.toolCalls) && (step.toolCalls as string[]).length > 0 && (

@@ -105,6 +105,8 @@ export const supportDomainModels = [
   "CredentialSecretVersion",
   "EnvironmentVariable",
   "OAuthConsentTransaction",
+  "Model",
+  "ModelPrice",
 ] as const;
 
 /** All source target models plus independently required clean-slate support models. */

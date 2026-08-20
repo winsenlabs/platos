@@ -3,6 +3,14 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import type { RequestScope } from "../auth/scope.guard";
+import {
+  calculateCanonicalModelCost,
+  PlatosModelPricing,
+  type CanonicalModelPriceSnapshot,
+  type LiteLLMModelCatalog,
+  type PricedModelUsage,
+} from "@platos/tenancy-database";
+import { assertCredibleLiteLLMCatalog } from "./litellm-catalog-validation";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -124,355 +132,18 @@ export interface SkillUsageOverride {
   costCents?: number;
 }
 
-/**
- * Last-known-good fallback prices (cents per 1M tokens). Used only when the
- * LiteLLM live catalog hasn't been fetched yet or the cache is empty. Kept
- * intentionally small — the authoritative prices live in Redis under
- * `cost:model_catalog`, refreshed daily by the `platos.cost.refresh_model_prices`
- * trigger task (see Theme B.10).
- */
-const FALLBACK_PRICING: Record<string, { input: number; output: number }> = {
-  // Anthropic / OpenAI / Google (legacy keys + provider-prefixed copies).
-  "claude-sonnet-4-6": { input: 300, output: 1500 },
-  "claude-opus-4-6": { input: 1500, output: 7500 },
-  "claude-haiku-4-5-20251001": { input: 80, output: 400 },
-  "claude-sonnet-4-20250514": { input: 300, output: 1500 },
-  "claude-opus-4-20250514": { input: 1500, output: 7500 },
-  "gpt-4o": { input: 250, output: 1000 },
-  "gpt-4o-mini": { input: 15, output: 60 },
-  "gpt-4.1": { input: 200, output: 800 },
-  "gpt-4.1-mini": { input: 40, output: 160 },
-  "gemini-2.5-pro": { input: 125, output: 1000 },
-  "gemini-2.5-flash": { input: 15, output: 60 },
-  "gemini-2.0-flash": { input: 10, output: 40 },
-
-  // Together AI — verified against https://www.together.ai/pricing 2026-05-13.
-  // `openai/gpt-oss-120b`: $0.15/M in, $0.60/M out → 15/60 cents/M.
-  // The old `gpt-oss-120b: { 4, 19 }` row had bogus numbers AND a bare key
-  // that never matched `together:openai/gpt-oss-120b` (the actual model
-  // string in agent configs), so cost fell through to the conservative
-  // 100/300 estimator and overcharged by ~500×.
-  "together:openai/gpt-oss-120b": { input: 15, output: 60 },
-  "together:openai/gpt-oss-20b": { input: 5, output: 20 },
-  "together:meta-llama/Llama-3.3-70B-Instruct-Turbo": { input: 88, output: 88 },
-  "together:meta-llama/Llama-3.1-8B-Instruct-Turbo": { input: 18, output: 18 },
-  "together:Qwen/Qwen2.5-72B-Instruct-Turbo": { input: 120, output: 120 },
-  "together:deepseek-ai/DeepSeek-R1": { input: 300, output: 700 },
-
-  // Groq — verified against https://console.groq.com/docs/models 2026-05-13.
-  "groq:llama-3.3-70b-versatile": { input: 59, output: 79 },
-  "groq:llama-3.1-8b-instant": { input: 5, output: 8 },
-  "groq:qwen-2.5-72b": { input: 90, output: 90 },
-  "groq:deepseek-r1-distill-llama-70b": { input: 75, output: 99 },
-  "groq:openai/gpt-oss-120b": { input: 15, output: 75 },
-  "groq:openai/gpt-oss-20b": { input: 10, output: 50 },
-  "groq:mixtral-8x7b-32768": { input: 24, output: 24 },
-
-  // Cerebras — verified against https://inference-docs.cerebras.ai/api-reference/models.
-  "cerebras:llama-3.3-70b": { input: 60, output: 80 },
-  "cerebras:llama-3.1-8b": { input: 10, output: 10 },
-  "cerebras:llama3.1-70b": { input: 60, output: 80 },
-  "cerebras:gpt-oss-120b": { input: 25, output: 25 },
-
-  // Fireworks AI — approximate serverless rates.
-  "fireworks:accounts/fireworks/models/llama-v3p3-70b-instruct": { input: 90, output: 90 },
-  "fireworks:accounts/fireworks/models/deepseek-v3": { input: 90, output: 90 },
-  "fireworks:accounts/fireworks/models/deepseek-r1": { input: 300, output: 800 },
-  "fireworks:accounts/fireworks/models/qwen2p5-72b-instruct": { input: 90, output: 90 },
-
-  // Mistral — verified against https://mistral.ai/news/.
-  "mistral:mistral-large-latest": { input: 200, output: 600 },
-  "mistral:mistral-small-latest": { input: 20, output: 60 },
-  "mistral:codestral-latest": { input: 30, output: 90 },
-  "mistral:pixtral-large-latest": { input: 200, output: 600 },
-  "mistral:ministral-8b-latest": { input: 10, output: 10 },
-
-  // xAI — verified against https://docs.x.ai/.
-  "xai:grok-2-latest": { input: 200, output: 1000 },
-  "xai:grok-2-vision-latest": { input: 200, output: 1000 },
-  "xai:grok-beta": { input: 500, output: 1500 },
-
-  // DeepSeek direct API (much cheaper than reseller pricing).
-  "deepseek:deepseek-chat": { input: 27, output: 110 },
-  "deepseek:deepseek-reasoner": { input: 55, output: 219 },
-
-  // Perplexity Sonar (search-grounded; output includes retrieval).
-  "perplexity:sonar": { input: 100, output: 100 },
-  "perplexity:sonar-pro": { input: 300, output: 1500 },
-  "perplexity:sonar-reasoning": { input: 100, output: 500 },
-  "perplexity:sonar-reasoning-pro": { input: 200, output: 800 },
-  "perplexity:sonar-deep-research": { input: 200, output: 800 },
-
-  // Sakana Fugu — verified against https://console.sakana.ai/pricing 2026-07-16.
-  // fugu-ultra: $5/M in, $30/M out → 500/3000 cents/M (standard ≤272K tier;
-  // above 272K input it rises to $10/$45 — not modeled, fixed-tier fallback).
-  // Cached input ($0.50/M, 90% off) is applied via CACHE_RATES `sakana`.
-  // `fugu` has no published fixed rate (blended/underlying-model pricing); we
-  // default it to the fugu-ultra ceiling so the ledger never under-prices.
-  // CAVEAT: Fugu bills hidden orchestration tokens (~1.3K/request floor) that
-  // may be additive and are reported under usage._details — if the AI SDK does
-  // not surface them, this fallback under-counts real spend. Follow-up: read
-  // prompt_tokens_details / completion_tokens_details orchestration fields.
-  "sakana:fugu-ultra": { input: 500, output: 3000 },
-  "sakana:fugu": { input: 500, output: 3000 },
-};
-
-/**
- * Maps Platos provider ids to LiteLLM's `model_prices_and_context_window.json`
- * key prefixes. LiteLLM uses different prefixes for several OpenAI-compatible
- * providers, so we have to translate before probing the live catalog.
- * Mismatched entries here were the second cause of cost mis-billing on
- * Together (no entry could ever match `together:<id>` against LiteLLM's
- * `together_ai/<id>` keys).
- */
-const LITELLM_PROVIDER_PREFIX: Record<string, string> = {
-  together: "together_ai",
-  groq: "groq",
-  mistral: "mistral",
-  xai: "xai",
-  deepseek: "deepseek",
-  cerebras: "cerebras",
-  perplexity: "perplexity",
-  fireworks: "fireworks_ai",
-  openai: "openai",
-  anthropic: "anthropic",
-  google: "gemini",
-  "google-vertex": "vertex_ai",
-  azure: "azure",
-};
-
-/**
- * Build the priority-ordered list of lookup keys for a Platos model string.
- * Both FALLBACK_PRICING and the LiteLLM live catalog are probed against
- * every entry in order; first hit wins. Tries:
- *   1. Full `<provider>:<model>` — matches our FALLBACK_PRICING new rows
- *   2. Bare `<model>` — preserves legacy lookups
- *   3. Trailing slash segment — handles HF-style `org/name` ids
- *   4. LiteLLM-prefixed `<litellm_prefix>/<model>` — taps the live catalog
- */
-function modelLookupKeys(model: string): string[] {
-  if (!model) return [];
-  const keys: string[] = [model];
-  const colon = model.indexOf(":");
-  const provider = colon > 0 ? model.slice(0, colon) : null;
-  const bare = colon > 0 ? model.slice(colon + 1) : model;
-  if (bare !== model) keys.push(bare);
-  const lastSlash = bare.lastIndexOf("/");
-  if (lastSlash > 0) {
-    const tail = bare.slice(lastSlash + 1);
-    if (tail && tail !== bare) keys.push(tail);
-  }
-  if (provider) {
-    const liteLLMPrefix = LITELLM_PROVIDER_PREFIX[provider];
-    if (liteLLMPrefix) keys.push(`${liteLLMPrefix}/${bare}`);
-  }
-  return keys;
-}
-
-/**
- * Last-resort conservative estimator. Returns provider-aware defaults so
- * unknown models on cheap OSS-host providers don't get billed at the
- * Anthropic-tier rate. Used only when both the live catalog and
- * FALLBACK_PRICING miss every lookup key for the model.
- *
- * Numbers are intentionally rough — they're a safety net, not a price list.
- * Adding an entry to FALLBACK_PRICING is the correct fix for any model that
- * shows up here in practice.
- */
-/**
- * Resolve per-1M-token rates (in cents) for a model string. Single source of
- * truth used by every cost-math entrypoint on CostService — guarantees the
- * same lookup priority everywhere:
- *
- *   1. LiteLLM live catalog — probed with every key from `modelLookupKeys`
- *      so provider-prefixed Platos ids match LiteLLM's `together_ai/...`
- *      style keys too.
- *   2. Hardcoded FALLBACK_PRICING — same multi-key probe.
- *   3. Provider-aware conservative estimator — caps OSS-host overcharge.
- *
- * Returns raw (unrounded) rates so callers can do their own precision math
- * (calculateCost rounds at 0.01¢, calculateCostWithCache at 0.0001¢).
- */
-export interface ResolvedRates {
-  /** Cents per 1M tokens. */
-  input: number;
-  output: number;
-  /**
-   * Cents per 1M CACHE-READ tokens, when the price source states it per model.
-   * `undefined` means "not known for this model" and the caller falls back to
-   * the coarse per-provider multiplier in CACHE_RATES.
-   */
-  cacheRead?: number;
-  /** Cents per 1M CACHE-WRITE tokens; same fallback semantics. */
-  cacheWrite?: number;
-  /** Where the numbers came from — stamped onto the turn for auditability. */
-  source: "verified" | "catalog" | "fallback-table" | "conservative";
-}
-
-/**
- * PRECISION (2026-07-31) — resolve cache rates PER MODEL, not per provider.
- *
- * The catalog has always carried `cache_read_input_token_cost` /
- * `cache_creation_input_token_cost`, and this function has always thrown them
- * away, leaving `calculateCostWithCache` to apply a per-PROVIDER multiplier
- * (`CACHE_RATES`) instead. Those multipliers are a blunt instrument and were
- * measurably wrong:
- *
- *   CACHE_RATES.openai = { read: 0.5, write: 1.0 }
- *   gpt-5.6-luna actual =  read 0.1x,  write 2.5x
- *
- * Cache writes on that model cost 2.5x fresh input — more, not less — while
- * reads cost a fifth of what we assumed. On a turn that is 70-95% cache reads
- * those two errors do not cancel; they compound. Per-model figures remove the
- * guess entirely wherever the source states them, and the multiplier survives
- * only as the fallback for models that do not.
- */
-function resolveRates(model: string, catalog: LiteLLMCatalog | null): ResolvedRates {
-  const keys = modelLookupKeys(model);
-  const perMillionCents = (perToken: number | undefined): number | undefined =>
-    perToken === undefined || perToken === null ? undefined : perToken * 1_000_000 * 100;
-
-  // Verified provider figures outrank the catalog — see verified-prices.ts for
-  // why the catalog alone is not trustworthy on a per-row basis.
-  // Precedence: human-verified static table > daily-task overlay > catalog.
-  // The static entries carry a verbatim provider quote and a verification date;
-  // a model reading a web page does not outrank that, so the daily task can
-  // only fill gaps, never overwrite a human-checked figure.
-  const verified = verifiedPriceFor(keys) ?? overlayPriceFor(keys);
-
-  if (catalog || verified) {
-    for (const k of keys) {
-      const merged = applyVerifiedPrice(catalog?.[k], verified);
-      if (!merged) continue;
-      const inputCents = perMillionCents(merged.input_cost_per_token) ?? 0;
-      const outputCents = perMillionCents(merged.output_cost_per_token) ?? 0;
-      if (inputCents > 0 || outputCents > 0) {
-        return {
-          input: inputCents,
-          output: outputCents,
-          cacheRead: perMillionCents(merged.cache_read_input_token_cost),
-          cacheWrite: perMillionCents(merged.cache_creation_input_token_cost),
-          source: verified ? "verified" : "catalog",
-        };
-      }
-    }
-    // A verified entry with no catalog row at all still prices the model.
-    if (verified && (verified.input !== undefined || verified.output !== undefined)) {
-      return {
-        input: perMillionCents(verified.input) ?? 0,
-        output: perMillionCents(verified.output) ?? 0,
-        cacheRead: perMillionCents(verified.cacheRead),
-        cacheWrite: perMillionCents(verified.cacheWrite),
-        source: "verified",
-      };
-    }
-  }
-  for (const k of keys) {
-    const pricing = FALLBACK_PRICING[k];
-    if (pricing) return { ...pricing, source: "fallback-table" };
-  }
-  return { ...conservativeFallbackRates(model), source: "conservative" };
-}
-
-function conservativeFallbackRates(model: string): { input: number; output: number } {
-  const colon = model.indexOf(":");
-  const provider = colon > 0 ? model.slice(0, colon) : "";
-  switch (provider) {
-    case "groq":
-    case "cerebras":
-    case "deepseek":
-      return { input: 25, output: 100 }; // ultra-cheap OSS hosts
-    case "together":
-    case "fireworks":
-    case "perplexity":
-    case "mistral":
-      return { input: 50, output: 200 }; // mid-tier OSS hosts
-    case "google":
-      return { input: 40, output: 160 }; // Gemini cheapest tier
-    case "xai":
-      return { input: 200, output: 1000 }; // Grok pricier
-    case "anthropic":
-    case "openai":
-    case "google-vertex":
-    case "azure":
-    default:
-      return { input: 100, output: 300 }; // historical conservative tier
-  }
-}
-
-const CATALOG_KEY = "cost:model_catalog";
-const CATALOG_CACHE_TTL_MS = 60_000; // in-process memo for one minute
-/** Upstream price catalog — same source the daily refresh task uses. */
-const LITELLM_CATALOG_URL =
-  "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
-/** After a failed lazy fetch, don't retry for this long (upstream outage guard). */
-const CATALOG_FETCH_BACKOFF_MS = 300_000; // 5 minutes
-/** Overlay published by the daily price-verify Trigger task. */
-const VERIFIED_OVERLAY_KEY = "cost:verified_prices";
-
-interface LiteLLMCatalogEntry {
-  input_cost_per_token?: number;
-  output_cost_per_token?: number;
-  cache_read_input_token_cost?: number;
-  /** Per-model cache-WRITE price. Present for Anthropic + newer OpenAI rows. */
-  cache_creation_input_token_cost?: number;
-  litellm_provider?: string;
-}
-type LiteLLMCatalog = Record<string, LiteLLMCatalogEntry>;
-
 function scopeKey(scope: ScopeTuple): string {
   return `${scope.organizationId}:${scope.projectId}:${scope.environmentId}`;
 }
 
-/**
- * PRELAUNCH-A1-2 / A1-8 — provider-aware cache surcharge factors.
- *
- * Anomaly-3 follow-up (2026-05-04): the table + helpers were extracted to
- * `@internal/cost-rates` so agent + webapp share a single source of truth
- * (the parallel files used to drift). We re-export here for back-compat
- * with existing imports of `CostService` consumers + the regression tests.
- */
-export {
-  CACHE_RATES,
-  providerForModel,
-  cacheRatesFor,
-  cacheDiscountLabel,
-} from "@internal/cost-rates";
-import {
-  cacheRatesFor,
-  providerForModel,
-} from "@internal/cost-rates";
-// PRECISION — provider-verified overrides layered on top of the upstream
-// catalog, because LiteLLM is wrong on a per-row basis (see verified-prices.ts).
-import {
-  applyVerifiedPrice,
-  verifiedPriceFor,
-  overlayPriceFor,
-  setVerifiedOverlay,
-} from "./verified-prices";
-
-/**
- * CostService — tracks LLM token usage and cost per conversation, per scope.
- *
- * Uses trigger.dev's existing LLM model catalog (LlmModel + LlmPrice tables)
- * for accurate pricing. Falls back to hardcoded rates for unknown models.
- *
- * Costs are recorded:
- * - Per LLM step (tokens/model stored in Step; exact priced cost in Redis)
- * - Per thread (aggregated in Redis for real-time dashboard)
- * - Per (org, project, env) (aggregated daily for billing)
- */
+/** Canonical pricing lives in @platos/tenancy-database. Redis below is rollup-only. */
 @Injectable()
 export class CostService {
   /** Nest logger — added with the lazy catalog load so a cold/failed fetch is
    *  visible in the deployment logs rather than silently degrading rates. */
   private readonly logger = new Logger(CostService.name);
-  private prisma: any;
-  private catalogMemo: { catalog: LiteLLMCatalog | null; loadedAt: number } = {
-    catalog: null,
-    loadedAt: 0,
-  };
-  private lastKnownCatalog: LiteLLMCatalog | null = null;
+  private readonly prisma: any;
+  private readonly modelPricing: PlatosModelPricing;
   private cleanStepCostFallbackWarned = false;
 
   constructor(
@@ -480,13 +151,14 @@ export class CostService {
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
   ) {
     this.prisma = prisma;
+    this.modelPricing = new PlatosModelPricing(prisma);
   }
 
   private warnOnUnpricedStepFallback(): void {
     if (this.cleanStepCostFallbackWarned) return;
     this.cleanStepCostFallbackWarned = true;
     this.logger.warn(
-      "[cost] clean Step fallback can reconstruct model/input/output attribution but not historical cache/reasoning/rate fields; exact values remain in the full-fidelity Redis ledger",
+      "[cost] rebuilding expired Redis rollups from immutable Step cost and rate snapshots",
     );
   }
 
@@ -524,235 +196,86 @@ export class CostService {
     }
   }
 
-  /**
-   * Store a refreshed LiteLLM catalog into Redis + in-process memo.
-   * Called by the admin endpoint that the daily refresh task posts to.
-   */
-  async ingestCatalog(catalog: LiteLLMCatalog): Promise<void> {
-    await this.redis.set(CATALOG_KEY, JSON.stringify(catalog), "EX", 86400);
-    this.catalogMemo = { catalog, loadedAt: Date.now() };
-    this.lastKnownCatalog = catalog;
+  /** Persist a fetched LiteLLM baseline as append-only canonical price cards. */
+  async ingestCatalog(
+    catalog: LiteLLMModelCatalog,
+    fetchedAt: Date,
+  ): Promise<{ modelsSeen: number; pricesCreated: number; unchanged: number }> {
+    assertCredibleLiteLLMCatalog(catalog);
+    return this.modelPricing.ingestLiteLLMCatalog(catalog, fetchedAt);
   }
 
-  /**
-   * Read the cached LiteLLM catalog. Returns the in-process memo when fresh,
-   * otherwise loads from Redis, otherwise from the process's
-   * `lastKnownCatalog`, otherwise `null` (triggers FALLBACK_PRICING path).
-   *
-   * This function never throws — a stale cache is always preferable to a
-   * broken cost tracker.
-   */
-  async getCatalog(): Promise<LiteLLMCatalog | null> {
-    if (
-      this.catalogMemo.catalog &&
-      Date.now() - this.catalogMemo.loadedAt < CATALOG_CACHE_TTL_MS
-    ) {
-      return this.catalogMemo.catalog;
-    }
-    // Refresh the daily-task overlay alongside the catalog, on the same cadence,
-    // so a price the task verified last night is in force without adding a Redis
-    // round-trip to every turn.
-    await this.refreshVerifiedOverlay();
-    try {
-      const raw = await this.redis.get(CATALOG_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as LiteLLMCatalog;
-        this.catalogMemo = { catalog: parsed, loadedAt: Date.now() };
-        this.lastKnownCatalog = parsed;
-        return parsed;
-      }
-    } catch {
-      // fall through
-    }
-    // SELF-HEAL (2026-07-31) — a cold catalog used to stay cold forever.
-    //
-    // The catalog is populated by the daily `litellm-cost-refresh` Trigger task,
-    // which POSTs it back to this service. That task resolves the agent URL as
-    // `PLATOS_AGENT_HTTP_URL || PLATOS_AGENT_API_URL || "http://localhost:3100"`,
-    // and the task runs on Trigger Cloud — where localhost is the Trigger worker,
-    // not this process. With neither var set the write never arrived, Redis stayed
-    // empty, and EVERY modern model silently fell through to the conservative
-    // 100/300 cents-per-million estimator. Verified empty on the live deployment.
-    //
-    // Rather than depend on that callback being configured correctly, fetch the
-    // catalog directly on a miss. The scheduled task stays as the freshness
-    // mechanism; this is the floor that stops a misconfiguration turning into
-    // months of quietly wrong billing.
-    return this.lazyLoadCatalog();
+  async resolvePrice(model: string): Promise<CanonicalModelPriceSnapshot> {
+    return this.modelPricing.resolvePrice(model);
   }
 
-  private overlayLoadedAt = 0;
-
-  /** Pull the price-verify overlay from Redis into the module-level snapshot. */
-  private async refreshVerifiedOverlay(): Promise<void> {
-    if (Date.now() - this.overlayLoadedAt < CATALOG_CACHE_TTL_MS) return;
-    this.overlayLoadedAt = Date.now();
-    try {
-      const raw = await this.redis.get(VERIFIED_OVERLAY_KEY);
-      if (!raw) return;
-      const n = setVerifiedOverlay(JSON.parse(raw));
-      if (n > 0) this.logger.debug(`[cost] verified-price overlay loaded (${n} models)`);
-    } catch {
-      // Overlay is an enhancement, never a dependency — the static table and
-      // catalog still price the turn.
-    }
-  }
-
-  /** In-flight dedupe so a burst of turns triggers exactly one upstream fetch. */
-  private catalogFetchInFlight: Promise<LiteLLMCatalog | null> | null = null;
-  private catalogFetchFailedAt = 0;
-
-  private async lazyLoadCatalog(): Promise<LiteLLMCatalog | null> {
-    // Never reach the network from a unit test. Without this, stubbing Redis to
-    // return null (which every cost test does) silently turns a hermetic test
-    // into a live fetch of a 1.6 MB catalog — non-deterministic, slow, and
-    // failing offline. Opt back in explicitly if a test wants the real thing.
-    if (
-      process.env.NODE_ENV === "test" &&
-      process.env.PLATOS_ALLOW_LIVE_PRICE_FETCH !== "1"
-    ) {
-      return this.lastKnownCatalog;
-    }
-    // Back off after a failure so an upstream outage cannot turn every turn
-    // into a 20s stall. Serving `lastKnownCatalog` (or null → fallback table)
-    // is always better than blocking a user's turn on GitHub being reachable.
-    if (Date.now() - this.catalogFetchFailedAt < CATALOG_FETCH_BACKOFF_MS) {
-      return this.lastKnownCatalog;
-    }
-    if (this.catalogFetchInFlight) return this.catalogFetchInFlight;
-
-    this.catalogFetchInFlight = (async () => {
-      try {
-        const res = await fetch(LITELLM_CATALOG_URL, {
-          signal: AbortSignal.timeout(15_000),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const parsed = (await res.json()) as LiteLLMCatalog;
-        if (!parsed || typeof parsed !== "object" || Object.keys(parsed).length < 100) {
-          throw new Error("catalog payload looks truncated");
-        }
-        this.catalogMemo = { catalog: parsed, loadedAt: Date.now() };
-        this.lastKnownCatalog = parsed;
-        // Share it with every other replica, and survive our own restart.
-        // Best-effort: a Redis write failure must not fail the turn.
-        try {
-          await this.redis.set(CATALOG_KEY, JSON.stringify(parsed), "EX", 86_400);
-        } catch {
-          /* in-process memo still serves this replica */
-        }
-        this.logger.log(
-          `[cost] lazily loaded price catalog (${Object.keys(parsed).length} models) — Redis was cold`,
-        );
-        return parsed;
-      } catch (err: any) {
-        this.catalogFetchFailedAt = Date.now();
-        this.logger.warn(
-          `[cost] lazy catalog load failed (${err?.message ?? err}); using last-known/fallback rates`,
-        );
-        return this.lastKnownCatalog;
-      } finally {
-        this.catalogFetchInFlight = null;
-      }
-    })();
-    return this.catalogFetchInFlight;
-  }
-
-  /**
-   * Calculate cost for a model usage event.
-   *
-   * Lookup order:
-   *   1. LiteLLM live catalog (Redis / in-process memo) — probed against
-   *      every `modelLookupKeys` variant so `together:openai/gpt-oss-120b`
-   *      can match LiteLLM's `together_ai/openai/gpt-oss-120b` key too.
-   *   2. Hardcoded FALLBACK_PRICING (last-known-good) — same multi-key probe.
-   *   3. Provider-aware conservative estimator (cheap OSS hosts no longer
-   *      get billed at the Anthropic-tier 100/300 cents/M rate).
-   */
-  async calculateCost(model: string, inputTokens: number, outputTokens: number): Promise<number> {
-    const catalog = await this.getCatalog();
-    const rates = resolveRates(model, catalog);
-    const inputCost = (inputTokens / 1_000_000) * rates.input;
-    const outputCost = (outputTokens / 1_000_000) * rates.output;
-    return Math.round((inputCost + outputCost) * 100) / 100;
-  }
-
-  /**
-   * MC.2 — resolve the per-model *input-cents-per-1M-tokens* rate. Returns
-   * the same number the fallback table carries (`pricing.input`) or the
-   * equivalent scalar from LiteLLM live catalog. Used for cache math because
-   * cache tokens are billed as a multiple of the input rate (1.25× write,
-   * 0.1× read) — we need the base rate, not the blended cost.
-   */
-  async resolveInputCentsPerMillion(model: string): Promise<number> {
-    const catalog = await this.getCatalog();
-    return resolveRates(model, catalog).input;
-  }
-
-  /**
-   * PRELAUNCH-A1-2 — provider-specific cache surcharge factors.
-   *
-   * Anthropic, OpenAI, and Google all bill cache reads + cache writes
-   * differently. The historical hard-coded `1.25× / 0.1×` was Anthropic-only
-   * and silently mis-billed every other provider. Resolution:
-   *
-   *   - Anthropic: write 1.25× input, read 0.10× input (90% off).
-   *   - OpenAI:   write 1.00× input (no surcharge), read 0.50× input (50% off).
-   *   - Google:   write 1.00× input (no surcharge), read 0.25× input (75% off
-   *               for 2.5-series implicit cache).
-   *
-   * Provider id is sourced from the manifest (`google-vertex` is treated as
-   * `google` for cache pricing purposes since the underlying Gemini billing
-   * shape matches). Unknown providers default to Anthropic semantics — the
-   * historical default — so behavior is unchanged on legacy paths.
-   */
-  // PRELAUNCH-A1-2 — see cacheRatesFor() / providerForModel() below.
-
-  /**
-   * PRELAUNCH-A1-1, A1-14 — compute cache-adjusted cost.
-   *
-   * v6 of the AI SDK reports `usage.inputTokens` as the FULL prompt total
-   * INCLUDING any cache-creation + cache-read tokens. The previous comment
-   * (which claimed inputTokens already EXCLUDED cache) is wrong under v6.
-   *
-   * Cost decomposition under v6:
-   *
-   *   bill = (inputTokens − cacheCreation − cacheRead) × inputRate          // fresh tokens
-   *        +  cacheCreation × inputRate × <provider write multiplier>      // cache writes
-   *        +  cacheRead     × inputRate × <provider read multiplier>       // cache reads
-   *        +  outputTokens × outputRate
-   *
-   * Callers must therefore pass `inputTokens` as the v6 total. We strip the
-   * cache slice off to get the fresh-token component before applying the
-   * write/read multipliers. Zero cache fields → identical to `calculateCost`.
-   */
-  /**
-   * Resolve the EFFECTIVE per-1M-token rates for a model, in cents.
-   *
-   * "Effective" means post-fallback: `cacheRead`/`cacheWrite` are the numbers
-   * actually used in the billing math, whether they came from a per-model price
-   * or from the per-provider multiplier. Stamping these onto the turn makes the
-   * row self-describing — the cost can be re-derived later without knowing which
-   * catalog version or which fallback tier was live at the time, which is the
-   * whole point of keeping a historical rate.
-   */
-  async resolveEffectiveRates(
+  priceUsageFromSnapshot(
     model: string,
-    providerId?: string | null,
-  ): Promise<{
+    price: CanonicalModelPriceSnapshot,
+    inputTokens: number,
+    outputTokens: number,
+    cacheCreationInputTokens = 0,
+    cacheReadInputTokens = 0,
+  ): PricedModelUsage {
+    return {
+      price,
+      costCents: calculateCanonicalModelCost(model, price, {
+        inputTokens,
+        outputTokens,
+        cacheWriteInputTokens: cacheCreationInputTokens,
+        cacheReadInputTokens,
+      }),
+    };
+  }
+
+  /** Resolve one canonical card and compute the exact four-rate cost once. */
+  async priceUsage(
+    model: string,
+    inputTokens: number,
+    outputTokens: number,
+    cacheCreationInputTokens = 0,
+    cacheReadInputTokens = 0,
+    at = new Date(),
+  ): Promise<PricedModelUsage> {
+    return this.modelPricing.priceUsage(
+      model,
+      {
+        inputTokens,
+        outputTokens,
+        cacheWriteInputTokens: cacheCreationInputTokens,
+        cacheReadInputTokens,
+      },
+      at,
+    );
+  }
+
+  async calculateCost(
+    model: string,
+    inputTokens: number,
+    outputTokens: number,
+  ): Promise<number> {
+    return (await this.priceUsage(model, inputTokens, outputTokens)).costCents;
+  }
+
+  async resolveInputCentsPerMillion(model: string): Promise<number> {
+    const resolved = await this.modelPricing.resolvePrice(model);
+    return resolved.input.usdPerToken * 100_000_000;
+  }
+
+  async resolveEffectiveRates(model: string): Promise<{
     input: number;
     output: number;
     cacheRead: number;
     cacheWrite: number;
-    source: ResolvedRates["source"];
+    source: "canonical";
   }> {
-    const resolved = resolveRates(model, await this.getCatalog());
-    const multipliers = cacheRatesFor(providerId ?? providerForModel(model));
+    const resolved = await this.modelPricing.resolvePrice(model);
     return {
-      input: resolved.input,
-      output: resolved.output,
-      cacheRead: resolved.cacheRead ?? resolved.input * multipliers.read,
-      cacheWrite: resolved.cacheWrite ?? resolved.input * multipliers.write,
-      source: resolved.source,
+      input: resolved.input.usdPerToken * 100_000_000,
+      output: resolved.output.usdPerToken * 100_000_000,
+      cacheRead: resolved.cacheRead.usdPerToken * 100_000_000,
+      cacheWrite: resolved.cacheWrite.usdPerToken * 100_000_000,
+      source: "canonical",
     };
   }
 
@@ -762,43 +285,17 @@ export class CostService {
     outputTokens: number,
     cacheCreationInputTokens: number,
     cacheReadInputTokens: number,
-    providerId?: string | null,
+    _providerId?: string | null,
   ): Promise<number> {
-    if (cacheCreationInputTokens <= 0 && cacheReadInputTokens <= 0) {
-      return this.calculateCost(model, inputTokens, outputTokens);
-    }
-    // PRELAUNCH-A1-1 — v6 inputTokens is INCLUSIVE of cache. Strip the cache
-    // slice to recover the fresh-token portion before billing it at 1.0×.
-    //
-    // Follow-up (review 2026-05-04): inline the fresh + output math so the
-    // sum is rounded ONCE at the end. The previous version called
-    // `calculateCost` (which itself rounds to 0.01¢ precision) and then
-    // rounded the sum again, propagating a 0.005-0.0075¢ error on tiny
-    // totals (e.g. Google rate test 0.0825¢ was rounding to 0.09¢).
-    const catalog = await this.getCatalog();
-    const resolved = resolveRates(model, catalog);
-    const { input: inputCentsPerMillion, output: outputCentsPerMillion } = resolved;
-
-    const freshInputTokens = Math.max(
-      0,
-      inputTokens - cacheCreationInputTokens - cacheReadInputTokens,
-    );
-    const freshCost = (freshInputTokens / 1_000_000) * inputCentsPerMillion;
-    const outputCost = (outputTokens / 1_000_000) * outputCentsPerMillion;
-    // PRECISION — prefer the PER-MODEL cache rate when the price source states
-    // it; the per-provider multiplier is now only the fallback. See resolveRates
-    // for the measured case (gpt-5.6-luna: real 0.1x read / 2.5x write against
-    // an assumed 0.5x / 1.0x) that motivated this.
-    const multipliers = cacheRatesFor(providerId ?? providerForModel(model));
-    const writeCentsPerMillion =
-      resolved.cacheWrite ?? inputCentsPerMillion * multipliers.write;
-    const readCentsPerMillion =
-      resolved.cacheRead ?? inputCentsPerMillion * multipliers.read;
-    const writeCost = (cacheCreationInputTokens / 1_000_000) * writeCentsPerMillion;
-    const readCost = (cacheReadInputTokens / 1_000_000) * readCentsPerMillion;
-    // Single round at the end, at 0.0001¢ precision to preserve tiny
-    // totals (sub-cent costs on cheap models like gemini-2.5-flash).
-    return Math.round((freshCost + outputCost + writeCost + readCost) * 10_000) / 10_000;
+    return (
+      await this.priceUsage(
+        model,
+        inputTokens,
+        outputTokens,
+        cacheCreationInputTokens,
+        cacheReadInputTokens,
+      )
+    ).costCents;
   }
 
   /**
@@ -862,8 +359,23 @@ export class CostService {
        * does.
        */
       reasoningTokens?: number;
+      /** Exact canonical card/cost already resolved for the persisted Step. */
+      pricedUsage?: PricedModelUsage;
     } = {},
   ): Promise<UsageRecord> {
+    const cacheCreation = Math.max(0, Number(options.cacheCreationInputTokens ?? 0) || 0);
+    const cacheRead = Math.max(0, Number(options.cacheReadInputTokens ?? 0) || 0);
+    const reasoning = Math.max(0, Number(options.reasoningTokens ?? 0) || 0);
+    const pricedUsage = options.pricedUsage ?? await this.priceUsage(
+      model,
+      inputTokens,
+      outputTokens,
+      cacheCreation,
+      cacheRead,
+    );
+    const costCents = pricedUsage.costCents;
+    const costWithCacheCents = costCents;
+
     // PRELAUNCH-A3-13 — idempotency guard. When a deterministic key is
     // supplied (e.g. `<messageId>:cost`), SETNX a sentinel with 1h TTL
     // before applying the Redis fan-out. A duplicate call within the
@@ -875,11 +387,7 @@ export class CostService {
         const idemKey = `cost:idem:${options.idempotencyKey}`;
         const acquired = await (this.redis as any).set(idemKey, "1", "EX", 3600, "NX");
         if (!acquired) {
-          // Already recorded — return the computed record without bumping.
-          const cacheCreation = Math.max(0, Number(options.cacheCreationInputTokens ?? 0) || 0);
-          const cacheRead = Math.max(0, Number(options.cacheReadInputTokens ?? 0) || 0);
-          const freshInputTokens = Math.max(0, inputTokens - cacheCreation - cacheRead);
-          const costCents = await this.calculateCost(model, freshInputTokens, outputTokens);
+          // Already recorded — return the same persisted computation without bumping.
           return {
             model,
             inputTokens,
@@ -897,29 +405,6 @@ export class CostService {
         // the spend).
       }
     }
-    const cacheCreation = Math.max(0, Number(options.cacheCreationInputTokens ?? 0) || 0);
-    const cacheRead = Math.max(0, Number(options.cacheReadInputTokens ?? 0) || 0);
-    const reasoning = Math.max(0, Number(options.reasoningTokens ?? 0) || 0);
-    // PRELAUNCH-A1-1 — agent-task.service derives `inputTokens` as the v6
-    // total (which INCLUDES cache tokens). When cache is present we pass the
-    // total to calculateCostWithCache (which strips the cache slice itself);
-    // for the naive `costCents` we strip up-front so the row's own
-    // `cost_cents` field reflects fresh-token + cache-token breakdown
-    // instead of double-billing fresh on top of cache.
-    const freshInputTokens = Math.max(0, inputTokens - cacheCreation - cacheRead);
-    const costCents = await this.calculateCost(model, freshInputTokens, outputTokens);
-    // PRELAUNCH-A1-2 — cache-adjusted cost is provider-aware. When cache
-    // fields are zero this equals `costCents` exactly (round-trip safe).
-    const costWithCacheCents = cacheCreation > 0 || cacheRead > 0
-      ? await this.calculateCostWithCache(
-          model,
-          inputTokens,
-          outputTokens,
-          cacheCreation,
-          cacheRead,
-          options.providerId ?? providerForModel(model),
-        )
-      : costCents;
     const record: UsageRecord = {
       model,
       inputTokens,
@@ -1091,7 +576,7 @@ export class CostService {
    * the only full-fidelity historical price/cache/reasoning ledger. The
    * pipeline-based recordUsage path can drop writes during Redis restarts or
    * eviction, so this periodic reconciler backfills missing daily hashes from
-   * Step using current pricing without overwriting exact Redis attribution.
+   * immutable Step costs without overwriting exact Redis attribution.
    *
    * Strategy:
    *   1. For each day in the reconcile window, pull every Step whose
@@ -1534,6 +1019,7 @@ export class CostService {
         model: true,
         inputTokens: true,
         outputTokens: true,
+        costCents: true,
         turn: {
           select: {
             thread: {
@@ -1565,6 +1051,7 @@ export class CostService {
       model: string;
       inputTokens: number | null;
       outputTokens: number | null;
+      costCents: unknown;
       turn: {
         thread: {
           environmentId: string;
@@ -1580,11 +1067,7 @@ export class CostService {
       if (!thread) continue;
       const inputTokens = Number(row.inputTokens ?? 0);
       const outputTokens = Number(row.outputTokens ?? 0);
-      const costCents = await this.calculateCost(
-        row.model,
-        inputTokens,
-        outputTokens,
-      );
+      const costCents = Number(row.costCents ?? 0);
       if (costCents <= 0 && inputTokens <= 0 && outputTokens <= 0) continue;
       const day = row.createdAt.toISOString().slice(0, 10);
       const s = scopeKey({
@@ -1774,6 +1257,9 @@ export class CostService {
       model: string;
       inputTokens: number | null;
       outputTokens: number | null;
+      cacheCreationInputTokens: number | null;
+      cacheReadInputTokens: number | null;
+      costCents: unknown;
     }> = await this.prisma.step.findMany({
       where: {
         createdAt: { gte: since },
@@ -1794,6 +1280,9 @@ export class CostService {
         model: true,
         inputTokens: true,
         outputTokens: true,
+        cacheCreationInputTokens: true,
+        cacheReadInputTokens: true,
+        costCents: true,
       },
     });
 
@@ -1813,11 +1302,13 @@ export class CostService {
       };
       const inputTokens = row.inputTokens ?? 0;
       const outputTokens = row.outputTokens ?? 0;
-      const naive = await this.calculateCost(row.model, inputTokens, outputTokens);
-      bucket.costCents += naive;
-      bucket.costWithCacheCents += naive;
+      const persistedCost = Number(row.costCents ?? 0);
+      bucket.costCents += persistedCost;
+      bucket.costWithCacheCents += persistedCost;
       bucket.inputTokens += inputTokens;
       bucket.outputTokens += outputTokens;
+      bucket.cacheCreationInputTokens += row.cacheCreationInputTokens ?? 0;
+      bucket.cacheReadInputTokens += row.cacheReadInputTokens ?? 0;
       bucket.messages += 1;
       byModel.set(row.model, bucket);
     }
@@ -1905,6 +1396,9 @@ export class CostService {
       model: string;
       inputTokens: number | null;
       outputTokens: number | null;
+      cacheCreationInputTokens: number | null;
+      cacheReadInputTokens: number | null;
+      costCents: unknown;
       turn: { thread: { agentId: string; id: string } } | null;
     }> =
       await this.prisma.step.findMany({
@@ -1927,6 +1421,9 @@ export class CostService {
           model: true,
           inputTokens: true,
           outputTokens: true,
+          cacheCreationInputTokens: true,
+          cacheReadInputTokens: true,
+          costCents: true,
           turn: { select: { thread: { select: { agentId: true, id: true } } } },
         },
       });
@@ -1949,11 +1446,13 @@ export class CostService {
       const day = r.createdAt.toISOString().slice(0, 10);
       if (!redisDaysByAgent.get(agentId)?.has(day)) {
         usedStepFallback = true;
-        const naive = await this.calculateCost(r.model, inputTokens, outputTokens);
-        bucket.costCents += naive;
-        bucket.costWithCacheCents += naive;
+        const persistedCost = Number(r.costCents ?? 0);
+        bucket.costCents += persistedCost;
+        bucket.costWithCacheCents += persistedCost;
         bucket.inputTokens += inputTokens;
         bucket.outputTokens += outputTokens;
+        bucket.cacheCreationInputTokens += r.cacheCreationInputTokens ?? 0;
+        bucket.cacheReadInputTokens += r.cacheReadInputTokens ?? 0;
       }
       if (r.turn?.thread.id) bucket.threads.add(r.turn.thread.id);
       byAgent.set(agentId, bucket);
@@ -2069,6 +1568,10 @@ export class CostService {
       model: string;
       inputTokens: number | null;
       outputTokens: number | null;
+      cacheCreationInputTokens: number | null;
+      cacheReadInputTokens: number | null;
+      reasoningTokens: number | null;
+      costCents: unknown;
       turn: { id: string; thread: { endUserId: string; id: string } } | null;
     }> =
       await this.prisma.step.findMany({
@@ -2091,6 +1594,10 @@ export class CostService {
           model: true,
           inputTokens: true,
           outputTokens: true,
+          cacheCreationInputTokens: true,
+          cacheReadInputTokens: true,
+          reasoningTokens: true,
+          costCents: true,
           turn: {
             select: {
               id: true,
@@ -2119,13 +1626,12 @@ export class CostService {
       const day = r.createdAt.toISOString().slice(0, 10);
       if (!redisDaysByUser.get(userId)?.has(day)) {
         usedStepFallback = true;
-        bucket.costCents += await this.calculateCost(
-          r.model,
-          inputTokens,
-          outputTokens,
-        );
+        bucket.costCents += Number(r.costCents ?? 0);
         bucket.inputTokens += inputTokens;
         bucket.outputTokens += outputTokens;
+        bucket.cacheCreationInputTokens += r.cacheCreationInputTokens ?? 0;
+        bucket.cacheReadInputTokens += r.cacheReadInputTokens ?? 0;
+        bucket.reasoningTokens += r.reasoningTokens ?? 0;
       }
       if (r.turn?.id) bucket.turns.add(r.turn.id);
       if (r.turn?.thread.id) bucket.threads.add(r.turn.thread.id);

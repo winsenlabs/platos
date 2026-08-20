@@ -3,22 +3,8 @@ import * as crypto from "node:crypto";
 import { ScopedEnvService } from "../providers/scoped-env.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { CostService } from "../monitoring/cost.service";
+import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 import { env } from "../shared/env";
-
-// EOBD.32 — price table for embedding models (USD / 1M tokens).
-// Values as of 2025-04; update when providers adjust pricing.
-const EMBEDDING_RATE_CENTS_PER_MTOK: Record<string, number> = {
-  // OpenAI
-  "text-embedding-3-small": 2,      // $0.02
-  "text-embedding-3-large": 13,     // $0.13
-  "text-embedding-ada-002": 10,     // $0.10
-  // Voyage (Anthropic's recommended embedding provider)
-  "voyage-large-2": 12,             // $0.12
-  "voyage-large-2-instruct": 12,    // $0.12
-  "voyage-3": 6,                    // $0.06
-  "voyage-3-large": 18,             // $0.18
-  "voyage-code-3": 18,              // $0.18
-};
 
 type EmbeddingProvider = "openai" | "voyage";
 type EmbeddingScope = Pick<
@@ -76,8 +62,8 @@ export class EmbeddingService {
   private cache = new Map<string, number[]>();
 
   constructor(
+    private readonly costService: CostService,
     @Optional() private readonly scopedEnv?: ScopedEnvService,
-    @Optional() private readonly costService?: CostService,
   ) {
     this.provider = (env.PLATOS_EMBEDDING_PROVIDER ?? "voyage") as EmbeddingProvider;
     this.model = env.PLATOS_EMBEDDING_MODEL || DEFAULT_MODEL[this.provider];
@@ -255,10 +241,12 @@ export class EmbeddingService {
     apiKey: string,
     scope?: EmbeddingScope,
   ): Promise<number[][]> {
+    const pricingModel = `${this.provider}:${this.model}`;
+    const price = await preflightModelPricing(this.costService, pricingModel);
     if (this.provider === "voyage") {
-      return this.callVoyage(inputs, apiKey, scope);
+      return this.callVoyage(inputs, apiKey, scope, pricingModel, price);
     }
-    return this.callOpenAi(inputs, apiKey, scope);
+    return this.callOpenAi(inputs, apiKey, scope, pricingModel, price);
   }
 
   /**
@@ -292,7 +280,9 @@ export class EmbeddingService {
   private async callOpenAi(
     inputs: string[],
     apiKey: string,
-    scope?: EmbeddingScope,
+    scope: EmbeddingScope | undefined,
+    pricingModel: string,
+    price: Awaited<ReturnType<typeof preflightModelPricing>>,
   ): Promise<number[][]> {
     const resp = await this.fetchWithTimeout("https://api.openai.com/v1/embeddings", {
       method: "POST",
@@ -321,7 +311,12 @@ export class EmbeddingService {
     // EOBD.32 — record embedding cost in the central cost table so
     // dashboards don't undercount spend. Fire-and-forget so a
     // CostService hiccup doesn't fail the embedding.
-    this.recordEmbeddingCost(json.usage?.total_tokens ?? json.usage?.prompt_tokens ?? 0, scope);
+    await this.recordEmbeddingCost(
+      json.usage?.total_tokens ?? json.usage?.prompt_tokens ?? 0,
+      scope,
+      pricingModel,
+      price,
+    );
     // The API preserves input order but defensively sort by `index`
     // when it's present (some SDKs deliver out of order).
     const sorted = [...json.data].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
@@ -346,7 +341,9 @@ export class EmbeddingService {
   private async callVoyage(
     inputs: string[],
     apiKey: string,
-    scope?: EmbeddingScope,
+    scope: EmbeddingScope | undefined,
+    pricingModel: string,
+    price: Awaited<ReturnType<typeof preflightModelPricing>>,
   ): Promise<number[][]> {
     const body: Record<string, unknown> = {
       model: this.model,
@@ -379,30 +376,31 @@ export class EmbeddingService {
     if (!json.data || !Array.isArray(json.data)) {
       throw new Error("Voyage embeddings response missing `data` array");
     }
-    this.recordEmbeddingCost(json.usage?.total_tokens ?? 0, scope);
+    await this.recordEmbeddingCost(json.usage?.total_tokens ?? 0, scope, pricingModel, price);
     const sorted = [...json.data].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
     return sorted.map((d) => d.embedding || []);
   }
 
-  private recordEmbeddingCost(
+  private async recordEmbeddingCost(
     totalTokens: number,
-    scope?: EmbeddingScope,
-  ): void {
-    if (!this.costService || totalTokens <= 0 || !scope) return;
-    const rate = EMBEDDING_RATE_CENTS_PER_MTOK[this.model];
-    // Non-OpenAI embedding models (Cohere/Voyage/Mistral) silently
-    // bypass until their rates are added to EMBEDDING_RATE_CENTS_PER_MTOK.
-    // Known gap — tolerable for MVP since only OpenAI is wired today.
-    if (!rate) return;
-    const costCents = (totalTokens * rate) / 1_000_000;
-    this.costService
-      .recordAuxiliaryCost({
-        scope,
-        kind: "embedding",
-        model: this.model,
-        costCents,
-        inputTokens: totalTokens,
-      })
-      .catch(() => undefined);
+    scope: EmbeddingScope | undefined,
+    pricingModel: string,
+    price: Awaited<ReturnType<typeof preflightModelPricing>>,
+  ): Promise<void> {
+    if (totalTokens <= 0 || !scope) return;
+    const pricedUsage = this.costService.priceUsageFromSnapshot(
+      pricingModel,
+      price,
+      totalTokens,
+      0,
+    );
+    if (pricedUsage.costCents <= 0) return;
+    await this.costService.recordAuxiliaryCost({
+      scope,
+      kind: "embedding",
+      model: pricingModel,
+      costCents: pricedUsage.costCents,
+      inputTokens: totalTokens,
+    });
   }
 }
