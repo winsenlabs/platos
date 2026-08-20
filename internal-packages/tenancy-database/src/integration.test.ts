@@ -64,7 +64,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(89);
+    expect(modelNames).toHaveLength(90);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -1916,7 +1916,7 @@ async function seedEveryModel(control: PrismaClient) {
       addedBy: user.id,
     },
   }));
-  track("ErasureOperation", await control.erasureOperation.create({
+  const erasureOperation = await control.erasureOperation.create({
     data: {
       organizationId: organization.id,
       idempotencyKey: "erasure",
@@ -1925,6 +1925,17 @@ async function seedEveryModel(control: PrismaClient) {
       stores: [],
       inventory: {},
       policyVersion: "1",
+    },
+  });
+  track("ErasureOperation", erasureOperation);
+
+  track("ErasureTombstone", await control.erasureTombstone.create({
+    data: {
+      organizationId: organization.id,
+      aliasHash: "alias-hash",
+      operationId: erasureOperation.id,
+      policyVersion: "1",
+      expiresAt: future(),
     },
   }));
 
