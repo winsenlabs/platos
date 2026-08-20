@@ -1,13 +1,17 @@
 import { ActionFunctionArgs, LoaderFunctionArgs, json } from "@remix-run/server-runtime";
 import { UpdateEnvironmentVariableRequestBody } from "@platos/core/v3";
 import { z } from "zod";
-import { prisma } from "~/db.server";
 import {
   authenticateRequest,
   authenticatedEnvironmentForAuthentication,
   branchNameFromRequest,
 } from "~/services/apiAuth.server";
-import { EnvironmentVariablesRepository } from "~/v3/environmentVariables/environmentVariablesRepository.server";
+import {
+  authorizeCanonicalEnvironmentService,
+  deleteCanonicalEnvironmentVariableById,
+  listCanonicalEnvironmentVariables,
+  updateCanonicalEnvironmentVariableById,
+} from "~/services/platosEnvironmentVariables.server";
 
 const ParamsSchema = z.object({
   projectRef: z.string(),
@@ -35,31 +39,28 @@ export async function action({ params, request }: ActionFunctionArgs) {
     branchNameFromRequest(request)
   );
 
-  // Find the environment variable
-  const variable = await prisma.environmentVariable.findFirst({
-    where: {
-      key: parsedParams.data.name,
-      projectId: environment.project.id,
-    },
+  const authorization = await authorizeCanonicalEnvironmentService({
+    environment,
+    actorId: `envvars-api:${environment.id}`,
   });
+  const variable = (await listCanonicalEnvironmentVariables(authorization)).find(
+    (candidate) => candidate.key === parsedParams.data.name
+  );
 
   if (!variable) {
     return json({ error: "Environment variable not found" }, { status: 404 });
   }
 
-  const repository = new EnvironmentVariablesRepository();
-
   switch (request.method.toUpperCase()) {
     case "DELETE": {
-      const result = await repository.deleteValue(environment.project.id, {
+      const deleted = await deleteCanonicalEnvironmentVariableById({
+        authorization,
         id: variable.id,
-        environmentId: environment.id,
       });
-
-      if (result.success) {
+      if (deleted) {
         return json({ success: true });
       } else {
-        return json({ error: result.error }, { status: 400 });
+        return json({ error: "Environment variable not found" }, { status: 404 });
       }
     }
     case "PUT":
@@ -72,21 +73,16 @@ export async function action({ params, request }: ActionFunctionArgs) {
         return json({ error: "Invalid request body", issues: body.error.issues }, { status: 400 });
       }
 
-      const result = await repository.edit(environment.project.id, {
-        values: [
-          {
-            value: body.data.value,
-            environmentId: environment.id,
-          },
-        ],
+      const updated = await updateCanonicalEnvironmentVariableById({
+        authorization,
         id: variable.id,
-        keepEmptyValues: true,
+        value: body.data.value,
+        lastUpdatedBy: authorization.actorId,
       });
-
-      if (result.success) {
+      if (updated) {
         return json({ success: true });
       } else {
-        return json({ error: result.error }, { status: 400 });
+        return json({ error: "Environment variable not found" }, { status: 404 });
       }
     }
   }
@@ -112,35 +108,21 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     branchNameFromRequest(request)
   );
 
-  // Find the environment variable
-  const variable = await prisma.environmentVariable.findFirst({
-    where: {
-      key: parsedParams.data.name,
-      projectId: environment.project.id,
-    },
+  const authorization = await authorizeCanonicalEnvironmentService({
+    environment,
+    actorId: `envvars-api:${environment.id}`,
   });
+  const variable = (await listCanonicalEnvironmentVariables(authorization)).find(
+    (candidate) => candidate.key === parsedParams.data.name
+  );
 
   if (!variable) {
     return json({ error: "Environment variable not found" }, { status: 404 });
   }
 
-  const repository = new EnvironmentVariablesRepository();
-
-  const variables = await repository.getEnvironmentWithRedactedSecrets(
-    environment.project.id,
-    environment.id,
-    environment.parentEnvironmentId ?? undefined
-  );
-
-  const environmentVariable = variables.find((v) => v.key === parsedParams.data.name);
-
-  if (!environmentVariable) {
-    return json({ error: "Environment variable not found" }, { status: 404 });
-  }
-
   return json({
-    name: environmentVariable.key,
-    value: environmentVariable.value,
-    isSecret: environmentVariable.isSecret,
+    name: variable.key,
+    value: variable.kind === "PLAIN" ? variable.value ?? "" : "",
+    isSecret: variable.kind === "SECRET",
   });
 }

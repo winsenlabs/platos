@@ -27,56 +27,38 @@ import { InputGroup } from "~/components/primitives/InputGroup";
 import { Label } from "~/components/primitives/Label";
 import { Paragraph } from "~/components/primitives/Paragraph";
 import { Switch } from "~/components/primitives/Switch";
-import { prisma } from "~/db.server";
 import { useEnvironment } from "~/hooks/useEnvironment";
 import { useList } from "~/hooks/useList";
 import { useOrganization } from "~/hooks/useOrganizations";
 import { useProject } from "~/hooks/useProject";
 import { EnvironmentVariablesPresenter } from "~/presenters/v3/EnvironmentVariablesPresenter.server";
 import { logger } from "~/services/logger.server";
-import { requireUserId } from "~/services/session.server";
+import { requireCanonicalEnvironmentAuthorization } from "~/services/platosDashboardAuth.server";
+import { setCanonicalEnvironmentVariable } from "~/services/platosEnvironmentVariables.server";
 import { cn } from "~/utils/cn";
 import {
   EnvironmentParamSchema,
-  ProjectParamSchema,
   v3EnvironmentVariablesPath,
 } from "~/utils/pathBuilder";
-import { EnvironmentVariablesRepository } from "~/v3/environmentVariables/environmentVariablesRepository.server";
 import { EnvironmentVariableKey } from "~/v3/environmentVariables/repository";
 import { Select, SelectItem } from "~/components/primitives/Select";
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
-  const userId = await requireUserId(request);
-  const { projectParam } = ProjectParamSchema.parse(params);
-
-  try {
-    const presenter = new EnvironmentVariablesPresenter();
-    const { environments } = await presenter.call({
-      userId,
-      projectSlug: projectParam,
-    });
-
-    // PPR-63 — when the link-env CTA on /providers (or skills onboarding) deep-links
-    // here with `?key=ANTHROPIC_API_KEY`, pre-seed the first variable row's key so
-    // the user doesn't have to retype the required env var name. Value is always
-    // left blank for them to paste.
-    const url = new URL(request.url);
-    const prefillKeyRaw = url.searchParams.get("key");
-    // Defensive: only accept the characters EnvironmentVariableKey allows
-    // (matches `repository.ts`'s zod schema — ASCII letters, digits, underscore).
-    const prefillKey =
-      prefillKeyRaw && /^[A-Za-z_][A-Za-z0-9_]*$/.test(prefillKeyRaw) ? prefillKeyRaw : null;
-
-    return typedjson({
-      environments,
-      prefillKey,
-    });
-  } catch (error) {
-    throw new Response(undefined, {
-      status: 400,
-      statusText: "Something went wrong, if this problem persists please contact support.",
-    });
-  }
+  const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
+  const { authorization } = await requireCanonicalEnvironmentAuthorization({
+    request,
+    organizationSlug,
+    projectSlug: projectParam,
+    environmentSlug: envParam,
+    access: "metadata",
+  });
+  const presenter = new EnvironmentVariablesPresenter();
+  const { environments } = await presenter.call({ authorization });
+  const prefillKeyRaw = new URL(request.url).searchParams.get("key");
+  const prefillKey = prefillKeyRaw && /^[A-Z][A-Z0-9_]{0,63}$/.test(prefillKeyRaw)
+    ? prefillKeyRaw
+    : null;
+  return typedjson({ environments, prefillKey });
 };
 
 const Variable = z.object({
@@ -119,65 +101,31 @@ const schema = z.object({
 });
 
 export const action = async ({ request, params }: ActionFunctionArgs) => {
-  const userId = await requireUserId(request);
   const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
-
-  if (request.method.toUpperCase() !== "POST") {
-    return { status: 405, body: "Method Not Allowed" };
-  }
-
+  if (request.method.toUpperCase() !== "POST") return { status: 405, body: "Method Not Allowed" };
   const formData = await request.formData();
   const submission = parse(formData, { schema });
-
-  if (!submission.value) {
-    return json(submission);
-  }
-
-  const project = await prisma.project.findUnique({
-    where: {
-      slug: params.projectParam,
-      organization: {
-        members: {
-          some: {
-            userId,
-          },
-        },
-      },
-    },
-    select: {
-      id: true,
-    },
+  if (!submission.value) return json(submission);
+  const { authorization, scope } = await requireCanonicalEnvironmentAuthorization({
+    request,
+    organizationSlug,
+    projectSlug: projectParam,
+    environmentSlug: envParam,
+    access: "secret:mutate",
   });
-  if (!project) {
-    submission.error.key = ["Project not found"];
+  if (submission.value.environmentIds.some((id) => id !== authorization.environmentId)) {
+    submission.error.environmentIds = ["Variables can only be created in the current Environment"];
     return json(submission);
   }
-
-  const repository = new EnvironmentVariablesRepository(prisma);
-  const result = await repository.create(project.id, {
-    ...submission.value,
-    lastUpdatedBy: {
-      type: "user",
-      userId,
-    },
-  });
-
-  if (!result.success) {
-    if (result.variableErrors) {
-      for (const { key, error } of result.variableErrors) {
-        const index = submission.value.variables.findIndex((v) => v.key === key);
-
-        if (index !== -1) {
-          submission.error[`variables[${index}].key`] = [error];
-        }
-      }
-    } else {
-      submission.error.variables = [result.error];
-    }
-
-    return json(submission);
+  for (const variable of submission.value.variables) {
+    await setCanonicalEnvironmentVariable({
+      authorization,
+      key: variable.key,
+      value: variable.value,
+      secret: submission.value.isSecret,
+      lastUpdatedBy: JSON.stringify({ type: "user", userId: scope.userId }),
+    });
   }
-
   return redirect(
     v3EnvironmentVariablesPath(
       { slug: organizationSlug },

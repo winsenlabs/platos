@@ -9,7 +9,7 @@ import { platosControlDatabase } from "./platosControlDatabase.server";
 
 const DEVELOPMENT_ROOT_KEY = "feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface";
 
-const secretStore = singleton(
+export const platosSecretStore = singleton(
   "platos-credential-store",
   () =>
     new PlatosSecretStore(
@@ -31,7 +31,7 @@ export async function listProviderCredentialMetadata(params: {
       orderBy: [{ provider: "asc" }, { isDefault: "desc" }, { createdAt: "asc" }],
       select: PROVIDER_KEY_SAFE_SELECT,
     }),
-    secretStore.listSafe(authorization),
+    platosSecretStore.listSafe(authorization),
   ]);
   const credentialsById = new Map(credentials.map((credential) => [credential.id, credential]));
 
@@ -59,7 +59,7 @@ export async function createProviderCredential(params: {
   isDefault: boolean;
 }) {
   const authorization = params.authorization;
-  return secretStore.createProviderCredentialAndKey({
+  return platosSecretStore.createProviderCredentialAndKey({
     authorization,
     name: params.referenceName,
     provider: params.provider,
@@ -77,7 +77,7 @@ export async function rotateProviderCredential(params: {
   plaintext: string;
 }) {
   const authorization = params.authorization;
-  return secretStore.rotateProviderCredentialAndKey({
+  return platosSecretStore.rotateProviderCredentialAndKey({
     authorization,
     keyId: params.keyId,
     credentialId: params.credentialId,

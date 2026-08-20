@@ -14,7 +14,10 @@ function organizationService(prisma: Record<string, unknown>) {
 }
 
 function environmentService(prisma: Record<string, unknown>) {
-  return new EnvironmentService(prisma as unknown as ControlDatabaseClient);
+  return new EnvironmentService(
+    prisma as unknown as ControlDatabaseClient,
+    {} as ConstructorParameters<typeof EnvironmentService>[1],
+  );
 }
 
 describe("admin canonical organization tenancy", () => {

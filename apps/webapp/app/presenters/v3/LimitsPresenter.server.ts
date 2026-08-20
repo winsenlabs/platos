@@ -15,6 +15,8 @@ import { logger } from "~/services/logger.server";
 import { CheckScheduleService } from "~/v3/services/checkSchedule.server";
 import { engine } from "~/v3/runEngine.server";
 import { getQueueSizeLimit, getQueueSizeLimitSource } from "~/v3/utils/queueLimits.server";
+import { platosControlDatabase } from "~/services/platosControlDatabase.server";
+import { resolveCanonicalEnvironmentId } from "~/services/platosEnvironmentVariables.server";
 
 // Create a singleton Redis client for rate limit queries
 const rateLimitRedisClient = singleton("rateLimitQueryRedisClient", () =>
@@ -145,9 +147,15 @@ export class LimitsPresenter extends BasePresenter {
     });
 
     // Get alert channel count for this org
-    const alertChannelCount = await this._replica.projectAlertChannel.count({
+    const canonicalEnvironmentId = await resolveCanonicalEnvironmentId({ id: environmentId });
+    const canonicalEnvironment = await platosControlDatabase.environment.findUniqueOrThrow({
+      where: { id: canonicalEnvironmentId },
+      select: { projectId: true },
+    });
+    const alertChannelCount = await platosControlDatabase.alertChannel.count({
       where: {
-        projectId,
+        environment: { projectId: canonicalEnvironment.projectId },
+        deletedAt: null,
       },
     });
 

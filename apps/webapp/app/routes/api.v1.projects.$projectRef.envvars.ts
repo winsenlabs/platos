@@ -1,8 +1,7 @@
 import { type LoaderFunctionArgs, json } from "@remix-run/server-runtime";
 import { z } from "zod";
-import { prisma } from "~/db.server";
 import { authenticateApiRequest } from "~/services/apiAuth.server";
-import { resolveVariablesForEnvironment } from "~/v3/environmentVariables/environmentVariablesRepository.server";
+import { resolveCanonicalEnvironmentVariablesForRuntime } from "~/services/platosEnvironmentVariables.server";
 
 const ParamsSchema = z.object({
   projectRef: z.string(),
@@ -23,38 +22,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   const { projectRef } = parsedParams.data;
 
-  const project = await prisma.project.findFirst({
-    where: {
-      externalRef: projectRef,
-      environments: {
-        some: {
-          id: authenticationResult.environment.id,
-        },
-      },
-    },
-  });
-
-  if (!project) {
+  if (authenticationResult.environment.project.externalRef !== projectRef) {
     return json({ error: "Project not found" }, { status: 404 });
   }
-
-  const envVarEnvironment = await prisma.runtimeEnvironment.findFirst({
-    where: {
-      id: authenticationResult.environment.id,
-    },
-    include: {
-      parentEnvironment: true,
-    },
+  const variables = await resolveCanonicalEnvironmentVariablesForRuntime({
+    environment: authenticationResult.environment,
+    parentEnvironment: authenticationResult.environment.parentEnvironmentId
+      ? { id: authenticationResult.environment.parentEnvironmentId }
+      : undefined,
+    actorId: `envvars-runtime:${authenticationResult.environment.id}`,
   });
-
-  if (!envVarEnvironment) {
-    return json({ error: "Environment not found" }, { status: 404 });
-  }
-
-  const variables = await resolveVariablesForEnvironment(
-    envVarEnvironment,
-    envVarEnvironment.parentEnvironment ?? undefined
-  );
 
   return json({
     variables: variables.reduce((acc: Record<string, string>, variable) => {

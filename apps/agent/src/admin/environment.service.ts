@@ -1,8 +1,16 @@
 import { Injectable, Inject } from "@nestjs/common";
 import {
   PRISMA_TOKEN,
+  PLATOS_SECRET_STORE_TOKEN,
   type ControlDatabaseClient,
 } from "../shared/database.provider";
+import {
+  EnvironmentVariableStore,
+  authorizeEnvironmentOperator,
+  type EnvironmentOperatorAuthorization,
+  type OperatorAuthorization,
+  type PlatosSecretStore,
+} from "@platos/tenancy-database";
 import type { RequestScope } from "../auth/scope.guard";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
@@ -10,8 +18,8 @@ type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environme
 /**
  * Theme MCPF-W6 — Environment management service.
  *
- * Environment credential management remains unavailable until WIN-124 moves
- * those operations onto the canonical Environment-owned credential store.
+ * Environment variables are Environment-owned. Secret values are stored only
+ * in the canonical Credential envelope store and list responses are redacted.
  *
  * Three architectural rules baked in:
  *   1. **Cross-tenant scope filtering** — every read scopes by
@@ -24,11 +32,16 @@ type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environme
  */
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,30}$/;
-const ENVIRONMENT_CREDENTIALS_UNAVAILABLE = "environment_credentials_unavailable";
-
 @Injectable()
 export class EnvironmentService {
-  constructor(@Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient) {}
+  private readonly variables: EnvironmentVariableStore;
+
+  constructor(
+    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+    @Inject(PLATOS_SECRET_STORE_TOKEN) secretStore: PlatosSecretStore,
+  ) {
+    this.variables = new EnvironmentVariableStore(prisma, secretStore);
+  }
 
   /**
    * List runtime environments visible inside the caller's project scope.
@@ -161,24 +174,42 @@ export class EnvironmentService {
     return { archived: true };
   }
 
-  async listSecrets(_scope: ScopeTuple, _userId: string | null): Promise<never> {
-    throw new Error(ENVIRONMENT_CREDENTIALS_UNAVAILABLE);
+  async listSecrets(scope: ScopeTuple, userId: string | null) {
+    const authorization = await this.authorize(scope, userId, "metadata");
+    const variables = await this.variables.list(authorization);
+    return variables.map((variable) => ({
+      name: variable.key,
+      version: String(variable.version),
+      isSecret: variable.kind === "SECRET",
+      hasSecret: variable.hasSecret,
+      createdAt: variable.createdAt,
+      updatedAt: variable.updatedAt,
+    }));
   }
 
   async setSecret(
-    _scope: ScopeTuple,
-    _userId: string | null,
-    _opts: { name: string; value: string },
-  ): Promise<never> {
-    throw new Error(ENVIRONMENT_CREDENTIALS_UNAVAILABLE);
+    scope: ScopeTuple,
+    userId: string | null,
+    opts: { name: string; value: string },
+  ) {
+    const authorization = await this.authorize(scope, userId, "secret:mutate");
+    const variable = await this.variables.set({
+      authorization,
+      key: opts.name,
+      value: opts.value,
+      secret: true,
+    });
+    return { ok: true as const, name: variable.key, version: String(variable.version) };
   }
 
   async deleteSecret(
-    _scope: ScopeTuple,
-    _userId: string | null,
-    _opts: { name: string },
-  ): Promise<never> {
-    throw new Error(ENVIRONMENT_CREDENTIALS_UNAVAILABLE);
+    scope: ScopeTuple,
+    userId: string | null,
+    opts: { name: string },
+  ) {
+    const authorization = await this.authorize(scope, userId, "secret:mutate");
+    const result = await this.variables.delete({ authorization, key: opts.name });
+    return { deleted: result.deleted, name: result.key };
   }
 
   // ── Authz helpers ─────────────────────────────────────────────────
@@ -199,5 +230,39 @@ export class EnvironmentService {
       select: { role: true },
     });
     if (!m || m.role === "MEMBER") throw new Error("access_denied");
+  }
+
+  private async authorize(
+    scope: ScopeTuple,
+    userId: string | null,
+    access: "metadata" | "secret:mutate",
+  ): Promise<EnvironmentOperatorAuthorization> {
+    if (!userId) throw new Error("access_denied");
+    const operator: OperatorAuthorization = {
+      sessionId: "platos-agent-environment-control",
+      actorUserId: userId,
+      effectiveUserId: userId,
+      email: "",
+      expiresAt: new Date(Date.now() + 60_000),
+      mfaVerifiedAt: null,
+      impersonation: null,
+    };
+    try {
+      const authorization = await authorizeEnvironmentOperator(
+        this.prisma,
+        operator,
+        scope.environmentId,
+        access,
+      );
+      if (
+        authorization.organizationId !== scope.organizationId ||
+        authorization.projectId !== scope.projectId
+      ) {
+        throw new Error("access_denied");
+      }
+      return authorization;
+    } catch {
+      throw new Error("access_denied");
+    }
   }
 }

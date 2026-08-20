@@ -2,6 +2,7 @@ export * from "../generated/control";
 export * from "./access-key";
 export * from "./auth";
 export { createEndUserClient, type EndUserClient } from "./end-user";
+export * from "./environment-variables";
 export * from "./json";
 export * from "./secrets";
 export * from "./source-model-manifest";

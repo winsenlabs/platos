@@ -8,7 +8,6 @@ import {
   RunEngineBatchTriggerService,
 } from "~/runEngine/services/batchTrigger.server";
 import { rejectLocalScheduleOperation } from "~/v3/externalTriggerBoundary.server";
-import { DeliverAlertService } from "~/v3/services/alerts/deliverAlert.server";
 import { PerformDeploymentAlertsService } from "~/v3/services/alerts/performDeploymentAlerts.server";
 import { PerformTaskRunAlertsService } from "~/v3/services/alerts/performTaskRunAlerts.server";
 import { PerformBulkActionService } from "~/v3/services/bulk/performBulkAction.server";
@@ -37,10 +36,6 @@ const workerCatalog = {
   // @deprecated, moved to commonWorker.server.ts
   "v3.performTaskRunAlerts": z.object({
     runId: z.string(),
-  }),
-  // @deprecated, moved to commonWorker.server.ts
-  "v3.deliverAlert": z.object({
-    alertId: z.string(),
   }),
   // @deprecated, moved to commonWorker.server.ts
   "v3.performDeploymentAlerts": z.object({
@@ -138,16 +133,6 @@ function getWorkerQueue() {
         handler: async (payload, job) => {
           const service = new PerformTaskRunAlertsService();
           return await service.call(payload.runId);
-        },
-      },
-      // @deprecated, moved to alertsWorker.server.ts
-      "v3.deliverAlert": {
-        priority: 0,
-        maxAttempts: 8,
-        handler: async (payload, job) => {
-          const service = new DeliverAlertService();
-
-          return await service.call(payload.alertId);
         },
       },
       // @deprecated, moved to alertsWorker.server.ts

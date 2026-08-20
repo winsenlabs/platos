@@ -1,8 +1,13 @@
-import { type Prisma, type ProjectAlertChannel } from "@platos/database";
+import { type Prisma } from "@platos/database";
 import { type prisma } from "~/db.server";
+import { platosControlDatabase } from "~/services/platosControlDatabase.server";
+import { resolveCanonicalEnvironmentId } from "~/services/platosEnvironmentVariables.server";
 import { alertsWorker } from "~/v3/alertsWorker.server";
 import { BaseService } from "../baseService.server";
-import { DeliverAlertService } from "./deliverAlert.server";
+import {
+  DeliverCanonicalAlertService,
+  type CanonicalAlertChannelForDelivery,
+} from "./deliverCanonicalAlert.server";
 
 type FoundRun = Prisma.Result<
   typeof prisma.taskRun,
@@ -28,18 +33,17 @@ export class PerformTaskRunAlertsService extends BaseService {
       return;
     }
 
-    // Find all the alert channels
-    const alertChannels = await this._prisma.projectAlertChannel.findMany({
+    const environmentId = await resolveCanonicalEnvironmentId(run.runtimeEnvironment);
+    const alertChannels = await platosControlDatabase.alertChannel.findMany({
       where: {
-        projectId: run.projectId,
+        environmentId,
         alertTypes: {
           has: "TASK_RUN",
         },
-        environmentTypes: {
-          has: run.runtimeEnvironment.parentEnvironment?.type ?? run.runtimeEnvironment.type,
-        },
         enabled: true,
+        deletedAt: null,
       },
+      include: { configuration: true },
     });
 
     for (const alertChannel of alertChannels) {
@@ -47,18 +51,19 @@ export class PerformTaskRunAlertsService extends BaseService {
     }
   }
 
-  async #createAndSendAlert(alertChannel: ProjectAlertChannel, run: FoundRun) {
-    await DeliverAlertService.createAndSendAlert(
-      {
-        channelId: alertChannel.id,
-        channelType: alertChannel.type,
-        projectId: run.projectId,
-        environmentId: run.runtimeEnvironmentId,
-        alertType: "TASK_RUN",
-        taskRunId: run.id,
+  async #createAndSendAlert(alertChannel: CanonicalAlertChannelForDelivery, run: FoundRun) {
+    await DeliverCanonicalAlertService.call({
+      channel: alertChannel,
+      alertType: "TASK_RUN",
+      eventId: run.id,
+      title: `Run ${run.friendlyId} failed`,
+      body: `${run.taskIdentifier} failed in ${run.runtimeEnvironment.slug}.`,
+      payload: {
+        runId: run.friendlyId,
+        taskIdentifier: run.taskIdentifier,
+        environmentSlug: run.runtimeEnvironment.slug,
       },
-      this._prisma
-    );
+    });
   }
 
   static async enqueue(runId: string, runAt?: Date) {

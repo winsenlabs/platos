@@ -4,7 +4,6 @@ import { z } from "zod";
 import { env } from "~/env.server";
 import { logger } from "~/services/logger.server";
 import { singleton } from "~/utils/singleton";
-import { DeliverAlertService } from "./services/alerts/deliverAlert.server";
 import { DeliverErrorGroupAlertService } from "./services/alerts/deliverErrorGroupAlert.server";
 import { ErrorAlertEvaluator } from "./services/alerts/errorAlertEvaluator.server";
 import { PerformDeploymentAlertsService } from "./services/alerts/performDeploymentAlerts.server";
@@ -40,16 +39,6 @@ function initializeWorker() {
       "v3.performDeploymentAlerts": {
         schema: z.object({
           deploymentId: z.string(),
-        }),
-        visibilityTimeoutMs: 60_000,
-        retry: {
-          maxAttempts: 3,
-        },
-        logErrors: false,
-      },
-      "v3.deliverAlert": {
-        schema: z.object({
-          alertId: z.string(),
         }),
         visibilityTimeoutMs: 60_000,
         retry: {
@@ -104,11 +93,6 @@ function initializeWorker() {
     shutdownTimeoutMs: env.ALERTS_WORKER_SHUTDOWN_TIMEOUT_MS,
     logger: new Logger("AlertsWorker", env.ALERTS_WORKER_LOG_LEVEL),
     jobs: {
-      "v3.deliverAlert": async ({ payload }) => {
-        const service = new DeliverAlertService();
-
-        await service.call(payload.alertId);
-      },
       "v3.performDeploymentAlerts": async ({ payload }) => {
         const service = new PerformDeploymentAlertsService();
 

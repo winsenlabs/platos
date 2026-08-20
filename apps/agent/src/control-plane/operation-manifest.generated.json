@@ -373,7 +373,7 @@
       },
       {
         "name": "alert_channels.create",
-        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
+        "description": "Create an Environment-owned alert channel. Webhook signing secrets are stored as CHANNEL_SECRET Credentials.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -403,12 +403,6 @@
                 "type": "string"
               }
             },
-            "environmentTypes": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
             "deduplicationKey": {
               "type": "string",
               "maxLength": 200
@@ -429,7 +423,7 @@
       },
       {
         "name": "alert_channels.delete",
-        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
+        "description": "Delete an Environment-owned alert channel while retaining its delivery ledger.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -452,7 +446,7 @@
       },
       {
         "name": "alert_channels.get_integration",
-        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
+        "description": "Return safe integration metadata for an Environment-owned channel; credential material is never returned.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -475,7 +469,7 @@
       },
       {
         "name": "alert_channels.list",
-        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
+        "description": "List Environment-owned EMAIL, SLACK, and WEBHOOK alert channels with redacted configuration and latest delivery state.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -508,7 +502,7 @@
       },
       {
         "name": "alert_channels.test",
-        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
+        "description": "Send a synthetic test and persist a visible success/failure attempt. Channel credentials are resolved only at dispatch.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -535,7 +529,7 @@
       },
       {
         "name": "alert_channels.update",
-        "description": "Alert channel management is unavailable pending the canonical WIN-124 persistence cutover.",
+        "description": "Update an Environment-owned alert channel. Type and ownership are immutable; supplied webhook secrets rotate Credential.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -551,12 +545,6 @@
               "maxLength": 200
             },
             "alertTypes": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "environmentTypes": {
               "type": "array",
               "items": {
                 "type": "string"
@@ -2861,7 +2849,7 @@
       },
       {
         "name": "environments.delete_secret",
-        "description": "Environment credential management is unavailable pending the canonical WIN-124 persistence cutover.",
+        "description": "Delete an Environment-owned variable by name. The operation is idempotent and audits only the name.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -2900,7 +2888,7 @@
       },
       {
         "name": "environments.list_secrets",
-        "description": "Environment credential management is unavailable pending the canonical WIN-124 persistence cutover.",
+        "description": "List Environment variable metadata for the caller's scope. Secret values are never returned.",
         "inputSchema": {
           "type": "object",
           "properties": {},
@@ -2916,7 +2904,7 @@
       },
       {
         "name": "environments.set_secret",
-        "description": "Environment credential management is unavailable pending the canonical WIN-124 persistence cutover.",
+        "description": "Set an Environment-owned secret variable. The value is stored in Credential and never returned or audited.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -8466,6 +8454,23 @@
         ]
       },
       {
+        "id": "POST /api/v1/agent/internal/budget-alert",
+        "method": "POST",
+        "path": "/api/v1/agent/internal/budget-alert",
+        "classification": "INTERNAL",
+        "policyRule": "agent-internal-prefix",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "AgentController",
+            "handler": "internalBudgetAlert",
+            "source": "apps/agent/src/agent-runtime/agent.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
         "id": "POST /api/v1/agent/internal/chat/reap-sessions",
         "method": "POST",
         "path": "/api/v1/agent/internal/chat/reap-sessions",
@@ -11835,12 +11840,12 @@
       "MAPPED": 83,
       "MCP_ONLY": 123
     },
-    "restOperations": 285,
-    "restRouteBindings": 286,
+    "restOperations": 286,
+    "restRouteBindings": 287,
     "ambiguousRestOperations": 1,
     "restClassifications": {
       "DEPRECATED": 13,
-      "INTERNAL": 12,
+      "INTERNAL": 13,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
       "REST_ONLY": 133

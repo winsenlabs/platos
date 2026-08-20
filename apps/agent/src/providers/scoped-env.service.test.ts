@@ -35,6 +35,13 @@ function makeHarness(options?: {
         },
       })),
     },
+    environmentVariable: {
+      findFirst: vi.fn(async (): Promise<any> => ({
+        kind: "SECRET",
+        value: null,
+        credentialId: "credential-environment-variable",
+      })),
+    },
     providerKey: {
       findFirst: vi.fn(async (query: any) => {
         if (options?.providerKeyLookupError) throw options.providerKeyLookupError;
@@ -187,6 +194,18 @@ describe("ScopedEnvService Platos credential resolution", () => {
     await expect(service.get(scope, "OPENAI_API_KEY")).resolves.toBe("old-value");
     await expect(service.get(scope, "OPENAI_API_KEY")).resolves.toBe("new-value");
     expect(readForRuntime).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns a canonical plain Environment variable without decrypting", async () => {
+    const { service, readForRuntime, prisma } = makeHarness();
+    prisma.environmentVariable.findFirst.mockResolvedValueOnce({
+      kind: "PLAIN",
+      value: "https://api.example.test",
+      credentialId: null,
+    });
+
+    await expect(service.get(scope, "API_ORIGIN")).resolves.toBe("https://api.example.test");
+    expect(readForRuntime).not.toHaveBeenCalled();
   });
 
   it("does not fall back when configured provider runtime configuration cannot decrypt", async () => {

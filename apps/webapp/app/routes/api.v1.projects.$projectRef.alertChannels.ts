@@ -45,6 +45,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       }
 
       const alertChannel = await service.call(projectRef, authenticationResult.userId, {
+        environmentId: body.data.environmentId,
         name: body.data.name,
         alertTypes: body.data.alertTypes.map((type) =>
           ApiAlertChannelPresenter.alertTypeFromApi(type)
@@ -54,7 +55,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
           email: body.data.channelData.email,
         },
         deduplicationKey: body.data.deduplicationKey,
-        environmentTypes: body.data.environmentTypes,
       });
 
       return json(await ApiAlertChannelPresenter.alertChannelToApi(alertChannel));
@@ -64,8 +64,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
       if (!body.data.channelData.url) {
         return json({ error: "webhook url is required" }, { status: 422 });
       }
+      if (!body.data.channelData.secret) {
+        return json({ error: "webhook signing secret is required" }, { status: 422 });
+      }
 
       const alertChannel = await service.call(projectRef, authenticationResult.userId, {
+        environmentId: body.data.environmentId,
         name: body.data.name,
         alertTypes: body.data.alertTypes.map((type) =>
           ApiAlertChannelPresenter.alertTypeFromApi(type)
@@ -76,7 +80,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
           secret: body.data.channelData.secret,
         },
         deduplicationKey: body.data.deduplicationKey,
-        environmentTypes: body.data.environmentTypes,
       });
 
       return json(await ApiAlertChannelPresenter.alertChannelToApi(alertChannel));

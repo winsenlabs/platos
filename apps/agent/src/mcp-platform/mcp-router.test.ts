@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { McpRouter, RPC_ERRORS } from "./mcp-router";
 import type { VerifiedToken } from "./token.service";
+import { buildMacroToolHandlers, MacroRecordingState } from "./tools/macros";
 
 const token: VerifiedToken = {
   id: "token-1",
@@ -34,6 +35,57 @@ function router() {
 }
 
 describe("McpRouter tools/call", () => {
+  it("never records or persists arguments for a non-recordable secret mutation", async () => {
+    const instance = router();
+    const state = new MacroRecordingState();
+    instance.setMacroRecorder(state);
+    instance.register({
+      name: "harmless.secret",
+      description: "Secret mutation",
+      macroRecordable: false,
+      inputSchema: {
+        type: "object",
+        required: ["value"],
+        properties: { value: { type: "string" } },
+        additionalProperties: false,
+      },
+      async execute() {
+        return { ok: true };
+      },
+    });
+    const recording = state.start(token);
+    await instance.handle(
+      {
+        jsonrpc: "2.0",
+        id: 10,
+        method: "tools/call",
+        params: { name: "harmless.secret", arguments: { value: "sentinel-macro-secret" } },
+      },
+      token,
+    );
+    expect(state.get(token)?.steps).toEqual([]);
+
+    const create = vi.fn().mockImplementation(async ({ data }) => ({
+      id: "macro-1",
+      sharedWithOrganization: false,
+      ...data,
+    }));
+    const stop = buildMacroToolHandlers({
+      state,
+      prisma: { macro: { create } } as any,
+      getRouter: () => instance,
+    }).find((handler) => handler.name === "macros.record_stop")!;
+    await stop.execute(
+      { recordingId: recording.recordingId, name: "safe macro" },
+      { ...token.scope, userId: token.mintedByUserId },
+      token,
+    );
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ steps: [] }),
+    });
+    expect(JSON.stringify(create.mock.calls)).not.toContain("sentinel-macro-secret");
+  });
+
   it("executes a harmless registered tool", async () => {
     const instance = router();
     const execute = vi.fn().mockResolvedValue({ ok: true });

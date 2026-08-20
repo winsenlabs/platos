@@ -60,9 +60,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(81);
-    expect(domainModelNames).toHaveLength(65);
-    expect(new Set(domainModelNames).size).toBe(65);
+    expect(models).toHaveLength(87);
+    expect(domainModelNames).toHaveLength(71);
+    expect(new Set(domainModelNames).size).toBe(71);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");
@@ -128,6 +128,12 @@ describe("clean-slate domain schema", () => {
       Credential: ["environmentId", "activeSecretVersionId"],
       CredentialSecretVersion: ["credentialId", "secretRevision", "rootKeyVersion", "ciphertext"],
       CredentialAudit: ["environmentId", "credentialId", "action", "outcome", "actorType"],
+      EnvironmentVariable: ["environmentId", "key", "kind", "value", "credentialId", "version"],
+      AlertChannel: ["environmentId", "type", "alertTypes", "deletedAt"],
+      AlertChannelConfiguration: ["channelId", "environmentId", "type", "credentialId"],
+      BudgetThresholdEvent: ["environmentId", "budgetId", "windowKey", "threshold"],
+      AlertDelivery: ["environmentId", "channelId", "budgetThresholdEventId", "status", "idempotencyKey"],
+      AlertDeliveryAttempt: ["environmentId", "deliveryId", "attemptNumber", "status"],
       McpToken: ["environmentId", "mintedByUserId", "permissions", "tier"],
       PersonalAccessToken: ["userId", "scopeKind", "organizationId", "projectId", "environmentId"],
       OAuthAuthorizationCode: ["clientId", "userId", "scopeKind", "organizationId", "projectId", "environmentId"],
@@ -301,6 +307,20 @@ describe("clean-slate domain schema", () => {
     expect(migration).toContain('WHERE "revokedAt" IS NULL AND "validUntil" IS NULL');
     expect(migration).toContain('CONSTRAINT "OperatorSession_tokenHash_check"');
     expect(migration).toContain('OR "impersonatedUserId" = affected_user_id');
+    for (const expected of [
+      'CONSTRAINT "EnvironmentVariable_value_shape_check"',
+      'CONSTRAINT "AlertChannelConfiguration_shape_check"',
+      'CONSTRAINT "AlertDelivery_state_check"',
+      'CREATE TRIGGER "EnvironmentVariable_credential_kind"',
+      'CREATE TRIGGER "AlertChannelConfiguration_credential_kind"',
+      'CREATE TRIGGER "AlertDeliveryAttempt_immutable_update"',
+      'CREATE TRIGGER "AlertDeliveryAttempt_immutable_delete"',
+      'CREATE TRIGGER "AlertDeliveryAttempt_immutable_truncate"',
+      'CREATE UNIQUE INDEX "BudgetThresholdEvent_budgetId_windowKey_threshold_key"',
+      'CREATE UNIQUE INDEX "AlertDelivery_budgetThresholdEventId_channelId_key"',
+    ]) {
+      expect(migration).toContain(expected);
+    }
     for (const trigger of [
       "EndUserIdentity_owner_immutable",
       "Thread_subject_immutable",
@@ -332,6 +352,12 @@ describe("clean-slate domain schema", () => {
       "Agent",
       "AgentVersion",
       "Credential",
+      "EnvironmentVariable",
+      "AlertChannel",
+      "AlertChannelConfiguration",
+      "BudgetThresholdEvent",
+      "AlertDelivery",
+      "AlertDeliveryAttempt",
       "Entity",
       "Tool",
       "AdminAudit",

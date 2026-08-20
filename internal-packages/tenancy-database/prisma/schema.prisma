@@ -52,6 +52,29 @@ enum CredentialKind {
   SERVICE_CREDENTIAL
 }
 
+enum EnvironmentVariableKind {
+  PLAIN
+  SECRET
+}
+
+enum AlertChannelType {
+  EMAIL
+  SLACK
+  WEBHOOK
+}
+
+enum AlertDeliveryKind {
+  TEST
+  BUDGET
+}
+
+enum AlertDeliveryStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
 enum PolicyEffect {
   ALLOW
   DENY
@@ -371,6 +394,11 @@ model Environment {
   agentBindings           AgentBinding[]
   credentials             Credential[]
   credentialAudits        CredentialAudit[]
+  environmentVariables     EnvironmentVariable[]
+  alertChannels            AlertChannel[]
+  budgetThresholdEvents    BudgetThresholdEvent[]
+  alertDeliveries          AlertDelivery[]
+  alertDeliveryAttempts    AlertDeliveryAttempt[]
   postmanTemplates        PostmanTemplate[]
   threads                 Thread[]
   artifacts               Artifact[]
@@ -490,7 +518,7 @@ model EndUserSession {
   /// The initial migration enforces that this identity and environment resolve
   /// to the same Organization. Scope is derived instead of copied here.
   identity    EndUserIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade)
-  environment Environment     @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  environment Environment     @relation(fields: [environmentId], references: [id], onDelete: Restrict)
 
   @@index([identityId, expiresAt])
   @@index([environmentId, expiresAt])
@@ -638,8 +666,10 @@ model Credential {
   environment         Environment               @relation(fields: [environmentId], references: [id], onDelete: Cascade)
   activeSecretVersion CredentialSecretVersion?  @relation("CredentialActiveSecretVersion", fields: [activeSecretVersionId, id], references: [id, credentialId], onDelete: Restrict)
   secretVersions      CredentialSecretVersion[] @relation("CredentialSecretVersions")
-  credentialAudits    CredentialAudit[]
-  providerKeys        ProviderKey[]
+  credentialAudits           CredentialAudit[]
+  providerKeys               ProviderKey[]
+  environmentVariables       EnvironmentVariable[]
+  alertChannelConfigurations AlertChannelConfiguration[]
 
   channelConnections   ChannelConnection[]
   channelApps          ChannelApp[]
@@ -652,6 +682,25 @@ model Credential {
   @@unique([environmentId, kind, name])
   @@index([environmentId, kind, revokedAt])
   @@index([activeSecretVersionId])
+}
+
+model EnvironmentVariable {
+  id            String                  @id @default(uuid()) @db.Uuid
+  environmentId String                  @db.Uuid
+  key           String
+  kind          EnvironmentVariableKind
+  value         String?
+  credentialId  String?                 @db.Uuid
+  version       Int                     @default(1)
+  lastUpdatedBy String?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  credential  Credential? @relation(fields: [credentialId, environmentId], references: [id, environmentId], onDelete: Restrict)
+
+  @@unique([environmentId, key])
+  @@index([credentialId])
 }
 
 model CredentialSecretVersion {
@@ -1455,15 +1504,134 @@ model Budget {
   /// Array root of integer percentage thresholds; validated by jsonShapeRegistry.
   alertThresholds Json      @default("[]")
   enabled         Boolean   @default(true)
+  deletedAt       DateTime?
   overrideUntil   DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
-  agent       Agent?      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  environment     Environment            @relation(fields: [environmentId], references: [id], onDelete: Restrict)
+  agent           Agent?                 @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  thresholdEvents BudgetThresholdEvent[]
 
-  @@index([environmentId, enabled])
+  @@unique([id, environmentId])
+  @@index([environmentId, deletedAt, enabled])
   @@index([agentId])
+}
+
+model AlertChannel {
+  id                           String           @id @default(uuid()) @db.Uuid
+  environmentId                String           @db.Uuid
+  type                         AlertChannelType
+  name                         String
+  enabled                      Boolean          @default(true)
+  alertTypes                   String[]         @default([])
+  deduplicationKey             String?
+  userProvidedDeduplicationKey Boolean          @default(false)
+  deletedAt                    DateTime?
+  createdAt                    DateTime         @default(now())
+  updatedAt                    DateTime         @updatedAt
+
+  environment   Environment                @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  configuration AlertChannelConfiguration?
+  deliveries    AlertDelivery[]
+
+  @@unique([id, environmentId, type])
+  @@unique([id, environmentId])
+  @@unique([environmentId, deduplicationKey])
+  @@index([environmentId, deletedAt, enabled, type])
+}
+
+model AlertChannelConfiguration {
+  channelId              String           @id @db.Uuid
+  environmentId          String           @db.Uuid
+  type                   AlertChannelType
+  email                  String?
+  webhookUrl             String?
+  slackChannelId         String?
+  slackChannelName       String?
+  integrationId          String?
+  integrationProvider    String?
+  externalOrganizationId String?
+  credentialId           String?          @db.Uuid
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  channel    AlertChannel @relation(fields: [channelId, environmentId, type], references: [id, environmentId, type], onDelete: Cascade)
+  credential Credential?  @relation(fields: [credentialId, environmentId], references: [id, environmentId], onDelete: Restrict)
+
+  @@unique([channelId, environmentId, type])
+  @@index([environmentId, type])
+  @@index([credentialId])
+}
+
+model BudgetThresholdEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  environmentId String   @db.Uuid
+  budgetId      String   @db.Uuid
+  windowKey     String
+  threshold     Int
+  spentCents    Float
+  runs          Int
+  createdAt     DateTime @default(now())
+
+  environment Environment     @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  budget      Budget          @relation(fields: [budgetId, environmentId], references: [id, environmentId], onDelete: Restrict)
+  deliveries  AlertDelivery[]
+
+  @@unique([id, environmentId])
+  @@unique([budgetId, windowKey, threshold])
+  @@index([environmentId, createdAt])
+}
+
+model AlertDelivery {
+  id                     String              @id @default(uuid()) @db.Uuid
+  environmentId          String              @db.Uuid
+  channelId              String              @db.Uuid
+  budgetThresholdEventId String?             @db.Uuid
+  kind                   AlertDeliveryKind
+  idempotencyKey         String
+  status                 AlertDeliveryStatus @default(PENDING)
+  attemptCount           Int                 @default(0)
+  claimGeneration        Int                 @default(0)
+  claimToken             String?             @db.Uuid
+  availableAt            DateTime            @default(now())
+  lastAttemptAt          DateTime?
+  deliveredAt            DateTime?
+  lastStatusCode         Int?
+  lastErrorCode          String?
+  lastErrorMessage       String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  environment    Environment            @relation(fields: [environmentId], references: [id], onDelete: Restrict)
+  channel        AlertChannel           @relation(fields: [channelId, environmentId], references: [id, environmentId], onDelete: Restrict)
+  thresholdEvent BudgetThresholdEvent?  @relation(fields: [budgetThresholdEventId, environmentId], references: [id, environmentId], onDelete: Restrict)
+  attempts       AlertDeliveryAttempt[]
+
+  @@unique([id, environmentId])
+  @@unique([environmentId, idempotencyKey])
+  @@unique([budgetThresholdEventId, channelId])
+  @@index([environmentId, status, availableAt])
+  @@index([channelId, createdAt])
+}
+
+model AlertDeliveryAttempt {
+  id             String              @id @default(uuid()) @db.Uuid
+  environmentId  String              @db.Uuid
+  deliveryId     String              @db.Uuid
+  attemptNumber  Int
+  status         AlertDeliveryStatus
+  responseStatus Int?
+  errorCode      String?
+  errorMessage   String?
+  startedAt      DateTime            @default(now())
+  finishedAt     DateTime?
+
+  environment Environment   @relation(fields: [environmentId], references: [id], onDelete: Restrict)
+  delivery    AlertDelivery @relation(fields: [deliveryId, environmentId], references: [id, environmentId], onDelete: Restrict)
+
+  @@unique([deliveryId, attemptNumber])
+  @@index([environmentId, status, startedAt])
 }
 
 model SafetyEvent {
