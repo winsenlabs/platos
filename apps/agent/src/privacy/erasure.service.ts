@@ -186,6 +186,37 @@ export class ErasureService {
     });
   }
 
+  /**
+   * Every handle the subject can be addressed by, for hold matching only.
+   *
+   * Both the bare handle and the channel-qualified form, because a hold
+   * register is written by a human: "U08JTN5FX39" as it appears in Slack, or
+   * "slack:U08JTN5FX39" as the documentation writes it. Matching one form and
+   * not the other is a hold that quietly does not apply.
+   *
+   * Unfiltered by `disabledAt` on purpose — the sweep deletes disabled identity
+   * rows too, so a hold naming one has to stop it.
+   *
+   * Kept out of `SubjectKeys` rather than merged into it. These are handles for
+   * MATCHING, not locators to delete by, and they are the subject's personal
+   * data: widening the subject with them would carry them into the resume plan
+   * and into every audit payload built from it.
+   */
+  private async subjectAliases(
+    subject: SubjectKeys,
+    organizationId: string,
+  ): Promise<string[]> {
+    if (!subject.platosEndUserIds.length) return [];
+    const rows: Array<{ channel: string; subject: string }> =
+      await this.prisma.endUserIdentity.findMany({
+        where: { organizationId, endUserId: { in: subject.platosEndUserIds } },
+        select: { channel: true, subject: true },
+      });
+    return rows
+      .flatMap((row) => [row.subject, `${row.channel}:${row.subject}`])
+      .filter((alias) => typeof alias === "string" && alias.length > 0);
+  }
+
   /** Content-free inventory: counts and scope ids, never content. */
   async inventory(
     subject: SubjectKeys,
@@ -695,12 +726,26 @@ export class ErasureService {
     // half-started operation, and before any executor can touch a store.
     // A caller-supplied legalHoldPolicyId still wins if present; this only adds
     // the holds the caller did not know about.
+    //
+    // The alias set is read here rather than taken from `subject`: discovery
+    // resolves the person FROM one identity tuple and reports that one id back,
+    // so matching the subject as-discovered compares the register against the
+    // requested id and the canonical uuid and nothing else. A hold registered
+    // under someone's Slack handle would then not stop an erasure requested
+    // under their email — which is the hole this module was written to close
+    // for deletion, reopened one layer up.
+    const register = parseLegalHoldList(process.env.PLATOS_LEGAL_HOLD_USER_IDS);
+    // Read only when there is a register to compare them against: with no hold
+    // configured there is no reason to pull the subject's handles into memory.
+    const holdAliases = register.length
+      ? await this.subjectAliases(subject, args.organizationId)
+      : [];
     const heldBy =
       args.legalHoldPolicyId ??
       findLegalHold(
-        subject,
+        { ...subject, legacyUserIds: [...subject.legacyUserIds, ...holdAliases] },
         args.externalUserId,
-        parseLegalHoldList(process.env.PLATOS_LEGAL_HOLD_USER_IDS),
+        register,
       );
 
     // Captured here and nowhere else. This is the last moment at which every
