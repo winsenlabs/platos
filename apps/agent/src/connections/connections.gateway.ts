@@ -24,6 +24,7 @@ import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
 import { RateLimitService } from "../monitoring/rate-limit.service";
 import { SafetyEventService } from "../monitoring/safety-event.service";
+import { assertsIdentity, stripAssertedIdentity } from "./session-context-override";
 
 /**
  * WebSocket gateway for real-time agent communication.
@@ -364,6 +365,14 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
                   ...(userMeta.email ? { email: userMeta.email } : {}),
                 },
               },
+              // WIN-133 — the signed copy, kept out of the prompt bag that
+              // handleMessage merges a client override into. This is the only
+              // provenance turns_v1's plaintext identity columns accept; see
+              // RequestScope.signedUserMeta.
+              signedUserMeta: {
+                ...(userMeta.name ? { name: userMeta.name } : {}),
+                ...(userMeta.email ? { email: userMeta.email } : {}),
+              },
             }
           : {}),
       };
@@ -565,7 +574,14 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       // the common path (no postmanUserId). It was an unconditional query on
       // every WS message; guarding it removes one round-trip per turn with no
       // behavior change (effectiveUserId stays scope.userId when not simulating).
-      if (data.postmanUserId && data.postmanUserId !== scope.userId) {
+      // WIN-133 — the identity half of `sessionContextOverride` is held to the
+      // same bar, so the lookup also runs when the override asserts a name or
+      // an email. Still skipped on the common path (neither knob used).
+      const overrideAssertsIdentity = assertsIdentity(data.sessionContextOverride);
+      if (
+        (data.postmanUserId && data.postmanUserId !== scope.userId) ||
+        overrideAssertsIdentity
+      ) {
         try {
           const orgMember = await this.prisma.organizationMembership.findFirst({
             where: {
@@ -593,6 +609,33 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
       // simulated one. Allows the operator to see their own threads in the
       // conversations list regardless of Postman state.
       const isPostmanOverride = effectiveUserId !== scope.userId;
+      // WIN-133 — an override that asserts a name or an email from a caller who
+      // is not an org admin is a forged identity: the values land on the turn's
+      // spans (and used to land on its analytical row) keyed to the ATTACKER'S
+      // end_user_id, so erasing the person actually named in them never reaches
+      // those rows. Strip the claim, keep the rest of the bag, and say so.
+      let sessionContextOverride = data.sessionContextOverride;
+      if (sessionContextOverride && overrideAssertsIdentity && !isOrgAdmin) {
+        const { sanitized, removed } = stripAssertedIdentity(sessionContextOverride);
+        sessionContextOverride = Object.keys(sanitized).length > 0 ? sanitized : undefined;
+        this.safetyEventService
+          ?.record(
+            {
+              organizationId: scope.organizationId,
+              projectId: scope.projectId,
+              environmentId: scope.environmentId,
+            },
+            {
+              detector: "pii",
+              action: "block",
+              severity: "medium",
+              detail: `sessionContextOverride asserted unsigned identity (${removed.join(", ")}) [WS]`,
+              agentId,
+              userId: scope.userId,
+            },
+          )
+          .catch(() => undefined);
+      }
       const scopeWithAgent: RequestScope = {
         ...scope,
         agentId,
@@ -603,11 +646,11 @@ export class ConnectionsGateway implements OnGatewayConnection, OnGatewayDisconn
         // sessionContext (carrying user.name / user.email from userMeta)
         // so a Postman override doesn't wipe visitor identity for the
         // dynamic-block resolver.
-        ...(data.sessionContextOverride
+        ...(sessionContextOverride
           ? {
               sessionContext: {
                 ...(scope.sessionContext as Record<string, unknown> | undefined),
-                ...data.sessionContextOverride,
+                ...sessionContextOverride,
               },
             }
           : {}),

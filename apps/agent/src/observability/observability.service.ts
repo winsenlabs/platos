@@ -31,6 +31,13 @@ import {
 import type { Prisma } from "@platos/tenancy-database";
 import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import {
+  CANONICAL_ALIAS_CHANNEL,
+  aliasKeyHash,
+  erasedAliasHashes,
+  erasureHashSalt,
+  normalizeAlias,
+} from "../privacy/erasure-register";
+import {
   ClickhouseObservabilitySink,
   errorClass,
   healthLogLevel,
@@ -67,6 +74,30 @@ export type ObservabilityTransaction = Prisma.TransactionClient;
 
 /** Nest token for the sink, so a test can supply one without a ClickHouse. */
 export const OBSERVABILITY_SINK_TOKEN = "OBSERVABILITY_SINK";
+
+/**
+ * Savepoint name for the best-effort enqueue. A fixed identifier, never
+ * interpolated from anything: it is spliced into SQL text, and the only safe
+ * value to splice is a constant.
+ */
+const PROJECTION_SAVEPOINT = "platos_observability_projection";
+
+/**
+ * Wall clock a single drain may spend delivering.
+ *
+ * Under the HTTP client's 60s timeout, so the caller gets a summary rather than
+ * an aborted request — a pass that stops early leaves its remaining rows PENDING
+ * and reports the depth, which is a state; a timed-out request is not.
+ */
+const DRAIN_DEADLINE_MS = 45_000;
+
+/** Placeholder for `status({ sink: false })`, where the probe was deliberately skipped. */
+const SINK_NOT_PROBED: ObservabilitySinkHealth = {
+  configured: true,
+  available: true,
+  status: "ready",
+  detail: "health not probed for this report",
+};
 
 export interface ObservabilityStatusReport {
   sink: ObservabilitySinkHealth;
@@ -182,18 +213,53 @@ export class ObservabilityService implements OnApplicationBootstrap {
    * roll back a Turn that already happened. The failure is logged at error
    * level rather than swallowed, because a persistently failing enqueue is
    * silent telemetry loss and that is the thing being fixed here.
+   *
+   * A JAVASCRIPT `catch` IS NOT ENOUGH, AND THAT IS WHY THE SAVEPOINT IS HERE.
+   *
+   * This runs inside the caller's interactive transaction. A Prisma error
+   * raised by the upsert has ALREADY aborted the enclosing Postgres
+   * transaction: every subsequent statement fails with "current transaction is
+   * aborted", and the COMMIT the engine then issues is converted by Postgres
+   * into a rollback. Catching the rejection in JS does not undo any of that,
+   * and Prisma wraps no savepoint around individual interactive-transaction
+   * queries. So the previous version discarded the Turn, its Step and its Tool
+   * Calls while `storeMessage` returned a StoredMessage built from the
+   * in-memory objects — and logged a line saying the exact opposite.
+   *
+   * `SAVEPOINT` / `ROLLBACK TO SAVEPOINT` is the one thing that makes the catch
+   * mean what it says: the failed upsert is undone, the enclosing transaction is
+   * back in a good state, and the work it was describing still commits.
    */
   async enqueueTurnBestEffort(
     tx: ObservabilityTransaction,
     projection: TurnProjection,
   ): Promise<boolean> {
+    if (!this.isEnabled()) return false;
     try {
-      return await this.enqueueTurn(tx, projection);
+      await tx.$executeRawUnsafe(`SAVEPOINT ${PROJECTION_SAVEPOINT}`);
+    } catch (err) {
+      // No savepoint means no way to fail safely, so do not attempt the write
+      // at all: a lost projection is recoverable from Postgres, a lost Turn is
+      // not.
+      this.logger.error(
+        `[observability] could not open a savepoint for turn ${projection.turn.turnId}` +
+          ` (${errorClass(err)}); the projection is skipped and the Turn is unaffected`,
+      );
+      return false;
+    }
+    try {
+      const queued = await this.enqueueTurn(tx, projection);
+      await tx.$executeRawUnsafe(`RELEASE SAVEPOINT ${PROJECTION_SAVEPOINT}`);
+      return queued;
     } catch (err) {
       this.logger.error(
         `[observability] failed to queue projection for turn ${projection.turn.turnId}` +
           ` (${errorClass(err)}); the Turn is committed and its projection is lost`,
       );
+      // If this throws too, the transaction is unrecoverable by any means
+      // available here and the caller SHOULD see it — a silent success on a
+      // transaction Postgres is about to roll back is the worse outcome.
+      await tx.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${PROJECTION_SAVEPOINT}`);
       return false;
     }
   }
@@ -205,25 +271,65 @@ export class ObservabilityService implements OnApplicationBootstrap {
    * lease: the queue is one row per Turn and a redelivered row is collapsed by
    * ReplacingMergeTree, so the cost of two drainers overlapping is a duplicate
    * insert that dedupes — not a double charge.
+   *
+   * A LOOP, BECAUSE A SINGLE READ IS A THROUGHPUT CEILING.
+   *
+   * One `findMany` of `drainBatchSize` per scheduled run caps steady-state
+   * delivery at that many projections per run regardless of turn volume. At the
+   * old hourly cron and a 500-row read, a deployment completing more than about
+   * eight turns a minute accumulated a PENDING backlog it could never work off
+   * even with a perfectly healthy ClickHouse — and `prune` only deletes
+   * DELIVERED rows, so the table grew without bound while nothing reported the
+   * depth. The pass now keeps reading until the queue is empty, the row budget
+   * is spent or the wall clock runs out, and it reports the depth either way.
    */
   async drain(limit?: number): Promise<DrainSummary> {
     const config = this.readConfig();
     if (!config.configured) {
-      return emptyDrainSummary("no observability sink configured");
+      return this.withQueueDepth(emptyDrainSummary("no observability sink configured"));
     }
     const health = await this.sink.health().catch(() => null);
     if (!health?.available) {
       // Nothing is claimed and nothing is lost; the rows stay PENDING.
       const detail = health?.detail ?? "health probe threw";
       this.logger.warn(`[observability] drain skipped: sink is not available (${detail})`);
-      return emptyDrainSummary(`sink unavailable: ${health?.status ?? "unknown"}`);
+      return this.withQueueDepth(emptyDrainSummary(`sink unavailable: ${health?.status ?? "unknown"}`));
     }
 
     const now = new Date();
+    const summary = emptyDrainSummary();
+    const budget = Math.max(1, Math.min(config.drainMaxRows, limit ?? config.drainMaxRows));
+    const deadline = Date.now() + DRAIN_DEADLINE_MS;
+
+    while (summary.claimed < budget) {
+      const take = Math.min(config.drainBatchSize, budget - summary.claimed);
+      const claimed = await this.claim(take, now);
+      if (claimed.length === 0) break;
+      summary.claimed += claimed.length;
+      summary.passes++;
+      await this.deliverBatch(claimed, config, summary);
+      // A short read means the queue is empty; anything else means keep going
+      // until one of the two budgets stops us.
+      if (claimed.length < take) break;
+      if (Date.now() >= deadline) {
+        summary.skipped = `drain deadline reached after ${summary.claimed} rows`;
+        break;
+      }
+    }
+    if (summary.claimed >= budget && !summary.skipped) {
+      summary.skipped = `drain row budget (${budget}) reached`;
+    }
+
+    summary.pruned = await this.prune(now);
+    return this.withQueueDepth(summary);
+  }
+
+  /** One page of due rows, oldest first. */
+  private async claim(take: number, now: Date): Promise<OutboxRow[]> {
     const pending = await this.prisma.observabilityOutbox.findMany({
       where: { status: "PENDING", availableAt: { lte: now } },
       orderBy: { availableAt: "asc" },
-      take: Math.min(config.drainBatchSize, Math.max(1, limit ?? config.drainBatchSize)),
+      take,
       select: {
         id: true,
         turnId: true,
@@ -234,17 +340,39 @@ export class ObservabilityService implements OnApplicationBootstrap {
         attempts: true,
       },
     });
-    const claimed: OutboxRow[] = pending.map((row) => ({
+    return pending.map((row) => ({
       ...row,
       status: row.status as OutboxStatus,
       payload: row.payload as unknown,
     }));
+  }
 
-    const summary = emptyDrainSummary();
-    summary.claimed = claimed.length;
+  private async deliverBatch(
+    claimed: OutboxRow[],
+    config: ObservabilityConfig,
+    summary: DrainSummary,
+  ): Promise<void> {
+    const decoded = claimed.map((row) => ({
+      row,
+      rows: isDeliverableVersion(row) ? decodeRows(row.payload) : null,
+    }));
+    const erased = await this.erasedRowIds(decoded);
+    if (erased.size > 0) {
+      // Destroyed rather than delivered, and destroyed rather than parked: the
+      // subject's identity was legally erased, and this row would put it back.
+      const ids = [...erased];
+      const { count } = await this.prisma.observabilityOutbox.deleteMany({
+        where: { id: { in: ids } },
+      });
+      summary.discarded += count;
+      this.logger.warn(
+        `[observability] discarded ${count} queued projection(s) for erased subjects;` +
+          " an undelivered projection must never re-insert an erased identity",
+      );
+    }
 
-    for (const row of claimed) {
-      const rows = isDeliverableVersion(row) ? decodeRows(row.payload) : null;
+    for (const { row, rows } of decoded) {
+      if (erased.has(row.id)) continue;
       if (!rows) {
         const reason = isDeliverableVersion(row)
           ? "payload is not the expected row shape"
@@ -272,8 +400,79 @@ export class ObservabilityService implements OnApplicationBootstrap {
         }
       }
     }
+  }
 
-    summary.pruned = await this.prune(now);
+  /**
+   * Rows in this batch whose subject the organization has erased.
+   *
+   * THE OUTBOX IS A WRITER THE ERASURE SWEEP DOES NOT WAIT FOR. The FK from
+   * `ObservabilityOutbox.turnId` to `Turn` cascades, but the cascade only fires
+   * when the POSTGRES executor runs — and the execution order is minio, redis,
+   * clickhouse, postgres. ClickHouse is mutated, polled to `is_done` and
+   * negatively verified BEFORE Postgres deletes the Turns these rows hang off,
+   * so a drain landing in that window re-inserts `end_user_id`,
+   * `user_display_name` and `user_email` for the subject whose receipt already
+   * says "clickhouse: done, verification passed". It is not only a race: when
+   * the Postgres transaction fails, the cascade never runs at all and retry
+   * re-runs Postgres only, never re-sweeping ClickHouse.
+   *
+   * FAIL CLOSED, like every other consultation of this register: a lookup that
+   * cannot run refuses the whole pass rather than delivering blind. Rows stay
+   * PENDING, which costs a delay; the alternative costs an erasure.
+   */
+  private async erasedRowIds(
+    decoded: Array<{ row: OutboxRow; rows: ObservabilityRows | null }>,
+  ): Promise<Set<string>> {
+    // Which rows address which subject, keyed by the same canonical alias the
+    // sweep seals: (platos:end-user, <EndUser uuid>).
+    const addressed = decoded.flatMap(({ row, rows }) => {
+      const endUserId = rows?.turns_v1[0]?.end_user_id;
+      const alias =
+        typeof endUserId === "string"
+          ? normalizeAlias({ channel: CANONICAL_ALIAS_CHANNEL, subject: endUserId })
+          : null;
+      return alias ? [{ rowId: row.id, organizationId: row.organizationId, alias }] : [];
+    });
+    // Resolved only when there is something to ask about: the salt is mandatory
+    // in production and throwing here on a batch with no subjects would fail a
+    // pass that had nothing to check.
+    if (addressed.length === 0) return new Set();
+    const salt = erasureHashSalt();
+
+    // Grouped by organization, because the register is organization-scoped and
+    // one drain pass spans every tenant with queued work.
+    const rowsByOrgHash = new Map<string, string[]>();
+    const aliasesByOrg = new Map<string, typeof addressed[number]["alias"][]>();
+    for (const { rowId, organizationId, alias } of addressed) {
+      const hash = aliasKeyHash(alias, organizationId, salt);
+      const key = `${organizationId} ${hash}`;
+      rowsByOrgHash.set(key, [...(rowsByOrgHash.get(key) ?? []), rowId]);
+      aliasesByOrg.set(organizationId, [...(aliasesByOrg.get(organizationId) ?? []), alias]);
+    }
+
+    const erased = new Set<string>();
+    for (const [organizationId, aliases] of aliasesByOrg) {
+      const hits = await erasedAliasHashes(this.prisma, { organizationId, aliases, salt });
+      for (const hash of hits) {
+        for (const rowId of rowsByOrgHash.get(`${organizationId} ${hash}`) ?? []) {
+          erased.add(rowId);
+        }
+      }
+    }
+    return erased;
+  }
+
+  /**
+   * Attach the queue depth to a summary.
+   *
+   * Every pass, including the ones that did nothing: a parked row is a number
+   * someone has to explain, and it was previously announced exactly once — by
+   * the pass that parked it — after which every later pass reported zero
+   * because the claim query filters on PENDING.
+   */
+  private async withQueueDepth(summary: DrainSummary): Promise<DrainSummary> {
+    const status = await this.status({ sink: false });
+    if (!status.queueError) summary.queue = status.queue;
     return summary;
   }
 
@@ -308,16 +507,24 @@ export class ObservabilityService implements OnApplicationBootstrap {
     return count;
   }
 
-  /** Sink health plus queue depth, for the monitoring surface. */
-  async status(): Promise<ObservabilityStatusReport> {
-    const sink = await this.sink.health().catch(
-      (err): ObservabilitySinkHealth => ({
-        configured: true,
-        available: false,
-        status: "unreachable",
-        detail: `health probe threw (${errorClass(err)})`,
-      }),
-    );
+  /**
+   * Sink health plus queue depth, for the monitoring surface.
+   *
+   * `options.sink: false` skips the health probe — the drain has already made
+   * one and does not need a second network round trip to report its depth.
+   */
+  async status(options: { sink?: boolean } = {}): Promise<ObservabilityStatusReport> {
+    const sink =
+      options.sink === false
+        ? SINK_NOT_PROBED
+        : await this.sink.health().catch(
+            (err): ObservabilitySinkHealth => ({
+              configured: true,
+              available: false,
+              status: "unreachable",
+              detail: `health probe threw (${errorClass(err)})`,
+            }),
+          );
     try {
       const [pending, failed] = await Promise.all([
         this.prisma.observabilityOutbox.count({ where: { status: "PENDING" } }),

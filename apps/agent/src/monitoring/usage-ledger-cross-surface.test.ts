@@ -76,6 +76,34 @@ class InMemoryRedis {
     return ["0", [...this.hashes.keys()].filter((key) => regex.test(key))];
   }
 
+  /**
+   * The write-if-missing script, executed by READING ITS FIELD LIST.
+   *
+   * Deliberately not a hand-written reimplementation of what the script is
+   * supposed to do: the HSET argument list is parsed out of the script text and
+   * applied, so a field the script stops writing is a field this fake stops
+   * writing, and the assertion downstream fails. A hard-coded fake would have
+   * happily produced `tasks` for a script that never mentioned it.
+   */
+  async eval(script: string, key: string, argv: string[]): Promise<number> {
+    if (/"EXISTS"/.test(script) && this.hashes.has(key)) return 0;
+    const hset = /"HSET",\s*KEYS\[1\],([\s\S]*?)\n\s*\)/.exec(script);
+    if (!hset) throw new Error("unsupported script");
+    const args = hset[1]
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+    for (let i = 0; i + 1 < args.length; i += 2) {
+      const argvIndex = /^ARGV\[(\d+)\]$/.exec(args[i + 1]);
+      this.hset(
+        key,
+        args[i].replace(/^"|"$/g, ""),
+        argvIndex ? argv[Number(argvIndex[1]) - 1] : args[i + 1].replace(/^"|"$/g, ""),
+      );
+    }
+    return 1;
+  }
+
   pipeline(): InMemoryPipeline {
     return new InMemoryPipeline(this);
   }
@@ -112,6 +140,11 @@ class InMemoryPipeline {
 
   hgetall(key: string): this {
     this.queued.push(() => this.redis.hgetall(key));
+    return this;
+  }
+
+  eval(script: string, _numKeys: number, key: string, ...argv: string[]): this {
+    this.queued.push(async () => this.redis.eval(script, key, argv));
     return this;
   }
 
@@ -490,6 +523,227 @@ describe("budget enforcement reads the cache-aware figure", () => {
     const result = await budget.evaluate(SCOPE, { userId: USER_ID, agentId: AGENT_ID });
     expect(result.caps[0]!.spentCents).toBeCloseTo(13, 6);
     expect(result.blocked).toBe(true);
+  });
+});
+
+describe("a delegation is not a task", () => {
+  /**
+   * `recordUsage` has TWO call sites, not one. The second is `runSubAgent`,
+   * reached from the `delegate_to_sub_agent` tool the parent model calls — once
+   * per delegation, any number of times inside a single turn, against the same
+   * thread and the parent's agentId. The cross-surface suite above never
+   * exercised it, because `recordTurn` calls `recordUsage` exactly once, so N
+   * calls trivially yielded N tasks.
+   */
+  async function delegate(cost: CostService) {
+    return cost.recordUsage(SCOPE, THREAD_ID, AGENT_ID, "anthropic:sonnet-test", 900, 120, {
+      subAgentLabel: "sub-agent",
+      userId: USER_ID,
+    });
+  }
+
+  it("counts one task for a turn that delegated three times", async () => {
+    const redis = new InMemoryRedis();
+    const cost = new CostService(prismaStub(), redis as any);
+    await recordTurn(cost);
+    await delegate(cost);
+    await delegate(cost);
+    await delegate(cost);
+
+    const window = await cost.getScopeUsageWindow(SCOPE, 7);
+    const daily = await cost.getScopeDailyCost(SCOPE);
+    const perAgent = await cost.getAgentDailyCost(SCOPE, AGENT_ID);
+    const perUser = await cost.getUserDailyCost(SCOPE, USER_ID);
+    const thread = await cost.getThreadCost(THREAD_ID);
+    const byModel = await cost.getCostByModel(SCOPE, { days: 7 });
+
+    // The "322 tasks" shape: a per-model-call increment read as a billable
+    // unit. One turn happened; four model calls served it.
+    for (const tasks of [
+      window.tasks,
+      daily.tasks,
+      perAgent.tasks,
+      perUser.tasks,
+      thread.tasks,
+      byModel[0]!.tasks,
+    ]) {
+      expect(tasks).toBe(1);
+    }
+    expect(perAgent.calls).toBe(4);
+  });
+
+  it("still bills every delegation's spend to the parent's agent", async () => {
+    // Suppressing the task bump must not suppress the money: sub-agent cost
+    // attributes to the enclosing turn per THEME_E §E.9.
+    const redis = new InMemoryRedis();
+    const cost = new CostService(prismaStub(), redis as any);
+    const turn = await recordTurn(cost);
+    const first = await delegate(cost);
+    const second = await delegate(cost);
+
+    const perAgent = await cost.getAgentDailyCost(SCOPE, AGENT_ID);
+    expect(perAgent.costCents).toBeCloseTo(
+      turn.costCents + first.costCents + second.costCents,
+      4,
+    );
+    expect(first.costCents).toBeGreaterThan(0);
+  });
+});
+
+describe("a rebuilt rollup describes the same window as the one it replaced", () => {
+  const DAY = today();
+
+  /** Two Steps on one Turn, plus a second Turn — three Steps, two tasks. */
+  function stepRows() {
+    const thread = {
+      environmentId: SCOPE.environmentId,
+      agentId: AGENT_ID,
+      environment: {
+        projectId: SCOPE.projectId,
+        project: { organizationId: SCOPE.organizationId },
+      },
+      id: THREAD_ID,
+      endUserId: USER_ID,
+    };
+    const at = new Date(`${DAY}T09:00:00.000Z`);
+    return [
+      {
+        createdAt: at,
+        model: MODEL,
+        inputTokens: 1_000,
+        outputTokens: 100,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+        reasoningTokens: 0,
+        costCents: 2,
+        turnId: "turn-1",
+        turn: { id: "turn-1", status: "SUCCEEDED", thread },
+      },
+      {
+        createdAt: at,
+        model: "anthropic:haiku-test",
+        inputTokens: 400,
+        outputTokens: 40,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+        reasoningTokens: 0,
+        costCents: 0.5,
+        turnId: "turn-1",
+        turn: { id: "turn-1", status: "SUCCEEDED", thread },
+      },
+      {
+        createdAt: at,
+        model: MODEL,
+        inputTokens: 800,
+        outputTokens: 80,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+        reasoningTokens: 0,
+        costCents: 1.5,
+        turnId: "turn-2",
+        turn: { id: "turn-2", status: "SUCCEEDED", thread },
+      },
+    ];
+  }
+
+  function reconcilingCost(redis: InMemoryRedis) {
+    const prisma = prismaStub();
+    prisma.step.findMany = async () => stepRows();
+    return new CostService(prisma, redis as any);
+  }
+
+  it("rebuilds a lost day with its task count, not with cost and zero tasks", async () => {
+    // The reconcile task runs nightly over the trailing two days, so a rebuilt
+    // hash carrying real cost and `tasks = 0` was the NORMAL post-Redis-loss
+    // state: the "Tasks completed" card, monitoring.cost.daily/.range and any
+    // turns-limit cap all silently stopped counting the repaired window.
+    const redis = new InMemoryRedis();
+    const cost = reconcilingCost(redis);
+    await cost.reconcileFromPostgres({ daysBack: 1 });
+
+    const daily = await cost.getScopeDailyCost(SCOPE, DAY);
+    const perAgent = await cost.getAgentDailyCost(SCOPE, AGENT_ID, DAY);
+    // Three Steps, two Turns. `calls` counts the Steps and `tasks` counts the
+    // Turns; reading one as the other is the bug this whole ledger exists for.
+    expect(daily.tasks).toBe(2);
+    expect(perAgent.tasks).toBe(2);
+    expect(perAgent.calls).toBe(3);
+    expect(daily.costCents).toBeCloseTo(4, 6);
+  });
+
+  it("does not overwrite a hash the live path already wrote", async () => {
+    const redis = new InMemoryRedis();
+    const cost = reconcilingCost(redis);
+    await recordTurn(cost);
+    const before = await cost.getScopeDailyCost(SCOPE);
+
+    await cost.reconcileFromPostgres({ daysBack: 1 });
+    const after = await cost.getScopeDailyCost(SCOPE);
+    expect(after.costCents).toBeCloseTo(before.costCents, 6);
+    expect(after.tasks).toBe(before.tasks);
+  });
+});
+
+describe("sub-cent windows survive the round trip", () => {
+  const DAY = today();
+
+  function tinyStep(model: string, costCents: number) {
+    return {
+      createdAt: new Date(`${DAY}T09:00:00.000Z`),
+      model,
+      inputTokens: 3,
+      outputTokens: 1,
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      reasoningTokens: 0,
+      costCents,
+      turnId: "turn-1",
+      turn: {
+        id: "turn-1",
+        status: "SUCCEEDED",
+        thread: {
+          id: THREAD_ID,
+          agentId: AGENT_ID,
+          endUserId: USER_ID,
+          environmentId: SCOPE.environmentId,
+          environment: {
+            projectId: SCOPE.projectId,
+            project: { organizationId: SCOPE.organizationId },
+          },
+        },
+      },
+    };
+  }
+
+  it("reports a sub-cent total instead of rounding it to zero", async () => {
+    // These three panels rounded at 0.01c with their own inline arithmetic
+    // while the scope card rounded at the ledger's 0.0001c, so a real window
+    // below half a cent read as 0.00 on one surface and as a number on the
+    // other. Cheap models produce a lot of those.
+    const prisma = prismaStub();
+    prisma.step.findMany = async () => [tinyStep(MODEL, 0.004)];
+    const cost = new CostService(prisma, new InMemoryRedis() as any);
+
+    const byModel = await cost.getCostByModel(SCOPE, { days: 7 });
+    const byAgent = await cost.getCostByAgent(SCOPE, { days: 7 });
+    const byUser = await cost.getCostByUser(SCOPE, { days: 7 });
+
+    expect(byModel[0]!.costCents).toBeCloseTo(0.004, 6);
+    expect(byAgent[0]!.costCents).toBeCloseTo(0.004, 6);
+    expect(byUser[0]!.costCents).toBeCloseTo(0.004, 6);
+  });
+
+  it("agrees with the scope card on the same window", async () => {
+    const prisma = prismaStub();
+    prisma.step.findMany = async () => [tinyStep(MODEL, 0.0031), tinyStep(MODEL, 0.0022)];
+    const redis = new InMemoryRedis();
+    const cost = new CostService(prisma, redis as any);
+    await cost.reconcileFromPostgres({ daysBack: 1 });
+
+    const daily = await cost.getScopeDailyCost(SCOPE, DAY);
+    const byModel = await cost.getCostByModel(SCOPE, { days: 7 });
+    expect(byModel[0]!.costCents).toBeCloseTo(daily.costCents, 6);
+    expect(daily.costCents).toBeGreaterThan(0);
   });
 });
 

@@ -24,6 +24,9 @@ import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 import { freshInputTokens } from "../monitoring/usage-ledger";
 import { randomUUID } from "node:crypto";
 
+/** The one stream event AgentTaskService consumes rather than forwards. */
+type SubAgentUsageEvent = Extract<AgentStreamEvent, { type: "sub_agent_usage" }>;
+
 export const TURN_MUTEX_TTL_MS = 30_000;
 export const TURN_MUTEX_HEARTBEAT_MS = 10_000;
 
@@ -787,6 +790,11 @@ export class AgentTaskService {
     // reasoning). Zero on non-reasoning models.
     let totalReasoningTokens = 0;
     const toolCallsLog: any[] = [];
+    // WIN-134 — priced sub-agent model calls, in the order they happened. They
+    // are already in Redis by the time they arrive here; this is the copy that
+    // becomes Step rows on the parent's Turn so the durable ledger and the
+    // rollups describe the same spend.
+    const subAgentSteps: SubAgentUsageEvent[] = [];
     // Theme F.5 — when the agent returns a structured output, capture the
     // validated object + attempt count so it lands in the normalized Turn output.
     let structuredOutput: { object: unknown; attempts: number } | null = null;
@@ -864,6 +872,13 @@ export class AgentTaskService {
         totalCacheReadTokens += usage.cacheReadInputTokens || 0;
         // PRELAUNCH-A1-3 — reasoning tokens.
         totalReasoningTokens += usage.reasoningTokens || 0;
+      }
+
+      // WIN-134 — ledger plumbing, not a UI event. Collected here and turned
+      // into Step rows below; never forwarded.
+      if (event.type === "sub_agent_usage") {
+        subAgentSteps.push(event);
+        continue;
       }
 
       // AgentService owns model streaming, but AgentTaskService owns the
@@ -989,6 +1004,24 @@ export class AgentTaskService {
       },
       costCents: costWithCacheCents,
       pricing: pricedUsage.price,
+      // WIN-134 — every sub-agent model call this turn made, as its own Step
+      // on this Turn, priced at its own model's rates. Sub-agent spend used to
+      // reach Redis and nothing else, so `Turn.costCents` (the canary panel)
+      // reported less than the per-agent card for the same agent, and a day
+      // rebuilt from Postgres was permanently short by the missing dollars.
+      additionalSteps: subAgentSteps.map((step) => ({
+        model: step.model,
+        provider: step.provider ?? null,
+        startedAt: new Date(step.startedAt),
+        completedAt: new Date(step.completedAt),
+        inputTokens: step.inputTokens,
+        outputTokens: step.outputTokens,
+        cacheCreationInputTokens: step.cacheCreationInputTokens,
+        cacheReadInputTokens: step.cacheReadInputTokens,
+        reasoningTokens: step.reasoningTokens,
+        costCents: step.costCents,
+        pricing: step.pricing,
+      })),
       latencyMs: Date.now() - turnStartMs,
       structuredOutput: structuredOutput
         ? { object: structuredOutput.object, attempts: structuredOutput.attempts }

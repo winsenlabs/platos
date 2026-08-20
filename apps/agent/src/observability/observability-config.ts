@@ -64,6 +64,16 @@ export interface ObservabilityConfig {
   batchSize: number;
   /** Outbox rows read per drain pass. */
   drainBatchSize: number;
+  /**
+   * Outbox rows one drain CALL may deliver, across as many passes as it takes.
+   *
+   * Distinct from `drainBatchSize`, and the distinction is the throughput
+   * ceiling: a drain that read one batch and returned delivered at most
+   * `drainBatchSize` projections per scheduled run, so any deployment busier
+   * than that accumulated a backlog no healthy sink could work off. The drain
+   * now loops, and this is what bounds the loop.
+   */
+  drainMaxRows: number;
   /** Deliveries attempted before a row is parked as FAILED. */
   maxAttempts: number;
   /**
@@ -147,6 +157,11 @@ export function resolveObservabilityConfig(env: EnvLike = process.env): Observab
     // in memory per drain.
     batchSize: positiveInt(env.PLATOS_OBSERVABILITY_BATCH_SIZE, 1_000, 50_000),
     drainBatchSize: positiveInt(env.PLATOS_OBSERVABILITY_DRAIN_BATCH_SIZE, 500, 5_000),
+    // 50k rows per call against a 5-minute schedule is ~166 turns/second of
+    // sustained projection throughput — comfortably above any rate the turn
+    // path itself can produce, so the queue is bounded by the sink's health
+    // rather than by the drain's arithmetic.
+    drainMaxRows: positiveInt(env.PLATOS_OBSERVABILITY_DRAIN_MAX_ROWS, 50_000, 1_000_000),
     maxAttempts: positiveInt(env.PLATOS_OBSERVABILITY_MAX_ATTEMPTS, 10, 100),
     requireSink: boolLike(env.PLATOS_OBSERVABILITY_REQUIRE_SINK),
   };

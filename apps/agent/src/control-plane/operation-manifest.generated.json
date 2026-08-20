@@ -9038,6 +9038,23 @@
         ]
       },
       {
+        "id": "GET /api/v1/agent/monitoring/observability/status",
+        "method": "GET",
+        "path": "/api/v1/agent/monitoring/observability/status",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "AgentController",
+            "handler": "observabilityStatus",
+            "source": "apps/agent/src/agent-runtime/agent.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
         "id": "GET /api/v1/agent/monitoring/safety-events",
         "method": "GET",
         "path": "/api/v1/agent/monitoring/safety-events",
@@ -11857,15 +11874,15 @@
       "MAPPED": 83,
       "MCP_ONLY": 123
     },
-    "restOperations": 287,
-    "restRouteBindings": 288,
+    "restOperations": 288,
+    "restRouteBindings": 289,
     "ambiguousRestOperations": 1,
     "restClassifications": {
       "DEPRECATED": 13,
       "INTERNAL": 13,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 134
+      "REST_ONLY": 135
     }
   }
 }

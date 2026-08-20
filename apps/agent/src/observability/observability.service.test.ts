@@ -10,6 +10,11 @@
 
 import { describe, expect, test } from "vitest";
 import {
+  CANONICAL_ALIAS_CHANNEL,
+  aliasKeyHash,
+  erasureHashSalt,
+} from "../privacy/erasure-register";
+import {
   ObservabilityService,
   type ObservabilityTransaction,
 } from "./observability.service";
@@ -98,12 +103,18 @@ class OutboxStore {
       return row;
     },
     deleteMany: async (args: {
-      where: { status: string; deliveredAt: { lt: Date } };
+      where:
+        | { status: string; deliveredAt: { lt: Date } }
+        | { id: { in: string[] } };
     }) => {
       let count = 0;
       for (const [id, row] of this.rows) {
-        if (row.status !== args.where.status) continue;
-        if (!row.deliveredAt || row.deliveredAt >= args.where.deliveredAt.lt) continue;
+        if ("id" in args.where) {
+          if (!args.where.id.in.includes(id)) continue;
+        } else {
+          if (row.status !== args.where.status) continue;
+          if (!row.deliveredAt || row.deliveredAt >= args.where.deliveredAt.lt) continue;
+        }
         this.rows.delete(id);
         count++;
       }
@@ -112,6 +123,45 @@ class OutboxStore {
     count: async (args: { where: { status: string } }) =>
       [...this.rows.values()].filter((r) => r.status === args.where.status).length,
   };
+
+  /**
+   * The erased-subject register, as far as the drain consults it.
+   *
+   * Seeded with alias hashes rather than raw ids because that is what the table
+   * holds: content-free by construction, so the barrier is not a directory of
+   * erased people.
+   */
+  readonly erased = new Set<string>();
+  readonly erasureTombstone = {
+    findMany: async (args: {
+      where: { organizationId: string; aliasHash: { in: string[] } };
+    }) =>
+      args.where.aliasHash.in
+        .filter((hash) => this.erased.has(`${args.where.organizationId}:${hash}`))
+        .map((aliasHash) => ({ aliasHash })),
+  };
+
+  /** Seal an end-user id, the way the erasure sweep does before it sweeps. */
+  seal(organizationId: string, endUserId: string): void {
+    const hash = aliasKeyHash(
+      { channel: CANONICAL_ALIAS_CHANNEL, subject: endUserId },
+      organizationId,
+      erasureHashSalt(),
+    );
+    this.erased.add(`${organizationId}:${hash}`);
+  }
+
+  /** Savepoints, so a best-effort enqueue behaves as it does in Postgres. */
+  readonly savepoints: string[] = [];
+  async $executeRawUnsafe(sql: string): Promise<number> {
+    const match = /^(SAVEPOINT|RELEASE SAVEPOINT|ROLLBACK TO SAVEPOINT) (\w+)$/.exec(sql);
+    if (!match) throw new Error(`unexpected raw statement: ${sql}`);
+    if (match[1] === "SAVEPOINT") this.savepoints.push(match[2]);
+    if (match[1] === "RELEASE SAVEPOINT") {
+      this.savepoints.splice(this.savepoints.indexOf(match[2]), 1);
+    }
+    return 0;
+  }
 
   asPrisma(): ControlDatabaseClient {
     return this as unknown as ControlDatabaseClient;
@@ -166,7 +216,7 @@ function service(
 
 const TURN_ID = "11111111-1111-4111-8111-111111111111";
 
-function projection(turnId = TURN_ID) {
+function projection(turnId = TURN_ID, endUserId = "enduser-1") {
   return buildTurnProjection({
     scope: {
       organizationId: "org-1",
@@ -174,7 +224,7 @@ function projection(turnId = TURN_ID) {
       environmentId: "env-1",
       userId: "user-1",
     },
-    thread: { id: "thread-1", agentId: "agent-1", endUserId: "enduser-1" },
+    thread: { id: "thread-1", agentId: "agent-1", endUserId },
     turn: {
       id: turnId,
       status: "completed",
@@ -381,6 +431,114 @@ describe("drain", () => {
     // An undelivered projection ageing out is the silent loss the outbox
     // replaced; a parked row stays until a human deals with it.
     expect(store.rows.has("stale-parked")).toBe(true);
+  });
+});
+
+describe("throughput", () => {
+  /** N queued projections, each on its own Turn. */
+  async function enqueue(store: OutboxStore, svc: ObservabilityService, count: number) {
+    for (let i = 0; i < count; i++) {
+      await svc.enqueueTurn(
+        store.asTransaction(),
+        projection(`11111111-1111-4111-8111-${String(i).padStart(12, "0")}`),
+      );
+    }
+  }
+
+  test("keeps reading until the queue is empty, rather than one batch per run", async () => {
+    // Delivery throughput used to be capped at drainBatchSize per scheduled
+    // run: a single findMany and a return. Any deployment producing turns
+    // faster than that accumulated a PENDING backlog it could never work off
+    // with a perfectly healthy sink, and prune() only deletes DELIVERED rows.
+    const store = new OutboxStore();
+    const sink = new RecordingSink();
+    const svc = service(store, sink, { drainBatchSize: 4 });
+    await enqueue(store, svc, 10);
+
+    const summary = await svc.drain();
+    expect(summary.claimed).toBe(10);
+    expect(summary.delivered).toBe(10);
+    expect(summary.passes).toBe(3);
+    expect(summary.queue).toEqual({ pending: 0, failed: 0 });
+    expect([...store.rows.values()].every((r) => r.status === "DELIVERED")).toBe(true);
+  });
+
+  test("stops at the row budget and says so, leaving the rest queued", async () => {
+    const store = new OutboxStore();
+    const svc = service(store, new RecordingSink(), { drainBatchSize: 4, drainMaxRows: 8 });
+    await enqueue(store, svc, 10);
+
+    const summary = await svc.drain();
+    expect(summary.delivered).toBe(8);
+    expect(summary.skipped).toContain("row budget");
+    expect(summary.queue).toEqual({ pending: 2, failed: 0 });
+  });
+
+  test("reports the standing backlog every pass, not only the pass that made it", async () => {
+    // `parked` counts rows parked during THIS pass. A row parked at 09:00 was
+    // announced once; the 10:00 pass reported parked=0 and so did every pass
+    // after it, because the claim query filters on PENDING. The backlog was
+    // durable and invisible.
+    const store = new OutboxStore();
+    const sink = new RecordingSink();
+    sink.failures = 1;
+    const svc = service(store, sink, { maxAttempts: 1 });
+    await svc.enqueueTurn(store.asTransaction(), projection());
+
+    const first = await svc.drain();
+    expect(first.parked).toBe(1);
+    expect(first.queue).toEqual({ pending: 0, failed: 1 });
+
+    const second = await svc.drain();
+    expect(second.parked).toBe(0);
+    expect(second.queue).toEqual({ pending: 0, failed: 1 });
+  });
+});
+
+describe("an erased subject is not re-inserted by a late delivery", () => {
+  test("discards a queued projection whose subject has been erased", async () => {
+    // The FK cascade that is supposed to remove these rows only fires when the
+    // POSTGRES executor runs, and the execution order puts ClickHouse before
+    // Postgres: the store is mutated, polled to is_done and verified while the
+    // outbox row still exists. A drain landing in that window used to re-insert
+    // end_user_id, user_display_name and user_email for a subject whose receipt
+    // already said "clickhouse: done".
+    const store = new OutboxStore();
+    const sink = new RecordingSink();
+    const svc = service(store, sink);
+    await svc.enqueueTurn(store.asTransaction(), projection(TURN_ID, "erased-1"));
+    await svc.enqueueTurn(
+      store.asTransaction(),
+      projection("22222222-2222-4222-8222-222222222222", "kept-1"),
+    );
+    store.seal("org-1", "erased-1");
+
+    const summary = await svc.drain();
+    expect(summary.discarded).toBe(1);
+    expect(summary.delivered).toBe(1);
+    expect(sink.written).toHaveLength(1);
+    expect(sink.written[0].turns_v1[0].end_user_id).toBe("kept-1");
+    // Destroyed, not parked: the row describes something an erasure legally
+    // destroyed, so keeping it queued keeps the identity.
+    expect([...store.rows.values()].map((r) => r.turnId)).toEqual([
+      "22222222-2222-4222-8222-222222222222",
+    ]);
+  });
+
+  test("refuses the pass when the register cannot be consulted", async () => {
+    // Fail closed, like every other consultation of this register: "we lost the
+    // ability to tell" must never read as "nobody here is erased".
+    const store = new OutboxStore();
+    const sink = new RecordingSink();
+    store.erasureTombstone.findMany = async () => {
+      throw new Error("connection terminated");
+    };
+    const svc = service(store, sink);
+    await svc.enqueueTurn(store.asTransaction(), projection());
+
+    await expect(svc.drain()).rejects.toThrow(/Erasure register unavailable/);
+    expect(sink.written).toHaveLength(0);
+    expect([...store.rows.values()][0].status).toBe("PENDING");
   });
 });
 

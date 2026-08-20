@@ -6,6 +6,7 @@ import {
   deliverySucceeded,
   deliveryUndeliverable,
   emptyDrainSummary,
+  failedDrainSummary,
   isDeliverableVersion,
   retryDelayMs,
   type OutboxRow,
@@ -122,8 +123,21 @@ describe("drain summary", () => {
       retried: 0,
       parked: 0,
       pruned: 0,
+      discarded: 0,
+      passes: 0,
     });
     expect(emptyDrainSummary("sink unavailable").skipped).toBe("sink unavailable");
+  });
+
+  test("a thrown drain is a failure, and does not wear the benign field", () => {
+    // `skipped` is the honest answer for an absent or unreachable sink, and its
+    // only consumer logs every value of it at warn under "not an error". A
+    // thrown drain arriving in that field produced no error-level signal
+    // anywhere and left the scheduled run green.
+    const failed = failedDrainSummary("drain threw (PrismaClientKnownRequestError)");
+    expect(failed.failure).toBe("drain threw (PrismaClientKnownRequestError)");
+    expect(failed.skipped).toBeUndefined();
+    expect(failed.delivered).toBe(0);
   });
 
   test("keeps acknowledged rows for a week, matching the documented retention", () => {

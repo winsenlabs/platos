@@ -50,6 +50,7 @@ import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
 import { CostService } from "../monitoring/cost.service";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
+import type { CanonicalModelPriceSnapshot } from "@platos/tenancy-database";
 import { turnTokenDetails } from "../monitoring/usage-ledger";
 import { SpansService } from "../monitoring/spans.service";
 // Theme L — pgvector-backed semantic memory + knowledge-graph services.
@@ -410,6 +411,35 @@ export type AgentStreamEvent =
   | {
       type: "safety_flags";
       flags: AgentSafetyFlag[];
+    }
+  | {
+      /**
+       * WIN-134 — one sub-agent model call, priced, so it reaches Postgres.
+       *
+       * Sub-agent spend was fanned out to Redis by `runSubAgent` and persisted
+       * nowhere: the only Step writer is `ConversationService.storeMessage`,
+       * one Step per assistant turn, and `Turn.costCents` came from the parent
+       * turn's own tokens. So the two ledgers described different money — a day
+       * Redis still held returned MORE than the same day after it fell back to
+       * the Step rows, `reconcileFromPostgres` rebuilt a lost day permanently
+       * short, and the canary panel (Postgres) disagreed with the per-agent
+       * card (Redis) for the same agent.
+       *
+       * AgentTaskService consumes this and does NOT forward it: it is ledger
+       * plumbing, not a UI event.
+       */
+      type: "sub_agent_usage";
+      model: string;
+      provider?: string | null;
+      startedAt: string;
+      completedAt: string;
+      inputTokens: number;
+      outputTokens: number;
+      cacheCreationInputTokens: number;
+      cacheReadInputTokens: number;
+      reasoningTokens: number;
+      costCents: number;
+      pricing: CanonicalModelPriceSnapshot;
     }
   | {
       /**
@@ -4228,6 +4258,10 @@ export class AgentService {
               // from buildMetaTools). When the user clicks stop, the abort
               // cascades into the sub-agent's generateText call.
               abortSignal,
+              // WIN-134 — rides the same pending-event queue the artifact
+              // events use, so it is drained at the next step boundary and
+              // reaches AgentTaskService before the turn is persisted.
+              onUsage: onArtifactEvent,
             });
             return result;
           } catch (err: any) {
@@ -4538,6 +4572,14 @@ export class AgentService {
     argExpectationsHint?: string;
     /** PRELAUNCH-A2-6 — parent stream's abort signal. */
     abortSignal?: AbortSignal;
+    /**
+     * WIN-134 — where this call's priced usage goes so it reaches Postgres.
+     *
+     * The Redis fan-out below is the live rollup; this is the durable ledger's
+     * copy. Without both, the same window returns different money depending on
+     * which one the reading surface happens to consult.
+     */
+    onUsage?: (event: AgentStreamEvent) => void;
   }): Promise<{ status: "success" | "failed"; text: string; toolCalls: any[]; steps: number; error?: string }> {
     const subModel = args.subAgentConfig?.model || "anthropic:claude-haiku-4-5-20251001";
     const subPrice = await preflightModelPricing(this.costService, subModel);
@@ -4710,6 +4752,8 @@ export class AgentService {
           subPromptTokens,
           subCompletionTokens,
           {
+            // Not a task. This is a model call INSIDE the parent's turn, and a
+            // turn that delegates three times is still one completed turn.
             subAgentLabel: "sub-agent",
             cacheCreationInputTokens: subCacheCreation,
             cacheReadInputTokens: subCacheRead,
@@ -4718,6 +4762,27 @@ export class AgentService {
           },
         );
         subCostCents = rec.costCents;
+    }
+
+    // WIN-134 — the same spend, handed to the durable ledger. It lands as an
+    // extra Step on the parent's Turn, priced at the SUB-AGENT'S model and
+    // rates, so the per-model breakdown stays honest while the money rolls up
+    // into the enclosing turn per THEME_E §E.9.
+    if (args.onUsage && (subPromptTokens > 0 || subCompletionTokens > 0 || subCostCents > 0)) {
+      args.onUsage({
+        type: "sub_agent_usage",
+        model: subModel,
+        provider: subModel.split(":")[0] ?? null,
+        startedAt: new Date(Math.round(subStartNs / 1_000_000)).toISOString(),
+        completedAt: new Date(Math.round(subEndNs / 1_000_000)).toISOString(),
+        inputTokens: subPromptTokens,
+        outputTokens: subCompletionTokens,
+        cacheCreationInputTokens: subCacheCreation,
+        cacheReadInputTokens: subCacheRead,
+        reasoningTokens: subReasoning,
+        costCents: subCostCents,
+        pricing: subPrice,
+      });
     }
 
     // Theme E.9 — emit a child `llm.inference.sub_agent` span under the turn

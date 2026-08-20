@@ -118,10 +118,53 @@ export interface DrainSummary {
   parked: number;
   /** Delivered rows pruned past their retention window. */
   pruned: number;
+  /**
+   * Rows destroyed because their subject was erased before they were delivered.
+   *
+   * The one branch that removes an unacknowledged row, and it is not a loss: an
+   * erasure has legally destroyed the thing the row describes, so delivering it
+   * would put the identity BACK. Counted rather than silent, per this file's
+   * rule.
+   */
+  discarded: number;
+  /** Batches the pass worked through. One drain is a loop, not a single read. */
+  passes: number;
+  /**
+   * Queue depth AFTER the pass — the number nobody could see before.
+   *
+   * `parked` counts rows parked during THIS pass, so a row parked at 09:00 was
+   * announced once and every later pass reported zero. Absent when the depth
+   * could not be read; a missing count is not the same claim as zero.
+   */
+  queue?: { pending: number; failed: number };
   /** Why the pass did nothing, when it did nothing. */
   skipped?: string;
+  /** The pass failed outright. A drain that threw is never reported as `ok`. */
+  failure?: string;
 }
 
 export function emptyDrainSummary(skipped?: string): DrainSummary {
-  return { claimed: 0, delivered: 0, retried: 0, parked: 0, pruned: 0, ...(skipped ? { skipped } : {}) };
+  return {
+    claimed: 0,
+    delivered: 0,
+    retried: 0,
+    parked: 0,
+    pruned: 0,
+    discarded: 0,
+    passes: 0,
+    ...(skipped ? { skipped } : {}),
+  };
+}
+
+/**
+ * A drain that threw.
+ *
+ * Distinct from `skipped`, which is the honest answer for an absent or
+ * unreachable sink — a state the runtime is designed for and reports at warn.
+ * Folding a thrown drain into the same field made a persistently failing drain
+ * indistinguishable from "no observability sink configured", which produced no
+ * error-level signal anywhere and a green scheduled run.
+ */
+export function failedDrainSummary(failure: string): DrainSummary {
+  return { ...emptyDrainSummary(), failure };
 }

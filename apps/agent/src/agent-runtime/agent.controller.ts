@@ -40,7 +40,7 @@ import { assertCostCatalogIngestion } from "../monitoring/cost-catalog-ingestion
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 import { SpansService } from "../monitoring/spans.service";
 import { ObservabilityService } from "../observability/observability.service";
-import { emptyDrainSummary } from "../observability/observability-outbox";
+import { failedDrainSummary } from "../observability/observability-outbox";
 import { TraceService } from "../monitoring/trace.service";
 import { UtilizationService } from "../monitoring/utilization.service";
 import { ToolAuditService } from "../monitoring/tool-audit.service";
@@ -4463,7 +4463,8 @@ Write the summary now:`;
       // RequestScope via `body.scope as any` below and rides through to the
       // tool executor's `__platos` envelope unchanged. SessionScope
       // (session-scope.ts) is the single source of truth for the carried set —
-      // userToken, entityId, principal, userIdentities, sessionContext.
+      // userToken, entityId, principal, userIdentities, sessionContext,
+      // signedUserMeta.
       scope: SessionScope & { agentId?: string; threadId?: string };
     },
   ) {
@@ -4845,17 +4846,71 @@ Write the summary now:`;
     // The outbox drain reports its own summary rather than folding into the
     // two counters above: `parked` is a number that has to be explained, and
     // `skipped` is the honest answer when the sink is absent or unreachable.
-    // A thrown drain is surfaced, not swallowed — the whole point of the
-    // outbox is that nothing about it is quiet.
+    //
+    // A THROWN DRAIN IS A FAILURE, NOT A SKIP. It used to be folded into the
+    // same `skipped` field the benign states use, under an HTTP 200 `ok`, and
+    // the only consumer logs every `skipped` value at warn under "not an
+    // error". So a drain throwing on every pass — `settle()` failing against
+    // Postgres mid-loop, which aborts the pass and leaves every claimed row
+    // untouched — was indistinguishable from "no observability sink
+    // configured" and produced no error-level signal anywhere.
     const observability = await this.observability
       .drain(maxBatch)
-      .catch((err: unknown) => ({
-        ...emptyDrainSummary(
-          `drain threw (${err instanceof Error ? err.name : "Error"})`,
-        ),
-      }));
+      .catch((err: unknown) =>
+        failedDrainSummary(`drain threw (${err instanceof Error ? err.name : "Error"})`),
+      );
 
-    return { status: "ok", drained, deadLettered, observability };
+    return {
+      // The envelope's own status. A failed outbox drain is not an `ok` pass,
+      // whatever the two Redis queues did.
+      status: observability.failure ? "degraded" : "ok",
+      drained,
+      deadLettered,
+      observability,
+    };
+  }
+
+  /**
+   * WIN-133 — Admin: observability sink health and outbox depth.
+   *
+   * The endpoint `agent-runtime.module.ts` claims exists. Without it, `status()`
+   * had no caller outside its own test and `tables()` had none at all, so the
+   * outbox's durable backlog was invisible: `parked` in the drain summary counts
+   * rows parked during THAT pass, and the claim query filters on PENDING, so a
+   * row parked at 09:00 was announced once and never again.
+   *
+   * Same `X-Platos-Internal-Auth` gate as the drain beside it: queue depth is an
+   * operational number across every tenant, not a scoped one.
+   */
+  @Get("monitoring/observability/status")
+  async observabilityStatus(@Req() req: Request) {
+    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
+    if (!expected) {
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
+    }
+    const provided = req.headers["x-platos-internal-auth"];
+    const isValid =
+      typeof provided === "string" &&
+      provided.length === expected.length &&
+      (() => {
+        try {
+          return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+        } catch {
+          return false;
+        }
+      })();
+    if (!isValid) {
+      return { status: "forbidden" };
+    }
+    const report = await this.observability.status();
+    return {
+      status: "ok",
+      sink: report.sink,
+      queue: report.queue,
+      ...(report.queueError ? { queueError: report.queueError } : {}),
+      tables: this.observability.tables(),
+      fetchedAt: new Date().toISOString(),
+    };
   }
 
   /**

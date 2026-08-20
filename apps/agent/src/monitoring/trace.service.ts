@@ -3,7 +3,7 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
 import { SpansService, type PlatosSpan } from "./spans.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { CostService } from "./cost.service";
-import { addUsage, EMPTY_USAGE, usageFromStep } from "./usage-ledger";
+import { addUsage, EMPTY_USAGE, roundCents, usageFromStep } from "./usage-ledger";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -124,6 +124,14 @@ export class TraceService {
         model: string;
         inputTokens: number | null;
         outputTokens: number | null;
+        // WIN-134 — the durable per-step figures. `include` has always returned
+        // them; leaving them off this annotation is what let the cost the
+        // ledger computes below look like a constant zero to the type checker
+        // while the row carried a real number.
+        cacheReadInputTokens: number | null;
+        cacheCreationInputTokens: number | null;
+        reasoningTokens: number | null;
+        costCents: unknown;
         status: string;
         error: string | null;
         toolCalls: Array<{
@@ -290,23 +298,33 @@ export class TraceService {
     }
     const totalInputTokens = usage.inputTokens;
     const totalOutputTokens = usage.outputTokens;
-    if (this.costService) {
+    // WIN-134 — the durable figure is the one accumulated one line above, from
+    // the same Step rows `getCostByModel` and `getCostByUser` read. This used to
+    // compute it, throw it away, read the `cost:thread:*` Redis hash instead,
+    // and then — when that hash had aged past its 30-day TTL while the Steps
+    // were still inside their 90-day window — fall through to a THIRD
+    // arithmetic, summing a span attribute. So a trace and a dashboard could
+    // report different money for the same turns, which is the divergence this
+    // ledger exists to end.
+    totalCostCents = roundCents(usage.costCents);
+    if (totalCostCents === 0 && this.costService) {
+      // Redis still holds the exact historical cache/price breakdown for turns
+      // written before Step carried a cost, so it stays as a fallback — behind
+      // the durable record, not in front of it.
       try {
-        totalCostCents = (await this.costService.getThreadCost(threadId)).costCents;
+        totalCostCents = roundCents((await this.costService.getThreadCost(threadId)).costCents);
       } catch (err: any) {
         this.logger.warn(
           `[trace] exact thread cost unavailable for ${threadId}: ${err?.message ?? err}`,
         );
       }
-    } else {
-      this.logger.warn(
-        `[trace] CostService is not wired; exact thread cost is unavailable for ${threadId}`,
-      );
     }
     if (totalCostCents === 0) {
-      totalCostCents = spans.reduce(
-        (sum, span) => sum + Number(span.attributes["platos.cost_cents"] ?? 0),
-        0,
+      totalCostCents = roundCents(
+        spans.reduce(
+          (sum, span) => sum + Number(span.attributes["platos.cost_cents"] ?? 0),
+          0,
+        ),
       );
     }
     if (
@@ -336,7 +354,9 @@ export class TraceService {
       rollup: {
         totalMessages: messages.length,
         totalSpans: spans.length,
-        totalCostCents: Math.round(totalCostCents * 100) / 100,
+        // Rounded once, at the ledger's 0.0001c. Rounding at 0.01c here made a
+        // real sub-cent thread read as free.
+        totalCostCents: roundCents(totalCostCents),
         totalInputTokens,
         totalOutputTokens,
         toolCallCount,

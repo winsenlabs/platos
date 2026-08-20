@@ -17,6 +17,7 @@ import {
   billableCostFromRollup,
   EMPTY_USAGE,
   freshInputTokens,
+  isCompletedTask,
   laneCostsFromRollup,
   laneRollupField,
   laneForAuxiliaryKind,
@@ -442,12 +443,26 @@ export class CostService {
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const s = scopeKey(scope);
     const pipeline = this.redis.pipeline();
+    // WIN-134 — A TASK IS ONE COMPLETED TURN, and `recordUsage` has two call
+    // sites, not one. The second is `runSubAgent`, reached from the
+    // `delegate_to_sub_agent` TOOL the parent model calls — once per
+    // delegation, any number of times inside a single turn, against the same
+    // thread and the same (parent) agentId. Bumping `tasks` there reported a
+    // turn that delegated three times as four tasks on the summary card, on the
+    // per-agent and per-model rollups, and as four runs against a turns-limit
+    // budget cap. That is the "322 tasks" bug in its exact original shape: a
+    // per-model-call increment read as a billable-unit count.
+    //
+    // `subAgentLabel` is the marker for "this is a model call inside somebody
+    // else's turn". Those bump `calls` — the raw model-invocation counter — and
+    // never `tasks`. It still does not change the BILLING attribution: that
+    // remains the parent's agentId, per THEME_E §E.9.
+    const countsAsTask = !options.subAgentLabel;
+    const bumpTasks = (key: string) => {
+      if (countsAsTask) pipeline.hincrby(key, ROLLUP_FIELD.tasks, 1);
+    };
     // thread-level rollup
-    // WIN-134 — `tasks` is bumped here and nowhere else. One call to
-    // recordUsage is one completed turn, which is the billable unit; `calls`
-    // sits alongside it counting model invocations, and auxiliary work bumps
-    // `calls` without ever touching `tasks`.
-    pipeline.hincrby(`cost:thread:${threadId}`, ROLLUP_FIELD.tasks, 1);
+    bumpTasks(`cost:thread:${threadId}`);
     pipeline.hincrby(`cost:thread:${threadId}`, "input_tokens", inputTokens);
     pipeline.hincrby(`cost:thread:${threadId}`, "output_tokens", outputTokens);
     pipeline.hincrbyfloat(`cost:thread:${threadId}`, "cost_cents", costCents);
@@ -462,7 +477,7 @@ export class CostService {
     pipeline.expire(`cost:thread:${threadId}`, 86400 * 30); // 30 day TTL
     // scope-level daily rollup
     const scopeKeyStr = `cost:scope:${s}:${today}`;
-    pipeline.hincrby(scopeKeyStr, ROLLUP_FIELD.tasks, 1);
+    bumpTasks(scopeKeyStr);
     pipeline.hincrby(scopeKeyStr, "input_tokens", inputTokens);
     pipeline.hincrby(scopeKeyStr, "output_tokens", outputTokens);
     pipeline.hincrbyfloat(scopeKeyStr, "cost_cents", costCents);
@@ -474,7 +489,7 @@ export class CostService {
     // Exact per-model attribution. Step preserves model + total tokens, while
     // this hash preserves the historical priced/cache breakdown.
     const scopeModelKey = `cost:model:${s}:${model}:${today}`;
-    pipeline.hincrby(scopeModelKey, ROLLUP_FIELD.tasks, 1);
+    bumpTasks(scopeModelKey);
     pipeline.hincrby(scopeModelKey, "input_tokens", inputTokens);
     pipeline.hincrby(scopeModelKey, "output_tokens", outputTokens);
     if (cacheCreation > 0) {
@@ -502,7 +517,7 @@ export class CostService {
     // per-agent daily rollup (E.9)
     if (agentId) {
       const agentKey = `cost:agent:${s}:${agentId}:${today}`;
-      pipeline.hincrby(agentKey, ROLLUP_FIELD.tasks, 1);
+      bumpTasks(agentKey);
       pipeline.hincrby(agentKey, "input_tokens", inputTokens);
       pipeline.hincrby(agentKey, "output_tokens", outputTokens);
       pipeline.hincrbyfloat(agentKey, "cost_cents", costCents);
@@ -530,7 +545,7 @@ export class CostService {
     // Per-end-user daily rollup. Pattern: cost:user:<s>:<userId>:<day>
     if (options.userId) {
       const userKey = `cost:user:${s}:${options.userId}:${today}`;
-      pipeline.hincrby(userKey, ROLLUP_FIELD.tasks, 1);
+      bumpTasks(userKey);
       pipeline.hincrbyfloat(userKey, "cost_cents", costCents);
       pipeline.hincrbyfloat(userKey, "cost_with_cache_cents", costWithCacheCents);
       pipeline.hincrby(userKey, "input_tokens", inputTokens);
@@ -543,10 +558,6 @@ export class CostService {
       pipeline.expire(userKey, 86400 * 90);
     }
     await pipeline.exec();
-
-    // subAgentLabel is a diagnostic tag only — the billing attribution
-    // (agentId) is the parent's id. Referenced to keep the type check honest.
-    void options.subAgentLabel;
 
     return record;
   }
@@ -576,7 +587,7 @@ export class CostService {
     return {
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
-      costCents: usage.costCents,
+      costCents: roundCents(usage.costCents),
       // `calls` counts model invocations, `tasks` counts completed turns. They
       // are different numbers and this endpoint now says which is which rather
       // than letting a caller read one as the other.
@@ -610,10 +621,10 @@ export class CostService {
     return {
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
-      costCents: usage.costCents,
+      costCents: roundCents(usage.costCents),
       // Retained for callers that still read the old field name. It is the
       // same number: there is one billable cost and this is it.
-      costWithCacheCents: usage.costCents,
+      costWithCacheCents: roundCents(usage.costCents),
       calls: parseInt(data[ROLLUP_FIELD.calls] || "0", 10) || 0,
       tasks: usage.tasks,
     };
@@ -1087,6 +1098,8 @@ export class CostService {
         costCents: true,
         turn: {
           select: {
+            id: true,
+            status: true,
             thread: {
               select: {
                 environmentId: true,
@@ -1105,9 +1118,29 @@ export class CostService {
     });
 
     // Group in memory. Keys are string-interned for the hash writes below.
-    // Bucket shape: { input_tokens, output_tokens, cost_cents, calls }.
-    type Bucket = { input_tokens: number; output_tokens: number; cost_cents: number; calls: number };
-    const mkBucket = (): Bucket => ({ input_tokens: 0, output_tokens: 0, cost_cents: 0, calls: 0 });
+    //
+    // WIN-134 — `tasks` is a set of Turn ids, not a counter. A rebuilt hash
+    // that carried real cost and `tasks = 0` made the "Tasks completed" card,
+    // `monitoring.cost.daily`/`.range` and a turns-limit budget cap all
+    // under-report for every reconciled day — which, since the task runs
+    // nightly over the trailing two days, is the normal post-Redis-loss state
+    // rather than a corner case. `calls` counts Step rows and `tasks` counts
+    // the Turns they belong to; a multi-step turn is where the two diverge, and
+    // reading one as the other is the "322 tasks" bug.
+    type Bucket = {
+      input_tokens: number;
+      output_tokens: number;
+      cost_cents: number;
+      calls: number;
+      turns: Set<string>;
+    };
+    const mkBucket = (): Bucket => ({
+      input_tokens: 0,
+      output_tokens: 0,
+      cost_cents: 0,
+      calls: 0,
+      turns: new Set<string>(),
+    });
     const scopeKeys = new Map<string, Bucket>();
     const agentKeys = new Map<string, Bucket>();
 
@@ -1118,6 +1151,8 @@ export class CostService {
       outputTokens: number | null;
       costCents: unknown;
       turn: {
+        id: string;
+        status: string | null;
         thread: {
           environmentId: string;
           agentId: string;
@@ -1141,6 +1176,12 @@ export class CostService {
         environmentId: thread.environmentId,
       });
       const agentId = thread.agentId;
+      // The ledger owns "is this a completed task", so the reconciler and the
+      // live rollups cannot disagree about which Turns count.
+      const completed = isCompletedTask({
+        status: row.turn?.status,
+        steps: [{ inputTokens, outputTokens }],
+      });
 
       const scopeKeyStr = `cost:scope:${s}:${day}`;
       let scopeBucket = scopeKeys.get(scopeKeyStr);
@@ -1149,6 +1190,7 @@ export class CostService {
       scopeBucket.output_tokens += outputTokens;
       scopeBucket.cost_cents += costCents;
       scopeBucket.calls += 1;
+      if (completed && row.turn) scopeBucket.turns.add(row.turn.id);
 
       if (agentId) {
         const agentKeyStr = `cost:agent:${s}:${agentId}:${day}`;
@@ -1158,6 +1200,7 @@ export class CostService {
         agentBucket.output_tokens += outputTokens;
         agentBucket.cost_cents += costCents;
         agentBucket.calls += 1;
+        if (completed && row.turn) agentBucket.turns.add(row.turn.id);
       }
     }
 
@@ -1189,6 +1232,7 @@ export class CostService {
         "cost_cents", ARGV[3],
         "cost_with_cache_cents", ARGV[3],
         "calls", ARGV[4],
+        "tasks", ARGV[5],
         "attribution_source", "step_fallback"
       )
       redis.call("EXPIRE", KEYS[1], 7776000)
@@ -1204,6 +1248,7 @@ export class CostService {
         String(b.output_tokens),
         String(b.cost_cents),
         String(b.calls),
+        String(b.turns.size),
       );
     }
     const results = candidates.length > 0 ? await pipeline.exec() : [];
@@ -1240,7 +1285,7 @@ export class CostService {
     return {
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
-      costCents: usage.costCents,
+      costCents: roundCents(usage.costCents),
       tasks: usage.tasks,
     };
   }
@@ -1264,7 +1309,7 @@ export class CostService {
     return {
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
-      costCents: usage.costCents,
+      costCents: roundCents(usage.costCents),
       tasks: usage.tasks,
       byLane: roundLanes(laneCostsFromRollup(data as RollupHash)),
     };
@@ -1477,8 +1522,12 @@ export class CostService {
       .map(([model, b]) => ({
         model,
         ...b,
-        costCents: Math.round(b.costCents * 100) / 100,
-        costWithCacheCents: Math.round(b.costWithCacheCents * 100) / 100,
+        // WIN-134 — the ledger rounds ONCE, at the end, at 0.0001c. Rounding
+        // here at 0.01c reported a real sub-cent window as 0.00 on this panel
+        // while the scope card showed the number, which is precisely the
+        // sub-cent loss `roundCents` exists to prevent.
+        costCents: roundCents(b.costCents),
+        costWithCacheCents: roundCents(b.costWithCacheCents),
       }))
       .sort((a, b) => b.costCents - a.costCents)
       .slice(0, limit);
@@ -1648,8 +1697,12 @@ export class CostService {
       .map(([agentId, b]) => ({
         agentId,
         agentName: nameById.get(agentId) ?? null,
-        costCents: Math.round(b.costCents * 100) / 100,
-        costWithCacheCents: Math.round(b.costWithCacheCents * 100) / 100,
+        // WIN-134 — the ledger rounds ONCE, at the end, at 0.0001c. Rounding
+        // here at 0.01c reported a real sub-cent window as 0.00 on this panel
+        // while the scope card showed the number, which is precisely the
+        // sub-cent loss `roundCents` exists to prevent.
+        costCents: roundCents(b.costCents),
+        costWithCacheCents: roundCents(b.costWithCacheCents),
         inputTokens: b.inputTokens,
         outputTokens: b.outputTokens,
         cacheCreationInputTokens: b.cacheCreationInputTokens,
@@ -1826,7 +1879,8 @@ export class CostService {
     return Array.from(byUser.entries())
       .map(([userId, b]) => ({
         userId,
-        costCents: Math.round(b.costCents * 100) / 100,
+        // Rounded once, at the ledger's 0.0001c, like every other surface.
+        costCents: roundCents(b.costCents),
         tasks: b.tasks,
         threads: b.threads.size,
         inputTokens: b.inputTokens,

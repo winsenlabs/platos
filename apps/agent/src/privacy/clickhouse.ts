@@ -85,6 +85,50 @@ export interface ClickhouseEndpoint {
 }
 
 /**
+ * Endpoint variables in precedence order — the WRITER'S order, read
+ * independently.
+ *
+ * PLATOS_OBSERVABILITY_CLICKHOUSE_URL first, then PLATOS_OTEL_CLICKHOUSE_URL:
+ * those are the variables the AGENT process receives in compose, and therefore
+ * the endpoints the rows this executor erases were actually written to. Reading
+ * only CLICKHOUSE_URL — which is set on the webapp service, not this one — is
+ * why the previous executor reported "no ClickHouse" on a stack that was
+ * writing to it all along.
+ *
+ * Duplicated from observability-config.ts rather than imported, for the reason
+ * in the header: the module whose only job is destroying data must not import
+ * the runtime that produces it. The two are pinned equal by
+ * observability-erasure-contract.test.ts, because a writer pointing at a store
+ * this executor never probes is a store that quietly retains erased people.
+ */
+export const ERASURE_URL_VARIABLES = [
+  "PLATOS_OBSERVABILITY_CLICKHOUSE_URL",
+  "PLATOS_OTEL_CLICKHOUSE_URL",
+  "CLICKHOUSE_URL",
+] as const;
+
+/**
+ * First endpoint variable that carries a non-blank value.
+ *
+ * A LOOP, not a `??` chain, and the difference is the whole point. Compose
+ * passes an unset variable through as the EMPTY STRING, which `??` accepts as a
+ * value: with PLATOS_OBSERVABILITY_CLICKHOUSE_URL="" and a real
+ * PLATOS_OTEL_CLICKHOUSE_URL, a nullish chain resolves to "" and this executor
+ * reports `not_provisioned` — which SETTLES the erasure — against a store the
+ * projection is writing identity into. `readObservabilityUrl` has always
+ * skipped blanks; this is the same rule, said again on this side of the wall.
+ */
+export function readErasureClickhouseUrl(
+  env: Record<string, string | undefined> = process.env,
+): { raw: string; source: (typeof ERASURE_URL_VARIABLES)[number] } | null {
+  for (const name of ERASURE_URL_VARIABLES) {
+    const raw = env[name]?.trim();
+    if (raw) return { raw, source: name };
+  }
+  return null;
+}
+
+/**
  * Split a configured ClickHouse URL into a fetch-safe endpoint and Basic auth.
  *
  * Returns null for anything that is not a usable http(s) URL. Null means
@@ -142,28 +186,12 @@ export class ErasureClickhouse implements ClickhouseErasureTransport {
   private readonly target: ClickhouseEndpoint | null;
 
   constructor() {
-    // The endpoint order is the WRITER'S order, read independently.
-    //
-    // PLATOS_OBSERVABILITY_CLICKHOUSE_URL first, then PLATOS_OTEL_CLICKHOUSE_URL:
-    // those are the variables the AGENT process receives in compose, and
-    // therefore the endpoints the rows this executor erases were actually
-    // written to. Reading only CLICKHOUSE_URL — which is set on the webapp
-    // service, not this one — is why the previous executor reported "no
-    // ClickHouse" on a stack that was writing to it all along.
-    //
-    // This list is duplicated from observability-config.ts rather than imported,
-    // for the reason in the header: the module whose only job is destroying data
-    // must not import the runtime that produces it. The two are pinned equal by
-    // observability-erasure-contract.test.ts, because a writer pointing at a
-    // store this executor never probes is a store that quietly retains erased
-    // people.
-    const raw = (
-      process.env.PLATOS_OBSERVABILITY_CLICKHOUSE_URL ??
-      process.env.PLATOS_OTEL_CLICKHOUSE_URL ??
-      process.env.CLICKHOUSE_URL
-    )?.trim();
-    this.configured = Boolean(raw);
-    this.target = parseClickhouseEndpoint(raw);
+    // See readErasureClickhouseUrl: the precedence list and the blank-skipping
+    // rule both live there, so they cannot drift from the writer's by being
+    // spelled differently here.
+    const found = readErasureClickhouseUrl();
+    this.configured = found !== null;
+    this.target = parseClickhouseEndpoint(found?.raw);
     if (!this.configured) {
       // Expected in local/dev: ClickHouse is deliberately not in the local
       // compose stack. Absence is reported, never assumed to mean "clean".

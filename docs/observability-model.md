@@ -110,6 +110,12 @@ It exists because twelve surfaces each re-derived "cost for this period" from a 
 
 - **Skill spend has no per-user attribution.** `recordSkillUsage` carries an agent and a thread but no user, so a per-user total is the scope total minus the skill lane. `usage-ledger-cross-surface.test.ts` asserts the exact gap rather than leaving it to be rediscovered.
 - **Auxiliary lane tags are not written to the per-user rollup.** Per-user lane splits therefore read as all-inference. The per-scope and per-agent splits are complete.
+- **Auxiliary spend has no agent.** `recordAuxiliaryCost` is called without an `agentId` by `EmbeddingService`, so embedding cents land in `cost:scope:*` and in no `cost:agent:*` key. A per-agent total is therefore always less than the scope total, by exactly the un-agented auxiliary spend. Surfaces must read the scope window for "what did this environment cost" and never sum the per-agent rows: that was the environment overview's Spend tile disagreeing with the Spend/day chart twelve lines below it.
+
+Two gaps that used to be here are closed:
+
+- Sub-agent model calls now persist as additional `Step` rows on the parent's `Turn`, priced at the sub-agent's own model and rates. They previously reached Redis and no Postgres row, so a day Redis still held reported more than the same day rebuilt from the ledger, and `reconcileFromPostgres` restored a lost day permanently short.
+- Reconciled rollups now carry `tasks`, counted as distinct completed Turns. A rebuilt hash used to carry real cost and zero tasks, which under-reported the task card, `monitoring.cost.daily`/`.range` and any turns-limit budget cap for every reconciled day.
 
 ## Identity and privacy
 
@@ -398,6 +404,10 @@ Attaching this to the span path instead would put it behind `PLATOS_OTEL_SAMPLE_
 
 `ObservabilityOutbox.turnId` has an `ON DELETE CASCADE` foreign key to `Turn`. That is a privacy control, not a tidiness one: erasure deletes the subject's Threads and Turns, and an undelivered row surviving that would project a just-erased identity into ClickHouse *after* the erasure mutation had run and been verified.
 
+The cascade is not sufficient on its own, because it only fires when the **Postgres** executor runs — and the execution order is `minio, redis, clickhouse, postgres`. ClickHouse is mutated, polled to `is_done` and negatively verified while the outbox rows still exist, and a Postgres transaction that fails leaves the cascade unrun while the ClickHouse outcome is already settled (retry re-runs Postgres only; it never re-sweeps ClickHouse). So the drain also consults the **erased-subject register** before delivering, and destroys — rather than delivers — any queued projection whose `end_user_id` has been sealed. Fail-closed: a register that cannot be consulted refuses the whole pass, leaving rows `PENDING`.
+
+The projection's plaintext `user_display_name` / `user_email` come from `scope.signedUserMeta`, which the auth layer sets only from a validated entity JWT's `userMeta`. They are deliberately **not** read from `scope.sessionContext.user`: that bag is the prompt-substitution surface, merged by turn time with the Thread row and with a base layer read out of the Postgres `User` table, and on the operator path `scope.userId` is a Platos `User.id` — so sourcing identity from it stamped the operator's own name and email onto every dashboard turn, a class of identity the erasure sweep addresses only by end-user key and can never reach.
+
 ### The four states, and what each one does
 
 | State | Startup log | Turns | Outbox |
@@ -414,7 +424,13 @@ Startup never throws by default — the product must run with no analytical stor
 
 ### Delivery, retry, and parking
 
-`platos.observability.dlq_drain` POSTs to `/api/v1/agent/monitoring/dlq/drain`, which drains two queues and reports them separately: the legacy Redis span DLQ (best-effort, drops its oldest entries under pressure) and `ObservabilityOutbox` (durable, drops nothing).
+`platos.observability.dlq_drain` runs every five minutes and POSTs to `/api/v1/agent/monitoring/dlq/drain`, which drains two queues and reports them separately: the legacy Redis span DLQ (best-effort, drops its oldest entries under pressure) and `ObservabilityOutbox` (durable, drops nothing).
+
+One call is a **loop**, not a single read: it keeps claiming batches of `PLATOS_OBSERVABILITY_DRAIN_BATCH_SIZE` until the queue is empty, `PLATOS_OBSERVABILITY_DRAIN_MAX_ROWS` are delivered, or a 45-second deadline passes. Delivery throughput is (rows per call) × (calls per hour) and has to exceed the rate turns are produced, or the queue only grows — a single 500-row read on an hourly schedule capped delivery at 500 projections an hour, and `prune` only deletes `DELIVERED` rows, so anything busier accumulated a backlog no healthy sink could work off.
+
+Every summary carries the **queue depth after the pass**, and the scheduled task reports from that rather than from what the pass happened to park: `parked` counts rows parked during one pass, so a row parked at 09:00 used to be announced once and never again. `GET /api/v1/agent/monitoring/observability/status` (internal-auth) returns sink health, queue depth and the table list on demand.
+
+A drain that **throws** is reported as `failure`, not `skipped`, and the scheduled run fails. `skipped` is the honest answer for an absent or unreachable sink — a state the runtime is designed for, logged at warn — and folding a thrown drain into it made a pass failing every hour indistinguishable from a deployment that has no ClickHouse.
 
 A delivery either succeeds, is rescheduled with exponential back-off from 30 seconds capped at an hour, or is **parked** as `FAILED`. Parking is the loud version of giving up; giving up quietly is the failure mode this design replaced. A payload the current writer cannot interpret — wrong shape, or a `payloadVersion` from a newer writer — is parked immediately rather than retried, because a shape mismatch does not heal with time. Only `DELIVERED` rows are pruned, after seven days. A `PENDING` or `FAILED` row is never removed by age.
 
@@ -428,7 +444,7 @@ Endpoint variables, in precedence order:
 2. `PLATOS_OTEL_CLICKHOUSE_URL`
 3. `CLICKHOUSE_URL`
 
-`apps/agent/src/privacy/clickhouse.ts` reads the same list, in the same order, from its own copy — the erasure module must not import the runtime that produces the data it destroys. A writer pointing at a store the eraser never probes is a store that quietly retains erased people, so `observability-erasure-contract.test.ts` pins the two resolutions equal.
+`apps/agent/src/privacy/clickhouse.ts` reads the same list, in the same order, from its own copy — the erasure module must not import the runtime that produces the data it destroys. A writer pointing at a store the eraser never probes is a store that quietly retains erased people, so `observability-erasure-contract.test.ts` pins the two resolutions equal by running both over the same environments, including the one that matters: Compose passes an unset variable through as the **empty string**, so precedence must be decided by a truthiness loop and never by a `??` chain, which accepts `""` as a value and resolves to it.
 
 Credentials are read at call time so rotation does not require a restart, and travel in a `Authorization: Basic` header because Node's `fetch` refuses a URL carrying credentials. The client never prints credentials, and never lets a ClickHouse error body escape: those bodies quote the failing statement, and a failing `INSERT` quotes the rows. Only the HTTP status and the numeric `Code: <n>` survive.
 

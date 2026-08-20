@@ -51,6 +51,18 @@ export function rowCount(rows: ObservabilityRows): number {
 const DECIMAL_BOUND = 1e12;
 
 /**
+ * The largest magnitude that still RENDERS inside those 12 integer digits.
+ *
+ * Clamping to `DECIMAL_BOUND` itself is an off-by-one that defeats the clamp:
+ * `(1e12).toFixed(12)` is "1000000000000.000000000000", thirteen integer
+ * digits, which `Decimal(24, 12)` cannot parse — so the one absurd number takes
+ * the whole batch down with it, which is precisely the outcome clamping exists
+ * to prevent, forever, because the row is frozen in the outbox and replayed.
+ * One double below the bound is the largest value that renders with twelve.
+ */
+const DECIMAL_MAX = DECIMAL_BOUND - 2 ** -13;
+
+/**
  * Fixed-point text for a `Decimal(24, 12)` column.
  *
  * `toFixed` rather than `String(value)` because the hazard here is notation,
@@ -65,7 +77,7 @@ const DECIMAL_BOUND = 1e12;
  */
 export function decimal12(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "0.000000000000";
-  const clamped = Math.max(-DECIMAL_BOUND, Math.min(DECIMAL_BOUND, value));
+  const clamped = Math.max(-DECIMAL_MAX, Math.min(DECIMAL_MAX, value));
   return clamped.toFixed(12);
 }
 

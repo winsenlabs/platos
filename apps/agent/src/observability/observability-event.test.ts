@@ -97,8 +97,29 @@ describe("decimal formatting", () => {
   test("clamps rather than rejecting a value the column could not hold", () => {
     // One absurd number in a delivered batch beats a batch of good rows
     // blocked behind it.
-    expect(decimal12(1e30)).toBe("1000000000000.000000000000");
-    expect(decimal12(-1e30)).toBe("-1000000000000.000000000000");
+    expect(decimal12(1e30)).toBe("999999999999.999877929688");
+    expect(decimal12(-1e30)).toBe("-999999999999.999877929688");
+  });
+
+  test("a clamped value fits the 12 integer digits Decimal(24, 12) holds", () => {
+    // The clamp used to land ON 1e12, which renders thirteen integer digits —
+    // unparseable by the very column it was clamped for, and ClickHouse rejects
+    // the ENTIRE batch when one column fails to parse. The row is frozen in the
+    // outbox and replayed, so that batch failed on every retry until it parked.
+    for (const value of [1e30, -1e30, 1e12, -1e12, Number.MAX_VALUE, 1e14 / 100]) {
+      const rendered = decimal12(value);
+      const [integer, fraction] = rendered.replace("-", "").split(".");
+      expect(integer.length, `${value} rendered as ${rendered}`).toBeLessThanOrEqual(12);
+      expect(fraction).toHaveLength(12);
+    }
+  });
+
+  test("costs and rates at the bound clamp into range too", () => {
+    // The three reachable doors: costCents >= 1e14, providerReportedCostUsd
+    // >= 1e12, usdPerToken >= 1e6.
+    expect(usdFromCents(1e14).split(".")[0]).toHaveLength(12);
+    expect(nullableDecimal12(1e13)!.split(".")[0]).toHaveLength(12);
+    expect(usdPerMillion(1e9).split(".")[0]).toHaveLength(12);
   });
 });
 

@@ -84,7 +84,7 @@ describe("subject derivation", () => {
 
   test("copies plaintext identity only from a signed userMeta", () => {
     const withMeta = projectionSubject(
-      { ...input().scope, sessionContext: { user: { name: "Ada", email: "ada@example.test" } } },
+      { ...input().scope, signedUserMeta: { name: "Ada", email: "ada@example.test" } },
       "enduser-1",
       SALT,
     );
@@ -96,9 +96,29 @@ describe("subject derivation", () => {
     expect(withoutMeta.userEmail).toBeNull();
   });
 
-  test("ignores a sessionContext whose user block is not the expected shape", () => {
-    for (const sessionContext of [null, "string", { user: "string" }, { user: { name: 42 } }]) {
-      const subject = projectionSubject({ ...input().scope, sessionContext }, "e", SALT);
+  test("ignores a signed bag that is not the expected shape", () => {
+    for (const signedUserMeta of [null, "string" as never, { name: 42 } as never]) {
+      const subject = projectionSubject({ ...input().scope, signedUserMeta }, "e", SALT);
+      expect(subject.userDisplayName).toBeNull();
+      expect(subject.userEmail).toBeNull();
+    }
+  });
+
+  test("the prompt-substitution bag is not an identity source, however it is spelled", () => {
+    // `scope.sessionContext` is merged three ways before a turn finalizes — the
+    // JWT's userMeta, the Thread row, and a base layer AgentService.stream reads
+    // out of the Postgres `User` table so {{user.name}} always resolves. On the
+    // operator path scope.userId IS a Platos User.id, so reading identity out of
+    // the merged bag put the OPERATOR'S real name and email into turns_v1 on
+    // every dashboard turn — rows the erasure sweep addresses only by end-user
+    // key and can therefore never reach.
+    for (const bag of [
+      { user: { name: "Operator", email: "operator@platos.test" } },
+      { "user.name": "Operator", "user.email": "operator@platos.test" },
+    ]) {
+      const scope = { ...input().scope } as Record<string, unknown>;
+      scope.sessionContext = bag;
+      const subject = projectionSubject(scope as never, "enduser-1", SALT);
       expect(subject.userDisplayName).toBeNull();
       expect(subject.userEmail).toBeNull();
     }
@@ -216,7 +236,7 @@ describe("turn projection", () => {
 
   test("stamps the same subject on every level, so erasure reaches all four tables", () => {
     const rows = projectTurn(buildTurnProjection(input({
-      scope: { ...input().scope, sessionContext: { user: { name: "Ada" } } },
+      scope: { ...input().scope, signedUserMeta: { name: "Ada" } },
       steps: [step],
       toolCalls: [{
         id: TOOL_CALL_ID,

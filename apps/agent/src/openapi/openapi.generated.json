@@ -4077,6 +4077,32 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/api/v1/agent/monitoring/observability/status": {
+      "get": {
+        "operationId": "get__api_v1_agent_monitoring_observability_status",
+        "summary": "AgentController.observabilityStatus",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/api/v1/agent/monitoring/safety-events": {
       "get": {
         "operationId": "get__api_v1_agent_monitoring_safety_events",
@@ -8901,6 +8927,6 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 287,
+  "x-platos-rest-operation-count": 288,
   "x-platos-mcp-tool-count": 206
 }

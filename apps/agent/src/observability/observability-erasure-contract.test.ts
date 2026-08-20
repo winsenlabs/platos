@@ -21,11 +21,18 @@ import {
   CLICKHOUSE_ERASURE_PLAN,
   OBSERVABILITY_DATABASE as ERASURE_OBSERVABILITY_DATABASE,
 } from "../privacy/clickhouse-erasure";
-import { parseClickhouseEndpoint } from "../privacy/clickhouse";
+import {
+  ERASURE_URL_VARIABLES,
+  ErasureClickhouse,
+  parseClickhouseEndpoint,
+  readErasureClickhouseUrl,
+} from "../privacy/clickhouse";
 import {
   OBSERVABILITY_DATABASE,
   OBSERVABILITY_TABLES,
+  OBSERVABILITY_URL_VARIABLES,
   parseObservabilityEndpoint,
+  readObservabilityUrl,
 } from "./observability-config";
 
 const ddlPath = resolve(
@@ -188,13 +195,82 @@ describe("the writer and the eraser resolve the same endpoint", () => {
   test("the eraser reads every variable the writer may have written through", () => {
     // The writer's precedence list is the superset; if the eraser did not read
     // one of them, a deployment configured through it would be unerasable.
-    const eraserSource = readFileSync(resolve(__dirname, "../privacy/clickhouse.ts"), "utf8");
-    for (const name of [
-      "PLATOS_OBSERVABILITY_CLICKHOUSE_URL",
-      "PLATOS_OTEL_CLICKHOUSE_URL",
-      "CLICKHOUSE_URL",
-    ]) {
-      expect(eraserSource, `privacy/clickhouse.ts does not read ${name}`).toContain(name);
+    expect([...ERASURE_URL_VARIABLES]).toEqual([...OBSERVABILITY_URL_VARIABLES]);
+  });
+
+  // The previous version of this pinned the variable NAMES by grepping the
+  // eraser's source text. That is green for a resolver that reads all three
+  // names in the right order and still disagrees about which one wins — which
+  // is exactly what a `??` chain does, because compose passes an unset variable
+  // through as the empty string and `??` treats "" as a value. These exercise
+  // precedence and blank-handling instead of spelling.
+  const environments: Array<{ name: string; env: Record<string, string | undefined> }> = [
+    { name: "nothing set", env: {} },
+    { name: "every variable blank", env: blankAll() },
+    {
+      name: "the dedicated variable wins over the legacy ones",
+      env: {
+        PLATOS_OBSERVABILITY_CLICKHOUSE_URL: "http://dedicated:8123",
+        PLATOS_OTEL_CLICKHOUSE_URL: "http://otel:8123",
+        CLICKHOUSE_URL: "http://webapp:8123",
+      },
+    },
+    {
+      // The compose shape that broke this: the dedicated variable is declared
+      // and unset, so it arrives as "". A nullish chain resolves to "" and the
+      // eraser reports not_provisioned — settling the erasure — while the
+      // writer is putting names and emails into the OTEL endpoint.
+      name: "a blank dedicated variable falls through to the OTEL endpoint",
+      env: {
+        PLATOS_OBSERVABILITY_CLICKHOUSE_URL: "",
+        PLATOS_OTEL_CLICKHOUSE_URL: "http://ch:8123",
+        CLICKHOUSE_URL: "",
+      },
+    },
+    {
+      name: "whitespace is blank too",
+      env: { PLATOS_OBSERVABILITY_CLICKHOUSE_URL: "   ", CLICKHOUSE_URL: "http://webapp:8123" },
+    },
+    {
+      name: "only the webapp variable is set",
+      env: { CLICKHOUSE_URL: "http://default:pwd@webapp:8123?secure=false" },
+    },
+  ];
+
+  for (const { name, env } of environments) {
+    test(`writer and eraser resolve the same endpoint: ${name}`, () => {
+      const writer = readObservabilityUrl(env);
+      const eraser = readErasureClickhouseUrl(env);
+      expect(eraser).toEqual(writer);
+      // `configured` is what decides not_provisioned on one side and "queue the
+      // projection" on the other, so the booleans have to agree too.
+      expect(eraser !== null).toBe(writer !== null);
+      expect(parseClickhouseEndpoint(eraser?.raw)).toEqual(
+        parseObservabilityEndpoint(writer?.raw),
+      );
+    });
+  }
+
+  test("the live eraser resolves the endpoint the writer chose, not an empty one", () => {
+    // ErasureClickhouse reads process.env in its constructor, so the empty-
+    // string case has to be exercised through the real object as well as
+    // through the pure function.
+    const previous = { ...process.env };
+    try {
+      process.env.PLATOS_OBSERVABILITY_CLICKHOUSE_URL = "";
+      process.env.PLATOS_OTEL_CLICKHOUSE_URL = "http://ch:8123";
+      delete process.env.CLICKHOUSE_URL;
+      expect(new ErasureClickhouse().available).toBe(true);
+    } finally {
+      for (const name of OBSERVABILITY_URL_VARIABLES) {
+        if (previous[name] === undefined) delete process.env[name];
+        else process.env[name] = previous[name];
+      }
     }
   });
 });
+
+/** Every endpoint variable declared and empty — the compose default. */
+function blankAll(): Record<string, string | undefined> {
+  return Object.fromEntries(OBSERVABILITY_URL_VARIABLES.map((name) => [name, ""]));
+}

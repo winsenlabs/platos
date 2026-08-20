@@ -13,7 +13,7 @@ import {
   type CanonicalModelPriceSnapshot,
 } from "@platos/tenancy-database";
 import { assertSubjectNotErased } from "../privacy/erasure-register";
-import { freshInputTokens } from "../monitoring/usage-ledger";
+import { freshInputTokens, roundCents } from "../monitoring/usage-ledger";
 
 export interface StoredMessage {
   id: string;
@@ -566,6 +566,33 @@ export class ConversationService {
       usage?: { inputTokens?: number; outputTokens?: number; cacheCreationInputTokens?: number; cacheReadInputTokens?: number; reasoningTokens?: number };
       costCents?: number;
       pricing?: CanonicalModelPriceSnapshot;
+      /**
+       * WIN-134 — further model calls this turn made on the user's behalf, one
+       * Step each, priced at their OWN model's rates.
+       *
+       * A Turn has many Steps; that is the ledger's own vocabulary for "several
+       * model calls, one unit of work". Sub-agent delegations used to reach the
+       * Redis rollups and no Postgres row at all, which made the two ledgers
+       * describe different money for the same window — and left
+       * `reconcileFromPostgres` rebuilding a lost day permanently short, because
+       * the missing dollars existed in no row it could read.
+       *
+       * They do NOT add to the task count: a turn that delegates three times is
+       * one completed turn (see `isCompletedTask`).
+       */
+      additionalSteps?: Array<{
+        model: string;
+        provider?: string | null;
+        startedAt: Date;
+        completedAt: Date;
+        inputTokens?: number;
+        outputTokens?: number;
+        cacheCreationInputTokens?: number;
+        cacheReadInputTokens?: number;
+        reasoningTokens?: number;
+        costCents: number;
+        pricing: CanonicalModelPriceSnapshot;
+      }>;
       latencyMs?: number;
       structuredOutput?: unknown;
       externalRuntimeId?: string | null;
@@ -634,6 +661,17 @@ export class ConversationService {
     // commit path, to learn something we could simply have decided.
     const callIds = calls.map(() => randomUUID());
     const completedAt = new Date();
+    const extraSteps = message.additionalSteps ?? [];
+    // The Turn's cost is what the whole unit of work cost: this model call plus
+    // every model call it made on the user's behalf. Rounded once, at the
+    // ledger's precision, rather than per row.
+    const turnCostCents =
+      message.costCents == null && extraSteps.length === 0
+        ? null
+        : roundCents(
+            (message.costCents ?? 0) +
+              extraSteps.reduce((total, extra) => total + (extra.costCents ?? 0), 0),
+          );
     const row = await this.prisma.$transaction(async (tx) => {
       const current = await tx.turn.findFirst({ where: { id: turnId, threadId, status: "ACTIVE" } });
       if (!current) throw new Error("Open turn not found or already finalized");
@@ -644,7 +682,7 @@ export class ConversationService {
           output: message.structuredOutput === undefined ? undefined : { structuredOutput: message.structuredOutput },
           thinkingContent: message.thinkingContent ?? null,
           status: "SUCCEEDED",
-          costCents: message.costCents ?? null,
+          costCents: turnCostCents,
           latencyMs: message.latencyMs ?? null,
           completedAt,
         },
@@ -681,6 +719,32 @@ export class ConversationService {
           } : undefined,
         },
       });
+      // WIN-134 — one Step per further model call, numbered after the primary
+      // one. No tool calls hang off them: the sub-agent's own tool calls are
+      // its business, and the parent's are already on sequence 1.
+      const extraRows: Array<{ id: string; sequence: number }> = [];
+      for (const [index, extra] of extraSteps.entries()) {
+        extraRows.push(
+          await tx.step.create({
+            data: {
+              turnId,
+              sequence: index + 2,
+              model: extra.model,
+              status: "SUCCEEDED",
+              inputTokens: extra.inputTokens ?? 0,
+              outputTokens: extra.outputTokens ?? 0,
+              cacheCreationInputTokens: extra.cacheCreationInputTokens ?? 0,
+              cacheReadInputTokens: extra.cacheReadInputTokens ?? 0,
+              reasoningTokens: extra.reasoningTokens ?? 0,
+              costCents: extra.costCents,
+              ...modelPriceSnapshotStepData(extra.pricing),
+              latencyMs: Math.max(0, extra.completedAt.getTime() - extra.startedAt.getTime()),
+              startedAt: extra.startedAt,
+              completedAt: extra.completedAt,
+            },
+          }),
+        );
+      }
       // WIN-133 — queue the analytical projection in the SAME transaction that
       // committed the Turn, its Step and its Tool Calls. Either both land or
       // neither does; there is no window where the ledger and the projection
@@ -692,32 +756,58 @@ export class ConversationService {
           status: "completed",
           acceptedAt: current.startedAt ?? completedAt,
           completedAt,
-          costCents: message.costCents ?? null,
+          costCents: turnCostCents,
           traceId: scope.traceId ?? null,
           rootSpanId: scope.parentSpanId ?? null,
           externalRuntimeId: current.externalRuntimeId,
         },
-        steps: [{
-          id: step.id,
-          sequence: step.sequence,
-          model: step.model,
-          provider: message.pricing?.provider ?? null,
-          status: "completed",
-          startedAt: current.startedAt ?? completedAt,
-          completedAt,
-          inputTokens: usage.inputTokens,
-          outputTokens: usage.outputTokens,
-          cacheReadInputTokens: usage.cacheReadInputTokens,
-          cacheCreationInputTokens: usage.cacheCreationInputTokens,
-          reasoningTokens: usage.reasoningTokens,
-          costCents: message.costCents ?? null,
-          modelPriceId: message.pricing?.modelPriceId ?? null,
-          inputRate: message.pricing?.input.usdPerToken ?? null,
-          outputRate: message.pricing?.output.usdPerToken ?? null,
-          cacheReadRate: message.pricing?.cacheRead.usdPerToken ?? null,
-          cacheWriteRate: message.pricing?.cacheWrite.usdPerToken ?? null,
-          pricingSource: message.pricing?.input.source ?? null,
-        }],
+        steps: [
+          {
+            id: step.id,
+            sequence: step.sequence,
+            model: step.model,
+            provider: message.pricing?.provider ?? null,
+            status: "completed",
+            startedAt: current.startedAt ?? completedAt,
+            completedAt,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            cacheReadInputTokens: usage.cacheReadInputTokens,
+            cacheCreationInputTokens: usage.cacheCreationInputTokens,
+            reasoningTokens: usage.reasoningTokens,
+            costCents: message.costCents ?? null,
+            modelPriceId: message.pricing?.modelPriceId ?? null,
+            inputRate: message.pricing?.input.usdPerToken ?? null,
+            outputRate: message.pricing?.output.usdPerToken ?? null,
+            cacheReadRate: message.pricing?.cacheRead.usdPerToken ?? null,
+            cacheWriteRate: message.pricing?.cacheWrite.usdPerToken ?? null,
+            pricingSource: message.pricing?.input.source ?? null,
+          },
+          // The further model calls, projected on the same footing: their own
+          // model, their own frozen rates, their own usage event. The analytical
+          // store's per-model breakdown is only honest if they are here.
+          ...extraSteps.map((extra, index) => ({
+            id: extraRows[index].id,
+            sequence: extraRows[index].sequence,
+            model: extra.model,
+            provider: extra.provider ?? extra.pricing.provider ?? null,
+            status: "completed" as const,
+            startedAt: extra.startedAt,
+            completedAt: extra.completedAt,
+            inputTokens: extra.inputTokens,
+            outputTokens: extra.outputTokens,
+            cacheReadInputTokens: extra.cacheReadInputTokens,
+            cacheCreationInputTokens: extra.cacheCreationInputTokens,
+            reasoningTokens: extra.reasoningTokens,
+            costCents: extra.costCents,
+            modelPriceId: extra.pricing.modelPriceId,
+            inputRate: extra.pricing.input.usdPerToken,
+            outputRate: extra.pricing.output.usdPerToken,
+            cacheReadRate: extra.pricing.cacheRead.usdPerToken,
+            cacheWriteRate: extra.pricing.cacheWrite.usdPerToken,
+            pricingSource: extra.pricing.input.source,
+          })),
+        ],
         toolCalls: calls.map((call, index) => ({
           id: callIds[index],
           stepId: step.id,
@@ -777,7 +867,11 @@ export class ConversationService {
           projectId: scope.projectId,
           environmentId: scope.environmentId,
           userId: scope.userId,
-          sessionContext: scope.sessionContext,
+          // The SIGNED bag, not `scope.sessionContext` — that one has been
+          // merged with the Thread row and with a base layer read out of the
+          // Postgres `User` table by the time a turn finalizes. See the header
+          // of turn-projection.ts.
+          signedUserMeta: scope.signedUserMeta,
         },
         thread: { id: thread.id, agentId: thread.agentId, endUserId: thread.endUserId },
         turn: {
