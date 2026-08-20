@@ -10,7 +10,7 @@ import {
 } from "./subject-graph";
 import {
   pendingStore, assertContentFree,
-  deriveStatus,
+  deriveStatus, storesNeedingRetry,
   type ErasureReceipt, type ErasureStatus, type StoreOutcome,
 } from "./erasure-receipt";
 import { runErasure, retryErasure, type StoreExecutors } from "./erasure-orchestrator";
@@ -19,6 +19,7 @@ import { planDeletions, subjectKeyPatterns, retainedAggregatePatterns } from "./
 import { ErasureObjectStore } from "./object-store";
 import { ErasureClickhouse } from "./clickhouse";
 import { eraseClickhouseSubject } from "./clickhouse-erasure";
+import { erasureHashSalt, sealErasedSubject } from "./erasure-register";
 
 /**
  * Hard erasure across Postgres, Redis, ClickHouse and object storage.
@@ -97,11 +98,10 @@ export class ErasureService {
     this.prisma = prisma;
     // Per-deployment salt. Without one, a hash of an email is trivially
     // reversible with a wordlist, which defeats the point of hashing it.
-    const configuredSalt = process.env.PLATOS_ERASURE_HASH_SALT;
-    if (!configuredSalt && process.env.NODE_ENV === "production") {
-      throw new Error("PLATOS_ERASURE_HASH_SALT is required in production");
-    }
-    this.salt = configuredSalt || "platos-erasure-development-only";
+    // Shared with the erased-subject register, which the runtime write paths
+    // consult without this service: one salt, or the barrier looks up hashes
+    // nobody wrote.
+    this.salt = erasureHashSalt();
   }
 
   private hash(externalUserId: string, organizationId: string): string {
@@ -434,6 +434,43 @@ export class ErasureService {
     return o;
   };
 
+  /**
+   * Write the erased-subject register entries, before any store is touched.
+   *
+   * Order matters twice over. It has to precede the executors, because a turn
+   * landing mid-sweep would otherwise write rows MinIO and Redis have already
+   * scanned past. And it has to precede Postgres specifically, because the
+   * PlatosEndUserIdentity rows that enumerate the subject's aliases are what
+   * Postgres is about to delete — after the sweep there is nothing left to
+   * learn the Slack handle or the email address from.
+   *
+   * Not a store outcome: the register is not a place subject data lives, so it
+   * has no business in `stores` where it would move the completion bar. It is a
+   * precondition, and a failure to seal aborts the run rather than degrading
+   * it — sweeping without a barrier is the exact hole this closes.
+   */
+  private async seal(
+    subject: SubjectKeys,
+    args: { operationId: string; organizationId: string; externalUserId: string },
+  ): Promise<void> {
+    const sealed = await sealErasedSubject(this.prisma, {
+      organizationId: args.organizationId,
+      operationId: args.operationId,
+      policyVersion: ERASURE_POLICY_VERSION,
+      platosEndUserIds: subject.platosEndUserIds,
+      // The requested id under the tuple discoverSubject matched it by, plus
+      // every denormalized handle seen historically for the same person.
+      extraAliases: [args.externalUserId, ...subject.legacyUserIds].flatMap((id) => [
+        { channel: "external", subject: id },
+        { channel: "session", subject: id },
+      ]),
+      salt: this.salt,
+    });
+    this.logger.log(
+      `[erasure] ${args.operationId} sealed=${sealed.aliases} aliases (new=${sealed.sealed}, purged=${sealed.purged})`,
+    );
+  }
+
   private executors(organizationId: string, subjectKeyHash: string): StoreExecutors {
     return {
       minio: this.minioExecutor,
@@ -508,6 +545,15 @@ export class ErasureService {
     // the operator has to be able to evidence later.
     if (heldBy) return this.toReceipt(row);
 
+    // Barrier first, destruction second. Throws rather than sweeping unsealed:
+    // the operation stays PENDING and retryable, which is recoverable, whereas
+    // an unsealed sweep is a subject the next request restores.
+    await this.seal(subject, {
+      operationId: row.id,
+      organizationId: args.organizationId,
+      externalUserId: args.externalUserId,
+    });
+
     const started = await runErasure(this.toReceipt(row), subject, this.executors(args.organizationId, hash), {
       legalHold: args.legalHoldPolicyId ? { policyId: args.legalHoldPolicyId } : null,
     });
@@ -535,6 +581,19 @@ export class ErasureService {
     if (!this.hashMatches(hash, row.subjectKeyHash)) return null;
     const receipt = this.toReceipt(row);
     const subject = await this.discoverSubject(externalUserId, row.organizationId);
+    // Re-seal before re-sweeping, on the same terms as the first pass — but
+    // never for a held operation, where nothing may run and a tombstone would
+    // refuse writes for a subject we are forbidden to erase. The alias set is
+    // narrower than the first pass (Postgres has already taken the identity
+    // rows), which is why the original tombstones matter: this extends them
+    // rather than rebuilding them.
+    if (!row.legalHoldPolicyId && storesNeedingRetry(receipt).length > 0) {
+      await this.seal(subject, {
+        operationId: row.id,
+        organizationId: row.organizationId,
+        externalUserId,
+      });
+    }
     const next = await retryErasure(receipt, subject, this.executors(row.organizationId, hash), {
       legalHold: row.legalHoldPolicyId ? { policyId: row.legalHoldPolicyId } : null,
     });

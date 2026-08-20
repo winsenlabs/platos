@@ -4,6 +4,7 @@ import { CredentialKind } from "@platos/tenancy-database";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { ChannelEventCryptoService } from "./channel-event-crypto.service";
+import { assertSubjectNotErased } from "../privacy/erasure-register";
 
 export interface ChannelOwnerScope {
   organizationId: string;
@@ -1272,6 +1273,13 @@ export class ChannelPersistenceService {
       subject: input.email.trim().toLowerCase(),
       profile: { email: input.email.trim().toLowerCase() },
     };
+    // The Slack side went through resolveVerifiedIdentity and was checked
+    // there; the email alias is attached directly here, so it needs its own
+    // check. An erased address must not be re-linked to a live end user.
+    await assertSubjectNotErased(this.prisma, {
+      organizationId: scope.organizationId,
+      aliases: [{ channel: emailIdentity.channel, subject: emailIdentity.subject }],
+    });
     const existing = await this.findIdentity(scope.organizationId, emailIdentity);
     if (existing && existing.endUserId !== slack.endUserId) {
       return { status: "conflict" };
@@ -1541,6 +1549,14 @@ export class ChannelPersistenceService {
     scope: ChannelOwnerScope,
     identity: VerifiedIdentityInput
   ): Promise<string> {
+    // Erasure barrier, ahead of the resolve/create fallback below. Placed here
+    // rather than inside that try/catch on purpose: the catch treats failure as
+    // a lost race and retries, which would swallow a refusal and mint the
+    // subject anyway.
+    await assertSubjectNotErased(this.prisma, {
+      organizationId: scope.organizationId,
+      aliases: [{ channel: identity.channel, subject: identity.subject }],
+    });
     const existing = await this.findIdentity(scope.organizationId, identity);
     if (existing) {
       await this.prisma.endUserIdentity.updateMany({

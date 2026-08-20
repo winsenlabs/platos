@@ -506,6 +506,10 @@ describe("ChannelPersistenceService", () => {
     const threadCreates: any[] = [];
     const identities = new Map<string, any>();
     const prisma = {
+      // Empty erased-subject register. Required, not incidental: the identity
+      // path fails closed, so a double without this delegate refuses the write
+      // rather than silently skipping the barrier.
+      erasureTombstone: { findFirst: async () => null },
       endUserIdentity: {
         findUnique: async ({ where }: any) => {
           const key = JSON.stringify(where.organizationId_issuer_channel_subject);

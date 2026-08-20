@@ -94,6 +94,68 @@ produces `platos:platos:…`, matches nothing, and reports success. Real keys ar
   no user dimension — one contribution cannot be subtracted, and no personal
   data is present. Reported as `retained`, never silently skipped.
 
+## Write barrier — keeping an erasure erased
+
+Deleting rows is not enough. A session token, a Slack webhook or a durable task
+outlives the sweep, and the next write re-creates the subject:
+`ConversationService.resolveEndUserRow` finds no identity, mints a fresh
+`PlatosEndUser` under a **new uuid**, and re-attaches every handle it was
+handed. The receipt cannot see that uuid, so it goes on certifying an erasure
+that no longer holds.
+
+So the sweep leaves something behind. `ErasureTombstone` holds one row per
+**alias**, written **before** any store executor runs — early enough to close
+the mid-sweep window, and early enough that the `PlatosEndUserIdentity` rows
+enumerating the aliases still exist, since Postgres is about to delete them.
+
+Consulted at the identity chokepoints, which is where every subject-keyed row
+gets its `endUserId`:
+
+| Call site | Aliases checked |
+|---|---|
+| `ConversationService.resolveEndUserRow` | external, session, and every verified channel claim on the turn |
+| `ChannelPersistenceService.resolveVerifiedIdentity` | the inbound channel handle |
+| `ChannelPersistenceService.attachVerifiedEmail` | the email being linked |
+| `end_users.link_identity` (MCP) | the handle and the target end-user uuid |
+
+Four properties, each load-bearing:
+
+1. **Every alias, not the requested one.** Keyed by `(channel, subject)` and
+   sealed from every identity row the subject owns — including rows already
+   `disabledAt`, which the sweep deletes too — plus the raw `PlatosEndUser`
+   uuid, for asynchronous writers that captured it before the sweep. An erasure
+   requested by external id therefore also refuses the subject's Slack handle
+   and their email. The **issuer** is deliberately excluded from the key:
+   issuer strings differ per write path (`channel:slack` vs
+   `channel:slack:<realm>`), so binding to it would leave the other door open.
+2. **Content-free.** Rows store `sha256(salt ‖ organizationId ‖ "alias" ‖
+   channel ‖ subject)`, never a handle. A register of raw identifiers would
+   recreate, in a new table, exactly what the operation destroyed.
+3. **Fails closed.** If the lookup cannot run — database unreachable, migration
+   not applied — the write is **refused**, not allowed. A failed turn is
+   recoverable; a resurrected subject is not.
+4. **Bounded.** See the retention rule below.
+
+### Retention rule
+
+A tombstone lives **30 days** from the moment the subject was sealed
+(`PLATOS_ERASURE_TOMBSTONE_TTL_DAYS`, floored at 1 day), and expiry is applied
+at **read time** so the rule holds whether or not anything sweeps.
+
+30 days is the window that outlives the longest-lived reference that could
+still land a write for the erased subject — a live end-user session, an
+in-flight durable task, and the 30-day ClickHouse span TTL. Past it nothing
+anywhere still points at the subject, and a signup reusing the same handle is a
+different person who must not inherit someone else's erasure.
+
+Steady-state size is therefore `(erasures in the last 30 days) × (aliases per
+subject)`. Sealing opportunistically purges expired rows, so the table stays
+trimmed without depending on a scheduler.
+
+There is no un-seal API. Expiry is the only exit — a "release this subject"
+route would be a way to undo an erasure, and it would be reachable by whoever
+compromises an admin credential.
+
 ## Receipt statuses
 
 | Status | Meaning |
@@ -127,8 +189,10 @@ persist a receipt containing a subject identifier.
 
 ## Deployment prerequisites
 
-1. **Migration required.** `PlatosErasureOperation` exists in `schema.prisma`;
-   generate and apply before use, or every request 500s.
+1. **Migration required.** `ErasureOperation` and `ErasureTombstone` exist in
+   `schema.prisma`; generate and apply before use. `ErasureTombstone`
+   especially: the write barrier fails closed, so until the table exists
+   **every** identity resolution is refused, not just erased ones.
 2. Mint an organization-bound, admin-tier `plt_mcp_` control-plane credential.
 3. **`PLATOS_ERASURE_HASH_SALT`** must be set in production and must be independent from authentication credentials.
 4. **ClickHouse is optional.** The executor reads `PLATOS_OTEL_CLICKHOUSE_URL`

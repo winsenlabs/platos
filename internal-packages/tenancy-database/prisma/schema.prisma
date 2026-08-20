@@ -287,6 +287,7 @@ model Organization {
   mcpPolicies             OrganizationMcpPolicy[]
   oauthClients            OAuthClient[]
   erasureOperations       ErasureOperation[]
+  erasureTombstones       ErasureTombstone[]
   personalAccessTokens    PersonalAccessToken[]
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
@@ -2291,4 +2292,25 @@ model ErasureOperation {
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, subjectKeyHash, requestedAt])
+}
+
+/// Erased-subject register: one row per ALIAS an erased subject could be
+/// reached by, consulted before any identity is resolved or minted so an
+/// in-flight write cannot reintroduce the person the sweep destroyed.
+/// `aliasHash` is a salted, organization-scoped digest — never a raw handle,
+/// because a register of identifiers would recreate the data it protects.
+/// Bounded by `expiresAt`; expiry is also applied at read time.
+model ErasureTombstone {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  aliasHash      String
+  operationId    String   @db.Uuid
+  policyVersion  String
+  sealedAt       DateTime @default(now())
+  expiresAt      DateTime
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, aliasHash])
+  @@index([expiresAt])
 }

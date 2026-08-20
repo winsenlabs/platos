@@ -488,6 +488,8 @@ services:
       # task can POST /api/v1/agent/attachments/retention.
       PLATOS_INTERNAL_AUTH_TOKEN: "${PLATOS_INTERNAL_AUTH_TOKEN:-}"
       PLATOS_ERASURE_HASH_SALT: "${PLATOS_ERASURE_HASH_SALT:?required — openssl rand -hex 32}"
+      # Erased-subject write barrier retention. See docs/gdpr-erasure.md.
+      PLATOS_ERASURE_TOMBSTONE_TTL_DAYS: "${PLATOS_ERASURE_TOMBSTONE_TTL_DAYS:-30}"
       PLATOS_WEBAPP_ADMIN_URL: "${PLATOS_WEBAPP_ADMIN_URL:-http://webapp:3000}"
       # EOBD.42 — Sentry optional.
       PLATOS_SENTRY_DSN: "${PLATOS_SENTRY_DSN:-}"
