@@ -1,7 +1,6 @@
-import { modelCatalog } from "@internal/llm-model-catalog";
 import type { CreateEventInput, LlmMetricsData } from "../eventRepository/eventRepository.types";
 
-// Registry interface — matches ModelPricingRegistry from @internal/llm-model-catalog
+// Synchronous in-memory projection of the canonical Platos price cards.
 type CostRegistry = {
   isLoaded: boolean;
   calculateCost(
@@ -94,10 +93,9 @@ function enrichLlmMetrics(event: CreateEventInput): void {
   // for gateway/openrouter models automatically in its match() method.
   let cost: ReturnType<NonNullable<typeof _registry>["calculateCost"]> | null = null;
   if (_registry?.isLoaded) {
-    // toBillableUsage strips the cache slice out of `input` first — the SDK
-    // reports it inclusive, and calculateCost sums additively, so passing the
-    // raw map billed cached tokens twice. See toBillableUsage for the detail.
-    cost = _registry.calculateCost(responseModel, toBillableUsage(usageDetails));
+    // Canonical pricing accepts the SDK's inclusive input count and subtracts
+    // cache-read/write slices in the shared tenancy helper.
+    cost = _registry.calculateCost(responseModel, usageDetails);
   }
 
   // Fallback: extract cost from provider metadata (gateway/openrouter report per-request cost)
@@ -129,6 +127,14 @@ function enrichLlmMetrics(event: CreateEventInput): void {
     };
 
     pillItems.push({ text: formatCost(providerCost.totalCost), icon: "tabler-currency-dollar" });
+  } else {
+    event.properties = {
+      ...props,
+      "trigger.llm.pricing_status": "unavailable",
+      "trigger.llm.pricing_reason": _registry?.isLoaded
+        ? "model_unpriced"
+        : "catalog_not_ready",
+    };
   }
 
   event.style = {
@@ -138,9 +144,6 @@ function enrichLlmMetrics(event: CreateEventInput): void {
       items: pillItems,
     },
   } as unknown as typeof event.style;
-
-  // Only write llm_metrics when cost data is available
-  if (!cost && !providerCost) return;
 
   // Build metadata map from run tags and ai.telemetry.metadata.*
   const metadata: Record<string, string> = {};
@@ -179,7 +182,7 @@ function enrichLlmMetrics(event: CreateEventInput): void {
   const avgTokensPerSec = typeof props["ai.response.avgOutputTokensPerSecond"] === "number"
     ? props["ai.response.avgOutputTokensPerSecond"]
     : 0;
-  const costSource = cost ? "registry" : providerCost ? providerCost.source : "";
+  const costSource = cost ? "registry" : providerCost ? providerCost.source : "unpriced";
   const providerCostValue = providerCost?.totalCost ?? 0;
 
   // Set _llmMetrics side-channel for dual-write to llm_metrics_v1
@@ -187,7 +190,7 @@ function enrichLlmMetrics(event: CreateEventInput): void {
     genAiSystem: typeof props["gen_ai.system"] === "string" ? props["gen_ai.system"] : "unknown",
     requestModel: typeof props["gen_ai.request.model"] === "string" ? props["gen_ai.request.model"] : responseModel,
     responseModel,
-    baseResponseModel: modelCatalog[responseModel]?.baseModelName ?? responseModel,
+    baseResponseModel: responseModel,
     matchedModelId: cost?.matchedModelId ?? "",
     operationId,
     finishReason,

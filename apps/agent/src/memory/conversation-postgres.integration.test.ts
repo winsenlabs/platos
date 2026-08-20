@@ -1,7 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
-import { PrismaClient } from "@platos/tenancy-database";
+import {
+  ModelRateSource,
+  PlatosModelPricing,
+  PrismaClient,
+} from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   CONVERSATION_REVISION_NOT_SUPPORTED,
@@ -214,6 +218,101 @@ describe("ConversationService PostgreSQL integrity", () => {
       Array.from({ length: writeCount }, (_, index) => index + 1),
     );
     expect(new Set(rows.map((row) => row.inputText)).size).toBe(writeCount);
+  });
+
+  it("persists a normally priced assistant Turn and immutable Step snapshot", async () => {
+    const pricing = new PlatosModelPricing(prisma);
+    const fetchedAt = new Date("2026-08-20T05:23:00.000Z");
+    await pricing.ingestLiteLLMCatalog(
+      {
+        "openai/conversation-priced": {
+          litellm_provider: "openai",
+          input_cost_per_token: 1e-6,
+          output_cost_per_token: 2e-6,
+          cache_read_input_token_cost: 1e-7,
+          cache_creation_input_token_cost: 1.25e-6,
+        },
+      },
+      fetchedAt,
+    );
+    const priced = await pricing.priceUsage(
+      "openai:conversation-priced",
+      {
+        inputTokens: 100,
+        outputTokens: 20,
+        cacheReadInputTokens: 40,
+        cacheWriteInputTokens: 30,
+      },
+      fetchedAt,
+    );
+    const identity = await prisma.endUserIdentity.findUniqueOrThrow({
+      where: {
+        organizationId_issuer_channel_subject: {
+          organizationId: ids.organizationId,
+          issuer: "platos",
+          channel: "session",
+          subject: "conversation-subject",
+        },
+      },
+      select: { endUserId: true },
+    });
+    const thread = await prisma.thread.create({
+      data: {
+        environmentId: ids.environmentId,
+        agentId: ids.agentId,
+        endUserId: identity.endUserId,
+        title: "Priced persistence",
+      },
+    });
+    const opened = await service.storeMessage(thread.id, scope(), {
+      role: "user",
+      content: "price this response",
+      agentVersionId: ids.agentVersionId,
+      versionBucket: "current",
+    });
+
+    await expect(
+      service.storeMessage(thread.id, scope(), {
+        role: "assistant",
+        turnId: opened.id,
+        content: "persisted with evidence",
+        model: "openai:conversation-priced",
+        usage: {
+          inputTokens: 100,
+          outputTokens: 20,
+          cacheReadInputTokens: 40,
+          cacheCreationInputTokens: 30,
+        },
+        costCents: priced.costCents,
+        pricing: priced.price,
+      }),
+    ).resolves.toMatchObject({ role: "assistant", content: "persisted with evidence" });
+
+    const persisted = await prisma.turn.findUniqueOrThrow({
+      where: { id: opened.id },
+      include: { steps: true },
+    });
+    expect(persisted).toMatchObject({
+      status: "SUCCEEDED",
+      outputText: "persisted with evidence",
+    });
+    expect(Number(persisted.costCents)).toBe(priced.costCents);
+    expect(persisted.steps).toHaveLength(1);
+    expect(persisted.steps[0]).toMatchObject({
+      modelPriceId: priced.price.modelPriceId,
+      inputRateSource: ModelRateSource.LITELLM,
+      outputRateSource: ModelRateSource.LITELLM,
+      cacheReadRateSource: ModelRateSource.LITELLM,
+      cacheWriteRateSource: ModelRateSource.LITELLM,
+    });
+    expect(Number(persisted.steps[0]!.inputRate)).toBe(1e-6);
+    expect(Number(persisted.steps[0]!.cacheWriteRate)).toBe(1.25e-6);
+    await expect(
+      prisma.step.update({
+        where: { id: persisted.steps[0]!.id },
+        data: { inputRate: 9e-6 },
+      }),
+    ).rejects.toThrow(/immutable/);
   });
 
   it("erases an ordinary authenticated runtime user through the canonical external tuple", async () => {

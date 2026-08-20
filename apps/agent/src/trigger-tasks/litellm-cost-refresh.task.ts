@@ -1,12 +1,13 @@
 import { schedules, logger, metadata } from "@trigger.dev/sdk";
+import { assertCredibleLiteLLMCatalog } from "../monitoring/litellm-catalog-validation";
 const env = process.env;
 
 /**
  * Daily refresh of the LiteLLM model-price catalog.
  *
  * Source: https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json
- * Redis key: `cost:model_catalog` — 24h soft TTL, kept indefinitely on fetch fail.
- * Consumer: `CostService.calculateCost` (see PLAT-35 / Theme B.10).
+ * The agent callback persists append-only ModelPrice rows in the Platos
+ * control database. This Trigger Cloud task remains an HTTP-only boundary.
  *
  * Failure policy: we never hard-fail the price catalog. When the upstream
  * fetch errors, we keep the previous cached entry and emit a warning
@@ -30,25 +31,75 @@ export interface LiteLLMModelEntry {
 
 export type LiteLLMCatalog = Record<string, LiteLLMModelEntry>;
 
+export class LiteLLMCatalogValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LiteLLMCatalogValidationError";
+  }
+}
+
+type CatalogIngestionResponse = {
+  status?: string;
+  modelsSeen?: number;
+  pricesCreated?: number;
+  unchanged?: number;
+};
+
+export async function pushLiteLLMCatalog(
+  agentApiUrl: string,
+  adminToken: string,
+  catalog: LiteLLMCatalog,
+  fetchedAt: Date = new Date(),
+  fetchImpl: typeof fetch = fetch,
+): Promise<CatalogIngestionResponse & { status: "ok" }> {
+  assertCredibleLiteLLMCatalog(catalog);
+  const res = await fetchImpl(`${agentApiUrl}/api/v1/agent/monitoring/cost/catalog`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Platos-Internal-Auth": adminToken,
+    },
+    body: JSON.stringify({ catalog, fetchedAt: fetchedAt.toISOString() }),
+    // Canonical ingestion processes the complete catalog transactionally
+    // and may take up to two minutes on a cold database.
+    signal: AbortSignal.timeout(180_000),
+  });
+  const body = (await res.json().catch(() => null)) as CatalogIngestionResponse | null;
+  if (!res.ok || res.status < 200 || res.status >= 300) {
+    throw new Error(`agent accept failed: HTTP ${res.status}`);
+  }
+  if (!body || body.status !== "ok") {
+    throw new Error(`agent accept failed: unexpected status ${body?.status ?? "invalid_body"}`);
+  }
+  return body as CatalogIngestionResponse & { status: "ok" };
+}
+
 /**
  * PPR-52 — fetch the LiteLLM catalog with up-to-3 attempts using exponential
  * backoff + jitter. Transient 5xx / rate-limits / flaky networks should not
  * silently leave the catalog stale on a Monday-morning DNS hiccup.
  */
-async function fetchLiteLLMCatalog(): Promise<LiteLLMCatalog> {
+export async function fetchLiteLLMCatalog(
+  fetchImpl: typeof fetch = fetch,
+  sleep: (milliseconds: number) => Promise<void> = (milliseconds) =>
+    new Promise((resolve) => setTimeout(resolve, milliseconds)),
+): Promise<LiteLLMCatalog> {
   const MAX_ATTEMPTS = 3;
   let lastError: string | null = null;
+  let catalogValidationFailed = false;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const res = await fetch(LITELLM_URL, { signal: AbortSignal.timeout(20000) });
+      const res = await fetchImpl(LITELLM_URL, { signal: AbortSignal.timeout(20000) });
       if (!res.ok) {
         lastError = `HTTP ${res.status}`;
       } else {
         const raw = (await res.json()) as LiteLLMCatalog;
-        if (!raw || typeof raw !== "object") {
-          lastError = "Response is not a JSON object";
-        } else {
+        try {
+          assertCredibleLiteLLMCatalog(raw);
           return raw;
+        } catch (error: any) {
+          lastError = error?.message ?? "invalid LiteLLM catalog";
+          catalogValidationFailed = true;
         }
       }
     } catch (err: any) {
@@ -64,17 +115,20 @@ async function fetchLiteLLMCatalog(): Promise<LiteLLMCatalog> {
         waitMs: wait,
         error: lastError,
       });
-      await new Promise((r) => setTimeout(r, wait));
+      await sleep(wait);
     }
+  }
+  if (catalogValidationFailed) {
+    throw new LiteLLMCatalogValidationError(lastError || "invalid LiteLLM catalog");
   }
   throw new Error(lastError || "fetch failed after retries");
 }
 
 export const litellmCostRefresh = schedules.task({
   id: "platos.cost.refresh_model_prices",
-  description: "Refreshes the LiteLLM model-price catalog into Redis once per day.",
+  description: "Refreshes canonical Platos model prices from LiteLLM once per day.",
   cron: "23 5 * * *", // daily at 05:23 UTC
-  maxDuration: 120,
+  maxDuration: 300,
   // EOBD.45 — singleton.
   queue: { concurrencyLimit: 1 },
   run: async () => {
@@ -99,6 +153,11 @@ export const litellmCostRefresh = schedules.task({
     try {
       catalog = await fetchLiteLLMCatalog();
     } catch (err: any) {
+      if (err instanceof LiteLLMCatalogValidationError) {
+        metadata.set("status", "invalid_catalog");
+        metadata.set("error", err.message);
+        throw err;
+      }
       fetchError = err?.message || "fetch failed";
     }
 
@@ -109,32 +168,13 @@ export const litellmCostRefresh = schedules.task({
       return { status: "stale", error: fetchError };
     }
 
-    // Write to Redis via a raw HTTP call to the agent service's admin endpoint.
-    // This task runs inside trigger.dev's worker process, which doesn't have
-    // direct access to the agent's ioredis client. The agent exposes an
-    // admin shim at POST /api/v1/agent/monitoring/cost/catalog that accepts
-    // the catalog payload and stores it with a 24h TTL.
+    // Push through the authenticated HTTP callback. Trigger Cloud must not
+    // import Prisma or connect directly to the Platos control database.
     const AGENT_API_URL =
       env.PLATOS_AGENT_HTTP_URL || env.PLATOS_AGENT_API_URL || "http://localhost:3100";
 
     try {
-      const res = await fetch(`${AGENT_API_URL}/api/v1/agent/monitoring/cost/catalog`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Platos-Internal-Auth": adminToken,
-        },
-        body: JSON.stringify({ catalog }),
-        signal: AbortSignal.timeout(15000),
-      });
-      // PPR-52 — any non-2xx is an error. Previously we only checked `res.ok`
-      // against the boolean but let stale body reads through; make the
-      // failure path explicit so the task actually throws + trigger.dev's
-      // retry policy can kick in.
-      if (!res.ok || res.status < 200 || res.status >= 300) {
-        const body = await res.text().catch(() => "");
-        throw new Error(`agent accept failed: ${res.status} ${body.slice(0, 200)}`);
-      }
+      await pushLiteLLMCatalog(AGENT_API_URL, adminToken, catalog);
     } catch (err: any) {
       logger.error("litellm-cost-refresh: agent push failed", { error: err?.message });
       metadata.set("status", "push_failed");

@@ -123,6 +123,12 @@ enum ThreadCompactionState {
   IN_PROGRESS
 }
 
+enum ModelRateSource {
+  LITELLM
+  VERIFIED_PROVIDER
+  UNAVAILABLE
+}
+
 model User {
   id               String    @id @default(uuid()) @db.Uuid
   email            String    @unique
@@ -989,6 +995,62 @@ model Thread {
   @@index([compactionState, compactedAt])
 }
 
+/// Global Platos-owned model identity and non-secret provider metadata.
+model Model {
+  id                 String    @id @default(uuid()) @db.Uuid
+  key                String    @unique
+  provider           String
+  name               String
+  displayName        String?
+  description        String?
+  contextWindow      Int?
+  maxOutputTokens    Int?
+  capabilities       String[]  @default([])
+  releaseDate        DateTime?
+  deprecationDate    DateTime?
+  baseModelName      String?
+  isHidden           Boolean   @default(false)
+  sourceUpdatedAt    DateTime
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  prices ModelPrice[]
+
+  @@unique([provider, name])
+  @@index([provider, isHidden])
+}
+
+/// Append-only four-rate price card. Rates are USD per token. The latest
+/// effectiveFrom at or before a timestamp is the historical price.
+model ModelPrice {
+  id                   String          @id @default(uuid()) @db.Uuid
+  modelId              String          @db.Uuid
+  effectiveFrom        DateTime
+  inputRate            Decimal         @db.Decimal(24, 12)
+  outputRate           Decimal         @db.Decimal(24, 12)
+  cacheReadRate        Decimal         @db.Decimal(24, 12)
+  cacheWriteRate       Decimal         @db.Decimal(24, 12)
+  inputSource          ModelRateSource
+  outputSource         ModelRateSource
+  cacheReadSource      ModelRateSource
+  cacheWriteSource     ModelRateSource
+  inputObservedAt      DateTime
+  outputObservedAt     DateTime
+  cacheReadObservedAt  DateTime
+  cacheWriteObservedAt DateTime
+  inputSourceRef       String?
+  outputSourceRef      String?
+  cacheReadSourceRef   String?
+  cacheWriteSourceRef  String?
+  createdAt            DateTime        @default(now())
+
+  model Model @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  steps Step[]
+
+  @@unique([modelId, effectiveFrom])
+  @@index([modelId, effectiveFrom(sort: Desc)])
+}
+
 model Turn {
   id                String             @id @default(uuid()) @db.Uuid
   threadId          String             @db.Uuid
@@ -1047,16 +1109,36 @@ model Step {
   cacheReadInputTokens     Int?
   reasoningTokens          Int?
   costCents                Decimal?   @db.Decimal(18, 6)
+  /// Immutable USD-per-token rates and provenance used to compute costCents.
+  modelPriceId             String?    @db.Uuid
+  inputRate                Decimal?   @db.Decimal(24, 12)
+  outputRate               Decimal?   @db.Decimal(24, 12)
+  cacheReadRate            Decimal?   @db.Decimal(24, 12)
+  cacheWriteRate           Decimal?   @db.Decimal(24, 12)
+  inputRateSource          ModelRateSource?
+  outputRateSource         ModelRateSource?
+  cacheReadRateSource      ModelRateSource?
+  cacheWriteRateSource     ModelRateSource?
+  inputRateObservedAt      DateTime?
+  outputRateObservedAt     DateTime?
+  cacheReadRateObservedAt  DateTime?
+  cacheWriteRateObservedAt DateTime?
+  inputRateSourceRef       String?
+  outputRateSourceRef      String?
+  cacheReadRateSourceRef   String?
+  cacheWriteRateSourceRef  String?
   latencyMs                Int?
   error                    String?
   startedAt                DateTime?
   completedAt              DateTime?
   createdAt                DateTime   @default(now())
 
-  turn      Turn       @relation(fields: [turnId], references: [id], onDelete: Cascade)
-  toolCalls ToolCall[]
+  turn       Turn        @relation(fields: [turnId], references: [id], onDelete: Cascade)
+  modelPrice ModelPrice? @relation(fields: [modelPriceId], references: [id], onDelete: Restrict)
+  toolCalls  ToolCall[]
 
   @@unique([turnId, sequence])
+  @@index([modelPriceId])
 }
 
 model ToolCall {

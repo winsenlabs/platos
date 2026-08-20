@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
@@ -25,6 +25,13 @@ const agentDockerfile = read("apps/agent/Dockerfile");
 const webappDockerfile = read("apps/webapp/Dockerfile.platos");
 const agentEntrypoint = read("apps/agent/entrypoint.sh");
 const compose = read("docker-compose.platos.yml");
+
+function sourceFiles(path) {
+  const absolute = join(root, path);
+  if (!existsSync(absolute)) return [];
+  if (!statSync(absolute).isDirectory()) return [path];
+  return readdirSync(absolute).flatMap((entry) => sourceFiles(join(path, entry)));
+}
 
 check("root exposes build:platos", Boolean(packageJson.scripts?.["build:platos"]));
 check("root exposes build:platos:agent", Boolean(packageJson.scripts?.["build:platos:agent"]));
@@ -58,6 +65,12 @@ check(
     ["src/**/*.test.ts", "src/**/*.spec.ts"].every((pattern) => agentBuildTsconfig.exclude?.includes(pattern))
 );
 check("webapp build is guarded by memory policy", /memory-policy\.mjs build/.test(webappPackage.scripts?.build ?? ""));
+check("agent has no legacy pricing package dependency", !agentPackage.dependencies?.["@internal/cost-rates"]);
+check(
+  "webapp has no legacy pricing package dependency",
+  !webappPackage.dependencies?.["@internal/cost-rates"] &&
+    !webappPackage.dependencies?.["@internal/llm-model-catalog"]
+);
 check("agent image uses explicit Platos build graph", /build:platos:agent/.test(agentDockerfile));
 check("agent image does not copy the legacy database schema", !agentDockerfile.includes("internal-packages/database/prisma"));
 check("agent entrypoint does not generate the legacy database client", !agentEntrypoint.includes("@platos/database"));
@@ -96,6 +109,19 @@ check(
   "local Trigger engine routes are absent",
   !existsSync(join(root, "apps/webapp/app/routes/engine.v1.worker-actions.connect.ts"))
 );
+
+for (const path of [
+  ...sourceFiles("apps/agent/src"),
+  ...sourceFiles("apps/webapp/app"),
+  "apps/webapp/seed-ai-spans.mts",
+]) {
+  if (!/\.(?:ts|tsx|mts)$/.test(path) || /\.(?:test|spec)\./.test(path)) continue;
+  const source = read(path);
+  check(`${path} has no legacy pricing package import`, !/@internal\/(?:cost-rates|llm-model-catalog)/.test(source));
+  check(`${path} has no Redis model catalogue authority`, !source.includes("cost:model_catalog"));
+  check(`${path} has no inherited pricing delegate`, !/\.(?:llmModel|llmPrice|llmPricingTier)\b/.test(source));
+  check(`${path} has no agent-local verified prices`, !source.includes("verified-prices"));
+}
 
 console.log(`platos-build-audit: ${checks.length} checks`);
 if (failures.length) {

@@ -60,9 +60,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(87);
-    expect(domainModelNames).toHaveLength(71);
-    expect(new Set(domainModelNames).size).toBe(71);
+    expect(models).toHaveLength(89);
+    expect(domainModelNames).toHaveLength(73);
+    expect(new Set(domainModelNames).size).toBe(73);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");
@@ -143,11 +143,29 @@ describe("clean-slate domain schema", () => {
       McpBearerToken: ["entityId", "environmentId", "mcpUserId", "createdByUserId", "scopes"],
       Thread: ["compactedUpToTurnId", "compactionState", "compactedAt"],
       Turn: ["agentVersionId", "versionBucket", "costCents", "latencyMs"],
+      Model: ["key", "provider", "name", "sourceUpdatedAt"],
+      ModelPrice: [
+        "modelId",
+        "effectiveFrom",
+        "inputRate",
+        "outputRate",
+        "cacheReadRate",
+        "cacheWriteRate",
+        "inputSource",
+        "outputSource",
+        "cacheReadSource",
+        "cacheWriteSource",
+      ],
       Step: [
         "cacheCreationInputTokens",
         "cacheReadInputTokens",
         "reasoningTokens",
         "costCents",
+        "modelPriceId",
+        "inputRate",
+        "outputRate",
+        "cacheReadRate",
+        "cacheWriteRate",
         "latencyMs",
       ],
       Memory: [
@@ -215,6 +233,9 @@ describe("clean-slate domain schema", () => {
       'CREATE UNIQUE INDEX "MemoryEntity_shared_cluster_entityKey_key"',
       'CONSTRAINT "Memory_extraction_provenance_check"',
       'CONSTRAINT "Step_usage_check"',
+      'CONSTRAINT "ModelPrice_rate_check"',
+      'CREATE TRIGGER "ModelPrice_immutable_update"',
+      'CREATE TRIGGER "Step_price_snapshot"',
       'CREATE TRIGGER "Turn_ancestry"',
       'CREATE TRIGGER "MemoryRelationship_owner_immutable"',
     ]) {

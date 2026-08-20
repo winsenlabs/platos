@@ -4,6 +4,7 @@ export * from "./auth";
 export { createEndUserClient, type EndUserClient } from "./end-user";
 export * from "./environment-variables";
 export * from "./json";
+export * from "./model-pricing";
 export * from "./secrets";
 export * from "./source-model-manifest";
 export * from "./tool-policy";

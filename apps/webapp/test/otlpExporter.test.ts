@@ -608,6 +608,14 @@ describe("OTLPExporter", () => {
       // @ts-expect-error
       const $events = enrichCreatableEvents(events);
       expect($events[0].properties["trigger.llm.total_cost"]).toBeUndefined();
+      expect($events[0].properties["trigger.llm.pricing_status"]).toBe("unavailable");
+      expect($events[0].properties["trigger.llm.pricing_reason"]).toBe(
+        "catalog_not_ready",
+      );
+      expect($events[0]._llmMetrics).toMatchObject({
+        costSource: "unpriced",
+        totalCost: 0,
+      });
     });
 
     it("should format token counts with k/M suffixes in accessories", () => {

@@ -40,7 +40,6 @@ import { findProjectBySlug } from "~/models/project.server";
 import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
 import { requireUserId } from "~/services/session.server";
 import { telemetry } from "~/services/telemetry.server";
-import { cacheRatesFor } from "~/utils/cacheRates";
 import {
   agentCanaryPath,
   agentChatPath,
@@ -1588,9 +1587,9 @@ export default function AgentDetailPage() {
           <Paragraph variant="small" className="mt-1 mb-3">
             Anthropic prompt-cache telemetry — `cache_read /
             (cache_read + cache_creation + input)`. Higher is better;
-            cache hits are billed at 10% of the normal input rate.
+            cache reads and writes use the model's independent canonical rates.
           </Paragraph>
-          <CacheHitRateSection cacheRange={cacheRange} model={agent.model} />
+          <CacheHitRateSection cacheRange={cacheRange} />
         </section>
     </PageBody>
   );
@@ -1602,10 +1601,8 @@ export default function AgentDetailPage() {
 
 function CacheHitRateSection({
   cacheRange,
-  model,
 }: {
   cacheRange: CacheRangePayload | null;
-  model?: string | null;
 }) {
   if (!cacheRange) {
     return (
@@ -1629,19 +1626,7 @@ function CacheHitRateSection({
     );
   }
 
-  // PRELAUNCH-A1-2 / A1-9 — provider-aware cache savings calc. Anthropic's
-  // 90% discount was previously hard-coded as `* 0.9`, which over-reported
-  // savings by 1.8× on OpenAI and 1.2× on Gemini. Resolve the discount
-  // factor (1 − read multiplier) per provider.
-  const cacheRates = cacheRatesFor(model);
-  const cacheDiscountFactor = 1 - cacheRates.read;
-  const savingsCents =
-    totalRead > 0 && totalInput > 0
-      ? // back into the avg input rate from naiveCents / inputTokens
-        (totalRead / 1_000_000) *
-        ((cacheRange.costCents / totalInput) * 1_000_000) *
-        cacheDiscountFactor
-      : 0;
+  const savingsCents = Math.max(0, cacheRange.costCents - cacheRange.costWithCacheCents);
 
   return (
     <div className="space-y-3">
@@ -1829,4 +1814,3 @@ app.message(async ({ message, say }) => {
     </section>
   );
 }
-

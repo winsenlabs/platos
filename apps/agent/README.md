@@ -61,6 +61,14 @@ only dashboard credentials and never falls back to `process.env` provider keys.
 - `GET /api/v1/agent/monitoring/cost/:orgId` — org daily cost
 - `GET /api/v1/agent/monitoring/cost/thread/:threadId` — thread cost
 
+Before the HTTP listener accepts normal turn traffic, agent startup checks the
+canonical `ModelPrice` catalogue. A fresh database fetches the public LiteLLM
+catalogue and idempotently ingests it through the same Platos pricing service
+that applies committed provider-qualified overrides. Startup fails closed if an
+empty database cannot be bootstrapped; it never falls back to Redis, deployment
+environment rates, or static legacy catalogues. The authenticated daily Trigger
+callback refreshes the same append-only catalogue after bootstrap.
+
 ### WebSocket (Real-time)
 - `ws://localhost:3100/agent` — agent chat (token streaming)
 - `ws://localhost:3100/tools/sync` — tool registration sync

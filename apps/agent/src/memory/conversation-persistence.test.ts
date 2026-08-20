@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ModelRateSource } from "@platos/tenancy-database";
 import {
   CONVERSATION_REVISION_NOT_SUPPORTED,
   ConversationRevisionNotSupportedError,
@@ -12,6 +13,19 @@ const scope = {
   userId: "user",
   agentId: "agent",
 } as any;
+
+const pricing = {
+  modelPriceId: "price-1",
+  modelId: "model-1",
+  modelKey: "anthropic:test",
+  provider: "anthropic",
+  modelName: "anthropic:test",
+  effectiveFrom: new Date("2026-08-15T00:00:00.000Z"),
+  input: { usdPerToken: 0.000001, source: ModelRateSource.LITELLM, observedAt: new Date("2026-08-15T00:00:00.000Z"), sourceRef: "https://example.test/prices" },
+  output: { usdPerToken: 0.000002, source: ModelRateSource.LITELLM, observedAt: new Date("2026-08-15T00:00:00.000Z"), sourceRef: "https://example.test/prices" },
+  cacheRead: { usdPerToken: 0.0000001, source: ModelRateSource.LITELLM, observedAt: new Date("2026-08-15T00:00:00.000Z"), sourceRef: "https://example.test/prices" },
+  cacheWrite: { usdPerToken: 0.00000125, source: ModelRateSource.LITELLM, observedAt: new Date("2026-08-15T00:00:00.000Z"), sourceRef: "https://example.test/prices" },
+};
 
 function makeService() {
   const createdTurns: any[] = [];
@@ -122,6 +136,7 @@ describe("ConversationService clean Turn persistence", () => {
         reasoningTokens: 5,
       },
       costCents: 1.25,
+      pricing,
       latencyMs: 321,
       structuredOutput: { ok: true },
       toolCalls: [
@@ -150,6 +165,9 @@ describe("ConversationService clean Turn persistence", () => {
       cacheReadInputTokens: 40,
       reasoningTokens: 5,
       costCents: 1.25,
+      modelPriceId: "price-1",
+      inputRate: 0.000001,
+      cacheWriteRate: 0.00000125,
       latencyMs: 321,
     });
     expect(createdSteps[0].toolCalls.create).toEqual([

@@ -2,6 +2,10 @@ import { Injectable, Inject, Logger } from "@nestjs/common";
 import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
+import {
+  modelPriceSnapshotStepData,
+  type CanonicalModelPriceSnapshot,
+} from "@platos/tenancy-database";
 
 export interface StoredMessage {
   id: string;
@@ -536,6 +540,7 @@ export class ConversationService {
       model?: string;
       usage?: { inputTokens?: number; outputTokens?: number; cacheCreationInputTokens?: number; cacheReadInputTokens?: number; reasoningTokens?: number };
       costCents?: number;
+      pricing?: CanonicalModelPriceSnapshot;
       latencyMs?: number;
       structuredOutput?: unknown;
       externalRuntimeId?: string | null;
@@ -594,6 +599,9 @@ export class ConversationService {
     const turnId = message.turnId;
     if (!turnId) throw new Error("Assistant persistence requires the open turn id");
     const usage = message.usage ?? {};
+    if (message.costCents != null && !message.pricing) {
+      throw new Error("Priced assistant persistence requires a canonical rate snapshot");
+    }
     const calls = normalizeToolCalls(message.toolCalls ?? []);
     const completedAt = new Date();
     const row = await this.prisma.$transaction(async (tx) => {
@@ -623,6 +631,7 @@ export class ConversationService {
           cacheReadInputTokens: usage.cacheReadInputTokens ?? 0,
           reasoningTokens: usage.reasoningTokens ?? 0,
           costCents: message.costCents ?? null,
+          ...(message.pricing ? modelPriceSnapshotStepData(message.pricing) : {}),
           latencyMs: message.latencyMs ?? null,
           startedAt: current.startedAt,
           completedAt,
@@ -863,6 +872,15 @@ export class ConversationService {
             inputTokens: step.inputTokens, outputTokens: step.outputTokens,
             cacheCreationInputTokens: step.cacheCreationInputTokens, cacheReadInputTokens: step.cacheReadInputTokens,
             reasoningTokens: step.reasoningTokens, costCents: step.costCents, latencyMs: step.latencyMs,
+            modelPriceId: step.modelPriceId,
+            inputRate: step.inputRate, outputRate: step.outputRate,
+            cacheReadRate: step.cacheReadRate, cacheWriteRate: step.cacheWriteRate,
+            inputRateSource: step.inputRateSource, outputRateSource: step.outputRateSource,
+            cacheReadRateSource: step.cacheReadRateSource, cacheWriteRateSource: step.cacheWriteRateSource,
+            inputRateObservedAt: step.inputRateObservedAt, outputRateObservedAt: step.outputRateObservedAt,
+            cacheReadRateObservedAt: step.cacheReadRateObservedAt, cacheWriteRateObservedAt: step.cacheWriteRateObservedAt,
+            inputRateSourceRef: step.inputRateSourceRef, outputRateSourceRef: step.outputRateSourceRef,
+            cacheReadRateSourceRef: step.cacheReadRateSourceRef, cacheWriteRateSourceRef: step.cacheWriteRateSourceRef,
             error: step.error, startedAt: step.startedAt, completedAt: step.completedAt, createdAt: step.createdAt,
             toolCalls: { create: step.toolCalls.map((call) => ({
               toolId: call.toolId, sequence: call.sequence, toolName: call.toolName, arguments: call.arguments as any,

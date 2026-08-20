@@ -49,6 +49,9 @@ CREATE TYPE "public"."AgentVersionBucket" AS ENUM ('CURRENT', 'CANARY');
 -- CreateEnum
 CREATE TYPE "public"."ThreadCompactionState" AS ENUM ('IDLE', 'IN_PROGRESS');
 
+-- CreateEnum
+CREATE TYPE "public"."ModelRateSource" AS ENUM ('LITELLM', 'VERIFIED_PROVIDER', 'UNAVAILABLE');
+
 -- CreateTable
 CREATE TABLE "public"."User" (
     "id" UUID NOT NULL,
@@ -596,6 +599,54 @@ CREATE TABLE "public"."Thread" (
 );
 
 -- CreateTable
+CREATE TABLE "public"."Model" (
+    "id" UUID NOT NULL,
+    "key" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "displayName" TEXT,
+    "description" TEXT,
+    "contextWindow" INTEGER,
+    "maxOutputTokens" INTEGER,
+    "capabilities" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "releaseDate" TIMESTAMP(3),
+    "deprecationDate" TIMESTAMP(3),
+    "baseModelName" TEXT,
+    "isHidden" BOOLEAN NOT NULL DEFAULT false,
+    "sourceUpdatedAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Model_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."ModelPrice" (
+    "id" UUID NOT NULL,
+    "modelId" UUID NOT NULL,
+    "effectiveFrom" TIMESTAMP(3) NOT NULL,
+    "inputRate" DECIMAL(24,12) NOT NULL,
+    "outputRate" DECIMAL(24,12) NOT NULL,
+    "cacheReadRate" DECIMAL(24,12) NOT NULL,
+    "cacheWriteRate" DECIMAL(24,12) NOT NULL,
+    "inputSource" "public"."ModelRateSource" NOT NULL,
+    "outputSource" "public"."ModelRateSource" NOT NULL,
+    "cacheReadSource" "public"."ModelRateSource" NOT NULL,
+    "cacheWriteSource" "public"."ModelRateSource" NOT NULL,
+    "inputObservedAt" TIMESTAMP(3) NOT NULL,
+    "outputObservedAt" TIMESTAMP(3) NOT NULL,
+    "cacheReadObservedAt" TIMESTAMP(3) NOT NULL,
+    "cacheWriteObservedAt" TIMESTAMP(3) NOT NULL,
+    "inputSourceRef" TEXT,
+    "outputSourceRef" TEXT,
+    "cacheReadSourceRef" TEXT,
+    "cacheWriteSourceRef" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ModelPrice_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "public"."Turn" (
     "id" UUID NOT NULL,
     "threadId" UUID NOT NULL,
@@ -633,6 +684,23 @@ CREATE TABLE "public"."Step" (
     "cacheReadInputTokens" INTEGER,
     "reasoningTokens" INTEGER,
     "costCents" DECIMAL(18,6),
+    "modelPriceId" UUID,
+    "inputRate" DECIMAL(24,12),
+    "outputRate" DECIMAL(24,12),
+    "cacheReadRate" DECIMAL(24,12),
+    "cacheWriteRate" DECIMAL(24,12),
+    "inputRateSource" "public"."ModelRateSource",
+    "outputRateSource" "public"."ModelRateSource",
+    "cacheReadRateSource" "public"."ModelRateSource",
+    "cacheWriteRateSource" "public"."ModelRateSource",
+    "inputRateObservedAt" TIMESTAMP(3),
+    "outputRateObservedAt" TIMESTAMP(3),
+    "cacheReadRateObservedAt" TIMESTAMP(3),
+    "cacheWriteRateObservedAt" TIMESTAMP(3),
+    "inputRateSourceRef" TEXT,
+    "outputRateSourceRef" TEXT,
+    "cacheReadRateSourceRef" TEXT,
+    "cacheWriteRateSourceRef" TEXT,
     "latencyMs" INTEGER,
     "error" TEXT,
     "startedAt" TIMESTAMP(3),
@@ -1745,6 +1813,24 @@ CREATE UNIQUE INDEX "Turn_threadId_sequence_key" ON "public"."Turn"("threadId", 
 CREATE UNIQUE INDEX "Step_turnId_sequence_key" ON "public"."Step"("turnId", "sequence");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Model_key_key" ON "public"."Model"("key");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Model_provider_name_key" ON "public"."Model"("provider", "name");
+
+-- CreateIndex
+CREATE INDEX "Model_provider_isHidden_idx" ON "public"."Model"("provider", "isHidden");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ModelPrice_modelId_effectiveFrom_key" ON "public"."ModelPrice"("modelId", "effectiveFrom");
+
+-- CreateIndex
+CREATE INDEX "ModelPrice_modelId_effectiveFrom_idx" ON "public"."ModelPrice"("modelId", "effectiveFrom" DESC);
+
+-- CreateIndex
+CREATE INDEX "Step_modelPriceId_idx" ON "public"."Step"("modelPriceId");
+
+-- CreateIndex
 CREATE INDEX "ToolCall_toolId_idx" ON "public"."ToolCall"("toolId");
 
 -- CreateIndex
@@ -2234,6 +2320,12 @@ ALTER TABLE "public"."Turn" ADD CONSTRAINT "Turn_agentVersionId_fkey" FOREIGN KE
 ALTER TABLE "public"."Step" ADD CONSTRAINT "Step_turnId_fkey" FOREIGN KEY ("turnId") REFERENCES "public"."Turn"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."ModelPrice" ADD CONSTRAINT "ModelPrice_modelId_fkey" FOREIGN KEY ("modelId") REFERENCES "public"."Model"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."Step" ADD CONSTRAINT "Step_modelPriceId_fkey" FOREIGN KEY ("modelPriceId") REFERENCES "public"."ModelPrice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."ToolCall" ADD CONSTRAINT "ToolCall_stepId_fkey" FOREIGN KEY ("stepId") REFERENCES "public"."Step"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2610,8 +2702,35 @@ ALTER TABLE "public"."Step"
     ("inputTokens" IS NULL OR
       COALESCE("cacheCreationInputTokens", 0) + COALESCE("cacheReadInputTokens", 0) <= "inputTokens") AND
     ("costCents" IS NULL OR "costCents" >= 0) AND
+    (
+      "costCents" IS NULL OR (
+        "modelPriceId" IS NOT NULL AND
+        "inputRate" IS NOT NULL AND "outputRate" IS NOT NULL AND
+        "cacheReadRate" IS NOT NULL AND "cacheWriteRate" IS NOT NULL AND
+        "inputRateSource" IS NOT NULL AND "outputRateSource" IS NOT NULL AND
+        "cacheReadRateSource" IS NOT NULL AND "cacheWriteRateSource" IS NOT NULL AND
+        "inputRateObservedAt" IS NOT NULL AND "outputRateObservedAt" IS NOT NULL AND
+        "cacheReadRateObservedAt" IS NOT NULL AND "cacheWriteRateObservedAt" IS NOT NULL
+      )
+    ) AND
+    ("inputRate" IS NULL OR "inputRate" >= 0) AND
+    ("outputRate" IS NULL OR "outputRate" >= 0) AND
+    ("cacheReadRate" IS NULL OR "cacheReadRate" >= 0) AND
+    ("cacheWriteRate" IS NULL OR "cacheWriteRate" >= 0) AND
+    (COALESCE("cacheReadInputTokens", 0) = 0 OR "cacheReadRateSource" <> 'UNAVAILABLE') AND
+    (COALESCE("cacheCreationInputTokens", 0) = 0 OR "cacheWriteRateSource" <> 'UNAVAILABLE') AND
     ("latencyMs" IS NULL OR "latencyMs" >= 0) AND
     ("startedAt" IS NULL OR "completedAt" IS NULL OR "completedAt" >= "startedAt")
+  );
+
+ALTER TABLE "public"."ModelPrice"
+  ADD CONSTRAINT "ModelPrice_rate_check" CHECK (
+    "inputRate" >= 0 AND "outputRate" >= 0 AND
+    "cacheReadRate" >= 0 AND "cacheWriteRate" >= 0 AND
+    ("inputSource" = 'UNAVAILABLE' OR "inputSourceRef" IS NOT NULL) AND
+    ("outputSource" = 'UNAVAILABLE' OR "outputSourceRef" IS NOT NULL) AND
+    ("cacheReadSource" = 'UNAVAILABLE' OR "cacheReadSourceRef" IS NOT NULL) AND
+    ("cacheWriteSource" = 'UNAVAILABLE' OR "cacheWriteSourceRef" IS NOT NULL)
   );
 ALTER TABLE "public"."Memory"
   ADD CONSTRAINT "Memory_extraction_provenance_check" CHECK (
@@ -3880,3 +3999,63 @@ CREATE TRIGGER "BudgetThresholdEvent_immutable_update" BEFORE UPDATE ON "public"
 CREATE TRIGGER "BudgetThresholdEvent_immutable_delete" BEFORE DELETE ON "public"."BudgetThresholdEvent" FOR EACH ROW EXECUTE FUNCTION "public"."reject_budget_threshold_event_mutation"();
 CREATE TRIGGER "BudgetThresholdEvent_immutable_truncate" BEFORE TRUNCATE ON "public"."BudgetThresholdEvent" FOR EACH STATEMENT EXECUTE FUNCTION "public"."reject_budget_threshold_event_mutation"();
 REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."BudgetThresholdEvent" FROM PUBLIC;
+
+-- Canonical model-price history is append-only. A correction is a new dated
+-- row; mutating an old row would silently reprice the evidence that references it.
+CREATE FUNCTION "public"."reject_model_price_mutation"() RETURNS trigger
+  LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'ModelPrice is immutable' USING ERRCODE = '23514';
+END;
+$$;
+CREATE TRIGGER "ModelPrice_immutable_update" BEFORE UPDATE ON "public"."ModelPrice" FOR EACH ROW EXECUTE FUNCTION "public"."reject_model_price_mutation"();
+CREATE TRIGGER "ModelPrice_immutable_delete" BEFORE DELETE ON "public"."ModelPrice" FOR EACH ROW EXECUTE FUNCTION "public"."reject_model_price_mutation"();
+CREATE TRIGGER "ModelPrice_immutable_truncate" BEFORE TRUNCATE ON "public"."ModelPrice" FOR EACH STATEMENT EXECUTE FUNCTION "public"."reject_model_price_mutation"();
+REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."ModelPrice" FROM PUBLIC;
+
+-- A priced Step is immutable billing evidence and its copied rate card must
+-- exactly match the append-only ModelPrice it references.
+CREATE FUNCTION "public"."enforce_step_price_snapshot"() RETURNS trigger
+  LANGUAGE plpgsql AS $$
+DECLARE
+  price "public"."ModelPrice"%ROWTYPE;
+BEGIN
+  IF TG_OP = 'UPDATE' AND OLD."costCents" IS NOT NULL AND ROW(
+    OLD."model", OLD."inputTokens", OLD."outputTokens",
+    OLD."cacheCreationInputTokens", OLD."cacheReadInputTokens", OLD."costCents",
+    OLD."modelPriceId", OLD."inputRate", OLD."outputRate", OLD."cacheReadRate", OLD."cacheWriteRate",
+    OLD."inputRateSource", OLD."outputRateSource", OLD."cacheReadRateSource", OLD."cacheWriteRateSource",
+    OLD."inputRateObservedAt", OLD."outputRateObservedAt", OLD."cacheReadRateObservedAt", OLD."cacheWriteRateObservedAt",
+    OLD."inputRateSourceRef", OLD."outputRateSourceRef", OLD."cacheReadRateSourceRef", OLD."cacheWriteRateSourceRef"
+  ) IS DISTINCT FROM ROW(
+    NEW."model", NEW."inputTokens", NEW."outputTokens",
+    NEW."cacheCreationInputTokens", NEW."cacheReadInputTokens", NEW."costCents",
+    NEW."modelPriceId", NEW."inputRate", NEW."outputRate", NEW."cacheReadRate", NEW."cacheWriteRate",
+    NEW."inputRateSource", NEW."outputRateSource", NEW."cacheReadRateSource", NEW."cacheWriteRateSource",
+    NEW."inputRateObservedAt", NEW."outputRateObservedAt", NEW."cacheReadRateObservedAt", NEW."cacheWriteRateObservedAt",
+    NEW."inputRateSourceRef", NEW."outputRateSourceRef", NEW."cacheReadRateSourceRef", NEW."cacheWriteRateSourceRef"
+  ) THEN
+    RAISE EXCEPTION 'priced Step billing evidence is immutable' USING ERRCODE = '23514';
+  END IF;
+
+  IF NEW."modelPriceId" IS NULL THEN
+    RETURN NEW;
+  END IF;
+  SELECT * INTO price FROM "public"."ModelPrice" WHERE "id" = NEW."modelPriceId";
+  IF NOT FOUND OR ROW(
+    NEW."inputRate", NEW."outputRate", NEW."cacheReadRate", NEW."cacheWriteRate",
+    NEW."inputRateSource", NEW."outputRateSource", NEW."cacheReadRateSource", NEW."cacheWriteRateSource",
+    NEW."inputRateObservedAt", NEW."outputRateObservedAt", NEW."cacheReadRateObservedAt", NEW."cacheWriteRateObservedAt",
+    NEW."inputRateSourceRef", NEW."outputRateSourceRef", NEW."cacheReadRateSourceRef", NEW."cacheWriteRateSourceRef"
+  ) IS DISTINCT FROM ROW(
+    price."inputRate", price."outputRate", price."cacheReadRate", price."cacheWriteRate",
+    price."inputSource", price."outputSource", price."cacheReadSource", price."cacheWriteSource",
+    price."inputObservedAt", price."outputObservedAt", price."cacheReadObservedAt", price."cacheWriteObservedAt",
+    price."inputSourceRef", price."outputSourceRef", price."cacheReadSourceRef", price."cacheWriteSourceRef"
+  ) THEN
+    RAISE EXCEPTION 'Step price snapshot does not match ModelPrice' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER "Step_price_snapshot" BEFORE INSERT OR UPDATE ON "public"."Step" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_step_price_snapshot"();

@@ -16,6 +16,7 @@ import { MetricsController } from "./metrics.controller";
 import { SentryService } from "./sentry.service";
 import { AdminAuditService } from "./admin-audit.service";
 import { ProvidersModule } from "../providers/providers.module";
+import { ModelPricingBootstrapService } from "./model-pricing-bootstrap.service";
 
 @Module({
   imports: [ProvidersModule],
@@ -23,6 +24,7 @@ import { ProvidersModule } from "../providers/providers.module";
   providers: [
     SafetyService,
     CostService,
+    ModelPricingBootstrapService,
     SpansService,
     TraceService,
     UtilizationService,
