@@ -92,7 +92,48 @@ export interface WelcomeMessage {
   readonly project_id?: string;
 }
 
-export type PlatformToSdk = ToolCallMessage | HeartbeatAckMessage | WelcomeMessage;
+/**
+ * Acknowledgement for a `tool_register` batch. The platform sends this on every
+ * successful registration, which means it lands immediately after connect — a
+ * decoder that does not know it warns "malformed message" on every session.
+ */
+export interface ToolsRegisteredMessage {
+  readonly type: "tools_registered";
+  readonly entity_id?: string;
+  readonly environment_id?: string;
+  readonly count?: number;
+  readonly new_tools?: readonly string[];
+}
+
+/** Registration rate limit hit; retry after the supplied delay. */
+export interface RegisterThrottledMessage {
+  readonly type: "register_throttled";
+  readonly error: string;
+  readonly retry_after_ms?: number;
+}
+
+/** Health transition for a registered tool, pushed by the platform. */
+export interface ToolHealthAlertMessage {
+  readonly type: "tool_health_alert";
+  readonly tool: string;
+  readonly status: string;
+  readonly details?: unknown;
+}
+
+/** Terminal protocol error — the platform closes the socket after sending it. */
+export interface PlatformErrorMessage {
+  readonly type: "error";
+  readonly error: string;
+}
+
+export type PlatformToSdk =
+  | ToolCallMessage
+  | HeartbeatAckMessage
+  | WelcomeMessage
+  | ToolsRegisteredMessage
+  | RegisterThrottledMessage
+  | ToolHealthAlertMessage
+  | PlatformErrorMessage;
 
 /**
  * Decode a raw JSON string into a `PlatformToSdk` message.
@@ -157,6 +198,38 @@ export function decodePlatformMessage(raw: string): PlatformToSdk | null {
       };
       return welcome;
     }
+    case "tools_registered":
+      return {
+        type: "tools_registered",
+        ...(typeof record.entity_id === "string" ? { entity_id: record.entity_id } : {}),
+        ...(typeof record.environment_id === "string"
+          ? { environment_id: record.environment_id }
+          : {}),
+        ...(typeof record.count === "number" ? { count: record.count } : {}),
+        ...(Array.isArray(record.new_tools)
+          ? { new_tools: record.new_tools.filter((t): t is string => typeof t === "string") }
+          : {}),
+      };
+    case "register_throttled":
+      if (typeof record.error !== "string") return null;
+      return {
+        type: "register_throttled",
+        error: record.error,
+        ...(typeof record.retry_after_ms === "number"
+          ? { retry_after_ms: record.retry_after_ms }
+          : {}),
+      };
+    case "tool_health_alert":
+      if (typeof record.tool !== "string" || typeof record.status !== "string") return null;
+      return {
+        type: "tool_health_alert",
+        tool: record.tool,
+        status: record.status,
+        ...(record.details !== undefined ? { details: record.details } : {}),
+      };
+    case "error":
+      if (typeof record.error !== "string") return null;
+      return { type: "error", error: record.error };
     default:
       return null;
   }
