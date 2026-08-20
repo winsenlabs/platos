@@ -64,6 +64,7 @@ import type { SessionScope } from "./session-scope";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { BudgetService, type BudgetPeriod, type BudgetScopeType } from "../monitoring/budget.service";
+import type { BudgetAlertPayload } from "../monitoring/budget-alert.types";
 import { SafetyEventService, type DetectorKind, type DetectorAction } from "../monitoring/safety-event.service";
 import { GovernanceService } from "../monitoring/governance.service";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
@@ -5263,6 +5264,33 @@ Write the summary now:`;
       throw new HttpException("Cap not found", 404);
     }
     return { cap };
+  }
+
+  /** Callback-only Trigger entrypoint for durable per-channel budget delivery. */
+  @Post("internal/budget-alert")
+  async internalBudgetAlert(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body() body: BudgetAlertPayload,
+  ) {
+    if (!env.PLATOS_INTERNAL_AUTH_TOKEN) {
+      res.status(503).json({ error: "internal_auth_not_configured" });
+      return;
+    }
+    if (!this.verifyAdminToken(req)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    try {
+      const result = await this.budgetService.deliverThresholdEvent(body);
+      res.status(200).json(result);
+    } catch (error: any) {
+      const failed = Number(error?.summary?.failed ?? 0);
+      res.status(503).json({
+        error: failed > 0 ? "budget_alert_delivery_failed" : "budget_alert_callback_failed",
+        ...(failed > 0 ? { failed } : {}),
+      });
+    }
   }
 
   /**

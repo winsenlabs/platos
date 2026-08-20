@@ -94,10 +94,16 @@ export const sourceModelManifest = [
 /** New support models required by the approved normalized design. */
 export const supportDomainModels = [
   "AgentToolPolicy",
+  "AlertChannel",
+  "AlertChannelConfiguration",
+  "AlertDelivery",
+  "AlertDeliveryAttempt",
+  "BudgetThresholdEvent",
   "ChannelEventInbox",
   "Credential",
   "CredentialAudit",
   "CredentialSecretVersion",
+  "EnvironmentVariable",
   "OAuthConsentTransaction",
 ] as const;
 

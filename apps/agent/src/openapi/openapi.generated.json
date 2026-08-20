@@ -3151,6 +3151,29 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/api/v1/agent/internal/budget-alert": {
+      "post": {
+        "operationId": "post__api_v1_agent_internal_budget_alert",
+        "summary": "AgentController.internalBudgetAlert",
+        "tags": [
+          "internal"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "internalAuth": []
+          }
+        ],
+        "x-platos-classification": "INTERNAL",
+        "x-platos-auth-class": "INTERNAL_SHARED_SECRET",
+        "x-platos-policy-rule": "agent-internal-prefix",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/api/v1/agent/internal/chat/reap-sessions": {
       "post": {
         "operationId": "post__api_v1_agent_internal_chat_reap_sessions",
@@ -8855,6 +8878,6 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 285,
+  "x-platos-rest-operation-count": 286,
   "x-platos-mcp-tool-count": 206
 }

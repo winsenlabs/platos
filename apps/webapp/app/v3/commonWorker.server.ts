@@ -7,7 +7,6 @@ import { RunEngineBatchTriggerService } from "~/runEngine/services/batchTrigger.
 import { sendEmail } from "~/services/email.server";
 import { logger } from "~/services/logger.server";
 import { singleton } from "~/utils/singleton";
-import { DeliverAlertService } from "./services/alerts/deliverAlert.server";
 import { PerformDeploymentAlertsService } from "./services/alerts/performDeploymentAlerts.server";
 import { PerformTaskRunAlertsService } from "./services/alerts/performTaskRunAlerts.server";
 import { CancelDevSessionRunsService } from "./services/cancelDevSessionRuns.server";
@@ -95,15 +94,6 @@ function initializeWorker() {
           maxAttempts: 3,
         },
       },
-      "v3.deliverAlert": {
-        schema: z.object({
-          alertId: z.string(),
-        }),
-        visibilityTimeoutMs: 60_000,
-        retry: {
-          maxAttempts: 3,
-        },
-      },
       processBulkAction: {
         schema: z.object({
           bulkActionId: z.string(),
@@ -139,12 +129,6 @@ function initializeWorker() {
       "runengine.processBatchTaskRun": async ({ payload }) => {
         const service = new RunEngineBatchTriggerService(payload.strategy);
         await service.processBatchTaskRun(payload);
-      },
-      // @deprecated, moved to alertsWorker.server.ts
-      "v3.deliverAlert": async ({ payload }) => {
-        const service = new DeliverAlertService();
-
-        await service.call(payload.alertId);
       },
       // @deprecated, moved to alertsWorker.server.ts
       "v3.performDeploymentAlerts": async ({ payload }) => {

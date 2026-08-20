@@ -37,9 +37,17 @@ export class ScopedEnvService {
     if (!name || typeof name !== "string") return undefined;
     try {
       const authorization = await this.authorize(scope);
+      const variable = await this.prisma.environmentVariable.findFirst({
+        where: { environmentId: authorization.environmentId, key: name },
+        select: { kind: true, value: true, credentialId: true },
+      });
+      if (!variable) return undefined;
+      if (variable.kind === "PLAIN") return variable.value ?? undefined;
+      if (!variable.credentialId) return undefined;
       const material = await this.secretStore.readForRuntime({
         authorization,
-        name,
+        credentialId: variable.credentialId,
+        kind: "SECRET_REFERENCE",
       });
       return material.reveal();
     } catch {

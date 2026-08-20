@@ -48,7 +48,6 @@ import {
   TableRow,
 } from "~/components/primitives/Table";
 import { SimpleTooltip } from "~/components/primitives/Tooltip";
-import { prisma } from "~/db.server";
 import { useEnvironment } from "~/hooks/useEnvironment";
 import { useFuzzyFilter } from "~/hooks/useFuzzyFilter";
 import { useOrganization } from "~/hooks/useOrganizations";
@@ -58,16 +57,18 @@ import {
   type EnvironmentVariableWithSetValues,
   EnvironmentVariablesPresenter,
 } from "~/presenters/v3/EnvironmentVariablesPresenter.server";
-import { requireUserId } from "~/services/session.server";
+import { requireCanonicalEnvironmentAuthorization } from "~/services/platosDashboardAuth.server";
+import {
+  deleteCanonicalEnvironmentVariableById,
+  updateCanonicalEnvironmentVariableById,
+} from "~/services/platosEnvironmentVariables.server";
 import { cn } from "~/utils/cn";
 import {
   EnvironmentParamSchema,
-  ProjectParamSchema,
   docsPath,
   v3EnvironmentVariablesPath,
   v3NewEnvironmentVariablesPath,
 } from "~/utils/pathBuilder";
-import { EnvironmentVariablesRepository } from "~/v3/environmentVariables/environmentVariablesRepository.server";
 import {
   DeleteEnvironmentVariableValue,
   EditEnvironmentVariableValue,
@@ -88,29 +89,16 @@ export const meta: MetaFunction = () => {
 };
 
 export const loader = async ({ request, params }: LoaderFunctionArgs) => {
-  const userId = await requireUserId(request);
-  const { projectParam } = ProjectParamSchema.parse(params);
-
-  try {
-    const presenter = new EnvironmentVariablesPresenter();
-    const { environmentVariables, environments, hasStaging, vercelIntegration } = await presenter.call({
-      userId,
-      projectSlug: projectParam,
-    });
-
-    return typedjson({
-      environmentVariables,
-      environments,
-      hasStaging,
-      vercelIntegration,
-    });
-  } catch (error) {
-    console.error(error);
-    throw new Response(undefined, {
-      status: 400,
-      statusText: "Something went wrong, if this problem persists please contact support.",
-    });
-  }
+  const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
+  const { authorization } = await requireCanonicalEnvironmentAuthorization({
+    request,
+    organizationSlug,
+    projectSlug: projectParam,
+    environmentSlug: envParam,
+    access: "metadata",
+  });
+  const presenter = new EnvironmentVariablesPresenter();
+  return typedjson(await presenter.call({ authorization }));
 };
 
 const schema = z.discriminatedUnion("action", [
@@ -129,123 +117,47 @@ const schema = z.discriminatedUnion("action", [
 ]);
 
 export const action = async ({ request, params }: ActionFunctionArgs) => {
-  const userId = await requireUserId(request);
   const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
-
-  if (request.method.toUpperCase() !== "POST") {
-    return { status: 405, body: "Method Not Allowed" };
-  }
-
+  if (request.method.toUpperCase() !== "POST") return { status: 405, body: "Method Not Allowed" };
   const formData = await request.formData();
   const submission = parse(formData, { schema });
-
-  if (!submission.value) {
-    return json(submission);
-  }
-
-  const project = await prisma.project.findUnique({
-    where: {
-      slug: params.projectParam,
-      organization: {
-        members: {
-          some: {
-            userId,
-          },
-        },
-      },
-    },
-    select: {
-      id: true,
-    },
+  if (!submission.value) return json(submission);
+  const { authorization, scope } = await requireCanonicalEnvironmentAuthorization({
+    request,
+    organizationSlug,
+    projectSlug: projectParam,
+    environmentSlug: envParam,
+    access: "secret:mutate",
   });
-  if (!project) {
-    submission.error.key = ["Project not found"];
+  if (submission.value.action === "update-vercel-sync") {
+    submission.error.key = ["Vercel synchronization is not available for canonical variables"];
     return json(submission);
   }
-
-  switch (submission.value.action) {
-    case "edit": {
-      const repository = new EnvironmentVariablesRepository(prisma);
-      const result = await repository.editValue(project.id, {
-        ...submission.value,
-        lastUpdatedBy: {
-          type: "user",
-          userId,
-        },
+  const ok = submission.value.action === "edit"
+    ? await updateCanonicalEnvironmentVariableById({
+        authorization,
+        id: submission.value.id,
+        value: submission.value.value,
+        lastUpdatedBy: JSON.stringify({ type: "user", userId: scope.userId }),
+      })
+    : await deleteCanonicalEnvironmentVariableById({
+        authorization,
+        id: submission.value.id,
       });
-
-      if (!result.success) {
-        submission.error.key = [result.error];
-        return json(submission);
-      }
-
-      return json({ ...submission, success: true });
-    }
-    case "delete": {
-      const repository = new EnvironmentVariablesRepository(prisma);
-      const result = await repository.deleteValue(project.id, submission.value);
-
-      if (!result.success) {
-        submission.error.key = [result.error];
-        return json(submission);
-      }
-
-      // Clean up syncEnvVarsMapping if Vercel integration exists (best-effort)
-      const { environmentId, key } = submission.value;
-      const vercelService = new VercelIntegrationService();
-      await fromPromise(
-        (async () => {
-          const integration = await vercelService.getVercelProjectIntegration(project.id);
-          if (integration) {
-            const runtimeEnv = await prisma.runtimeEnvironment.findUnique({
-              where: { id: environmentId },
-              select: { type: true },
-            });
-            if (runtimeEnv) {
-              await vercelService.removeSyncEnvVarForEnvironment(
-                project.id,
-                key,
-                runtimeEnv.type as TriggerEnvironmentType
-              );
-            }
-          }
-        })(),
-        (error) => error
-      ).mapErr((error) => {
-        logger.error("Failed to remove Vercel sync mapping", { error });
-        return error;
-      });
-
-      return redirectWithSuccessMessage(
-        v3EnvironmentVariablesPath(
-          { slug: organizationSlug },
-          { slug: projectParam },
-          { slug: envParam }
-        ),
-        request,
-        `Deleted ${submission.value.key} environment variable`
-      );
-    }
-    case "update-vercel-sync": {
-      const vercelService = new VercelIntegrationService();
-      const integration = await vercelService.getVercelProjectIntegration(project.id);
-
-      if (!integration) {
-        submission.error.key = ["Vercel integration not found"];
-        return json(submission);
-      }
-
-      // Update the sync mapping for the specific env var and environment
-      await vercelService.updateSyncEnvVarForEnvironment(
-        project.id,
-        submission.value.key,
-        submission.value.environmentType,
-        submission.value.syncEnabled
-      );
-
-      return json({ success: true });
-    }
+  if (!ok) {
+    submission.error.key = ["Environment variable not found"];
+    return json(submission);
   }
+  if (submission.value.action === "edit") return json({ ...submission, success: true });
+  return redirectWithSuccessMessage(
+    v3EnvironmentVariablesPath(
+      { slug: organizationSlug },
+      { slug: projectParam },
+      { slug: envParam }
+    ),
+    request,
+    `Deleted ${submission.value.key} environment variable`
+  );
 };
 
 export default function Page() {

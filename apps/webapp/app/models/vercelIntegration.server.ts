@@ -18,6 +18,11 @@ import { ResultAsync, errAsync, okAsync } from "neverthrow";
 import { $transaction, prisma } from "~/db.server";
 import { env } from "~/env.server";
 import { logger } from "~/services/logger.server";
+import {
+  authorizeCanonicalEnvironmentService,
+  listCanonicalEnvironmentVariables,
+  setCanonicalEnvironmentVariable,
+} from "~/services/platosEnvironmentVariables.server";
 import { getSecretStore } from "~/services/secrets/secretStore.server";
 import { generateFriendlyId } from "~/v3/friendlyIdentifiers";
 import {
@@ -26,7 +31,6 @@ import {
   TriggerEnvironmentType,
   envTypeToVercelTarget,
 } from "~/v3/vercel/vercelProjectIntegrationSchema";
-import { EnvironmentVariablesRepository } from "~/v3/environmentVariables/environmentVariablesRepository.server";
 import {
   callVercelWithRecovery,
   wrapVercelCallWithRecovery,
@@ -1195,8 +1199,6 @@ export class VercelIntegrationRepository {
             return { syncedCount: 0, errors: [] as string[] };
           }
 
-          const envVarRepository = new EnvironmentVariablesRepository();
-
           // Fetch shared env vars once (they apply across all targets)
           let sharedEnvVars: Array<{
             key: string;
@@ -1283,125 +1285,42 @@ export class VercelIntegrationRepository {
                   return;
                 }
 
-                const existingSecretKeys = new Set<string>();
-                const existingValues = new Map<string, string>();
-
-                const existingVarValues = await prisma.environmentVariableValue.findMany({
-                  where: {
-                    environmentId: mapping.runtimeEnvironmentId,
-                    variable: {
-                      projectId: params.projectId,
-                      key: {
-                        in: varsToSync.map((v) => v.key),
-                      },
-                    },
-                  },
-                  select: {
-                    isSecret: true,
-                    valueReference: {
-                      select: {
-                        key: true,
-                      },
-                    },
-                    variable: {
-                      select: {
-                        key: true,
-                      },
-                    },
-                  },
+                const authorization = await authorizeCanonicalEnvironmentService({
+                  environment: { id: mapping.runtimeEnvironmentId },
+                  actorId: `vercel-sync:${params.vercelProjectId}`,
                 });
-
-                if (existingVarValues.length > 0) {
-                  const secretStore = getSecretStore("DATABASE", { prismaClient: prisma });
-                  const SecretValue = z.object({ secret: z.string() });
-
-                  for (const varValue of existingVarValues) {
-                    if (varValue.isSecret) {
-                      existingSecretKeys.add(varValue.variable.key);
-                    }
-
-                    if (varValue.valueReference?.key) {
-                      const existingSecret = await ResultAsync.fromPromise(
-                        secretStore.getSecret(SecretValue, varValue.valueReference.key),
-                        () => null
-                      ).unwrapOr(null);
-                      if (existingSecret) {
-                        existingValues.set(varValue.variable.key, existingSecret.secret);
-                      }
-                    }
-                  }
-                }
-
-                const changedVars = varsToSync.filter((v) => {
-                  const existingValue = existingValues.get(v.key);
-                  return existingValue === undefined || existingValue !== v.value;
+                const existingVariables = await listCanonicalEnvironmentVariables(authorization);
+                const existingByKey = new Map(
+                  existingVariables.map((variable) => [variable.key, variable])
+                );
+                const changedVars = varsToSync.filter((variable) => {
+                  const existing = existingByKey.get(variable.key);
+                  if (existing?.kind === "SECRET") return false;
+                  return !existing || existing.value !== variable.value;
                 });
 
                 if (changedVars.length === 0) {
                   return;
                 }
 
-                const secretVars = changedVars.filter((v) => existingSecretKeys.has(v.key));
-                const nonSecretVars = changedVars.filter((v) => !existingSecretKeys.has(v.key));
-
-                if (nonSecretVars.length > 0) {
-                  const result = await envVarRepository.create(params.projectId, {
-                    override: true,
-                    environmentIds: [mapping.runtimeEnvironmentId],
-                    isSecret: false,
-                    variables: nonSecretVars.map((v) => ({
-                      key: v.key,
-                      value: v.value,
-                    })),
-                    lastUpdatedBy: {
-                      type: "integration",
-                      integration: "vercel",
-                    },
-                  });
-
-                  if (result.success) {
-                    syncedCount += nonSecretVars.length;
-                  } else {
-                    const errorMsg = `Failed to sync env vars for ${mapping.triggerEnvType}: ${result.error}`;
-                    errors.push(errorMsg);
-                    logger.error(errorMsg, {
-                      projectId: params.projectId,
-                      vercelProjectId: params.vercelProjectId,
-                      vercelTarget: mapping.vercelTarget,
-                      error: result.error,
-                      variableErrors: result.variableErrors,
-                      attemptedKeys: nonSecretVars.map((v) => v.key),
+                for (const variable of changedVars) {
+                  try {
+                    await setCanonicalEnvironmentVariable({
+                      authorization,
+                      key: variable.key,
+                      value: variable.value,
+                      secret: false,
+                      lastUpdatedBy: authorization.actorId,
                     });
-                  }
-                }
-
-                if (secretVars.length > 0) {
-                  const result = await envVarRepository.create(params.projectId, {
-                    override: true,
-                    environmentIds: [mapping.runtimeEnvironmentId],
-                    isSecret: true,
-                    variables: secretVars.map((v) => ({
-                      key: v.key,
-                      value: v.value,
-                    })),
-                    lastUpdatedBy: {
-                      type: "integration",
-                      integration: "vercel",
-                    },
-                  });
-
-                  if (result.success) {
-                    syncedCount += secretVars.length;
-                  } else {
-                    const errorMsg = `Failed to sync secret env vars for ${mapping.triggerEnvType}: ${result.error}`;
+                    syncedCount += 1;
+                  } catch (error) {
+                    const errorMsg = `Failed to sync ${variable.key} for ${mapping.triggerEnvType}`;
                     errors.push(errorMsg);
                     logger.error(errorMsg, {
                       projectId: params.projectId,
                       vercelProjectId: params.vercelProjectId,
                       vercelTarget: mapping.vercelTarget,
-                      error: result.error,
-                      variableErrors: result.variableErrors,
-                      attemptedKeys: secretVars.map((v) => v.key),
+                      error,
                     });
                   }
                 }

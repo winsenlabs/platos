@@ -405,6 +405,7 @@ export class ScopeGuard implements CanActivate {
       url.startsWith("/api/v1/agent/internal/chat/reap-sessions") ||
       url.startsWith("/api/v1/agent/internal/employee-run") ||
       url.startsWith("/api/v1/agent/internal/skill-run") ||
+      url.startsWith("/api/v1/agent/internal/budget-alert") ||
       // Subagent report-back — the `platos.agent.subrun` task POSTs the child's
       // result here (admin-token gated + scope-in-body); the controller
       // re-verifies the token AND that the body's scope owns the parent

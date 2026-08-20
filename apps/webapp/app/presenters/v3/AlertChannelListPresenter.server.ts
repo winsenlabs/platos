@@ -1,98 +1,65 @@
-import { logger } from "~/services/logger.server";
-import { BasePresenter } from "./basePresenter.server";
-import { RuntimeEnvironmentType, type ProjectAlertChannel } from "@platos/database";
-import { decryptSecret } from "~/services/secrets/secretStore.server";
-import { env } from "~/env.server";
-import {
-  ProjectAlertEmailProperties,
-  ProjectAlertSlackProperties,
-  ProjectAlertWebhookProperties,
-} from "~/models/projectAlert.server";
-import { getLimit } from "~/services/platform.v3.server";
+import { platosControlDatabase } from "~/services/platosControlDatabase.server";
 
 export type AlertChannelListPresenterData = Awaited<ReturnType<AlertChannelListPresenter["call"]>>;
-export type AlertChannelListPresenterRecord =
-  AlertChannelListPresenterData["alertChannels"][number];
+export type AlertChannelListPresenterRecord = AlertChannelListPresenterData["alertChannels"][number];
 export type AlertChannelListPresenterAlertProperties = NonNullable<
   AlertChannelListPresenterRecord["properties"]
 >;
 
-export class AlertChannelListPresenter extends BasePresenter {
-  public async call(projectId: string, environmentType?: RuntimeEnvironmentType) {
-    logger.debug("AlertChannelListPresenter", { projectId });
-
-    const alertChannels = await this._prisma.projectAlertChannel.findMany({
-      where: {
-        projectId,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+/** Canonical Environment-owned alert-channel projection. Credentials remain metadata-only. */
+export class AlertChannelListPresenter {
+  public async call(environmentId: string) {
+    const alertChannels = await platosControlDatabase.alertChannel.findMany({
+      where: { environmentId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      include: { configuration: true },
     });
-
-    const organization = await this._replica.project.findFirst({
-      where: {
-        id: projectId,
-      },
-      select: {
-        organizationId: true,
-      },
-    });
-
-    if (!organization) {
-      throw new Error(`Project not found: ${projectId}`);
-    }
-
-    const limit = await getLimit(organization.organizationId, "alerts", 100_000_000);
-
-    const relevantChannels = alertChannels.filter((channel) => {
-      if (!environmentType) return true;
-      return channel.environmentTypes.includes(environmentType);
-    });
-
     return {
-      alertChannels: await Promise.all(
-        relevantChannels.map(async (alertChannel) => ({
-          ...alertChannel,
-          properties: await this.#presentProperties(alertChannel),
-        }))
-      ),
-      limits: {
-        used: alertChannels.length,
-        limit,
-      },
+      alertChannels: alertChannels.map((channel) => ({
+        id: channel.id,
+        friendlyId: channel.id,
+        environmentId: channel.environmentId,
+        type: channel.type,
+        name: channel.name,
+        enabled: channel.enabled,
+        alertTypes: channel.alertTypes,
+        deduplicationKey: channel.deduplicationKey,
+        userProvidedDeduplicationKey: channel.userProvidedDeduplicationKey,
+        deletedAt: channel.deletedAt,
+        createdAt: channel.createdAt,
+        updatedAt: channel.updatedAt,
+        properties: presentProperties(channel.type, channel.configuration),
+      })),
+      limits: { used: alertChannels.length, limit: 100_000_000 },
     };
   }
+}
 
-  async #presentProperties(alertChannel: ProjectAlertChannel) {
-    if (!alertChannel.properties) {
-      return;
-    }
-
-    switch (alertChannel.type) {
-      case "WEBHOOK":
-        const parsedProperties = ProjectAlertWebhookProperties.parse(alertChannel.properties);
-
-        const secret = await decryptSecret(env.ENCRYPTION_KEY, parsedProperties.secret);
-
-        return {
-          type: "WEBHOOK" as const,
-          url: parsedProperties.url,
-          secret,
-        };
-      case "EMAIL":
-        return {
-          type: "EMAIL" as const,
-          ...ProjectAlertEmailProperties.parse(alertChannel.properties),
-        };
-      case "SLACK": {
-        return {
-          type: "SLACK" as const,
-          ...ProjectAlertSlackProperties.parse(alertChannel.properties),
-        };
-      }
-      default:
-        throw new Error(`Unsupported alert channel type: ${alertChannel.type}`);
-    }
+function presentProperties(
+  type: "EMAIL" | "SLACK" | "WEBHOOK",
+  configuration: {
+    email: string | null;
+    webhookUrl: string | null;
+    slackChannelId: string | null;
+    slackChannelName: string | null;
+    integrationId: string | null;
+    credentialId: string | null;
+  } | null
+) {
+  if (!configuration) return undefined;
+  if (type === "EMAIL") return { type, email: configuration.email };
+  if (type === "SLACK") {
+    return {
+      type,
+      channelId: configuration.slackChannelId,
+      channelName: configuration.slackChannelName,
+      integrationId: configuration.integrationId,
+      hasToken: Boolean(configuration.credentialId),
+    };
   }
+  return {
+    type,
+    url: configuration.webhookUrl,
+    hasSecret: Boolean(configuration.credentialId),
+  };
 }

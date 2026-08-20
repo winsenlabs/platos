@@ -6,7 +6,11 @@ import {
   authenticatedEnvironmentForAuthentication,
   branchNameFromRequest,
 } from "~/services/apiAuth.server";
-import { EnvironmentVariablesRepository } from "~/v3/environmentVariables/environmentVariablesRepository.server";
+import {
+  authorizeCanonicalEnvironmentService,
+  listCanonicalEnvironmentVariables,
+  setCanonicalEnvironmentVariable,
+} from "~/services/platosEnvironmentVariables.server";
 
 const ParamsSchema = z.object({
   projectRef: z.string(),
@@ -41,23 +45,24 @@ export async function action({ params, request }: ActionFunctionArgs) {
     return json({ error: "Invalid request body", issues: body.error.issues }, { status: 400 });
   }
 
-  const repository = new EnvironmentVariablesRepository();
-
-  const result = await repository.create(environment.project.id, {
-    override: true,
-    environmentIds: [environment.id],
-    variables: [
-      {
-        key: body.data.name,
-        value: body.data.value,
-      },
-    ],
+  const authorization = await authorizeCanonicalEnvironmentService({
+    environment,
+    actorId: `envvars-api:${environment.id}`,
   });
-
-  if (result.success) {
+  try {
+    await setCanonicalEnvironmentVariable({
+      authorization,
+      key: body.data.name,
+      value: body.data.value,
+      secret: false,
+      lastUpdatedBy: authorization.actorId,
+    });
     return json({ success: true });
-  } else {
-    return json({ error: result.error, variableErrors: result.variableErrors }, { status: 400 });
+  } catch (error) {
+    return json(
+      { error: error instanceof Error ? error.message : "Failed to create environment variable" },
+      { status: 400 }
+    );
   }
 }
 
@@ -81,19 +86,17 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     branchNameFromRequest(request)
   );
 
-  const repository = new EnvironmentVariablesRepository();
-
-  const variables = await repository.getEnvironmentWithRedactedSecrets(
-    environment.project.id,
-    environment.id,
-    environment.parentEnvironmentId ?? undefined
-  );
+  const authorization = await authorizeCanonicalEnvironmentService({
+    environment,
+    actorId: `envvars-api:${environment.id}`,
+  });
+  const variables = await listCanonicalEnvironmentVariables(authorization);
 
   return json(
     variables.map((variable) => ({
       name: variable.key,
-      value: variable.value,
-      isSecret: variable.isSecret,
+      value: variable.kind === "PLAIN" ? variable.value ?? "" : "",
+      isSecret: variable.kind === "SECRET",
     }))
   );
 }

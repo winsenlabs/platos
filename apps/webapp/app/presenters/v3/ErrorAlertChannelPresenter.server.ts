@@ -1,9 +1,5 @@
-import type { RuntimeEnvironmentType } from "@platos/database";
-import {
-  ProjectAlertEmailProperties,
-  ProjectAlertSlackProperties,
-  ProjectAlertWebhookProperties,
-} from "~/models/projectAlert.server";
+import { platosControlDatabase } from "~/services/platosControlDatabase.server";
+import { resolveCanonicalEnvironmentId } from "~/services/platosEnvironmentVariables.server";
 import { BasePresenter } from "./basePresenter.server";
 import { NewAlertChannelPresenter } from "./NewAlertChannelPresenter.server";
 import { env } from "~/env.server";
@@ -11,13 +7,15 @@ import { env } from "~/env.server";
 export type ErrorAlertChannelData = Awaited<ReturnType<ErrorAlertChannelPresenter["call"]>>;
 
 export class ErrorAlertChannelPresenter extends BasePresenter {
-  public async call(projectId: string, environmentType: RuntimeEnvironmentType) {
-    const channels = await this._prisma.projectAlertChannel.findMany({
+  public async call(projectId: string, environmentId: string) {
+    const canonicalEnvironmentId = await resolveCanonicalEnvironmentId({ id: environmentId });
+    const channels = await platosControlDatabase.alertChannel.findMany({
       where: {
-        projectId,
+        environmentId: canonicalEnvironmentId,
         alertTypes: { has: "ERROR_GROUP" },
-        environmentTypes: { has: environmentType },
+        deletedAt: null,
       },
+      include: { configuration: true },
       orderBy: { createdAt: "asc" },
     });
 
@@ -28,28 +26,28 @@ export class ErrorAlertChannelPresenter extends BasePresenter {
     for (const channel of channels) {
       switch (channel.type) {
         case "EMAIL": {
-          const parsed = ProjectAlertEmailProperties.safeParse(channel.properties);
-          if (parsed.success) {
-            emails.push({ id: channel.id, email: parsed.data.email });
+          if (channel.configuration?.email) {
+            emails.push({ id: channel.id, email: channel.configuration.email });
           }
           break;
         }
         case "SLACK": {
           if (!channel.enabled) break;
-          const parsed = ProjectAlertSlackProperties.safeParse(channel.properties);
-          if (parsed.success) {
+          if (
+            channel.configuration?.slackChannelId &&
+            channel.configuration.slackChannelName
+          ) {
             slackChannel = {
               id: channel.id,
-              channelId: parsed.data.channelId,
-              channelName: parsed.data.channelName,
+              channelId: channel.configuration.slackChannelId,
+              channelName: channel.configuration.slackChannelName,
             };
           }
           break;
         }
         case "WEBHOOK": {
-          const parsed = ProjectAlertWebhookProperties.safeParse(channel.properties);
-          if (parsed.success) {
-            webhooks.push({ id: channel.id, url: parsed.data.url });
+          if (channel.configuration?.webhookUrl) {
+            webhooks.push({ id: channel.id, url: channel.configuration.webhookUrl });
           }
           break;
         }

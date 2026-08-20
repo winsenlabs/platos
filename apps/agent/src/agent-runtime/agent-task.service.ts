@@ -1083,44 +1083,18 @@ export class AgentTaskService {
         }
         const crossed = await this.budgetService.detectThresholdCrossings(scopeTuple, status);
         if (crossed.length === 0) continue;
-        let triggerSdk: any = null;
-        try {
-          triggerSdk = await import("@trigger.dev/sdk");
-        } catch {
-          triggerSdk = null;
-        }
-        if (
-          configureExternalTriggerSdk(triggerSdk).status !== "configured" ||
-          !triggerSdk?.tasks?.trigger
-        ) continue;
-        for (const threshold of crossed) {
-          const subjectLabel =
-            status.cap.scopeType === "agent"
-              ? `Agent: ${status.cap.targetId}`
-              : status.cap.scopeType === "user"
-                ? `User: ${status.cap.targetId}`
-                : "Scope-wide";
-          triggerSdk.tasks
-            .trigger("platos.budget.alert", {
-              capId: status.cap.id,
-              organizationId: scope.organizationId,
-              projectId: scope.projectId,
-              environmentId: scope.environmentId,
-              scopeType: status.cap.scopeType,
-              targetId: status.cap.targetId,
-              period: status.cap.period,
-              threshold,
-              limitCents: status.cap.limitCents,
-              spentCents: status.spentCents,
-              runs: status.runs,
-              runsLimit: status.cap.runsLimit,
-              windowKey: status.windowKey,
-              alertWebhookUrl: status.cap.alertWebhookUrl,
-              alertEmails: status.cap.alertEmails,
-              subjectLabel,
-            })
-            .catch(() => undefined);
-        }
+        void this.budgetService
+          .reconcileDueDeliveries({ eventIds: crossed.map((crossing) => crossing.id) })
+          .then((result) => {
+            if (result.failed > 0) {
+              this.logger.error(`budget alert reconciliation failed for ${result.failed} event(s)`);
+            }
+          })
+          .catch((error) => {
+            this.logger.error(
+              `budget alert reconciliation unavailable: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          });
       }
     } catch {
       // Budget accounting failure should never break the turn.

@@ -50,6 +50,11 @@ export interface McpToolHandler {
    * the field. Null/undefined falls back to `"uncategorized"` downstream.
    */
   category?: string;
+  /**
+   * Secret-bearing mutations must opt out of macro capture. Their arguments
+   * cannot be replayed safely without persisting plaintext in Macro.steps.
+   */
+  macroRecordable?: boolean;
   execute(
     params: Record<string, unknown>,
     scope: RequestScope,
@@ -607,7 +612,11 @@ export class McpRouter {
           // Wave 2 — we record the args that actually executed, so a
           // replayed macro reproduces the operator-edited call rather
           // than the LLM-proposed one.
-          if (this.recorder && !name.startsWith("macros.")) {
+          if (
+            this.recorder &&
+            !name.startsWith("macros.") &&
+            handler.macroRecordable !== false
+          ) {
             try {
               this.recorder.record(token, name, executionArgs);
             } catch {

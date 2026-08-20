@@ -22,10 +22,10 @@ import { customAlphabet } from "nanoid";
 import { z } from "zod";
 import { env } from "~/env.server";
 import { generateJWTTokenForEnvironment } from "~/services/apiAuth.server";
+import { resolveCanonicalEnvironmentVariablesForRuntime } from "~/services/platosEnvironmentVariables.server";
 import { logger } from "~/services/logger.server";
 import { defaultMachine } from "~/services/platform.v3.server";
 import { singleton } from "~/utils/singleton";
-import { resolveVariablesForEnvironment } from "~/v3/environmentVariables/environmentVariablesRepository.server";
 import { machinePresetFromName } from "~/v3/machinePresets.server";
 import { WithRunEngine, WithRunEngineOptions } from "../baseService.server";
 
@@ -549,7 +549,11 @@ export class AuthenticatedWorkerInstance extends WithRunEngine {
     parentEnvironment?: RuntimeEnvironment,
     taskEventStore?: string
   ): Promise<Record<string, string>> {
-    const variables = await resolveVariablesForEnvironment(environment, parentEnvironment);
+    const variables = await resolveCanonicalEnvironmentVariablesForRuntime({
+      environment,
+      parentEnvironment,
+      actorId: `worker-runtime:${this.workerInstanceId}`,
+    });
 
     const jwt = await generateJWTTokenForEnvironment(environment, {
       run_id: runId,

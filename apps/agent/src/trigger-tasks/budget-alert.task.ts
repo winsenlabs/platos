@@ -1,188 +1,63 @@
 import { task, logger, metadata } from "@trigger.dev/sdk";
-import {
-  validatePublicUrl,
-  describeUrlValidationError,
-  fetchWithValidatedRedirects,
-} from "../shared/url-validator";
-const env = process.env;
+import type {
+  BudgetAlertDeliverySummary,
+  BudgetAlertPayload,
+} from "../monitoring/budget-alert.types";
+import { postInternalCallback } from "./internal-callback";
+
+export type { BudgetAlertPayload } from "../monitoring/budget-alert.types";
+
+const CALLBACK_PATH = "/api/v1/agent/internal/budget-alert";
+const CALLBACK_TIMEOUT_MS = 55_000;
 
 /**
- * Theme H.7 — Budget alert delivery.
+ * Callback-only Trigger shell for durable budget delivery.
  *
- * Fired by the enforcement layer (BudgetService.detectThresholdCrossings)
- * the moment a budget cap's spend crosses a configured threshold. Each
- * invocation delivers:
- *   - A webhook POST to `alertWebhookUrl` (when configured).
- *   - An email to every entry in `alertEmails` (comma-separated).
- *
- * Trigger.dev chosen over a synchronous path so enforcement never blocks
- * on network flakiness or email outages — the agent turn continues
- * uninterrupted while alerts drain in the background.
- *
- * Idempotency: threshold-crossed state is persisted in Redis by the caller
- * (one SET per (capId, windowKey)), so this task is only invoked on the
- * first crossing. Re-running the task manually is safe — downstream
- * recipients may see duplicate alerts but the budget state is unaffected.
+ * PostgreSQL claims, Credential reads, and external channel delivery remain in
+ * the agent process. A non-2xx callback fails this Trigger run so retry state is
+ * visible, while the durable ledger lets the callback skip successful rows.
  */
-
-export interface BudgetAlertPayload {
-  capId: string;
-  organizationId: string;
-  projectId: string;
-  environmentId: string;
-  scopeType: "scope" | "agent" | "user";
-  targetId: string;
-  period: "day" | "week" | "month";
-  threshold: number;
-  limitCents: number;
-  spentCents: number;
-  runs: number;
-  runsLimit: number;
-  windowKey: string;
-  alertWebhookUrl: string | null;
-  alertEmails: string | null;
-  /** Human label e.g. "Agent: support-bot" / "User: u_123" / "Scope-wide". */
-  subjectLabel: string;
-}
-
 export const budgetAlert = task({
   id: "platos.budget.alert",
   maxDuration: 60,
+  retry: {
+    maxAttempts: 5,
+    factor: 2,
+    minTimeoutInMs: 1_000,
+    maxTimeoutInMs: 30_000,
+  },
   run: async (payload: BudgetAlertPayload) => {
     const startedAt = Date.now();
-    const summary = {
-      webhookDelivered: false,
-      webhookStatus: null as number | null,
-      webhookError: null as string | null,
-      emailCount: 0,
-      emailError: null as string | null,
-    };
+    await metadata.set("eventId", payload.eventId);
+    await metadata.set("capId", payload.capId);
+    await metadata.set("threshold", payload.threshold);
+    await metadata.set("scopeType", payload.scopeType);
 
-    metadata.set("capId", payload.capId);
-    metadata.set("threshold", payload.threshold);
-    metadata.set("scopeType", payload.scopeType);
-
-    // Webhook delivery — best effort, swallow errors into metadata.
-    if (payload.alertWebhookUrl) {
-      // EOBD.9 — re-validate at fetch time to catch DNS rebinding
-      // (same hostname, different resolved IP). The URL was also
-      // validated on persist inside BudgetService.upsert, but that
-      // was an earlier snapshot.
-      const urlCheck = await validatePublicUrl(payload.alertWebhookUrl);
-      if (!urlCheck.ok) {
-        summary.webhookError = `blocked at dispatch: ${describeUrlValidationError(urlCheck.error)}`;
-        summary.webhookDelivered = false;
-        return summary;
-      }
-      try {
-        const body = {
-          event: "platos.budget.threshold_crossed",
-          capId: payload.capId,
-          scope: {
-            organizationId: payload.organizationId,
-            projectId: payload.projectId,
-            environmentId: payload.environmentId,
-          },
-          scopeType: payload.scopeType,
-          targetId: payload.targetId,
-          period: payload.period,
-          threshold: payload.threshold,
-          spentCents: payload.spentCents,
-          limitCents: payload.limitCents,
-          runs: payload.runs,
-          runsLimit: payload.runsLimit,
-          windowKey: payload.windowKey,
-          subjectLabel: payload.subjectLabel,
-          firedAt: new Date().toISOString(),
-        };
-        // SECURITY (H11) — pin the validated IP into the socket. The webhook
-        // URL is user-settable; a bare fetch re-resolves DNS and is rebindable
-        // to IMDS/private space in the window after validatePublicUrl (above).
-        const res = await fetchWithValidatedRedirects(payload.alertWebhookUrl, 3, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "User-Agent": "platos-budget-alert/1.0",
-          },
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(15_000),
-        });
-        summary.webhookDelivered = res.ok;
-        summary.webhookStatus = res.status;
-        if (!res.ok) {
-          summary.webhookError = `status ${res.status}`;
-        }
-      } catch (err: any) {
-        summary.webhookError = err?.message ?? String(err);
-      }
+    const callback = await postInternalCallback<BudgetAlertDeliverySummary>({
+      path: CALLBACK_PATH,
+      body: payload,
+      timeoutMs: CALLBACK_TIMEOUT_MS,
+    });
+    if (!callback.ok) {
+      logger.error("budget-alert: internal callback failed", {
+        code: callback.code,
+        ...(callback.httpStatus ? { httpStatus: callback.httpStatus } : {}),
+      });
+      await metadata.set("stage", "failed");
+      throw new Error(`budget_alert_callback_failed:${callback.code}`);
     }
 
-    // Email delivery — Platos does not itself ship an email transport;
-    // rely on the trigger.dev runtime's standard email env vars. We POST
-    // a structured email spec to the agent admin endpoint and let the
-    // existing email infra handle transport. When EMAIL is not configured
-    // we log + skip (no hard failure).
-    if (payload.alertEmails) {
-      const recipients = payload.alertEmails
-        .split(",")
-        .map((e) => e.trim())
-        .filter(Boolean);
-      if (recipients.length > 0) {
-        try {
-          const subject = `[Platos] Budget ${payload.threshold}% — ${payload.subjectLabel}`;
-          const lines = [
-            `Platos budget alert`,
-            ``,
-            `${payload.subjectLabel} crossed ${payload.threshold}% of its ${payload.period}ly cap.`,
-            `Spent so far: ${(payload.spentCents / 100).toFixed(2)} USD of ${(payload.limitCents / 100).toFixed(2)} USD`,
-            payload.runsLimit > 0
-              ? `Runs this window: ${payload.runs} of ${payload.runsLimit}`
-              : null,
-            ``,
-            `Scope: org=${payload.organizationId}  project=${payload.projectId}  env=${payload.environmentId}`,
-            `Window: ${payload.windowKey}`,
-          ]
-            .filter(Boolean)
-            .join("\n");
-
-          // Delegate to the agent admin email-send endpoint. If the
-          // endpoint isn't wired, this surfaces as 404 — fine; we log
-          // and move on.
-          const AGENT_API_URL =
-            env.PLATOS_AGENT_HTTP_URL ||
-            env.PLATOS_AGENT_API_URL ||
-            "http://localhost:3100";
-          const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;
-          if (adminToken) {
-            const res = await fetch(
-              `${AGENT_API_URL}/api/v1/agent/monitoring/budget/email`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-Platos-Internal-Auth": adminToken,
-                },
-                body: JSON.stringify({ recipients, subject, body: lines }),
-                signal: AbortSignal.timeout(15_000),
-              },
-            );
-            if (res.ok) {
-              summary.emailCount = recipients.length;
-            } else {
-              summary.emailError = `email endpoint ${res.status}`;
-            }
-          } else {
-            summary.emailError = "PLATOS_INTERNAL_AUTH_TOKEN unset";
-          }
-        } catch (err: any) {
-          summary.emailError = err?.message ?? String(err);
-        }
-      }
-    }
-
-    const elapsed = Date.now() - startedAt;
-    logger.info("budget-alert: delivered", { ...summary, elapsedMs: elapsed });
-    metadata.set("elapsedMs", elapsed);
-    return { ...summary, elapsedMs: elapsed };
+    const elapsedMs = Date.now() - startedAt;
+    await metadata.set("stage", "completed");
+    await metadata.set("elapsedMs", elapsedMs);
+    await metadata.set("delivered", callback.value.delivered);
+    await metadata.set("failed", callback.value.failed);
+    logger.info("budget-alert: delivery callback completed", {
+      delivered: callback.value.delivered,
+      failed: callback.value.failed,
+      skipped: callback.value.skipped,
+      elapsedMs,
+    });
+    return { ...callback.value, elapsedMs };
   },
 });

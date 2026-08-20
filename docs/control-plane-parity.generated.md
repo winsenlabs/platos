@@ -7,10 +7,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **206** across **35** namespaces (24 admin-tier).
-- REST operations: **285** unique method/path pairs from **286** route bindings.
+- REST operations: **286** unique method/path pairs from **287** route bindings.
 - Ambiguous duplicate REST method/path pairs: **1**.
 - MCP classifications: MAPPED=83, MCP_ONLY=123.
-- REST classifications: DEPRECATED=13, INTERNAL=12, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=133.
+- REST classifications: DEPRECATED=13, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=133.
 
 ## REST inventory
 
@@ -109,6 +109,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/agent/golden-sets/:goldenSetId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getGoldenSet` |
 | `PATCH /api/v1/agent/golden-sets/:goldenSetId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#updateGoldenSet` |
 | `POST /api/v1/agent/golden-sets/:goldenSetId/run` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#runGoldenSet` |
+| `POST /api/v1/agent/internal/budget-alert` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalBudgetAlert` |
 | `POST /api/v1/agent/internal/chat/reap-sessions` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalChatReapSessions` |
 | `POST /api/v1/agent/internal/chat/stream-turn` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalChatStreamTurn` |
 | `POST /api/v1/agent/internal/compaction` | INTERNAL | — | `agent-internal-prefix` | `apps/agent/src/agent-runtime/agent.controller.ts#internalCompaction` |

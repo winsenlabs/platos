@@ -655,10 +655,22 @@ export class PlatosSecretStore {
   }
 
   async revoke(params: {
-    authorization: EnvironmentOperatorAuthorization;
+    authorization: CredentialMutationAuthorization;
     credentialId: string;
     retentionMs?: number;
   }): Promise<SafeCredential> {
+    return this.database.$transaction((tx) => this.revokeInTransaction(tx, params));
+  }
+
+  /** Compose Credential revocation into a caller-owned control-plane transaction. */
+  async revokeInTransaction(
+    tx: Prisma.TransactionClient,
+    params: {
+      authorization: CredentialMutationAuthorization;
+      credentialId: string;
+      retentionMs?: number;
+    },
+  ): Promise<SafeCredential> {
     requireMutation(params.authorization);
     const retentionMs = params.retentionMs ?? DEFAULT_REVOKED_SECRET_RETENTION_MS;
     if (
@@ -668,34 +680,32 @@ export class PlatosSecretStore {
     ) {
       throw new PlatosSecretStoreError("invalid_retention_request");
     }
-    return this.database.$transaction(async (tx) => {
-      const current = await findLockedActiveCredential(
-        tx,
-        params.authorization.environmentId,
-        params.credentialId
-      );
-      if (!current?.activeSecretVersion) throw unavailable();
-      const retiredAt = new Date();
-      const readableUntil = new Date(retiredAt.getTime() + retentionMs);
-      await tx.credentialSecretVersion.update({
-        where: { id: current.activeSecretVersion.id },
-        data: { retiredAt, readableUntil },
-      });
-      const revoked = await tx.credential.update({
-        where: { id: current.id },
-        data: { revokedAt: retiredAt, activeSecretVersionId: null },
-        select: CREDENTIAL_SAFE_SELECT,
-      });
-      await audit(
-        tx,
-        params.authorization,
-        current.id,
-        "REVOKE",
-        current.activeSecretVersion.secretRevision,
-        current.activeSecretVersion.rootKeyVersion
-      );
-      return revoked;
+    const current = await findLockedActiveCredential(
+      tx,
+      params.authorization.environmentId,
+      params.credentialId
+    );
+    if (!current?.activeSecretVersion) throw unavailable();
+    const retiredAt = new Date();
+    const readableUntil = new Date(retiredAt.getTime() + retentionMs);
+    await tx.credentialSecretVersion.update({
+      where: { id: current.activeSecretVersion.id },
+      data: { retiredAt, readableUntil },
     });
+    const revoked = await tx.credential.update({
+      where: { id: current.id },
+      data: { revokedAt: retiredAt, activeSecretVersionId: null },
+      select: CREDENTIAL_SAFE_SELECT,
+    });
+    await audit(
+      tx,
+      params.authorization,
+      current.id,
+      "REVOKE",
+      current.activeSecretVersion.secretRevision,
+      current.activeSecretVersion.rootKeyVersion
+    );
+    return revoked;
   }
 
   /** Compose a credential create into a caller-owned control-plane transaction. */

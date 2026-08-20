@@ -1,8 +1,17 @@
-import { Injectable, Inject, Optional } from "@nestjs/common";
-import type { Budget, Prisma } from "@platos/tenancy-database";
+import { createHmac, randomUUID } from "node:crypto";
+import { Injectable, Inject, Logger, Optional } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
+import {
+  CredentialKind,
+  authorizeEnvironmentRuntime,
+  type Budget,
+  type PlatosSecretStore,
+  type Prisma,
+} from "@platos/tenancy-database";
 import {
   type ControlDatabaseClient,
   environmentScopeWhere,
+  PLATOS_SECRET_STORE_TOKEN,
   PRISMA_TOKEN,
 } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
@@ -11,8 +20,15 @@ import type { RequestScope } from "../auth/scope.guard";
 import {
   validatePublicUrl,
   describeUrlValidationError,
+  fetchWithValidatedRedirects,
 } from "../shared/url-validator";
 import { RateLimitService } from "./rate-limit.service";
+import type {
+  BudgetAlertDeliverySummary,
+  BudgetAlertPayload,
+} from "./budget-alert.types";
+import { ScopedEnvService } from "../providers/scoped-env.service";
+import { sendAlertEmail } from "./alert-email-delivery";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -97,15 +113,22 @@ interface PersistedBudgetScope {
  *      written from `recordCharge` alongside the existing scope/agent
  *      counters so user-level budgets have something to read.
  *   2. Window aggregation for week/month periods.
- *   3. Threshold-crossed state in Redis (one set per cap × window) so
- *      alerts only fire once per transition.
+ *   3. Durable threshold events and per-channel delivery rows in PostgreSQL,
+ *      so retries cannot create duplicate recipient deliveries.
  */
 @Injectable()
 export class BudgetService {
+  private readonly logger = new Logger(BudgetService.name);
+  private reconcilingDeliveries = false;
+
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
     @Optional() private readonly rateLimitService?: RateLimitService,
+    @Optional()
+    @Inject(PLATOS_SECRET_STORE_TOKEN)
+    private readonly secretStore?: PlatosSecretStore,
+    @Optional() private readonly scopedEnv?: ScopedEnvService,
   ) {}
 
   // ═══════════════════════════════════════════════════════
@@ -116,6 +139,7 @@ export class BudgetService {
     const rows = await this.prisma.budget.findMany({
       where: {
         ...environmentScopeWhere(scope),
+        deletedAt: null,
       },
       orderBy: [{ scope: "asc" }, { period: "asc" }],
     });
@@ -127,6 +151,7 @@ export class BudgetService {
       where: {
         id,
         ...environmentScopeWhere(scope),
+        deletedAt: null,
       },
     });
     return row ? this.row(scope, row) : null;
@@ -244,11 +269,13 @@ export class BudgetService {
   }
 
   async delete(scope: ScopeTuple, id: string): Promise<boolean> {
-    const res = await this.prisma.budget.deleteMany({
+    const res = await this.prisma.budget.updateMany({
       where: {
         id,
         ...environmentScopeWhere(scope),
+        deletedAt: null,
       },
+      data: { enabled: false, deletedAt: new Date() },
     });
     return res.count > 0;
   }
@@ -378,25 +405,442 @@ export class BudgetService {
    * Evaluate pending threshold crossings for a cap × window. Returns the
    * list of thresholds that just crossed (i.e. were not crossed on a prior
    * call and are crossed now). Threshold-crossed state is persisted in a
-   * Redis SET per (capId, windowKey) so alerts fire exactly once per
-   * transition.
+   * PostgreSQL event per (capId, windowKey, threshold), so alerts fire exactly
+   * once per transition even after Redis expiry or process restart.
    */
   async detectThresholdCrossings(
     scope: ScopeTuple,
     status: BudgetStatus,
-  ): Promise<number[]> {
-    const crossed: number[] = [];
-    const key = `budget:alerts:${status.cap.id}:${status.windowKey}`;
+  ): Promise<Array<{ id: string; threshold: number }>> {
+    const crossed: Array<{ id: string; threshold: number }> = [];
     const thresholds = [...(status.cap.alertThresholds ?? [50, 80, 100])].sort((a, b) => a - b);
     for (const threshold of thresholds) {
       if (status.percent >= threshold || status.runsPercent >= threshold) {
-        const added = await this.redis.sadd(key, String(threshold));
-        if (added === 1) crossed.push(threshold);
+        try {
+          const event = await this.prisma.$transaction(async (tx) => {
+            const created = await tx.budgetThresholdEvent.create({
+              data: {
+                environmentId: scope.environmentId,
+                budgetId: status.cap.id,
+                windowKey: status.windowKey,
+                threshold,
+                spentCents: status.spentCents,
+                runs: status.runs,
+              },
+            });
+            const channels = await tx.alertChannel.findMany({
+              where: {
+                environmentId: scope.environmentId,
+                enabled: true,
+                deletedAt: null,
+                alertTypes: { has: "BUDGET" },
+              },
+              select: { id: true },
+            });
+            if (channels.length > 0) {
+              await tx.alertDelivery.createMany({
+                data: channels.map((channel) => ({
+                  environmentId: scope.environmentId,
+                  channelId: channel.id,
+                  budgetThresholdEventId: created.id,
+                  kind: "BUDGET",
+                  idempotencyKey: `budget:${created.id}:${channel.id}`,
+                })),
+                skipDuplicates: true,
+              });
+            }
+            return created;
+          });
+          crossed.push({ id: event.id, threshold });
+        } catch (error: unknown) {
+          if ((error as { code?: string })?.code !== "P2002") throw error;
+        }
       }
     }
-    await this.redis.expire(key, 86400 * 35);
-    void scope; // reserved for future scope-prefixed alert state
     return crossed;
+  }
+
+  /**
+   * Claims and delivers every canonical channel row for one durable threshold
+   * event. Successful rows are immutable from the dispatcher's perspective and
+   * are skipped on retry; failed rows remain visible and make the callback fail.
+   */
+  async deliverThresholdEvent(payload: BudgetAlertPayload): Promise<BudgetAlertDeliverySummary> {
+    const event = await this.prisma.budgetThresholdEvent.findFirst({
+      where: {
+        id: payload.eventId,
+        environmentId: payload.environmentId,
+        budgetId: payload.capId,
+        budget: {
+          environment: {
+            projectId: payload.projectId,
+            project: { organizationId: payload.organizationId },
+          },
+        },
+      },
+      select: { id: true },
+    });
+    if (!event) throw new Error("budget_threshold_event_unavailable");
+
+    const deliveries = await this.prisma.alertDelivery.findMany({
+      where: {
+        budgetThresholdEventId: event.id,
+        environmentId: payload.environmentId,
+      },
+      orderBy: { createdAt: "asc" },
+      include: { channel: { include: { configuration: true } } },
+    });
+    const summary: BudgetAlertDeliverySummary = {
+      delivered: 0,
+      failed: 0,
+      skipped: 0,
+      attempts: [],
+    };
+
+    for (const delivery of deliveries) {
+      if (delivery.status === "SUCCEEDED") {
+        summary.skipped += 1;
+        summary.attempts.push({
+          deliveryId: delivery.id,
+          channelId: delivery.channelId,
+          type: delivery.channel.type,
+          status: "SKIPPED",
+          statusCode: delivery.lastStatusCode,
+          errorCode: null,
+        });
+        continue;
+      }
+
+      const now = new Date();
+      const claimToken = randomUUID();
+      const claimed = await this.prisma.alertDelivery.updateMany({
+        where: {
+          id: delivery.id,
+          environmentId: payload.environmentId,
+          OR: [
+            { status: "PENDING", availableAt: { lte: now } },
+            { status: "FAILED", availableAt: { lte: now } },
+            { status: "PROCESSING", availableAt: { lte: now } },
+          ],
+        },
+        data: {
+          status: "PROCESSING",
+          availableAt: new Date(now.getTime() + 2 * 60_000),
+          lastAttemptAt: now,
+          claimToken,
+          claimGeneration: { increment: 1 },
+          attemptCount: { increment: 1 },
+        },
+      });
+      if (claimed.count !== 1) {
+        summary.skipped += 1;
+        summary.attempts.push({
+          deliveryId: delivery.id,
+          channelId: delivery.channelId,
+          type: delivery.channel.type,
+          status: "SKIPPED",
+          statusCode: delivery.lastStatusCode,
+          errorCode: "delivery_unavailable",
+        });
+        continue;
+      }
+
+      const claim = await this.prisma.alertDelivery.findFirstOrThrow({
+        where: { id: delivery.id, environmentId: payload.environmentId, claimToken },
+        select: { attemptCount: true, claimGeneration: true },
+      });
+      const result = await this.deliverChannel(delivery.id, delivery.channel, payload);
+      const finalized = await this.finishDeliveryAttempt(
+        delivery.id,
+        payload.environmentId,
+        claimToken,
+        claim.claimGeneration,
+        claim.attemptCount,
+        result,
+      );
+      if (!finalized) {
+        summary.skipped += 1;
+        summary.attempts.push({
+          deliveryId: delivery.id,
+          channelId: delivery.channelId,
+          type: delivery.channel.type,
+          status: "SKIPPED",
+          statusCode: null,
+          errorCode: "stale_claim",
+        });
+        continue;
+      }
+      summary.attempts.push({
+        deliveryId: delivery.id,
+        channelId: delivery.channelId,
+        type: delivery.channel.type,
+        status: result.ok ? "SUCCEEDED" : "FAILED",
+        statusCode: result.statusCode,
+        errorCode: result.errorCode,
+      });
+      if (result.ok) summary.delivered += 1;
+      else summary.failed += 1;
+    }
+
+    if (summary.failed > 0) {
+      throw new BudgetAlertDeliveryError(summary);
+    }
+    return summary;
+  }
+
+  private async deliverChannel(
+    deliveryId: string,
+    channel: any,
+    payload: BudgetAlertPayload,
+  ): Promise<AlertDeliveryResult> {
+    const config = channel.configuration;
+    if (!channel.enabled) return deliveryFailed("channel_disabled", "Channel is disabled");
+    if (!config) return deliveryFailed("missing_configuration", "Channel configuration is unavailable");
+
+    if (channel.type === "EMAIL") {
+      if (!config.email || !this.scopedEnv) {
+        return deliveryFailed("missing_configuration", "Email configuration is incomplete");
+      }
+      return sendAlertEmail({
+        resolveVariable: (name) => this.scopedEnv!.get({
+          organizationId: payload.organizationId,
+          projectId: payload.projectId,
+          environmentId: payload.environmentId,
+        }, name),
+        to: config.email,
+        subject: `Platos budget alert: ${payload.threshold}% threshold crossed`,
+        text: budgetAlertText(payload),
+        idempotencyKey: deliveryId,
+      });
+    }
+
+    if (channel.type === "WEBHOOK") {
+      if (!config.webhookUrl || !config.credentialId || !this.secretStore) {
+        return deliveryFailed("missing_configuration", "Webhook configuration is incomplete");
+      }
+      const checked = await validatePublicUrl(config.webhookUrl);
+      if (!checked.ok) {
+        return deliveryFailed("url_blocked", describeUrlValidationError(checked.error));
+      }
+      try {
+        const runtime = await authorizeEnvironmentRuntime(this.prisma, {
+          actorId: `budget-alert:${payload.eventId}`,
+          environmentId: payload.environmentId,
+        });
+        const secret = await this.secretStore.readForRuntime({
+          authorization: runtime,
+          credentialId: config.credentialId,
+          kind: CredentialKind.CHANNEL_SECRET,
+        });
+        const body = JSON.stringify({
+          event: "platos.budget.threshold_crossed",
+          eventId: payload.eventId,
+          deliveryId,
+          capId: payload.capId,
+          scope: {
+            organizationId: payload.organizationId,
+            projectId: payload.projectId,
+            environmentId: payload.environmentId,
+          },
+          scopeType: payload.scopeType,
+          targetId: payload.targetId,
+          period: payload.period,
+          threshold: payload.threshold,
+          spentCents: payload.spentCents,
+          limitCents: payload.limitCents,
+          runs: payload.runs,
+          runsLimit: payload.runsLimit,
+          windowKey: payload.windowKey,
+          subjectLabel: payload.subjectLabel,
+          firedAt: new Date().toISOString(),
+        });
+        const response = await fetchWithValidatedRedirects(config.webhookUrl, 3, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": "platos-budget-alert/2.0",
+            "Idempotency-Key": deliveryId,
+            "x-trigger-signature-hmacsha256": createHmac("sha256", secret.reveal())
+              .update(body)
+              .digest("hex"),
+          },
+          body,
+          signal: AbortSignal.timeout(15_000),
+        });
+        return response.ok
+          ? { ok: true, statusCode: response.status, errorCode: null, errorMessage: null }
+          : deliveryFailed("webhook_http_error", `status ${response.status}`, response.status);
+      } catch {
+        return deliveryFailed("webhook_fetch_failed", "Webhook request failed");
+      }
+    }
+
+    if (!config.credentialId || !config.slackChannelId || !this.secretStore) {
+      return deliveryFailed("missing_configuration", "Slack token or channel is missing");
+    }
+    try {
+      const runtime = await authorizeEnvironmentRuntime(this.prisma, {
+        actorId: `budget-alert:${payload.eventId}`,
+        environmentId: payload.environmentId,
+      });
+      const token = await this.secretStore.readForRuntime({
+        authorization: runtime,
+        credentialId: config.credentialId,
+        kind: CredentialKind.CHANNEL_SECRET,
+      });
+      const response = await fetch("https://slack.com/api/chat.postMessage", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token.reveal()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          channel: config.slackChannelId,
+          text: budgetAlertText(payload),
+          client_msg_id: deliveryId,
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const responseBody = (await response.json()) as { ok?: boolean; error?: string };
+      return response.ok && responseBody.ok
+        ? { ok: true, statusCode: response.status, errorCode: null, errorMessage: null }
+        : deliveryFailed("slack_api_error", responseBody.error ?? `status ${response.status}`, response.status);
+    } catch {
+      return deliveryFailed("slack_fetch_failed", "Slack request failed");
+    }
+  }
+
+  private async finishDeliveryAttempt(
+    deliveryId: string,
+    environmentId: string,
+    claimToken: string,
+    claimGeneration: number,
+    attemptNumber: number,
+    result: AlertDeliveryResult,
+  ): Promise<boolean> {
+    const finishedAt = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      const finalized = await tx.alertDelivery.updateMany({
+        where: {
+          id: deliveryId,
+          environmentId,
+          status: "PROCESSING",
+          claimToken,
+          claimGeneration,
+          attemptCount: attemptNumber,
+        },
+        data: {
+          status: result.ok ? "SUCCEEDED" : "FAILED",
+          claimToken: null,
+          availableAt: result.ok ? finishedAt : new Date(finishedAt.getTime() + 30_000),
+          lastAttemptAt: finishedAt,
+          deliveredAt: result.ok ? finishedAt : null,
+          lastStatusCode: result.statusCode,
+          lastErrorCode: result.errorCode,
+          lastErrorMessage: result.errorMessage,
+        },
+      });
+      if (finalized.count !== 1) return false;
+      await tx.alertDeliveryAttempt.create({
+        data: {
+          environmentId,
+          deliveryId,
+          attemptNumber,
+          status: result.ok ? "SUCCEEDED" : "FAILED",
+          responseStatus: result.statusCode,
+          errorCode: result.errorCode,
+          errorMessage: result.errorMessage,
+          finishedAt,
+        },
+      });
+      return true;
+    });
+  }
+
+  /** PostgreSQL-backed delivery reconciler; independent of threshold detection and Trigger availability. */
+  @Cron("*/10 * * * * *")
+  async reconcileDueDeliveries(options: { eventIds?: string[]; limit?: number } = {}): Promise<{
+    processed: number;
+    failed: number;
+  }> {
+    if (this.reconcilingDeliveries) return { processed: 0, failed: 0 };
+    this.reconcilingDeliveries = true;
+    try {
+      const due = await this.prisma.alertDelivery.findMany({
+        where: {
+          kind: "BUDGET",
+          budgetThresholdEventId: options.eventIds ? { in: options.eventIds } : { not: null },
+          status: { in: ["PENDING", "FAILED", "PROCESSING"] },
+          availableAt: { lte: new Date() },
+        },
+        distinct: ["budgetThresholdEventId"],
+        orderBy: { availableAt: "asc" },
+        take: options.limit ?? 50,
+        select: {
+          thresholdEvent: {
+            select: {
+              id: true,
+              threshold: true,
+              spentCents: true,
+              runs: true,
+              windowKey: true,
+              budget: {
+                select: {
+                  id: true,
+                  scope: true,
+                  period: true,
+                  limitCents: true,
+                  turnsLimit: true,
+                  environment: {
+                    select: { id: true, project: { select: { id: true, organizationId: true } } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      let processed = 0;
+      let failed = 0;
+      for (const row of due) {
+        const event = row.thresholdEvent;
+        if (!event) continue;
+        const budget = event.budget;
+        const metadata = this.decodeScope(budget);
+        try {
+          await this.deliverThresholdEvent({
+            eventId: event.id,
+            capId: budget.id,
+            organizationId: budget.environment.project.organizationId,
+            projectId: budget.environment.project.id,
+            environmentId: budget.environment.id,
+            scopeType: metadata.scopeType,
+            targetId: metadata.targetId,
+            period: budget.period as BudgetPeriod,
+            threshold: event.threshold,
+            limitCents: budget.limitCents,
+            spentCents: event.spentCents,
+            runs: event.runs,
+            runsLimit: budget.turnsLimit ?? 0,
+            windowKey: event.windowKey,
+            subjectLabel: metadata.scopeType === "agent"
+              ? `Agent: ${metadata.targetId}`
+              : metadata.scopeType === "user"
+                ? `User: ${metadata.targetId}`
+                : "Scope-wide",
+          });
+          processed += 1;
+        } catch (error) {
+          failed += 1;
+          this.logger.error(
+            `budget alert reconciliation failed event=${event.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+      return { processed, failed };
+    } finally {
+      this.reconcilingDeliveries = false;
+    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -929,4 +1373,39 @@ export class BudgetService {
     }
     return result;
   }
+}
+
+type AlertDeliveryResult = {
+  ok: boolean;
+  statusCode: number | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+};
+
+export class BudgetAlertDeliveryError extends Error {
+  constructor(public readonly summary: BudgetAlertDeliverySummary) {
+    super(`budget_alert_delivery_failed:${summary.failed}`);
+    this.name = "BudgetAlertDeliveryError";
+  }
+}
+
+function deliveryFailed(
+  errorCode: string,
+  errorMessage: string,
+  statusCode: number | null = null,
+): AlertDeliveryResult {
+  return { ok: false, statusCode, errorCode, errorMessage };
+}
+
+function budgetAlertText(payload: BudgetAlertPayload): string {
+  return [
+    "Platos budget alert",
+    "",
+    `${payload.subjectLabel} crossed ${payload.threshold}% of its ${payload.period}ly cap.`,
+    `Spent so far: ${(payload.spentCents / 100).toFixed(2)} USD of ${(payload.limitCents / 100).toFixed(2)} USD`,
+    payload.runsLimit > 0 ? `Runs this window: ${payload.runs} of ${payload.runsLimit}` : null,
+    `Window: ${payload.windowKey}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

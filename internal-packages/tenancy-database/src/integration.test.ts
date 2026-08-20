@@ -63,7 +63,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(81);
+    expect(modelNames).toHaveLength(87);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -1127,8 +1127,15 @@ describe("domain schema integration", () => {
 
 async function seedEveryModel(control: PrismaClient) {
   const registry: Registry = new Map();
-  const track = <T extends { id?: string; entityId?: string | null }>(model: string, record: T): T => {
-    registry.set(model, record.id ? { id: record.id } : { entityId: record.entityId! });
+  const track = <T extends { id?: string; entityId?: string | null; channelId?: string }>(model: string, record: T): T => {
+    registry.set(
+      model,
+      record.id
+        ? { id: record.id }
+        : record.channelId
+          ? { channelId: record.channelId }
+          : { entityId: record.entityId! },
+    );
     return record;
   };
 
@@ -1292,6 +1299,15 @@ async function seedEveryModel(control: PrismaClient) {
       effectiveUserId: user.id,
       secretRevision: 1,
       toRootKeyVersion: 1,
+    },
+  }));
+  track("EnvironmentVariable", await control.environmentVariable.create({
+    data: {
+      environmentId: environment.id,
+      key: "PUBLIC_BASE_URL",
+      kind: "PLAIN",
+      value: "https://example.test",
+      lastUpdatedBy: user.id,
     },
   }));
   track("AccessKey", await control.accessKey.create({
@@ -1521,7 +1537,23 @@ async function seedEveryModel(control: PrismaClient) {
   track("EnvironmentProvider", await control.environmentProvider.create({
     data: { environmentId: environment.id, providerId: "anthropic" },
   }));
-  track("Budget", await control.budget.create({
+  const alertChannel = track("AlertChannel", await control.alertChannel.create({
+    data: {
+      environmentId: environment.id,
+      type: "EMAIL",
+      name: "Operations",
+      alertTypes: ["BUDGET"],
+    },
+  }));
+  track("AlertChannelConfiguration", await control.alertChannelConfiguration.create({
+    data: {
+      channelId: alertChannel.id,
+      environmentId: environment.id,
+      type: "EMAIL",
+      email: "alerts@example.test",
+    },
+  }));
+  const budget = track("Budget", await control.budget.create({
     data: {
       environmentId: environment.id,
       agentId: agent.id,
@@ -1529,6 +1561,37 @@ async function seedEveryModel(control: PrismaClient) {
       period: "month",
       limitCents: 1000,
       alertThresholds: [80],
+    },
+  }));
+  const thresholdEvent = track("BudgetThresholdEvent", await control.budgetThresholdEvent.create({
+    data: {
+      environmentId: environment.id,
+      budgetId: budget.id,
+      windowKey: "2026-08",
+      threshold: 80,
+      spentCents: 800,
+      runs: 8,
+    },
+  }));
+  const delivery = track("AlertDelivery", await control.alertDelivery.create({
+    data: {
+      environmentId: environment.id,
+      channelId: alertChannel.id,
+      budgetThresholdEventId: thresholdEvent.id,
+      kind: "BUDGET",
+      idempotencyKey: `budget:${thresholdEvent.id}:${alertChannel.id}`,
+      status: "SUCCEEDED",
+      attemptCount: 1,
+      deliveredAt: new Date(),
+    },
+  }));
+  track("AlertDeliveryAttempt", await control.alertDeliveryAttempt.create({
+    data: {
+      environmentId: environment.id,
+      deliveryId: delivery.id,
+      attemptNumber: 1,
+      status: "SUCCEEDED",
+      finishedAt: new Date(),
     },
   }));
   track("SafetyEvent", await control.safetyEvent.create({

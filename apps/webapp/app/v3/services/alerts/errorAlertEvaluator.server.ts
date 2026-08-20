@@ -2,13 +2,12 @@ import { type ActiveErrorsSinceQueryResult, type ClickHouse } from "@internal/cl
 import {
   type ErrorGroupState,
   type PrismaClientOrTransaction,
-  type ProjectAlertChannel,
-  type RuntimeEnvironmentType,
 } from "@platos/database";
+import { type Prisma as ControlPrisma } from "@platos/tenancy-database";
 import { $replica, prisma } from "~/db.server";
-import { ErrorAlertConfig } from "~/models/projectAlert.server";
 import { clickhouseClient } from "~/services/clickhouseInstance.server";
 import { logger } from "~/services/logger.server";
+import { platosControlDatabase } from "~/services/platosControlDatabase.server";
 import { alertsWorker } from "~/v3/alertsWorker.server";
 
 type ErrorClassification = "new_issue" | "regression" | "unignored";
@@ -23,9 +22,12 @@ interface AlertableError {
 interface ResolvedEnvironment {
   id: string;
   slug: string;
-  type: RuntimeEnvironmentType;
   displayName: string;
 }
+
+type CanonicalErrorAlertChannel = ControlPrisma.AlertChannelGetPayload<{
+  include: { environment: { select: { id: true; slug: true } } };
+}>;
 
 const DEFAULT_INTERVAL_MS = 300_000;
 
@@ -60,7 +62,7 @@ export class ErrorAlertEvaluator {
       return;
     }
 
-    const minIntervalMs = this.computeMinInterval(channels);
+    const minIntervalMs = DEFAULT_INTERVAL_MS;
     const windowMs = nextScheduledAt - scheduledAt;
 
     if (windowMs > minIntervalMs * 2) {
@@ -73,15 +75,13 @@ export class ErrorAlertEvaluator {
       });
     }
 
-    const allEnvTypes = this.collectEnvironmentTypes(channels);
-
     try {
       const [project, environments] = await Promise.all([
         this._replica.project.findFirst({
           where: { id: projectId },
           select: { organizationId: true },
         }),
-        this.resolveEnvironments(projectId, allEnvTypes),
+        this.resolveEnvironments(projectId, channels),
       ]);
 
       if (!project) {
@@ -259,69 +259,78 @@ export class ErrorAlertEvaluator {
     return false;
   }
 
-  private async resolveChannels(projectId: string): Promise<ProjectAlertChannel[]> {
-    return this._replica.projectAlertChannel.findMany({
+  private async resolveChannels(projectId: string): Promise<CanonicalErrorAlertChannel[]> {
+    const project = await this._replica.project.findUnique({
+      where: { id: projectId },
+      select: { slug: true, organization: { select: { slug: true } } },
+    });
+    if (!project) return [];
+    return platosControlDatabase.alertChannel.findMany({
       where: {
-        projectId,
+        environment: {
+          archivedAt: null,
+          project: {
+            archivedAt: null,
+            slug: project.slug,
+            organization: { archivedAt: null, slug: project.organization.slug },
+          },
+        },
         alertTypes: { has: "ERROR_GROUP" },
         enabled: true,
+        deletedAt: null,
       },
+      include: { environment: { select: { id: true, slug: true } } },
     });
-  }
-
-  private computeMinInterval(channels: ProjectAlertChannel[]): number {
-    let min = DEFAULT_INTERVAL_MS;
-    for (const ch of channels) {
-      const config = ErrorAlertConfig.safeParse(ch.errorAlertConfig);
-      if (config.success) {
-        min = Math.min(min, config.data.evaluationIntervalMs);
-      }
-    }
-    return min;
-  }
-
-  private collectEnvironmentTypes(channels: ProjectAlertChannel[]): RuntimeEnvironmentType[] {
-    const types = new Set<RuntimeEnvironmentType>();
-    for (const ch of channels) {
-      for (const t of ch.environmentTypes) {
-        types.add(t);
-      }
-    }
-    return Array.from(types);
   }
 
   private async resolveEnvironments(
     projectId: string,
-    types: RuntimeEnvironmentType[]
+    channels: CanonicalErrorAlertChannel[]
   ): Promise<ResolvedEnvironment[]> {
+    const canonicalIds = channels.map((channel) => channel.environment.id);
+    const canonicalSlugs = channels.map((channel) => channel.environment.slug);
     const envs = await this._replica.runtimeEnvironment.findMany({
       where: {
         projectId,
-        type: { in: types },
+        OR: [{ id: { in: canonicalIds } }, { slug: { in: canonicalSlugs } }],
       },
       select: {
         id: true,
-        type: true,
         slug: true,
         branchName: true,
       },
     });
 
-    return envs.map((e) => ({
-      id: e.id,
-      slug: e.slug,
-      type: e.type,
-      displayName: e.branchName ?? e.slug,
-    }));
+    const resolved = new Map<string, ResolvedEnvironment>();
+    for (const channel of channels) {
+      const exact = envs.find((environment) => environment.id === channel.environment.id);
+      const slugMatches = envs.filter(
+        (environment) => environment.slug === channel.environment.slug
+      );
+      const environment = exact ?? (slugMatches.length === 1 ? slugMatches[0] : undefined);
+      if (environment) {
+        resolved.set(environment.id, {
+          id: environment.id,
+          slug: environment.slug,
+          displayName: environment.branchName ?? environment.slug,
+        });
+      }
+    }
+    return Array.from(resolved.values());
   }
 
   private buildChannelsByEnvId(
-    channels: ProjectAlertChannel[],
+    channels: CanonicalErrorAlertChannel[],
     environments: ResolvedEnvironment[]
-  ): Map<string, ProjectAlertChannel[]> {
-    const result = new Map<string, ProjectAlertChannel[]>();
+  ): Map<string, CanonicalErrorAlertChannel[]> {
+    const result = new Map<string, CanonicalErrorAlertChannel[]>();
     for (const env of environments) {
-      const matching = channels.filter((ch) => ch.environmentTypes.includes(env.type));
+      const matching = channels.filter(
+        (channel) =>
+          channel.environment.id === env.id ||
+          (channel.environment.slug === env.slug &&
+            environments.filter((candidate) => candidate.slug === env.slug).length === 1)
+      );
       if (matching.length > 0) {
         result.set(env.id, matching);
       }

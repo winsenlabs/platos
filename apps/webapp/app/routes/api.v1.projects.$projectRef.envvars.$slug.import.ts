@@ -7,7 +7,10 @@ import {
   authenticatedEnvironmentForAuthentication,
   branchNameFromRequest,
 } from "~/services/apiAuth.server";
-import { EnvironmentVariablesRepository } from "~/v3/environmentVariables/environmentVariablesRepository.server";
+import {
+  authorizeCanonicalEnvironmentService,
+  importCanonicalEnvironmentVariables,
+} from "~/services/platosEnvironmentVariables.server";
 
 const ParamsSchema = z.object({
   projectRef: z.string(),
@@ -34,44 +37,45 @@ export async function action({ params, request }: ActionFunctionArgs) {
     branchNameFromRequest(request)
   );
 
-  const repository = new EnvironmentVariablesRepository();
-
   const body = await parseImportBody(request);
-
-  const result = await repository.create(environment.project.id, {
+  const authorization = await authorizeCanonicalEnvironmentService({
+    environment,
+    actorId: `envvars-import:${environment.id}`,
+  });
+  const parentAuthorization = environment.parentEnvironmentId
+    ? await authorizeCanonicalEnvironmentService({
+        environment: { id: environment.parentEnvironmentId },
+        actorId: `envvars-import:${environment.id}`,
+      })
+    : undefined;
+  const result = await importCanonicalEnvironmentVariables({
+    authorization,
     override: typeof body.override === "boolean" ? body.override : false,
-    environmentIds: [environment.id],
-    // Pass parent environment ID so new variables can inherit isSecret from parent
-    parentEnvironmentId: environment.parentEnvironmentId ?? undefined,
-    variables: Object.entries(body.variables).map(([key, value]) => ({
-      key,
-      value,
-    })),
-    lastUpdatedBy: body.source,
+    variables: body.variables,
+    parentAuthorization,
   });
 
   // Only sync parent variables if this is a branch environment
-  if (environment.parentEnvironmentId && body.parentVariables) {
-    const parentResult = await repository.create(environment.project.id, {
+  if (parentAuthorization && body.parentVariables) {
+    const parentResult = await importCanonicalEnvironmentVariables({
+      authorization: parentAuthorization,
       override: typeof body.override === "boolean" ? body.override : false,
-      environmentIds: [environment.parentEnvironmentId],
-      variables: Object.entries(body.parentVariables).map(([key, value]) => ({
-        key,
-        value,
-      })),
-      lastUpdatedBy: body.source,
+      variables: body.parentVariables,
     });
 
     let childFailure = !result.success ? result : undefined;
     let parentFailure = !parentResult.success ? parentResult : undefined;
 
-    if (result.success || parentResult.success) {
+    if (result.success && parentResult.success) {
       return json({ success: true });
     } else {
       return json(
         {
           error: childFailure?.error || parentFailure?.error || "Unknown error",
-          variableErrors: childFailure?.variableErrors || parentFailure?.variableErrors,
+          variableErrors: {
+            ...(childFailure?.variableErrors ?? {}),
+            ...(parentFailure?.variableErrors ?? {}),
+          },
         },
         { status: 400 }
       );

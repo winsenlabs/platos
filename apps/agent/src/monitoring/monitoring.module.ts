@@ -15,8 +15,10 @@ import { MetricsService } from "./metrics.service";
 import { MetricsController } from "./metrics.controller";
 import { SentryService } from "./sentry.service";
 import { AdminAuditService } from "./admin-audit.service";
+import { ProvidersModule } from "../providers/providers.module";
 
 @Module({
+  imports: [ProvidersModule],
   controllers: [MetricsController],
   providers: [
     SafetyService,

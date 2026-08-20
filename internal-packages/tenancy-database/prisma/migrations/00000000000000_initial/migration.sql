@@ -961,6 +961,7 @@ CREATE TABLE "public"."Budget" (
     "turnsLimit" INTEGER,
     "alertThresholds" JSONB NOT NULL DEFAULT '[]',
     "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "deletedAt" TIMESTAMP(3),
     "overrideUntil" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -1831,7 +1832,7 @@ CREATE INDEX "AgentApproval_turnId_idx" ON "public"."AgentApproval"("turnId");
 CREATE UNIQUE INDEX "EnvironmentProvider_environmentId_providerId_key" ON "public"."EnvironmentProvider"("environmentId", "providerId");
 
 -- CreateIndex
-CREATE INDEX "Budget_environmentId_enabled_idx" ON "public"."Budget"("environmentId", "enabled");
+CREATE INDEX "Budget_environmentId_deletedAt_enabled_idx" ON "public"."Budget"("environmentId", "deletedAt", "enabled");
 
 -- CreateIndex
 CREATE INDEX "Budget_agentId_idx" ON "public"."Budget"("agentId");
@@ -2359,10 +2360,10 @@ ALTER TABLE "public"."AgentApproval" ADD CONSTRAINT "AgentApproval_turnId_fkey" 
 ALTER TABLE "public"."EnvironmentProvider" ADD CONSTRAINT "EnvironmentProvider_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Budget" ADD CONSTRAINT "Budget_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."Budget" ADD CONSTRAINT "Budget_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."Budget" ADD CONSTRAINT "Budget_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."Budget" ADD CONSTRAINT "Budget_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."SafetyEvent" ADD CONSTRAINT "SafetyEvent_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -3651,3 +3652,231 @@ $$;
 CREATE TRIGGER "ChannelEventInbox_identity_immutable"
   BEFORE UPDATE ON "public"."ChannelEventInbox"
   FOR EACH ROW EXECUTE FUNCTION "public"."reject_channel_event_inbox_identity_mutation"();
+
+-- -----------------------------------------------------------------------------
+-- WIN-124 — Environment-owned variables, alert channels, and durable delivery
+-- -----------------------------------------------------------------------------
+
+CREATE TYPE "public"."EnvironmentVariableKind" AS ENUM ('PLAIN', 'SECRET');
+CREATE TYPE "public"."AlertChannelType" AS ENUM ('EMAIL', 'SLACK', 'WEBHOOK');
+CREATE TYPE "public"."AlertDeliveryKind" AS ENUM ('TEST', 'BUDGET');
+CREATE TYPE "public"."AlertDeliveryStatus" AS ENUM ('PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED');
+
+CREATE TABLE "public"."EnvironmentVariable" (
+  "id" UUID NOT NULL,
+  "environmentId" UUID NOT NULL,
+  "key" TEXT NOT NULL,
+  "kind" "public"."EnvironmentVariableKind" NOT NULL,
+  "value" TEXT,
+  "credentialId" UUID,
+  "version" INTEGER NOT NULL DEFAULT 1,
+  "lastUpdatedBy" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "EnvironmentVariable_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "EnvironmentVariable_value_shape_check" CHECK (
+    ("kind" = 'PLAIN' AND "value" IS NOT NULL AND "credentialId" IS NULL) OR
+    ("kind" = 'SECRET' AND "value" IS NULL AND "credentialId" IS NOT NULL)
+  ),
+  CONSTRAINT "EnvironmentVariable_key_check" CHECK ("key" ~ '^[A-Z][A-Z0-9_]{0,63}$'),
+  CONSTRAINT "EnvironmentVariable_version_check" CHECK ("version" > 0),
+  CONSTRAINT "EnvironmentVariable_value_length_check" CHECK ("value" IS NULL OR length("value") <= 8192)
+);
+
+CREATE TABLE "public"."AlertChannel" (
+  "id" UUID NOT NULL,
+  "environmentId" UUID NOT NULL,
+  "type" "public"."AlertChannelType" NOT NULL,
+  "name" TEXT NOT NULL,
+  "enabled" BOOLEAN NOT NULL DEFAULT true,
+  "alertTypes" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  "deduplicationKey" TEXT,
+  "userProvidedDeduplicationKey" BOOLEAN NOT NULL DEFAULT false,
+  "deletedAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "AlertChannel_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "AlertChannel_name_check" CHECK (length(btrim("name")) BETWEEN 1 AND 200),
+  CONSTRAINT "AlertChannel_alert_types_check" CHECK (cardinality("alertTypes") > 0),
+  CONSTRAINT "AlertChannel_dedupe_check" CHECK (
+    ("deduplicationKey" IS NULL AND NOT "userProvidedDeduplicationKey") OR
+    ("deduplicationKey" IS NOT NULL AND length("deduplicationKey") BETWEEN 1 AND 200)
+  )
+);
+
+CREATE TABLE "public"."AlertChannelConfiguration" (
+  "channelId" UUID NOT NULL,
+  "environmentId" UUID NOT NULL,
+  "type" "public"."AlertChannelType" NOT NULL,
+  "email" TEXT,
+  "webhookUrl" TEXT,
+  "slackChannelId" TEXT,
+  "slackChannelName" TEXT,
+  "integrationId" TEXT,
+  "integrationProvider" TEXT,
+  "externalOrganizationId" TEXT,
+  "credentialId" UUID,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "AlertChannelConfiguration_pkey" PRIMARY KEY ("channelId"),
+  CONSTRAINT "AlertChannelConfiguration_shape_check" CHECK (
+    ("type" = 'EMAIL' AND "email" IS NOT NULL AND "webhookUrl" IS NULL AND "slackChannelId" IS NULL AND "slackChannelName" IS NULL AND "credentialId" IS NULL) OR
+    ("type" = 'WEBHOOK' AND "email" IS NULL AND "webhookUrl" IS NOT NULL AND "slackChannelId" IS NULL AND "slackChannelName" IS NULL AND "credentialId" IS NOT NULL) OR
+    ("type" = 'SLACK' AND "email" IS NULL AND "webhookUrl" IS NULL AND "slackChannelId" IS NOT NULL AND "slackChannelName" IS NOT NULL)
+  )
+);
+
+CREATE TABLE "public"."BudgetThresholdEvent" (
+  "id" UUID NOT NULL,
+  "environmentId" UUID NOT NULL,
+  "budgetId" UUID NOT NULL,
+  "windowKey" TEXT NOT NULL,
+  "threshold" INTEGER NOT NULL,
+  "spentCents" DOUBLE PRECISION NOT NULL,
+  "runs" INTEGER NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "BudgetThresholdEvent_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "BudgetThresholdEvent_values_check" CHECK (
+    "threshold" > 0 AND "spentCents" >= 0 AND "runs" >= 0 AND length("windowKey") > 0
+  )
+);
+
+CREATE TABLE "public"."AlertDelivery" (
+  "id" UUID NOT NULL,
+  "environmentId" UUID NOT NULL,
+  "channelId" UUID NOT NULL,
+  "budgetThresholdEventId" UUID,
+  "kind" "public"."AlertDeliveryKind" NOT NULL,
+  "idempotencyKey" TEXT NOT NULL,
+  "status" "public"."AlertDeliveryStatus" NOT NULL DEFAULT 'PENDING',
+  "attemptCount" INTEGER NOT NULL DEFAULT 0,
+  "claimGeneration" INTEGER NOT NULL DEFAULT 0,
+  "claimToken" UUID,
+  "availableAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "lastAttemptAt" TIMESTAMP(3),
+  "deliveredAt" TIMESTAMP(3),
+  "lastStatusCode" INTEGER,
+  "lastErrorCode" TEXT,
+  "lastErrorMessage" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "AlertDelivery_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "AlertDelivery_kind_shape_check" CHECK (
+    ("kind" = 'TEST' AND "budgetThresholdEventId" IS NULL) OR
+    ("kind" = 'BUDGET' AND "budgetThresholdEventId" IS NOT NULL)
+  ),
+  CONSTRAINT "AlertDelivery_state_check" CHECK (
+    "attemptCount" >= 0 AND "claimGeneration" >= 0 AND
+    (("status" = 'SUCCEEDED' AND "deliveredAt" IS NOT NULL AND "lastErrorCode" IS NULL) OR
+     ("status" <> 'SUCCEEDED' AND "deliveredAt" IS NULL))
+  )
+);
+
+CREATE TABLE "public"."AlertDeliveryAttempt" (
+  "id" UUID NOT NULL,
+  "environmentId" UUID NOT NULL,
+  "deliveryId" UUID NOT NULL,
+  "attemptNumber" INTEGER NOT NULL,
+  "status" "public"."AlertDeliveryStatus" NOT NULL,
+  "responseStatus" INTEGER,
+  "errorCode" TEXT,
+  "errorMessage" TEXT,
+  "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "finishedAt" TIMESTAMP(3),
+  CONSTRAINT "AlertDeliveryAttempt_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "AlertDeliveryAttempt_state_check" CHECK (
+    "attemptNumber" > 0 AND "status" IN ('SUCCEEDED', 'FAILED') AND "finishedAt" IS NOT NULL AND
+    (("status" = 'SUCCEEDED' AND "errorCode" IS NULL) OR "status" = 'FAILED')
+  )
+);
+
+CREATE INDEX "EnvironmentVariable_credentialId_idx" ON "public"."EnvironmentVariable"("credentialId");
+CREATE UNIQUE INDEX "EnvironmentVariable_environmentId_key_key" ON "public"."EnvironmentVariable"("environmentId", "key");
+CREATE UNIQUE INDEX "Budget_id_environmentId_key" ON "public"."Budget"("id", "environmentId");
+CREATE INDEX "AlertChannel_environmentId_deletedAt_enabled_type_idx" ON "public"."AlertChannel"("environmentId", "deletedAt", "enabled", "type");
+CREATE UNIQUE INDEX "AlertChannel_id_environmentId_type_key" ON "public"."AlertChannel"("id", "environmentId", "type");
+CREATE UNIQUE INDEX "AlertChannel_id_environmentId_key" ON "public"."AlertChannel"("id", "environmentId");
+CREATE UNIQUE INDEX "AlertChannel_environmentId_deduplicationKey_key" ON "public"."AlertChannel"("environmentId", "deduplicationKey");
+CREATE INDEX "AlertChannelConfiguration_environmentId_type_idx" ON "public"."AlertChannelConfiguration"("environmentId", "type");
+CREATE INDEX "AlertChannelConfiguration_credentialId_idx" ON "public"."AlertChannelConfiguration"("credentialId");
+CREATE UNIQUE INDEX "AlertChannelConfiguration_channelId_environmentId_type_key" ON "public"."AlertChannelConfiguration"("channelId", "environmentId", "type");
+CREATE INDEX "BudgetThresholdEvent_environmentId_createdAt_idx" ON "public"."BudgetThresholdEvent"("environmentId", "createdAt");
+CREATE UNIQUE INDEX "BudgetThresholdEvent_id_environmentId_key" ON "public"."BudgetThresholdEvent"("id", "environmentId");
+CREATE UNIQUE INDEX "BudgetThresholdEvent_budgetId_windowKey_threshold_key" ON "public"."BudgetThresholdEvent"("budgetId", "windowKey", "threshold");
+CREATE INDEX "AlertDelivery_environmentId_status_availableAt_idx" ON "public"."AlertDelivery"("environmentId", "status", "availableAt");
+CREATE INDEX "AlertDelivery_channelId_createdAt_idx" ON "public"."AlertDelivery"("channelId", "createdAt");
+CREATE UNIQUE INDEX "AlertDelivery_id_environmentId_key" ON "public"."AlertDelivery"("id", "environmentId");
+CREATE UNIQUE INDEX "AlertDelivery_environmentId_idempotencyKey_key" ON "public"."AlertDelivery"("environmentId", "idempotencyKey");
+CREATE UNIQUE INDEX "AlertDelivery_budgetThresholdEventId_channelId_key" ON "public"."AlertDelivery"("budgetThresholdEventId", "channelId");
+CREATE INDEX "AlertDeliveryAttempt_environmentId_status_startedAt_idx" ON "public"."AlertDeliveryAttempt"("environmentId", "status", "startedAt");
+CREATE UNIQUE INDEX "AlertDeliveryAttempt_deliveryId_attemptNumber_key" ON "public"."AlertDeliveryAttempt"("deliveryId", "attemptNumber");
+
+ALTER TABLE "public"."EnvironmentVariable" ADD CONSTRAINT "EnvironmentVariable_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."EnvironmentVariable" ADD CONSTRAINT "EnvironmentVariable_credentialId_environmentId_fkey" FOREIGN KEY ("credentialId", "environmentId") REFERENCES "public"."Credential"("id", "environmentId") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."AlertChannel" ADD CONSTRAINT "AlertChannel_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."AlertChannelConfiguration" ADD CONSTRAINT "AlertChannelConfiguration_channelId_environmentId_type_fkey" FOREIGN KEY ("channelId", "environmentId", "type") REFERENCES "public"."AlertChannel"("id", "environmentId", "type") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "public"."AlertChannelConfiguration" ADD CONSTRAINT "AlertChannelConfiguration_credentialId_environmentId_fkey" FOREIGN KEY ("credentialId", "environmentId") REFERENCES "public"."Credential"("id", "environmentId") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."BudgetThresholdEvent" ADD CONSTRAINT "BudgetThresholdEvent_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."BudgetThresholdEvent" ADD CONSTRAINT "BudgetThresholdEvent_budgetId_environmentId_fkey" FOREIGN KEY ("budgetId", "environmentId") REFERENCES "public"."Budget"("id", "environmentId") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."AlertDelivery" ADD CONSTRAINT "AlertDelivery_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."AlertDelivery" ADD CONSTRAINT "AlertDelivery_channelId_environmentId_fkey" FOREIGN KEY ("channelId", "environmentId") REFERENCES "public"."AlertChannel"("id", "environmentId") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."AlertDelivery" ADD CONSTRAINT "AlertDelivery_budgetThresholdEventId_environmentId_fkey" FOREIGN KEY ("budgetThresholdEventId", "environmentId") REFERENCES "public"."BudgetThresholdEvent"("id", "environmentId") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."AlertDeliveryAttempt" ADD CONSTRAINT "AlertDeliveryAttempt_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."AlertDeliveryAttempt" ADD CONSTRAINT "AlertDeliveryAttempt_deliveryId_environmentId_fkey" FOREIGN KEY ("deliveryId", "environmentId") REFERENCES "public"."AlertDelivery"("id", "environmentId") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+CREATE FUNCTION "public"."enforce_win124_credential_kind"() RETURNS trigger
+  LANGUAGE plpgsql AS $$
+DECLARE
+  expected_kind "public"."CredentialKind";
+BEGIN
+  IF NEW."credentialId" IS NULL THEN
+    RETURN NEW;
+  END IF;
+  expected_kind := CASE TG_TABLE_NAME
+    WHEN 'EnvironmentVariable' THEN 'SECRET_REFERENCE'::"public"."CredentialKind"
+    ELSE 'CHANNEL_SECRET'::"public"."CredentialKind"
+  END;
+  IF NOT EXISTS (
+    SELECT 1 FROM "public"."Credential" credential
+    WHERE credential."id" = NEW."credentialId"
+      AND credential."environmentId" = NEW."environmentId"
+      AND credential."kind" = expected_kind
+      AND credential."revokedAt" IS NULL
+      AND credential."activeSecretVersionId" IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION '% credential is unavailable or has the wrong kind', TG_TABLE_NAME
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER "EnvironmentVariable_credential_kind" BEFORE INSERT OR UPDATE ON "public"."EnvironmentVariable" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_win124_credential_kind"();
+CREATE TRIGGER "AlertChannelConfiguration_credential_kind" BEFORE INSERT OR UPDATE ON "public"."AlertChannelConfiguration" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_win124_credential_kind"();
+
+CREATE TRIGGER "EnvironmentVariable_owner_immutable" BEFORE UPDATE ON "public"."EnvironmentVariable" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'key');
+CREATE TRIGGER "AlertChannel_owner_immutable" BEFORE UPDATE ON "public"."AlertChannel" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'type');
+CREATE TRIGGER "AlertChannelConfiguration_owner_immutable" BEFORE UPDATE ON "public"."AlertChannelConfiguration" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('channelId', 'environmentId', 'type');
+CREATE TRIGGER "BudgetThresholdEvent_owner_immutable" BEFORE UPDATE ON "public"."BudgetThresholdEvent" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'budgetId', 'windowKey', 'threshold');
+CREATE TRIGGER "AlertDelivery_owner_immutable" BEFORE UPDATE ON "public"."AlertDelivery" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'channelId', 'budgetThresholdEventId', 'kind', 'idempotencyKey');
+
+CREATE FUNCTION "public"."reject_alert_delivery_attempt_mutation"() RETURNS trigger
+  LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'AlertDeliveryAttempt is immutable' USING ERRCODE = '23514';
+END;
+$$;
+CREATE TRIGGER "AlertDeliveryAttempt_immutable_update" BEFORE UPDATE ON "public"."AlertDeliveryAttempt" FOR EACH ROW EXECUTE FUNCTION "public"."reject_alert_delivery_attempt_mutation"();
+CREATE TRIGGER "AlertDeliveryAttempt_immutable_delete" BEFORE DELETE ON "public"."AlertDeliveryAttempt" FOR EACH ROW EXECUTE FUNCTION "public"."reject_alert_delivery_attempt_mutation"();
+CREATE TRIGGER "AlertDeliveryAttempt_immutable_truncate" BEFORE TRUNCATE ON "public"."AlertDeliveryAttempt" FOR EACH STATEMENT EXECUTE FUNCTION "public"."reject_alert_delivery_attempt_mutation"();
+REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."AlertDeliveryAttempt" FROM PUBLIC;
+
+CREATE FUNCTION "public"."reject_budget_threshold_event_mutation"() RETURNS trigger
+  LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'BudgetThresholdEvent is immutable' USING ERRCODE = '23514';
+END;
+$$;
+CREATE TRIGGER "BudgetThresholdEvent_immutable_update" BEFORE UPDATE ON "public"."BudgetThresholdEvent" FOR EACH ROW EXECUTE FUNCTION "public"."reject_budget_threshold_event_mutation"();
+CREATE TRIGGER "BudgetThresholdEvent_immutable_delete" BEFORE DELETE ON "public"."BudgetThresholdEvent" FOR EACH ROW EXECUTE FUNCTION "public"."reject_budget_threshold_event_mutation"();
+CREATE TRIGGER "BudgetThresholdEvent_immutable_truncate" BEFORE TRUNCATE ON "public"."BudgetThresholdEvent" FOR EACH STATEMENT EXECUTE FUNCTION "public"."reject_budget_threshold_event_mutation"();
+REVOKE UPDATE, DELETE, TRUNCATE ON TABLE "public"."BudgetThresholdEvent" FROM PUBLIC;

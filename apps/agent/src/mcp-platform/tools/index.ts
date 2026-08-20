@@ -92,6 +92,7 @@ import type { OrganizationService } from "../../admin/organization.service";
 import type { EnvironmentService } from "../../admin/environment.service";
 import type { AgentClusterService } from "../../agent-runtime/agent-cluster.service";
 import type { ChannelPersistenceService } from "../../channels/channel-persistence.service";
+import type { PlatosSecretStore } from "@platos/tenancy-database";
 
 /**
  * Factory that builds the handler list. Takes the services as
@@ -134,6 +135,7 @@ export function buildPlatformToolHandlers(deps: {
   // K.14 orchestration composites.
   goldenSet: GoldenSetService;
   prisma: any;
+  secretStore: PlatosSecretStore;
   // K.17 — macro recording state + router back-ref for replay dispatch.
   macroState: MacroRecordingState;
   getRouter: () => McpRouter;
@@ -951,6 +953,7 @@ export function buildPlatformToolHandlers(deps: {
     ...buildAlertChannelToolHandlers({
       toolAudit: deps.toolAudit,
       prisma: deps.prisma,
+      secretStore: deps.secretStore,
     }),
   );
 

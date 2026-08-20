@@ -1,136 +1,175 @@
+import { randomUUID } from "node:crypto";
 import {
-  type ProjectAlertChannel,
-  type ProjectAlertType,
-  type RuntimeEnvironmentType,
-} from "@platos/database";
-import { nanoid } from "nanoid";
-import { env } from "~/env.server";
+  CredentialKind,
+  authorizeEnvironmentOperator,
+  type EnvironmentOperatorAuthorization,
+} from "@platos/tenancy-database";
+import { platosControlDatabase } from "~/services/platosControlDatabase.server";
+import { platosSecretStore } from "~/services/platosCredentialStore.server";
+import { prisma } from "~/db.server";
 import { findProjectByRef } from "~/models/project.server";
-import { encryptSecret } from "~/services/secrets/secretStore.server";
-import { alertsWorker } from "~/v3/alertsWorker.server";
-import { generateFriendlyId } from "~/v3/friendlyIdentifiers";
-import { BaseService, ServiceValidationError } from "../baseService.server";
+import { validatePublicUrl } from "~/utils/urlValidator.server";
+import { ServiceValidationError } from "../baseService.server";
 
 export type CreateAlertChannelOptions = {
+  environmentId?: string;
   name: string;
-  alertTypes: ProjectAlertType[];
-  environmentTypes: RuntimeEnvironmentType[];
+  alertTypes: string[];
   deduplicationKey?: string;
   channel:
-    | {
-        type: "EMAIL";
-        email: string;
-      }
-    | {
-        type: "WEBHOOK";
-        url: string;
-        secret?: string;
-      }
+    | { type: "EMAIL"; email: string }
+    | { type: "WEBHOOK"; url: string; secret: string }
     | {
         type: "SLACK";
         channelId: string;
         channelName: string;
         integrationId: string | undefined;
+        token?: string;
       };
 };
 
-export class CreateAlertChannelService extends BaseService {
+const SUPPORTED_ALERT_TYPES = new Set([
+  "TASK_RUN",
+  "DEPLOYMENT_FAILURE",
+  "DEPLOYMENT_SUCCESS",
+  "ERROR_GROUP",
+]);
+
+/** Canonical Environment-owned alert-channel mutation service. */
+export class CreateAlertChannelService {
   public async call(
     projectRef: string,
     userId: string,
     options: CreateAlertChannelOptions
-  ): Promise<ProjectAlertChannel> {
-    const project = await findProjectByRef(projectRef, userId);
-
-    if (!project) {
-      throw new ServiceValidationError("Project not found");
+  ) {
+    if (!options.environmentId) {
+      throw new ServiceValidationError("Environment target is required");
     }
-
-    const environmentTypes =
-      options.environmentTypes.length === 0
-        ? (["STAGING", "PRODUCTION"] satisfies RuntimeEnvironmentType[])
-        : options.environmentTypes;
-
-    const existingAlertChannel = options.deduplicationKey
-      ? await this._prisma.projectAlertChannel.findFirst({
-          where: {
-            projectId: project.id,
-            deduplicationKey: options.deduplicationKey,
-          },
-        })
-      : undefined;
-
-    if (existingAlertChannel) {
-      const updated = await this._prisma.projectAlertChannel.update({
-        where: { id: existingAlertChannel.id },
-        data: {
-          name: options.name,
-          alertTypes: options.alertTypes,
-          type: options.channel.type,
-          properties: await this.#createProperties(options.channel),
-          environmentTypes,
-          enabled: true,
-        },
-      });
-
-      if (options.alertTypes.includes("ERROR_GROUP")) {
-        await this.#scheduleErrorAlertEvaluation(project.id);
+    const authorization = await authorizePatProjectEnvironment(
+      projectRef,
+      userId,
+      options.environmentId
+    );
+    if (!options.name.trim() || options.alertTypes.length === 0) {
+      throw new ServiceValidationError("Name and alert types are required");
+    }
+    if (options.alertTypes.some((type) => !SUPPORTED_ALERT_TYPES.has(type))) {
+      throw new ServiceValidationError("Unsupported alert type");
+    }
+    if (options.channel.type === "WEBHOOK" && !options.channel.secret) {
+      throw new ServiceValidationError("Webhook signing secret is required");
+    }
+    if (options.channel.type === "WEBHOOK") {
+      const validation = await validatePublicUrl(options.channel.url);
+      if (!validation.ok) {
+        throw new ServiceValidationError("Webhook URL is not public");
       }
-
-      return updated;
     }
-
-    const alertChannel = await this._prisma.projectAlertChannel.create({
-      data: {
-        friendlyId: generateFriendlyId("alert_channel"),
-        name: options.name,
-        alertTypes: options.alertTypes,
-        projectId: project.id,
-        type: options.channel.type,
-        properties: await this.#createProperties(options.channel),
-        enabled: true,
-        deduplicationKey: options.deduplicationKey,
-        userProvidedDeduplicationKey: options.deduplicationKey ? true : false,
-        environmentTypes,
-      },
+    const existing = options.deduplicationKey
+      ? await platosControlDatabase.alertChannel.findFirst({
+          where: {
+            environmentId: authorization.environmentId,
+            deduplicationKey: options.deduplicationKey,
+            deletedAt: null,
+          },
+          select: { id: true },
+        })
+      : null;
+    if (existing) throw new ServiceValidationError("Alert channel already exists");
+    const id = randomUUID();
+    return platosControlDatabase.$transaction(async (tx) => {
+      let credentialId: string | null = null;
+      const secret = options.channel.type === "WEBHOOK"
+        ? options.channel.secret
+        : options.channel.type === "SLACK"
+          ? options.channel.token
+          : undefined;
+      if (secret) {
+        credentialId = (
+          await platosSecretStore.createInTransaction(tx, {
+            authorization,
+            name: `alert-channel:${id}`,
+            plaintext: secret,
+            kind: CredentialKind.CHANNEL_SECRET,
+          })
+        ).id;
+      }
+      return tx.alertChannel.create({
+        data: {
+          id,
+          environmentId: authorization.environmentId,
+          name: options.name.trim(),
+          type: options.channel.type,
+          alertTypes: options.alertTypes,
+          deduplicationKey: options.deduplicationKey,
+          userProvidedDeduplicationKey: Boolean(options.deduplicationKey),
+          configuration: {
+            create: options.channel.type === "EMAIL"
+              ? { email: options.channel.email }
+              : options.channel.type === "WEBHOOK"
+                ? { webhookUrl: options.channel.url, credentialId }
+                : {
+                    slackChannelId: options.channel.channelId,
+                    slackChannelName: options.channel.channelName,
+                    integrationId: options.channel.integrationId,
+                    integrationProvider: options.channel.integrationId ? "SLACK" : null,
+                    credentialId,
+                  },
+          },
+        },
+        include: { configuration: true },
+      });
     });
-
-    if (options.alertTypes.includes("ERROR_GROUP")) {
-      await this.#scheduleErrorAlertEvaluation(project.id);
-    }
-
-    return alertChannel;
   }
+}
 
-  async #scheduleErrorAlertEvaluation(projectId: string): Promise<void> {
-    await alertsWorker.enqueue({
-      id: `evaluateErrorAlerts:${projectId}`,
-      job: "v3.evaluateErrorAlerts",
-      payload: {
-        projectId,
-        scheduledAt: Date.now(),
+async function authorizePatProjectEnvironment(
+  projectRef: string,
+  legacyUserId: string,
+  environmentId: string
+): Promise<EnvironmentOperatorAuthorization> {
+  const legacyProject = await findProjectByRef(projectRef, legacyUserId);
+  if (!legacyProject) throw new ServiceValidationError("Project not found");
+  const [legacyUser, legacyOrganization] = await Promise.all([
+    prisma.user.findUnique({ where: { id: legacyUserId }, select: { email: true } }),
+    prisma.organization.findUnique({
+      where: { id: legacyProject.organizationId },
+      select: { slug: true },
+    }),
+  ]);
+  if (!legacyUser?.email || !legacyOrganization) {
+    throw new ServiceValidationError("Project not found");
+  }
+  const canonicalUser = await platosControlDatabase.user.findFirst({
+    where: { email: { equals: legacyUser.email, mode: "insensitive" } },
+    select: { id: true, email: true },
+  });
+  const environment = await platosControlDatabase.environment.findFirst({
+    where: {
+      id: environmentId,
+      project: {
+        slug: legacyProject.slug,
+        organization: { slug: legacyOrganization.slug },
       },
-    });
+      archivedAt: null,
+    },
+    select: { id: true },
+  });
+  if (!canonicalUser || !environment) {
+    throw new ServiceValidationError("Environment is not part of the authorized project");
   }
-
-  async #createProperties(channel: CreateAlertChannelOptions["channel"]) {
-    switch (channel.type) {
-      case "EMAIL":
-        return {
-          email: channel.email,
-        };
-      case "WEBHOOK":
-        return {
-          url: channel.url,
-          secret: await encryptSecret(env.ENCRYPTION_KEY, channel.secret ?? nanoid()),
-          version: "v2",
-        };
-      case "SLACK":
-        return {
-          channelId: channel.channelId,
-          channelName: channel.channelName,
-          integrationId: channel.integrationId,
-        };
-    }
-  }
+  return authorizeEnvironmentOperator(
+    platosControlDatabase,
+    {
+      sessionId: `pat:${legacyUserId}`,
+      actorUserId: canonicalUser.id,
+      effectiveUserId: canonicalUser.id,
+      email: canonicalUser.email,
+      expiresAt: new Date(Date.now() + 60_000),
+      mfaVerifiedAt: null,
+      impersonation: null,
+    },
+    environment.id,
+    "secret:mutate"
+  );
 }

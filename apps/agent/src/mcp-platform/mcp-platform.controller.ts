@@ -12,7 +12,11 @@ import {
   Res,
 } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import {
+  PLATOS_SECRET_STORE_TOKEN,
+  PRISMA_TOKEN,
+} from "../shared/database.provider";
+import type { PlatosSecretStore } from "@platos/tenancy-database";
 import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
 import { PlatosMCPTokenService, AdminMintForbiddenError } from "./token.service";
@@ -151,6 +155,7 @@ export class McpPlatformController {
     private readonly envs: EnvironmentService,
     private readonly clusters: AgentClusterService,
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    @Inject(PLATOS_SECRET_STORE_TOKEN) private readonly secretStore: PlatosSecretStore,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
     // Lazy resolution of ChannelRuntimeService (see invalidateChannelRuntime).
     private readonly moduleRef: ModuleRef,
@@ -165,6 +170,7 @@ export class McpPlatformController {
           projectId: token.scope.projectId,
           environmentId: token.scope.environmentId,
           userId: userId ?? token.mintedByUserId,
+          principal: "operator",
         }),
       },
       this.permissionGateway,
@@ -204,6 +210,7 @@ export class McpPlatformController {
         // K.14 orchestration composites.
         goldenSet: this.goldenSet,
         prisma: this.prisma,
+        secretStore: this.secretStore,
         // K.17 macros — share the in-memory recording state with the
         // router's record-hook + pass a back-ref so `macros.replay`
         // re-dispatches each step through the same router.

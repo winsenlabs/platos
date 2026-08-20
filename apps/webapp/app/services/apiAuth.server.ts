@@ -10,7 +10,6 @@ import {
   findEnvironmentByApiKey,
   findEnvironmentByPublicApiKey,
 } from "~/models/runtimeEnvironment.server";
-import { type RuntimeEnvironmentForEnvRepo } from "~/v3/environmentVariables/environmentVariablesRepository.server";
 import { logger } from "./logger.server";
 import {
   type PATAuthenticationResult,
@@ -49,6 +48,12 @@ export type AuthenticatedEnvironment = Optional<
   NonNullable<Awaited<ReturnType<typeof findEnvironmentByApiKey>>>,
   "orgMember"
 >;
+
+type RuntimeEnvironmentForJwt = {
+  id: string;
+  organizationId: string;
+  projectId: string;
+};
 
 export type ApiAuthenticationResult =
   | ApiAuthenticationResultSuccess
@@ -670,7 +675,7 @@ const JWT_ALGORITHM = "HS256";
 const DEFAULT_JWT_EXPIRATION_IN_MS = 1000 * 60 * 60; // 1 hour
 
 export async function generateJWTTokenForEnvironment(
-  environment: RuntimeEnvironmentForEnvRepo,
+  environment: RuntimeEnvironmentForJwt,
   payload: Record<string, string>
 ) {
   const jwt = await new SignJWT({

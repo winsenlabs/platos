@@ -3,7 +3,7 @@
  *
  * Wraps Organization + Project + Environment + AgentCluster surfaces so an
  * operator can manage scope topology and clusters via MCP. Environment
- * credential operations remain registered but unavailable pending WIN-124.
+ * variables use the canonical Environment-owned variable and credential stores.
  *
  * Layout:
  *   • Org (7)          — list / get / update / list_members / add_member
@@ -21,7 +21,7 @@
  *   - clusters.create / clusters.add_agent
  *
  * Audit redaction discipline:
- *   - Unavailable secret writes return before any audit or persistence call.
+ *   - Secret writes audit only the variable name and safe result metadata.
  *   - Member operations log `memberId` + `role` — never email/name/avatar.
  *   - Cluster operations log `clusterId` + `agentId` only.
  *   - Read tools don't audit (Wave 1-5 pattern).
@@ -33,14 +33,6 @@ import type { ToolAuditService } from "../../monitoring/tool-audit.service";
 import type { OrganizationService } from "../../admin/organization.service";
 import type { EnvironmentService } from "../../admin/environment.service";
 import type { AgentClusterService } from "../../agent-runtime/agent-cluster.service";
-
-function environmentCredentialsUnavailable() {
-  return {
-    error: "unavailable",
-    message:
-      "Environment credential management is unavailable pending the canonical WIN-124 persistence cutover.",
-  } as const;
-}
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -437,18 +429,24 @@ export function buildSettingsToolHandlers(deps: {
     {
       name: "environments.list_secrets",
       description:
-        "Environment credential management is unavailable pending the " +
-        "canonical WIN-124 persistence cutover.",
+        "List Environment variable metadata for the caller's scope. Secret values are never returned.",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },
-      async execute() {
-        return environmentCredentialsUnavailable();
+      async execute(_params, scope) {
+        const reqScope = scope as RequestScope;
+        try {
+          const secrets = await envs.listSecrets(tuple(reqScope), reqScope.userId ?? null);
+          return { secrets, count: secrets.length };
+        } catch (err: any) {
+          if (err?.message === "access_denied") return { error: "access_denied" };
+          return { error: "list_failed", message: err?.message ?? String(err) };
+        }
       },
     },
     {
       name: "environments.set_secret",
+      macroRecordable: false,
       description:
-        "Environment credential management is unavailable pending the " +
-        "canonical WIN-124 persistence cutover.",
+        "Set an Environment-owned secret variable. The value is stored in Credential and never returned or audited.",
       inputSchema: {
         type: "object",
         required: ["name", "value"],
@@ -458,23 +456,53 @@ export function buildSettingsToolHandlers(deps: {
         },
         additionalProperties: false,
       },
-      async execute() {
-        return environmentCredentialsUnavailable();
+      async execute(params, scope) {
+        const startedAt = Date.now();
+        const reqScope = scope as RequestScope;
+        const name = String(params["name"]);
+        try {
+          const result = await envs.setSecret(tuple(reqScope), reqScope.userId ?? null, {
+            name,
+            value: String(params["value"]),
+          });
+          auditMutation(reqScope, "environments.set_secret", { name }, { ok: true, name }, "success", startedAt);
+          return result;
+        } catch (err: any) {
+          const message = err?.message ?? err?.code ?? String(err);
+          auditMutation(reqScope, "environments.set_secret", { name }, null, "failed", startedAt, message);
+          if (message === "access_denied") return { error: "access_denied" };
+          if (["name_invalid", "value_required", "value_too_long"].includes(message)) {
+            return { error: message };
+          }
+          return { error: "set_failed", message };
+        }
       },
     },
     {
       name: "environments.delete_secret",
       description:
-        "Environment credential management is unavailable pending the " +
-        "canonical WIN-124 persistence cutover.",
+        "Delete an Environment-owned variable by name. The operation is idempotent and audits only the name.",
       inputSchema: {
         type: "object",
         required: ["name"],
         properties: { name: { type: "string" } },
         additionalProperties: false,
       },
-      async execute() {
-        return environmentCredentialsUnavailable();
+      async execute(params, scope) {
+        const startedAt = Date.now();
+        const reqScope = scope as RequestScope;
+        const name = String(params["name"]);
+        try {
+          const result = await envs.deleteSecret(tuple(reqScope), reqScope.userId ?? null, { name });
+          auditMutation(reqScope, "environments.delete_secret", { name }, result, "success", startedAt);
+          return result;
+        } catch (err: any) {
+          const message = err?.message ?? err?.code ?? String(err);
+          auditMutation(reqScope, "environments.delete_secret", { name }, null, "failed", startedAt, message);
+          if (message === "access_denied") return { error: "access_denied" };
+          if (message === "name_invalid") return { error: "name_invalid" };
+          return { error: "delete_failed", message };
+        }
       },
     },
 

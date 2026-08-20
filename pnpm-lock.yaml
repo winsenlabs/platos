@@ -878,6 +878,9 @@ importers:
       ulidx:
         specifier: ^2.2.1
         version: 2.2.1
+      undici:
+        specifier: ^7.25.0
+        version: 7.25.0
       uuid:
         specifier: ^9.0.0
         version: 9.0.1
