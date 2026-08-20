@@ -337,6 +337,21 @@ export const AgentEnvSchema = z
     }),
     PLATOS_OTEL_STDOUT: boolLike,
 
+    // WIN-133 — the turn-shaped analytical projection (platos_observability).
+    // Declared here so the schema stays a complete inventory of what the
+    // process reads; the sink itself re-reads process.env per call so a
+    // rotated credential does not need a restart. Compose passes an unset
+    // variable as "", so the same preprocess shim the Sentry DSN uses applies.
+    PLATOS_OBSERVABILITY_CLICKHOUSE_URL: z.preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      z.string().url().optional()
+    ),
+    /** Fail startup when a configured sink cannot accept a write. Off by default. */
+    PLATOS_OBSERVABILITY_REQUIRE_SINK: boolLike,
+    PLATOS_OBSERVABILITY_BATCH_SIZE: optTrimmedString,
+    PLATOS_OBSERVABILITY_DRAIN_BATCH_SIZE: optTrimmedString,
+    PLATOS_OBSERVABILITY_MAX_ATTEMPTS: optTrimmedString,
+
     // Misc
     PLATOS_ALLOW_HTTP_WEBHOOKS: boolLike,
     PLATOS_SECRETS_TMP_DIR: optTrimmedString,

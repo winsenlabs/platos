@@ -7,10 +7,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **206** across **35** namespaces (24 admin-tier).
-- REST operations: **287** unique method/path pairs from **288** route bindings.
+- REST operations: **288** unique method/path pairs from **289** route bindings.
 - Ambiguous duplicate REST method/path pairs: **1**.
 - MCP classifications: MAPPED=83, MCP_ONLY=123.
-- REST classifications: DEPRECATED=13, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=134.
+- REST classifications: DEPRECATED=13, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=135.
 
 ## REST inventory
 
@@ -143,6 +143,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/monitoring/dlq/drain` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#drainDlq` |
 | `GET /api/v1/agent/monitoring/governance` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#governanceDashboard` |
 | `GET /api/v1/agent/monitoring/memory-extraction/health` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#memoryExtractionHealth` |
+| `GET /api/v1/agent/monitoring/observability/status` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#observabilityStatus` |
 | `GET /api/v1/agent/monitoring/safety-events` | MAPPED | `audit.safety_events.query` | Reviewed behavioral equivalence: the REST adapter and audit.safety_events.query invoke the same scope-pinned monitoring audit query; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listSafetyEvents` |
 | `GET /api/v1/agent/monitoring/summary` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#monitoringSummary` |
 | `GET /api/v1/agent/monitoring/tool-audit` | MAPPED | `audit.tool_calls.query` | Reviewed behavioral equivalence: the REST adapter and audit.tool_calls.query invoke the same scope-pinned monitoring audit query; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listToolAudit` |

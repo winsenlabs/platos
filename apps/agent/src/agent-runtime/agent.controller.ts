@@ -39,6 +39,8 @@ import { CostService } from "../monitoring/cost.service";
 import { assertCostCatalogIngestion } from "../monitoring/cost-catalog-ingestion";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 import { SpansService } from "../monitoring/spans.service";
+import { ObservabilityService } from "../observability/observability.service";
+import { failedDrainSummary } from "../observability/observability-outbox";
 import { TraceService } from "../monitoring/trace.service";
 import { UtilizationService } from "../monitoring/utilization.service";
 import { ToolAuditService } from "../monitoring/tool-audit.service";
@@ -159,6 +161,8 @@ export class AgentController {
     // missing, retrieval blocks fail-open to empty per PromptBuilder policy.
     // PRA-AC — cluster management
     private readonly clusterService: AgentClusterService,
+    // WIN-133 — turn-shaped analytical projection: outbox drain + sink health.
+    private readonly observability: ObservabilityService,
     // RG.1.5 — optional SkillRuntimeService (must come last — optional params follow required)
     @Optional() private readonly skillRuntime?: SkillRuntimeService,
     // MCP-connected-entity (design Commit 5) — kicks discovery on mcp-kind
@@ -3009,6 +3013,12 @@ export class AgentController {
         cacheReadInputTokens: r.cacheReadInputTokens,
         cacheCreationInputTokens: r.cacheCreationInputTokens,
         reasoningTokens: r.reasoningTokens,
+        // WIN-134 — derived by the ledger, once. The governance page used to
+        // subtract the cache lanes itself over these same rows, and the chat
+        // inspector subtracted them again per step, so the same label showed
+        // 3 on one panel and 9 on another for one turn.
+        noCacheInputTokens: r.noCacheInputTokens,
+        tasks: r.tasks,
       },
     ]));
 
@@ -3159,6 +3169,8 @@ export class AgentController {
         cacheReadInputTokens: 0,
         cacheCreationInputTokens: 0,
         reasoningTokens: 0,
+        noCacheInputTokens: 0,
+        tasks: 0,
       };
       return {
         userId: b.userId,
@@ -3175,6 +3187,10 @@ export class AgentController {
         cacheReadInputTokens: tokens.cacheReadInputTokens,
         cacheCreationInputTokens: tokens.cacheCreationInputTokens,
         reasoningTokens: tokens.reasoningTokens,
+        noCacheInputTokens: tokens.noCacheInputTokens,
+        // Completed turns, from the ledger. `totalTurns` above counts every
+        // Turn row including the ones that never reached a model.
+        tasks: tokens.tasks,
         riskFlagCount,
         score,
       };
@@ -3429,9 +3445,17 @@ export class AgentController {
     const lastActiveByAgent = new Map<string, Date | null>();
     for (const g of lastActiveGroups) lastActiveByAgent.set(g.agentId, g._max?.updatedAt ?? null);
 
-    // cost + tokens per agent
+    // cost + tokens per agent — straight off the ledger's rollup, including
+    // the task count, so this card and the usage page cannot disagree.
     const costByAgent = new Map(
-      costRows.map((r) => [r.agentId, { costCents: r.costCents, totalTokens: r.inputTokens + r.outputTokens }]),
+      costRows.map((r) => [
+        r.agentId,
+        {
+          costCents: r.costCents,
+          totalTokens: r.inputTokens + r.outputTokens,
+          tasks: r.tasks,
+        },
+      ]),
     );
 
     // satisfaction per agent
@@ -3455,6 +3479,7 @@ export class AgentController {
         status,
         threads: threadsPerAgent.get(a.id) ?? 0,
         messages: messagesPerAgent.get(a.id) ?? 0,
+        tasks: cost?.tasks ?? 0,
         costCents: cost?.costCents ?? 0,
         totalTokens: cost?.totalTokens ?? 0,
         satisfaction: sat && sat.total > 0 ? { ups: sat.ups, downs: sat.downs, score: sat.score } : null,
@@ -4438,7 +4463,8 @@ Write the summary now:`;
       // RequestScope via `body.scope as any` below and rides through to the
       // tool executor's `__platos` envelope unchanged. SessionScope
       // (session-scope.ts) is the single source of truth for the carried set —
-      // userToken, entityId, principal, userIdentities, sessionContext.
+      // userToken, entityId, principal, userIdentities, sessionContext,
+      // signedUserMeta.
       scope: SessionScope & { agentId?: string; threadId?: string };
     },
   ) {
@@ -4757,6 +4783,13 @@ Write the summary now:`;
    * and count per-DLQ successes + permanent failures. Permanent
    * failures (after N internal attempts) move to a `:dead` list for
    * manual operator review.
+   *
+   * WIN-133 — this endpoint now also drains the durable observability outbox.
+   * The two queues are different in kind and the response keeps them apart:
+   * the Redis span DLQ is a best-effort hold-queue that drops its oldest
+   * entries under pressure, while `ObservabilityOutbox` is a Postgres table
+   * that never drops a row and parks what it cannot deliver. Reporting them as
+   * one number would let a bounded loss hide inside an unbounded guarantee.
    */
   @Post("monitoring/dlq/drain")
   async drainDlq(
@@ -4810,7 +4843,74 @@ Write the summary now:`;
       /* cost DLQ not yet wired — tolerate */
     }
 
-    return { status: "ok", drained, deadLettered };
+    // The outbox drain reports its own summary rather than folding into the
+    // two counters above: `parked` is a number that has to be explained, and
+    // `skipped` is the honest answer when the sink is absent or unreachable.
+    //
+    // A THROWN DRAIN IS A FAILURE, NOT A SKIP. It used to be folded into the
+    // same `skipped` field the benign states use, under an HTTP 200 `ok`, and
+    // the only consumer logs every `skipped` value at warn under "not an
+    // error". So a drain throwing on every pass — `settle()` failing against
+    // Postgres mid-loop, which aborts the pass and leaves every claimed row
+    // untouched — was indistinguishable from "no observability sink
+    // configured" and produced no error-level signal anywhere.
+    const observability = await this.observability
+      .drain(maxBatch)
+      .catch((err: unknown) =>
+        failedDrainSummary(`drain threw (${err instanceof Error ? err.name : "Error"})`),
+      );
+
+    return {
+      // The envelope's own status. A failed outbox drain is not an `ok` pass,
+      // whatever the two Redis queues did.
+      status: observability.failure ? "degraded" : "ok",
+      drained,
+      deadLettered,
+      observability,
+    };
+  }
+
+  /**
+   * WIN-133 — Admin: observability sink health and outbox depth.
+   *
+   * The endpoint `agent-runtime.module.ts` claims exists. Without it, `status()`
+   * had no caller outside its own test and `tables()` had none at all, so the
+   * outbox's durable backlog was invisible: `parked` in the drain summary counts
+   * rows parked during THAT pass, and the claim query filters on PENDING, so a
+   * row parked at 09:00 was announced once and never again.
+   *
+   * Same `X-Platos-Internal-Auth` gate as the drain beside it: queue depth is an
+   * operational number across every tenant, not a scoped one.
+   */
+  @Get("monitoring/observability/status")
+  async observabilityStatus(@Req() req: Request) {
+    const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
+    if (!expected) {
+      return { status: "skipped", reason: "PLATOS_INTERNAL_AUTH_TOKEN not set" };
+    }
+    const provided = req.headers["x-platos-internal-auth"];
+    const isValid =
+      typeof provided === "string" &&
+      provided.length === expected.length &&
+      (() => {
+        try {
+          return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+        } catch {
+          return false;
+        }
+      })();
+    if (!isValid) {
+      return { status: "forbidden" };
+    }
+    const report = await this.observability.status();
+    return {
+      status: "ok",
+      sink: report.sink,
+      queue: report.queue,
+      ...(report.queueError ? { queueError: report.queueError } : {}),
+      tables: this.observability.tables(),
+      fetchedAt: new Date().toISOString(),
+    };
   }
 
   /**
@@ -4951,12 +5051,26 @@ Write the summary now:`;
           },
         },
         {
+          // WIN-134 — a task is ONE COMPLETED TURN. The number that made this
+          // card necessary counted tool calls, so an agent that searched, read
+          // three documents and replied was reported as having done five jobs.
+          // It comes from the ledger's task counter, which only a completed
+          // turn increments.
+          id: "tasks_7d",
+          label: "Tasks completed (7d)",
+          value: cost7d.tasks,
+          unit: "tasks",
+        },
+        {
           id: "tools_active_7d",
           label: "Active tools (7d)",
           value: activeToolsRows.length,
           unit: "tools",
         },
       ],
+      // The lane split sums back to the spend card by construction — see
+      // `laneCostsFromRollup`, where inference is the residual.
+      costByLane: cost7d.byLane,
       costSeries: cost7d.perDay,
       fetchedAt: new Date().toISOString(),
     };

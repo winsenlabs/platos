@@ -761,9 +761,19 @@ export default function PlatoCentral() {
       data.utilization.newVsReturningUsers.returningUsers
     : null;
 
-  const spendCents = data.scorecard
-    ? data.scorecard.agents.reduce((s, a) => s + a.costCents, 0)
-    : data.costByAgent.reduce((s, a) => s + a.costCents, 0);
+  // WIN-134 — the ledger's scope window, which is the same figure the "Spend /
+  // day" chart twelve lines below is drawn from.
+  //
+  // This used to sum the per-agent rows, and the two disagreed structurally
+  // rather than by rounding: auxiliary spend is recorded with no agentId —
+  // EmbeddingService calls `recordAuxiliaryCost` without one — so it lands in
+  // the scope rollup and in no per-agent key. Every embedding cent was in the
+  // chart and missing from the KPI directly above it, plus any agent that fell
+  // outside the list. A surface that reports usage reads the ledger; it does no
+  // arithmetic of its own. `null` when the agent is unreachable, because "—" is
+  // honest and a number derived from a different field is not.
+  const spendCents =
+    data.summary?.cards.find((c) => c.id === "cost_7d")?.value ?? null;
 
   const satAgg = useMemo(() => {
     if (!data.scorecard) return null;
@@ -911,8 +921,11 @@ export default function PlatoCentral() {
           <KpiTile
             icon={<CurrencyDollarIcon className="size-3.5" />}
             label="Spend"
-            value={fmtCents(spendCents)}
-            sub={rangeLabel}
+            value={spendCents === null ? "—" : fmtCents(spendCents)}
+            // The window the ledger reported, not the one the range picker
+            // selected: the tile and the chart below it describe the same seven
+            // days, which is the whole point of reading one figure.
+            sub="last 7d"
             accent="text-amber-300"
             delta={spendDelta}
             positiveIsGood={false}

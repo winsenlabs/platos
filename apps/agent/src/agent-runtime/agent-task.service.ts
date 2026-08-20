@@ -21,7 +21,11 @@ import { env } from "../shared/env";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 import { ProviderRuntimeError } from "../providers/provider-runtime.error";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
+import { freshInputTokens } from "../monitoring/usage-ledger";
 import { randomUUID } from "node:crypto";
+
+/** The one stream event AgentTaskService consumes rather than forwards. */
+type SubAgentUsageEvent = Extract<AgentStreamEvent, { type: "sub_agent_usage" }>;
 
 export const TURN_MUTEX_TTL_MS = 30_000;
 export const TURN_MUTEX_HEARTBEAT_MS = 10_000;
@@ -786,6 +790,11 @@ export class AgentTaskService {
     // reasoning). Zero on non-reasoning models.
     let totalReasoningTokens = 0;
     const toolCallsLog: any[] = [];
+    // WIN-134 — priced sub-agent model calls, in the order they happened. They
+    // are already in Redis by the time they arrive here; this is the copy that
+    // becomes Step rows on the parent's Turn so the durable ledger and the
+    // rollups describe the same spend.
+    const subAgentSteps: SubAgentUsageEvent[] = [];
     // Theme F.5 — when the agent returns a structured output, capture the
     // validated object + attempt count so it lands in the normalized Turn output.
     let structuredOutput: { object: unknown; attempts: number } | null = null;
@@ -863,6 +872,13 @@ export class AgentTaskService {
         totalCacheReadTokens += usage.cacheReadInputTokens || 0;
         // PRELAUNCH-A1-3 — reasoning tokens.
         totalReasoningTokens += usage.reasoningTokens || 0;
+      }
+
+      // WIN-134 — ledger plumbing, not a UI event. Collected here and turned
+      // into Step rows below; never forwarded.
+      if (event.type === "sub_agent_usage") {
+        subAgentSteps.push(event);
+        continue;
       }
 
       // AgentService owns model streaming, but AgentTaskService owns the
@@ -988,6 +1004,24 @@ export class AgentTaskService {
       },
       costCents: costWithCacheCents,
       pricing: pricedUsage.price,
+      // WIN-134 — every sub-agent model call this turn made, as its own Step
+      // on this Turn, priced at its own model's rates. Sub-agent spend used to
+      // reach Redis and nothing else, so `Turn.costCents` (the canary panel)
+      // reported less than the per-agent card for the same agent, and a day
+      // rebuilt from Postgres was permanently short by the missing dollars.
+      additionalSteps: subAgentSteps.map((step) => ({
+        model: step.model,
+        provider: step.provider ?? null,
+        startedAt: new Date(step.startedAt),
+        completedAt: new Date(step.completedAt),
+        inputTokens: step.inputTokens,
+        outputTokens: step.outputTokens,
+        cacheCreationInputTokens: step.cacheCreationInputTokens,
+        cacheReadInputTokens: step.cacheReadInputTokens,
+        reasoningTokens: step.reasoningTokens,
+        costCents: step.costCents,
+        pricing: step.pricing,
+      })),
       latencyMs: Date.now() - turnStartMs,
       structuredOutput: structuredOutput
         ? { object: structuredOutput.object, attempts: structuredOutput.attempts }
@@ -1055,12 +1089,17 @@ export class AgentTaskService {
     //     are fire-and-forget to the budget-alert trigger.dev task so
     //     webhook + email delivery never blocks the turn.
     try {
-      // ONE SOURCE OF TRUTH (see monitoring/billable-usage.ts). This passed
+      // ONE SOURCE OF TRUTH (see monitoring/usage-ledger.ts). This passed
       // `costCents`, the NAIVE figure that prices only fresh input + output and
       // ignores cache reads and writes entirely. Budgets were therefore enforced
       // against a number that understates real spend — measured 2.47c against
       // 25.70c actual on 2026-07-31, so a cap could not trip. The gap widens as
       // caching improves, so fixing prompt caching quietly disabled budgets.
+      //
+      // WIN-134 — the cost fan-out now happens exactly once, in
+      // CostService.recordUsage above. This call records the completed TURN
+      // against the user's run counter; passing the cost here as well is what
+      // doubled the per-user naive total.
       await this.budgetService.recordUserSpend(scopeTuple, scope.userId, costWithCacheCents);
       const evalAfter = await this.budgetService.evaluate(scopeTuple, {
         agentId,
@@ -1200,9 +1239,10 @@ export class AgentTaskService {
       // PRELAUNCH-A1-12 — emit one counter per (direction, kind) tuple.
       // `text` is the fresh-token slice (input − cache_read − cache_write
       // for input; output − reasoning for output).
-      const noCacheInput = Math.max(
-        0,
-        totalInputTokens - totalCacheReadTokens - totalCacheCreationTokens,
+      const noCacheInput = freshInputTokens(
+        totalInputTokens,
+        totalCacheReadTokens,
+        totalCacheCreationTokens,
       );
       const textOutputTokens = Math.max(0, totalOutputTokens - totalReasoningTokens);
       if (noCacheInput > 0) {

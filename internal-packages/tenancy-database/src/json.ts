@@ -45,6 +45,7 @@ export const jsonShapeRegistry = {
   "Turn.output": object("Structured final turn output."),
   "ToolCall.arguments": object("Validated tool arguments."),
   "ToolCall.result": objectOrArray("Structured tool result."),
+  "ObservabilityOutbox.payload": object("Redacted turn-shaped analytical projection."),
   "Artifact.metadata": object("Non-secret artifact attributes."),
   "ChannelConnection.agentRouting": array("Typed channel routing rules."),
   "ChannelApp.agentRouting": array("Typed channel routing rules."),

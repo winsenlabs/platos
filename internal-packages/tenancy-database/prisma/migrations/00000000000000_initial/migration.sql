@@ -4089,3 +4089,64 @@ BEGIN
 END;
 $$;
 CREATE TRIGGER "Step_price_snapshot" BEFORE INSERT OR UPDATE ON "public"."Step" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_step_price_snapshot"();
+
+-- -----------------------------------------------------------------------------
+-- WIN-133 (M3.1) — durable delivery queue for the analytical observability
+-- projection (docs/observability-model.md).
+--
+-- The row is written inside the transaction that finalizes its Turn, so a
+-- projection is never promised for uncommitted work and committed work never
+-- loses its projection to a sink that was down. This table names no analytical
+-- store: which one is configured, if any, is a runtime concern and the
+-- transactional schema stays independent of it.
+--
+-- The Turn foreign key CASCADES deliberately. Erasure deletes the subject's
+-- Threads and Turns; an undelivered row surviving that would project a
+-- just-erased identity into the analytical store after the erasure mutation
+-- had already run and been verified.
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE "public"."ObservabilityOutbox" (
+  "id" UUID NOT NULL,
+  "turnId" UUID NOT NULL,
+  "organizationId" UUID NOT NULL,
+  "payloadVersion" INTEGER NOT NULL DEFAULT 1,
+  "payload" JSONB NOT NULL,
+  "status" TEXT NOT NULL DEFAULT 'PENDING',
+  "attempts" INTEGER NOT NULL DEFAULT 0,
+  "availableAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "lastErrorCode" TEXT,
+  "deliveredAt" TIMESTAMP(3),
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+
+  CONSTRAINT "ObservabilityOutbox_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "ObservabilityOutbox_turnId_key"
+  ON "public"."ObservabilityOutbox"("turnId");
+CREATE INDEX "ObservabilityOutbox_status_availableAt_idx"
+  ON "public"."ObservabilityOutbox"("status", "availableAt");
+CREATE INDEX "ObservabilityOutbox_organizationId_status_idx"
+  ON "public"."ObservabilityOutbox"("organizationId", "status");
+CREATE INDEX "ObservabilityOutbox_deliveredAt_idx"
+  ON "public"."ObservabilityOutbox"("deliveredAt");
+
+ALTER TABLE "public"."ObservabilityOutbox"
+  ADD CONSTRAINT "ObservabilityOutbox_status_check"
+  CHECK ("status" IN ('PENDING', 'DELIVERED', 'FAILED'));
+
+-- A delivered row carries its acknowledgement timestamp and an undelivered one
+-- must not. Without this, "delivered" is a label a bug can apply for free.
+ALTER TABLE "public"."ObservabilityOutbox"
+  ADD CONSTRAINT "ObservabilityOutbox_delivery_check"
+  CHECK (("status" = 'DELIVERED') = ("deliveredAt" IS NOT NULL));
+
+ALTER TABLE "public"."ObservabilityOutbox"
+  ADD CONSTRAINT "ObservabilityOutbox_payload_json_root"
+  CHECK (jsonb_typeof("payload") = 'object');
+
+ALTER TABLE "public"."ObservabilityOutbox"
+  ADD CONSTRAINT "ObservabilityOutbox_turnId_fkey"
+  FOREIGN KEY ("turnId") REFERENCES "public"."Turn"("id")
+  ON DELETE CASCADE ON UPDATE CASCADE;

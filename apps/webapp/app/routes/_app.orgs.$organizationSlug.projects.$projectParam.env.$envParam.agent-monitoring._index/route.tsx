@@ -92,7 +92,14 @@ type SummaryPayload = {
     costWithCacheCents?: number;
     cacheCreationInputTokens?: number;
     cacheReadInputTokens?: number;
+    noCacheInputTokens?: number;
+    tasks?: number;
   }>;
+  /**
+   * WIN-134 — spend split by lane. `inference` is the residual of the same
+   * billable total the spend card shows, so the split cannot disagree with it.
+   */
+  costByLane?: Record<"inference" | "embedding" | "extraction" | "judge" | "skill", number>;
   fetchedAt: string;
 };
 
@@ -104,7 +111,8 @@ type CostByModelRow = {
   outputTokens: number;
   cacheCreationInputTokens?: number;
   cacheReadInputTokens?: number;
-  messages: number;
+  /** Completed turns. Was `messages`, and counted model calls. */
+  tasks: number;
 };
 
 type CostByAgentRow = {
@@ -122,7 +130,7 @@ type CostByAgentRow = {
 type CostByUserRow = {
   userId: string;
   costCents: number;
-  messages: number;
+  tasks: number;
   threads: number;
 };
 
@@ -687,10 +695,22 @@ function MessagesTrend({ data }: { data: UtilizationPayload["messagesByDay"] }) 
   );
 }
 
-function CostSparkline({ series }: { series: SummaryPayload["costSeries"] }) {
+function CostSparkline({
+  series,
+  byLane,
+}: {
+  series: SummaryPayload["costSeries"];
+  byLane?: SummaryPayload["costByLane"];
+}) {
   if (!series || series.length === 0) return null;
   const days = [...series].reverse(); // oldest → newest
   const maxCost = Math.max(1, ...days.map((d) => d.costCents));
+  // WIN-134 — the lane split arrives already summing to the spend card, because
+  // `inference` is the residual of the same total. Nothing is re-derived here;
+  // lanes that saw no spend are dropped rather than rendered as zeros.
+  const lanes = byLane
+    ? (Object.entries(byLane) as Array<[string, number]>).filter(([, cents]) => cents > 0)
+    : [];
   return (
     <div className="rounded-lg border border-charcoal-700 bg-charcoal-850 p-4">
       <p className="mb-2 text-xs text-text-dimmed">Spend last 7 days (cents / day)</p>
@@ -709,6 +729,15 @@ function CostSparkline({ series }: { series: SummaryPayload["costSeries"] }) {
           );
         })}
       </div>
+      {lanes.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text-dimmed">
+          {lanes.map(([lane, cents]) => (
+            <span key={lane}>
+              {lane} <span className="font-mono text-text-bright">{fmtCents(cents)}</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -800,36 +829,33 @@ export default function AgentMonitoringPage() {
   const cards = data.summary?.cards ?? [];
   const costSeries = data.summary?.costSeries ?? [];
 
-  // MC.3 — aggregate cache token + savings totals from the per-day series.
-  // Savings = cache_read_tokens * 0.9 * average_input_rate (the user's
-  // avoided spend vs paying full input price). We back into the average
-  // input rate from the naive costCents + inputTokens totals rather than
-  // calling LiteLLM from the browser. Zero when no cache activity.
+  // WIN-134 — the cache tiles report what is measured and nothing else.
+  //
+  // This used to also render a "cache savings (USD)" figure, derived by
+  // dividing the window's cost by its input tokens to invent an average input
+  // rate and multiplying that by 0.9. Cost is now the cache-aware figure and
+  // `inputTokens` is inclusive of the cache slice, so that ratio is not an
+  // input rate — it is a discounted blend divided by an inflated denominator,
+  // and the "savings" it produced were wrong in both directions depending on
+  // hit rate. Real savings need per-model rates, which the scope rollup does
+  // not carry; a number nobody can derive should not be on a billing page.
+  //
+  // The naive-vs-with-cache pair is gone too: both fields now carry the same
+  // four-rate cost, so summing them separately was a fourth independent
+  // arithmetic over data that already agreed.
   const cacheStats = useMemo(() => {
     let created = 0;
     let read = 0;
-    let naiveCents = 0;
-    let withCacheCents = 0;
     let inputTokens = 0;
     for (const d of costSeries) {
       created += d.cacheCreationInputTokens ?? 0;
       read += d.cacheReadInputTokens ?? 0;
-      naiveCents += d.costCents ?? 0;
-      withCacheCents += d.costWithCacheCents ?? d.costCents ?? 0;
       inputTokens += d.inputTokens ?? 0;
     }
-    // Back-of-napkin: per-million-token input rate (cents) derived from
-    // historical rows in the window. Falls back to 200c/M (rough Sonnet
-    // rate) if we somehow have cache tokens without any paid input.
-    const inputRateCentsPerMillion =
-      inputTokens > 0 ? (naiveCents / inputTokens) * 1_000_000 : 200;
-    const savingsCents = (read / 1_000_000) * inputRateCentsPerMillion * 0.9;
     return {
       created,
       read,
-      savingsCents: Math.max(0, Math.round(savingsCents * 100) / 100),
-      withCacheCents,
-      naiveCents,
+      hitPercent: inputTokens > 0 ? Math.round((read / inputTokens) * 1000) / 10 : 0,
     };
   }, [costSeries]);
   const agentNameById = useMemo(() => {
@@ -1007,14 +1033,10 @@ export default function AgentMonitoringPage() {
             />
             <StatCard
               card={{
-                id: "cache_savings",
-                label: "Cache savings (USD)",
-                value: cacheStats.savingsCents,
-                unit: "cents",
-                details: {
-                  naiveSpendCents: Math.round(cacheStats.naiveCents * 100) / 100,
-                  billedCents: Math.round(cacheStats.withCacheCents * 100) / 100,
-                },
+                id: "cache_hit_rate",
+                label: "Cache hit rate",
+                value: cacheStats.hitPercent,
+                unit: "%",
               }}
             />
           </div>
@@ -1022,7 +1044,7 @@ export default function AgentMonitoringPage() {
 
         {/* Row 2: cost sparkline + messages-per-day trend */}
         <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <CostSparkline series={costSeries} />
+          <CostSparkline series={costSeries} byLane={data.summary?.costByLane} />
           <div className="rounded-lg border border-charcoal-700 bg-charcoal-850 p-4">
             <PanelHeading
               icon={<ChartBarIcon className="size-4 text-emerald-400" />}
@@ -1079,7 +1101,7 @@ export default function AgentMonitoringPage() {
                   <HBar
                     key={row.model}
                     label={row.model}
-                    sublabel={`${fmtNum(row.inputTokens)} in / ${fmtNum(row.outputTokens)} out · ${row.messages} msg`}
+                    sublabel={`${fmtNum(row.inputTokens)} in / ${fmtNum(row.outputTokens)} out · ${row.tasks} task(s)`}
                     value={row.costCents}
                     maxValue={maxModelCost}
                     colour="bg-rose-500/60"
@@ -1133,7 +1155,7 @@ export default function AgentMonitoringPage() {
                   <HBar
                     key={row.userId}
                     label={row.userId}
-                    sublabel={`${row.messages} msg · ${row.threads} thread(s)`}
+                    sublabel={`${row.tasks} task(s) · ${row.threads} thread(s)`}
                     value={row.costCents}
                     maxValue={maxUserCost}
                     colour="bg-amber-500/60"

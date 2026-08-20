@@ -29,6 +29,12 @@ import type {
 } from "./budget-alert.types";
 import { ScopedEnvService } from "../providers/scoped-env.service";
 import { sendAlertEmail } from "./alert-email-delivery";
+import {
+  billableCostFromRollup,
+  ROLLUP_FIELD,
+  usageFromRollup,
+  type RollupHash,
+} from "./usage-ledger";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -319,12 +325,19 @@ export class BudgetService {
   // ═══════════════════════════════════════════════════════
 
   /**
-   * Record a spend event against the per-user counter. Called right after
+   * Record one completed turn against the per-user counter. Called right after
    * CostService.recordUsage so user-level budgets have a live source.
    *
-   * Idempotency: append-only like CostService — rerun of a turn
-   * double-counts. Postgres (`PlatosAgentMessage.responseJson`) remains the
-   * durable source; this Redis counter is the fast path for budget checks.
+   * WIN-134 — this used to ALSO bump `cost_cents` on the very key
+   * `CostService.recordUsage` had just bumped with the same charge, so the
+   * per-user naive total ran at exactly 2x while the cache-aware total ran at
+   * 1x. Two writers, one field, and every per-user cost surface reading the
+   * doubled one. CostService is now the sole writer of user cost; this method
+   * owns the turn counter and nothing else.
+   *
+   * Idempotency: append-only like CostService — a rerun of a turn
+   * double-counts. The Turn/Step ledger in Postgres remains the durable
+   * source; this Redis counter is the fast path for budget checks.
    */
   async recordUserSpend(
     scope: ScopeTuple,
@@ -336,8 +349,7 @@ export class BudgetService {
     const today = new Date().toISOString().slice(0, 10);
     const key = `cost:user:${s}:${userId}:${today}`;
     const pipeline = this.redis.pipeline();
-    pipeline.hincrbyfloat(key, "cost_cents", costCents);
-    pipeline.hincrby(key, "runs", 1);
+    pipeline.hincrby(key, ROLLUP_FIELD.legacyTasks, 1);
     pipeline.expire(key, 86400 * 90);
     await pipeline.exec();
   }
@@ -882,14 +894,21 @@ export class BudgetService {
     const spentEntries = results?.slice(0, keys.length) ?? [];
     const reservedEntries = results?.slice(keys.length) ?? [];
     for (const entry of spentEntries) {
-      const raw = (entry?.[1] as Record<string, string> | undefined) ?? {};
-      spentCents += parseFloat(raw.cost_cents || "0");
-      runs += parseInt(raw.runs || raw.calls || "0", 10);
+      const raw = (entry?.[1] as RollupHash | undefined) ?? {};
+      // WIN-134 — enforcement reads the CACHE-AWARE figure. It read
+      // `cost_cents` directly, which prices fresh input and output only:
+      // measured 2.47c against 25.70c actual, so a cap could not trip. The
+      // ledger owns the preference so this cannot drift back.
+      spentCents += billableCostFromRollup(raw);
+      // A run limit counts completed turns, not model calls. `calls` is bumped
+      // by embeddings, compaction and thread auto-naming too, so reading it
+      // here made a runs-cap trip on work the user never asked for.
+      runs += usageFromRollup(raw).tasks;
     }
     let reservedCents = 0;
     for (const entry of reservedEntries) {
-      const raw = (entry?.[1] as Record<string, string> | undefined) ?? {};
-      const r = parseFloat(raw.cost_cents || "0");
+      const raw = (entry?.[1] as RollupHash | undefined) ?? {};
+      const r = billableCostFromRollup(raw);
       // Clamp negatives — over-settlement bug shouldn't drive the counter
       // negative and hide real spend from the cap evaluation.
       if (r > 0) reservedCents += r;
@@ -1172,8 +1191,8 @@ export class BudgetService {
     const results = await pipeline.exec();
     let spentCents = 0;
     for (const entry of results ?? []) {
-      const raw = (entry?.[1] as Record<string, string> | undefined) ?? {};
-      spentCents += parseFloat(raw.cost_cents || "0");
+      const raw = (entry?.[1] as RollupHash | undefined) ?? {};
+      spentCents += billableCostFromRollup(raw);
     }
     return spentCents;
   }

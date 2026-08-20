@@ -11,6 +11,26 @@ import {
   type PricedModelUsage,
 } from "@platos/tenancy-database";
 import { assertCredibleLiteLLMCatalog } from "./litellm-catalog-validation";
+import {
+  addLanes,
+  addUsage,
+  billableCostFromRollup,
+  EMPTY_USAGE,
+  freshInputTokens,
+  isCompletedTask,
+  laneCostsFromRollup,
+  laneRollupField,
+  laneForAuxiliaryKind,
+  roundCents,
+  roundLanes,
+  ROLLUP_FIELD,
+  usageFromRollup,
+  usageFromStep,
+  USAGE_LANES,
+  type RollupHash,
+  type UsageLane,
+  type UsageWindow,
+} from "./usage-ledger";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -49,10 +69,12 @@ type ModelCostBucket = {
   outputTokens: number;
   cacheCreationInputTokens: number;
   cacheReadInputTokens: number;
-  messages: number;
+  /** Completed turns. This counted model calls and was labelled "messages". */
+  tasks: number;
 };
 
-type AgentCostBucket = Omit<ModelCostBucket, "messages"> & {
+type AgentCostBucket = Omit<ModelCostBucket, "tasks"> & {
+  tasks: number;
   threads: Set<string>;
 };
 
@@ -60,6 +82,7 @@ type UserCostBucket = {
   costCents: number;
   turns: Set<string>;
   threads: Set<string>;
+  tasks: number;
   inputTokens: number;
   outputTokens: number;
   cacheReadInputTokens: number;
@@ -420,7 +443,26 @@ export class CostService {
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const s = scopeKey(scope);
     const pipeline = this.redis.pipeline();
+    // WIN-134 — A TASK IS ONE COMPLETED TURN, and `recordUsage` has two call
+    // sites, not one. The second is `runSubAgent`, reached from the
+    // `delegate_to_sub_agent` TOOL the parent model calls — once per
+    // delegation, any number of times inside a single turn, against the same
+    // thread and the same (parent) agentId. Bumping `tasks` there reported a
+    // turn that delegated three times as four tasks on the summary card, on the
+    // per-agent and per-model rollups, and as four runs against a turns-limit
+    // budget cap. That is the "322 tasks" bug in its exact original shape: a
+    // per-model-call increment read as a billable-unit count.
+    //
+    // `subAgentLabel` is the marker for "this is a model call inside somebody
+    // else's turn". Those bump `calls` — the raw model-invocation counter — and
+    // never `tasks`. It still does not change the BILLING attribution: that
+    // remains the parent's agentId, per THEME_E §E.9.
+    const countsAsTask = !options.subAgentLabel;
+    const bumpTasks = (key: string) => {
+      if (countsAsTask) pipeline.hincrby(key, ROLLUP_FIELD.tasks, 1);
+    };
     // thread-level rollup
+    bumpTasks(`cost:thread:${threadId}`);
     pipeline.hincrby(`cost:thread:${threadId}`, "input_tokens", inputTokens);
     pipeline.hincrby(`cost:thread:${threadId}`, "output_tokens", outputTokens);
     pipeline.hincrbyfloat(`cost:thread:${threadId}`, "cost_cents", costCents);
@@ -435,6 +477,7 @@ export class CostService {
     pipeline.expire(`cost:thread:${threadId}`, 86400 * 30); // 30 day TTL
     // scope-level daily rollup
     const scopeKeyStr = `cost:scope:${s}:${today}`;
+    bumpTasks(scopeKeyStr);
     pipeline.hincrby(scopeKeyStr, "input_tokens", inputTokens);
     pipeline.hincrby(scopeKeyStr, "output_tokens", outputTokens);
     pipeline.hincrbyfloat(scopeKeyStr, "cost_cents", costCents);
@@ -446,6 +489,7 @@ export class CostService {
     // Exact per-model attribution. Step preserves model + total tokens, while
     // this hash preserves the historical priced/cache breakdown.
     const scopeModelKey = `cost:model:${s}:${model}:${today}`;
+    bumpTasks(scopeModelKey);
     pipeline.hincrby(scopeModelKey, "input_tokens", inputTokens);
     pipeline.hincrby(scopeModelKey, "output_tokens", outputTokens);
     if (cacheCreation > 0) {
@@ -473,6 +517,7 @@ export class CostService {
     // per-agent daily rollup (E.9)
     if (agentId) {
       const agentKey = `cost:agent:${s}:${agentId}:${today}`;
+      bumpTasks(agentKey);
       pipeline.hincrby(agentKey, "input_tokens", inputTokens);
       pipeline.hincrby(agentKey, "output_tokens", outputTokens);
       pipeline.hincrbyfloat(agentKey, "cost_cents", costCents);
@@ -500,6 +545,7 @@ export class CostService {
     // Per-end-user daily rollup. Pattern: cost:user:<s>:<userId>:<day>
     if (options.userId) {
       const userKey = `cost:user:${s}:${options.userId}:${today}`;
+      bumpTasks(userKey);
       pipeline.hincrbyfloat(userKey, "cost_cents", costCents);
       pipeline.hincrbyfloat(userKey, "cost_with_cache_cents", costWithCacheCents);
       pipeline.hincrby(userKey, "input_tokens", inputTokens);
@@ -513,10 +559,6 @@ export class CostService {
     }
     await pipeline.exec();
 
-    // subAgentLabel is a diagnostic tag only — the billing attribution
-    // (agentId) is the parent's id. Referenced to keep the type check honest.
-    void options.subAgentLabel;
-
     return record;
   }
 
@@ -529,14 +571,28 @@ export class CostService {
     scope: ScopeTuple,
     agentId: string,
     date?: string,
-  ): Promise<{ inputTokens: number; outputTokens: number; costCents: number; calls: number }> {
+  ): Promise<{
+    inputTokens: number;
+    outputTokens: number;
+    costCents: number;
+    calls: number;
+    tasks: number;
+  }> {
     const day = date || new Date().toISOString().slice(0, 10);
     const data = await this.redis.hgetall(`cost:agent:${scopeKey(scope)}:${agentId}:${day}`);
+    // WIN-134 — one ledger owns the arithmetic. `costCents` is the cache-aware
+    // figure on every surface; `calls` stays the raw counter this endpoint has
+    // always returned.
+    const usage = usageFromRollup(data as RollupHash);
     return {
-      inputTokens: parseInt(data.input_tokens || "0", 10),
-      outputTokens: parseInt(data.output_tokens || "0", 10),
-      costCents: parseFloat(data.cost_cents || "0"),
-      calls: parseInt(data.calls || "0", 10),
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      costCents: roundCents(usage.costCents),
+      // `calls` counts model invocations, `tasks` counts completed turns. They
+      // are different numbers and this endpoint now says which is which rather
+      // than letting a caller read one as the other.
+      calls: parseInt(data[ROLLUP_FIELD.calls] || "0", 10) || 0,
+      tasks: usage.tasks,
     };
   }
 
@@ -557,15 +613,20 @@ export class CostService {
     costCents: number;
     costWithCacheCents: number;
     calls: number;
+    tasks: number;
   }> {
     const day = date || new Date().toISOString().slice(0, 10);
     const data = await this.redis.hgetall(`cost:user:${scopeKey(scope)}:${userId}:${day}`);
+    const usage = usageFromRollup(data as RollupHash);
     return {
-      inputTokens: parseInt(data.input_tokens || "0", 10),
-      outputTokens: parseInt(data.output_tokens || "0", 10),
-      costCents: parseFloat(data.cost_cents || "0"),
-      costWithCacheCents: parseFloat(data.cost_with_cache_cents || "0"),
-      calls: parseInt(data.calls || "0", 10),
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      costCents: roundCents(usage.costCents),
+      // Retained for callers that still read the old field name. It is the
+      // same number: there is one billable cost and this is it.
+      costWithCacheCents: roundCents(usage.costCents),
+      calls: parseInt(data[ROLLUP_FIELD.calls] || "0", 10) || 0,
+      tasks: usage.tasks,
     };
   }
 
@@ -625,6 +686,12 @@ export class CostService {
     if (input.costCents <= 0) return;
     const today = new Date().toISOString().slice(0, 10);
     const s = scopeKey(input.scope);
+    // WIN-134 — the lane field the ledger reads back. The three named lanes
+    // resolve to a shared constant; every other auxiliary kind keeps its
+    // per-kind diagnostic field and lands in the `inference` residual, which is
+    // where a compaction or an auto-name belongs.
+    const laneField =
+      laneRollupField(laneForAuxiliaryKind(input.kind)) ?? `cost_cents:${input.kind}`;
     const pipeline = this.redis.pipeline();
     const scopeDayKey = `cost:scope:${s}:${today}`;
     pipeline.hincrby(scopeDayKey, "input_tokens", input.inputTokens ?? 0);
@@ -642,7 +709,12 @@ export class CostService {
       pipeline.hincrby(scopeDayKey, "reasoning_tokens", input.reasoningTokens!);
     }
     pipeline.hincrbyfloat(scopeDayKey, "cost_cents", input.costCents);
-    pipeline.hincrbyfloat(scopeDayKey, `cost_cents:${input.kind}`, input.costCents);
+    // WIN-134 — auxiliary spend used to bump only the naive field, so the
+    // cache-aware total that budgets and dashboards read was missing every
+    // embedding, extraction and judge call. Both fields carry the same
+    // four-rate figure; writing one and not the other is how they diverged.
+    pipeline.hincrbyfloat(scopeDayKey, "cost_with_cache_cents", input.costCents);
+    pipeline.hincrbyfloat(scopeDayKey, laneField, input.costCents);
     pipeline.hset(scopeDayKey, "attribution_source", "exact");
     pipeline.expire(scopeDayKey, 86400 * 90);
     if (input.agentId) {
@@ -668,7 +740,7 @@ export class CostService {
       }
       pipeline.hincrbyfloat(agentKey, "cost_cents", input.costCents);
       pipeline.hincrbyfloat(agentKey, "cost_with_cache_cents", input.costCents);
-      pipeline.hincrbyfloat(agentKey, `cost_cents:${input.kind}`, input.costCents);
+      pipeline.hincrbyfloat(agentKey, laneField, input.costCents);
       pipeline.hincrby(agentKey, "calls", 1);
       pipeline.hset(agentKey, "attribution_source", "exact");
       pipeline.expire(agentKey, 86400 * 90);
@@ -778,7 +850,10 @@ export class CostService {
       pipeline.hincrby(scopeDayKey, "skill_calls", 1);
       if (costCents > 0) {
         pipeline.hincrbyfloat(scopeDayKey, "cost_cents", costCents);
-        pipeline.hincrbyfloat(scopeDayKey, "cost_cents:tier:skill", costCents);
+        // WIN-134 — the billable field must carry skill spend too, or the
+        // cache-aware total budgets read silently excludes every skill call.
+        pipeline.hincrbyfloat(scopeDayKey, "cost_with_cache_cents", costCents);
+        pipeline.hincrbyfloat(scopeDayKey, laneRollupField("skill")!, costCents);
       }
       pipeline.expire(scopeDayKey, 86400 * 90);
 
@@ -788,7 +863,8 @@ export class CostService {
         pipeline.hincrby(agentKey, "skill_calls", 1);
         if (costCents > 0) {
           pipeline.hincrbyfloat(agentKey, "cost_cents", costCents);
-          pipeline.hincrbyfloat(agentKey, "cost_cents:tier:skill", costCents);
+          pipeline.hincrbyfloat(agentKey, "cost_with_cache_cents", costCents);
+          pipeline.hincrbyfloat(agentKey, laneRollupField("skill")!, costCents);
         }
         pipeline.expire(agentKey, 86400 * 90);
       }
@@ -1022,6 +1098,8 @@ export class CostService {
         costCents: true,
         turn: {
           select: {
+            id: true,
+            status: true,
             thread: {
               select: {
                 environmentId: true,
@@ -1040,9 +1118,29 @@ export class CostService {
     });
 
     // Group in memory. Keys are string-interned for the hash writes below.
-    // Bucket shape: { input_tokens, output_tokens, cost_cents, calls }.
-    type Bucket = { input_tokens: number; output_tokens: number; cost_cents: number; calls: number };
-    const mkBucket = (): Bucket => ({ input_tokens: 0, output_tokens: 0, cost_cents: 0, calls: 0 });
+    //
+    // WIN-134 — `tasks` is a set of Turn ids, not a counter. A rebuilt hash
+    // that carried real cost and `tasks = 0` made the "Tasks completed" card,
+    // `monitoring.cost.daily`/`.range` and a turns-limit budget cap all
+    // under-report for every reconciled day — which, since the task runs
+    // nightly over the trailing two days, is the normal post-Redis-loss state
+    // rather than a corner case. `calls` counts Step rows and `tasks` counts
+    // the Turns they belong to; a multi-step turn is where the two diverge, and
+    // reading one as the other is the "322 tasks" bug.
+    type Bucket = {
+      input_tokens: number;
+      output_tokens: number;
+      cost_cents: number;
+      calls: number;
+      turns: Set<string>;
+    };
+    const mkBucket = (): Bucket => ({
+      input_tokens: 0,
+      output_tokens: 0,
+      cost_cents: 0,
+      calls: 0,
+      turns: new Set<string>(),
+    });
     const scopeKeys = new Map<string, Bucket>();
     const agentKeys = new Map<string, Bucket>();
 
@@ -1053,6 +1151,8 @@ export class CostService {
       outputTokens: number | null;
       costCents: unknown;
       turn: {
+        id: string;
+        status: string | null;
         thread: {
           environmentId: string;
           agentId: string;
@@ -1076,6 +1176,12 @@ export class CostService {
         environmentId: thread.environmentId,
       });
       const agentId = thread.agentId;
+      // The ledger owns "is this a completed task", so the reconciler and the
+      // live rollups cannot disagree about which Turns count.
+      const completed = isCompletedTask({
+        status: row.turn?.status,
+        steps: [{ inputTokens, outputTokens }],
+      });
 
       const scopeKeyStr = `cost:scope:${s}:${day}`;
       let scopeBucket = scopeKeys.get(scopeKeyStr);
@@ -1084,6 +1190,7 @@ export class CostService {
       scopeBucket.output_tokens += outputTokens;
       scopeBucket.cost_cents += costCents;
       scopeBucket.calls += 1;
+      if (completed && row.turn) scopeBucket.turns.add(row.turn.id);
 
       if (agentId) {
         const agentKeyStr = `cost:agent:${s}:${agentId}:${day}`;
@@ -1093,6 +1200,7 @@ export class CostService {
         agentBucket.output_tokens += outputTokens;
         agentBucket.cost_cents += costCents;
         agentBucket.calls += 1;
+        if (completed && row.turn) agentBucket.turns.add(row.turn.id);
       }
     }
 
@@ -1124,6 +1232,7 @@ export class CostService {
         "cost_cents", ARGV[3],
         "cost_with_cache_cents", ARGV[3],
         "calls", ARGV[4],
+        "tasks", ARGV[5],
         "attribution_source", "step_fallback"
       )
       redis.call("EXPIRE", KEYS[1], 7776000)
@@ -1139,6 +1248,7 @@ export class CostService {
         String(b.output_tokens),
         String(b.cost_cents),
         String(b.calls),
+        String(b.turns.size),
       );
     }
     const results = candidates.length > 0 ? await pipeline.exec() : [];
@@ -1161,12 +1271,22 @@ export class CostService {
   /**
    * Get cost summary for a thread.
    */
-  async getThreadCost(threadId: string): Promise<{ inputTokens: number; outputTokens: number; costCents: number }> {
+  async getThreadCost(threadId: string): Promise<{
+    inputTokens: number;
+    outputTokens: number;
+    costCents: number;
+    tasks: number;
+  }> {
     const data = await this.redis.hgetall(`cost:thread:${threadId}`);
+    // WIN-134 — this returned the naive figure while the cost-by-model panel
+    // returned the cache-aware one, so a trace and a dashboard disagreed about
+    // the same thread by up to 10x. One ledger, one number.
+    const usage = usageFromRollup(data as RollupHash);
     return {
-      inputTokens: parseInt(data.input_tokens || "0", 10),
-      outputTokens: parseInt(data.output_tokens || "0", 10),
-      costCents: parseFloat(data.cost_cents || "0"),
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      costCents: roundCents(usage.costCents),
+      tasks: usage.tasks,
     };
   }
 
@@ -1176,14 +1296,88 @@ export class CostService {
   async getScopeDailyCost(
     scope: ScopeTuple,
     date?: string,
-  ): Promise<{ inputTokens: number; outputTokens: number; costCents: number }> {
+  ): Promise<{
+    inputTokens: number;
+    outputTokens: number;
+    costCents: number;
+    tasks: number;
+    byLane: Record<UsageLane, number>;
+  }> {
     const day = date || new Date().toISOString().slice(0, 10);
     const data = await this.redis.hgetall(`cost:scope:${scopeKey(scope)}:${day}`);
+    const usage = usageFromRollup(data as RollupHash);
     return {
-      inputTokens: parseInt(data.input_tokens || "0", 10),
-      outputTokens: parseInt(data.output_tokens || "0", 10),
-      costCents: parseFloat(data.cost_cents || "0"),
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      costCents: roundCents(usage.costCents),
+      tasks: usage.tasks,
+      byLane: roundLanes(laneCostsFromRollup(data as RollupHash)),
     };
+  }
+
+  /**
+   * WIN-134 — THE canonical usage read.
+   *
+   * Every surface that reports "what happened in this window" goes through
+   * here: the summary cards, the MCP monitoring tools, the usage page. It
+   * returns the task count, the token lanes and the cache-aware cost, plus the
+   * spend split that sums back to that cost by construction.
+   *
+   * Redis holds the per-day rollups; the Turn/Step ledger in Postgres is the
+   * durable record and repairs them (see `reconcileFromPostgres`). Reads that
+   * find nothing return zeros rather than throwing — a dashboard with no data
+   * is a legitimate state and must not be reported as a failure.
+   */
+  async getScopeUsageWindow(
+    scope: ScopeTuple,
+    days: number = 7,
+  ): Promise<UsageWindow & { perDay: Array<UsageWindow & { date: string }> }> {
+    const dates = this.recentDates(days);
+    const pipeline = this.redis.pipeline();
+    for (const d of dates) pipeline.hgetall(`cost:scope:${scopeKey(scope)}:${d}`);
+    let results: Array<[Error | null, unknown]> | null = null;
+    try {
+      results = (await pipeline.exec()) as any;
+    } catch {
+      // Fail-graceful — an unavailable rollup reads as an empty window.
+    }
+    const perDay = dates.map((date, i) => {
+      const raw = ((results?.[i]?.[1] as RollupHash | undefined) ?? {}) as RollupHash;
+      const usage = usageFromRollup(raw);
+      return { date, ...usage, byLane: laneCostsFromRollup(raw) };
+    });
+    let totals = { ...EMPTY_USAGE };
+    let byLane: Record<UsageLane, number> = {
+      inference: 0,
+      embedding: 0,
+      extraction: 0,
+      judge: 0,
+      skill: 0,
+    };
+    for (const day of perDay) {
+      totals = addUsage(totals, day);
+      byLane = addLanes(byLane, day.byLane);
+    }
+    return {
+      ...totals,
+      costCents: roundCents(totals.costCents),
+      byLane: roundLanes(byLane),
+      perDay: perDay.map((day) => ({
+        ...day,
+        costCents: roundCents(day.costCents),
+        byLane: roundLanes(day.byLane),
+      })),
+    };
+  }
+
+  /** The last `days` calendar days, newest first. Shared by every range read. */
+  private recentDates(days: number): string[] {
+    const todayMs = Date.now();
+    const dates: string[] = [];
+    for (let i = 0; i < days; i++) {
+      dates.push(new Date(todayMs - i * 86400_000).toISOString().slice(0, 10));
+    }
+    return dates;
   }
 
   /**
@@ -1202,7 +1396,7 @@ export class CostService {
     outputTokens: number;
     cacheCreationInputTokens: number;
     cacheReadInputTokens: number;
-    messages: number;
+    tasks: number;
   }>> {
     const days = options.days ?? 30;
     const limit = options.limit ?? 20;
@@ -1230,19 +1424,16 @@ export class CostService {
         outputTokens: 0,
         cacheCreationInputTokens: 0,
         cacheReadInputTokens: 0,
-        messages: 0,
+        tasks: 0,
       };
-      const cost = parseFloat(row.values.cost_cents || "0") || 0;
-      bucket.costCents += cost;
-      bucket.costWithCacheCents +=
-        parseFloat(row.values.cost_with_cache_cents || "") || cost;
-      bucket.inputTokens += parseInt(row.values.input_tokens || "0", 10) || 0;
-      bucket.outputTokens += parseInt(row.values.output_tokens || "0", 10) || 0;
-      bucket.cacheCreationInputTokens +=
-        parseInt(row.values.cache_creation_input_tokens || "0", 10) || 0;
-      bucket.cacheReadInputTokens +=
-        parseInt(row.values.cache_read_input_tokens || "0", 10) || 0;
-      bucket.messages += parseInt(row.values.calls || "0", 10) || 0;
+      const usage = usageFromRollup(row.values as RollupHash);
+      bucket.costCents += usage.costCents;
+      bucket.costWithCacheCents += usage.costCents;
+      bucket.inputTokens += usage.inputTokens;
+      bucket.outputTokens += usage.outputTokens;
+      bucket.cacheCreationInputTokens += usage.cacheWriteTokens;
+      bucket.cacheReadInputTokens += usage.cacheReadTokens;
+      bucket.tasks += usage.tasks;
       exactByModel.set(model, bucket);
       const redisDays = redisDaysByModel.get(model) ?? new Set<string>();
       redisDays.add(dateMatch[1]);
@@ -1259,7 +1450,9 @@ export class CostService {
       outputTokens: number | null;
       cacheCreationInputTokens: number | null;
       cacheReadInputTokens: number | null;
+      reasoningTokens: number | null;
       costCents: unknown;
+      turnId: string;
     }> = await this.prisma.step.findMany({
       where: {
         createdAt: { gte: since },
@@ -1282,11 +1475,18 @@ export class CostService {
         outputTokens: true,
         cacheCreationInputTokens: true,
         cacheReadInputTokens: true,
+        reasoningTokens: true,
         costCents: true,
+        turnId: true,
       },
     });
 
     const byModel = new Map<string, ModelCostBucket>(exactByModel);
+    // WIN-134 — a task is a completed Turn, so the fallback counts DISTINCT
+    // turns rather than Step rows. Today a turn writes one Step and the two
+    // agree; the moment a multi-step turn is persisted properly they stop
+    // agreeing, and a per-row increment is how "322 tasks" happened.
+    const fallbackTurnsByModel = new Map<string, Set<string>>();
     for (const row of rows) {
       const day = row.createdAt.toISOString().slice(0, 10);
       if (redisDaysByModel.get(row.model)?.has(day)) continue;
@@ -1298,19 +1498,23 @@ export class CostService {
         outputTokens: 0,
         cacheCreationInputTokens: 0,
         cacheReadInputTokens: 0,
-        messages: 0,
+        tasks: 0,
       };
-      const inputTokens = row.inputTokens ?? 0;
-      const outputTokens = row.outputTokens ?? 0;
-      const persistedCost = Number(row.costCents ?? 0);
-      bucket.costCents += persistedCost;
-      bucket.costWithCacheCents += persistedCost;
-      bucket.inputTokens += inputTokens;
-      bucket.outputTokens += outputTokens;
-      bucket.cacheCreationInputTokens += row.cacheCreationInputTokens ?? 0;
-      bucket.cacheReadInputTokens += row.cacheReadInputTokens ?? 0;
-      bucket.messages += 1;
+      const usage = usageFromStep(row);
+      bucket.costCents += usage.costCents;
+      bucket.costWithCacheCents += usage.costCents;
+      bucket.inputTokens += usage.inputTokens;
+      bucket.outputTokens += usage.outputTokens;
+      bucket.cacheCreationInputTokens += usage.cacheWriteTokens;
+      bucket.cacheReadInputTokens += usage.cacheReadTokens;
       byModel.set(row.model, bucket);
+      const turns = fallbackTurnsByModel.get(row.model) ?? new Set<string>();
+      turns.add(row.turnId);
+      fallbackTurnsByModel.set(row.model, turns);
+    }
+    for (const [model, turns] of fallbackTurnsByModel) {
+      const bucket = byModel.get(model);
+      if (bucket) bucket.tasks += turns.size;
     }
     if (usedStepFallback) this.warnOnUnpricedStepFallback();
 
@@ -1318,8 +1522,12 @@ export class CostService {
       .map(([model, b]) => ({
         model,
         ...b,
-        costCents: Math.round(b.costCents * 100) / 100,
-        costWithCacheCents: Math.round(b.costWithCacheCents * 100) / 100,
+        // WIN-134 — the ledger rounds ONCE, at the end, at 0.0001c. Rounding
+        // here at 0.01c reported a real sub-cent window as 0.00 on this panel
+        // while the scope card showed the number, which is precisely the
+        // sub-cent loss `roundCents` exists to prevent.
+        costCents: roundCents(b.costCents),
+        costWithCacheCents: roundCents(b.costWithCacheCents),
       }))
       .sort((a, b) => b.costCents - a.costCents)
       .slice(0, limit);
@@ -1340,6 +1548,7 @@ export class CostService {
     outputTokens: number;
     cacheCreationInputTokens: number;
     cacheReadInputTokens: number;
+    tasks: number;
     threads: number;
   }>> {
     const days = options.days ?? 30;
@@ -1370,18 +1579,17 @@ export class CostService {
         outputTokens: 0,
         cacheCreationInputTokens: 0,
         cacheReadInputTokens: 0,
+        tasks: 0,
         threads: new Set<string>(),
       };
-      const cost = parseFloat(row.values.cost_cents || "0") || 0;
-      bucket.costCents += cost;
-      bucket.costWithCacheCents +=
-        parseFloat(row.values.cost_with_cache_cents || "") || cost;
-      bucket.inputTokens += parseInt(row.values.input_tokens || "0", 10) || 0;
-      bucket.outputTokens += parseInt(row.values.output_tokens || "0", 10) || 0;
-      bucket.cacheCreationInputTokens +=
-        parseInt(row.values.cache_creation_input_tokens || "0", 10) || 0;
-      bucket.cacheReadInputTokens +=
-        parseInt(row.values.cache_read_input_tokens || "0", 10) || 0;
+      const usage = usageFromRollup(row.values as RollupHash);
+      bucket.costCents += usage.costCents;
+      bucket.costWithCacheCents += usage.costCents;
+      bucket.inputTokens += usage.inputTokens;
+      bucket.outputTokens += usage.outputTokens;
+      bucket.cacheCreationInputTokens += usage.cacheWriteTokens;
+      bucket.cacheReadInputTokens += usage.cacheReadTokens;
+      bucket.tasks += usage.tasks;
       exactByAgent.set(agentId, bucket);
       const redisDays = redisDaysByAgent.get(agentId) ?? new Set<string>();
       redisDays.add(dateMatch[1]);
@@ -1398,7 +1606,9 @@ export class CostService {
       outputTokens: number | null;
       cacheCreationInputTokens: number | null;
       cacheReadInputTokens: number | null;
+      reasoningTokens: number | null;
       costCents: unknown;
+      turnId: string;
       turn: { thread: { agentId: string; id: string } } | null;
     }> =
       await this.prisma.step.findMany({
@@ -1423,12 +1633,15 @@ export class CostService {
           outputTokens: true,
           cacheCreationInputTokens: true,
           cacheReadInputTokens: true,
+          reasoningTokens: true,
           costCents: true,
+          turnId: true,
           turn: { select: { thread: { select: { agentId: true, id: true } } } },
         },
       });
 
     const byAgent = new Map<string, AgentCostBucket>(exactByAgent);
+    const fallbackTurnsByAgent = new Map<string, Set<string>>();
     for (const r of rows) {
       const agentId = r.turn?.thread.agentId;
       if (!agentId) continue;
@@ -1439,23 +1652,29 @@ export class CostService {
         outputTokens: 0,
         cacheCreationInputTokens: 0,
         cacheReadInputTokens: 0,
+        tasks: 0,
         threads: new Set<string>(),
       };
-      const inputTokens = r.inputTokens ?? 0;
-      const outputTokens = r.outputTokens ?? 0;
       const day = r.createdAt.toISOString().slice(0, 10);
       if (!redisDaysByAgent.get(agentId)?.has(day)) {
         usedStepFallback = true;
-        const persistedCost = Number(r.costCents ?? 0);
-        bucket.costCents += persistedCost;
-        bucket.costWithCacheCents += persistedCost;
-        bucket.inputTokens += inputTokens;
-        bucket.outputTokens += outputTokens;
-        bucket.cacheCreationInputTokens += r.cacheCreationInputTokens ?? 0;
-        bucket.cacheReadInputTokens += r.cacheReadInputTokens ?? 0;
+        const usage = usageFromStep(r);
+        bucket.costCents += usage.costCents;
+        bucket.costWithCacheCents += usage.costCents;
+        bucket.inputTokens += usage.inputTokens;
+        bucket.outputTokens += usage.outputTokens;
+        bucket.cacheCreationInputTokens += usage.cacheWriteTokens;
+        bucket.cacheReadInputTokens += usage.cacheReadTokens;
+        const turns = fallbackTurnsByAgent.get(agentId) ?? new Set<string>();
+        turns.add(r.turnId);
+        fallbackTurnsByAgent.set(agentId, turns);
       }
       if (r.turn?.thread.id) bucket.threads.add(r.turn.thread.id);
       byAgent.set(agentId, bucket);
+    }
+    for (const [agentId, turns] of fallbackTurnsByAgent) {
+      const bucket = byAgent.get(agentId);
+      if (bucket) bucket.tasks += turns.size;
     }
     if (usedStepFallback) this.warnOnUnpricedStepFallback();
 
@@ -1478,12 +1697,17 @@ export class CostService {
       .map(([agentId, b]) => ({
         agentId,
         agentName: nameById.get(agentId) ?? null,
-        costCents: Math.round(b.costCents * 100) / 100,
-        costWithCacheCents: Math.round(b.costWithCacheCents * 100) / 100,
+        // WIN-134 — the ledger rounds ONCE, at the end, at 0.0001c. Rounding
+        // here at 0.01c reported a real sub-cent window as 0.00 on this panel
+        // while the scope card showed the number, which is precisely the
+        // sub-cent loss `roundCents` exists to prevent.
+        costCents: roundCents(b.costCents),
+        costWithCacheCents: roundCents(b.costWithCacheCents),
         inputTokens: b.inputTokens,
         outputTokens: b.outputTokens,
         cacheCreationInputTokens: b.cacheCreationInputTokens,
         cacheReadInputTokens: b.cacheReadInputTokens,
+        tasks: b.tasks,
         threads: b.threads.size,
       }))
       .sort((a, b) => b.costCents - a.costCents)
@@ -1507,13 +1731,16 @@ export class CostService {
     Array<{
       userId: string;
       costCents: number;
-      messages: number;
+      /** Completed turns. Was `messages`, and was read as a task count. */
+      tasks: number;
       threads: number;
       inputTokens: number;
       outputTokens: number;
       cacheReadInputTokens: number;
       cacheCreationInputTokens: number;
       reasoningTokens: number;
+      /** Input tokens neither read from nor written to cache. Derived once. */
+      noCacheInputTokens: number;
     }>
   > {
     const days = options.days ?? 30;
@@ -1539,21 +1766,25 @@ export class CostService {
         costCents: 0,
         turns: new Set<string>(),
         threads: new Set<string>(),
+        tasks: 0,
         inputTokens: 0,
         outputTokens: 0,
         cacheReadInputTokens: 0,
         cacheCreationInputTokens: 0,
         reasoningTokens: 0,
       };
-      bucket.costCents += parseFloat(row.values.cost_cents || "0") || 0;
-      bucket.inputTokens += parseInt(row.values.input_tokens || "0", 10) || 0;
-      bucket.outputTokens += parseInt(row.values.output_tokens || "0", 10) || 0;
-      bucket.cacheReadInputTokens +=
-        parseInt(row.values.cache_read_input_tokens || "0", 10) || 0;
-      bucket.cacheCreationInputTokens +=
-        parseInt(row.values.cache_creation_input_tokens || "0", 10) || 0;
-      bucket.reasoningTokens +=
-        parseInt(row.values.reasoning_tokens || "0", 10) || 0;
+      // WIN-134 — the per-user rollup was read as `cost_cents`, which the
+      // budget path bumped a SECOND time for the same charge. The billable
+      // field was only ever written once, so reading it is both the
+      // cache-aware number and the un-doubled one.
+      const usage = usageFromRollup(row.values as RollupHash);
+      bucket.costCents += usage.costCents;
+      bucket.inputTokens += usage.inputTokens;
+      bucket.outputTokens += usage.outputTokens;
+      bucket.cacheReadInputTokens += usage.cacheReadTokens;
+      bucket.cacheCreationInputTokens += usage.cacheWriteTokens;
+      bucket.reasoningTokens += usage.reasoningTokens;
+      bucket.tasks += usage.tasks;
       exactByUser.set(userId, bucket);
       const redisDays = redisDaysByUser.get(userId) ?? new Set<string>();
       redisDays.add(dateMatch[1]);
@@ -1608,6 +1839,7 @@ export class CostService {
       });
 
     const byUser = new Map<string, UserCostBucket>(exactByUser);
+    const fallbackTurnsByUser = new Map<string, Set<string>>();
     for (const r of rows) {
       const userId = r.turn?.thread.endUserId;
       if (!userId) continue;
@@ -1615,41 +1847,52 @@ export class CostService {
         costCents: 0,
         turns: new Set<string>(),
         threads: new Set<string>(),
+        tasks: 0,
         inputTokens: 0,
         outputTokens: 0,
         cacheReadInputTokens: 0,
         cacheCreationInputTokens: 0,
         reasoningTokens: 0,
       };
-      const inputTokens = r.inputTokens ?? 0;
-      const outputTokens = r.outputTokens ?? 0;
       const day = r.createdAt.toISOString().slice(0, 10);
       if (!redisDaysByUser.get(userId)?.has(day)) {
         usedStepFallback = true;
-        bucket.costCents += Number(r.costCents ?? 0);
-        bucket.inputTokens += inputTokens;
-        bucket.outputTokens += outputTokens;
-        bucket.cacheCreationInputTokens += r.cacheCreationInputTokens ?? 0;
-        bucket.cacheReadInputTokens += r.cacheReadInputTokens ?? 0;
-        bucket.reasoningTokens += r.reasoningTokens ?? 0;
+        const usage = usageFromStep(r);
+        bucket.costCents += usage.costCents;
+        bucket.inputTokens += usage.inputTokens;
+        bucket.outputTokens += usage.outputTokens;
+        bucket.cacheCreationInputTokens += usage.cacheWriteTokens;
+        bucket.cacheReadInputTokens += usage.cacheReadTokens;
+        bucket.reasoningTokens += usage.reasoningTokens;
+        if (r.turn?.id) fallbackTurnsByUser.set(userId, (fallbackTurnsByUser.get(userId) ?? new Set<string>()).add(r.turn.id));
       }
       if (r.turn?.id) bucket.turns.add(r.turn.id);
       if (r.turn?.thread.id) bucket.threads.add(r.turn.thread.id);
       byUser.set(userId, bucket);
+    }
+    for (const [userId, turns] of fallbackTurnsByUser) {
+      const bucket = byUser.get(userId);
+      if (bucket) bucket.tasks += turns.size;
     }
     if (usedStepFallback) this.warnOnUnpricedStepFallback();
 
     return Array.from(byUser.entries())
       .map(([userId, b]) => ({
         userId,
-        costCents: Math.round(b.costCents * 100) / 100,
-        messages: b.turns.size,
+        // Rounded once, at the ledger's 0.0001c, like every other surface.
+        costCents: roundCents(b.costCents),
+        tasks: b.tasks,
         threads: b.threads.size,
         inputTokens: b.inputTokens,
         outputTokens: b.outputTokens,
         cacheReadInputTokens: b.cacheReadInputTokens,
         cacheCreationInputTokens: b.cacheCreationInputTokens,
         reasoningTokens: b.reasoningTokens,
+        noCacheInputTokens: freshInputTokens(
+          b.inputTokens,
+          b.cacheReadInputTokens,
+          b.cacheCreationInputTokens,
+        ),
       }))
       .sort((a, b) => b.costCents - a.costCents)
       .slice(0, limit);
@@ -1959,6 +2202,9 @@ export class CostService {
     costWithCacheCents: number;
     cacheCreationInputTokens: number;
     cacheReadInputTokens: number;
+    noCacheInputTokens: number;
+    tasks: number;
+    byLane: Record<UsageLane, number>;
     perDay: Array<{
       date: string;
       inputTokens: number;
@@ -1967,54 +2213,31 @@ export class CostService {
       costWithCacheCents: number;
       cacheCreationInputTokens: number;
       cacheReadInputTokens: number;
+      noCacheInputTokens: number;
+      tasks: number;
+      byLane: Record<UsageLane, number>;
     }>;
   }> {
-    const todayMs = Date.now();
-    const dates: string[] = [];
-    for (let i = 0; i < days; i++) {
-      const d = new Date(todayMs - i * 86400_000);
-      dates.push(d.toISOString().slice(0, 10));
-    }
-    const pipeline = this.redis.pipeline();
-    for (const d of dates) pipeline.hgetall(`cost:scope:${scopeKey(scope)}:${d}`);
-    const results = await pipeline.exec();
-    const perDay = dates.map((d, i) => {
-      const raw = ((results?.[i]?.[1] as Record<string, string> | undefined) ?? {});
-      const costCents = parseFloat(raw.cost_cents || "0");
-      // MC.2 — if cost_with_cache_cents is absent (pre-MC rows) fall back to
-      // the naive cost so dashboards don't show $0 for historical data.
-      const costWithCacheCents = raw.cost_with_cache_cents
-        ? parseFloat(raw.cost_with_cache_cents)
-        : costCents;
-      return {
-        date: d,
-        inputTokens: parseInt(raw.input_tokens || "0", 10),
-        outputTokens: parseInt(raw.output_tokens || "0", 10),
-        costCents,
-        costWithCacheCents,
-        cacheCreationInputTokens: parseInt(raw.cache_creation_input_tokens || "0", 10),
-        cacheReadInputTokens: parseInt(raw.cache_read_input_tokens || "0", 10),
-      };
+    const window = await this.getScopeUsageWindow(scope, days);
+    const project = (row: { date?: string } & typeof window) => ({
+      ...(row.date ? { date: row.date } : {}),
+      inputTokens: row.inputTokens,
+      outputTokens: row.outputTokens,
+      costCents: row.costCents,
+      // Both names carry the SAME cache-aware figure. The page used to sum
+      // them into a "naive vs with-cache" comparison, which was a fourth
+      // independent arithmetic over data that already agreed.
+      costWithCacheCents: row.costCents,
+      cacheCreationInputTokens: row.cacheWriteTokens,
+      cacheReadInputTokens: row.cacheReadTokens,
+      noCacheInputTokens: row.freshInputTokens,
+      tasks: row.tasks,
+      byLane: row.byLane,
     });
-    const totals = perDay.reduce(
-      (acc, row) => ({
-        inputTokens: acc.inputTokens + row.inputTokens,
-        outputTokens: acc.outputTokens + row.outputTokens,
-        costCents: acc.costCents + row.costCents,
-        costWithCacheCents: acc.costWithCacheCents + row.costWithCacheCents,
-        cacheCreationInputTokens: acc.cacheCreationInputTokens + row.cacheCreationInputTokens,
-        cacheReadInputTokens: acc.cacheReadInputTokens + row.cacheReadInputTokens,
-      }),
-      {
-        inputTokens: 0,
-        outputTokens: 0,
-        costCents: 0,
-        costWithCacheCents: 0,
-        cacheCreationInputTokens: 0,
-        cacheReadInputTokens: 0,
-      },
-    );
-    return { ...totals, perDay };
+    return {
+      ...project(window),
+      perDay: window.perDay.map((day) => project(day as any) as any),
+    };
   }
 
   /**
@@ -2039,22 +2262,21 @@ export class CostService {
     costWithCacheCents: number;
     cacheCreationInputTokens: number;
     cacheReadInputTokens: number;
+    noCacheInputTokens: number;
+    tasks: number;
     perDay: Array<{
       date: string;
       inputTokens: number;
       outputTokens: number;
       cacheCreationInputTokens: number;
       cacheReadInputTokens: number;
+      noCacheInputTokens: number;
       costCents: number;
       costWithCacheCents: number;
+      tasks: number;
     }>;
   }> {
-    const todayMs = Date.now();
-    const dates: string[] = [];
-    for (let i = 0; i < days; i++) {
-      const d = new Date(todayMs - i * 86400_000);
-      dates.push(d.toISOString().slice(0, 10));
-    }
+    const dates = this.recentDates(days);
     const s = scopeKey(scope);
     const pipeline = this.redis.pipeline();
     for (const d of dates) pipeline.hgetall(`cost:agent:${s}:${agentId}:${d}`);
@@ -2064,20 +2286,19 @@ export class CostService {
     } catch {
       // Fail-graceful — return empty-shape.
     }
-    const perDay = dates.map((d, i) => {
-      const raw = ((results?.[i]?.[1] as Record<string, string> | undefined) ?? {});
-      const costCents = parseFloat(raw.cost_cents || "0");
-      const costWithCacheCents = raw.cost_with_cache_cents
-        ? parseFloat(raw.cost_with_cache_cents)
-        : costCents;
+    const perDay = dates.map((date, i) => {
+      const raw = ((results?.[i]?.[1] as RollupHash | undefined) ?? {}) as RollupHash;
+      const usage = usageFromRollup(raw);
       return {
-        date: d,
-        inputTokens: parseInt(raw.input_tokens || "0", 10),
-        outputTokens: parseInt(raw.output_tokens || "0", 10),
-        cacheCreationInputTokens: parseInt(raw.cache_creation_input_tokens || "0", 10),
-        cacheReadInputTokens: parseInt(raw.cache_read_input_tokens || "0", 10),
-        costCents,
-        costWithCacheCents,
+        date,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        cacheCreationInputTokens: usage.cacheWriteTokens,
+        cacheReadInputTokens: usage.cacheReadTokens,
+        noCacheInputTokens: usage.freshInputTokens,
+        costCents: roundCents(usage.costCents),
+        costWithCacheCents: roundCents(usage.costCents),
+        tasks: usage.tasks,
       };
     });
     const totals = perDay.reduce(
@@ -2088,6 +2309,8 @@ export class CostService {
         costWithCacheCents: acc.costWithCacheCents + r.costWithCacheCents,
         cacheCreationInputTokens: acc.cacheCreationInputTokens + r.cacheCreationInputTokens,
         cacheReadInputTokens: acc.cacheReadInputTokens + r.cacheReadInputTokens,
+        noCacheInputTokens: acc.noCacheInputTokens + r.noCacheInputTokens,
+        tasks: acc.tasks + r.tasks,
       }),
       {
         inputTokens: 0,
@@ -2096,8 +2319,15 @@ export class CostService {
         costWithCacheCents: 0,
         cacheCreationInputTokens: 0,
         cacheReadInputTokens: 0,
+        noCacheInputTokens: 0,
+        tasks: 0,
       },
     );
-    return { ...totals, perDay };
+    return {
+      ...totals,
+      costCents: roundCents(totals.costCents),
+      costWithCacheCents: roundCents(totals.costWithCacheCents),
+      perDay,
+    };
   }
 }

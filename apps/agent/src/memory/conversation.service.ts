@@ -1,12 +1,19 @@
-import { Injectable, Inject, Logger } from "@nestjs/common";
+import { randomUUID } from "crypto";
+import { Injectable, Inject, Logger, Optional } from "@nestjs/common";
 import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
+import {
+  ObservabilityService,
+  type ObservabilityTransaction,
+} from "../observability/observability.service";
+import { buildTurnProjection } from "../observability/turn-projection";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 import {
   modelPriceSnapshotStepData,
   type CanonicalModelPriceSnapshot,
 } from "@platos/tenancy-database";
 import { assertSubjectNotErased } from "../privacy/erasure-register";
+import { freshInputTokens, roundCents } from "../monitoring/usage-ledger";
 
 export interface StoredMessage {
   id: string;
@@ -94,7 +101,13 @@ function objectValue(value: unknown): Record<string, any> {
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
 
-  constructor(@Inject(PRISMA_TOKEN) public readonly prisma: ControlDatabaseClient) {}
+  constructor(
+    @Inject(PRISMA_TOKEN) public readonly prisma: ControlDatabaseClient,
+    // Optional so every existing construction of this service — and every test
+    // that does not care about analytics — keeps working. Absent means the same
+    // thing as an unconfigured sink: the Turn commits and nothing is projected.
+    @Optional() private readonly observability?: ObservabilityService,
+  ) {}
 
   private environmentWhere(scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">) {
     return {
@@ -553,6 +566,33 @@ export class ConversationService {
       usage?: { inputTokens?: number; outputTokens?: number; cacheCreationInputTokens?: number; cacheReadInputTokens?: number; reasoningTokens?: number };
       costCents?: number;
       pricing?: CanonicalModelPriceSnapshot;
+      /**
+       * WIN-134 — further model calls this turn made on the user's behalf, one
+       * Step each, priced at their OWN model's rates.
+       *
+       * A Turn has many Steps; that is the ledger's own vocabulary for "several
+       * model calls, one unit of work". Sub-agent delegations used to reach the
+       * Redis rollups and no Postgres row at all, which made the two ledgers
+       * describe different money for the same window — and left
+       * `reconcileFromPostgres` rebuilding a lost day permanently short, because
+       * the missing dollars existed in no row it could read.
+       *
+       * They do NOT add to the task count: a turn that delegates three times is
+       * one completed turn (see `isCompletedTask`).
+       */
+      additionalSteps?: Array<{
+        model: string;
+        provider?: string | null;
+        startedAt: Date;
+        completedAt: Date;
+        inputTokens?: number;
+        outputTokens?: number;
+        cacheCreationInputTokens?: number;
+        cacheReadInputTokens?: number;
+        reasoningTokens?: number;
+        costCents: number;
+        pricing: CanonicalModelPriceSnapshot;
+      }>;
       latencyMs?: number;
       structuredOutput?: unknown;
       externalRuntimeId?: string | null;
@@ -615,7 +655,23 @@ export class ConversationService {
       throw new Error("Priced assistant persistence requires a canonical rate snapshot");
     }
     const calls = normalizeToolCalls(message.toolCalls ?? []);
+    // Mint the ToolCall ids here rather than letting the database default them.
+    // The projection needs each row's id, and a nested create does not return
+    // its children without an `include` — an extra round trip, on the turn
+    // commit path, to learn something we could simply have decided.
+    const callIds = calls.map(() => randomUUID());
     const completedAt = new Date();
+    const extraSteps = message.additionalSteps ?? [];
+    // The Turn's cost is what the whole unit of work cost: this model call plus
+    // every model call it made on the user's behalf. Rounded once, at the
+    // ledger's precision, rather than per row.
+    const turnCostCents =
+      message.costCents == null && extraSteps.length === 0
+        ? null
+        : roundCents(
+            (message.costCents ?? 0) +
+              extraSteps.reduce((total, extra) => total + (extra.costCents ?? 0), 0),
+          );
     const row = await this.prisma.$transaction(async (tx) => {
       const current = await tx.turn.findFirst({ where: { id: turnId, threadId, status: "ACTIVE" } });
       if (!current) throw new Error("Open turn not found or already finalized");
@@ -626,7 +682,7 @@ export class ConversationService {
           output: message.structuredOutput === undefined ? undefined : { structuredOutput: message.structuredOutput },
           thinkingContent: message.thinkingContent ?? null,
           status: "SUCCEEDED",
-          costCents: message.costCents ?? null,
+          costCents: turnCostCents,
           latencyMs: message.latencyMs ?? null,
           completedAt,
         },
@@ -648,8 +704,9 @@ export class ConversationService {
           startedAt: current.startedAt,
           completedAt,
           toolCalls: calls.length ? {
-            create: calls.map((call, sequence) => ({
-              sequence: sequence + 1,
+            create: calls.map((call, index) => ({
+              id: callIds[index],
+              sequence: index + 1,
               toolName: call.name,
               arguments: call.arguments as any,
               result: call.result as any,
@@ -662,9 +719,178 @@ export class ConversationService {
           } : undefined,
         },
       });
+      // WIN-134 — one Step per further model call, numbered after the primary
+      // one. No tool calls hang off them: the sub-agent's own tool calls are
+      // its business, and the parent's are already on sequence 1.
+      const extraRows: Array<{ id: string; sequence: number }> = [];
+      for (const [index, extra] of extraSteps.entries()) {
+        extraRows.push(
+          await tx.step.create({
+            data: {
+              turnId,
+              sequence: index + 2,
+              model: extra.model,
+              status: "SUCCEEDED",
+              inputTokens: extra.inputTokens ?? 0,
+              outputTokens: extra.outputTokens ?? 0,
+              cacheCreationInputTokens: extra.cacheCreationInputTokens ?? 0,
+              cacheReadInputTokens: extra.cacheReadInputTokens ?? 0,
+              reasoningTokens: extra.reasoningTokens ?? 0,
+              costCents: extra.costCents,
+              ...modelPriceSnapshotStepData(extra.pricing),
+              latencyMs: Math.max(0, extra.completedAt.getTime() - extra.startedAt.getTime()),
+              startedAt: extra.startedAt,
+              completedAt: extra.completedAt,
+            },
+          }),
+        );
+      }
+      // WIN-133 — queue the analytical projection in the SAME transaction that
+      // committed the Turn, its Step and its Tool Calls. Either both land or
+      // neither does; there is no window where the ledger and the projection
+      // disagree about whether this turn happened.
+      await this.enqueueProjection(tx, scope, thread, {
+        turn: {
+          id: turnId,
+          agentVersionId: current.agentVersionId,
+          status: "completed",
+          acceptedAt: current.startedAt ?? completedAt,
+          completedAt,
+          costCents: turnCostCents,
+          traceId: scope.traceId ?? null,
+          rootSpanId: scope.parentSpanId ?? null,
+          externalRuntimeId: current.externalRuntimeId,
+        },
+        steps: [
+          {
+            id: step.id,
+            sequence: step.sequence,
+            model: step.model,
+            provider: message.pricing?.provider ?? null,
+            status: "completed",
+            startedAt: current.startedAt ?? completedAt,
+            completedAt,
+            inputTokens: usage.inputTokens,
+            outputTokens: usage.outputTokens,
+            cacheReadInputTokens: usage.cacheReadInputTokens,
+            cacheCreationInputTokens: usage.cacheCreationInputTokens,
+            reasoningTokens: usage.reasoningTokens,
+            costCents: message.costCents ?? null,
+            modelPriceId: message.pricing?.modelPriceId ?? null,
+            inputRate: message.pricing?.input.usdPerToken ?? null,
+            outputRate: message.pricing?.output.usdPerToken ?? null,
+            cacheReadRate: message.pricing?.cacheRead.usdPerToken ?? null,
+            cacheWriteRate: message.pricing?.cacheWrite.usdPerToken ?? null,
+            pricingSource: message.pricing?.input.source ?? null,
+          },
+          // The further model calls, projected on the same footing: their own
+          // model, their own frozen rates, their own usage event. The analytical
+          // store's per-model breakdown is only honest if they are here.
+          ...extraSteps.map((extra, index) => ({
+            id: extraRows[index].id,
+            sequence: extraRows[index].sequence,
+            model: extra.model,
+            provider: extra.provider ?? extra.pricing.provider ?? null,
+            status: "completed" as const,
+            startedAt: extra.startedAt,
+            completedAt: extra.completedAt,
+            inputTokens: extra.inputTokens,
+            outputTokens: extra.outputTokens,
+            cacheReadInputTokens: extra.cacheReadInputTokens,
+            cacheCreationInputTokens: extra.cacheCreationInputTokens,
+            reasoningTokens: extra.reasoningTokens,
+            costCents: extra.costCents,
+            modelPriceId: extra.pricing.modelPriceId,
+            inputRate: extra.pricing.input.usdPerToken,
+            outputRate: extra.pricing.output.usdPerToken,
+            cacheReadRate: extra.pricing.cacheRead.usdPerToken,
+            cacheWriteRate: extra.pricing.cacheWrite.usdPerToken,
+            pricingSource: extra.pricing.input.source,
+          })),
+        ],
+        toolCalls: calls.map((call, index) => ({
+          id: callIds[index],
+          stepId: step.id,
+          sequence: index + 1,
+          toolName: call.name,
+          // A tool that errored failed; the projection carries the class only,
+          // and the argument and result payloads never leave Postgres.
+          status: call.error ? ("failed" as const) : ("completed" as const),
+          errorClass: call.error ? "ToolCallError" : null,
+          startedAt: current.startedAt ?? completedAt,
+          completedAt,
+        })),
+      });
       return { ...updated, steps: [{ ...step, toolCalls: calls }] };
     });
     return this.turnSideToMessage(row, "assistant");
+  }
+
+  /**
+   * Queue one finalized Turn's projection.
+   *
+   * Best-effort by construction: a projection that cannot be queued must never
+   * roll back a Turn that already happened, and the failure is logged rather
+   * than swallowed. When no sink is configured this is a boolean and a return.
+   */
+  private async enqueueProjection(
+    tx: ObservabilityTransaction,
+    scope: RequestScope,
+    thread: Thread,
+    facts: {
+      turn: {
+        id: string;
+        agentVersionId?: string | null;
+        status: "completed" | "failed" | "cancelled";
+        acceptedAt: Date;
+        completedAt: Date;
+        costCents?: number | null;
+        errorClass?: string | null;
+        traceId?: string | null;
+        rootSpanId?: string | null;
+        externalRuntimeId?: string | null;
+      };
+      steps: Parameters<typeof buildTurnProjection>[0]["steps"];
+      toolCalls?: Parameters<typeof buildTurnProjection>[0]["toolCalls"];
+    },
+  ): Promise<void> {
+    if (!this.observability?.isEnabled()) return;
+    // Building the projection is inside the try as well as queueing it.
+    // `buildTurnProjection` resolves the erasure salt, which throws in
+    // production when it is unset — and that throw would otherwise land outside
+    // enqueueTurnBestEffort's own guard and roll back a Turn that had already
+    // happened. Nothing about analytics may cost a turn.
+    try {
+      const projection = buildTurnProjection({
+        scope: {
+          organizationId: scope.organizationId,
+          projectId: scope.projectId,
+          environmentId: scope.environmentId,
+          userId: scope.userId,
+          // The SIGNED bag, not `scope.sessionContext` — that one has been
+          // merged with the Thread row and with a base layer read out of the
+          // Postgres `User` table by the time a turn finalizes. See the header
+          // of turn-projection.ts.
+          signedUserMeta: scope.signedUserMeta,
+        },
+        thread: { id: thread.id, agentId: thread.agentId, endUserId: thread.endUserId },
+        turn: {
+          ...facts.turn,
+          // The vendor is a cross-reference, never a relationship: the id is
+          // recorded, the vocabulary is not allowed any further in.
+          runtimeProvider: facts.turn.externalRuntimeId ? "trigger" : null,
+          runtimeRunId: facts.turn.externalRuntimeId ?? null,
+        },
+        steps: facts.steps,
+        toolCalls: facts.toolCalls,
+      });
+      await this.observability.enqueueTurnBestEffort(tx, projection);
+    } catch (err) {
+      this.logger.error(
+        `Failed to build the observability projection for turn ${facts.turn.id}` +
+          ` (${err instanceof Error ? err.name : "Error"}); the Turn is unaffected`,
+      );
+    }
   }
 
   async failTurn(
@@ -674,13 +900,14 @@ export class ConversationService {
     error: unknown,
     model = "unknown",
   ): Promise<void> {
-    await this.findScopedThread(threadId, scope);
+    const thread = await this.findScopedThread(threadId, scope);
     const detail = error instanceof Error ? error.message : String(error);
+    const errorClass = error instanceof Error ? error.name : "Error";
     const completedAt = new Date();
     const result = await this.prisma.$transaction(async (tx) => {
       const active = await tx.turn.findFirst({
         where: { id: turnId, threadId, status: "ACTIVE" },
-        select: { id: true, startedAt: true },
+        select: { id: true, startedAt: true, agentVersionId: true, externalRuntimeId: true },
       });
       if (!active) return { count: 0 };
       await tx.turn.update({
@@ -692,7 +919,7 @@ export class ConversationService {
           idempotencyKey: null,
         },
       });
-      await tx.step.upsert({
+      const step = await tx.step.upsert({
         where: { turnId_sequence: { turnId, sequence: 1 } },
         create: {
           turnId,
@@ -708,6 +935,47 @@ export class ConversationService {
           error: detail.slice(0, 2000),
           completedAt,
         },
+      });
+      // A failed Turn that performed chargeable provider work still records
+      // usage and cost. It is projected with status `failed`, which is what
+      // keeps `billable_unit` zero for it while the money stays visible.
+      await this.enqueueProjection(tx, scope, thread, {
+        turn: {
+          id: turnId,
+          agentVersionId: active.agentVersionId,
+          status: "failed",
+          acceptedAt: active.startedAt ?? completedAt,
+          completedAt,
+          costCents: step.costCents === null ? null : Number(step.costCents),
+          errorClass,
+          traceId: scope.traceId ?? null,
+          rootSpanId: scope.parentSpanId ?? null,
+          externalRuntimeId: active.externalRuntimeId,
+        },
+        steps: [{
+          id: step.id,
+          sequence: step.sequence,
+          model: step.model,
+          status: "failed",
+          startedAt: step.startedAt ?? completedAt,
+          completedAt,
+          inputTokens: step.inputTokens,
+          outputTokens: step.outputTokens,
+          cacheReadInputTokens: step.cacheReadInputTokens,
+          cacheCreationInputTokens: step.cacheCreationInputTokens,
+          reasoningTokens: step.reasoningTokens,
+          costCents: step.costCents === null ? null : Number(step.costCents),
+          modelPriceId: step.modelPriceId,
+          inputRate: step.inputRate === null ? null : Number(step.inputRate),
+          outputRate: step.outputRate === null ? null : Number(step.outputRate),
+          cacheReadRate: step.cacheReadRate === null ? null : Number(step.cacheReadRate),
+          cacheWriteRate: step.cacheWriteRate === null ? null : Number(step.cacheWriteRate),
+          pricingSource: step.inputRateSource,
+          errorClass,
+          // The class, not the message: a provider error body can quote the
+          // prompt that produced it.
+          errorMessageRedacted: null,
+        }],
       });
       return { count: 1 };
     });
@@ -759,6 +1027,17 @@ export class ConversationService {
         model: steps.at(-1)?.model ?? null,
         usage,
         cost_cents: turn.costCents == null ? null : Number(turn.costCents),
+        // WIN-134 — `Turn.costCents` has been the four-rate cache-aware figure
+        // since WIN-125, so both names carry it. Emitting only the naive name
+        // meant a consumer applying the "prefer cost_with_cache_cents" rule
+        // took the fallback branch every time and could never tell a
+        // cache-aware row from a legacy one.
+        cost_with_cache_cents: turn.costCents == null ? null : Number(turn.costCents),
+        no_cache_input_tokens: freshInputTokens(
+          usage.inputTokens,
+          usage.cacheReadInputTokens,
+          usage.cacheCreationInputTokens,
+        ),
         latency_ms: turn.latencyMs,
         version_id: turn.agentVersionId,
         version_bucket: String(turn.versionBucket).toLowerCase(),

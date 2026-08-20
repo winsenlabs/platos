@@ -64,7 +64,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(90);
+    expect(modelNames).toHaveLength(91);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -1061,6 +1061,16 @@ describe("domain schema integration", () => {
         inputText: "private",
       },
     });
+    // An undelivered projection for this Turn. It must not survive the subject:
+    // draining it after erasure would write the erased identity back into
+    // ClickHouse behind the mutation that just proved it gone.
+    const undeliveredProjection = await control.observabilityOutbox.create({
+      data: {
+        turnId: turn.id,
+        organizationId: seeded.organization.id,
+        payload: { turn: { turnId: turn.id, endUserId: subject.id }, steps: [], toolCalls: [], usage: [] },
+      },
+    });
     const memory = await control.memory.create({
       data: {
         environmentId: seeded.environment.id,
@@ -1097,6 +1107,8 @@ describe("domain schema integration", () => {
 
     await expect(control.thread.findUnique({ where: { id: thread.id } })).resolves.toBeNull();
     await expect(control.turn.findUnique({ where: { id: turn.id } })).resolves.toBeNull();
+    await expect(control.observabilityOutbox.findUnique({ where: { id: undeliveredProjection.id } }))
+      .resolves.toBeNull();
     await expect(control.memory.findUnique({ where: { id: memory.id } })).resolves.toBeNull();
     await expect(control.messageAttachment.findUnique({ where: { id: unattachedUpload.id } }))
       .resolves.toBeNull();
@@ -1461,6 +1473,13 @@ async function seedEveryModel(control: PrismaClient) {
       arguments: {},
       result: { remembered: true },
       status: WorkStatus.SUCCEEDED,
+    },
+  }));
+  track("ObservabilityOutbox", await control.observabilityOutbox.create({
+    data: {
+      turnId: turn.id,
+      organizationId: organization.id,
+      payload: { turn: { turnId: turn.id, status: "completed" }, steps: [], toolCalls: [], usage: [] },
     },
   }));
   track("Artifact", await control.artifact.create({

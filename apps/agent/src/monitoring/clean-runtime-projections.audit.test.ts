@@ -267,6 +267,12 @@ describe("clean Turn/Step/ToolCall monitoring audit coverage", () => {
       model: "gpt-4o",
       inputTokens: 1_000_000,
       outputTokens: 1_000_000,
+      // The Step's own priced cost, frozen against the WIN-125 four-rate card
+      // at the time the turn ran. The fallback reads it; it does not re-derive
+      // a price, because the rates that produced this figure may since have
+      // changed and re-pricing history is how a bill stops reconciling.
+      costCents: 1250,
+      turnId: "turn-a",
       turn: {
         id: "turn-a",
         thread: {
@@ -303,7 +309,8 @@ describe("clean Turn/Step/ToolCall monitoring audit coverage", () => {
         outputTokens: 1_000_000,
         cacheCreationInputTokens: 0,
         cacheReadInputTokens: 0,
-        messages: 1,
+        // One Step, one Turn, one task. The fallback counts distinct turns.
+        tasks: 1,
       },
     ]);
     expect(byAgent).toEqual([
@@ -316,6 +323,7 @@ describe("clean Turn/Step/ToolCall monitoring audit coverage", () => {
         outputTokens: 1_000_000,
         cacheCreationInputTokens: 0,
         cacheReadInputTokens: 0,
+        tasks: 1,
         threads: 1,
       },
     ]);
@@ -323,13 +331,14 @@ describe("clean Turn/Step/ToolCall monitoring audit coverage", () => {
       {
         userId: "end-user-a",
         costCents: 1250,
-        messages: 1,
+        tasks: 1,
         threads: 1,
         inputTokens: 1_000_000,
         outputTokens: 1_000_000,
         cacheReadInputTokens: 0,
         cacheCreationInputTokens: 0,
         reasoningTokens: 0,
+        noCacheInputTokens: 1_000_000,
       },
     ]);
     expect(stepFindMany).toHaveBeenCalledTimes(3);

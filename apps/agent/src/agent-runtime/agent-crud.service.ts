@@ -4,6 +4,7 @@ import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import type { RequestScope } from "../auth/scope.guard";
 import { AdminAuditService } from "../monitoring/admin-audit.service";
+import { addUsage, EMPTY_USAGE, roundCents, usageFromTurn } from "../monitoring/usage-ledger";
 import { serializePromptBlocksToSystemPrompt } from "./prompt-builder.service";
 
 export interface PromptBlock {
@@ -1125,8 +1126,11 @@ export class AgentCrudService {
       versionNumber: number | null;
       isCurrent: boolean;
       isCanary: boolean;
-      messageCount: number;
+      turnCount: number;
+      tasks: number;
       totalCostCents: number;
+      inputTokens: number;
+      outputTokens: number;
       avgLatencyMs: number | null;
       errorCount: number;
       errorRate: number;
@@ -1145,7 +1149,30 @@ export class AgentCrudService {
           environment: { project: { id: scope.projectId, organizationId: scope.organizationId } },
         },
       },
-      select: { output: true, outputText: true, startedAt: true, completedAt: true },
+      // WIN-134 — this read `version_id` and `cost_cents` off the `output` JSON
+      // column. Nothing has ever written either key there (the only writers put
+      // `structuredOutput` or `error` in it), so the canary comparison reported
+      // every turn under version `null` at a cost of exactly 0 — a panel whose
+      // job is to decide whether to promote a version, answering 0 to both
+      // questions it asks. Both facts are real columns.
+      select: {
+        agentVersionId: true,
+        costCents: true,
+        status: true,
+        outputText: true,
+        startedAt: true,
+        completedAt: true,
+        steps: {
+          select: {
+            inputTokens: true,
+            outputTokens: true,
+            cacheReadInputTokens: true,
+            cacheCreationInputTokens: true,
+            reasoningTokens: true,
+            costCents: true,
+          },
+        },
+      },
       orderBy: { createdAt: "asc" },
     });
     const versions = await this.prisma.agentVersion.findMany({
@@ -1157,17 +1184,16 @@ export class AgentCrudService {
     );
     const byVersion = new Map<string | null, any>();
     for (const row of rows) {
-      const output = row.output && typeof row.output === "object" ? row.output as any : {};
-      const versionId = output.version_id ?? output.versionId ?? null;
+      const versionId = row.agentVersionId ?? null;
       const bucket = byVersion.get(versionId) ?? {
-        messageCount: 0,
-        totalCostCents: 0,
+        turnCount: 0,
+        usage: { ...EMPTY_USAGE },
         latencySumMs: 0,
         latencyCount: 0,
         errorCount: 0,
       };
-      bucket.messageCount += 1;
-      bucket.totalCostCents += Number(output.cost_cents ?? output.costCents ?? 0);
+      bucket.turnCount += 1;
+      bucket.usage = addUsage(bucket.usage, usageFromTurn(row as any));
       if (row.startedAt && row.completedAt) {
         bucket.latencySumMs += row.completedAt.getTime() - row.startedAt.getTime();
         bucket.latencyCount += 1;
@@ -1180,16 +1206,22 @@ export class AgentCrudService {
       versionNumber: versionId ? versionNumberById.get(versionId) ?? null : null,
       isCurrent: versionId === binding.activeAgentVersionId,
       isCanary: versionId === binding.canaryAgentVersionId,
-      messageCount: bucket.messageCount,
-      totalCostCents: Math.round(bucket.totalCostCents * 100) / 100,
+      // Turns attempted against this version, and completed turns among them.
+      // A version that fails half its turns should not look half as expensive
+      // AND half as busy at the same rate.
+      turnCount: bucket.turnCount,
+      tasks: bucket.usage.tasks,
+      totalCostCents: roundCents(bucket.usage.costCents),
+      inputTokens: bucket.usage.inputTokens,
+      outputTokens: bucket.usage.outputTokens,
       avgLatencyMs: bucket.latencyCount ? Math.round(bucket.latencySumMs / bucket.latencyCount) : null,
       errorCount: bucket.errorCount,
-      errorRate: bucket.messageCount ? bucket.errorCount / bucket.messageCount : 0,
+      errorRate: bucket.turnCount ? bucket.errorCount / bucket.turnCount : 0,
     }));
     perVersion.sort((a, b) => {
       if (a.isCurrent !== b.isCurrent) return a.isCurrent ? -1 : 1;
       if (a.isCanary !== b.isCanary) return a.isCanary ? -1 : 1;
-      return b.messageCount - a.messageCount;
+      return b.turnCount - a.turnCount;
     });
     return {
       hours,

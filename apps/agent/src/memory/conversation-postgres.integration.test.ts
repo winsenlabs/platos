@@ -13,6 +13,7 @@ import {
   ConversationService,
 } from "./conversation.service";
 import { ErasureService } from "../privacy/erasure.service";
+import { roundCents } from "../monitoring/usage-ledger";
 
 vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
@@ -296,7 +297,12 @@ describe("ConversationService PostgreSQL integrity", () => {
       status: "SUCCEEDED",
       outputText: "persisted with evidence",
     });
-    expect(Number(persisted.costCents)).toBe(priced.costCents);
+    // WIN-134 — the Turn carries the ledger-rounded aggregate so it agrees with
+    // what CostService recomputes from the same Steps; the Step keeps the rate
+    // engine's full-precision figure as evidence. Here they straddle a rounding
+    // boundary, so a regression in either direction is visible.
+    expect(Number(persisted.costCents)).toBe(roundCents(priced.costCents));
+    expect(Number(persisted.steps[0]!.costCents)).toBe(priced.costCents);
     expect(persisted.steps).toHaveLength(1);
     expect(persisted.steps[0]).toMatchObject({
       modelPriceId: priced.price.modelPriceId,

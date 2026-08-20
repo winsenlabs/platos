@@ -15,6 +15,7 @@ import { AttachmentsService } from "./attachments.service";
 import { ToolGatewayModule } from "../tool-gateway/tool-gateway.module";
 import { MemoryModule } from "../memory/memory.module";
 import { MonitoringModule } from "../monitoring/monitoring.module";
+import { ObservabilityModule } from "../observability/observability.module";
 import { AuthModule } from "../auth/auth.module";
 import { ProvidersModule } from "../providers/providers.module";
 import { StreamingModule } from "../streaming/streaming.module";
@@ -28,6 +29,9 @@ import { PromptCacheService } from "./prompt-cache.service";
     ToolGatewayModule,
     MemoryModule,
     MonitoringModule,
+    // WIN-133 — the DLQ drain endpoint drains the observability outbox too, and
+    // the diagnostics endpoint reports its sink health.
+    ObservabilityModule,
     AuthModule,
     ProvidersModule,
     StreamingModule,

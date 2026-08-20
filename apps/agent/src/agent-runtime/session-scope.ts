@@ -61,6 +61,14 @@ export interface SessionScope {
   userIdentities?: SessionIdentityClaim[];
   /** Per-turn context (user_timezone, user.* identity, sessionContextOverride). */
   sessionContext?: Record<string, unknown>;
+  /**
+   * Plaintext identity an entity SIGNED for, resolved by the original request's
+   * auth. Carried for the same reason `principal` is: it is decided once, at the
+   * edge, and a durable turn has no way to re-derive it. Dropping it would leave
+   * the analytical projection with no identity on durable turns only — the
+   * quiet, one-hop-at-a-time regression this module exists to prevent.
+   */
+  signedUserMeta?: { name?: string; email?: string };
 }
 
 /** Structural input — anything with the RequestScope shape (avoids a Nest import). */
@@ -74,6 +82,7 @@ export interface SessionScopeInput {
   principal?: "operator" | "end-user";
   userIdentities?: SessionIdentityClaim[];
   sessionContext?: Record<string, unknown> | null;
+  signedUserMeta?: { name?: string; email?: string };
 }
 
 /**
@@ -96,5 +105,8 @@ export function buildSessionScope(scope: SessionScopeInput): SessionScope {
       ? { userIdentities: scope.userIdentities }
       : {}),
     ...(scope.sessionContext ? { sessionContext: scope.sessionContext } : {}),
+    ...(scope.signedUserMeta && (scope.signedUserMeta.name || scope.signedUserMeta.email)
+      ? { signedUserMeta: scope.signedUserMeta }
+      : {}),
   };
 }

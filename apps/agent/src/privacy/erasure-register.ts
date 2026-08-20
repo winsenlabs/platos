@@ -244,6 +244,58 @@ export async function assertSubjectNotErased(
   if (hit) throw new SubjectErasedError(args.organizationId);
 }
 
+/** A store that can be asked about many aliases at once. */
+export interface TombstoneReader {
+  erasureTombstone: {
+    findMany(args: unknown): Promise<Array<{ aliasHash: string }>>;
+  };
+}
+
+/**
+ * Which of these aliases belong to an erased subject.
+ *
+ * The batch form of {@link assertSubjectNotErased}, for the one caller that has
+ * to decide row by row rather than refuse a single write: the observability
+ * outbox drain, which holds up to a full batch of queued projections and must
+ * drop the erased subjects' rows while delivering everyone else's. Asking per
+ * row would be one query per queued turn.
+ *
+ * Returns the ERASED subset as alias hashes, which are content-free — the caller
+ * hashes its own aliases with {@link aliasKeyHash} and looks its rows up in the
+ * result. Nothing reversible crosses this boundary in either direction.
+ *
+ * Throws when the register cannot be consulted, for the same reason
+ * `assertSubjectNotErased` does: "we lost the ability to tell" must never read
+ * as "nobody here is erased".
+ */
+export async function erasedAliasHashes(
+  reader: TombstoneReader,
+  args: {
+    organizationId: string;
+    aliases: SubjectAlias[];
+    salt?: string;
+    now?: () => Date;
+  },
+): Promise<Set<string>> {
+  const hashes = aliasHashes(args.aliases, args.organizationId, args.salt ?? erasureHashSalt());
+  if (hashes.length === 0) return new Set();
+  let rows: Array<{ aliasHash: string }>;
+  try {
+    rows = await reader.erasureTombstone.findMany({
+      where: {
+        organizationId: args.organizationId,
+        aliasHash: { in: hashes },
+        // Read-time expiry, same as the single-alias barrier.
+        expiresAt: { gt: (args.now ?? (() => new Date()))() },
+      },
+      select: { aliasHash: true },
+    });
+  } catch (err) {
+    throw new ErasureRegisterUnavailableError(err);
+  }
+  return new Set(rows.map((row) => row.aliasHash));
+}
+
 /**
  * Seal a subject: record a tombstone for every alias it can be reached by.
  *

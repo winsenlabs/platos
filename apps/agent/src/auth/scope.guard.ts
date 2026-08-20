@@ -146,6 +146,25 @@ export interface RequestScope {
    * list can show it back to them.
    */
   operatorUserId?: string;
+  /**
+   * WIN-133 — plaintext identity an ENTITY SIGNED FOR, and the only provenance
+   * allowed to reach `turns_v1.user_display_name` / `.user_email`.
+   *
+   * Set here and in the WS gateway, both times copied verbatim from a validated
+   * `SessionPayload.userMeta`. Never from a Thread row, a Postgres `User` row,
+   * or a socket payload.
+   *
+   * It exists BESIDE `sessionContext.user` rather than being read out of it,
+   * because that bag is a prompt-substitution surface with three other writers:
+   * `AgentService.stream` merges a base layer read straight out of the `User`
+   * table so `{{user.name}}` always resolves, and the WS gateway merges a
+   * caller-supplied `sessionContextOverride`. Both are legitimate for a prompt
+   * and neither is a signature — reading identity out of the merged bag put the
+   * OPERATOR'S real name and email into the analytical store on every dashboard
+   * turn, a class of identity the erasure sweep addresses only by end-user key
+   * and therefore can never reach.
+   */
+  signedUserMeta?: { name?: string; email?: string };
 }
 
 @Injectable()
@@ -468,15 +487,17 @@ export class ScopeGuard implements CanActivate {
         // is the only source of name/email for them). Empty when the
         // entity backend didn't include userMeta in the JWT.
         const userMeta = payload.userMeta;
-        const sessionContextFromToken =
+        // WIN-133 — the signed values, isolated first. `sessionContext` is
+        // derived FROM this rather than the other way round, so the prompt bag
+        // and the projection's identity source cannot come apart.
+        const signedUserMeta =
           userMeta && (userMeta.name || userMeta.email)
             ? {
-                user: {
-                  ...(userMeta.name ? { name: userMeta.name } : {}),
-                  ...(userMeta.email ? { email: userMeta.email } : {}),
-                },
+                ...(userMeta.name ? { name: userMeta.name } : {}),
+                ...(userMeta.email ? { email: userMeta.email } : {}),
               }
             : undefined;
+        const sessionContextFromToken = signedUserMeta ? { user: { ...signedUserMeta } } : undefined;
 
         // Carry verified-identity claims onto the scope so downstream
         // ConversationService.resolveEndUser can link this turn to a canonical
@@ -511,6 +532,10 @@ export class ScopeGuard implements CanActivate {
           ...(sessionContextFromToken
             ? { sessionContext: sessionContextFromToken }
             : {}),
+          // WIN-133 — the same values, kept apart from the prompt bag so the
+          // analytical projection can tell a signature from a merge. See
+          // RequestScope.signedUserMeta.
+          ...(signedUserMeta ? { signedUserMeta } : {}),
           ...(traceCtx ? { traceId: traceCtx.traceId, parentSpanId: traceCtx.parentSpanId } : {}),
         } satisfies RequestScope;
         // Access key check (if configured for this scope)

@@ -17,6 +17,7 @@ import { ProvidersModule } from "./providers/providers.module";
 import { StreamingModule } from "./streaming/streaming.module";
 import { MemoryModule } from "./memory/memory.module";
 import { MonitoringModule } from "./monitoring/monitoring.module";
+import { ObservabilityModule } from "./observability/observability.module";
 import { TriggerBridgeModule } from "./trigger-bridge/trigger-bridge.module";
 import { SkillsModule } from "./skills/skills.module";
 import { EvalsModule } from "./evals/evals.module";
@@ -46,6 +47,10 @@ const imports = [
   StreamingModule,
   MemoryModule,
   MonitoringModule,
+  // WIN-133 (M3.1) — the turn-shaped analytical projection and its outbox.
+  // Listed here so its startup probe runs on every boot and says out loud
+  // whether the sink is disabled, unreachable, or missing its schema.
+  ObservabilityModule,
   // PPR-25 + PPR-26 + PPR-51: HMAC internal callback + realtime run bridge
   // + durable-approval wait endpoint live in TriggerBridgeModule.
   TriggerBridgeModule,

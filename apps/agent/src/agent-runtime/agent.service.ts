@@ -50,6 +50,8 @@ import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
 import { CostService } from "../monitoring/cost.service";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
+import type { CanonicalModelPriceSnapshot } from "@platos/tenancy-database";
+import { turnTokenDetails } from "../monitoring/usage-ledger";
 import { SpansService } from "../monitoring/spans.service";
 // Theme L — pgvector-backed semantic memory + knowledge-graph services.
 // Both are @Optional so the existing unit-test harness that constructs
@@ -409,6 +411,35 @@ export type AgentStreamEvent =
   | {
       type: "safety_flags";
       flags: AgentSafetyFlag[];
+    }
+  | {
+      /**
+       * WIN-134 — one sub-agent model call, priced, so it reaches Postgres.
+       *
+       * Sub-agent spend was fanned out to Redis by `runSubAgent` and persisted
+       * nowhere: the only Step writer is `ConversationService.storeMessage`,
+       * one Step per assistant turn, and `Turn.costCents` came from the parent
+       * turn's own tokens. So the two ledgers described different money — a day
+       * Redis still held returned MORE than the same day after it fell back to
+       * the Step rows, `reconcileFromPostgres` rebuilt a lost day permanently
+       * short, and the canary panel (Postgres) disagreed with the per-agent
+       * card (Redis) for the same agent.
+       *
+       * AgentTaskService consumes this and does NOT forward it: it is ledger
+       * plumbing, not a UI event.
+       */
+      type: "sub_agent_usage";
+      model: string;
+      provider?: string | null;
+      startedAt: string;
+      completedAt: string;
+      inputTokens: number;
+      outputTokens: number;
+      cacheCreationInputTokens: number;
+      cacheReadInputTokens: number;
+      reasoningTokens: number;
+      costCents: number;
+      pricing: CanonicalModelPriceSnapshot;
     }
   | {
       /**
@@ -4227,6 +4258,10 @@ export class AgentService {
               // from buildMetaTools). When the user clicks stop, the abort
               // cascades into the sub-agent's generateText call.
               abortSignal,
+              // WIN-134 — rides the same pending-event queue the artifact
+              // events use, so it is drained at the next step boundary and
+              // reaches AgentTaskService before the turn is persisted.
+              onUsage: onArtifactEvent,
             });
             return result;
           } catch (err: any) {
@@ -4537,6 +4572,14 @@ export class AgentService {
     argExpectationsHint?: string;
     /** PRELAUNCH-A2-6 — parent stream's abort signal. */
     abortSignal?: AbortSignal;
+    /**
+     * WIN-134 — where this call's priced usage goes so it reaches Postgres.
+     *
+     * The Redis fan-out below is the live rollup; this is the durable ledger's
+     * copy. Without both, the same window returns different money depending on
+     * which one the reading surface happens to consult.
+     */
+    onUsage?: (event: AgentStreamEvent) => void;
   }): Promise<{ status: "success" | "failed"; text: string; toolCalls: any[]; steps: number; error?: string }> {
     const subModel = args.subAgentConfig?.model || "anthropic:claude-haiku-4-5-20251001";
     const subPrice = await preflightModelPricing(this.costService, subModel);
@@ -4709,6 +4752,8 @@ export class AgentService {
           subPromptTokens,
           subCompletionTokens,
           {
+            // Not a task. This is a model call INSIDE the parent's turn, and a
+            // turn that delegates three times is still one completed turn.
             subAgentLabel: "sub-agent",
             cacheCreationInputTokens: subCacheCreation,
             cacheReadInputTokens: subCacheRead,
@@ -4717,6 +4762,27 @@ export class AgentService {
           },
         );
         subCostCents = rec.costCents;
+    }
+
+    // WIN-134 — the same spend, handed to the durable ledger. It lands as an
+    // extra Step on the parent's Turn, priced at the SUB-AGENT'S model and
+    // rates, so the per-model breakdown stays honest while the money rolls up
+    // into the enclosing turn per THEME_E §E.9.
+    if (args.onUsage && (subPromptTokens > 0 || subCompletionTokens > 0 || subCostCents > 0)) {
+      args.onUsage({
+        type: "sub_agent_usage",
+        model: subModel,
+        provider: subModel.split(":")[0] ?? null,
+        startedAt: new Date(Math.round(subStartNs / 1_000_000)).toISOString(),
+        completedAt: new Date(Math.round(subEndNs / 1_000_000)).toISOString(),
+        inputTokens: subPromptTokens,
+        outputTokens: subCompletionTokens,
+        cacheCreationInputTokens: subCacheCreation,
+        cacheReadInputTokens: subCacheRead,
+        reasoningTokens: subReasoning,
+        costCents: subCostCents,
+        pricing: subPrice,
+      });
     }
 
     // Theme E.9 — emit a child `llm.inference.sub_agent` span under the turn
@@ -6201,8 +6267,6 @@ export class AgentService {
       // PRELAUNCH-A1-5 — capture the LAST observed raw v6 token-details
       // blobs so they can ride out on the terminal `meta` event and be
       // persisted onto responseJson.usage for post-hoc cost audit.
-      let lastInputTokenDetails: Record<string, unknown> | null = null;
-      let lastOutputTokenDetails: Record<string, unknown> | null = null;
       // TOOL-RESULT BOUNDARY — coerce every tool `execute` return into a valid,
       // JSON-serializable tool-result part before the SDK's multi-step loop can
       // embed it in the next step's ModelMessage[]. Prevents an undefined /
@@ -6347,15 +6411,29 @@ export class AgentService {
             Number(providerMeta?.google?.usageMetadata?.thoughtsTokenCount ?? 0) ||
             Number(providerMeta?.vertex?.usageMetadata?.thoughtsTokenCount ?? 0);
           reasoningTotal += stepReasoning;
-          // PRELAUNCH-A1-5 — capture the last observed raw token-details
-          // blobs. The most recent step's view is what we persist (each
-          // step carries the cumulative shape on v6 SDK).
-          if ((usage as any)?.inputTokenDetails) {
-            lastInputTokenDetails = (usage as any).inputTokenDetails as Record<string, unknown>;
-          }
-          if ((usage as any)?.outputTokenDetails) {
-            lastOutputTokenDetails = (usage as any).outputTokenDetails as Record<string, unknown>;
-          }
+          // WIN-134 — this used to keep the LAST step's token-details blob and
+          // emit it on the turn-level `meta` event beside the ACCUMULATED
+          // cacheReadInputTokens, on the justification that "each step carries
+          // the cumulative shape on v6 SDK". It does not: per-step usage is
+          // per-step on v6 and v7 alike (v7 flipped only the awaited
+          // `result.usage` to mean total-across-steps — see the note on the
+          // `finish` chunk below). So one usage record carried two disagreeing
+          // cache-read numbers for the same turn: 14,788 from the last step
+          // beside 39,795 summed across all of them, 2.7x apart.
+          //
+          // Not the tool-result double-emit fixed in 2f5de42: that duplicated
+          // tool results into the replayed history and inflated INPUT tokens on
+          // SUBSEQUENT turns by a clean 2x. This is one record disagreeing with
+          // itself, at a ratio that is not 2x and never was.
+          //
+          // Billing always read the top-level accumulators, so money was never
+          // wrong — only the panel next to it. Rather than accumulate the raw
+          // blobs (whose keys the provider chooses, and which are absent on
+          // steps where only provider metadata carried the counters), the turn
+          // total is projected from the SAME accumulators the top-level fields
+          // use. The two cannot disagree because there is only one of them.
+          // Raw per-step blobs remain on the `trace_step` event, which is the
+          // granularity they are actually true at.
           const finishReason = (event as any).finishReason;
           this.logger.debug(`[agent.stream] ----- STEP FINISH -----`);
           this.logger.debug(`[agent.stream] finish_reason=${finishReason}`);
@@ -6509,8 +6587,14 @@ export class AgentService {
                 cacheCreationInputTokens: cacheCreationTotal > 0 ? cacheCreationTotal : undefined,
                 cacheReadInputTokens: cacheReadTotal > 0 ? cacheReadTotal : undefined,
                 reasoningTokens: reasoningTotal > 0 ? reasoningTotal : undefined,
-                inputTokenDetails: lastInputTokenDetails ?? undefined,
-                outputTokenDetails: lastOutputTokenDetails ?? undefined,
+                // WIN-134 — projected from the accumulators above, so the
+                // detail blob and the top-level counters are the same numbers
+                // said twice rather than two different answers.
+                ...turnTokenDetails({
+                  cacheReadTokens: cacheReadTotal,
+                  cacheWriteTokens: cacheCreationTotal,
+                  reasoningTokens: reasoningTotal,
+                }),
               },
             };
             break;
