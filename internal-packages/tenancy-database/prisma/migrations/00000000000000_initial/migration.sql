@@ -1471,9 +1471,13 @@ CREATE TABLE "public"."ErasureOperation" (
     "scopes" JSONB NOT NULL,
     "stores" JSONB NOT NULL,
     "inventory" JSONB,
+    "resumePlan" JSONB,
     "policyVersion" TEXT NOT NULL,
     "legalHoldPolicyId" TEXT,
     "retryCount" INTEGER NOT NULL DEFAULT 0,
+    "nextAttemptAt" TIMESTAMP(3),
+    "leaseToken" TEXT,
+    "leaseExpiresAt" TIMESTAMP(3),
     "requestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "startedAt" TIMESTAMP(3),
     "completedAt" TIMESTAMP(3),
@@ -2106,6 +2110,9 @@ CREATE UNIQUE INDEX "EntityToolPolicy_entityId_toolId_key" ON "public"."EntityTo
 
 -- CreateIndex
 CREATE INDEX "ErasureOperation_organizationId_subjectKeyHash_requestedAt_idx" ON "public"."ErasureOperation"("organizationId", "subjectKeyHash", "requestedAt");
+
+-- CreateIndex
+CREATE INDEX "ErasureOperation_organizationId_nextAttemptAt_idx" ON "public"."ErasureOperation"("organizationId", "nextAttemptAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ErasureOperation_organizationId_idempotencyKey_key" ON "public"."ErasureOperation"("organizationId", "idempotencyKey");
@@ -2840,6 +2847,7 @@ ALTER TABLE "public"."NotificationRule" ADD CONSTRAINT "NotificationRule_deliver
 ALTER TABLE "public"."ErasureOperation" ADD CONSTRAINT "ErasureOperation_scopes_json_root" CHECK (jsonb_typeof("scopes") = 'array');
 ALTER TABLE "public"."ErasureOperation" ADD CONSTRAINT "ErasureOperation_stores_json_root" CHECK (jsonb_typeof("stores") = 'array');
 ALTER TABLE "public"."ErasureOperation" ADD CONSTRAINT "ErasureOperation_inventory_json_root" CHECK ("inventory" IS NULL OR jsonb_typeof("inventory") = 'object');
+ALTER TABLE "public"."ErasureOperation" ADD CONSTRAINT "ErasureOperation_resumePlan_json_root" CHECK ("resumePlan" IS NULL OR jsonb_typeof("resumePlan") = 'object');
 
 -- Canonical owner keys are immutable. Moving a record between isolation roots
 -- would otherwise invalidate descendants without touching their rows.

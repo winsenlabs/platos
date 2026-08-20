@@ -6972,6 +6972,23 @@
         ]
       },
       {
+        "id": "POST /api/v1/agent/admin/privacy/erasures/resume-due",
+        "method": "POST",
+        "path": "/api/v1/agent/admin/privacy/erasures/resume-due",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "ErasureController",
+            "handler": "resumeDue",
+            "source": "apps/agent/src/privacy/erasure.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
         "id": "GET /api/v1/agent/admin/privacy/subjects/:externalUserId/inventory",
         "method": "GET",
         "path": "/api/v1/agent/admin/privacy/subjects/:externalUserId/inventory",
@@ -11840,15 +11857,15 @@
       "MAPPED": 83,
       "MCP_ONLY": 123
     },
-    "restOperations": 286,
-    "restRouteBindings": 287,
+    "restOperations": 287,
+    "restRouteBindings": 288,
     "ambiguousRestOperations": 1,
     "restClassifications": {
       "DEPRECATED": 13,
       "INTERNAL": 13,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 133
+      "REST_ONLY": 134
     }
   }
 }

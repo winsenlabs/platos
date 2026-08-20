@@ -104,6 +104,7 @@ export const supportDomainModels = [
   "CredentialAudit",
   "CredentialSecretVersion",
   "EnvironmentVariable",
+  "ErasureTombstone",
   "OAuthConsentTransaction",
   "Model",
   "ModelPrice",

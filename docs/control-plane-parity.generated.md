@@ -7,10 +7,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **206** across **35** namespaces (24 admin-tier).
-- REST operations: **286** unique method/path pairs from **287** route bindings.
+- REST operations: **287** unique method/path pairs from **288** route bindings.
 - Ambiguous duplicate REST method/path pairs: **1**.
 - MCP classifications: MAPPED=83, MCP_ONLY=123.
-- REST classifications: DEPRECATED=13, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=133.
+- REST classifications: DEPRECATED=13, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=134.
 
 ## REST inventory
 
@@ -27,6 +27,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/admin/privacy/erasures` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#create` |
 | `GET /api/v1/agent/admin/privacy/erasures/:operationId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#get` |
 | `POST /api/v1/agent/admin/privacy/erasures/:operationId/retry` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#retry` |
+| `POST /api/v1/agent/admin/privacy/erasures/resume-due` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#resumeDue` |
 | `GET /api/v1/agent/admin/privacy/subjects/:externalUserId/inventory` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/privacy/erasure.controller.ts#inventory` |
 | `GET /api/v1/agent/agents` | MAPPED | `agents.list` | Reviewed behavioral equivalence: the REST adapter and agents.list invoke the same scope-pinned AgentCrudService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listAgents` |
 | `POST /api/v1/agent/agents` | MAPPED | `agents.create` | Reviewed behavioral equivalence: the REST adapter and agents.create invoke the same scope-pinned AgentCrudService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#createAgent` |
