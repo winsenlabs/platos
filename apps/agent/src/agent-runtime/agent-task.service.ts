@@ -21,6 +21,7 @@ import { env } from "../shared/env";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 import { ProviderRuntimeError } from "../providers/provider-runtime.error";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
+import { freshInputTokens } from "../monitoring/usage-ledger";
 import { randomUUID } from "node:crypto";
 
 export const TURN_MUTEX_TTL_MS = 30_000;
@@ -1055,12 +1056,17 @@ export class AgentTaskService {
     //     are fire-and-forget to the budget-alert trigger.dev task so
     //     webhook + email delivery never blocks the turn.
     try {
-      // ONE SOURCE OF TRUTH (see monitoring/billable-usage.ts). This passed
+      // ONE SOURCE OF TRUTH (see monitoring/usage-ledger.ts). This passed
       // `costCents`, the NAIVE figure that prices only fresh input + output and
       // ignores cache reads and writes entirely. Budgets were therefore enforced
       // against a number that understates real spend — measured 2.47c against
       // 25.70c actual on 2026-07-31, so a cap could not trip. The gap widens as
       // caching improves, so fixing prompt caching quietly disabled budgets.
+      //
+      // WIN-134 — the cost fan-out now happens exactly once, in
+      // CostService.recordUsage above. This call records the completed TURN
+      // against the user's run counter; passing the cost here as well is what
+      // doubled the per-user naive total.
       await this.budgetService.recordUserSpend(scopeTuple, scope.userId, costWithCacheCents);
       const evalAfter = await this.budgetService.evaluate(scopeTuple, {
         agentId,
@@ -1200,9 +1206,10 @@ export class AgentTaskService {
       // PRELAUNCH-A1-12 — emit one counter per (direction, kind) tuple.
       // `text` is the fresh-token slice (input − cache_read − cache_write
       // for input; output − reasoning for output).
-      const noCacheInput = Math.max(
-        0,
-        totalInputTokens - totalCacheReadTokens - totalCacheCreationTokens,
+      const noCacheInput = freshInputTokens(
+        totalInputTokens,
+        totalCacheReadTokens,
+        totalCacheCreationTokens,
       );
       const textOutputTokens = Math.max(0, totalOutputTokens - totalReasoningTokens);
       if (noCacheInput > 0) {

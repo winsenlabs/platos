@@ -3013,6 +3013,12 @@ export class AgentController {
         cacheReadInputTokens: r.cacheReadInputTokens,
         cacheCreationInputTokens: r.cacheCreationInputTokens,
         reasoningTokens: r.reasoningTokens,
+        // WIN-134 — derived by the ledger, once. The governance page used to
+        // subtract the cache lanes itself over these same rows, and the chat
+        // inspector subtracted them again per step, so the same label showed
+        // 3 on one panel and 9 on another for one turn.
+        noCacheInputTokens: r.noCacheInputTokens,
+        tasks: r.tasks,
       },
     ]));
 
@@ -3163,6 +3169,8 @@ export class AgentController {
         cacheReadInputTokens: 0,
         cacheCreationInputTokens: 0,
         reasoningTokens: 0,
+        noCacheInputTokens: 0,
+        tasks: 0,
       };
       return {
         userId: b.userId,
@@ -3179,6 +3187,10 @@ export class AgentController {
         cacheReadInputTokens: tokens.cacheReadInputTokens,
         cacheCreationInputTokens: tokens.cacheCreationInputTokens,
         reasoningTokens: tokens.reasoningTokens,
+        noCacheInputTokens: tokens.noCacheInputTokens,
+        // Completed turns, from the ledger. `totalTurns` above counts every
+        // Turn row including the ones that never reached a model.
+        tasks: tokens.tasks,
         riskFlagCount,
         score,
       };
@@ -3433,9 +3445,17 @@ export class AgentController {
     const lastActiveByAgent = new Map<string, Date | null>();
     for (const g of lastActiveGroups) lastActiveByAgent.set(g.agentId, g._max?.updatedAt ?? null);
 
-    // cost + tokens per agent
+    // cost + tokens per agent — straight off the ledger's rollup, including
+    // the task count, so this card and the usage page cannot disagree.
     const costByAgent = new Map(
-      costRows.map((r) => [r.agentId, { costCents: r.costCents, totalTokens: r.inputTokens + r.outputTokens }]),
+      costRows.map((r) => [
+        r.agentId,
+        {
+          costCents: r.costCents,
+          totalTokens: r.inputTokens + r.outputTokens,
+          tasks: r.tasks,
+        },
+      ]),
     );
 
     // satisfaction per agent
@@ -3459,6 +3479,7 @@ export class AgentController {
         status,
         threads: threadsPerAgent.get(a.id) ?? 0,
         messages: messagesPerAgent.get(a.id) ?? 0,
+        tasks: cost?.tasks ?? 0,
         costCents: cost?.costCents ?? 0,
         totalTokens: cost?.totalTokens ?? 0,
         satisfaction: sat && sat.total > 0 ? { ups: sat.ups, downs: sat.downs, score: sat.score } : null,
@@ -4975,12 +4996,26 @@ Write the summary now:`;
           },
         },
         {
+          // WIN-134 — a task is ONE COMPLETED TURN. The number that made this
+          // card necessary counted tool calls, so an agent that searched, read
+          // three documents and replied was reported as having done five jobs.
+          // It comes from the ledger's task counter, which only a completed
+          // turn increments.
+          id: "tasks_7d",
+          label: "Tasks completed (7d)",
+          value: cost7d.tasks,
+          unit: "tasks",
+        },
+        {
           id: "tools_active_7d",
           label: "Active tools (7d)",
           value: activeToolsRows.length,
           unit: "tools",
         },
       ],
+      // The lane split sums back to the spend card by construction — see
+      // `laneCostsFromRollup`, where inference is the residual.
+      costByLane: cost7d.byLane,
       costSeries: cost7d.perDay,
       fetchedAt: new Date().toISOString(),
     };

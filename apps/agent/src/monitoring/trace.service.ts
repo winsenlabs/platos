@@ -3,6 +3,7 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
 import { SpansService, type PlatosSpan } from "./spans.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { CostService } from "./cost.service";
+import { addUsage, EMPTY_USAGE, usageFromStep } from "./usage-ledger";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -277,17 +278,18 @@ export class TraceService {
 
     // 6. Tokens and tool counts live on Step/ToolCall. Exact cost remains in
     // the full-fidelity Redis ledger written by CostService.recordUsage.
+    // WIN-134 — the arithmetic is the ledger's, not this file's.
     let totalCostCents = 0;
-    let totalInputTokens = 0;
-    let totalOutputTokens = 0;
     let toolCallCount = 0;
+    let usage = { ...EMPTY_USAGE };
     for (const turn of rawTurns) {
       for (const step of turn.steps) {
-        totalInputTokens += step.inputTokens ?? 0;
-        totalOutputTokens += step.outputTokens ?? 0;
+        usage = addUsage(usage, usageFromStep(step));
         toolCallCount += step.toolCalls.length;
       }
     }
+    const totalInputTokens = usage.inputTokens;
+    const totalOutputTokens = usage.outputTokens;
     if (this.costService) {
       try {
         totalCostCents = (await this.costService.getThreadCost(threadId)).costCents;
@@ -448,8 +450,9 @@ export class TraceService {
             rollup.messageCount += 1;
           }
           for (const step of turn.steps) {
-            rollup.totalInputTokens += step.inputTokens ?? 0;
-            rollup.totalOutputTokens += step.outputTokens ?? 0;
+            const stepUsage = usageFromStep(step);
+            rollup.totalInputTokens += stepUsage.inputTokens;
+            rollup.totalOutputTokens += stepUsage.outputTokens;
             rollup.toolCallCount += step.toolCalls.length;
           }
           return rollup;

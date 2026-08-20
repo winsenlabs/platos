@@ -119,6 +119,8 @@ type MonitoringUserRow = {
   cacheReadInputTokens?: number;
   cacheCreationInputTokens?: number;
   reasoningTokens?: number;
+  /** WIN-134 — derived by the usage ledger on the agent, not here. */
+  noCacheInputTokens?: number;
 };
 
 type TokenMix = {
@@ -201,10 +203,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     const cacheCreationInputTokens = sum("cacheCreationInputTokens");
     const reasoningTokens = sum("reasoningTokens");
     const totalInputCounted = inputTokens; // already includes cache slice on v6
-    const noCacheInputTokens = Math.max(
-      0,
-      inputTokens - cacheReadInputTokens - cacheCreationInputTokens,
-    );
+    // WIN-134 — this used to subtract the cache lanes itself. The chat
+    // inspector did the same subtraction per step and the runtime did it again
+    // over turn totals, so one label carried three different numbers. The
+    // agent's usage ledger derives it once and every surface sums the result.
+    const noCacheInputTokens = sum("noCacheInputTokens");
     const cacheHitDenom = inputTokens > 0 ? inputTokens : 1;
     const cacheHitPercent = (cacheReadInputTokens / cacheHitDenom) * 100;
     const reasoningDenom = outputTokens > 0 ? outputTokens : 1;

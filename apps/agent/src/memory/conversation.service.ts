@@ -13,6 +13,7 @@ import {
   type CanonicalModelPriceSnapshot,
 } from "@platos/tenancy-database";
 import { assertSubjectNotErased } from "../privacy/erasure-register";
+import { freshInputTokens } from "../monitoring/usage-ledger";
 
 export interface StoredMessage {
   id: string;
@@ -932,6 +933,17 @@ export class ConversationService {
         model: steps.at(-1)?.model ?? null,
         usage,
         cost_cents: turn.costCents == null ? null : Number(turn.costCents),
+        // WIN-134 — `Turn.costCents` has been the four-rate cache-aware figure
+        // since WIN-125, so both names carry it. Emitting only the naive name
+        // meant a consumer applying the "prefer cost_with_cache_cents" rule
+        // took the fallback branch every time and could never tell a
+        // cache-aware row from a legacy one.
+        cost_with_cache_cents: turn.costCents == null ? null : Number(turn.costCents),
+        no_cache_input_tokens: freshInputTokens(
+          usage.inputTokens,
+          usage.cacheReadInputTokens,
+          usage.cacheCreationInputTokens,
+        ),
         latency_ms: turn.latencyMs,
         version_id: turn.agentVersionId,
         version_bucket: String(turn.versionBucket).toLowerCase(),

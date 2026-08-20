@@ -52,6 +52,10 @@ describe("AgentController clean monitoring and scoped 404 regressions", () => {
       inputTokens: 100,
       outputTokens: 25,
       costCents: 2.5,
+      // WIN-134 — three completed turns across nine model calls. The summary
+      // must report the turns.
+      tasks: 3,
+      byLane: { inference: 2.1, embedding: 0.3, extraction: 0.1, judge: 0, skill: 0 },
       perDay: [{ date: "2026-08-15", costCents: 2.5 }],
     });
 
@@ -94,8 +98,18 @@ describe("AgentController clean monitoring and scoped 404 regressions", () => {
         value: 2.5,
         details: { inputTokens: 100, outputTokens: 25 },
       }),
+      expect.objectContaining({ id: "tasks_7d", value: 3, unit: "tasks" }),
       expect.objectContaining({ id: "tools_active_7d", value: 2 }),
     ]);
+    // The lane split is passed through untouched — it already sums to the
+    // spend card by construction and must not be re-derived here.
+    expect(result.costByLane).toEqual({
+      inference: 2.1,
+      embedding: 0.3,
+      extraction: 0.1,
+      judge: 0,
+      skill: 0,
+    });
     expect(result.costSeries).toEqual([
       { date: "2026-08-15", costCents: 2.5 },
     ]);

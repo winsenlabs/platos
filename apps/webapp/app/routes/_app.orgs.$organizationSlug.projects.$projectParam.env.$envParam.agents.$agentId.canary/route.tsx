@@ -26,8 +26,13 @@ interface CanaryMetricsRow {
   versionNumber: number | null;
   isCurrent: boolean;
   isCanary: boolean;
-  messageCount: number;
+  /** Turns attempted against this version. */
+  turnCount: number;
+  /** Completed turns among them — the billable unit. */
+  tasks: number;
   totalCostCents: number;
+  inputTokens: number;
+  outputTokens: number;
   avgLatencyMs: number | null;
   errorCount: number;
   errorRate: number;
@@ -195,7 +200,7 @@ export default function AgentCanaryMetricsPage() {
                     Version
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-text-dimmed uppercase">
-                    Messages
+                    Tasks
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-text-dimmed uppercase">
                     Cost
@@ -240,7 +245,12 @@ export default function AgentCanaryMetricsPage() {
                         </div>
                       </td>
                       <td className="px-3 py-2 font-mono text-text-bright">
-                        {row.messageCount}
+                        {row.tasks}
+                        {row.turnCount !== row.tasks && (
+                          <span className="ml-1 text-text-dimmed">
+                            /{row.turnCount}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2 font-mono text-text-bright">
                         {formatCents(row.totalCostCents)}

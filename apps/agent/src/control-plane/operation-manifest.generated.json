@@ -4226,7 +4226,7 @@
       },
       {
         "name": "monitoring.cost.daily",
-        "description": "Per-scope daily cost totals (input tokens, output tokens, cents). Read from the Redis cost hashes. Pass `date=YYYY-MM-DD` for historical, or leave blank for today.",
+        "description": "Per-scope daily usage totals from the usage ledger: completed tasks, token lanes, cache-aware cost in cents, and the per-lane spend split (inference/embedding/extraction/judge/skill) which sums back to that cost. A task is ONE COMPLETED TURN, never a model call or a tool call. Pass `date=YYYY-MM-DD` for historical, or leave blank for today.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -4246,7 +4246,7 @@
       },
       {
         "name": "monitoring.cost.range",
-        "description": "Aggregate the last N days of per-scope cost counters. Returns totals + perDay breakdown.",
+        "description": "Aggregate the last N days of per-scope usage from the ledger. Returns totals plus a perDay breakdown, with the same cache-aware cost and completed-task count every other monitoring surface reports for the window.",
         "inputSchema": {
           "type": "object",
           "properties": {

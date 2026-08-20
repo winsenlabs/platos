@@ -324,14 +324,19 @@ type CacheRangePayload = {
   costWithCacheCents: number;
   cacheCreationInputTokens: number;
   cacheReadInputTokens: number;
+  /** WIN-134 — derived by the usage ledger, never by a subtraction here. */
+  noCacheInputTokens: number;
+  tasks: number;
   perDay: Array<{
     date: string;
     inputTokens: number;
     outputTokens: number;
     cacheCreationInputTokens: number;
     cacheReadInputTokens: number;
+    noCacheInputTokens: number;
     costCents: number;
     costWithCacheCents: number;
+    tasks: number;
   }>;
   fetchedAt: string;
 };
@@ -1614,7 +1619,11 @@ function CacheHitRateSection({
   const totalRead = cacheRange.cacheReadInputTokens;
   const totalCreated = cacheRange.cacheCreationInputTokens;
   const totalInput = cacheRange.inputTokens;
-  const denom = totalRead + totalCreated + totalInput;
+  // WIN-134 — `inputTokens` is INCLUSIVE of the cache slice, so the old
+  // denominator (read + written + input) counted the cached tokens twice and
+  // reported a hit rate roughly half the real one. The usage page and this
+  // card now divide by the same base.
+  const denom = totalInput;
   const hitRatePct = denom > 0 ? (totalRead / denom) * 100 : 0;
 
   if (denom === 0) {
@@ -1626,7 +1635,13 @@ function CacheHitRateSection({
     );
   }
 
-  const savingsCents = Math.max(0, cacheRange.costCents - cacheRange.costWithCacheCents);
+  // `costCents` and `costWithCacheCents` now carry the same four-rate figure,
+  // so their difference is structurally zero — this card was about to start
+  // reporting "$0.00 saved" forever. Real savings need per-model rates, which
+  // the per-agent rollup does not carry. The uncached slice is derivable, is
+  // the number that actually moves when cache health changes, and comes
+  // straight off the ledger.
+  const freshInputTokens = cacheRange.noCacheInputTokens;
 
   return (
     <div className="space-y-3">
@@ -1650,13 +1665,9 @@ function CacheHitRateSection({
           </p>
         </div>
         <div>
-          <p className="text-xs text-text-dimmed">Savings</p>
+          <p className="text-xs text-text-dimmed">Uncached tokens</p>
           <p className="font-mono text-sm text-emerald-300">
-            {savingsCents > 0
-              ? savingsCents < 100
-                ? `$${(savingsCents / 100).toFixed(4)}`
-                : `$${(savingsCents / 100).toFixed(2)}`
-              : "$0.00"}
+            {freshInputTokens.toLocaleString()}
           </p>
         </div>
       </div>

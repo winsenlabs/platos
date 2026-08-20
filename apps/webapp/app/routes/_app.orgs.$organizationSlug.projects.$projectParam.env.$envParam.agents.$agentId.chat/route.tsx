@@ -2215,6 +2215,16 @@ export default function AgentChatPage() {
                         const cacheReadTokens = Number(step.cacheRead ?? u.inputTokenDetails?.cacheReadTokens ?? 0);
                         const cacheCreationTokens = Number(step.cacheCreation ?? u.inputTokenDetails?.cacheWriteTokens ?? 0);
                         const reasoningTokens = Number(u.reasoningTokens ?? u.outputTokenDetails?.reasoningTokens ?? 0);
+                        // WIN-134 — PER-STEP, deliberately. The turn-level
+                        // figure comes from the agent's usage ledger
+                        // (`freshInputTokens`); this panel is the one place a
+                        // per-step number is the right answer, and it is
+                        // labelled per step. Same clamp, same base
+                        // (`inputTokens` is inclusive of the cache slice), so
+                        // the step rows sum to the turn total the ledger
+                        // reports. It reads `step.cacheRead` first: the
+                        // `trace_step` event carries the raw per-step blob,
+                        // which is the granularity that blob is true at.
                         const noCacheInputTokens = Math.max(0, inputTokens - cacheReadTokens - cacheCreationTokens);
                         return (
                           <div key={i} className="rounded border border-charcoal-700 bg-charcoal-800/50 p-2 space-y-1.5">

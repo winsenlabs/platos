@@ -18,6 +18,8 @@ export interface UtilizationPayload {
   topUsers: Array<{
     userId: string;
     messages: number;
+    /** Completed turns, from the usage ledger. `messages` counts both sides. */
+    tasks: number;
     threads: number;
     costCents: number;
     lastActiveAt: string | null;
@@ -125,7 +127,7 @@ export class UtilizationService {
     }));
 
     // Top users — aggregate from messagesInRange
-    const byUser = new Map<string, { messages: number; threads: Set<string>; costCents: number; lastActiveAt: Date | null }>();
+    const byUser = new Map<string, { messages: number; tasks: number; threads: Set<string>; costCents: number; lastActiveAt: Date | null }>();
     for (const turn of turnsInRange as Array<{
       createdAt: Date;
       inputText: string | null;
@@ -136,6 +138,7 @@ export class UtilizationService {
       if (!turn.thread) continue;
       const bucket = byUser.get(turn.thread.endUserId) ?? {
         messages: 0,
+        tasks: 0,
         threads: new Set<string>(),
         costCents: 0,
         lastActiveAt: null as Date | null,
@@ -156,7 +159,11 @@ export class UtilizationService {
         });
         for (const cost of costRows) {
           const bucket = byUser.get(cost.userId);
-          if (bucket) bucket.costCents = cost.costCents;
+          if (!bucket) continue;
+          // WIN-134 — both numbers come from the ledger's per-user rollup, so
+          // this table cannot disagree with the usage page about either.
+          bucket.costCents = cost.costCents;
+          bucket.tasks = cost.tasks;
         }
       } catch (err: any) {
         this.logger.warn(
@@ -173,6 +180,7 @@ export class UtilizationService {
       .map(([userId, b]) => ({
         userId,
         messages: b.messages,
+        tasks: b.tasks,
         threads: b.threads.size,
         costCents: Math.round(b.costCents * 100) / 100,
         lastActiveAt: b.lastActiveAt ? b.lastActiveAt.toISOString() : null,

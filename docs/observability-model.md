@@ -91,6 +91,26 @@ All money columns use `Decimal(24, 12)` US dollars. The writer calculates each l
 
 Invoices and budgets consume the immutable Postgres usage ledger. ClickHouse projects the same event IDs and values for analysis; it is not a second calculator.
 
+## The usage ledger (WIN-134)
+
+`apps/agent/src/monitoring/usage-ledger.ts` is the one module that owns task counting, token totals, cost, the cache split and the per-lane breakdown. Every reporting surface imports from it and does no arithmetic of its own — the usage page, the monitoring endpoints, budget enforcement, per-agent and per-skill rollups, the canary comparison, and the `monitoring.cost.*` MCP tools.
+
+It exists because twelve surfaces each re-derived "cost for this period" from a slightly different field, and each was arithmetically defensible on its own terms. That is why nobody caught it: the failure was not that one surface was wrong, it was that they disagreed.
+
+### Rules the module enforces
+
+- **A task is one completed Turn.** Not a model call, not a tool call, not a message. The rollups carry a `tasks` field bumped once per completed turn and by nothing else. `calls` still counts model invocations and is reported separately — reading `calls` as a task count is the original "Walle ran 322 tasks this week" bug, and auxiliary work (embeddings, compaction, thread auto-naming) bumps it too.
+- **Cost is the cache-aware figure, always.** `billableCostCents` prefers `cost_with_cache_cents` and falls back to `cost_cents` only when no cache-adjusted figure exists at all. A zero cache-adjusted figure is genuinely zero and must not fall back. Budget enforcement reads through this rule; it previously parsed `cost_cents` directly and enforced against a number understated by 10x (2.47c against 25.70c measured on 2026-07-31).
+- **Every writer writes both cost fields.** Since WIN-125 they carry the same four-rate figure. `recordAuxiliaryCost` and `recordSkillUsage` previously bumped only the naive field, so the cache-aware total excluded every embedding, extraction and skill call in the window.
+- **`inputTokens` is inclusive of the cache slice.** `freshInputTokens` is the only subtraction of the cache lanes anywhere. It was being computed at three call sites against three different bases, which is how one turn reported "no-cache tokens 3" on one panel and "9" on another.
+- **`inference` is the residual lane.** `embedding`, `extraction`, `judge` and `skill` are tagged at write time; inference is whatever the billable total is not. A residual cannot disagree with the headline; five independently-summed lanes can and eventually will. Untagged auxiliary kinds (compaction, thread auto-naming, route preflight) land in inference rather than vanishing.
+- **Round once, at the end, at 0.0001c.** Rounding per row loses sub-cent turns entirely, and cheap models produce a lot of those.
+
+### Known attribution gaps
+
+- **Skill spend has no per-user attribution.** `recordSkillUsage` carries an agent and a thread but no user, so a per-user total is the scope total minus the skill lane. `usage-ledger-cross-surface.test.ts` asserts the exact gap rather than leaving it to be rediscovered.
+- **Auxiliary lane tags are not written to the per-user rollup.** Per-user lane splits therefore read as all-inference. The per-scope and per-agent splits are complete.
+
 ## Identity and privacy
 
 Analytical rows carry:
@@ -450,6 +470,6 @@ Per project instruction, these paths are wired and compiled without standing up 
 ### Known gaps at the end of M3.1
 
 - **Steps are still one-per-Turn.** `ConversationService.storeMessage` writes exactly one `Step` per assistant turn (`sequence: 1`), collapsing a multi-step turn into a single row. The schema and the projection both handle N steps correctly; the Postgres write path does not yet produce them. Until it does, `steps_v1` and `turns_v1` carry the same token totals.
-- **Only the `inference` usage lane is routed.** Each projected `Step` emits one `inference` usage event. The `embedding`, `extraction`, `judge` and `skill` lanes are produced elsewhere in the runtime (`CostService.recordAuxiliaryCost`, `recordSkillUsage`) and are not wired to this path yet.
+- **Only the `inference` usage lane is routed into the ClickHouse projection.** Each projected `Step` emits one `inference` usage event. The `embedding`, `extraction`, `judge` and `skill` lanes are produced by `CostService.recordAuxiliaryCost` and `recordSkillUsage` and are not wired to the projection yet. They ARE accounted for in the Redis/Postgres usage ledger and appear in the per-lane breakdown described above; it is only the analytical projection that does not carry them.
 - **No read surface consumes the projection.** `TraceService` and the monitoring endpoints still read Postgres and Redis. Nothing degrades, because nothing depends on the projection yet.
 - **The legacy `trigger_dev.platos_spans_v1` pipeline is untouched.** Its breakage is WIN-150 and is explicitly out of scope here.
