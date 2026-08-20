@@ -37,8 +37,11 @@ describe("ErasureController admin control-plane authorization", () => {
       operationBelongsToOrganization: vi.fn().mockResolvedValue(true),
       getErasure: vi.fn().mockResolvedValue({ id: "op_1" }),
       retryErasureById: vi.fn(),
+      resumeErasure: vi.fn(),
+      resumeDueErasures: vi.fn().mockResolvedValue([]),
       discoverSubject: vi.fn(),
       inventory: vi.fn(),
+      auditInventoryRead: vi.fn(),
     };
     credentials = { verify: vi.fn() };
     controller = new ErasureController(erasure, credentials);
@@ -93,7 +96,74 @@ describe("ErasureController admin control-plane authorization", () => {
       organizationId: "org_1",
       idempotencyKey: "key_1",
       legalHoldPolicyId: null,
+      // The credential is no longer thrown away after the org check: an
+      // irreversible deletion has to name who asked for it.
+      actor: {
+        credentialId: "credential_1",
+        userId: "user_1",
+        environmentId: "env_1",
+        projectId: "proj_1",
+      },
     });
+  });
+
+  it("resumes from the persisted plan when the retry omits the subject id", async () => {
+    // The whole point of the resume plan: an operation whose Redis pass timed
+    // out overnight can be re-driven without the identifier the system
+    // deliberately refuses to keep.
+    credentials.verify.mockResolvedValue(adminCredential);
+    erasure.resumeErasure.mockResolvedValue({ operationId: "op_1", status: "partial_failure" });
+    const res = response();
+
+    await controller.retry(
+      { headers: { authorization: "Bearer plt_mcp_valid" } } as any,
+      res,
+      "op_1",
+      {},
+    );
+
+    expect(erasure.retryErasureById).not.toHaveBeenCalled();
+    expect(erasure.resumeErasure).toHaveBeenCalledWith("op_1", expect.objectContaining({
+      credentialId: "credential_1",
+    }));
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("takes the wider path when the retry does supply the subject id", async () => {
+    credentials.verify.mockResolvedValue(adminCredential);
+    erasure.retryErasureById.mockResolvedValue({ operationId: "op_1", status: "completed" });
+    const res = response();
+
+    await controller.retry(
+      { headers: { authorization: "Bearer plt_mcp_valid" } } as any,
+      res,
+      "op_1",
+      { externalUserId: "person" },
+    );
+
+    expect(erasure.resumeErasure).not.toHaveBeenCalled();
+    expect(erasure.retryErasureById).toHaveBeenCalledWith("op_1", "person", expect.any(Object));
+  });
+
+  it("drains only the calling organization's queue", async () => {
+    credentials.verify.mockResolvedValue(adminCredential);
+    erasure.resumeDueErasures.mockResolvedValue([
+      { operationId: "op_1", status: "partial_failure", attempts: 2 },
+    ]);
+    const res = response();
+
+    await controller.resumeDue(
+      { headers: { authorization: "Bearer plt_mcp_valid" } } as any,
+      res,
+      { limit: 5 },
+    );
+
+    expect(erasure.resumeDueErasures).toHaveBeenCalledWith({
+      organizationId: "org_1",
+      limit: 5,
+      actor: expect.objectContaining({ credentialId: "credential_1" }),
+    });
+    expect(res.body).toMatchObject({ resumed: 1 });
   });
 
   it("does not disclose an erasure operation across organizations", async () => {

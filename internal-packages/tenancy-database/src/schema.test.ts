@@ -60,9 +60,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(89);
-    expect(domainModelNames).toHaveLength(73);
-    expect(new Set(domainModelNames).size).toBe(73);
+    expect(models).toHaveLength(90);
+    expect(domainModelNames).toHaveLength(74);
+    expect(new Set(domainModelNames).size).toBe(74);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");

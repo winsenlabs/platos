@@ -352,6 +352,29 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/api/v1/agent/admin/privacy/erasures/resume-due": {
+      "post": {
+        "operationId": "post__api_v1_agent_admin_privacy_erasures_resume_due",
+        "summary": "ErasureController.resumeDue",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "platformMcpBearer": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR_ADMIN_BEARER",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/api/v1/agent/admin/privacy/subjects/{externalUserId}/inventory": {
       "get": {
         "operationId": "get__api_v1_agent_admin_privacy_subjects_by_externalUserId_inventory",
@@ -8878,6 +8901,6 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 286,
+  "x-platos-rest-operation-count": 287,
   "x-platos-mcp-tool-count": 206
 }

@@ -142,6 +142,40 @@ describe("retry", () => {
   });
 });
 
+describe("coverage", () => {
+  it("refuses to let a narrowed pass certify a legacy-keyed store", async () => {
+    // A resume driven from the persisted plan deletes over a narrower WHERE and
+    // would then verify over that same narrower WHERE — finding no survivors and
+    // reporting a pass it never earned.
+    const r = await runErasure(receipt(), subject, allOk(), { coverage: "locators_only" });
+    expect(r.stores.find((s) => s.store === "postgres")!.verificationStatus).toBe("unknown");
+    // MinIO is addressed only by endUserId, so its verification still stands.
+    expect(r.stores.find((s) => s.store === "minio")!.verificationStatus).toBe("passed");
+    expect(r.status).toBe("partial_failure");
+  });
+
+  it("leaves a full-coverage pass exactly as the executors reported it", async () => {
+    const r = await runErasure(receipt(), subject, allOk(), { coverage: "full" });
+    expect(r.status).toBe("completed");
+  });
+
+  it("does not let a retry soften an earlier verification failure", async () => {
+    // "We deleted and it is still there" is evidence. A later pass that comes
+    // back unknown has not refuted it, it has failed to gather any.
+    const start = receipt({ status: "verification_failed", stores: [
+      ...EXECUTION_ORDER.filter((s) => s !== "minio").map((s) => ok(s)),
+      { ...pendingStore("minio"), status: "done", verificationStatus: "failed" },
+    ]});
+    const r = await retryErasure(start, subject, {
+      ...allOk(),
+      minio: async () => ({ ...pendingStore("minio"), status: "failed", failures: 1,
+                            verificationStatus: "unknown" }),
+    });
+    expect(r.stores.find((s) => s.store === "minio")!.verificationStatus).toBe("failed");
+    expect(r.status).toBe("verification_failed");
+  });
+});
+
 describe("completion", () => {
   it("stamps completedAt only when genuinely complete", async () => {
     const good = await runErasure(receipt(), subject, allOk(), { now: () => "T1" });

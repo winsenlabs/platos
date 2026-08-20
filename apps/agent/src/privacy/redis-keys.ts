@@ -2,29 +2,43 @@
  * Redis key planning for erasure.
  *
  * ioredis is configured with `keyPrefix: "platos:"` (shared/redis.provider.ts),
- * and that prefix behaves asymmetrically in a way that has already produced a
- * live bug in this codebase:
+ * and that prefix is applied to KEY ARGUMENTS ONLY. Three behaviours, and the
+ * asymmetry between them has already produced a live bug in this codebase:
  *
- *   redis.keys("wm:*")  -> pattern is prefixed automatically, and the RETURNED
- *                          keys still carry the prefix: "platos:wm:…"
- *   redis.del(k)        -> PREPENDS the prefix again
+ *   redis.del(k)        -> PREPENDS the prefix
+ *   redis.exists(k)     -> PREPENDS the prefix
+ *   redis.keys(p)       -> does NOT. A pattern is not a key argument, so it goes
+ *                          out verbatim; the RETURNED keys are verbatim too.
  *
- * So feeding the output of keys()/scan() straight back into del() produces
- * "platos:platos:wm:…", which matches nothing and deletes nothing — silently,
- * because deleting a non-existent key is a successful no-op.
+ * The last one is documented — "this feature won't apply to commands like KEYS
+ * and SCAN that take patterns rather than actual keys … and won't apply to the
+ * replies of commands even if they are key names" (ioredis README, issues #239
+ * and #325) — and it is measurable: `getKeyIndexes("keys", [p])` returns `[]`,
+ * so `_iterateKeys` prefixes nothing.
  *
- * This is not hypothetical. `working-memory.service.ts` carries the comment
- * "ioredis keyPrefix means we need to strip prefix for del" immediately above
- * code that does not strip it. And a double-prefixed key survives on the live
- * deployment right now: `platos:platos:dlq:spans:dead`.
+ * Both directions are therefore live traps, and they pull opposite ways:
  *
- * For erasure this failure mode is the worst available one: the sweep reports
+ *   SCANNING    a pattern must be handed over in the ON-WIRE form. Scanning for
+ *               "wm:*" against a keyspace of "platos:wm:…" matches nothing, and
+ *               a sweep that finds nothing deletes nothing and then verifies
+ *               nothing — while reporting every step a success.
+ *   DELETING    a key must be handed over STRIPPED. Feeding a scan result back
+ *               unstripped addresses "platos:platos:wm:…", which matches nothing
+ *               and deletes nothing — silently, because deleting a non-existent
+ *               key is a successful no-op.
+ *
+ * The second is not hypothetical either. `working-memory.service.ts` carries the
+ * comment "ioredis keyPrefix means we need to strip prefix for del" immediately
+ * above code that does not strip it.
+ *
+ * For erasure both failure modes are the worst available one: the sweep reports
  * success, verification re-scans with the same broken assumption, finds nothing,
  * and the receipt certifies that a person's data is gone while it sits in Redis.
  *
- * Hence: planning is pure and tested, deletion always goes through
- * `toDeletableKey`, and verification uses the on-wire form. Belt and braces,
- * because the cost of getting it wrong is a false legal statement.
+ * Hence: planning is pure and tested, scanning always goes through
+ * `wireScanPatterns`, deletion always goes through `toDeletableKey`, and
+ * verification uses the on-wire form. Belt and braces, because the cost of
+ * getting it wrong is a false legal statement.
  *
  * A note on the erasure surface itself. Two classes of key exist:
  *   SUBJECT-LINKED   per-thread traces, per-user cost counters — deletable.
@@ -63,9 +77,10 @@ export interface RedisSubjectRefs {
 /**
  * Patterns for keys that belong to the subject and must be deleted.
  *
- * Expressed WITHOUT the prefix because ioredis adds it to scan patterns. Passing
- * a prefixed pattern to scan yields "platos:platos:…" and matches nothing — the
- * same asymmetry, from the other direction.
+ * Expressed in the LOGICAL form, without the prefix — the same form
+ * `toDeletableKey` produces and `del()` expects, so the two halves of the sweep
+ * speak one vocabulary. Scanning is the odd one out and converts on the way to
+ * the wire; see `wireScanPatterns`.
  */
 export function subjectKeyPatterns(refs: RedisSubjectRefs): string[] {
   const out: string[] = [];
@@ -87,6 +102,23 @@ export function subjectKeyPatterns(refs: RedisSubjectRefs): string[] {
     }
   }
   return [...new Set(out)].sort();
+}
+
+/**
+ * The subject's patterns as they must go out on the wire.
+ *
+ * The one function the scan is allowed to call. ioredis does not prefix a
+ * pattern — it is not a key argument — so the caller has to, and a caller that
+ * forgets scans a keyspace that does not exist: zero keys found, zero deleted,
+ * zero survivors, verification passed, data still there.
+ *
+ * Separate from `subjectKeyPatterns` rather than folded into it because the
+ * logical form is what `planDeletions` and the receipt's own accounting are
+ * expressed in. One conversion, at the boundary, in the direction the wire
+ * needs.
+ */
+export function wireScanPatterns(refs: RedisSubjectRefs): string[] {
+  return subjectKeyPatterns(refs).map(toWireKey);
 }
 
 /**

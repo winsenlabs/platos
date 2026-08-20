@@ -2,6 +2,11 @@ import type { McpToolHandler } from "../mcp-router";
 import type { RequestScope } from "../../auth/scope.guard";
 import type { ToolAuditService } from "../../monitoring/tool-audit.service";
 import type { ControlDatabaseClient } from "../../shared/database.provider";
+import {
+  assertSubjectNotErased,
+  CANONICAL_ALIAS_CHANNEL,
+  SubjectErasedError,
+} from "../../privacy/erasure-register";
 
 const CHANNEL_RE = /^[a-z0-9_-]{1,32}$/;
 // eslint-disable-next-line no-control-regex
@@ -218,6 +223,23 @@ export function buildEndUserToolHandlers(deps: {
             error: "trusted_claim_required",
             message: "Manual MCP identities cannot manufacture a verified claim.",
           };
+        }
+        // Outside the try below, which turns any throw into a generic
+        // link_failed: a refused erased handle is a distinct answer, and it
+        // must not read as a transient error an operator would retry.
+        try {
+          await assertSubjectNotErased(prisma, {
+            organizationId: scope.organizationId,
+            aliases: [
+              { channel, subject: handle },
+              { channel: CANONICAL_ALIAS_CHANNEL, subject: platosEndUserId },
+            ],
+          });
+        } catch (error) {
+          const erased = error instanceof SubjectErasedError;
+          const result = { error: erased ? "subject_erased" : "erasure_register_unavailable" };
+          auditMutation(scope, "end_users.link_identity", params, result, "failed", startedAt, result.error);
+          return result;
         }
         try {
           const user = await prisma.endUser.findFirst({

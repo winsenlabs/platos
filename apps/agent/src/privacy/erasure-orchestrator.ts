@@ -41,6 +41,11 @@ import {
   type StoreName,
   type StoreOutcome,
 } from "./erasure-receipt";
+import {
+  demoteForCoverage,
+  preserveVerificationFailure,
+  type ResumeCoverage,
+} from "./erasure-queue";
 import { isEmptySubject, type SubjectKeys } from "./subject-graph";
 
 /** One store's erasure implementation. Must be idempotent. */
@@ -59,6 +64,16 @@ export interface RunOptions {
   only?: StoreName[];
   /** Blocks the run entirely; the receipt records the policy id, not content. */
   legalHold?: { policyId: string } | null;
+  /**
+   * How much of the subject this pass can address. Defaults to `full`.
+   *
+   * A pass resumed from the persisted plan alone cannot see the rows keyed by
+   * the subject's legacy external id, so it deletes over a narrower WHERE and
+   * would then VERIFY over that same narrower WHERE — finding no survivors and
+   * reporting a pass it never earned. `demoteForCoverage` refuses that; see
+   * erasure-queue.ts.
+   */
+  coverage?: ResumeCoverage;
   now?: () => string;
 }
 
@@ -122,6 +137,7 @@ export async function runErasure(
   }
 
   const targets = opts.only ?? EXECUTION_ORDER;
+  const coverage = opts.coverage ?? "full";
   const byStore = new Map<StoreName, StoreOutcome>(receipt.stores.map((s) => [s.store, s]));
 
   for (const store of EXECUTION_ORDER) {
@@ -139,11 +155,17 @@ export async function runErasure(
       });
       continue;
     }
+    // Held before the executor overwrites it: a retry must not be able to
+    // replace positive evidence of survival with an absence of evidence.
+    const previous = byStore.get(store);
     try {
-      byStore.set(store, await exec(subject));
+      // Demoted on the way in, not on the way out of the whole run: only the
+      // stores this pass actually ran are constrained by this pass's coverage.
+      const outcome = demoteForCoverage(await exec(subject), coverage);
+      byStore.set(store, preserveVerificationFailure(previous, outcome));
     } catch (err) {
       // Swallow deliberately: the remaining stores must still run.
-      byStore.set(store, crashedOutcome(store, err));
+      byStore.set(store, preserveVerificationFailure(previous, crashedOutcome(store, err)));
     }
   }
 

@@ -133,9 +133,13 @@ Already has a TTL — `PLATOS_ATTACHMENT_TTL_DAYS` (default 30). Past the TTL, a
 
 Before deleting, check whether the user is subject to a legal hold (lit-hold, tax audit, ongoing incident).
 
-Set `PLATOS_LEGAL_HOLD_USER_IDS` to a comma-separated register of held identifiers. The erasure API checks it before creating the operation and before any executor touches a store; a match returns a receipt with status `blocked_legal_hold` naming the register entry that stopped it, and destroys nothing. The refused request is still recorded as an operation, because a refusal is itself an event you may have to evidence.
+Set `PLATOS_LEGAL_HOLD_USER_IDS` to a comma-separated register of held identifiers. The erasure API checks it before creating the operation and before any executor touches a store; a match returns a receipt with status `blocked_legal_hold` and destroys nothing. The refused request is still recorded as an operation, because a refusal is itself an event you may have to evidence.
+
+The register is re-read on **every pass**, not only at request time. A hold filed after an operation exists — while a store is unsettled and waiting on the queue — stops the resume that would otherwise have finished the job, marks the operation blocked and takes it out of the drain. This matters because the drain is automated: there is no human in it to notice a hold nobody re-checked.
 
 Matching runs across **every alias the subject resolves to**, not just the identifier in the request. A hold registered against a Slack user id therefore also blocks an erasure requested by that person's email. Registering any one of a subject's identifiers is sufficient; matching is case-insensitive.
+
+`legalHoldPolicyId` on the receipt names the register entry as `legal-hold-register#<position>:<hash>` — its position in your register, and a salted hash of the entry. Not the entry itself: a register is written by a human, so its entries are the subject's own handles, and the record of an erasure must not become the last place someone's Slack id survives. The position is what you navigate by; the hash is what identifies it if the register is reordered.
 
 The API also accepts a `legalHoldPolicyId` in the request body for a hold the caller already knows about. That is a supplement, not a substitute — it only protects a subject when whoever fires the request is already aware of the hold, which is exactly the knowledge a register exists because people do not reliably have.
 

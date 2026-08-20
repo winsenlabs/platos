@@ -78,6 +78,7 @@ export const jsonShapeRegistry = {
   "ErasureOperation.scopes": array("Normalized subject scope descriptors."),
   "ErasureOperation.stores": array("Storage-system erasure outcomes."),
   "ErasureOperation.inventory": object("Non-identifying row inventory."),
+  "ErasureOperation.resumePlan": object("Content-free resume locators."),
 } as const satisfies Record<string, JsonShapeDefinition>;
 
 export type JsonField = keyof typeof jsonShapeRegistry;

@@ -287,6 +287,7 @@ model Organization {
   mcpPolicies             OrganizationMcpPolicy[]
   oauthClients            OAuthClient[]
   erasureOperations       ErasureOperation[]
+  erasureTombstones       ErasureTombstone[]
   personalAccessTokens    PersonalAccessToken[]
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
@@ -2279,9 +2280,17 @@ model ErasureOperation {
   stores            Json
   /// Object root containing a non-identifying row inventory; validated by jsonShapeRegistry.
   inventory         Json?
+  /// Object root of content-free resume locators; validated by jsonShapeRegistry.
+  resumePlan        Json?
   policyVersion     String
   legalHoldPolicyId String?
   retryCount        Int        @default(0)
+  /// When the queue should next re-drive the unsettled stores; null once the
+  /// operation is settled, blocked, or has exhausted its automatic attempts.
+  nextAttemptAt     DateTime?
+  /// Held for the duration of one destructive pass, so two cannot overlap.
+  leaseToken        String?
+  leaseExpiresAt    DateTime?
   requestedAt       DateTime   @default(now())
   startedAt         DateTime?
   completedAt       DateTime?
@@ -2291,4 +2300,26 @@ model ErasureOperation {
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, subjectKeyHash, requestedAt])
+  @@index([organizationId, nextAttemptAt])
+}
+
+/// Erased-subject register: one row per ALIAS an erased subject could be
+/// reached by, consulted before any identity is resolved or minted so an
+/// in-flight write cannot reintroduce the person the sweep destroyed.
+/// `aliasHash` is a salted, organization-scoped digest — never a raw handle,
+/// because a register of identifiers would recreate the data it protects.
+/// Bounded by `expiresAt`; expiry is also applied at read time.
+model ErasureTombstone {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  aliasHash      String
+  operationId    String   @db.Uuid
+  policyVersion  String
+  sealedAt       DateTime @default(now())
+  expiresAt      DateTime
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, aliasHash])
+  @@index([expiresAt])
 }

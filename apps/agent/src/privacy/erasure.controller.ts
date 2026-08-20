@@ -6,6 +6,7 @@ import {
   ERASURE_POLICY_VERSION,
 } from "./erasure.service";
 import { PlatosMCPTokenService, type VerifiedToken } from "../mcp-platform/token.service";
+import type { ErasureAuditActor } from "./erasure-audit";
 
 /**
  * Hard-erasure API.
@@ -36,6 +37,24 @@ export class ErasureController {
     return verified?.tier === "admin" ? verified : null;
   }
 
+  /**
+   * The credential, reduced to what the audit trail needs.
+   *
+   * `mintedByUserId` is the point of this: the credential is a bearer secret
+   * that can be shared, but it was minted by one named operator, and that is
+   * the closest thing to a human answerable for an irreversible deletion. The
+   * credential id is carried alongside so a rotated or revoked token can still
+   * be traced back from the audit row.
+   */
+  private actor(credential: VerifiedToken): ErasureAuditActor {
+    return {
+      credentialId: credential.id,
+      userId: credential.mintedByUserId ?? null,
+      environmentId: credential.scope.environmentId,
+      projectId: credential.scope.projectId,
+    };
+  }
+
   private deny(res: Response) {
     // No detail: distinguishing "wrong token" from "no token" helps an attacker
     // and helps nobody else.
@@ -57,6 +76,13 @@ export class ErasureController {
     if (!credential || credential.scope.organizationId !== organizationId) return this.deny(res);
     const subject = await this.erasure.discoverSubject(externalUserId, organizationId);
     const inventory = await this.erasure.inventory(subject, organizationId);
+    await this.erasure.auditInventoryRead({
+      externalUserId,
+      organizationId,
+      subject,
+      inventory,
+      actor: this.actor(credential),
+    });
     return res.json({
       resolvedEndUsers: subject.platosEndUserIds.length,
       resolvedLegacyIds: subject.legacyUserIds.length,
@@ -97,6 +123,7 @@ export class ErasureController {
         organizationId,
         idempotencyKey,
         legalHoldPolicyId: body.legalHoldPolicyId ?? null,
+        actor: this.actor(credential),
       });
     } catch (error) {
       if (error instanceof ErasureIdempotencyConflictError) {
@@ -125,7 +152,15 @@ export class ErasureController {
     return res.json(receipt);
   }
 
-  /** Retry re-runs only the stores that did not settle. */
+  /**
+   * Retry re-runs only the stores that did not settle.
+   *
+   * `externalUserId` is now OPTIONAL. Supplying it gives the pass the same
+   * reach as the original — including the rows keyed by the legacy id — so its
+   * verifications count. Omitting it resumes from the persisted locators
+   * instead, which still deletes but cannot certify the legacy-keyed rows; the
+   * receipt records that as `unknown` rather than pretending otherwise.
+   */
   @Post("erasures/:operationId/retry")
   async retry(
     @Req() req: Request,
@@ -143,19 +178,40 @@ export class ErasureController {
     ) {
       return this.deny(res);
     }
-    if (!body?.externalUserId) {
-      // Re-discovery needs the subject id: by the time Postgres has run, the
-      // canonical row is gone and the operation cannot find the person again
-      // from its own record.
-      return res
-        .status(400)
-        .json({ error: "externalUserId is required to re-resolve the subject" });
-    }
-    const receipt = await this.erasure.retryErasureById(operationId, body.externalUserId);
+    const actor = this.actor(credential);
+    const receipt = body?.externalUserId
+      ? await this.erasure.retryErasureById(operationId, body.externalUserId, actor)
+      : await this.erasure.resumeErasure(operationId, actor);
     if (!receipt) return res.status(404).json({ error: "NOT_FOUND" });
     if (receipt.status === "blocked_legal_hold") {
       return res.status(409).json(receipt);
     }
     return res.json(receipt);
+  }
+
+  /**
+   * Drain the queue: re-drive every operation that is due, in this
+   * organization.
+   *
+   * Exists so nothing has to be resumed by hand. It is a route rather than a
+   * background task because the erasure module deliberately shares no state
+   * with the agent runtime and schedules nothing of its own — a deployment
+   * points a cron, a scheduler, or an operator at this, and the selection,
+   * backoff and leasing that make it safe live in the service either way.
+   */
+  @Post("erasures/resume-due")
+  async resumeDue(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body() body: { limit?: number }
+  ) {
+    const credential = await this.authorized(req);
+    if (!credential) return this.deny(res);
+    const resumed = await this.erasure.resumeDueErasures({
+      organizationId: credential.scope.organizationId,
+      limit: body?.limit,
+      actor: this.actor(credential),
+    });
+    return res.json({ resumed: resumed.length, operations: resumed });
   }
 }

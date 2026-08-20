@@ -290,6 +290,79 @@ describe("ErasureService canonical subject discovery and runtime metadata", () =
     });
   });
 
+  it("addresses ClickHouse by the thread ids Postgres still holds", async () => {
+    // ClickHouse runs THIRD for this reason: the thread ids its rows are keyed
+    // by are Postgres rows, and Postgres is about to delete them.
+    const threadFindMany = vi.fn().mockResolvedValue([{ id: "thread_1" }]);
+    const statements: Array<{ sql: string; params?: Record<string, string> }> = [];
+    let submitted = false;
+    const clickhouse = {
+      available: true,
+      query: async (sql: string, options: any = {}) => {
+        statements.push({ sql, params: options.params });
+        if (sql.startsWith("SELECT database, table, name")) {
+          return ["organization_id", "user_id", "thread_id"]
+            .map((column) => `trigger_dev\tplatos_spans_v1\t${column}`)
+            .join("\n");
+        }
+        if (sql.startsWith("SELECT database, table, mutation_id")) {
+          return submitted ? "trigger_dev\tplatos_spans_v1\tmutation_1\t1\t0\n" : "\n";
+        }
+        if (sql.startsWith("ALTER TABLE")) {
+          submitted = true;
+          return "";
+        }
+        return "0\n";
+      },
+    };
+    const service = new ErasureService(
+      { thread: { findMany: threadFindMany } } as any,
+      {} as any,
+      undefined,
+      clickhouse as any,
+    );
+
+    const executors = (service as any).executors("org_1", "b".repeat(64));
+    const outcome = await executors.clickhouse({
+      platosEndUserIds: ["end_user_1"],
+      legacyUserIds: ["external_1"],
+      scopes: [],
+    });
+
+    expect(threadFindMany).toHaveBeenCalledWith({
+      where: { endUserId: { in: ["end_user_1"] } },
+      select: { id: true },
+    });
+    const mutation = statements.find((s) => s.sql.startsWith("ALTER TABLE"));
+    expect(mutation?.sql).toContain("ALTER TABLE trigger_dev.platos_spans_v1 DELETE WHERE");
+    expect(mutation?.params).toMatchObject({
+      organization: "org_1",
+      ids: "['end_user_1','external_1']",
+      threads: "['thread_1']",
+      hashes: `['${"b".repeat(64)}']`,
+    });
+    expect(outcome).toMatchObject({ store: "clickhouse", status: "done" });
+  });
+
+  it("does not query Postgres for a ClickHouse this deployment does not have", async () => {
+    const threadFindMany = vi.fn();
+    const service = new ErasureService({ thread: { findMany: threadFindMany } } as any, {} as any);
+
+    const outcome = await (service as any).clickhouseExecutor(
+      { platosEndUserIds: ["end_user_1"], legacyUserIds: ["external_1"], scopes: [] },
+      "org_1",
+      "c".repeat(64),
+    );
+
+    expect(threadFindMany).not.toHaveBeenCalled();
+    expect(outcome).toMatchObject({
+      status: "not_provisioned",
+      verificationStatus: "not_applicable",
+      deleted: 0,
+      anonymized: 0,
+    });
+  });
+
   it("uses the same three adapter fields and organization ancestry for inventory", async () => {
     const auditCount = vi.fn().mockResolvedValue(1);
     const safetyCount = vi.fn().mockResolvedValue(1);

@@ -1471,15 +1471,32 @@ CREATE TABLE "public"."ErasureOperation" (
     "scopes" JSONB NOT NULL,
     "stores" JSONB NOT NULL,
     "inventory" JSONB,
+    "resumePlan" JSONB,
     "policyVersion" TEXT NOT NULL,
     "legalHoldPolicyId" TEXT,
     "retryCount" INTEGER NOT NULL DEFAULT 0,
+    "nextAttemptAt" TIMESTAMP(3),
+    "leaseToken" TEXT,
+    "leaseExpiresAt" TIMESTAMP(3),
     "requestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "startedAt" TIMESTAMP(3),
     "completedAt" TIMESTAMP(3),
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "ErasureOperation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."ErasureTombstone" (
+    "id" UUID NOT NULL,
+    "organizationId" UUID NOT NULL,
+    "aliasHash" TEXT NOT NULL,
+    "operationId" UUID NOT NULL,
+    "policyVersion" TEXT NOT NULL,
+    "sealedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ErasureTombstone_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -2095,7 +2112,16 @@ CREATE UNIQUE INDEX "EntityToolPolicy_entityId_toolId_key" ON "public"."EntityTo
 CREATE INDEX "ErasureOperation_organizationId_subjectKeyHash_requestedAt_idx" ON "public"."ErasureOperation"("organizationId", "subjectKeyHash", "requestedAt");
 
 -- CreateIndex
+CREATE INDEX "ErasureOperation_organizationId_nextAttemptAt_idx" ON "public"."ErasureOperation"("organizationId", "nextAttemptAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "ErasureOperation_organizationId_idempotencyKey_key" ON "public"."ErasureOperation"("organizationId", "idempotencyKey");
+
+-- CreateIndex
+CREATE INDEX "ErasureTombstone_expiresAt_idx" ON "public"."ErasureTombstone"("expiresAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ErasureTombstone_organizationId_aliasHash_key" ON "public"."ErasureTombstone"("organizationId", "aliasHash");
 
 -- AddForeignKey
 ALTER TABLE "public"."OperatorSession" ADD CONSTRAINT "OperatorSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2670,6 +2696,9 @@ ALTER TABLE "public"."EntityToolPolicy" ADD CONSTRAINT "EntityToolPolicy_toolId_
 -- AddForeignKey
 ALTER TABLE "public"."ErasureOperation" ADD CONSTRAINT "ErasureOperation_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
+-- AddForeignKey
+ALTER TABLE "public"."ErasureTombstone" ADD CONSTRAINT "ErasureTombstone_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "public"."Organization"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
 -- Prisma-inexpressible value constraints.
 ALTER TABLE "public"."OperatorSession"
   ADD CONSTRAINT "OperatorSession_tier_check" CHECK ("tier" = 'OPERATOR');
@@ -2818,6 +2847,7 @@ ALTER TABLE "public"."NotificationRule" ADD CONSTRAINT "NotificationRule_deliver
 ALTER TABLE "public"."ErasureOperation" ADD CONSTRAINT "ErasureOperation_scopes_json_root" CHECK (jsonb_typeof("scopes") = 'array');
 ALTER TABLE "public"."ErasureOperation" ADD CONSTRAINT "ErasureOperation_stores_json_root" CHECK (jsonb_typeof("stores") = 'array');
 ALTER TABLE "public"."ErasureOperation" ADD CONSTRAINT "ErasureOperation_inventory_json_root" CHECK ("inventory" IS NULL OR jsonb_typeof("inventory") = 'object');
+ALTER TABLE "public"."ErasureOperation" ADD CONSTRAINT "ErasureOperation_resumePlan_json_root" CHECK ("resumePlan" IS NULL OR jsonb_typeof("resumePlan") = 'object');
 
 -- Canonical owner keys are immutable. Moving a record between isolation roots
 -- would otherwise invalidate descendants without touching their rows.

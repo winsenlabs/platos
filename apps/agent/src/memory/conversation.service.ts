@@ -6,6 +6,7 @@ import {
   modelPriceSnapshotStepData,
   type CanonicalModelPriceSnapshot,
 } from "@platos/tenancy-database";
+import { assertSubjectNotErased } from "../privacy/erasure-register";
 
 export interface StoredMessage {
   id: string;
@@ -136,6 +137,17 @@ export class ConversationService {
       throw new Error("Conversation persistence requires an authenticated external subject");
     }
     const candidates = [externalIdentity, sessionIdentity, ...channelIdentities];
+
+    // Erasure barrier. A session token outlives the sweep that erased its
+    // owner, so without this the next turn silently rebuilds the subject under
+    // a fresh uuid the finished receipt cannot see. Checked against EVERY
+    // candidate handle, not just the external id, because the person walks back
+    // in through whichever one the caller presents. Throws when it cannot be
+    // checked: refusing a turn is recoverable, resurrecting a subject is not.
+    await assertSubjectNotErased(this.prisma, {
+      organizationId: scope.organizationId,
+      aliases: candidates.map((claim) => ({ channel: claim.channel, subject: claim.subject })),
+    });
 
     let resolvedEndUserId: string | null = null;
     for (const claim of candidates) {
