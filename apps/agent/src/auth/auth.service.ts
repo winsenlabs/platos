@@ -272,6 +272,33 @@ export class AuthService {
               : "SESSION_SECRET is not set and the token carries no entityId — nothing can verify this token",
           );
         }
+        // Resolve the environment's real ancestry first, so a mismatch can
+        // name BOTH sides. Scope ids are identifiers, not secrets, and the
+        // difference between "something is wrong" and a one-line config fix
+        // is whether the log prints them: a database migration that re-keys
+        // Organization/Project/Environment leaves every integrator minting
+        // tokens against ids that no longer exist, and the failure is
+        // otherwise indistinguishable from a bad secret.
+        const environment = await this.prisma.environment.findUnique({
+          where: { id: claims.environmentId },
+          select: { id: true, project: { select: { id: true, organizationId: true } } },
+        });
+        if (!environment) {
+          return this.rejectSessionToken(
+            `token claims environmentId=${claims.environmentId}, which does not exist here — ` +
+              "if this deployment was migrated, the minting integrator is still using pre-migration ids",
+          );
+        }
+        if (
+          environment.project.id !== claims.projectId ||
+          environment.project.organizationId !== claims.organizationId
+        ) {
+          return this.rejectSessionToken(
+            `token scope does not match this database — claimed project=${claims.projectId} org=${claims.organizationId}, ` +
+              `but environment ${claims.environmentId} belongs to project=${environment.project.id} org=${environment.project.organizationId}`,
+          );
+        }
+
         const entitySecret = await this.resolveEntityServiceSecret({
           organizationId: claims.organizationId,
           projectId: claims.projectId,
@@ -280,7 +307,8 @@ export class AuthService {
         });
         if (!entitySecret) {
           return this.rejectSessionToken(
-            "no usable ENTITY_SECRET for this entity in the claimed environment, or the claimed organization/project does not own that environment",
+            `no resolvable ENTITY_SECRET for entity=${claims.entityId} in environment=${claims.environmentId} — ` +
+              "the credential is missing, revoked, or its secret version could not be decrypted",
           );
         }
         if (!this.signatureMatches(signingInput, signatureB64, entitySecret)) {
