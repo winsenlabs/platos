@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="J3 Governance">
+  <dc-import name="PlatosNav" active="governance" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Violation</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Governance</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Governance</h1>
+        <p class="page-sub">Safety events, policy rules, and what tripped them</p>
+      </div>
+      <div class="page-head-actions"><button class="btn accent">New rule</button></div>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6.5 3v4.5c0 4-2.8 6-6.5 7-3.7-1-6.5-3-6.5-7V6z"></path></svg></div>
+        <h3>No rules, no events</h3>
+        <p>Governance rules gate tools (approval bands), content (PII, refusals), and scope (cross-org access). Start with the recommended baseline.</p>
+        <button class="btn accent">Apply baseline rules</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showBody }}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+        <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+          <div class="a-body"><b>Cross-scope access at 08:58:</b> a memory recall for guest thread <span class="mono">th_7ttv04</span> matched a profile memory belonging to maya@acme.co. Blocked by rule <span class="mono">no-profile-to-guest</span>. This is the class of event behind the Jun 28 incident. <a href="37-audit.dc.html" style="text-decoration:underline;text-underline-offset:2px">Audit trail</a></div>
+        </div>
+      </sc-if>
+      <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+        <div class="tile"><div class="v">{{ nEvents }}</div><div class="k">safety events · 7d</div></div>
+        <div class="tile"><div class="v">{{ nBlocked }}</div><div class="k">blocked by rules</div></div>
+        <div class="tile"><div class="v">14</div><div class="k">active rules</div></div>
+        <div class="tile"><div class="v">0</div><div class="k">rules with no hits · 90d</div></div>
+      </div>
+      <div class="sec-head"><h2>Recent events</h2></div>
+      <div class="dtable" style="margin-bottom:24px">
+        <div class="dt-head" style="grid-template-columns:130px minmax(220px,1.4fr) 130px 120px 90px">
+          <span>Rule</span><span>What happened</span><span>Agent / thread</span><span>Outcome</span><span>When</span>
+        </div>
+        <sc-for list="{{ events }}" as="e" hint-placeholder-count="5">
+          <div class="dt-row" style="grid-template-columns:130px minmax(220px,1.4fr) 130px 120px 90px;border-left:3px solid {{ e.edge }};padding-left:13px">
+            <span class="mono-sm" style="color:var(--ink-2)">{{ e.rule }}</span>
+            <span style="font-size:12.5px;color:var(--ink)">{{ e.what }}</span>
+            <span class="mono-sm">{{ e.who }}</span>
+            <span><span class="schip {{ e.outCls }}">{{ e.out }}</span></span>
+            <span class="mono-sm">{{ e.when }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="sec-head"><h2>Rules</h2></div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:minmax(160px,1fr) minmax(220px,1.4fr) 110px 100px">
+          <span>Rule</span><span>Effect</span><span>Hits 30d</span><span>Status</span>
+        </div>
+        <div class="dt-row" style="grid-template-columns:minmax(160px,1fr) minmax(220px,1.4fr) 110px 100px">
+          <span class="mono" style="font-size:12px;font-weight:600">no-profile-to-guest</span><span style="font-size:12.5px;color:var(--ink-2)">Profile memories never surface in guest threads</span><span class="mono tnum" style="font-size:12px">3</span><span><span class="schip good">enforcing</span></span>
+        </div>
+        <div class="dt-row" style="grid-template-columns:minmax(160px,1fr) minmax(220px,1.4fr) 110px 100px">
+          <span class="mono" style="font-size:12px;font-weight:600">crm-write-band</span><span style="font-size:12.5px;color:var(--ink-2)">CRM writes over ±10% of current value need approval</span><span class="mono tnum" style="font-size:12px">41</span><span><span class="schip good">enforcing</span></span>
+        </div>
+        <div class="dt-row" style="grid-template-columns:minmax(160px,1fr) minmax(220px,1.4fr) 110px 100px">
+          <span class="mono" style="font-size:12px;font-weight:600">external-send-gate</span><span style="font-size:12.5px;color:var(--ink-2)">All external email/Slack sends need approval</span><span class="mono tnum" style="font-size:12px">128</span><span><span class="schip good">enforcing</span></span>
+        </div>
+        <div class="dt-row" style="grid-template-columns:minmax(160px,1fr) minmax(220px,1.4fr) 110px 100px">
+          <span class="mono" style="font-size:12px;font-weight:600">pii-redact</span><span style="font-size:12.5px;color:var(--ink-2)">Card and ID numbers redacted from tool results before the model</span><span class="mono tnum" style="font-size:12px">12</span><span><span class="schip good">enforcing</span></span>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view, fail = v === 'failure';
+    const events = [
+      {rule:'no-profile-to-guest', what: fail ? 'Guest recall matched maya’s profile memory — blocked' : 'Guest recall matched a profile memory — blocked', who:'walle · th_7ttv04', out:'blocked', outCls:'danger', when: fail ? '42m ago' : '3d ago', edge: fail ? 'var(--danger)' : 'transparent'},
+      {rule:'crm-write-band', what:'Renewal amount +75% — routed to approval', who:'walle · th_9f3kq2', out:'held', outCls:'warn', when:'4m ago', edge:'transparent'},
+      {rule:'pii-redact', what:'Card number in sheets.query result — redacted', who:'billing-answers', out:'redacted', outCls:'accent', when:'1d ago', edge:'transparent'},
+      {rule:'external-send-gate', what:'Apology email to contoso.com — routed to approval', who:'support-triage', out:'held', outCls:'warn', when:'1m ago', edge:'transparent'},
+      {rule:'crm-write-band', what:'Contact owner change within band — auto-approved', who:'sales-notes', out:'allowed', outCls:'good', when:'2d ago', edge:'transparent'}
+    ];
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showBody: v !== 'empty', showEmpty: v === 'empty', showAlert: fail,
+      nEvents: fail ? '19' : '18', nBlocked: fail ? '4' : '3',
+      events
+    };
+  }
+}
+</script>
+</body>
+</html>

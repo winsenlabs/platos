@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="F1 Entity list">
+  <dc-import name="PlatosNav" active="entities" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Entities</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Entities<span class="count-badge">{{ countLabel }}</span></h1>
+        <p class="page-sub">External providers supplying tools — wire (they connect in) and MCP (Platos connects out)</p>
+      </div>
+      <div class="page-head-actions"><a class="btn accent" href="22-mcp.dc.html">New entity</a></div>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>walle-tools dropped its wire connection 41 min ago.</b> 2 agents and 9 tools affected. Its registry entry is still cached — agents are being offered tools that will fail to dispatch.</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="filter-bar">
+        <span class="fchip active">All <span class="fchip-count">{{ total }}</span></span>
+        <span class="fchip">Wire <span class="fchip-count">{{ nWire }}</span></span>
+        <span class="fchip">MCP <span class="fchip-count">{{ nMcp }}</span></span>
+        <span class="fchip" style="color:var(--danger)">Down <span class="fchip-count">{{ nDown }}</span></span>
+      </div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:minmax(170px,1.2fr) 70px 140px 120px 110px minmax(130px,1fr) 80px">
+          <span>Entity</span><span>Kind</span><span>Connection</span><span>Tools (true count)</span><span>Heartbeat</span><span>Used by</span><span></span>
+        </div>
+        <sc-for list="{{ entities }}" as="e" hint-placeholder-count="5">
+          <a class="dt-row" href="21-entity.dc.html" style="grid-template-columns:minmax(170px,1.2fr) 70px 140px 120px 110px minmax(130px,1fr) 80px;border-left:3px solid {{ e.edge }};padding-left:13px">
+            <span style="min-width:0">
+              <span class="mono" style="display:block;font-size:12.5px;font-weight:600;color:var(--ink)">{{ e.name }}</span>
+              <span style="display:block;font-size:11.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.desc }}</span>
+            </span>
+            <span><span class="schip muted">{{ e.kind }}</span></span>
+            <span><span class="connstate {{ e.conn }}"><span class="dot"></span>{{ e.connLabel }}</span></span>
+            <span class="mono tnum" style="font-size:12.5px;color:{{ e.toolColor }}">{{ e.tools }}</span>
+            <span class="mono-sm">{{ e.hb }}</span>
+            <span style="font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.agents }}</span>
+            <span><button class="btn tiny">{{ e.action }}</button></span>
+          </a>
+        </sc-for>
+      </div>
+      <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Tool counts probed from live discovery, never the registry cache · connection state via heartbeat, 10s interval</div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="10" r="2.5"></circle><circle cx="14.5" cy="5" r="2.5"></circle><circle cx="14.5" cy="15" r="2.5"></circle><path d="M7.8 8.9l4.4-2.6M7.8 11.1l4.4 2.6"></path></svg></div>
+        <h3>No entities connected</h3>
+        <p>Entities give agents their hands. Connect a wire entity (your service dials in over WebSocket) or point Platos at an MCP server.</p>
+        <div class="row" style="justify-content:center;gap:8px"><a class="btn accent" href="22-mcp.dc.html">Connect entity</a><a class="btn" href="43-docs.dc.html">Wire protocol docs</a></div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  baseEntities(fail) {
+    return [
+      {name:'walle-tools', desc:'Notes, sheets, calendar for the ops copilot', kind:'wire', conn: fail?'disconnected':'connected', connLabel: fail?'disconnected':'connected', tools: fail?'9 (stale: 22)':'9', toolColor: fail?'var(--danger)':'var(--ink)', hb: fail?'41m ago':'2s ago', agents:'walle, support-triage', action: fail?'Reconnect':'Test', edge: fail?'var(--danger)':'transparent'},
+      {name:'slack-bridge', desc:'Slack posting and channel reads', kind:'wire', conn:'connected', connLabel:'connected', tools:'4', toolColor:'var(--ink)', hb:'1s ago', agents:'all agents', action:'Test', edge:'transparent'},
+      {name:'hubspot-mcp', desc:'CRM lookups and updates', kind:'mcp', conn:'connected', connLabel:'connected', tools:'12', toolColor:'var(--ink)', hb:'8s ago', agents:'walle, sales-notes', action:'Test', edge:'transparent'},
+      {name:'notion-mcp', desc:'Docs workspace', kind:'mcp', conn:'stale', connLabel:'stale creds', tools:'7', toolColor:'var(--warn)', hb:'11m ago', agents:'docs-writer', action:'Re-auth', edge:'transparent'},
+      {name:'stripe-mcp', desc:'Billing reads (no writes)', kind:'mcp', conn:'connected', connLabel:'connected', tools:'5', toolColor:'var(--ink)', hb:'4s ago', agents:'billing-answers', action:'Test', edge:'transparent'}
+    ];
+  }
+  denseEntities() {
+    const kinds = ['wire','mcp'];
+    return Array.from({length: 28}, (_, i) => {
+      const down = i === 2 || i === 15;
+      const stale = i % 9 === 5;
+      return {
+        name: ['walle-tools','slack-bridge','hubspot-mcp','notion-mcp','stripe-mcp','jira-mcp','gh-mcp','zendesk-mcp','gdrive-mcp','pg-readonly','warehouse','asana-mcp','linear-mcp','fig-mcp','s3-tools','mail-bridge','cal-mcp','sheets-live','kb-search','vault-ro','twilio-mcp','maps-mcp','ocr-tools','translate','audit-sink','sentry-mcp','pager-mcp','feature-flags'][i],
+        desc: 'Entity #' + (i + 1), kind: kinds[i % 2],
+        conn: down ? 'disconnected' : stale ? 'stale' : 'connected',
+        connLabel: down ? 'disconnected' : stale ? 'stale creds' : 'connected',
+        tools: down ? '0 (stale: ' + (5 + i % 9) + ')' : String(2 + (i * 5) % 18),
+        toolColor: down ? 'var(--danger)' : stale ? 'var(--warn)' : 'var(--ink)',
+        hb: down ? (30 + i) + 'm ago' : (1 + i % 12) + 's ago',
+        agents: (1 + i % 5) + ' agents', action: down ? 'Reconnect' : 'Test',
+        edge: down ? 'var(--danger)' : 'transparent'
+      };
+    });
+  }
+  renderVals() {
+    const v = this.state.view;
+    const entities = v === 'empty' ? [] : v === 'dense' ? this.denseEntities() : this.baseEntities(v === 'failure');
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showAlert: v === 'failure',
+      entities, total: entities.length, countLabel: String(entities.length),
+      nWire: entities.filter(e=>e.kind==='wire').length,
+      nMcp: entities.filter(e=>e.kind==='mcp').length,
+      nDown: entities.filter(e=>e.conn==='disconnected').length
+    };
+  }
+}
+</script>
+</body>
+</html>

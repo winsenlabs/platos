@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="B3 Command palette">
+  <dc-import name="PlatosNav" active="home" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Commands</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Search results</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="greeting" style="opacity:0.35"><h1>Morning, Tejas <em>· Thursday, Aug 14</em></h1></div>
+
+    <div class="overlay" style="position:fixed">
+      <div class="palette">
+        <input type="text" value="{{ query }}" placeholder="Type a command or search…" />
+        <sc-if value="{{ showCommands }}" hint-placeholder-val="{{ true }}">
+          <div class="pal-group">Blocked right now</div>
+          <a class="pal-item sel" href="34-approvals.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="7"></circle><path d="M10 6.5V10l2.5 2"></path></svg>Approve: walle → crm.update (blocking 4m)<span class="pal-k"><span class="kbd">↵</span></span></a>
+          <a class="pal-item" href="21-entity.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="10" r="2.5"></circle><circle cx="14.5" cy="5" r="2.5"></circle><circle cx="14.5" cy="15" r="2.5"></circle><path d="M7.8 8.9l4.4-2.6M7.8 11.1l4.4 2.6"></path></svg>Reconnect: walle-tools (down 41m)</a>
+          <div class="pal-group">Go to</div>
+          <a class="pal-item" href="10-agents.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="12" height="10" rx="2"></rect><path d="M10 6V3"></path></svg>Agents<span class="pal-k"><span class="kbd">g</span><span class="kbd">a</span></span></a>
+          <a class="pal-item" href="16-threads.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9.5c0 3-3.1 5.5-7 5.5-1 0-2-.16-2.9-.46L3 16l1.2-3.1C3.4 11.9 3 10.75 3 9.5 3 6.5 6.1 4 10 4s7 2.5 7 5.5z"></path></svg>Threads<span class="pal-k"><span class="kbd">g</span><span class="kbd">t</span></span></a>
+          <a class="pal-item" href="30-cost.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10 3v14M6.5 6.5C6.5 5.1 8 4.5 10 4.5s3.5.9 3.5 2.2c0 3.3-7 1.6-7 5 0 1.5 1.5 2.5 3.5 2.5s3.5-.8 3.5-2.2"></path></svg>Cost<span class="pal-k"><span class="kbd">g</span><span class="kbd">c</span></span></a>
+          <div class="pal-group">Actions</div>
+          <a class="pal-item" href="11-agent-new.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10 5v10M5 10h10"></path></svg>New agent</a>
+          <a class="pal-item" href="19-playground.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5 15 10 5 15.5z"></path></svg>Open playground with walle</a>
+          <a class="pal-item"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg>Toggle theme</a>
+        </sc-if>
+        <sc-if value="{{ showResults }}" hint-placeholder-val="{{ false }}">
+          <div class="pal-group">Threads · 3</div>
+          <a class="pal-item sel" href="17-thread.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9.5c0 3-3.1 5.5-7 5.5-1 0-2-.16-2.9-.46L3 16l1.2-3.1C3.4 11.9 3 10.75 3 9.5 3 6.5 6.1 4 10 4s7 2.5 7 5.5z"></path></svg><span>“Where are the notes from my last <b>board</b> meeting?” <span class="mono-sm">th_9f3kq2 · walle</span></span></a>
+          <a class="pal-item" href="17-thread.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9.5c0 3-3.1 5.5-7 5.5-1 0-2-.16-2.9-.46L3 16l1.2-3.1C3.4 11.9 3 10.75 3 9.5 3 6.5 6.1 4 10 4s7 2.5 7 5.5z"></path></svg><span>“Summarize the <b>board</b> deck for the offsite” <span class="mono-sm">th_2jm5b9</span></span></a>
+          <div class="pal-group">Memories · 2</div>
+          <a class="pal-item" href="25-memory.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5c-3.6 0-6.5 2.4-6.5 5.4 0 1.7.9 3.2 2.4 4.2V17l2.8-1.7c.42.07.85.1 1.3.1 3.6 0 6.5-2.4 6.5-5.4S13.6 3.5 10 3.5z"></path></svg><span>“<b>board</b> = Q1 review held Feb 6” <span class="mono-sm">conv · maya</span></span></a>
+          <a class="pal-item" href="26-graph.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="4.5" r="2"></circle><circle cx="4.5" cy="14" r="2"></circle><circle cx="15.5" cy="14" r="2"></circle><path d="M9 6.3 5.5 12.2M11 6.3l3.5 5.9M6.5 14h7"></path></svg><span>Q1 <b>Board</b> Review <span class="mono-sm">graph entity · 9 edges</span></span></a>
+          <div class="pal-group">Tools · 1</div>
+          <a class="pal-item" href="23-tools.dc.html"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 6.5 17 3M11 9l-6.6 6.6a1.4 1.4 0 0 0 2 2L13 11M11 9a4 4 0 0 1 5.2-5.2L13.5 6.5l.8 3.2 3.2-.8A4 4 0 0 1 11 9z"></path></svg><span>notes.search — “<b>board</b>” appears in 41 recent calls</span></a>
+        </sc-if>
+        <div class="pal-foot"><span>↑↓ navigate</span><span>↵ open</span><span>tab filter by type</span><span style="margin-left:auto">searching agents · threads · tools · memories</span></div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goDense: () => this.setState({view:'dense'}),
+      showCommands: v === 'default', showResults: v === 'dense',
+      query: v === 'dense' ? 'board' : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

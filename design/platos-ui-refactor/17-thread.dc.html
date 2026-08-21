@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E13 Thread detail">
+  <dc-import name="PlatosNav" active="threads" hint-size="240px,900px"></dc-import>
+  <main class="main with-rail" style="row-gap:0">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="topbar" style="margin-bottom:18px;display:block">
+      <div class="crumbs"><a href="10-agents.dc.html">Agents</a><span class="sep">/</span><a href="16-threads.dc.html">walle</a><span class="sep">/</span><a href="16-threads.dc.html">Threads</a><span class="sep">/</span><span class="here mono" style="font-size:11.5px">th_9f3kq2</span></div>
+      <div class="row" style="gap:12px;flex-wrap:wrap">
+        <h1 style="font-size:20px;font-weight:600;letter-spacing:-0.015em;margin:0">“Where are the notes from my last board meeting?”</h1>
+        <span class="schip {{ headChipCls }}">{{ headChip }}</span>
+      </div>
+      <div class="row" style="gap:14px;margin-top:8px;flex-wrap:wrap;font-size:12px;color:var(--ink-3)">
+        <span class="row" style="gap:6px"><span class="sb-foot-avatar" style="width:20px;height:20px;font-size:9px">MK</span>maya@acme.co</span>
+        <span class="row" style="gap:6px"><span class="avatar sm walle" style="width:20px;height:20px;font-size:9px;border-radius:5px">WA</span>walle · v41</span>
+        <span class="mono">slack</span>
+        <span class="mono">{{ metaTurns }}</span>
+        <span class="mono prov" title="Sum of turn ledger rows for this thread · computed 09:41 UTC"><b style="color:var(--ink);font-weight:600">{{ metaCost }}</b></span>
+        <span class="mono">started {{ metaStarted }}</span>
+        <span class="spacer" style="flex:1"></span>
+        <a class="btn tiny" href="18-trace.dc.html">Trace</a>
+        <button class="btn tiny">Export</button>
+        <button class="btn tiny danger">Erase user data</button>
+      </div>
+    </div>
+
+    <section>
+      <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+        <div class="empty" style="margin-top:24px">
+          <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9.5c0 3-3.1 5.5-7 5.5-1 0-2-.16-2.9-.46L3 16l1.2-3.1C3.4 11.9 3 10.75 3 9.5 3 6.5 6.1 4 10 4s7 2.5 7 5.5z"></path></svg></div>
+          <h3>Nothing here yet</h3>
+          <p>This thread was opened but no turn has completed. When the first turn lands you’ll see the full reasoning → tool → answer chain with its exact cost.</p>
+          <a class="btn" href="19-playground.dc.html">Send a test message</a>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showDense }}" hint-placeholder-val="{{ false }}">
+        <div class="filter-bar" style="margin-bottom:14px">
+          <span class="fchip active">All turns <span class="fchip-count">60</span></span>
+          <span class="fchip" style="color:var(--danger)">Failures <span class="fchip-count">2</span></span>
+          <span class="fchip" style="color:var(--warn)">&gt; $0.10 <span class="fchip-count">7</span></span>
+          <span class="fchip">Compactions <span class="fchip-count">3</span></span>
+          <span class="spacer"></span>
+          <span class="mono-sm">cost scale ▁▃█ per turn</span>
+        </div>
+        <div class="dtable">
+          <sc-for list="{{ denseTurns }}" as="t" hint-placeholder-count="20">
+            <div class="dt-row" style="grid-template-columns:44px minmax(0,1fr) 120px 70px 64px;padding:7px 16px;border-left:3px solid {{ t.edge }}">
+              <span class="mono-sm">#{{ t.n }}</span>
+              <span style="font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.summary }}</span>
+              <span class="tokbar" style="height:6px;width:110px;align-self:center"><i class="cr" style="width:{{ t.cr }}%"></i><i class="cw" style="width:{{ t.cw }}%"></i><i class="fp" style="width:{{ t.fp }}%"></i></span>
+              <span class="mono tnum" style="font-size:11.5px;color:{{ t.costColor }};font-weight:600;text-align:right">{{ t.cost }}</span>
+              <span class="mono-sm" style="text-align:right">{{ t.ms }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>60 turns · bars show cache-read / cache-write / full-price share of input tokens · click any turn to expand</div>
+      </sc-if>
+
+      <sc-if value="{{ showConvo }}" hint-placeholder-val="{{ true }}">
+        <div class="compact-line" style="margin-bottom:14px"><span>history compacted here · turns 1–5 collapsed to 412-token summary</span><button>show original</button></div>
+
+        <div class="turn">
+          <div class="turn-head">
+            <span class="t-num">#6</span>
+            <span class="t-summary">Asked for last board meeting notes</span>
+            <span class="t-tok">2 steps · 1 tool call</span>
+            <span class="t-cost">$0.0214</span>
+            <span class="t-time">09:38:02</span>
+          </div>
+          <div class="turn-body">
+            <div>
+              <div class="m-label">maya@acme.co · slack</div>
+              <div class="m-user">Where are the notes from my last board meeting?</div>
+            </div>
+            <div class="reason"><span class="r-tag">reasoning · 96 tokens</span>User asked for board meeting notes. Search Notes for recent documents tagged “board”.</div>
+            <div class="tcall">
+              <div class="tcall-head"><span class="tc-status ok"></span><span class="tc-name">notes.search</span><span class="tc-entity">via walle-tools · wire</span><span class="tc-ms">318ms</span></div>
+            </div>
+            <div>
+              <div class="m-label">walle</div>
+              <div class="m-agent"><p>I found notes from your board meeting on Feb 6 — “Q1 Board Review”. Want the action items or the full summary?</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="turn {{ failTurnCls }}">
+          <div class="turn-head">
+            <span class="t-num">#7</span>
+            <span class="t-summary">Full summary requested — expensive turn</span>
+            <span class="t-tok">3 steps · 2 tool calls</span>
+            <span class="t-cost" style="color:var(--warn)">$0.4188</span>
+            <span class="t-time">09:39:47</span>
+          </div>
+          <div class="turn-body">
+            <div>
+              <div class="m-label">maya@acme.co · slack</div>
+              <div class="m-user">Full summary please, and pull the revenue figures we discussed.</div>
+            </div>
+            <div class="sc-surface" style="margin:0">
+              <div class="row" style="justify-content:space-between;margin-bottom:6px">
+                <span style="font-size:12px;font-weight:600;color:var(--ink)">Input: 44,518 tokens</span>
+                <span class="mono-sm prov" title="From provider usage block on step 1 · verified against turn ledger">provider-reported</span>
+              </div>
+              <div class="tokbar"><i class="cr" style="width:89.4%"></i><i class="cw" style="width:10.6%"></i><i class="fp" style="width:0.4%;min-width:3px"></i></div>
+              <div class="toklegend">
+                <span><span class="sw" style="background:var(--good)"></span>cache read <b>39,795</b> · $0.119</span>
+                <span><span class="sw" style="background:var(--accent-2)"></span>cache write <b>4,714</b> · $0.177</span>
+                <span><span class="sw" style="background:var(--danger)"></span>full price <b>9</b> · $0.0003</span>
+                <span style="margin-left:auto"><span class="sw" style="background:var(--warn)"></span>output <b>1,208</b> · $0.121</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)">
+                <div><div class="sc-meta-k">system prompt</div><div class="sc-meta-v mono" style="font-size:12px">21,340 <span class="muted" style="font-weight:400">cached</span></div></div>
+                <div><div class="sc-meta-k">tool schemas</div><div class="sc-meta-v mono" style="font-size:12px">11,872 <span class="muted" style="font-weight:400">cached</span></div></div>
+                <div><div class="sc-meta-k">history</div><div class="sc-meta-v mono" style="font-size:12px">11,297 <span class="muted" style="font-weight:400">+4.7k new</span></div></div>
+                <div><div class="sc-meta-k">user message</div><div class="sc-meta-v mono" style="font-size:12px">9 <span style="color:var(--danger);font-weight:400">full price</span></div></div>
+              </div>
+            </div>
+            <div class="reason"><span class="r-tag">reasoning · 214 tokens</span>Need the full note body and the revenue table. Fetch the note, then query the finance sheet for Q1 revenue.</div>
+            <div class="tcall">
+              <div class="tcall-head"><span class="tc-status ok"></span><span class="tc-name">notes.get</span><span class="tc-entity">via walle-tools · wire</span><span class="tc-ms">412ms</span></div>
+            </div>
+            <sc-if value="{{ showFailCall }}" hint-placeholder-val="{{ false }}">
+              <div class="tcall failed">
+                <div class="tcall-head"><span class="tc-status fail"></span><span class="tc-name">sheets.query</span><span class="tc-entity">via walle-tools · wire</span><span class="tc-ms">7ms</span></div>
+                <div class="tcall-body">
+                  <div class="tcall-err">
+                    <div class="who">Platos dispatch failure — never reached the provider</div>
+                    <div class="mono" style="font-size:11.5px;color:var(--ink)">EntityNotRegistered: Entity walle-tools not registered</div>
+                    <div style="font-size:11.5px;color:var(--ink-3);margin-top:5px">The wire connection dropped 41 min before this call. The agent was still offered the tool because the registry cache was stale.</div>
+                  </div>
+                  <div class="tcall-sec">
+                    <div class="k">What the agent told the user</div>
+                    <div style="font-size:12.5px;color:var(--ink-2);font-style:italic">“The Notes service returned an internal registration error.”</div>
+                    <div class="row" style="gap:6px;margin-top:4px"><span class="schip danger">misattributed</span><span style="font-size:11px;color:var(--ink-3)">ground truth: Platos-side dispatch, not the provider</span></div>
+                  </div>
+                  <div class="row" style="gap:6px"><button class="btn tiny">Retry call</button><a class="btn tiny" href="21-entity.dc.html">Open entity</a><button class="btn tiny ghost">Copy error</button></div>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ showOkCall2 }}" hint-placeholder-val="{{ true }}">
+              <div class="tcall">
+                <div class="tcall-head"><span class="tc-status ok"></span><span class="tc-name">sheets.query</span><span class="tc-entity">via walle-tools · wire</span><span class="tc-ms">688ms</span></div>
+              </div>
+            </sc-if>
+            <div>
+              <div class="m-label">walle</div>
+              <div class="m-agent"><p><b>Q1 Board Review — summary.</b> Headcount plan approved, product launch moved to March 18, and the board asked for weekly revenue reporting.</p><p>{{ answerTail }}</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="turn" style="border-style:dashed">
+          <div class="turn-head" style="border-bottom:none;background:transparent">
+            <span class="t-num">#8</span>
+            <span class="t-summary muted" style="font-weight:400">Follow-up on action items — collapsed</span>
+            <span class="t-tok">1 step</span>
+            <span class="t-cost">$0.0122</span>
+            <span class="t-time">09:44:10</span>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+
+    <aside class="rail">
+      <div class="rail-card">
+        <h3>Turn #7 inspector</h3>
+        <div class="sc-meta-grid" style="grid-template-columns:1fr 1fr">
+          <div><div class="sc-meta-k">model</div><div class="sc-meta-v mono" style="font-size:12px">claude-opus-4-6</div></div>
+          <div><div class="sc-meta-k">route</div><div class="sc-meta-v mono" style="font-size:12px">quality</div></div>
+          <div><div class="sc-meta-k">latency</div><div class="sc-meta-v mono" style="font-size:12px">6.4s</div></div>
+          <div><div class="sc-meta-k">stop reason</div><div class="sc-meta-v mono" style="font-size:12px">end_turn</div></div>
+        </div>
+        <div class="d-label">cost lanes</div>
+        <div style="display:grid;gap:6px;font-size:12px">
+          <div class="row"><span class="grow">Inference</span><span class="mono tnum" style="font-weight:600">$0.4171</span></div>
+          <div class="row"><span class="grow">Embedding</span><span class="mono tnum">$0.0009</span></div>
+          <div class="row"><span class="grow">Extraction</span><span class="mono tnum">$0.0008</span></div>
+          <div class="row"><span class="grow">Judge</span><span class="mono tnum">$0.0000</span></div>
+        </div>
+        <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>rates: verified 2026-08-02 (Platos rate table v182) · not the public price map</div>
+      </div>
+      <div class="rail-card">
+        <h3>Steps <span class="count">3</span></h3>
+        <div class="wfall">
+          <div class="wf-row"><span class="wf-name"><span class="ico model"></span>model · plan</span><span class="wf-track"><span class="wf-bar" style="left:0%;width:22%"></span></span><span class="wf-ms">1.4s</span></div>
+          <div class="wf-row"><span class="wf-name"><span class="wf-indent"></span><span class="ico tool"></span>notes.get</span><span class="wf-track"><span class="wf-bar tool" style="left:22%;width:7%"></span></span><span class="wf-ms">412ms</span></div>
+          <div class="wf-row"><span class="wf-name"><span class="wf-indent"></span><span class="ico {{ wfCallIco }}"></span>sheets.query</span><span class="wf-track"><span class="wf-bar {{ wfCallCls }}" style="left:29%;width:{{ wfCallW }}%"></span></span><span class="wf-ms">{{ wfCallMs }}</span></div>
+          <div class="wf-row"><span class="wf-name"><span class="ico model"></span>model · answer</span><span class="wf-track"><span class="wf-bar" style="left:41%;width:59%"></span></span><span class="wf-ms">3.8s</span></div>
+        </div>
+        <a class="btn tiny" style="margin-top:10px;display:inline-block" href="18-trace.dc.html">Full trace</a>
+      </div>
+      <div class="rail-card">
+        <h3>Memory written</h3>
+        <div style="font-size:12px;color:var(--ink-2);line-height:1.5">2 conversation memories · 1 profile update (“prefers concise summaries”)</div>
+        <a class="btn tiny ghost" style="margin-top:8px;display:inline-block" href="25-memory.dc.html">View in browser</a>
+      </div>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'failure' };
+  denseTurns() {
+    const sums = ['Asked about invoice status','Requested CSV export','Clarified date range','Tool retry after timeout','Summarised account history','Asked for escalation contact','Pulled revenue figures','Checked SLA terms','Compared plan tiers','Asked for meeting notes'];
+    return Array.from({length: 60}, (_, i) => {
+      const n = i + 1;
+      const fail = n === 17 || n === 43;
+      const pricey = [7, 12, 22, 29, 35, 48, 55].includes(n);
+      const cost = fail ? 0.002 : pricey ? 0.31 + (n % 7) * 0.04 : 0.008 + (n % 9) * 0.004;
+      return {
+        n, summary: (fail ? 'Tool dispatch failed — ' : '') + sums[i % 10],
+        cr: pricey ? 86 : 62 + (n % 20), cw: pricey ? 12 : 6, fp: fail ? 30 : 2,
+        cost: '$' + cost.toFixed(3), costColor: fail ? 'var(--danger)' : pricey ? 'var(--warn)' : 'var(--ink)',
+        ms: (fail ? '9ms' : (1 + n % 8) + '.2s'), edge: fail ? 'var(--danger)' : pricey ? 'var(--warn)' : 'transparent'
+      };
+    });
+  }
+  renderVals() {
+    const v = this.state.view;
+    const fail = v === 'failure';
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showConvo: v === 'default' || v === 'failure',
+      showEmpty: v === 'empty', showDense: v === 'dense',
+      showFailCall: fail, showOkCall2: !fail,
+      failTurnCls: fail ? 'failed' : '',
+      headChip: fail ? '1 unresolved failure' : (v === 'dense' ? '60 turns' : 'resolved'),
+      headChipCls: fail ? 'danger' : 'good',
+      metaTurns: v === 'dense' ? '60 turns' : '8 turns',
+      metaCost: v === 'dense' ? '$4.87' : '$0.52',
+      metaStarted: v === 'dense' ? 'Jul 2 (6 wks)' : 'today 09:31',
+      answerTail: fail
+        ? 'I couldn’t pull the revenue figures — the Notes service returned an internal registration error. The summary above is complete otherwise.'
+        : 'Q1 revenue closed at $2.41M, 7% above the plan you set in January.',
+      wfCallIco: fail ? 'fail' : 'tool', wfCallCls: fail ? 'fail' : 'tool',
+      wfCallW: fail ? 1 : 12, wfCallMs: fail ? '7ms' : '688ms',
+      denseTurns: v === 'dense' ? this.denseTurns() : []
+    };
+  }
+}
+</script>
+</body>
+</html>

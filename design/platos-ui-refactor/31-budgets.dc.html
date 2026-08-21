@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.bud{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px}
+.bud .bhead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bud .bname{font-size:13.5px;font-weight:600;color:var(--ink)}
+.bud .bbar{height:10px;background:var(--bg-3);border-radius:999px;overflow:hidden;position:relative}
+.bud .bbar > i{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
+.bud .bmark{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink-3)}
+.bud .bnums{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--ink-3);margin-top:7px}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="I4 Budgets">
+  <dc-import name="PlatosNav" active="budgets" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Breached</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Budgets</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Budgets</h1>
+        <p class="page-sub">Enforced against the turn ledger — the same numbers as the Cost page, by construction</p>
+      </div>
+      <div class="page-head-actions"><button class="btn accent">New budget</button></div>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10V4a6 6 0 1 1-6 6z"></path><path d="M12 3.5a6 6 0 0 1 4.5 4.5H12z"></path></svg></div>
+        <h3>No budgets set</h3>
+        <p>Unbudgeted environments spend until the provider cuts you off. Set at least one environment-level monthly cap.</p>
+        <button class="btn accent">Set environment budget</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+        <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+          <div class="a-body"><b>walle hit its daily cap at 09:12 and is refusing new turns.</b> 6 threads got a budget-refusal message. Raise the cap or wait for the 00:00 UTC reset. <button class="btn tiny" style="vertical-align:1px">Raise once (+$50 today)</button></div>
+        </div>
+      </sc-if>
+      <div class="bud">
+        <div class="bhead"><span class="bname">Environment · monthly</span><span class="schip good">enforcing</span><span class="mono-sm" style="margin-left:auto">resets Sep 1 · alerts at 80%</span></div>
+        <div class="bbar"><i style="width:42%;background:var(--accent)"></i><span class="bmark" style="left:80%"></span></div>
+        <div class="bnums"><span>$1,891.40 of $4,500</span><span>42% · 17 days left</span></div>
+      </div>
+      <div class="bud" style="border-color:{{ walleBorder }}">
+        <div class="bhead"><span class="bname">walle · daily</span><span class="schip {{ walleChipCls }}">{{ walleChip }}</span><span class="mono-sm" style="margin-left:auto">resets 00:00 UTC · hard stop</span></div>
+        <div class="bbar"><i style="width:{{ walleW }}%;background:{{ walleColor }}"></i><span class="bmark" style="left:80%"></span></div>
+        <div class="bnums"><span>{{ walleSpend }} of $120</span><span>{{ walleNote }}</span></div>
+      </div>
+      <div class="bud">
+        <div class="bhead"><span class="bname">Guest traffic · daily</span><span class="schip good">enforcing</span><span class="mono-sm" style="margin-left:auto">soft — alerts only</span></div>
+        <div class="bbar"><i style="width:31%;background:var(--accent)"></i><span class="bmark" style="left:80%"></span></div>
+        <div class="bnums"><span>$6.20 of $20</span><span>31%</span></div>
+      </div>
+      <div class="bud">
+        <div class="bhead"><span class="bname">Extraction lane · daily</span><span class="schip {{ extChipCls }}">{{ extChip }}</span><span class="mono-sm" style="margin-left:auto">hard stop</span></div>
+        <div class="bbar"><i style="width:{{ extW }}%;background:{{ extColor }}"></i><span class="bmark" style="left:80%"></span></div>
+        <div class="bnums"><span>{{ extSpend }} of $8</span><span>{{ extNote }}</span></div>
+      </div>
+      <div class="prov-note"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Position = sum of ledger rows in window, recomputed every turn — enforcement and display share one query</div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view, fail = v === 'failure';
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showAlert: fail,
+      walleBorder: fail ? 'color-mix(in oklab,var(--danger) 45%,var(--border))' : 'var(--border)',
+      walleChip: fail ? 'BREACHED · blocking' : 'enforcing', walleChipCls: fail ? 'danger' : 'good',
+      walleW: fail ? 100 : 58, walleColor: fail ? 'var(--danger)' : 'var(--accent)',
+      walleSpend: fail ? '$120.00' : '$69.80', walleNote: fail ? 'hit cap 09:12 · 6 threads refused' : '58%',
+      extChip: fail ? 'BREACHED' : 'enforcing', extChipCls: fail ? 'danger' : 'good',
+      extW: fail ? 100 : 66, extColor: fail ? 'var(--danger)' : 'var(--accent)',
+      extSpend: fail ? '$8.00' : '$5.31', extNote: fail ? 'extraction paused — memories queueing' : '66%'
+    };
+  }
+}
+</script>
+</body>
+</html>

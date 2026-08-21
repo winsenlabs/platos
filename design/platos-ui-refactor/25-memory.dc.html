@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="G1 Memory browser">
+  <dc-import name="PlatosNav" active="memory" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Memories</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Memories<span class="count-badge">{{ countLabel }}</span></h1>
+        <p class="page-sub">What agents remember — searchable, editable, deletable</p>
+      </div>
+      <div class="page-head-actions"><button class="btn danger">Erase a user</button><button class="btn accent">Add memory</button></div>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>Embedding backlog: 214 memories unembedded</b> since the embedding provider outage at 07:50. They exist but cannot be recalled by similarity search. <button class="btn tiny" style="vertical-align:1px">Re-embed now</button></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="filter-bar">
+        <span class="fchip active">All tiers <span class="fchip-count">{{ total }}</span></span>
+        <span class="fchip">Working</span>
+        <span class="fchip">Conversation</span>
+        <span class="fchip">Profile</span>
+        <span class="fchip">Knowledge</span>
+        <span class="fchip">Agent ▾</span>
+        <span class="fchip">User ▾</span>
+        <span class="spacer"></span>
+        <span class="topbar-search" style="max-width:280px;flex:none"><svg style="width:13px;height:13px" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"></circle><path d="M13.5 13.5 17 17"></path></svg>Semantic search…</span>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:20px;align-items:start" class="rcol">
+        <div class="dtable">
+          <div class="dt-head" style="grid-template-columns:90px minmax(200px,1fr) 110px 110px 90px">
+            <span>Tier</span><span>Memory</span><span>User</span><span>Embedding</span><span>Age</span>
+          </div>
+          <sc-for list="{{ mems }}" as="m" hint-placeholder-count="9">
+            <div class="dt-row {{ m.selCls }}" style="grid-template-columns:90px minmax(200px,1fr) 110px 110px 90px;cursor:pointer">
+              <span><span class="chip {{ m.tierCls }}">{{ m.tier }}</span></span>
+              <span style="font-size:12.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.text }}</span>
+              <span class="mono-sm" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.user }}</span>
+              <span><span class="schip {{ m.embCls }}">{{ m.emb }}</span></span>
+              <span class="mono-sm">{{ m.age }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="drawer" style="position:static">
+          <h3>Memory detail</h3>
+          <p class="d-sub mono" style="font-size:10.5px">mem_7d21f8 · profile tier</p>
+          <div style="font-size:13px;color:var(--ink);line-height:1.55;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px">“Maya prefers concise summaries; lead with the number, skip the preamble.”</div>
+          <div class="d-label">provenance</div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">extracted from <a href="17-thread.dc.html" class="mono" style="font-size:11px;text-decoration:underline;text-underline-offset:2px">th_9f3kq2</a> turn #3<br />by extraction lane · $0.0004 · Aug 12</div>
+          <div class="d-label">visibility</div>
+          <div style="font-size:12px;color:var(--ink-2)">cluster <a href="27-clusters.dc.html" class="mono" style="font-size:11px;text-decoration:underline;text-underline-offset:2px">support-core</a> — walle, support-triage, billing-answers</div>
+          <div class="d-label">embedding</div>
+          <div style="font-size:12px;color:var(--ink-2)">{{ detailEmb }}</div>
+          <div class="d-label">rating</div>
+          <div style="font-size:12px;color:var(--ink-2)">recalled 41× · helpful 38× (agent-attributed)</div>
+          <div class="row" style="gap:6px;margin-top:14px"><button class="btn tiny">Edit</button><button class="btn tiny">Archive</button><button class="btn tiny danger">Delete</button></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5c-3.6 0-6.5 2.4-6.5 5.4 0 1.7.9 3.2 2.4 4.2V17l2.8-1.7c.42.07.85.1 1.3.1 3.6 0 6.5-2.4 6.5-5.4S13.6 3.5 10 3.5z"></path></svg></div>
+        <h3>No memories yet</h3>
+        <p>Memories are extracted automatically after each turn (when an agent’s memory policy allows it). Have a conversation and they’ll appear here with full provenance.</p>
+        <a class="btn" href="19-playground.dc.html">Open playground</a>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  baseMems(fail) {
+    return [
+      {tier:'profile', tierCls:'accent', text:'“Maya prefers concise summaries; lead with the number”', user:'maya@acme.co', emb:'embedded', embCls:'good', age:'2d', selCls:'selected'},
+      {tier:'conv', tierCls:'', text:'“board = Q1 review held Feb 6, notes in Notes app”', user:'maya@acme.co', emb: fail?'pending':'embedded', embCls: fail?'warn':'good', age:'2d', selCls:''},
+      {tier:'conv', tierCls:'', text:'“Northwind renewal owned by jon, closes Aug 30”', user:'jon@acme.co', emb: fail?'pending':'embedded', embCls: fail?'warn':'good', age:'3d', selCls:''},
+      {tier:'profile', tierCls:'accent', text:'“Jon’s timezone is Europe/Lisbon”', user:'jon@acme.co', emb:'embedded', embCls:'good', age:'1w', selCls:''},
+      {tier:'knowledge', tierCls:'', text:'“Fiscal year starts in February”', user:'—', emb:'embedded', embCls:'good', age:'3w', selCls:''},
+      {tier:'working', tierCls:'', text:'“current thread: assembling revenue summary”', user:'maya@acme.co', emb:'n/a', embCls:'muted', age:'9m', selCls:''},
+      {tier:'conv', tierCls:'', text:'“escalation contact for billing is #billing-oncall”', user:'sam@acme.co', emb: fail?'failed':'embedded', embCls: fail?'danger':'good', age:'5d', selCls:''},
+      {tier:'knowledge', tierCls:'', text:'“refund matrix v3 applies from July 1”', user:'—', emb:'embedded', embCls:'good', age:'6w', selCls:''},
+      {tier:'profile', tierCls:'accent', text:'“Sam wants raw numbers, no rounding”', user:'sam@acme.co', emb:'embedded', embCls:'good', age:'2w', selCls:''}
+    ];
+  }
+  denseMems(fail) {
+    const tiers = [['working',''],['conv',''],['profile','accent'],['knowledge','']];
+    const users = ['maya@acme.co','jon@acme.co','sam@acme.co','ana@acme.co','—'];
+    return Array.from({length: 80}, (_, i) => {
+      const t = tiers[i % 4];
+      const bad = fail && i % 6 === 1;
+      return {
+        tier: t[0], tierCls: t[1],
+        text: '“memory #' + (10000 - i) + ' — ' + ['user preference','fact from thread','escalation detail','glossary term','deadline','ownership note'][i % 6] + '”',
+        user: users[i % 5], emb: bad ? 'pending' : 'embedded', embCls: bad ? 'warn' : 'good',
+        age: ['9m','2h','1d','3d','1w','4w'][i % 6], selCls: i === 0 ? 'selected' : ''
+      };
+    });
+  }
+  renderVals() {
+    const v = this.state.view;
+    const mems = v === 'empty' ? [] : v === 'dense' ? this.denseMems(false) : this.baseMems(v === 'failure');
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showAlert: v === 'failure',
+      mems, total: v === 'dense' ? '10,412' : String(mems.length), countLabel: v === 'dense' ? '10,412' : String(mems.length),
+      detailEmb: v === 'failure' ? '⚠ queued for re-embed (backlog)' : 'text-embed-4 · 1536d · stored Aug 12'
+    };
+  }
+}
+</script>
+</body>
+</html>

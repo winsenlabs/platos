@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)}a{color:inherit}
+.ix-sec{margin-bottom:26px}
+.ix-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.ix-card{display:flex;flex-direction:column;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;text-decoration:none;transition:all 0.12s}
+.ix-card:hover{border-color:var(--accent-soft-2);box-shadow:0 2px 8px oklch(0% 0 0 / 0.06);transform:translateY(-1px)}
+.ix-id{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-4);text-transform:uppercase;letter-spacing:0.06em}
+.ix-name{font-size:13px;font-weight:600;color:var(--ink)}
+.ix-note{font-size:11px;color:var(--ink-3);line-height:1.45}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="display:block;background:var(--bg);min-height:100vh" data-screen-label="Index">
+  <div class="theme-toggle">
+    <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+    <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+  </div>
+  <main style="max-width:1240px;margin:0 auto;padding:36px 40px 80px">
+    <div class="row" style="gap:12px;margin-bottom:6px">
+      <img src="assets/platos-icon.svg" style="width:36px;height:36px;border-radius:9px" alt="Platos" />
+      <div>
+        <h1 style="font-size:24px;font-weight:600;letter-spacing:-0.02em;margin:0">Platos — full UI refactor</h1>
+        <div style="font-size:13px;color:var(--ink-3)">Every screen from the brief · Bridge design system · light + dark on every page · state switcher (default / empty / failure / dense) top-right of each screen</div>
+      </div>
+    </div>
+    <div class="row" style="gap:8px;margin:14px 0 30px;flex-wrap:wrap">
+      <span class="schip accent">33 screens</span>
+      <span class="schip muted">nav: project-first, agents dominant</span>
+      <span class="schip muted">onboarding collapsed to one flow</span>
+      <span class="schip muted">MCP servers folded into Entities (F6/F7 → filter + detail)</span>
+      <span class="schip muted">billing &amp; admin kept, flagged hosted-only</span>
+    </div>
+
+    <div class="ix-sec"><div class="sec-head"><h2>Start here</h2></div>
+      <div class="ix-grid">
+        <a class="ix-card" href="17-thread.dc.html" style="border-color:var(--accent);background:var(--accent-soft)"><span class="ix-id">E13 · flagship</span><span class="ix-name">Thread detail</span><span class="ix-note">the 44,518-token story, ground-truth failures, compaction — the most-invested screen</span></a>
+        <a class="ix-card" href="03-home.dc.html"><span class="ix-id">B2</span><span class="ix-name">Environment home</span><span class="ix-note">the overview screen that didn’t exist — needs-attention feed + spend + live threads</span></a>
+        <a class="ix-card" href="47-parts.dc.html"><span class="ix-id">§ parts</span><span class="ix-name">Component inventory</span><span class="ix-note">both themes side by side</span></a>
+      </div>
+    </div>
+
+    <div class="ix-sec"><div class="sec-head"><h2>A · Auth &amp; onboarding</h2></div>
+      <div class="ix-grid">
+        <a class="ix-card" href="01-auth.dc.html"><span class="ix-id">A1–A4</span><span class="ix-name">Auth</span><span class="ix-note">login, magic link, MFA, signed out + break-glass operator passcode (unmistakable)</span></a>
+        <a class="ix-card" href="02-onboarding.dc.html"><span class="ix-id">A5–A9</span><span class="ix-name">Onboarding</span><span class="ix-note">org+project+env in one form · invite accept · plan</span></a>
+      </div>
+    </div>
+
+    <div class="ix-sec"><div class="sec-head"><h2>B · Shell &amp; navigation</h2></div>
+      <div class="ix-grid">
+        <a class="ix-card" href="03-home.dc.html"><span class="ix-id">B1–B2</span><span class="ix-name">App shell + home</span><span class="ix-note">sidebar, scope switcher, theme toggle</span></a>
+        <a class="ix-card" href="04-command.dc.html"><span class="ix-id">B3–B4</span><span class="ix-name">Command palette &amp; search</span><span class="ix-note">blocked-right-now items first; global search across objects</span></a>
+      </div>
+    </div>
+
+    <div class="ix-sec"><div class="sec-head"><h2>C · Org, settings, billing &nbsp;·&nbsp; D · Account</h2></div>
+      <div class="ix-grid">
+        <a class="ix-card" href="05-orgs.dc.html"><span class="ix-id">C1–C4</span><span class="ix-name">Organization</span><span class="ix-note">org list, settings, members (role change ends sessions), invites</span></a>
+        <a class="ix-card" href="40-settings.dc.html"><span class="ix-id">C5–C8</span><span class="ix-name">Environment settings</span><span class="ix-note">general, MCP tokens (shown once), limits</span></a>
+        <a class="ix-card" href="07-billing.dc.html"><span class="ix-id">C9–C10</span><span class="ix-name">Billing</span><span class="ix-note">hosted-only · all return states</span></a>
+        <a class="ix-card" href="08-account.dc.html"><span class="ix-id">D1–D4</span><span class="ix-name">Account</span><span class="ix-note">profile, security, PATs, device auth</span></a>
+      </div>
+    </div>
+
+    <div class="ix-sec"><div class="sec-head"><h2>E · Agents — the core</h2></div>
+      <div class="ix-grid">
+        <a class="ix-card" href="10-agents.dc.html"><span class="ix-id">E1</span><span class="ix-name">Agent list</span><span class="ix-note">disconnected entity = visibly alarming row</span></a>
+        <a class="ix-card" href="11-agent-new.dc.html"><span class="ix-id">E2</span><span class="ix-name">Create agent</span><span class="ix-note">3 fields · consequences inline</span></a>
+        <a class="ix-card" href="12-agent-config.dc.html"><span class="ix-id">E3</span><span class="ix-name">Agent config</span><span class="ix-note">prompt blocks, routes, memory policy · panel-failure isolation</span></a>
+        <a class="ix-card" href="13-agent-context.dc.html"><span class="ix-id">E4</span><span class="ix-name">Context</span><span class="ix-note">variable resolution + volatile-in-cache flags</span></a>
+        <a class="ix-card" href="14-agent-tools.dc.html"><span class="ix-id">E5–E6</span><span class="ix-name">Tools tab</span><span class="ix-note">injected vs search vs runtime · dispatchability live</span></a>
+        <a class="ix-card" href="15-agent-versions.dc.html"><span class="ix-id">E7–E8</span><span class="ix-name">Versions &amp; canary</span><span class="ix-note">semantic diff, not a JSON dump</span></a>
+        <a class="ix-card" href="36-evals.dc.html"><span class="ix-id">E9 · J5–J6</span><span class="ix-name">Evals A/B</span><span class="ix-note">per-criterion judge results with their cost</span></a>
+        <a class="ix-card" href="09-agent-share.dc.html"><span class="ix-id">E10</span><span class="ix-name">Share</span><span class="ix-note">guest identity is unverified — said loudly</span></a>
+        <a class="ix-card" href="44-debug.dc.html"><span class="ix-id">E11</span><span class="ix-name">Debug</span><span class="ix-note">every assembled block + tool round-trip laid bare</span></a>
+        <a class="ix-card" href="16-threads.dc.html"><span class="ix-id">E12</span><span class="ix-name">Thread list</span><span class="ix-note">who, turns, cost, unresolved failures</span></a>
+        <a class="ix-card" href="17-thread.dc.html"><span class="ix-id">E13 ★</span><span class="ix-name">Thread detail</span><span class="ix-note">the four questions, answered</span></a>
+        <a class="ix-card" href="18-trace.dc.html"><span class="ix-id">E14</span><span class="ix-name">Trace view</span><span class="ix-note">span waterfall with cost per span</span></a>
+        <a class="ix-card" href="19-playground.dc.html"><span class="ix-id">E15</span><span class="ix-name">Playground</span><span class="ix-note">conversation | live assembly split</span></a>
+      </div>
+    </div>
+
+    <div class="ix-sec"><div class="sec-head"><h2>F · Entities, MCP &amp; tools</h2></div>
+      <div class="ix-grid">
+        <a class="ix-card" href="20-entities.dc.html"><span class="ix-id">F1 · F6</span><span class="ix-name">Entity list</span><span class="ix-note">wire + MCP together · true tool counts, never the cache</span></a>
+        <a class="ix-card" href="21-entity.dc.html"><span class="ix-id">F2 · F4–F5</span><span class="ix-name">Entity detail</span><span class="ix-note">heartbeat, wire test, initial secret (once)</span></a>
+        <a class="ix-card" href="22-mcp.dc.html"><span class="ix-id">F3 · F7</span><span class="ix-name">Create entity</span><span class="ix-note">wire vs MCP branch · real handshake output</span></a>
+        <a class="ix-card" href="23-tools.dc.html"><span class="ix-id">F8</span><span class="ix-name">Tool registry</span><span class="ix-note">dispatchability first-class · per-tool Test kept</span></a>
+        <a class="ix-card" href="24-providers.dc.html"><span class="ix-id">F9</span><span class="ix-name">Providers &amp; routes</span><span class="ix-note">BYOK, route resolution, rate provenance</span></a>
+      </div>
+    </div>
+
+    <div class="ix-sec"><div class="sec-head"><h2>G · Memory &nbsp;·&nbsp; H · Skills</h2></div>
+      <div class="ix-grid">
+        <a class="ix-card" href="25-memory.dc.html"><span class="ix-id">G1 · G3</span><span class="ix-name">Memory browser</span><span class="ix-note">tiers, provenance, embedding status, detail rail</span></a>
+        <a class="ix-card" href="26-graph.dc.html"><span class="ix-id">G2</span><span class="ix-name">Knowledge graph</span><span class="ix-note">ego view + edge evidence — never the hairball</span></a>
+        <a class="ix-card" href="27-clusters.dc.html"><span class="ix-id">G4</span><span class="ix-name">Clusters</span><span class="ix-note">membership change = weighty data-boundary dialog</span></a>
+        <a class="ix-card" href="28-skills.dc.html"><span class="ix-id">H1–H3</span><span class="ix-name">Skills</span><span class="ix-note">list, manifest, effective config, blocked install</span></a>
+      </div>
+    </div>
+
+    <div class="ix-sec"><div class="sec-head"><h2>I · Observability &amp; cost</h2></div>
+      <div class="ix-grid">
+        <a class="ix-card" href="29-monitoring.dc.html"><span class="ix-id">I1–I2</span><span class="ix-name">Monitoring</span><span class="ix-note">failure attribution from dispatch-log ground truth</span></a>
+        <a class="ix-card" href="30-cost.dc.html"><span class="ix-id">I3</span><span class="ix-name">Cost</span><span class="ix-note">turns headline · cache split · four lanes · pinned rates</span></a>
+        <a class="ix-card" href="31-budgets.dc.html"><span class="ix-id">I4</span><span class="ix-name">Budgets</span><span class="ix-note">enforce and display share one query</span></a>
+        <a class="ix-card" href="32-traces.dc.html"><span class="ix-id">I5</span><span class="ix-name">Traces list</span><span class="ix-note">latency-profile minibars per turn</span></a>
+      </div>
+    </div>
+
+    <div class="ix-sec"><div class="sec-head"><h2>J · Governance &nbsp;·&nbsp; K · Background &amp; config</h2></div>
+      <div class="ix-grid">
+        <a class="ix-card" href="34-approvals.dc.html"><span class="ix-id">J1–J2</span><span class="ix-name">Approvals</span><span class="ix-note">blocking urgency legible · post-hoc lane</span></a>
+        <a class="ix-card" href="35-governance.dc.html"><span class="ix-id">J3</span><span class="ix-name">Governance</span><span class="ix-note">rules + events, incl. cross-scope blocks</span></a>
+        <a class="ix-card" href="37-audit.dc.html"><span class="ix-id">J4</span><span class="ix-name">Audit log</span><span class="ix-note">cross-scope access as first-class lane</span></a>
+        <a class="ix-card" href="38-jobs.dc.html"><span class="ix-id">K1–K3</span><span class="ix-name">Scheduled work</span><span class="ix-note">failures loud, full stderr, downstream effects named</span></a>
+        <a class="ix-card" href="39-variables.dc.html"><span class="ix-id">K4</span><span class="ix-name">Variables</span><span class="ix-note">secret vs plain · never re-displayed</span></a>
+      </div>
+    </div>
+
+    <div class="ix-sec"><div class="sec-head"><h2>L · Public surfaces &nbsp;·&nbsp; M · Admin &nbsp;·&nbsp; N · Errors</h2></div>
+      <div class="ix-grid">
+        <a class="ix-card" href="41-widget.dc.html"><span class="ix-id">L1–L2</span><span class="ix-name">Widget &amp; guest chat</span><span class="ix-note">in-situ on a host page · offline state</span></a>
+        <a class="ix-card" href="42-connect.dc.html"><span class="ix-id">L4–L5</span><span class="ix-name">Channels &amp; token mint</span><span class="ix-note">both Slack ownership models</span></a>
+        <a class="ix-card" href="43-docs.dc.html"><span class="ix-id">L3</span><span class="ix-name">Docs reader</span><span class="ix-note">text-only, ⌘K-searchable</span></a>
+        <a class="ix-card" href="45-admin.dc.html"><span class="ix-id">M1–M2</span><span class="ix-name">Winsen admin</span><span class="ix-note">clearly internal · audited impersonation</span></a>
+        <a class="ix-card" href="46-errors.dc.html"><span class="ix-id">N1–N7</span><span class="ix-name">Error states</span><span class="ix-note">all seven, designed as real screens</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light' };
+  renderVals() {
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'})
+    };
+  }
+}
+</script>
+</body>
+</html>

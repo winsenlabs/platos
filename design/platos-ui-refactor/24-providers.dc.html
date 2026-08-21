@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="F9 Providers &amp; model routes">
+  <dc-import name="PlatosNav" active="providers" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Providers &amp; routes</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Providers &amp; model routes</h1>
+        <p class="page-sub">BYOK credentials, the model catalogue, and the routes agents actually use</p>
+      </div>
+      <div class="page-head-actions"><button class="btn">Test all credentials</button><button class="btn accent">Add provider</button></div>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>openai-byok credential failing since 06:12</b> (401 — key revoked upstream). Route <span class="mono">overflow</span> silently falls back to <span class="mono">quality</span>, which costs 5× more per turn. 88 turns affected so far.</div>
+      </div>
+    </sc-if>
+
+    <div class="sec-head"><h2>Providers</h2><span class="count">3</span></div>
+    <div class="conn-grid" style="margin-bottom:26px">
+      <div class="conn-card">
+        <div class="conn-head"><div class="conn-logo">A</div><div><div class="conn-name">anthropic-byok</div><div class="mono-sm">api.anthropic.com</div></div><span class="schip good" style="margin-left:auto">key ok</span></div>
+        <div class="conn-stats"><span>models: opus-4-6, sonnet-4-5, haiku-4</span><span>last test 09:40 · 204ms</span><span>spend 7d: $412.80</span></div>
+        <div class="conn-actions"><button class="btn tiny">Test</button><button class="btn tiny">Rotate key</button></div>
+      </div>
+      <div class="conn-card" style="border-color:{{ oaBorder }}">
+        <div class="conn-head"><div class="conn-logo">O</div><div><div class="conn-name">openai-byok</div><div class="mono-sm">api.openai.com</div></div><span class="schip {{ oaChipCls }}" style="margin-left:auto">{{ oaChip }}</span></div>
+        <div class="conn-stats"><span>models: gpt-5.2, gpt-5-mini</span><span>{{ oaTest }}</span><span>spend 7d: $31.44</span></div>
+        <div class="conn-actions"><button class="btn tiny">Test</button><button class="btn tiny accent">Replace key</button></div>
+      </div>
+      <div class="conn-card">
+        <div class="conn-head"><div class="conn-logo">B</div><div><div class="conn-name">bedrock-fallback</div><div class="mono-sm">us-east-1 · IAM role</div></div><span class="schip good" style="margin-left:auto">role ok</span></div>
+        <div class="conn-stats"><span>models: opus-4-6, sonnet-4-5 (mirrored)</span><span>last test 09:40 · 388ms</span><span>spend 7d: $12.02</span></div>
+        <div class="conn-actions"><button class="btn tiny">Test</button></div>
+      </div>
+    </div>
+
+    <div class="sec-head"><h2>Routes</h2><span class="desc">what each agent’s “route” resolves to, in order</span></div>
+    <div class="dtable" style="margin-bottom:26px">
+      <div class="dt-head" style="grid-template-columns:110px minmax(220px,1fr) 130px 120px">
+        <span>Route</span><span>Resolution order</span><span>Steps 24h</span><span>Status</span>
+      </div>
+      <div class="dt-row" style="grid-template-columns:110px minmax(220px,1fr) 130px 120px">
+        <span class="mono" style="font-weight:600;font-size:12px">default</span>
+        <span class="mono-sm">sonnet-4-5 @ anthropic-byok → sonnet-4-5 @ bedrock</span>
+        <span class="mono tnum" style="font-size:12px">4,812</span>
+        <span><span class="schip good">healthy</span></span>
+      </div>
+      <div class="dt-row" style="grid-template-columns:110px minmax(220px,1fr) 130px 120px">
+        <span class="mono" style="font-weight:600;font-size:12px">quality</span>
+        <span class="mono-sm">opus-4-6 @ anthropic-byok → opus-4-6 @ bedrock</span>
+        <span class="mono tnum" style="font-size:12px">1,203</span>
+        <span><span class="schip good">healthy</span></span>
+      </div>
+      <div class="dt-row" style="grid-template-columns:110px minmax(220px,1fr) 130px 120px;border-left:3px solid {{ ovEdge }};padding-left:13px">
+        <span class="mono" style="font-weight:600;font-size:12px">overflow</span>
+        <span class="mono-sm">gpt-5.2 @ openai-byok → <span style="color:{{ ovFbColor }}">falling back to quality</span></span>
+        <span class="mono tnum" style="font-size:12px">{{ ovSteps }}</span>
+        <span><span class="schip {{ ovChipCls }}">{{ ovChip }}</span></span>
+      </div>
+      <div class="dt-row" style="grid-template-columns:110px minmax(220px,1fr) 130px 120px">
+        <span class="mono" style="font-weight:600;font-size:12px">cheap</span>
+        <span class="mono-sm">haiku-4 @ anthropic-byok</span>
+        <span class="mono tnum" style="font-size:12px">922</span>
+        <span><span class="schip good">healthy</span></span>
+      </div>
+    </div>
+
+    <div class="sec-head"><h2>Model catalogue</h2><span class="desc">rates Platos bills with — verified, not the public price map</span></div>
+    <div class="dtable">
+      <div class="dt-head" style="grid-template-columns:minmax(150px,1fr) 110px 110px 110px 110px minmax(160px,1fr)">
+        <span>Model</span><span>Input /M</span><span>Cache read /M</span><span>Cache write /M</span><span>Output /M</span><span>Rate provenance</span>
+      </div>
+      <sc-for list="{{ rates }}" as="r" hint-placeholder-count="5">
+        <div class="dt-row" style="grid-template-columns:minmax(150px,1fr) 110px 110px 110px 110px minmax(160px,1fr)">
+          <span class="mono" style="font-size:12px;font-weight:600;color:var(--ink)">{{ r.m }}</span>
+          <span class="mono tnum" style="font-size:12px">{{ r.i }}</span>
+          <span class="mono tnum" style="font-size:12px">{{ r.cr }}</span>
+          <span class="mono tnum" style="font-size:12px">{{ r.cw }}</span>
+          <span class="mono tnum" style="font-size:12px">{{ r.o }}</span>
+          <span class="mono-sm" style="color:{{ r.pc }}">{{ r.p }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Rate table v182 · verified against provider invoices · historical turns keep the rate they were billed at — rates never change retroactively</div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view, fail = v === 'failure';
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goFailure: () => this.setState({view:'failure'}),
+      showAlert: fail,
+      oaBorder: fail ? 'color-mix(in oklab,var(--danger) 45%,var(--border))' : 'var(--border)',
+      oaChip: fail ? '401 revoked' : 'key ok', oaChipCls: fail ? 'danger' : 'good',
+      oaTest: fail ? 'failing since 06:12 · 401' : 'last test 09:40 · 311ms',
+      ovEdge: fail ? 'var(--danger)' : 'transparent',
+      ovFbColor: fail ? 'var(--danger)' : 'var(--ink-3)',
+      ovSteps: fail ? '88 (fallback)' : '112',
+      ovChip: fail ? 'degraded' : 'healthy', ovChipCls: fail ? 'danger' : 'good',
+      rates: [
+        {m:'claude-opus-4-6', i:'$12.00', cr:'$1.20', cw:'$15.00', o:'$60.00', p:'verified 2026-08-02 · invoice', pc:'var(--ink-3)'},
+        {m:'claude-sonnet-4-5', i:'$3.00', cr:'$0.30', cw:'$3.75', o:'$15.00', p:'verified 2026-08-02 · invoice', pc:'var(--ink-3)'},
+        {m:'claude-haiku-4', i:'$0.80', cr:'$0.08', cw:'$1.00', o:'$4.00', p:'verified 2026-08-02 · invoice', pc:'var(--ink-3)'},
+        {m:'gpt-5.2', i:'$2.50', cr:'$0.25', cw:'—', o:'$10.00', p:'⚠ public map lags cut by ~3 wks · verified 2026-07-28', pc:'var(--warn)'},
+        {m:'gpt-5-mini', i:'$0.30', cr:'$0.03', cw:'—', o:'$1.20', p:'verified 2026-07-28 · invoice', pc:'var(--ink-3)'}
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="I1 Monitoring">
+  <dc-import name="PlatosNav" active="monitoring" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">By user</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Monitoring</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Monitoring</h1>
+        <p class="page-sub">One question: is anything failing right now, and who does it affect?</p>
+      </div>
+      <div class="page-head-actions">
+        <div class="seg"><span class="seg-opt active">1h</span><span class="seg-opt">24h</span><span class="seg-opt">7d</span></div>
+      </div>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16l4-6 3 3 4-7 3 4"></path></svg></div>
+        <h3>Nothing to monitor yet</h3>
+        <p>Metrics appear with the first turn. Until then, there is genuinely nothing to show — no placeholder charts.</p>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showUsers }}" hint-placeholder-val="{{ false }}">
+      <div class="sec-head"><h2>Usage by user</h2><span class="count">30d · 214 active users</span></div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:minmax(160px,1fr) 90px 80px 90px 100px minmax(140px,1fr)">
+          <span>User</span><span>Threads</span><span>Turns</span><span>Cost 30d</span><span>Escalations</span><span>Top agent</span>
+        </div>
+        <sc-for list="{{ users }}" as="u" hint-placeholder-count="10">
+          <div class="dt-row" style="grid-template-columns:minmax(160px,1fr) 90px 80px 90px 100px minmax(140px,1fr)">
+            <span class="row" style="gap:8px"><span class="sb-foot-avatar" style="width:22px;height:22px;font-size:9px">{{ u.mono }}</span><span style="font-size:12.5px;color:var(--ink)">{{ u.email }}</span></span>
+            <span class="mono tnum" style="font-size:12px">{{ u.threads }}</span>
+            <span class="mono tnum" style="font-size:12px">{{ u.turns }}</span>
+            <span class="mono tnum" style="font-size:12px;font-weight:600">{{ u.cost }}</span>
+            <span class="mono tnum" style="font-size:12px;color:{{ u.escColor }}">{{ u.esc }}</span>
+            <span class="mono-sm">{{ u.agent }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showMain }}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+        <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+          <div class="a-body"><b>Active incident:</b> tool failure rate 34% (baseline 0.8%) since 09:02 — all failures trace to entity walle-tools. 4 threads, 2 agents affected. <a href="21-entity.dc.html" style="text-decoration:underline;text-underline-offset:2px">Entity</a> · <a href="32-traces.dc.html" style="text-decoration:underline;text-underline-offset:2px">Failing traces</a></div>
+        </div>
+      </sc-if>
+      <div class="tiles" style="grid-template-columns:repeat(5,1fr)">
+        <div class="tile"><div class="v">318</div><div class="k">turns · last hour</div></div>
+        <div class="tile"><div class="v">4.1s</div><div class="k">p50 turn latency</div></div>
+        <div class="tile"><div class="v">14.8s</div><div class="k">p95 turn latency</div></div>
+        <div class="tile {{ failTileCls }}"><div class="v">{{ failRate }}</div><div class="k">tool failure rate</div></div>
+        <div class="tile"><div class="v">3</div><div class="k">threads awaiting approval</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" class="rcol">
+        <div class="set-card" style="margin-bottom:0">
+          <h3>Turns per minute · last hour</h3>
+          <div style="display:flex;align-items:flex-end;gap:2px;height:90px;padding-top:10px">
+            <sc-for list="{{ tpm }}" as="b" hint-placeholder-count="30">
+              <div style="flex:1;height:{{ b.h }}px;background:{{ b.c }};border-radius:2px 2px 0 0" title="{{ b.t }}"></div>
+            </sc-for>
+          </div>
+          <div class="row" style="justify-content:space-between;margin-top:6px"><span class="mono-sm">08:45</span><span class="mono-sm">now</span></div>
+        </div>
+        <div class="set-card" style="margin-bottom:0">
+          <h3>Failures by cause · 24h</h3>
+          <div style="display:grid;gap:8px;margin-top:10px;font-size:12.5px">
+            <div class="row"><span class="prov-dot" style="background:var(--danger)"></span><span class="grow">entity disconnected (dispatch)</span><span class="mono tnum" style="color:{{ dispColor }}">{{ dispN }}</span></div>
+            <div class="row"><span class="prov-dot" style="background:var(--warn)"></span><span class="grow">tool returned error (provider)</span><span class="mono tnum">12</span></div>
+            <div class="row"><span class="prov-dot" style="background:var(--tone-sky)"></span><span class="grow">model refusal / stop</span><span class="mono tnum">4</span></div>
+            <div class="row"><span class="prov-dot" style="background:var(--ink-4)"></span><span class="grow">timeout</span><span class="mono tnum">2</span></div>
+          </div>
+          <div class="prov-note" style="margin-top:12px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>attribution from dispatch log ground truth — never from what the agent said</div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view, fail = v === 'failure';
+    const tpm = Array.from({length: 40}, (_, i) => {
+      const base = 30 + 25 * Math.sin(i / 6) + (i % 5) * 4;
+      const bad = fail && i > 28;
+      return { h: Math.round(bad ? base * 0.4 : base) + 8, c: bad ? 'var(--danger)' : 'var(--accent-soft-2)', t: '09:' + (10 + i) };
+    });
+    const users = Array.from({length: 20}, (_, i) => ({
+      mono: ['MK','JS','SR','AL','DV','OP','KM','TB','LN','PH'][i % 10],
+      email: ['maya','jon','sam','ana','dev','ops','kim','tomas','lena','phil'][i % 10] + '@acme.co' + (i > 9 ? ' · ' + i : ''),
+      threads: String(64 - i * 3), turns: String(512 - i * 21),
+      cost: '$' + (48.2 - i * 2.1).toFixed(2),
+      esc: String(i % 7 === 2 ? 4 : i % 3), escColor: i % 7 === 2 ? 'var(--warn)' : 'var(--ink-3)',
+      agent: ['walle','support-triage','billing-answers'][i % 3]
+    }));
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showMain: v === 'default' || v === 'failure', showEmpty: v === 'empty', showUsers: v === 'dense',
+      showAlert: fail,
+      failTileCls: fail ? 'warn' : '', failRate: fail ? '34%' : '0.8%',
+      dispN: fail ? '41' : '3', dispColor: fail ? 'var(--danger)' : 'var(--ink)',
+      tpm, users
+    };
+  }
+}
+</script>
+</body>
+</html>

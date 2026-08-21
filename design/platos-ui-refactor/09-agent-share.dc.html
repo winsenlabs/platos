@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.agent-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.agent-tabs a{font-size:13px;padding:8px 14px;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.agent-tabs a:hover{color:var(--ink)}
+.agent-tabs a.active{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E10 Share">
+  <dc-import name="PlatosNav" active="agents" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Off</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Revoked</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="10-agents.dc.html">Agents</a><span class="sep">/</span><a href="12-agent-config.dc.html">walle</a><span class="sep">/</span><span class="here">Share</span></div>
+    <div class="page-head-row" style="margin-bottom:0">
+      <div class="page-head" style="margin-bottom:14px">
+        <div class="row" style="gap:10px">
+          <span class="avatar walle">WA</span>
+          <div>
+            <h1 style="font-size:20px;margin:0">walle</h1>
+            <p class="page-sub" style="margin:2px 0 0">Public and guest access</p>
+          </div>
+        </div>
+      </div>
+      <div class="page-head-actions"><a class="btn" href="41-widget.dc.html">Preview guest view</a></div>
+    </div>
+    <div class="agent-tabs">
+      <a href="12-agent-config.dc.html">Config</a>
+      <a href="13-agent-context.dc.html">Context</a>
+      <a href="14-agent-tools.dc.html">Tools</a>
+      <a href="28-skills.dc.html">Skills</a>
+      <a href="16-threads.dc.html">Threads</a>
+      <a href="15-agent-versions.dc.html">Versions</a>
+      <a class="active" href="09-agent-share.dc.html">Share</a>
+      <a href="44-debug.dc.html">Debug</a>
+    </div>
+
+    <div style="max-width:660px">
+      <sc-if value="{{ showOff }}" hint-placeholder-val="{{ false }}">
+        <div class="empty">
+          <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="9" width="11" height="7.5" rx="1.5"></rect><path d="M7 9V6.5a3 3 0 0 1 6 0V9"></path></svg></div>
+          <h3>Sharing is off</h3>
+          <p>walle is only reachable by signed-in members of this environment. A share link lets anyone with the URL talk to it as an anonymous guest.</p>
+          <button class="btn accent" onClick="{{ goDefault }}">Create share link</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showRevoked }}" hint-placeholder-val="{{ false }}">
+        <div class="alert warn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+          <div class="a-body"><b>Link revoked 20 min ago</b> by maya (reason: “shared in a public Discord”). 214 guest threads remain in history. Visitors now see a “link expired” page.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showLive }}" hint-placeholder-val="{{ true }}">
+        <div class="set-card">
+          <h3>Guest link <span class="schip {{ linkChipCls }}" style="margin-left:6px">{{ linkChip }}</span></h3>
+          <div class="secretbox" style="margin:12px 0"><span class="grow" style="overflow:hidden;text-overflow:ellipsis">https://platos.acme.co/g/walle/8Kf2…mQ</span><button class="btn tiny">Copy</button><button class="btn tiny danger">Revoke</button></div>
+          <div class="alert warn" style="margin:0"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+            <div class="a-body"><b>Guests carry no verified identity.</b> “Name” and “email” a guest types are unverified strings — they appear in threads as <span class="mono">guest:claimed</span> and never satisfy an identity check, feed profile memory, or pass an approval.</div>
+          </div>
+        </div>
+        <div class="set-card">
+          <h3>Guest limits</h3>
+          <div class="field-row"><label>Tools</label><div style="font-size:12.5px;color:var(--ink-2)">read-only tools only · <span class="mono">notes.search</span>, <span class="mono">kb.*</span></div></div>
+          <div class="field-row"><label>Memory</label><div style="font-size:12.5px;color:var(--ink-2)">working only — nothing persists across guest sessions</div></div>
+          <div class="field-row"><label>Budget</label><div style="font-size:12.5px;color:var(--ink-2)"><span class="mono">$0.25</span> per guest thread · <span class="mono">$20</span>/day across all guests</div></div>
+          <div class="field-row"><label>Activity</label><div style="font-size:12.5px;color:var(--ink-2)">{{ guestStats }}</div></div>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showOff: v === 'empty', showRevoked: v === 'failure', showLive: v !== 'empty',
+      linkChip: v === 'failure' ? 'revoked' : 'live', linkChipCls: v === 'failure' ? 'danger' : 'good',
+      guestStats: v === 'failure' ? '214 guest threads before revocation · $18.20 total' : '214 guest threads · 30d · $18.20 total · p95 thread $0.11'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.lane{display:grid;grid-template-columns:90px 1fr 90px;gap:10px;align-items:center;padding:7px 0;font-size:12px}
+.lane .lbar{height:12px;border-radius:3px;background:var(--bg-3);overflow:hidden;position:relative}
+.lane .lbar > i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="I3 Cost view">
+  <dc-import name="PlatosNav" active="cost" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Cost</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Cost</h1>
+        <p class="page-sub">Turns are the billable unit. Every figure traces to the turn ledger.</p>
+      </div>
+      <div class="page-head-actions">
+        <div class="seg"><span class="seg-opt">24h</span><span class="seg-opt active">7d</span><span class="seg-opt">30d</span><span class="seg-opt">custom</span></div>
+        <button class="btn">Export ledger</button>
+      </div>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert warn"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>Rollup lag: hourly aggregation is 3h behind</b> (job q_rollup failing since 06:41 — <a href="38-jobs.dc.html" style="text-decoration:underline;text-underline-offset:2px">see job</a>). Figures below are complete only to 06:00 UTC. Ledger rows are unaffected.</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v14M6.5 6.5C6.5 5.1 8 4.5 10 4.5s3.5.9 3.5 2.2c0 3.3-7 1.6-7 5 0 1.5 1.5 2.5 3.5 2.5s3.5-.8 3.5-2.2"></path></svg></div>
+        <h3>No spend yet</h3>
+        <p>The first completed turn writes the first ledger row. Costs here are computed from provider usage blocks × verified rates — never estimated.</p>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showBody }}" hint-placeholder-val="{{ true }}">
+      <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+        <div class="tile"><div class="v">{{ headTurns }}</div><div class="k">turns · 7d</div></div>
+        <div class="tile"><div class="v">{{ headCost }}<span class="delta">{{ headDelta }}</span></div><div class="k">total cost · 7d</div></div>
+        <div class="tile"><div class="v">{{ headAvg }}</div><div class="k">median cost / turn</div></div>
+        <div class="tile"><div class="v">91.2%</div><div class="k">input served from cache</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(300px,1fr);gap:20px;align-items:start" class="rcol">
+        <div>
+          <div class="set-card" style="margin-bottom:14px">
+            <h3>Where input tokens went</h3>
+            <p class="set-desc">The cache story — the whole reason a 44k-token turn costs $0.42 and not $2.30.</p>
+            <div class="tokbar" style="height:14px"><i class="cr" style="width:84%"></i><i class="cw" style="width:9%"></i><i class="fp" style="width:2%"></i><i class="out" style="width:5%"></i></div>
+            <div class="toklegend">
+              <span><span class="sw" style="background:var(--good)"></span>cache read <b>212.4M</b> · $63.72</span>
+              <span><span class="sw" style="background:var(--accent-2)"></span>cache write <b>22.8M</b> · $85.50</span>
+              <span><span class="sw" style="background:var(--danger)"></span>full price <b>5.1M</b> · $61.20</span>
+              <span><span class="sw" style="background:var(--warn)"></span>output <b>12.6M</b> · $246.00</span>
+            </div>
+          </div>
+          <div class="set-card" style="margin-bottom:14px">
+            <h3>Four lanes</h3>
+            <div class="lane"><span class="mono-sm">inference</span><span class="lbar"><i style="width:87%;background:var(--accent)"></i></span><span class="mono tnum" style="text-align:right;font-weight:600">$398.12</span></div>
+            <div class="lane"><span class="mono-sm">embedding</span><span class="lbar"><i style="width:5%;background:var(--tone-teal)"></i></span><span class="mono tnum" style="text-align:right">$21.10</span></div>
+            <div class="lane"><span class="mono-sm">extraction</span><span class="lbar"><i style="width:6%;background:var(--tone-sky)"></i></span><span class="mono tnum" style="text-align:right">$26.44</span></div>
+            <div class="lane"><span class="mono-sm">judge</span><span class="lbar"><i style="width:2%;background:var(--tone-violet)"></i></span><span class="mono tnum" style="text-align:right">$10.60</span></div>
+          </div>
+          <div class="set-card" style="margin-bottom:0">
+            <h3>Daily spend</h3>
+            <div style="display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:8px">
+              <sc-for list="{{ days }}" as="d" hint-placeholder-count="7">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px">
+                  <span class="mono" style="font-size:9.5px;color:var(--ink-4)">{{ d.v }}</span>
+                  <div style="width:100%;height:{{ d.h }}px;background:{{ d.c }};border-radius:4px 4px 0 0"></div>
+                  <span class="mono" style="font-size:9.5px;color:var(--ink-4)">{{ d.l }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="rail-card" style="margin-bottom:14px">
+            <h3>By agent</h3>
+            <div style="display:grid;gap:8px;font-size:12.5px">
+              <sc-for list="{{ byAgent }}" as="a" hint-placeholder-count="5">
+                <div class="row"><span class="avatar sm {{ a.tone }}" style="width:20px;height:20px;font-size:8px">{{ a.mono }}</span><span class="grow">{{ a.name }}</span><span class="mono-sm">{{ a.turns }}</span><span class="mono tnum" style="font-weight:600">{{ a.cost }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div class="rail-card" style="margin-bottom:14px">
+            <h3>By skill</h3>
+            <div style="display:grid;gap:8px;font-size:12.5px">
+              <div class="row"><span class="grow mono" style="font-size:12px">notes</span><span class="mono tnum">$202.11</span></div>
+              <div class="row"><span class="grow mono" style="font-size:12px">refund-matrix</span><span class="mono tnum">$88.40</span></div>
+              <div class="row"><span class="grow mono" style="font-size:12px">crm-hygiene</span><span class="mono tnum">$41.02</span></div>
+              <div class="row"><span class="grow mono" style="font-size:12px">(no skill)</span><span class="mono tnum">$124.73</span></div>
+            </div>
+          </div>
+          <div class="rail-card">
+            <h3>Provenance</h3>
+            <div style="font-size:12px;color:var(--ink-2);line-height:1.6">Source: turn ledger, {{ ledgerNote }}<br />Rates: table v182, pinned per turn — a rate change never rewrites history<br />Rollup: hourly · {{ rollupNote }}</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view, dense = v === 'dense', fail = v === 'failure';
+    const dayVals = dense ? [212,248,198,301,288,342,410] : [52,61,48,71,66,88,70];
+    const max = Math.max(...dayVals);
+    const days = ['Fri','Sat','Sun','Mon','Tue','Wed','Thu'].map((l, i) => ({
+      l, v: '$' + dayVals[i], h: Math.round(dayVals[i] / max * 88),
+      c: i === 6 ? 'var(--accent)' : 'var(--accent-soft-2)'
+    }));
+    const byAgent = dense ? [
+      {name:'walle', mono:'WA', tone:'walle', turns:'4,812', cost:'$1,204.88'},
+      {name:'support-triage', mono:'SU', tone:'indigo', turns:'11,203', cost:'$488.19'},
+      {name:'refund-desk', mono:'RE', tone:'rose', turns:'3,914', cost:'$201.44'},
+      {name:'+ 37 more', mono:'…', tone:'sky', turns:'22,481', cost:'$618.02'}
+    ] : [
+      {name:'walle', mono:'WA', tone:'walle', turns:'1,203', cost:'$248.92'},
+      {name:'support-triage', mono:'SU', tone:'indigo', turns:'4,812', cost:'$122.40'},
+      {name:'billing-answers', mono:'BI', tone:'emerald', turns:'688', cost:'$49.71'},
+      {name:'onboarding-guide', mono:'ON', tone:'sky', turns:'912', cost:'$28.90'},
+      {name:'docs-writer', mono:'DO', tone:'amber', turns:'214', cost:'$6.33'}
+    ];
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showBody: v !== 'empty', showEmpty: v === 'empty', showAlert: fail,
+      headTurns: dense ? '42,410' : '7,829', headCost: dense ? '$2,513' : '$456.26',
+      headDelta: dense ? '+38% wk' : '+9% wk', headAvg: dense ? '$0.041' : '$0.038',
+      days, byAgent,
+      ledgerNote: fail ? 'rows current · rollup lagging' : 'one row per turn, immutable',
+      rollupNote: fail ? '⚠ 3h behind (job failing)' : 'last run 09:41 UTC'
+    };
+  }
+}
+</script>
+</body>
+</html>

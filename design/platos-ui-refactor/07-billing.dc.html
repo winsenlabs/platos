@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="C9 Billing">
+  <dc-import name="PlatosNav" active="settings" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Subscription</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Success</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Payment failed</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Canceled</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><span class="mono" style="font-size:11.5px">winsen-labs</span><span class="sep">/</span><span class="here">Billing</span></div>
+    <div class="page-head"><h1>Billing</h1><p class="page-sub">Winsen-hosted subscription · this page doesn’t exist on self-hosted installs</p></div>
+
+    <div style="max-width:640px">
+      <sc-if value="{{ showOutcome }}" hint-placeholder-val="{{ false }}">
+        <div class="set-card" style="text-align:center;border-color:{{ ocBorder }}">
+          <div class="e-icon" style="width:40px;height:40px;border-radius:10px;background:{{ ocBg }};display:grid;place-items:center;margin:0 auto 12px;color:{{ ocColor }}"><svg style="width:20px;height:20px" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ ocIcon }}"></path></svg></div>
+          <h3 style="font-size:15px;margin-bottom:4px">{{ ocTitle }}</h3>
+          <p class="set-desc" style="max-width:400px;margin:0 auto 14px">{{ ocBody }}</p>
+          <div class="row" style="justify-content:center;gap:8px"><button class="btn accent" onClick="{{ goDefault }}">{{ ocCta }}</button><button class="btn" onClick="{{ goDefault }}">Back to billing</button></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showSub }}" hint-placeholder-val="{{ true }}">
+        <div class="set-card">
+          <div class="row" style="justify-content:space-between;margin-bottom:2px"><h3>Winsen-hosted · $99/mo</h3><span class="schip {{ subChipCls }}">{{ subChip }}</span></div>
+          <p class="set-desc">Renews Sep 1 · card •••• 4212</p>
+          <sc-if value="{{ showPastDue }}" hint-placeholder-val="{{ false }}">
+            <div class="alert error" style="margin-bottom:14px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+              <div class="a-body"><b>Payment failed Aug 12</b> (card declined). Retry 2 of 4 on Aug 16. Service continues until Aug 26, then the instance goes read-only — agents stop, data stays.</div>
+            </div>
+          </sc-if>
+          <div class="field-row"><label>Plan usage</label>
+            <div>
+              <div class="row" style="justify-content:space-between;font-size:12px;margin-bottom:5px"><span>turns this cycle</span><span class="mono">92,412 / 250,000</span></div>
+              <div class="pbar"><div style="width:37%"></div></div>
+            </div>
+          </div>
+          <div class="field-row"><label>Payment method</label><div class="row"><span class="mono" style="font-size:12.5px">visa •••• 4212 · exp 04/28</span><button class="btn tiny">{{ cardCta }}</button></div></div>
+          <div class="field-row" style="border-bottom:none"><label>Invoices</label><div class="row" style="gap:12px;font-size:12.5px"><a class="mono" style="text-decoration:underline;text-underline-offset:2px" href="#">Aug $99</a><a class="mono" style="text-decoration:underline;text-underline-offset:2px" href="#">Jul $99</a><a class="mono" style="text-decoration:underline;text-underline-offset:2px" href="#">Jun $99</a></div></div>
+        </div>
+        <div class="alert info"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1"></path></svg>
+          <div class="a-body">Model spend is separate — it goes directly to your providers via BYOK keys. This subscription covers hosting only. See <a href="30-cost.dc.html" style="text-decoration:underline;text-underline-offset:2px">Cost</a> for model spend.</div>
+        </div>
+        <div class="row" style="margin-top:6px"><button class="btn ghost danger" onClick="{{ goDense }}">Cancel subscription…</button></div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    const outcome = v === 'empty' || v === 'dense';
+    const oc = v === 'empty'
+      ? {t:'Subscription active', b:'Payment confirmed. Hosted features — managed upgrades, backups, uptime SLO — are live for winsen-labs.', cta:'Go to home', icon:'M4 11l4 4 8-9', color:'var(--good)', bg:'var(--good-soft)', border:'var(--border)'}
+      : {t:'Subscription canceled', b:'Hosted service ends Sep 1. Export everything, or migrate to self-hosted with the same data — we’ll generate the bundle.', cta:'Export / migrate bundle', icon:'M6 6l8 8M14 6l-8 8', color:'var(--ink-3)', bg:'var(--bg-3)', border:'var(--border)'};
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showSub: v === 'default' || v === 'failure', showOutcome: outcome,
+      showPastDue: v === 'failure',
+      subChip: v === 'failure' ? 'past due' : 'active', subChipCls: v === 'failure' ? 'danger' : 'good',
+      cardCta: v === 'failure' ? 'Update card now' : 'Update',
+      ocTitle: oc.t, ocBody: oc.b, ocCta: oc.cta, ocIcon: oc.icon,
+      ocColor: oc.color, ocBg: oc.bg, ocBorder: oc.border
+    };
+  }
+}
+</script>
+</body>
+</html>

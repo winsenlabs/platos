@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="D1–D4 Account">
+  <dc-import name="PlatosNav" active="settings" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Profile &amp; security</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Tokens</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Device auth</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><span class="here">Account</span></div>
+    <div class="page-head"><h1>Account</h1><p class="page-sub">Personal — applies across all your organizations</p></div>
+
+    <div style="max-width:640px">
+      <sc-if value="{{ showProfile }}" hint-placeholder-val="{{ true }}">
+        <div class="set-card">
+          <h3>Profile</h3>
+          <div class="field-row"><label>Name</label><input type="text" value="Tejas" /></div>
+          <div class="field-row"><label>Email</label><div class="row"><input type="email" value="tejas@winsen.dev" style="max-width:260px" /><span class="schip good">verified</span></div></div>
+          <div class="field-row"><label>Theme</label><div class="seg"><span class="seg-opt {{ segLight }}" onClick="{{ setLight }}">Light</span><span class="seg-opt {{ segDark }}" onClick="{{ setDark }}">Dark</span><span class="seg-opt">System</span></div></div>
+        </div>
+        <div class="set-card">
+          <h3>Security</h3>
+          <div class="field-row"><label>Two-factor</label><div class="row"><span class="schip good">TOTP enrolled</span><button class="btn tiny">Re-enroll</button><button class="btn tiny ghost">View backup codes</button></div></div>
+          <div class="field-row"><label>Backup codes</label><div class="row"><span class="mono-sm">7 of 10 unused</span><button class="btn tiny">Regenerate</button></div></div>
+          <div class="field-row" style="border-bottom:none"><label>Active sessions</label>
+            <div style="display:grid;gap:6px;font-size:12px">
+              <div class="row"><span class="grow">this browser · São Paulo · Chrome</span><span class="schip accent">current</span></div>
+              <div class="row"><span class="grow">CLI · winsen-mbp · last used 2h ago</span><button class="btn tiny ghost danger">End</button></div>
+              <div class="row"><span class="grow">iPad · 12d ago</span><button class="btn tiny ghost danger">End</button></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showTokens }}" hint-placeholder-val="{{ false }}">
+        <div class="set-card">
+          <h3>Personal access tokens</h3>
+          <p class="set-desc">Act as you from scripts and the CLI. Scoped, expiring, shown once.</p>
+          <div class="dtable" style="margin-bottom:12px">
+            <div class="dt-row" style="grid-template-columns:minmax(130px,1fr) 150px 120px 110px auto">
+              <span class="mono" style="font-size:12px;font-weight:600">cli-main</span><span class="mono-sm">scope: full · exp 2027-01</span><span class="mono-sm">used 5m ago</span><span><span class="schip good">active</span></span>
+              <span style="text-align:right"><button class="btn tiny danger">Revoke</button></span>
+            </div>
+            <div class="dt-row" style="grid-template-columns:minmax(130px,1fr) 150px 120px 110px auto">
+              <span class="mono" style="font-size:12px;font-weight:600">deploy-script</span><span class="mono-sm">scope: read · exp 2026-10</span><span class="mono-sm">used 1d ago</span><span><span class="schip good">active</span></span>
+              <span style="text-align:right"><button class="btn tiny danger">Revoke</button></span>
+            </div>
+            <div class="dt-row" style="grid-template-columns:minmax(130px,1fr) 150px 120px 110px auto">
+              <span class="mono" style="font-size:12px;font-weight:600;color:var(--warn)">old-ci</span><span class="mono-sm" style="color:var(--warn)">expired Jul 1</span><span class="mono-sm">—</span><span><span class="schip warn">expired</span></span>
+              <span style="text-align:right"><button class="btn tiny ghost">Delete</button></span>
+            </div>
+          </div>
+          <button class="btn accent">Create token</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showDevice }}" hint-placeholder-val="{{ false }}">
+        <div class="set-card" style="max-width:480px">
+          <h3>Authorize device</h3>
+          <p class="set-desc">A CLI or IDE is asking to sign in as you. Confirm the code matches what it shows.</p>
+          <div style="text-align:center;font-family:var(--font-mono);font-size:28px;font-weight:600;letter-spacing:0.2em;padding:18px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:14px">HKQZ-VLMR</div>
+          <div class="sc-surface" style="margin-bottom:14px">
+            <div class="sc-meta-grid" style="grid-template-columns:1fr 1fr">
+              <div><div class="sc-meta-k">requesting</div><div class="sc-meta-v">platos CLI v2.14</div></div>
+              <div><div class="sc-meta-k">from</div><div class="sc-meta-v">177.44.x.x · São Paulo</div></div>
+              <div><div class="sc-meta-k">scope</div><div class="sc-meta-v">full account</div></div>
+              <div><div class="sc-meta-k">expires</div><div class="sc-meta-v">code valid 4:12</div></div>
+            </div>
+          </div>
+          <div class="row" style="gap:8px"><button class="btn accent" style="flex:1">Authorize</button><button class="btn danger">Deny</button></div>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      segLight: this.state.theme==='light'?'active':'', segDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showProfile: v === 'default', showTokens: v === 'empty', showDevice: v === 'failure'
+    };
+  }
+}
+</script>
+</body>
+</html>

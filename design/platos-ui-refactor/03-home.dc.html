@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="B2 Environment home">
+  <dc-import name="PlatosNav" active="home" hint-size="240px,900px"></dc-import>
+  <main class="main with-rail">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Incident</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="topbar">
+      <div class="topbar-search"><svg style="width:14px;height:14px" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"></circle><path d="M13.5 13.5 17 17"></path></svg>Search agents, threads, tools, memories…<span class="topbar-search-shortcut">⌘K</span></div>
+      <span class="topbar-spacer"></span>
+      <a class="topbar-btn" href="19-playground.dc.html">Playground</a>
+      <a class="topbar-btn" href="11-agent-new.dc.html">New agent</a>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <section>
+        <div class="greeting"><h1>Welcome to <em>support-copilot / prod</em></h1></div>
+        <div class="empty" style="max-width:560px">
+          <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="12" height="10" rx="2"></rect><path d="M10 6V3M7 3h6"></path><path d="M7.5 13.5h5"></path></svg></div>
+          <h3>Nothing is running yet</h3>
+          <p>The shortest path to a working agent: create it, say something to it, then connect tools when it needs hands. Three minutes, no config sprawl.</p>
+          <div class="row" style="justify-content:center;gap:8px"><a class="btn accent" href="11-agent-new.dc.html">Create an agent</a><a class="btn" href="43-docs.dc.html">Read the 5-minute guide</a></div>
+          <div class="e-hint">1 · create agent → 2 · first message → 3 · connect entity → 4 · go live on a channel</div>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ showBody }}" hint-placeholder-val="{{ true }}">
+      <section>
+        <div class="greeting">
+          <h1>{{ greetLine }} <em>· Thursday, Aug 14</em></h1>
+          <div class="greeting-strip">
+            <span class="pill {{ pillCls }}"><span class="dot"></span>{{ pillText }}</span>
+            <span class="pill"><span class="dot" style="background:var(--accent)"></span>3 approvals waiting</span>
+            <span>spend today <strong class="prov" title="turn ledger · rollup 09:41 UTC">$70.11</strong></span>
+            <span>live threads <strong>7</strong></span>
+          </div>
+        </div>
+
+        <sc-if value="{{ showIncident }}" hint-placeholder-val="{{ false }}">
+          <div class="alert error" style="margin-bottom:24px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+          <div class="a-body"><b>walle-tools disconnected 41 min ago.</b> walle and support-triage will fail their next tool call. 4 threads already affected. <a href="21-entity.dc.html" style="text-decoration:underline;text-underline-offset:2px">Reconnect</a> · <a href="16-threads.dc.html" style="text-decoration:underline;text-underline-offset:2px">Affected threads</a></div>
+          </div>
+        </sc-if>
+
+        <div class="sec-head"><h2>Needs attention</h2><span class="count">{{ attnCount }}</span></div>
+        <div class="approval-list" style="margin-bottom:28px">
+          <sc-for list="{{ attn }}" as="a" hint-placeholder-count="3">
+            <a class="approval-row blocking" href="{{ a.href }}" style="grid-template-columns:auto 1fr auto;padding:14px 18px">
+              <span class="avatar sm {{ a.tone }}">{{ a.mono }}</span>
+              <span style="min-width:0">
+                <span style="display:block;font-size:13px;font-weight:500;color:var(--ink)">{{ a.title }}</span>
+                <span style="display:block;font-size:12px;color:var(--ink-3);margin-top:2px">{{ a.sub }}</span>
+              </span>
+              <span class="mono-sm" style="color:{{ a.tColor }};white-space:nowrap">{{ a.t }}</span>
+            </a>
+          </sc-for>
+        </div>
+
+        <div class="sec-head"><h2>Agents</h2><a class="count" href="10-agents.dc.html" style="text-decoration:underline;text-underline-offset:2px">all 6 →</a></div>
+        <div class="tiles" style="grid-template-columns:repeat(3,1fr)">
+          <a class="tile" href="12-agent-config.dc.html" style="border-left:3px solid {{ walleEdge }}">
+            <div class="row" style="gap:8px;margin-bottom:6px"><span class="avatar sm walle">WA</span><b style="font-size:13px">walle</b><span class="presence {{ wallePres }}" style="margin-left:auto"><span class="dot"></span>{{ wallePresL }}</span></div>
+            <div class="mono-sm">64 threads 24h · $88.90 7d{{ walleNote }}</div>
+          </a>
+          <a class="tile" href="12-agent-config.dc.html">
+            <div class="row" style="gap:8px;margin-bottom:6px"><span class="avatar sm indigo">SU</span><b style="font-size:13px">support-triage</b><span class="presence working" style="margin-left:auto"><span class="dot"></span>working</span></div>
+            <div class="mono-sm">128 threads 24h · $41.22 7d</div>
+          </a>
+          <a class="tile" href="12-agent-config.dc.html">
+            <div class="row" style="gap:8px;margin-bottom:6px"><span class="avatar sm emerald">BI</span><b style="font-size:13px">billing-answers</b><span class="presence idle" style="margin-left:auto"><span class="dot"></span>idle</span></div>
+            <div class="mono-sm">22 threads 24h · $7.14 7d</div>
+          </a>
+        </div>
+      </section>
+
+      <aside class="rail">
+        <div class="rail-card">
+          <h3>Spend today <span class="count">to 09:41 UTC</span></h3>
+          <div style="font-size:22px;font-weight:600;letter-spacing:-0.02em;margin-bottom:8px">$70.11</div>
+          <div class="tokbar" style="height:8px"><i class="cr" style="width:83%"></i><i class="cw" style="width:10%"></i><i class="fp" style="width:3%"></i><i class="out" style="width:4%"></i></div>
+          <div style="font-size:11px;color:var(--ink-3);margin-top:8px;font-family:var(--font-mono)">1,812 turns · median $0.038 · budget 58% <a href="31-budgets.dc.html" style="text-decoration:underline">→</a></div>
+        </div>
+        <div class="rail-card">
+          <h3>Live threads <span class="count">7</span></h3>
+          <div class="wf-list">
+            <a class="wf-row" href="17-thread.dc.html"><span class="avatar sm walle" style="width:22px;height:22px;font-size:8px">WA</span><span><span class="wf-name">board notes summary</span><span class="wf-role">maya · slack</span></span><span class="wf-state working"><span class="dot"></span>t#8</span></a>
+            <a class="wf-row" href="17-thread.dc.html"><span class="avatar sm indigo" style="width:22px;height:22px;font-size:8px">SU</span><span><span class="wf-name">renewal email draft</span><span class="wf-role">jon · chat</span></span><span class="wf-state working"><span class="dot"></span>t#14</span></a>
+            <a class="wf-row" href="17-thread.dc.html"><span class="avatar sm walle" style="width:22px;height:22px;font-size:8px">WA</span><span><span class="wf-name">incident channel digest</span><span class="wf-role">sam · slack</span></span><span class="wf-state on-call"><span class="dot"></span>waiting</span></a>
+          </div>
+        </div>
+        <div class="rail-card">
+          <h3>Recent failures <span class="count">24h</span></h3>
+          <div style="display:grid;gap:8px;font-size:12px">
+            <a class="row" href="18-trace.dc.html"><span class="prov-dot" style="background:var(--danger)"></span><span class="grow">sheets.query · dispatch</span><span class="mono-sm">{{ failN }}×</span></a>
+            <a class="row" href="32-traces.dc.html"><span class="prov-dot" style="background:var(--warn)"></span><span class="grow">docs.get · 401 stale</span><span class="mono-sm">3×</span></a>
+            <a class="row" href="38-jobs.dc.html"><span class="prov-dot" style="background:var(--warn)"></span><span class="grow">q_rollup · timeout</span><span class="mono-sm">4×</span></a>
+          </div>
+        </div>
+      </aside>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'failure' };
+  renderVals() {
+    const v = this.state.view, inc = v === 'failure';
+    const attn = [
+      inc ? {mono:'WT', tone:'rose', title:'walle-tools disconnected — 9 tools down', sub:'walle + support-triage affected · registry still offering stale tools', t:'41m', tColor:'var(--danger)', href:'21-entity.dc.html'} : null,
+      {mono:'WA', tone:'walle', title:'crm.update waiting for approval — user is watching a spinner', sub:'Northwind renewal $48k → $84k · outside auto-approve band', t:'4m 12s', tColor:'var(--danger)', href:'34-approvals.dc.html'},
+      {mono:'Q', tone:'amber', title:'q_rollup failing — Cost page is 3h stale', sub:'4 consecutive timeouts on the 06:00 window', t:'3h', tColor:'var(--warn)', href:'38-jobs.dc.html'},
+      {mono:'NO', tone:'sky', title:'notion-mcp credentials stale', sub:'docs-writer tool calls will 401 · re-auth takes a minute', t:'11m', tColor:'var(--warn)', href:'20-entities.dc.html'}
+    ].filter(Boolean);
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showBody: v !== 'empty', showEmpty: v === 'empty', showIncident: inc,
+      greetLine: 'Morning, Tejas',
+      pillCls: inc ? 'warn' : 'good', pillText: inc ? '1 entity down' : 'all entities connected',
+      attn, attnCount: String(attn.length),
+      walleEdge: inc ? 'var(--danger)' : 'transparent',
+      wallePres: inc ? 'error' : 'working', wallePresL: inc ? 'error' : 'working',
+      walleNote: inc ? ' · tools unreachable' : '',
+      failN: inc ? '41' : '2'
+    };
+  }
+}
+</script>
+</body>
+</html>

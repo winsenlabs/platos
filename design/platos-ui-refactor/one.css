@@ -1,0 +1,88 @@
+/* Winsen One — additions on top of Bridge styles.css */
+.topbar-btn{white-space:nowrap}
+@media (max-width:1180px){.main.with-rail > .rail{grid-column:1;grid-row:auto}.main.with-rail > section{grid-column:1}}
+
+/* Responsive collapse for side-column layouts */
+@media (max-width:1280px){.rcol{grid-template-columns:1fr !important}.rcol > .drawer{position:static}}
+
+/* Presence chips — canonical 8-state enum */
+.presence{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.presence .dot{width:6px;height:6px;border-radius:50%;flex:none}
+.presence.working{background:var(--good-soft);color:var(--good)}.presence.working .dot{background:var(--good);animation:pulse 1.6s ease-in-out infinite}
+.presence.waiting{background:var(--warn-soft);color:var(--warn)}.presence.waiting .dot{background:var(--warn)}
+.presence.blocked{background:var(--warn-soft);color:var(--warn)}.presence.blocked .dot{background:var(--warn)}
+.presence.onboarding{background:var(--accent-soft);color:var(--accent)}.presence.onboarding .dot{background:var(--accent)}
+.presence.idle{background:var(--bg-3);color:var(--ink-3)}.presence.idle .dot{background:var(--ink-4)}
+.presence.off_shift,.presence.paused{background:var(--bg-3);color:var(--ink-4)}.presence.off_shift .dot,.presence.paused .dot{background:var(--ink-4)}
+.presence.error{background:var(--danger-soft);color:var(--danger)}.presence.error .dot{background:var(--danger)}
+
+/* Pending-item type badges */
+.typebadge{font-family:var(--font-mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;font-weight:600;padding:1px 8px;border-radius:999px;flex:none;width:76px;display:inline-flex;justify-content:center;box-sizing:border-box}
+.typebadge.approval{background:var(--accent);color:#fff}
+.typebadge.nudge{background:transparent;color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.typebadge.review{background:var(--bg-3);color:var(--ink-3)}
+
+/* Stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.tile .v{font-size:20px;font-weight:600;letter-spacing:-0.02em;color:var(--ink)}
+.tile .v .delta{font-size:12px;font-weight:500;color:var(--ink-3);margin-left:6px}
+.tile .k{font-family:var(--font-mono);font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.06em;margin-top:3px}
+.tile.warn{border-color:color-mix(in oklab,var(--warn) 40%,var(--border))}
+.tile.warn .v{color:var(--warn)}
+
+/* Dense data table */
+.dtable{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.dtable .dt-head,.dtable .dt-row{display:grid;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border)}
+.dtable .dt-head{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-4);background:var(--bg-2);padding:8px 16px}
+.dtable .dt-row:last-child{border-bottom:none}
+.dtable .dt-row:hover{background:var(--surface-2)}
+.dtable .dt-row.selected{background:var(--accent-soft)}
+.mono{font-family:var(--font-mono)}
+.mono-sm{font-family:var(--font-mono);font-size:11px;color:var(--ink-3)}
+
+/* Status chips (generic) */
+.schip{font-family:var(--font-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;display:inline-block}
+.schip.good{background:var(--good-soft);color:var(--good)}
+.schip.warn{background:var(--warn-soft);color:var(--warn)}
+.schip.danger{background:var(--danger-soft);color:var(--danger)}
+.schip.accent{background:var(--accent-soft);color:var(--accent)}
+.schip.muted{background:var(--bg-3);color:var(--ink-3)}
+
+/* Vertical stepper */
+.vstep{display:grid;grid-template-columns:24px 1fr;gap:0 12px}
+.vstep .vs-dot{width:18px;height:18px;border-radius:50%;background:var(--good-soft);color:var(--good);display:grid;place-items:center;font-size:11px;font-weight:700;margin:2px auto 0}
+.vstep .vs-dot.pending{background:var(--bg-3);color:var(--ink-4)}
+.vstep .vs-dot.active{background:var(--accent);color:#fff}
+.vstep .vs-dot.fail{background:var(--danger-soft);color:var(--danger)}
+.vstep .vs-line{width:1px;background:var(--border);margin:2px auto;min-height:14px}
+.vstep .vs-body{padding-bottom:14px}
+.vstep .vs-title{font-size:13px;font-weight:600;color:var(--ink)}
+.vstep .vs-sub{font-size:12px;color:var(--ink-3)}
+.vstep .vs-ts{font-family:var(--font-mono);font-size:10px;color:var(--ink-4)}
+
+/* Right detail drawer (in-flow column) */
+.drawer{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:sticky;top:24px;align-self:start}
+.drawer h3{font-size:13px;font-weight:600;margin:0 0 4px}
+.drawer .d-sub{font-size:12px;color:var(--ink-3);margin:0 0 14px}
+.d-label{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-4);margin:14px 0 6px}
+
+/* Auth screens */
+.auth-wrap{min-height:100vh;display:grid;place-items:center;background:var(--bg);padding:32px 16px;position:relative}
+.auth-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;box-shadow:0 1px 2px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.06)}
+.auth-brand{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.auth-foot{margin-top:18px;font-family:var(--font-mono);font-size:10.5px;color:var(--ink-4);text-align:center;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.auth-field{margin-bottom:12px}
+.auth-field label{display:block;font-size:12px;color:var(--ink-2);margin-bottom:5px;font-weight:500}
+.auth-field input{width:100%;box-sizing:border-box;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 11px;font:inherit;font-size:13.5px;color:var(--ink);outline:none}
+.auth-field input:focus{border-color:var(--accent-2);box-shadow:0 0 0 3px var(--accent-ring)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(to right,color-mix(in oklab,var(--ink) 7%,transparent) 1px,transparent 1px),linear-gradient(to bottom,color-mix(in oklab,var(--ink) 7%,transparent) 1px,transparent 1px);background-size:40px 40px;opacity:0.55}
+
+/* Citation highlight */
+.cite-hl{background:var(--accent-soft);border-left:2px solid var(--accent);padding:10px 12px;border-radius:0 var(--radius-sm) var(--radius-sm) 0}
+.cite-ref{font-family:var(--font-mono);font-size:10.5px;color:var(--accent)}
+
+/* Progress bar */
+.pbar{height:4px;background:var(--bg-3);border-radius:999px;overflow:hidden}
+.pbar > div{height:100%;background:var(--accent);border-radius:999px}
+.pbar.warn > div{background:var(--warn)}

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="H1 Skills">
+  <dc-import name="PlatosNav" active="skills" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Detail</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Skills</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Skills</h1>
+        <p class="page-sub">Packaged instructions + tools an agent can install as a unit</p>
+      </div>
+      <div class="page-head-actions"><button class="btn">Import from URL</button><button class="btn accent">Create skill</button></div>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>notes@2.4 failed to install on walle</b> — its manifest requires tool <span class="mono">notes.link</span>, which walle-tools doesn’t provide (entity offers 9 tools, manifest expects 10). walle stays on 2.3. <button class="btn tiny" style="vertical-align:1px">View manifest diff</button></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showDetail }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:20px;align-items:start" class="rcol">
+        <div>
+          <div class="set-card">
+            <div class="row" style="justify-content:space-between;margin-bottom:4px">
+              <h3 class="mono" style="font-size:14px">notes @ 2.3</h3>
+              <span class="schip accent">official</span>
+            </div>
+            <p class="set-desc">Teaches an agent the Notes tool family: search idioms, citation format, and archival rules.</p>
+            <div class="d-label">manifest</div>
+            <div class="codeblk">
+              <div class="cb-head"><span>skill.json</span><span class="cb-copy">copy</span></div>
+              <pre>{ <span class="jk">"name"</span>: <span class="js">"notes"</span>, <span class="jk">"version"</span>: <span class="js">"2.3.0"</span>,
+  <span class="jk">"blocks"</span>: [<span class="js">"notes-integration-guide"</span>],
+  <span class="jk">"requires_tools"</span>: [<span class="js">"notes.search"</span>, <span class="js">"notes.get"</span>,
+    <span class="js">"notes.create"</span>, <span class="js">"notes.archive"</span>],
+  <span class="jk">"config"</span>: { <span class="jk">"default_tag"</span>: <span class="js">"agent"</span>, <span class="jk">"cite"</span>: <span class="jn">true</span> } }</pre>
+            </div>
+          </div>
+          <div class="set-card">
+            <h3>Effective config on walle</h3>
+            <div class="field-row"><label>default_tag</label><div class="mono" style="font-size:12.5px">agent <span class="mono-sm">(skill default)</span></div></div>
+            <div class="field-row"><label>cite</label><div class="mono" style="font-size:12.5px">true <span class="mono-sm">(overridden per-agent, was false)</span></div></div>
+          </div>
+        </div>
+        <div class="drawer" style="position:static">
+          <h3>Used by</h3>
+          <div class="sc-chips" style="margin-top:8px">
+            <a class="echip" href="12-agent-config.dc.html"><span class="dot ok"></span>walle · 2.3</a>
+            <a class="echip" href="12-agent-config.dc.html"><span class="dot ok"></span>support-triage · 2.3</a>
+            <a class="echip" href="12-agent-config.dc.html"><span class="dot stale"></span>docs-writer · 2.1</a>
+          </div>
+          <div class="d-label">contributes</div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">1 prompt block (12,388 tok)<br />4 tool requirements<br />2 config keys</div>
+          <div class="d-label">versions</div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">2.4 available — <span style="color:var(--warn)">blocked on walle</span> (missing notes.link)<br />2.3 current · 2.1 legacy</div>
+          <div class="row" style="gap:6px;margin-top:12px"><button class="btn tiny accent" onClick="{{ goDefault }}">Back to list</button></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="filter-bar">
+        <span class="fchip active">Installed <span class="fchip-count">4</span></span>
+        <span class="fchip">Available <span class="fchip-count">11</span></span>
+        <span class="fchip">Official</span>
+        <span class="fchip">Imported</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">
+        <sc-for list="{{ skills }}" as="s" hint-placeholder-count="4">
+          <div class="conn-card" style="border-color:{{ s.border }}">
+            <div class="conn-head">
+              <div class="conn-logo">{{ s.mono }}</div>
+              <div><div class="conn-name mono" style="font-size:13px">{{ s.name }}</div><div class="mono-sm">{{ s.ver }}</div></div>
+              <span class="schip {{ s.chipCls }}" style="margin-left:auto">{{ s.chip }}</span>
+            </div>
+            <div style="font-size:12px;color:var(--ink-3);line-height:1.5;margin-bottom:10px">{{ s.desc }}</div>
+            <div class="conn-stats"><span>{{ s.stats1 }}</span><span>{{ s.stats2 }}</span></div>
+            <div class="conn-actions"><button class="btn tiny" onClick="{{ goDense }}">Detail</button><button class="btn tiny ghost">{{ s.action }}</button></div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l1.8 3.9L16 8.5l-3 3 .7 4.2L10 13.7l-3.7 2 .7-4.2-3-3 4.2-.6z"></path></svg></div>
+        <h3>No skills installed</h3>
+        <p>Skills bundle the prompt engineering and tool requirements for a capability, versioned together. Install one instead of hand-writing integration prompts per agent.</p>
+        <div class="row" style="justify-content:center;gap:8px"><button class="btn accent">Browse official skills</button><button class="btn">Import from URL</button></div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view, fail = v === 'failure';
+    const skills = [
+      {name:'notes', ver:'2.3.0' + (fail ? ' · 2.4 blocked' : ' · 2.4 available'), mono:'NO', chip:'official', chipCls:'accent', desc:'Notes tool family: search idioms, citations, archival rules.', stats1:'3 agents · 1 block · 4 tools', stats2:'upgraded 12d ago', action:fail?'Retry 2.4':'Upgrade', border: fail ? 'color-mix(in oklab,var(--danger) 40%,var(--border))' : 'var(--border)'},
+      {name:'refund-matrix', ver:'1.2.0', mono:'RM', chip:'imported', chipCls:'muted', desc:'Acme refund policy as enforceable rules with escalation thresholds.', stats1:'2 agents · 2 blocks · 0 tools', stats2:'imported from repo', action:'Update', border:'var(--border)'},
+      {name:'crm-hygiene', ver:'0.9.1', mono:'CR', chip:'imported', chipCls:'muted', desc:'HubSpot conventions: naming, dedupe checks, required fields.', stats1:'1 agent · 1 block · 2 tools', stats2:'pre-1.0 — pin exact version', action:'Update', border:'var(--border)'},
+      {name:'meeting-scribe', ver:'3.0.2', mono:'MS', chip:'official', chipCls:'accent', desc:'Structured minutes: decisions, owners, deadlines extracted per meeting.', stats1:'1 agent · 1 block · 1 tool', stats2:'current', action:'Settings', border:'var(--border)'}
+    ];
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v === 'default' || v === 'failure', showEmpty: v === 'empty',
+      showAlert: fail, showDetail: v === 'dense',
+      skills
+    };
+  }
+}
+</script>
+</body>
+</html>

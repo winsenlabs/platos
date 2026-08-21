@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="C5–C8 Environment settings">
+  <dc-import name="PlatosNav" active="settings" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">General</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">MCP tokens</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Token minted</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Limits</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Environment settings</span></div>
+    <div class="page-head"><h1>Environment settings</h1><p class="page-sub">prod · created 4 months ago</p></div>
+
+    <div class="set-shell" style="max-width:960px">
+      <div class="set-nav">
+        <div class="item {{ nGeneral }}" onClick="{{ goDefault }}">General</div>
+        <div class="item {{ nTokens }}" onClick="{{ goEmpty }}">MCP tokens</div>
+        <div class="item {{ nLimits }}" onClick="{{ goDense }}">Limits</div>
+        <div class="group">related</div>
+        <a class="item" href="39-variables.dc.html">Variables</a>
+        <a class="item" href="24-providers.dc.html">Providers</a>
+        <a class="item" href="42-connect.dc.html">Channels</a>
+      </div>
+      <div>
+        <sc-if value="{{ showGeneral }}" hint-placeholder-val="{{ true }}">
+          <div class="set-card">
+            <h3>Identity</h3>
+            <div class="field-row"><label>Name</label><div class="row"><input type="text" value="prod" style="max-width:200px" /><span class="env-badge prod">prod</span></div></div>
+            <div class="field-row"><label>Tracing</label><div class="row"><span class="toggle on"><span class="toggle-track"></span></span><span style="font-size:12px;color:var(--ink-3)">span collection on every turn</span></div></div>
+            <div class="field-row"><label>Data retention</label><div class="row"><select style="background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:inherit;font-size:13px;color:var(--ink)"><option>Threads: keep forever</option><option>90 days</option></select><span style="font-size:12px;color:var(--ink-3)">ledger rows are always kept</span></div></div>
+          </div>
+          <div class="set-card" style="border-color:color-mix(in oklab,var(--danger) 35%,var(--border))">
+            <h3 style="color:var(--danger)">Danger zone</h3>
+            <div class="field-row" style="border-bottom:none"><label>Delete environment</label><button class="btn danger" style="justify-self:start">Delete prod…</button></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showTokens }}" hint-placeholder-val="{{ false }}">
+          <div class="set-card">
+            <h3>MCP access tokens</h3>
+            <p class="set-desc">Let external MCP clients (IDEs, Claude, scripts) call this environment’s agents and tools. Shown once at mint, stored as a hash.</p>
+            <div class="dtable" style="margin-bottom:12px">
+              <div class="dt-row" style="grid-template-columns:minmax(140px,1fr) 130px 120px 110px auto">
+                <span class="mono" style="font-size:12px;font-weight:600">cursor-tejas</span><span class="mono-sm">pk_mcp_8f…3a</span><span class="mono-sm">last used 4m ago</span><span><span class="schip good">active</span></span>
+                <span style="text-align:right"><button class="btn tiny danger">Revoke</button></span>
+              </div>
+              <div class="dt-row" style="grid-template-columns:minmax(140px,1fr) 130px 120px 110px auto">
+                <span class="mono" style="font-size:12px;font-weight:600">ci-evals</span><span class="mono-sm">pk_mcp_2c…9d</span><span class="mono-sm">last used 2d ago</span><span><span class="schip good">active</span></span>
+                <span style="text-align:right"><button class="btn tiny danger">Revoke</button></span>
+              </div>
+              <div class="dt-row" style="grid-template-columns:minmax(140px,1fr) 130px 120px 110px auto">
+                <span class="mono" style="font-size:12px;font-weight:600;color:var(--ink-4);text-decoration:line-through">old-laptop</span><span class="mono-sm">revoked Jun 12</span><span class="mono-sm">—</span><span><span class="schip muted">revoked</span></span>
+                <span></span>
+              </div>
+            </div>
+            <button class="btn accent" onClick="{{ goFailure }}">Mint token</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showMinted }}" hint-placeholder-val="{{ false }}">
+          <div class="set-card" style="border-color:color-mix(in oklab,var(--warn) 50%,var(--border))">
+            <h3>Token minted — copy it now</h3>
+            <p class="set-desc">This is the only time Platos will show it. The list will show <span class="mono">pk_mcp_7x…1f</span> from here on.</p>
+            <div class="secretbox once" style="margin-bottom:14px"><span class="grow">pk_mcp_7xK2mQv94AhJ…tXbA71LpZ3Rw1f</span><button class="btn tiny">Copy</button></div>
+            <div class="row" style="gap:8px"><button class="btn accent" onClick="{{ goEmpty }}">Done — I’ve stored it</button><span class="mono-sm" style="color:var(--warn)">closing discards it forever</span></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showLimits }}" hint-placeholder-val="{{ false }}">
+          <div class="set-card">
+            <h3>Rate limits</h3>
+            <p class="set-desc">Applied per origin. When hit, callers get a clean 429 with a retry-after — agents never see a half-executed turn.</p>
+            <div class="field-row"><label>Turns / min / user</label><div class="row"><input type="text" value="12" style="max-width:90px" /><span style="font-size:12px;color:var(--ink-3)">p99 usage: 4/min</span></div></div>
+            <div class="field-row"><label>Turns / min / guest link</label><div class="row"><input type="text" value="4" style="max-width:90px" /><span style="font-size:12px;color:var(--ink-3)">guests are cheap to rate-limit, expensive not to</span></div></div>
+            <div class="field-row"><label>Concurrent turns / agent</label><div class="row"><input type="text" value="8" style="max-width:90px" /><span style="font-size:12px;color:var(--ink-3)">beyond this, turns queue with visible position</span></div></div>
+            <div class="field-row"><label>Tool call timeout</label><div class="row"><input type="text" value="30s" style="max-width:90px" /><span style="font-size:12px;color:var(--ink-3)">after this a call is a failure, never a hang</span></div></div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showGeneral: v === 'default', showTokens: v === 'empty', showMinted: v === 'failure', showLimits: v === 'dense',
+      nGeneral: v==='default'?'active':'', nTokens: (v==='empty'||v==='failure')?'active':'', nLimits: v==='dense'?'active':''
+    };
+  }
+}
+</script>
+</body>
+</html>

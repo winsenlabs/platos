@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.oauth-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);font-size:13px;font-weight:500;color:var(--ink);cursor:pointer;margin-bottom:8px}
+.oauth-btn:hover{border-color:var(--border-2)}
+.auth-div{display:flex;align-items:center;gap:10px;color:var(--ink-4);font-family:var(--font-mono);font-size:10px;margin:14px 0}
+.auth-div::before,.auth-div::after{content:"";flex:1;border-top:1px solid var(--border)}
+.otp{display:flex;gap:8px;justify-content:center;margin:16px 0}
+.otp input{width:40px;height:48px;text-align:center;font-family:var(--font-mono);font-size:18px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--ink);outline:none}
+.otp input:focus{border-color:var(--accent-2);box-shadow:0 0 0 3px var(--accent-ring)}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="display:block;background:var(--bg);min-height:100vh" data-screen-label="A1 Auth">
+  <div class="state-sw" style="right:120px">
+    <button class="{{ swDefault }}" onClick="{{ goDefault }}">Login</button>
+    <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Magic link</button>
+    <button class="{{ swFailure }}" onClick="{{ goFailure }}">MFA</button>
+    <button class="{{ swDense }}" onClick="{{ goDense }}">Signed out</button>
+    <button class="{{ swOp }}" onClick="{{ goOp }}">Operator</button>
+  </div>
+  <div class="theme-toggle">
+    <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+    <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+  </div>
+  <div class="grid-bg"></div>
+  <div class="auth-wrap">
+    <div style="width:100%;max-width:400px">
+      <sc-if value="{{ showLogin }}" hint-placeholder-val="{{ true }}">
+        <div class="auth-card">
+          <div class="auth-brand"><img src="assets/platos-icon.svg" alt="" style="width:30px;height:30px;border-radius:7px" /><div><div style="font-weight:600;font-size:14px">Platos</div><div class="mono-sm" style="font-size:10px">self-hosted · acme cluster</div></div></div>
+          <h2 style="font-size:17px;font-weight:600;letter-spacing:-0.01em;margin:0 0 16px">Sign in</h2>
+          <button class="oauth-btn"><svg style="width:15px;height:15px" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.27a11 11 0 0 0-3.48 21.46c.55.09.73-.28.73-.55v-1.84c-3.03.64-3.67-1.46-3.67-1.46-.55-1.29-1.28-1.65-1.28-1.65-.92-.65.1-.65.1-.65 1.1 0 1.73 1.1 1.73 1.1.92 1.65 2.57 1.2 3.21.92a2 2 0 0 1 .64-1.47c-2.47-.27-5.04-1.19-5.04-5.5 0-1.1.46-2.1 1.2-2.84a3.76 3.76 0 0 1 0-2.93s.91-.28 3.11 1.1c1.8-.49 3.7-.49 5.5 0 2.1-1.38 3.02-1.1 3.02-1.1a3.76 3.76 0 0 1 .1 2.93c.83.74 1.19 1.74 1.19 2.94 0 4.21-2.57 5.13-5.04 5.4.45.37.82.92.82 2.02v3.03c0 .27.1.64.73.55A11 11 0 0 0 12 1.27"></path></svg>Continue with GitHub</button>
+          <button class="oauth-btn"><svg style="width:15px;height:15px" viewBox="0 0 24 24" fill="currentColor"><path d="M21.35 11.1H12v2.9h5.4c-.5 2.5-2.6 4-5.4 4a6 6 0 1 1 0-12c1.5 0 2.9.55 4 1.45l2.2-2.2A9.1 9.1 0 1 0 12 21.1c5.2 0 8.9-3.7 8.9-9 0-.35-.05-.7-.1-1z"></path></svg>Continue with Google</button>
+          <div class="auth-div">or with email</div>
+          <div class="auth-field"><label>Work email</label><input type="email" placeholder="you@company.com" /></div>
+          <button class="btn accent" style="width:100%;padding:9px">Email me a sign-in link</button>
+          <div class="auth-foot"><span>self-hosted v2.14.0</span><span>·</span><a href="43-docs.dc.html" style="text-decoration:underline;text-underline-offset:2px">docs</a><span>·</span><span>no passwords stored</span></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showMagic }}" hint-placeholder-val="{{ false }}">
+        <div class="auth-card" style="text-align:center">
+          <div class="e-icon" style="width:40px;height:40px;border-radius:10px;background:var(--accent-soft);display:grid;place-items:center;margin:0 auto 14px;color:var(--accent)"><svg style="width:20px;height:20px" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="10" rx="2"></rect><path d="m4 6.5 6 4.5 6-4.5"></path></svg></div>
+          <h2 style="font-size:16px;font-weight:600;margin:0 0 6px">Check your email</h2>
+          <p style="font-size:13px;color:var(--ink-3);margin:0 0 14px;line-height:1.55">A sign-in link is on its way to <b style="color:var(--ink)">tejas@winsen.dev</b>. It expires in <span class="mono">15:00</span> and works once.</p>
+          <button class="btn" style="width:100%">Resend (available in 0:42)</button>
+          <div class="auth-foot"><a href="#" onClick="{{ goDefault }}" style="text-decoration:underline;text-underline-offset:2px">use a different email</a></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showMfa }}" hint-placeholder-val="{{ false }}">
+        <div class="auth-card">
+          <h2 style="font-size:16px;font-weight:600;margin:0 0 6px">Two-factor check</h2>
+          <p style="font-size:12.5px;color:var(--ink-3);margin:0">Enter the 6-digit code from your authenticator app.</p>
+          <div class="otp">
+            <input maxlength="1" value="8" /><input maxlength="1" value="3" /><input maxlength="1" value="1" /><input maxlength="1" value="" /><input maxlength="1" value="" /><input maxlength="1" value="" />
+          </div>
+          <button class="btn accent" style="width:100%;padding:9px">Verify</button>
+          <div class="auth-foot"><a href="#" style="text-decoration:underline;text-underline-offset:2px">use a backup code</a><span>·</span><a href="#" style="text-decoration:underline;text-underline-offset:2px">lost device?</a></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showOut }}" hint-placeholder-val="{{ false }}">
+        <div class="auth-card" style="text-align:center">
+          <h2 style="font-size:16px;font-weight:600;margin:0 0 6px">Signed out</h2>
+          <p style="font-size:13px;color:var(--ink-3);margin:0 0 16px;line-height:1.55">Your session ended. Any thread you were watching keeps running — agents don’t stop when you sign out.</p>
+          <button class="btn accent" style="width:100%;padding:9px" onClick="{{ goDefault }}">Sign back in</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showOperator }}" hint-placeholder-val="{{ false }}">
+        <div class="auth-card" style="border-color:color-mix(in oklab,var(--warn) 55%,var(--border));border-width:1.5px">
+          <div class="row" style="gap:8px;margin-bottom:10px">
+            <span class="schip warn">OPERATOR ACCESS</span>
+            <span class="mono-sm">not a normal sign-in</span>
+          </div>
+          <h2 style="font-size:16px;font-weight:600;margin:0 0 6px">Break-glass passcode</h2>
+          <p style="font-size:12.5px;color:var(--ink-3);margin:0 0 12px;line-height:1.55">For the configured operator account only, when IdP and email are both down. Every use is written to the audit log and notifies all org admins.</p>
+          <div class="auth-field"><label>Operator email</label><input type="email" value="tejas@winsen.dev" disabled="disabled" style="opacity:0.7" /></div>
+          <div class="auth-field"><label>Passcode</label><input type="password" placeholder="••••••••••••" /></div>
+          <button class="btn" style="width:100%;padding:9px;border-color:var(--warn);color:var(--warn)">Sign in &amp; alert admins</button>
+          <div class="auth-foot"><a href="#" onClick="{{ goDefault }}" style="text-decoration:underline;text-underline-offset:2px">back to normal sign-in</a></div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      swDense: v==='dense'?'active':'', swOp: v==='op'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      goOp: () => this.setState({view:'op'}),
+      showLogin: v === 'default', showMagic: v === 'empty', showMfa: v === 'failure',
+      showOut: v === 'dense', showOperator: v === 'op'
+    };
+  }
+}
+</script>
+</body>
+</html>

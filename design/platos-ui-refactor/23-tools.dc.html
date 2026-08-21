@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="F8 Tool registry">
+  <dc-import name="PlatosNav" active="tools" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Tool registry</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Tool registry<span class="count-badge">{{ countLabel }}</span></h1>
+        <p class="page-sub">Every tool across entities and skills — the diagnostic surface for “it exists but won’t run”</p>
+      </div>
+      <div class="page-head-actions"><button class="btn">Probe all</button></div>
+    </div>
+
+    <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+      <div class="alert error"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+        <div class="a-body"><b>9 tools registered but undispatchable</b> (entity walle-tools down) and <b>1 tool failing 100% of calls</b> (sheets.export — schema drift since provider update).</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="filter-bar">
+        <span class="fchip active">All <span class="fchip-count">{{ total }}</span></span>
+        <span class="fchip" style="color:var(--danger)">Undispatchable <span class="fchip-count">{{ nUndis }}</span></span>
+        <span class="fchip" style="color:var(--warn)">Degraded <span class="fchip-count">{{ nDeg }}</span></span>
+        <span class="fchip">By entity ▾</span>
+        <span class="spacer"></span>
+        <span class="topbar-search" style="max-width:240px;flex:none"><svg style="width:13px;height:13px" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"></circle><path d="M13.5 13.5 17 17"></path></svg>Filter tools…</span>
+      </div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:minmax(170px,1.2fr) minmax(120px,0.9fr) 120px 90px 80px 80px 110px 70px">
+          <span>Tool</span><span>Source</span><span>Dispatchable</span><span>Calls 24h</span><span>Failures</span><span>p95</span><span>Last status</span><span></span>
+        </div>
+        <sc-for list="{{ tools }}" as="t" hint-placeholder-count="10">
+          <div class="dt-row" style="grid-template-columns:minmax(170px,1.2fr) minmax(120px,0.9fr) 120px 90px 80px 80px 110px 70px;border-left:3px solid {{ t.edge }};padding-left:13px">
+            <span class="mono" style="font-size:12px;font-weight:600;color:var(--ink)">{{ t.name }}</span>
+            <span><span class="echip"><span class="dot {{ t.srcDot }}"></span>{{ t.src }}<span class="kind">{{ t.kind }}</span></span></span>
+            <span><span class="dispatch {{ t.dCls }}"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.dIcon }}"></path></svg>{{ t.d }}</span></span>
+            <span class="mono tnum" style="font-size:12px">{{ t.calls }}</span>
+            <span class="mono tnum" style="font-size:12px;color:{{ t.failColor }}">{{ t.fails }}</span>
+            <span class="mono tnum" style="font-size:12px">{{ t.p95 }}</span>
+            <span class="mono-sm" style="color:{{ t.lastColor }}">{{ t.last }}</span>
+            <span><button class="btn tiny">Test</button></span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Dispatchability probed live per entity · call stats from the dispatch log, 24h window ending 09:41 UTC</div>
+    </sc-if>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 6.5 17 3M11 9l-6.6 6.6a1.4 1.4 0 0 0 2 2L13 11M11 9a4 4 0 0 1 5.2-5.2L13.5 6.5l.8 3.2 3.2-.8A4 4 0 0 1 11 9z"></path></svg></div>
+        <h3>Registry is empty</h3>
+        <p>Tools arrive when an entity connects and completes discovery, or when a skill is installed. There’s nothing to register by hand.</p>
+        <div class="row" style="justify-content:center;gap:8px"><a class="btn accent" href="20-entities.dc.html">Connect an entity</a><a class="btn" href="28-skills.dc.html">Install a skill</a></div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  mk(name, src, kind, o) {
+    o = o || {};
+    const down = !!o.down, deg = !!o.deg;
+    return {
+      name, src, kind,
+      srcDot: down ? 'down' : deg ? 'stale' : 'ok',
+      d: down ? 'no' : 'yes', dCls: down ? 'no' : 'yes',
+      dIcon: down ? 'M5 5l10 10M15 5L5 15' : 'M4 11l4 4 8-9',
+      calls: o.calls || '0', fails: o.fails || '0',
+      failColor: (o.fails && o.fails !== '0') ? (deg ? 'var(--danger)' : 'var(--warn)') : 'var(--ink-3)',
+      p95: o.p95 || '—',
+      last: down ? 'unreachable' : o.last || '200 ok',
+      lastColor: down ? 'var(--danger)' : deg ? 'var(--danger)' : 'var(--ink-3)',
+      edge: down || deg ? 'var(--danger)' : 'transparent'
+    };
+  }
+  baseTools(fail) {
+    return [
+      this.mk('notes.search','walle-tools','wire',{down:fail, calls:'412', p95:'340ms'}),
+      this.mk('notes.get','walle-tools','wire',{down:fail, calls:'388', p95:'405ms'}),
+      this.mk('sheets.query','walle-tools','wire',{down:fail, calls:'96', fails:'2', p95:'710ms'}),
+      this.mk('sheets.export','walle-tools','wire', fail ? {down:true} : {deg:true, calls:'14', fails:'14', p95:'2.1s', last:'422 schema'}),
+      this.mk('calendar.find','walle-tools','wire',{down:fail, calls:'204', fails:'1', p95:'380ms'}),
+      this.mk('slack.post','slack-bridge','wire',{calls:'1,022', p95:'190ms'}),
+      this.mk('crm.lookup','hubspot-mcp','mcp',{calls:'77', p95:'820ms'}),
+      this.mk('crm.update','hubspot-mcp','mcp',{calls:'12', p95:'940ms'}),
+      this.mk('billing.invoice','stripe-mcp','mcp',{calls:'31', p95:'610ms'}),
+      this.mk('docs.get','notion-mcp','mcp',{deg:false, calls:'58', fails:'3', p95:'1.2s', last:'401 stale'}),
+      this.mk('memory.recall','platos runtime','sys',{calls:'2,614', p95:'92ms'}),
+      this.mk('thread.escalate','platos runtime','sys',{calls:'31', p95:'45ms'})
+    ];
+  }
+  denseTools() {
+    const ents = [['walle-tools','wire'],['slack-bridge','wire'],['hubspot-mcp','mcp'],['notion-mcp','mcp'],['stripe-mcp','mcp'],['jira-mcp','mcp'],['gh-mcp','mcp'],['platos runtime','sys']];
+    const doms = ['notes','sheets','calendar','crm','tickets','billing','docs','mail','tasks','kb','files','search','audit','flags','geo','ocr','translate','pager','sql','report'];
+    const verbs = ['search','get','list','create','update','archive','export','query','post','find'];
+    return Array.from({length: 200}, (_, i) => {
+      const e = ents[i % 8];
+      return this.mk(doms[i % 20] + '.' + verbs[(i * 7) % 10], e[0], e[1], {
+        down: e[0] === 'walle-tools' && i % 5 === 2,
+        deg: i % 41 === 7,
+        calls: String((i * 53) % 1200), fails: i % 17 === 3 ? String(1 + i % 9) : '0',
+        p95: (100 + (i * 37) % 1900) + 'ms'
+      });
+    });
+  }
+  renderVals() {
+    const v = this.state.view;
+    const tools = v === 'empty' ? [] : v === 'dense' ? this.denseTools() : this.baseTools(v === 'failure');
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showAlert: v === 'failure',
+      tools, total: tools.length, countLabel: String(tools.length),
+      nUndis: tools.filter(t=>t.d==='no').length,
+      nDeg: tools.filter(t=>t.edge!=='transparent' && t.d==='yes').length
+    };
+  }
+}
+</script>
+</body>
+</html>

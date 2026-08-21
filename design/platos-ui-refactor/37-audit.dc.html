@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="J4 Audit log">
+  <dc-import name="PlatosNav" active="audit" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Cross-scope</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Audit log</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Audit log</h1>
+        <p class="page-sub">Tool calls, admin actions, and cross-scope access — append-only, exportable</p>
+      </div>
+      <div class="page-head-actions"><button class="btn">Export range</button></div>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="14" rx="2"></rect><path d="M7.5 7h5M7.5 10.5h5M7.5 14h3"></path></svg></div>
+        <h3>Log is empty</h3>
+        <p>Every tool call, config save, role change, and cross-scope access lands here from the first action onward. Nothing is sampled.</p>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="filter-bar">
+        <span class="fchip active">All <span class="fchip-count">{{ total }}</span></span>
+        <span class="fchip">Tool calls</span>
+        <span class="fchip">Admin</span>
+        <span class="fchip" style="color:var(--danger)">Cross-scope <span class="fchip-count">{{ nCross }}</span></span>
+        <span class="spacer"></span>
+        <span class="topbar-search" style="max-width:260px;flex:none"><svg style="width:13px;height:13px" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"></circle><path d="M13.5 13.5 17 17"></path></svg>actor, action, target…</span>
+      </div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:130px 130px minmax(240px,1.5fr) 110px 100px">
+          <span>Time (UTC)</span><span>Actor</span><span>Action</span><span>Scope</span><span></span>
+        </div>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="10">
+          <div class="dt-row" style="grid-template-columns:130px 130px minmax(240px,1.5fr) 110px 100px;border-left:3px solid {{ r.edge }};padding-left:13px">
+            <span class="mono-sm">{{ r.ts }}</span>
+            <span class="mono-sm" style="color:var(--ink-2)">{{ r.actor }}</span>
+            <span style="font-size:12.5px;color:var(--ink)">{{ r.action }}</span>
+            <span><span class="schip {{ r.scopeCls }}">{{ r.scope }}</span></span>
+            <span><button class="btn tiny ghost">Detail</button></span>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ showCrossNote }}" hint-placeholder-val="{{ false }}">
+        <div class="alert warn" style="margin-top:14px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M10 3 1.8 17h16.4z" stroke-linejoin="round"></path><path d="M10 8v4M10 14.6v.1"></path></svg>
+          <div class="a-body"><b>Why cross-scope is its own lane:</b> the org/project/env tuple was found not to be a user boundary — service tokens and clusters can reach across it. Every such access is logged here even when allowed.</div>
+        </div>
+      </sc-if>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  baseRows(cross) {
+    return [
+      {ts:'09:41:22.310', actor:'walle', action:'tool crm.update held for approval (deal 88213)', scope:'in-scope', scopeCls:'muted', edge:'transparent'},
+      {ts:'09:39:47.311', actor:'platos', action:'dispatch failed: sheets.query — EntityNotRegistered', scope:'in-scope', scopeCls:'muted', edge:'transparent'},
+      {ts:'08:58:09.112', actor:'walle', action: cross ? 'memory recall matched foreign-scope profile — blocked by no-profile-to-guest' : 'memory recall (6 items) for th_9f3kq2', scope: cross ? 'cross-scope' : 'in-scope', scopeCls: cross ? 'danger' : 'muted', edge: cross ? 'var(--danger)' : 'transparent'},
+      {ts:'08:31:44.902', actor:'tejas@winsen.dev', action:'saved walle config v42, set canary 10%', scope:'admin', scopeCls:'accent', edge:'transparent'},
+      {ts:'08:12:04.001', actor:'walle-tools', action:'wire connected · discovery 9 tools', scope:'in-scope', scopeCls:'muted', edge:'transparent'},
+      {ts:'07:44:12.230', actor:'svc: rollup-job', action:'read turn ledger across 3 environments (reporting)', scope:'cross-scope', scopeCls:'warn', edge: cross ? 'var(--warn)' : 'transparent'},
+      {ts:'07:02:51.671', actor:'maya@acme.co', action:'revoked share link for walle', scope:'admin', scopeCls:'accent', edge:'transparent'},
+      {ts:'06:41:00.004', actor:'svc: q_rollup', action:'job failed: TimeoutError after 30s (attempt 4)', scope:'in-scope', scopeCls:'muted', edge:'transparent'}
+    ];
+  }
+  denseRows() {
+    const actors = ['walle','support-triage','platos','tejas@winsen.dev','svc: rollup-job','maya@acme.co','walle-tools','svc: embedder'];
+    const actions = ['tool notes.search ok 318ms','tool slack.post ok 190ms','memory recall (4 items)','config read','heartbeat ok','tool crm.lookup ok 820ms','extraction wrote 2 memories','budget check passed'];
+    return Array.from({length: 80}, (_, i) => ({
+      ts: '0' + (9 - Math.floor(i / 14)) + ':' + String(59 - (i * 7) % 60).padStart(2, '0') + ':' + String((i * 13) % 60).padStart(2, '0') + '.' + String((i * 97) % 1000).padStart(3, '0'),
+      actor: actors[i % 8], action: actions[i % 8] + ' · #' + (9000 - i),
+      scope: i % 19 === 7 ? 'cross-scope' : i % 11 === 3 ? 'admin' : 'in-scope',
+      scopeCls: i % 19 === 7 ? 'warn' : i % 11 === 3 ? 'accent' : 'muted',
+      edge: 'transparent'
+    }));
+  }
+  renderVals() {
+    const v = this.state.view;
+    const rows = v === 'empty' ? [] : v === 'dense' ? this.denseRows() : this.baseRows(v === 'failure');
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showCrossNote: v === 'failure',
+      rows, total: v === 'dense' ? '48,112' : String(rows.length),
+      nCross: rows.filter(r=>r.scope==='cross-scope').length
+    };
+  }
+}
+</script>
+</body>
+</html>

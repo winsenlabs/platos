@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="K4 Environment variables">
+  <dc-import name="PlatosNav" active="vars" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Editing</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="03-home.dc.html">support-copilot</a><span class="sep">/</span><span class="here">Variables</span></div>
+    <div class="page-head-row">
+      <div class="page-head">
+        <h1>Environment variables</h1>
+        <p class="page-sub">Plain values and secrets. Secrets are write-only — Platos never re-displays them.</p>
+      </div>
+      <div class="page-head-actions"><button class="btn accent" onClick="{{ goFailure }}">Add variable</button></div>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="empty" style="margin-top:40px">
+        <div class="e-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4c-1.5 1.8-2 3.6-2 6s.5 4.2 2 6M15 4c1.5 1.8 2 3.6 2 6s-.5 4.2-2 6M7.5 8l5 4M12.5 8l-5 4"></path></svg></div>
+        <h3>No variables</h3>
+        <p>Variables feed prompt-variable bindings and entity configs. Secrets (API keys, tokens) are encrypted at rest and masked forever after save.</p>
+        <button class="btn accent" onClick="{{ goFailure }}">Add variable</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <div class="dtable" style="max-width:860px">
+        <div class="dt-head" style="grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) 90px 130px 90px">
+          <span>Key</span><span>Value</span><span>Kind</span><span>Referenced by</span><span></span>
+        </div>
+        <sc-for list="{{ vars }}" as="x" hint-placeholder-count="7">
+          <div class="dt-row" style="grid-template-columns:minmax(180px,1fr) minmax(180px,1fr) 90px 130px 90px">
+            <span class="mono" style="font-size:12px;font-weight:600;color:var(--ink)">{{ x.k }}</span>
+            <span class="mono-sm" style="letter-spacing:{{ x.ls }}">{{ x.v }}</span>
+            <span><span class="schip {{ x.kindCls }}">{{ x.kind }}</span></span>
+            <span class="mono-sm">{{ x.refs }}</span>
+            <span class="row" style="gap:4px"><button class="btn tiny ghost">Edit</button><button class="btn tiny ghost danger">✕</button></span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showModal }}" hint-placeholder-val="{{ false }}">
+      <div class="overlay" onClick="{{ goDefault }}">
+        <div class="palette" style="width:460px;padding:22px">
+          <h3 style="margin:0 0 14px;font-size:15px">Add variable</h3>
+          <div class="auth-field"><label>Key</label><input type="text" value="ZENDESK_API_TOKEN" /></div>
+          <div class="auth-field"><label>Value</label><input type="password" value="supersecretvalue" /></div>
+          <div class="field-row" style="border-bottom:none;grid-template-columns:1fr;gap:6px">
+            <label class="row" style="gap:8px;cursor:pointer;font-size:12.5px"><input type="radio" name="kind" checked="checked" style="accent-color:var(--accent);margin:0" />Secret — masked after save, never re-displayed, edits replace wholesale</label>
+            <label class="row" style="gap:8px;cursor:pointer;font-size:12.5px"><input type="radio" name="kind" style="accent-color:var(--accent);margin:0" />Plain — visible to anyone with environment access</label>
+          </div>
+          <div class="row" style="justify-content:flex-end;gap:8px;margin-top:16px">
+            <button class="btn" onClick="{{ goDefault }}">Cancel</button>
+            <button class="btn accent" onClick="{{ goDefault }}">Save</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    const vars = [
+      {k:'ANTHROPIC_API_KEY', v:'••••••••••••••••', ls:'1px', kind:'secret', kindCls:'accent', refs:'anthropic-byok'},
+      {k:'OPENAI_API_KEY', v:'••••••••••••••••', ls:'1px', kind:'secret', kindCls:'accent', refs:'openai-byok'},
+      {k:'HUBSPOT_OAUTH', v:'•••••••••••• (managed)', ls:'1px', kind:'secret', kindCls:'accent', refs:'hubspot-mcp'},
+      {k:'COMPANY_NAME', v:'Acme Inc', ls:'normal', kind:'plain', kindCls:'muted', refs:'3 prompt vars'},
+      {k:'FISCAL_SHEET_ID', v:'fin-q1', ls:'normal', kind:'plain', kindCls:'muted', refs:'company.fiscal_quarter'},
+      {k:'DIRECTORY_SYNC_URL', v:'https://dir.acme.co/scim', ls:'normal', kind:'plain', kindCls:'muted', refs:'user.role binding'},
+      {k:'SLACK_SIGNING_SECRET', v:'••••••••••••••••', ls:'1px', kind:'secret', kindCls:'accent', refs:'slack channel'}
+    ];
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showList: v !== 'empty', showEmpty: v === 'empty', showModal: v === 'failure',
+      vars
+    };
+  }
+}
+</script>
+</body>
+</html>

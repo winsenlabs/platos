@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="display:block;background:var(--bg);min-height:100vh" data-screen-label="M1 Admin">
+  <div style="background:var(--warn-soft);border-bottom:1px solid color-mix(in oklab,var(--warn) 35%,var(--border));padding:7px 20px;display:flex;align-items:center;gap:10px">
+    <span class="schip warn">WINSEN-INTERNAL</span>
+    <span style="font-size:12px;color:var(--ink-2)">Cross-org operator view — not part of the customer product. Every page view here is audit-logged.</span>
+    <span class="mono-sm" style="margin-left:auto">signed in as tejas@winsen.dev · staff</span>
+  </div>
+  <div class="state-sw">
+    <button class="{{ swDefault }}" onClick="{{ goDefault }}">Dashboard</button>
+    <button class="{{ swDense }}" onClick="{{ goDense }}">Feature flags</button>
+  </div>
+  <div class="theme-toggle">
+    <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+    <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+  </div>
+  <main class="main" style="max-width:1100px;margin:0 auto">
+    <div class="page-head"><h1>Admin</h1><p class="page-sub">Hosted fleet · 3 instances</p></div>
+
+    <sc-if value="{{ showDash }}" hint-placeholder-val="{{ true }}">
+      <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+        <div class="tile"><div class="v">41</div><div class="k">organizations</div></div>
+        <div class="tile"><div class="v">312</div><div class="k">agents (fleet)</div></div>
+        <div class="tile"><div class="v">$4.1k</div><div class="k">fleet model spend · 24h</div></div>
+        <div class="tile warn"><div class="v">2</div><div class="k">orgs with active incidents</div></div>
+      </div>
+      <div class="dtable">
+        <div class="dt-head" style="grid-template-columns:minmax(160px,1fr) 90px 90px 110px 110px 120px 90px">
+          <span>Organization</span><span>Plan</span><span>Agents</span><span>Turns 24h</span><span>Spend 24h</span><span>Health</span><span></span>
+        </div>
+        <sc-for list="{{ orgs }}" as="o" hint-placeholder-count="6">
+          <div class="dt-row" style="grid-template-columns:minmax(160px,1fr) 90px 90px 110px 110px 120px 90px;border-left:3px solid {{ o.edge }};padding-left:13px">
+            <span><span style="display:block;font-size:12.5px;font-weight:600;color:var(--ink)">{{ o.name }}</span><span class="mono-sm">{{ o.slug }}</span></span>
+            <span><span class="schip {{ o.planCls }}">{{ o.plan }}</span></span>
+            <span class="mono tnum" style="font-size:12px">{{ o.agents }}</span>
+            <span class="mono tnum" style="font-size:12px">{{ o.turns }}</span>
+            <span class="mono tnum" style="font-size:12px">{{ o.spend }}</span>
+            <span><span class="schip {{ o.hCls }}">{{ o.health }}</span></span>
+            <span><button class="btn tiny">Impersonate…</button></span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="prov-note" style="margin-top:10px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>Impersonation requires a reason, notifies the org’s admins, and expires after 1h</div>
+    </sc-if>
+
+    <sc-if value="{{ showFlags }}" hint-placeholder-val="{{ false }}">
+      <div class="dtable" style="max-width:860px">
+        <div class="dt-head" style="grid-template-columns:minmax(180px,1fr) minmax(200px,1.2fr) 130px 110px">
+          <span>Flag</span><span>Description</span><span>Rollout</span><span></span>
+        </div>
+        <sc-for list="{{ flags }}" as="f" hint-placeholder-count="5">
+          <div class="dt-row" style="grid-template-columns:minmax(180px,1fr) minmax(200px,1.2fr) 130px 110px">
+            <span class="mono" style="font-size:12px;font-weight:600;color:var(--ink)">{{ f.name }}</span>
+            <span style="font-size:12px;color:var(--ink-2)">{{ f.desc }}</span>
+            <span><span class="schip {{ f.cls }}">{{ f.rollout }}</span></span>
+            <span><button class="btn tiny ghost">Edit</button></span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goDense: () => this.setState({view:'dense'}),
+      showDash: v === 'default', showFlags: v === 'dense',
+      orgs: [
+        {name:'Winsen Labs', slug:'winsen-labs', plan:'hosted', planCls:'accent', agents:'6', turns:'7,829', spend:'$456', health:'incident', hCls:'danger', edge:'var(--danger)'},
+        {name:'Acme Inc', slug:'acme-inc', plan:'hosted', planCls:'accent', agents:'3', turns:'2,114', spend:'$122', health:'ok', hCls:'good', edge:'transparent'},
+        {name:'Contoso', slug:'contoso', plan:'hosted', planCls:'accent', agents:'12', turns:'18,204', spend:'$1,893', health:'ok', hCls:'good', edge:'transparent'},
+        {name:'Fabrikam', slug:'fabrikam', plan:'trial', planCls:'muted', agents:'1', turns:'88', spend:'$4', health:'ok', hCls:'good', edge:'transparent'},
+        {name:'Northwind', slug:'northwind', plan:'hosted', planCls:'accent', agents:'8', turns:'9,441', spend:'$1,204', health:'degraded', hCls:'warn', edge:'transparent'}
+      ],
+      flags: [
+        {name:'tool_search_v2', desc:'Embedding-ranked tool search tier', rollout:'100%', cls:'good'},
+        {name:'canary_routes', desc:'Per-agent canary versions', rollout:'100%', cls:'good'},
+        {name:'kg_extraction', desc:'Knowledge-graph extraction lane', rollout:'60% orgs', cls:'accent'},
+        {name:'new_thread_view', desc:'This redesign’s thread detail', rollout:'winsen-labs only', cls:'warn'},
+        {name:'rate_autoverify', desc:'Weekly invoice-vs-table rate check', rollout:'100%', cls:'good'}
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

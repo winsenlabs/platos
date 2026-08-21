@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+</helmet>
+<aside class="sidebar" aria-label="Platos">
+  <div class="sb-brand">
+    <img class="sb-brand-mark" src="assets/platos-icon.svg" alt="Platos" />
+    <div>
+      <div class="sb-brand-name">Platos</div>
+      <div class="sb-brand-sub">agent runtime</div>
+    </div>
+  </div>
+  <div class="scope-sw" title="Switch organization / project / environment">
+    <div class="sw-org">winsen-labs</div>
+    <div class="sw-path"><span class="sw-proj">support-copilot</span><span class="sep">/</span><span class="env-badge prod">prod</span><svg style="width:12px;height:12px;margin-left:auto;color:var(--ink-4)" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l3-3 3 3M7 12l3 3 3-3"></path></svg></div>
+  </div>
+  <div class="sb-group">
+    <a class="sb-item {{ c_home }}" href="03-home.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17V8l7-4.5L17 8v9"></path><path d="M8 17v-5h4v5"></path></svg><span class="sb-name">Home</span></a>
+    <a class="sb-item {{ c_approvals }}" href="34-approvals.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"></circle><path d="M10 6.5V10l2.5 2"></path></svg><span class="sb-name">Approvals</span><span class="sb-badge">3</span></a>
+    <a class="sb-item" href="04-command.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"></circle><path d="M13.5 13.5 17 17"></path></svg><span class="sb-name">Search</span><span class="kbd" style="margin-left:auto">⌘K</span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Agents</div>
+    <a class="sb-item {{ c_agents }}" href="10-agents.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="12" height="10" rx="2"></rect><path d="M10 6V3M7 3h6"></path><circle cx="7.5" cy="10.5" r="0.5" fill="currentColor"></circle><circle cx="12.5" cy="10.5" r="0.5" fill="currentColor"></circle><path d="M7.5 13.5h5"></path></svg><span class="sb-name">Agents</span><span class="sb-badge muted">6</span></a>
+    <a class="sb-item {{ c_threads }}" href="16-threads.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 9.5c0 3-3.1 5.5-7 5.5-1 0-2-.16-2.9-.46L3 16l1.2-3.1C3.4 11.9 3 10.75 3 9.5 3 6.5 6.1 4 10 4s7 2.5 7 5.5z"></path></svg><span class="sb-name">Threads</span></a>
+    <a class="sb-item {{ c_playground }}" href="19-playground.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5 15 10 5 15.5z"></path></svg><span class="sb-name">Playground</span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Connect</div>
+    <a class="sb-item {{ c_entities }}" href="20-entities.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="10" r="2.5"></circle><circle cx="14.5" cy="5" r="2.5"></circle><circle cx="14.5" cy="15" r="2.5"></circle><path d="M7.8 8.9l4.4-2.6M7.8 11.1l4.4 2.6"></path></svg><span class="sb-name">Entities</span><span class="sb-badge" style="background:var(--danger-soft);color:var(--danger)">1</span></a>
+    <a class="sb-item {{ c_tools }}" href="23-tools.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 6.5 17 3M11 9l-6.6 6.6a1.4 1.4 0 0 0 2 2L13 11M11 9a4 4 0 0 1 5.2-5.2L13.5 6.5l.8 3.2 3.2-.8A4 4 0 0 1 11 9z"></path></svg><span class="sb-name">Tools</span></a>
+    <a class="sb-item {{ c_providers }}" href="24-providers.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h12M4 13h12"></path><circle cx="7" cy="7" r="1.6"></circle><circle cx="13" cy="13" r="1.6"></circle></svg><span class="sb-name">Providers</span></a>
+    <a class="sb-item {{ c_channels }}" href="42-connect.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h4l2-5 2 10 2-5h4"></path></svg><span class="sb-name">Channels</span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Memory</div>
+    <a class="sb-item {{ c_memory }}" href="25-memory.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5c-3.6 0-6.5 2.4-6.5 5.4 0 1.7.9 3.2 2.4 4.2V17l2.8-1.7c.42.07.85.1 1.3.1 3.6 0 6.5-2.4 6.5-5.4S13.6 3.5 10 3.5z"></path></svg><span class="sb-name">Memories</span></a>
+    <a class="sb-item {{ c_graph }}" href="26-graph.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="4.5" r="2"></circle><circle cx="4.5" cy="14" r="2"></circle><circle cx="15.5" cy="14" r="2"></circle><path d="M9 6.3 5.5 12.2M11 6.3l3.5 5.9M6.5 14h7"></path></svg><span class="sb-name">Knowledge graph</span></a>
+    <a class="sb-item {{ c_clusters }}" href="27-clusters.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="3.5"></circle><circle cx="13" cy="13" r="3.5"></circle></svg><span class="sb-name">Clusters</span></a>
+    <a class="sb-item {{ c_skills }}" href="28-skills.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l1.8 3.9L16 8.5l-3 3 .7 4.2L10 13.7l-3.7 2 .7-4.2-3-3 4.2-.6z"></path></svg><span class="sb-name">Skills</span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Observe</div>
+    <a class="sb-item {{ c_monitoring }}" href="29-monitoring.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16l4-6 3 3 4-7 3 4"></path></svg><span class="sb-name">Monitoring</span></a>
+    <a class="sb-item {{ c_cost }}" href="30-cost.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v14M6.5 6.5C6.5 5.1 8 4.5 10 4.5s3.5.9 3.5 2.2c0 3.3-7 1.6-7 5 0 1.5 1.5 2.5 3.5 2.5s3.5-.8 3.5-2.2"></path></svg><span class="sb-name">Cost</span></a>
+    <a class="sb-item {{ c_budgets }}" href="31-budgets.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10V4a6 6 0 1 1-6 6z"></path><path d="M12 3.5a6 6 0 0 1 4.5 4.5H12z"></path></svg><span class="sb-name">Budgets</span><span class="sb-badge" style="background:var(--warn-soft);color:var(--warn)">!</span></a>
+    <a class="sb-item {{ c_traces }}" href="32-traces.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h9M6 10h11M4 15h8"></path></svg><span class="sb-name">Traces</span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">Govern</div>
+    <a class="sb-item {{ c_governance }}" href="35-governance.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l6.5 3v4.5c0 4-2.8 6-6.5 7-3.7-1-6.5-3-6.5-7V6z"></path></svg><span class="sb-name">Governance</span></a>
+    <a class="sb-item {{ c_evals }}" href="36-evals.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l4 4 8-9"></path></svg><span class="sb-name">Evals</span></a>
+    <a class="sb-item {{ c_audit }}" href="37-audit.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="14" rx="2"></rect><path d="M7.5 7h5M7.5 10.5h5M7.5 14h3"></path></svg><span class="sb-name">Audit log</span></a>
+  </div>
+  <div class="sb-group">
+    <div class="sb-group-label">System</div>
+    <a class="sb-item {{ c_jobs }}" href="38-jobs.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6.5"></circle><path d="M10 6.5v3.5l2.3 2.3"></path><path d="M2.5 4.5 4 3M17.5 4.5 16 3"></path></svg><span class="sb-name">Scheduled work</span></a>
+    <a class="sb-item {{ c_vars }}" href="39-variables.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4c-1.5 1.8-2 3.6-2 6s.5 4.2 2 6M15 4c1.5 1.8 2 3.6 2 6s-.5 4.2-2 6M7.5 8l5 4M12.5 8l-5 4"></path></svg><span class="sb-name">Variables</span></a>
+    <a class="sb-item {{ c_settings }}" href="40-settings.dc.html"><svg class="sb-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.8 4.8l1.4 1.4M13.8 13.8l1.4 1.4M4.8 15.2l1.4-1.4M13.8 6.2l1.4-1.4"></path></svg><span class="sb-name">Settings</span></a>
+  </div>
+  <div class="sb-foot">
+    <div class="sb-foot-avatar">TJ</div>
+    <div class="grow">
+      <div class="sb-foot-name">tejas@winsen.dev</div>
+      <div class="sb-foot-status">connected</div>
+    </div>
+  </div>
+</aside>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;240px&quot;,&quot;height&quot;:&quot;900px&quot;},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;approvals&quot;,&quot;agents&quot;,&quot;threads&quot;,&quot;playground&quot;,&quot;entities&quot;,&quot;tools&quot;,&quot;providers&quot;,&quot;channels&quot;,&quot;memory&quot;,&quot;graph&quot;,&quot;clusters&quot;,&quot;skills&quot;,&quot;monitoring&quot;,&quot;cost&quot;,&quot;budgets&quot;,&quot;traces&quot;,&quot;governance&quot;,&quot;evals&quot;,&quot;audit&quot;,&quot;jobs&quot;,&quot;vars&quot;,&quot;settings&quot;]}}">
+class Component extends DCLogic {
+  renderVals() {
+    const ids = ['home','approvals','agents','threads','playground','entities','tools','providers','channels','memory','graph','clusters','skills','monitoring','cost','budgets','traces','governance','evals','audit','jobs','vars','settings'];
+    const v = {};
+    ids.forEach(id => { v['c_' + id] = id === (this.props.active || '') ? 'active' : ''; });
+    return v;
+  }
+}
+</script>
+</body>
+</html>

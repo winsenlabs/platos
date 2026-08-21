@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="display:block;background:var(--bg);min-height:100vh" data-screen-label="A5–A9 Onboarding">
+  <div class="state-sw" style="right:120px">
+    <button class="{{ swDefault }}" onClick="{{ goDefault }}">First run</button>
+    <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Invite accept</button>
+    <button class="{{ swFailure }}" onClick="{{ goFailure }}">Plan</button>
+  </div>
+  <div class="theme-toggle">
+    <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+    <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+  </div>
+  <div class="grid-bg"></div>
+  <div class="auth-wrap">
+    <div style="width:100%;max-width:520px">
+      <sc-if value="{{ showFirstRun }}" hint-placeholder-val="{{ true }}">
+        <div class="auth-card" style="max-width:520px">
+          <div class="auth-brand"><img src="assets/platos-icon.svg" alt="" style="width:30px;height:30px;border-radius:7px" /><div><div style="font-weight:600;font-size:14px">Platos</div><div class="mono-sm" style="font-size:10px">first run — this instance is empty</div></div></div>
+          <h2 style="font-size:17px;font-weight:600;margin:0 0 4px">One form, then a working agent</h2>
+          <p style="font-size:12.5px;color:var(--ink-3);margin:0 0 18px;line-height:1.55">Organization, project and a <span class="mono">prod</span> environment are created together. You can add more of each later — most installs never need to.</p>
+          <div class="auth-field"><label>Your name</label><input type="text" value="Tejas" /></div>
+          <div class="auth-field"><label>Organization</label><input type="text" value="Winsen Labs" /><div class="mono-sm" style="margin-top:4px;font-size:10.5px">slug: winsen-labs · used in URLs and the CLI</div></div>
+          <div class="auth-field"><label>First project</label><input type="text" value="support-copilot" /></div>
+          <div class="field-row" style="grid-template-columns:1fr;border-bottom:none;padding-bottom:0">
+            <div class="vstep">
+              <div class="vs-dot active">1</div><div class="vs-body"><div class="vs-title">Create workspace</div><div class="vs-sub">org + project + prod environment — this form</div></div>
+              <div class="vs-line"></div><div></div>
+              <div class="vs-dot pending">2</div><div class="vs-body"><div class="vs-title">Add a model key</div><div class="vs-sub">one BYOK credential is enough</div></div>
+              <div class="vs-line"></div><div></div>
+              <div class="vs-dot pending">3</div><div class="vs-body"><div class="vs-title">Create an agent &amp; say hello</div><div class="vs-sub">the playground is step 3, not step 9</div></div>
+            </div>
+          </div>
+          <button class="btn accent" style="width:100%;padding:10px;margin-top:8px">Create workspace →</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showInvite }}" hint-placeholder-val="{{ false }}">
+        <div class="auth-card" style="max-width:460px">
+          <div class="row" style="gap:10px;margin-bottom:14px">
+            <span class="sb-foot-avatar" style="width:34px;height:34px;font-size:13px">MK</span>
+            <div style="font-size:13px;line-height:1.45"><b>Maya Kapoor</b> invited you to<br /><b>Winsen Labs</b> on Platos</div>
+          </div>
+          <div class="sc-surface" style="margin-bottom:14px">
+            <div class="sc-meta-grid" style="grid-template-columns:1fr 1fr">
+              <div><div class="sc-meta-k">role</div><div class="sc-meta-v">Member</div></div>
+              <div><div class="sc-meta-k">projects</div><div class="sc-meta-v">support-copilot</div></div>
+              <div><div class="sc-meta-k">environments</div><div class="sc-meta-v">prod, staging</div></div>
+              <div><div class="sc-meta-k">can approve tools</div><div class="sc-meta-v">yes</div></div>
+            </div>
+          </div>
+          <div class="auth-field"><label>Signing in as</label><input type="email" value="jon@acme.co" disabled="disabled" style="opacity:0.7" /></div>
+          <div class="row" style="gap:8px">
+            <button class="btn accent" style="flex:1;padding:9px">Accept invite</button>
+            <button class="btn">Decline</button>
+          </div>
+          <div class="auth-foot"><span>invite expires in 6 days</span></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showPlan }}" hint-placeholder-val="{{ false }}">
+        <div class="auth-card" style="max-width:520px">
+          <h2 style="font-size:16px;font-weight:600;margin:0 0 4px">Plan</h2>
+          <p style="font-size:12.5px;color:var(--ink-3);margin:0 0 16px">Self-hosted is free forever. Winsen-hosted adds managed infrastructure.</p>
+          <label class="row" style="gap:10px;padding:12px;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-soft);cursor:pointer;margin-bottom:8px;align-items:flex-start">
+            <input type="radio" name="plan" checked="checked" style="accent-color:var(--accent);margin:3px 0 0" />
+            <span class="grow"><span style="display:block;font-size:13.5px;font-weight:600">Self-hosted · free</span><span style="font-size:12px;color:var(--ink-3);line-height:1.5">Your infra, your keys, no limits from us. Model spend goes to your providers.</span></span>
+          </label>
+          <label class="row" style="gap:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:8px;align-items:flex-start">
+            <input type="radio" name="plan" style="accent-color:var(--accent);margin:3px 0 0" />
+            <span class="grow"><span style="display:block;font-size:13.5px;font-weight:600">Winsen-hosted · $99/mo</span><span style="font-size:12px;color:var(--ink-3);line-height:1.5">We run it: upgrades, backups, uptime. Still your model keys.</span></span>
+            <span class="schip muted">hosted only</span>
+          </label>
+          <button class="btn accent" style="width:100%;padding:9px;margin-top:6px">Continue</button>
+          <div class="auth-foot"><span>billing screens appear only on hosted plans</span></div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  renderVals() {
+    const v = this.state.view;
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}),
+      showFirstRun: v === 'default', showInvite: v === 'empty', showPlan: v === 'failure'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="one.css" />
+<link rel="stylesheet" href="platos.css" />
+<style>body{background:var(--bg)} a{color:inherit} a:hover{color:var(--accent)}
+.agent-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.agent-tabs a{font-size:13px;padding:8px 14px;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.agent-tabs a:hover{color:var(--ink)}
+.agent-tabs a.active{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+.pblock{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);margin-bottom:8px;overflow:hidden}
+.pblock-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-2);border-bottom:1px solid var(--border);cursor:grab}
+.pblock-head .drag{color:var(--ink-4);font-family:var(--font-mono);font-size:11px;letter-spacing:-1px}
+.pblock-head .pb-name{font-size:12.5px;font-weight:600;color:var(--ink)}
+.pblock-head .pb-kind{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-4);background:var(--bg-3);padding:1px 6px;border-radius:4px}
+.pblock-head .pb-tok{margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--ink-4)}
+.pblock-body{padding:10px 12px;font-size:12.5px;color:var(--ink-2);line-height:1.55;font-family:var(--font-mono);font-size:11.5px;white-space:pre-wrap}
+</style>
+</helmet>
+<div class="app" data-theme="{{ theme }}" style="background:var(--bg);min-height:100vh" data-screen-label="E3 Agent config">
+  <dc-import name="PlatosNav" active="agents" hint-size="240px,900px"></dc-import>
+  <main class="main">
+    <div class="state-sw">
+      <button class="{{ swDefault }}" onClick="{{ goDefault }}">Default</button>
+      <button class="{{ swEmpty }}" onClick="{{ goEmpty }}">Empty</button>
+      <button class="{{ swFailure }}" onClick="{{ goFailure }}">Failure</button>
+      <button class="{{ swDense }}" onClick="{{ goDense }}">Dense</button>
+    </div>
+    <div class="theme-toggle">
+      <button class="{{ tLight }}" onClick="{{ setLight }}" title="Light"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.5"></circle><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.6 4.6l1.4 1.4M14 14l1.4 1.4M4.6 15.4 6 14M14 6l1.4-1.4"></path></svg></button>
+      <button class="{{ tDark }}" onClick="{{ setDark }}" title="Dark"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"></path></svg></button>
+    </div>
+    <div class="crumbs"><a href="10-agents.dc.html">Agents</a><span class="sep">/</span><span class="here">walle</span></div>
+    <div class="page-head-row" style="margin-bottom:0">
+      <div class="page-head" style="margin-bottom:14px">
+        <div class="row" style="gap:10px">
+          <span class="avatar walle">WA</span>
+          <div>
+            <h1 style="font-size:20px;margin:0">walle</h1>
+            <p class="page-sub" style="margin:2px 0 0">claude-opus-4-6 · route <span class="mono">quality</span> · config <span class="mono">v41</span> <span class="schip accent" style="margin-left:6px">canary v42 at 10%</span></p>
+          </div>
+        </div>
+      </div>
+      <div class="page-head-actions">
+        <a class="btn" href="19-playground.dc.html">Test in playground</a>
+        <a class="btn" href="15-agent-versions.dc.html">Versions</a>
+        <button class="btn accent">Save as v42</button>
+      </div>
+    </div>
+    <div class="agent-tabs">
+      <a class="active" href="12-agent-config.dc.html">Config</a>
+      <a href="13-agent-context.dc.html">Context</a>
+      <a href="14-agent-tools.dc.html">Tools</a>
+      <a href="28-skills.dc.html">Skills</a>
+      <a href="16-threads.dc.html">Threads</a>
+      <a href="15-agent-versions.dc.html">Versions</a>
+      <a href="09-agent-share.dc.html">Share</a>
+      <a href="44-debug.dc.html">Debug</a>
+    </div>
+
+    <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+      <div class="alert info"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1"></path></svg><div class="a-body">New agent — nothing configured yet. A name, a model, and one prompt block is enough to answer a first message. Everything else can wait.</div></div>
+    </sc-if>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:20px;align-items:start" class="rcol">
+      <div>
+        <div class="set-card" style="margin-bottom:14px">
+          <h3>Prompt blocks <span class="count-badge">{{ blockCount }}</span></h3>
+          <p class="set-desc">Assembled top-to-bottom into the system prompt. Drag to reorder. Blocks above the cache line are prefix-cached — keep volatile content below it.</p>
+          <sc-if value="{{ hasBlocks }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ blocks }}" as="b" hint-placeholder-count="4">
+              <div class="pblock">
+                <div class="pblock-head"><span class="drag">⠿</span><span class="pb-name">{{ b.name }}</span><span class="pb-kind">{{ b.kind }}</span><span class="pb-tok">{{ b.tok }} tok</span></div>
+                <sc-if value="{{ b.open }}" hint-placeholder-val="{{ false }}">
+                  <div class="pblock-body">{{ b.body }}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <div class="compact-line" style="margin:10px 0"><span>cache boundary · 33,212 tokens above are prefix-cached</span></div>
+            <div class="pblock">
+              <div class="pblock-head"><span class="drag">⠿</span><span class="pb-name">current-date</span><span class="pb-kind">volatile</span><span class="varchip volatile" style="margin-left:4px">changes every turn</span><span class="pb-tok">14 tok</span></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ showEmpty }}" hint-placeholder-val="{{ false }}">
+            <div class="empty" style="padding:28px">
+              <h3>No prompt blocks</h3>
+              <p>The agent currently has no instructions at all — it will behave like the raw model.</p>
+              <button class="btn accent">Add first block</button>
+            </div>
+          </sc-if>
+          <button class="btn tiny" style="margin-top:8px">+ Add block</button>
+        </div>
+
+        <sc-if value="{{ showPanelFail }}" hint-placeholder-val="{{ false }}">
+          <div class="panel-fail" style="margin-bottom:14px">
+            <div class="pf-t">Model routes panel failed to render</div>
+            <div class="pf-s">TypeError: cannot read `fallbacks` of undefined · panel isolated, rest of the page is live</div>
+            <div class="row" style="justify-content:center;gap:6px"><button class="btn tiny">Retry panel</button><button class="btn tiny ghost">Copy error + config JSON</button></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ showRoutes }}" hint-placeholder-val="{{ true }}">
+          <div class="set-card" style="margin-bottom:14px">
+            <h3>Model &amp; routes</h3>
+            <p class="set-desc">The route decides which provider serves each step. Inert routes are flagged — they exist in config but the runtime never selects them.</p>
+            <div class="field-row"><label>Primary model</label><div class="row"><span class="mono" style="font-size:12.5px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:6px 10px">claude-opus-4-6</span><span class="schip good">credential ok</span></div></div>
+            <div class="field-row"><label>Route: quality</label><div class="row" style="flex-wrap:wrap"><span class="mono-sm">anthropic-byok → bedrock-fallback</span><span class="schip good">active · 96% of steps</span></div></div>
+            <div class="field-row"><label>Route: overflow</label><div class="row" style="flex-wrap:wrap"><span class="mono-sm">gpt-5.2 via openai-byok</span><span class="schip warn">inert — no rule selects it</span><button class="btn tiny ghost">Fix rule</button></div></div>
+          </div>
+        </sc-if>
+
+        <div class="set-card">
+          <h3>Memory policy</h3>
+          <div class="field-row"><label>Working memory</label><div class="row"><span class="toggle on"><span class="toggle-track"></span></span><span style="font-size:12px;color:var(--ink-3)">per-thread scratch, discarded on close</span></div></div>
+          <div class="field-row"><label>Conversation memory</label><div class="row"><span class="toggle on"><span class="toggle-track"></span></span><span style="font-size:12px;color:var(--ink-3)">extracted after each turn · costs the extraction lane</span></div></div>
+          <div class="field-row"><label>Profile memory</label><div class="row"><span class="toggle on"><span class="toggle-track"></span></span><span style="font-size:12px;color:var(--ink-3)">per-user facts, shared within cluster <a href="27-clusters.dc.html" class="mono" style="font-size:11px;text-decoration:underline;text-underline-offset:2px">support-core</a></span></div></div>
+          <div class="field-row"><label>Knowledge</label><div class="row"><span class="toggle"><span class="toggle-track"></span></span><span style="font-size:12px;color:var(--ink-3)">off — enable to retrieve from the knowledge graph</span></div></div>
+        </div>
+      </div>
+
+      <div class="drawer" style="position:static">
+        <h3>Effective config</h3>
+        <p class="d-sub">What the runtime actually reads — anything not listed here is ignored.</p>
+        <div class="d-label">assembly · next turn</div>
+        <div style="display:grid;gap:5px;font-size:12px">
+          <div class="row"><span class="grow">prompt blocks</span><span class="mono tnum">{{ blockCount }} · 33.2k tok</span></div>
+          <div class="row"><span class="grow">tool schemas injected</span><span class="mono tnum">9 · 11.9k tok</span></div>
+          <div class="row"><span class="grow">tools via search</span><span class="mono tnum">31</span></div>
+          <div class="row"><span class="grow">memory recall</span><span class="mono tnum">top 6 · ~800 tok</span></div>
+        </div>
+        <div class="d-label">flags read by runtime</div>
+        <div class="sc-chips">
+          <span class="chip">stream_partials</span><span class="chip">tool_search</span><span class="chip accent">canary_10pct</span>
+        </div>
+        <div class="d-label">ignored by runtime</div>
+        <div style="font-size:11.5px;color:var(--ink-3);line-height:1.5">2 legacy keys in stored config (<span class="mono">maxAttempts</span>, <span class="mono">queueName</span>) are never read. <button class="btn tiny ghost" style="padding:0 4px">Clean up</button></div>
+        <div class="prov-note" style="margin-top:12px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7"></circle><path d="M10 9v4M10 6.8v.1" stroke-linecap="round"></path></svg>computed from v41 + canary v42 · assembly preview in <a href="44-debug.dc.html" style="text-decoration:underline">Debug</a></div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: 'light', view: 'default' };
+  baseBlocks(open) {
+    return [
+      {name:'identity', kind:'core', tok:'1,204', open: !!open, body:'You are walle, the internal operations copilot for Acme. You are precise, cite sources, and never invent figures…'},
+      {name:'tone-and-format', kind:'core', tok:'842', open:false, body:''},
+      {name:'escalation-rules', kind:'policy', tok:'1,610', open:false, body:''},
+      {name:'notes-integration-guide', kind:'skill: notes', tok:'12,388', open:false, body:''},
+      {name:'finance-glossary', kind:'knowledge', tok:'17,168', open:false, body:''}
+    ];
+  }
+  denseBlocks() {
+    const kinds = ['core','policy','skill: notes','skill: sheets','knowledge','policy'];
+    return Array.from({length: 18}, (_, i) => ({
+      name: ['identity','tone-and-format','escalation-rules','notes-integration-guide','finance-glossary','pii-handling','refund-matrix','sla-terms','brand-voice','legal-disclaimers','routing-rules','holiday-hours','pricing-tiers','security-faq','competitor-policy','meeting-etiquette','report-format','citations-style'][i],
+      kind: kinds[i % 6], tok: String(200 + (i * 977) % 9000), open: false, body: ''
+    }));
+  }
+  renderVals() {
+    const v = this.state.view;
+    const blocks = v === 'empty' ? [] : v === 'dense' ? this.denseBlocks() : this.baseBlocks(v === 'default');
+    return {
+      theme: this.state.theme,
+      tLight: this.state.theme==='light'?'active':'', tDark: this.state.theme==='dark'?'active':'',
+      setLight: () => this.setState({theme:'light'}), setDark: () => this.setState({theme:'dark'}),
+      swDefault: v==='default'?'active':'', swEmpty: v==='empty'?'active':'', swFailure: v==='failure'?'active':'', swDense: v==='dense'?'active':'',
+      goDefault: () => this.setState({view:'default'}), goEmpty: () => this.setState({view:'empty'}),
+      goFailure: () => this.setState({view:'failure'}), goDense: () => this.setState({view:'dense'}),
+      showEmpty: v === 'empty', showPanelFail: v === 'failure', showRoutes: v !== 'failure',
+      blocks, hasBlocks: blocks.length > 0, blockCount: String(blocks.length)
+    };
+  }
+}
+</script>
+</body>
+</html>
