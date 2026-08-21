@@ -202,6 +202,43 @@ export class AuthService {
     return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureB64));
   }
 
+  /**
+   * Unwrap credential material the clean-schema cutover stored as an envelope.
+   *
+   * The live mint path stores an entity's service secret as a bare string. The
+   * cutover backfill wrote `{"serviceSecret":"…"}` into the same slot while
+   * `Credential.secretHash` kept the hash of the BARE secret — so the same
+   * credential has two disagreeing representations.
+   *
+   * Readers that compare hashes kept working (tool-sync connects fine).
+   * Readers that use the value as an HMAC key silently signed with the JSON
+   * envelope: every externally minted session token was rejected, and every
+   * signed outbound tool call to a migrated entity carried a signature
+   * derived from the wrong key.
+   *
+   * Bare secrets pass through untouched, so this is safe on freshly minted
+   * credentials and idempotent if it ever runs twice.
+   */
+  static unwrapEntitySecretMaterial(plaintext: string): string {
+    const trimmed = plaintext.trim();
+    if (!trimmed.startsWith("{")) return plaintext;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      return plaintext;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return plaintext;
+    }
+    const record = parsed as Record<string, unknown>;
+    for (const key of ["serviceSecret", "PlatosConnectedEntity.serviceSecret"]) {
+      const value = record[key];
+      if (typeof value === "string" && value.length > 0) return value;
+    }
+    return plaintext;
+  }
+
   async validateSessionToken(token: string): Promise<SessionPayload | null> {
     try {
       const parts = token.split(".");
@@ -1188,7 +1225,7 @@ export class AuthService {
         name: scope.entityId,
         kind: CredentialKind.ENTITY_SECRET,
       });
-      return material.reveal();
+      return AuthService.unwrapEntitySecretMaterial(material.reveal());
     } catch {
       return null;
     }

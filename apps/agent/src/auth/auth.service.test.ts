@@ -135,6 +135,35 @@ describe("AuthService — clean bearer-backed session tokens", () => {
     await expect(h.auth.validateSessionToken(token!)).resolves.toBeNull();
   });
 
+  it("unwraps the cutover's aggregate secret envelope, and leaves bare secrets alone", () => {
+    // The cutover stored {"serviceSecret":"…"} where the mint path stores the
+    // bare string, while Credential.secretHash kept the hash of the BARE
+    // secret. Hash-comparing readers (tool-sync) kept working; HMAC readers
+    // signed with the JSON envelope. Proven on test.platos: an 84-char JSON
+    // plaintext whose sha256 did not match secretHash, but whose nested
+    // serviceSecret value did.
+    const bare = "a".repeat(64);
+
+    expect(AuthService.unwrapEntitySecretMaterial(JSON.stringify({ serviceSecret: bare }))).toBe(bare);
+    expect(
+      AuthService.unwrapEntitySecretMaterial(
+        JSON.stringify({ "PlatosConnectedEntity.serviceSecret": bare, other: 1 }),
+      ),
+    ).toBe(bare);
+
+    // Freshly minted credentials must pass through untouched...
+    expect(AuthService.unwrapEntitySecretMaterial(bare)).toBe(bare);
+    // ...including a secret that merely looks JSON-ish, or an envelope with
+    // no recognised key — guessing would swap a valid secret for a wrong one.
+    expect(AuthService.unwrapEntitySecretMaterial("{not json")).toBe("{not json");
+    expect(AuthService.unwrapEntitySecretMaterial('{"somethingElse":"x"}')).toBe('{"somethingElse":"x"}');
+    expect(AuthService.unwrapEntitySecretMaterial('{"serviceSecret":42}')).toBe('{"serviceSecret":42}');
+    // Idempotent.
+    expect(
+      AuthService.unwrapEntitySecretMaterial(AuthService.unwrapEntitySecretMaterial(JSON.stringify({ serviceSecret: bare }))),
+    ).toBe(bare);
+  });
+
   it("accepts a token signed with the entity's own service secret and no iss", async () => {
     // This is exactly what @platosdev/token-mint emits. Before per-entity
     // verification the agent required SESSION_SECRET + iss=platos-platform,
