@@ -135,6 +135,51 @@ describe("ToolSyncWsService clean credential handshake", () => {
     expect(code).toBe(1008);
   });
 
+  it("rejects a missing entity id on its own terms, without blaming the secret", async () => {
+    // Regression: a client connecting without ?entity= was told "Invalid
+    // service secret or entity not found", which sent operators hunting a
+    // hash mismatch that did not exist. test.platos logged 590 of these in
+    // ten minutes from a client whose secret was perfectly valid.
+    const database = makeDatabase({ secret: "correct-secret" });
+    let lookups = 0;
+    const findMany = database.credential.findMany;
+    database.credential.findMany = async (args: any) => {
+      lookups += 1;
+      return findMany(args);
+    };
+    const service = new ToolSyncWsService(
+      database,
+      makeRegistry() as any,
+      {} as any,
+    );
+    const server = await startRawServer(service);
+    closeServer = server.close;
+
+    const { code, error } = await new Promise<{
+      code: number;
+      error?: string;
+    }>((resolve) => {
+      // Valid secret, but no ?entity=, no ?source=, no header.
+      const ws = new WebSocket(
+        `ws://127.0.0.1:${server.port}/tools/sync?env=env-1`,
+        { headers: { authorization: "Bearer correct-secret" } },
+      );
+      let seen: string | undefined;
+      ws.on("message", (raw) => {
+        const message = JSON.parse(raw.toString());
+        if (message.type === "error") seen = message.error;
+      });
+      ws.on("close", (closeCode) => resolve({ code: closeCode, error: seen }));
+      ws.on("error", () => undefined);
+    });
+
+    expect(code).toBe(1008);
+    expect(error).toMatch(/entity id/i);
+    expect(error).not.toMatch(/invalid service secret/i);
+    // The secret was never checked — a missing id is not a hash failure.
+    expect(lookups).toBe(0);
+  });
+
   it("verifies the Environment ENTITY_SECRET hash and emits canonical scope", async () => {
     const service = new ToolSyncWsService(
       makeDatabase({ secret: "correct-secret" }),

@@ -171,9 +171,12 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
       ? auth.slice(7).trim()
       : "";
 
-    // entity=<slug> selects which registered entity is connecting (defaults
-    // to "main" for backwards compat with earlier platools clients that used
-    // ?source=main). Also accept X-Platos-Entity-Id header.
+    // entity=<slug> selects which registered entity is connecting. ?source=
+    // is the older platools spelling and is still accepted, as are the
+    // X-Platos-Entity-Id / X-Platos-Source headers. There is deliberately NO
+    // default: guessing an entity would bind an unidentified client to
+    // whichever entity happened to be named that, so a missing id is a
+    // rejection with its own distinct reason (see below).
     const entityIdFromUrl = (
       parsed.searchParams.get("entity") ||
       parsed.searchParams.get("source") ||
@@ -199,13 +202,32 @@ export class ToolSyncWsService implements OnApplicationBootstrap, OnApplicationS
       return;
     }
 
+    // A connection with no entity id can never match a credential, and it is
+    // NOT a secret problem — reporting it as one sends operators hunting a
+    // hash mismatch that does not exist. Reject it on its own terms, before
+    // the lookup, so the client is told the one thing it can act on.
+    if (!entityIdFromUrl) {
+      this.logger.warn(
+        "reject: no entity id supplied (pass ?entity=<slug>, ?source=<slug>, or X-Platos-Entity-Id) — secret was not checked",
+      );
+      ws.off("message", earlyListener);
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          error:
+            "Missing entity id. Connect with ?entity=<slug> (or the X-Platos-Entity-Id header). Your service secret was not the problem.",
+        }),
+      );
+      ws.close(1008, "missing entity id");
+      return;
+    }
+
     // Resolve the clean Environment + Entity first, then verify the
     // Environment-owned ENTITY_SECRET credential by hash. Raw secret material
     // is never persisted on Entity.
     let entityRow: any = null;
     let environmentId = "";
     try {
-      if (!entityIdFromUrl) throw new Error("entity id is required");
       const digest = createHash("sha256").update(secret).digest("hex");
       const credentials = await this.prisma.credential.findMany({
         where: {
