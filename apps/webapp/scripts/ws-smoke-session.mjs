@@ -28,7 +28,10 @@ const signingInput = `${b64({ alg: "HS256", typ: "JWT" })}.${b64(payload)}`;
 const sig = crypto.createHmac("sha256", secret).update(signingInput).digest("base64url");
 const token = `${signingInput}.${sig}`;
 
-const socket = io("wss://test.platos.dev/agent", {
+// Host comes from PLATOS_WS_URL so a self-hoster can point this at their own
+// deployment. Defaults to localhost rather than a Winsen box (WIN-155).
+const WS_URL = process.env.PLATOS_WS_URL ?? "ws://localhost:3100/agent";
+const socket = io(WS_URL, {
   path: "/agent-io/socket.io",
   transports: ["websocket"],
   auth: { token },

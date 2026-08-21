@@ -12,7 +12,10 @@ const now = Math.floor(Date.now() / 1000);
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const si = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ ...scope, iss: "platos-platform", iat: now, exp: now + 3600 })}`;
 const token = `${si}.${crypto.createHmac("sha256", secret).update(si).digest("base64url")}`;
-const socket = io("wss://test.platos.dev/agent", { path: "/agent-io/socket.io", transports: ["websocket"], auth: { token } });
+// Host comes from PLATOS_WS_URL so a self-hoster can point this at their own
+// deployment. Defaults to localhost rather than a Winsen box (WIN-155).
+const WS_URL = process.env.PLATOS_WS_URL ?? "ws://localhost:3100/agent";
+const socket = io(WS_URL, { path: "/agent-io/socket.io", transports: ["websocket"], auth: { token } });
 let text = "";
 const bail = (m, c = 1) => { console.log(`\n[verify] ${m}`); socket.close(); process.exit(c); };
 setTimeout(() => bail("TIMEOUT"), 180_000);
