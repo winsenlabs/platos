@@ -94,20 +94,28 @@ export class ScopedEnvService {
 
     let credential: { id: string; provider: string | null } | null;
     try {
+      // Match on provider in the QUERY, not after the fact. An Environment can
+      // legitimately hold several credentials under one name — a provider-owned
+      // SERVICE_CREDENTIAL for `OPENAI_API_KEY` and an operator's environment
+      // variable of the same name both exist on a migrated deployment. Fetching
+      // "any credential with this name" and then throwing on a provider
+      // mismatch made an unrelated same-named variable poison provider
+      // resolution: the runtime reported "Provider configuration is
+      // unavailable" for a provider that was correctly configured.
       credential = await this.prisma.credential.findFirst({
         where: {
           environmentId: authorization.environmentId,
           name,
+          provider,
         },
         select: { id: true, provider: true },
       });
     } catch {
       throw new ProviderRuntimeError("provider_configuration_unavailable");
     }
+    // Absent provider configuration is not an error — callers treat undefined
+    // as "not configured" and fall back to the provider's default.
     if (!credential) return undefined;
-    if (credential.provider !== provider) {
-      throw new ProviderRuntimeError("provider_configuration_unavailable");
-    }
 
     try {
       const material = await this.secretStore.readForRuntime({
