@@ -219,6 +219,81 @@ describe("ScopedEnvService Platos credential resolution", () => {
     ).rejects.toMatchObject({ code: "provider_configuration_unavailable" });
   });
 
+  it("ignores a same-named credential that belongs to no provider", async () => {
+    // A migrated deployment holds BOTH a provider-owned SERVICE_CREDENTIAL for
+    // OPENAI_API_KEY and an operator environment variable of the same name
+    // (provider = null). Selecting "any credential with this name" and then
+    // throwing on a provider mismatch let the unrelated variable poison
+    // provider resolution — test.platos reported "Provider configuration is
+    // unavailable" for a provider that was correctly configured.
+    const rows = [
+      { id: "cred-envvar", name: "OPENAI_API_KEY", provider: null },
+      { id: "cred-provider", name: "OPENAI_API_KEY", provider: "openai" },
+    ];
+    const prisma = {
+      environment: {
+        findUnique: vi.fn(async () => ({
+          id: scope.environmentId,
+          archivedAt: null,
+          project: {
+            id: scope.projectId,
+            archivedAt: null,
+            organizationId: scope.organizationId,
+            organization: { archivedAt: null },
+          },
+        })),
+      },
+      credential: {
+        // Honour the provider filter the way Postgres would, and return the
+        // null-provider row first when no filter is applied — the ordering
+        // that produced the original failure.
+        findFirst: vi.fn(async (query: any) =>
+          rows.find(
+            (r) =>
+              r.name === query.where.name &&
+              (query.where.provider === undefined || r.provider === query.where.provider),
+          ) ?? null,
+        ),
+      },
+    };
+    const readForRuntime = vi.fn(async () => new SecretMaterial("sk-configured"));
+    const service = new ScopedEnvService(prisma as any, { readForRuntime } as any);
+
+    await expect(
+      service.getProviderConfiguration(scope, "OPENAI_API_KEY", "openai"),
+    ).resolves.toBe("sk-configured");
+    expect(prisma.credential.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ provider: "openai" }) }),
+    );
+  });
+
+  it("treats a name owned by no provider as unconfigured, not as an error", async () => {
+    const prisma = {
+      environment: {
+        findUnique: vi.fn(async () => ({
+          id: scope.environmentId,
+          archivedAt: null,
+          project: {
+            id: scope.projectId,
+            archivedAt: null,
+            organizationId: scope.organizationId,
+            organization: { archivedAt: null },
+          },
+        })),
+      },
+      credential: { findFirst: vi.fn(async () => null) },
+    };
+    const readForRuntime = vi.fn();
+    const service = new ScopedEnvService(prisma as any, { readForRuntime } as any);
+
+    // OPENAI_BASE_URL is genuinely absent on most deployments; callers fall
+    // back to the provider default, so this must not throw.
+    await expect(
+      service.getProviderConfiguration(scope, "OPENAI_BASE_URL", "openai"),
+    ).resolves.toBeUndefined();
+    expect(readForRuntime).not.toHaveBeenCalled();
+  });
+
   it("uses metadata-only same-provider readiness without decrypting", async () => {
     const { service, readForRuntime, prisma } = makeHarness();
 

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import {
   PROVIDER_KEY_SAFE_SELECT,
   PlatosSecretStore,
@@ -27,10 +27,40 @@ export type ScopeTuple = Pick<
  */
 @Injectable()
 export class ScopedEnvService {
+  private readonly logger = new Logger(ScopedEnvService.name);
+
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: PrismaClient,
     @Inject(PLATOS_SECRET_STORE_TOKEN) private readonly secretStore: PlatosSecretStore,
   ) {}
+
+  /**
+   * Raise a provider runtime error with the reason on the record.
+   *
+   * "Provider configuration is unavailable for this environment." is returned
+   * to callers deliberately — it must not leak credential, database or crypto
+   * detail. But it is raised from six different places, and with none of them
+   * logged an operator cannot tell a missing ProviderKey from a failed
+   * authorize from a decrypt error. The safe message still goes to the client;
+   * the reason goes to the server log.
+   *
+   * Never pass secret material, only identifiers already visible in config.
+   */
+  private failProvider(
+    code: "provider_configuration_unavailable" | "provider_credential_unavailable",
+    reason: string,
+    context: { provider?: string; name?: string; environmentId?: string },
+  ): never {
+    const where = [
+      context.provider ? `provider=${context.provider}` : null,
+      context.name ? `name=${context.name}` : null,
+      context.environmentId ? `env=${context.environmentId}` : null,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    this.logger.warn(`${code}: ${reason} (${where})`);
+    throw new ProviderRuntimeError(code);
+  }
 
   /** Resolve one same-Environment credential by its bare reference name. */
   async get(scope: ScopeTuple, name: string): Promise<string | undefined> {
@@ -88,26 +118,42 @@ export class ScopedEnvService {
     let authorization: EnvironmentRuntimeAuthorization;
     try {
       authorization = await this.authorize(scope);
-    } catch {
-      throw new ProviderRuntimeError("provider_configuration_unavailable");
+    } catch (err: any) {
+      this.failProvider(
+        "provider_configuration_unavailable",
+        `environment authorization failed while reading configuration (${err?.message ?? err})`,
+        { provider, name, environmentId: scope.environmentId },
+      );
     }
 
     let credential: { id: string; provider: string | null } | null;
     try {
+      // Match on provider in the QUERY, not after the fact. An Environment can
+      // legitimately hold several credentials under one name — a provider-owned
+      // SERVICE_CREDENTIAL for `OPENAI_API_KEY` and an operator's environment
+      // variable of the same name both exist on a migrated deployment. Fetching
+      // "any credential with this name" and then throwing on a provider
+      // mismatch made an unrelated same-named variable poison provider
+      // resolution: the runtime reported "Provider configuration is
+      // unavailable" for a provider that was correctly configured.
       credential = await this.prisma.credential.findFirst({
         where: {
           environmentId: authorization.environmentId,
           name,
+          provider,
         },
         select: { id: true, provider: true },
       });
-    } catch {
-      throw new ProviderRuntimeError("provider_configuration_unavailable");
+    } catch (err: any) {
+      this.failProvider(
+        "provider_configuration_unavailable",
+        `credential lookup failed (${err?.message ?? err})`,
+        { provider, name, environmentId: authorization.environmentId },
+      );
     }
+    // Absent provider configuration is not an error — callers treat undefined
+    // as "not configured" and fall back to the provider's default.
     if (!credential) return undefined;
-    if (credential.provider !== provider) {
-      throw new ProviderRuntimeError("provider_configuration_unavailable");
-    }
 
     try {
       const material = await this.secretStore.readForRuntime({
@@ -116,8 +162,12 @@ export class ScopedEnvService {
         provider,
       });
       return material.reveal();
-    } catch {
-      throw new ProviderRuntimeError("provider_configuration_unavailable");
+    } catch (err: any) {
+      this.failProvider(
+        "provider_configuration_unavailable",
+        `credential ${credential.id} found but could not be decrypted (${err?.message ?? err})`,
+        { provider, name, environmentId: authorization.environmentId },
+      );
     }
   }
 
@@ -203,8 +253,12 @@ export class ScopedEnvService {
     let authorization: EnvironmentRuntimeAuthorization;
     try {
       authorization = await this.authorize(scope);
-    } catch {
-      throw new ProviderRuntimeError("provider_configuration_unavailable");
+    } catch (err: any) {
+      this.failProvider(
+        "provider_configuration_unavailable",
+        `environment authorization failed (${err?.message ?? err}) — the scope's organization/project may not own this environment`,
+        { provider, environmentId: scope.environmentId },
+      );
     }
 
     let key: { id: string; credentialId: string } | null;
@@ -218,7 +272,13 @@ export class ScopedEnvService {
           },
           select: PROVIDER_KEY_SAFE_SELECT,
         });
-        if (!key) throw new ProviderRuntimeError("provider_configuration_unavailable");
+        if (!key) {
+          this.failProvider(
+            "provider_configuration_unavailable",
+            `no ProviderKey with the pinned id ${preferredKeyId} for this provider in this environment`,
+            { provider, environmentId: authorization.environmentId },
+          );
+        }
       } else {
         key = await this.prisma.providerKey.findFirst({
           where: {
@@ -235,11 +295,23 @@ export class ScopedEnvService {
         : new ProviderRuntimeError("provider_configuration_unavailable");
     }
 
-    if (!key) return undefined;
+    if (!key) {
+      // Not an error: callers treat undefined as "no key configured" and
+      // resolveModel reports it. Logged because on a migrated deployment this
+      // is the difference between "BYOK was never registered" and a bug.
+      this.logger.warn(
+        `no default ProviderKey for provider=${provider} env=${authorization.environmentId} — register one (BYOK) or pin providerKeyId on the model route`,
+      );
+      return undefined;
+    }
     try {
       return await this.readProviderKey(authorization, key.id, key.credentialId, provider);
-    } catch {
-      throw new ProviderRuntimeError("provider_credential_unavailable");
+    } catch (err: any) {
+      this.failProvider(
+        "provider_credential_unavailable",
+        `ProviderKey ${key.id} resolved but its credential could not be read (${err?.message ?? err})`,
+        { provider, environmentId: authorization.environmentId },
+      );
     }
   }
 
