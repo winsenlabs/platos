@@ -113,7 +113,6 @@ check(
 for (const path of [
   ...sourceFiles("apps/agent/src"),
   ...sourceFiles("apps/webapp/app"),
-  "apps/webapp/seed-ai-spans.mts",
 ]) {
   if (!/\.(?:ts|tsx|mts)$/.test(path) || /\.(?:test|spec)\./.test(path)) continue;
   const source = read(path);
