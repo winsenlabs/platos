@@ -1,16 +1,11 @@
 /** @type {import('@remix-run/dev').AppConfig} */
-const productionIgnoredRouteFiles = (source = process.env) =>
-  source.PLATOS_PRODUCTION_BUILD === "true"
-    ? ["**/*.agent-connect.mint-token.ts"]
-    : [];
-
 module.exports = {
   dev: {
     port: 8002,
   },
   tailwind: true,
   cacheDirectory: "./node_modules/.cache/remix",
-  ignoredRouteFiles: ["**/.*", ...productionIgnoredRouteFiles()],
+  ignoredRouteFiles: ["**/.*"],
   serverModuleFormat: "cjs",
   serverDependenciesToBundle: [
     /^remix-utils.*/,

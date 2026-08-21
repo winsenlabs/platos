@@ -1,53 +1,6 @@
-import { type LoaderFunctionArgs, redirect } from "@remix-run/server-runtime";
-import { prisma } from "~/db.server";
-import { SelectBestEnvironmentPresenter } from "~/presenters/SelectBestEnvironmentPresenter.server";
-import { logger } from "~/services/logger.server";
-import { requireUser } from "~/services/session.server";
-import {
-  newOrganizationPath,
-  newProjectPath,
-  OrganizationParamsSchema,
-  v3ProjectPath,
-} from "~/utils/pathBuilder";
-
-export const loader = async ({ request, params }: LoaderFunctionArgs) => {
-  const user = await requireUser(request);
-  const { organizationSlug } = OrganizationParamsSchema.parse(params);
-
-  const org = await prisma.organization.findFirst({
-    where: { slug: organizationSlug, members: { some: { userId: user.id } }, deletedAt: null },
-    orderBy: { createdAt: "desc" },
-    select: {
-      projects: {
-        where: { deletedAt: null, version: "V3" },
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          updatedAt: true,
-        },
-        orderBy: { name: "asc" },
-      },
-    },
-  });
-
-  if (!org) {
-    throw redirect(newOrganizationPath());
-  }
-
-  const selector = new SelectBestEnvironmentPresenter();
-  const bestProject = await selector.selectBestProjectFromProjects({
-    user,
-    projectSlug: undefined,
-    projects: org.projects,
-  });
-  if (!bestProject) {
-    logger.info("Not Found: project", {
-      request,
-      project: bestProject,
-    });
-    throw redirect(newProjectPath({ slug: organizationSlug }));
-  }
-
-  return redirect(v3ProjectPath({ slug: organizationSlug }, bestProject));
-};
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { Link, useLoaderData } from "@remix-run/react";
+import { requireOperator } from "~/services/auth.server";
+import { database } from "~/services/database.server";
+export async function loader({request,params}:LoaderFunctionArgs){const operator=await requireOperator(request);const organization=await database.organization.findFirst({where:{slug:params.organizationSlug,archivedAt:null,memberships:{some:{userId:operator.userId,deactivatedAt:null}}},select:{name:true,slug:true,projects:{where:{archivedAt:null},select:{name:true,slug:true,environments:{where:{archivedAt:null},select:{name:true,slug:true}}}}}});if(!organization)throw new Response("Not found",{status:404});return json({organization});}
+export default function Org(){const {organization}=useLoaderData<typeof loader>();return <main className="min-h-screen bg-background-dimmed p-8 text-text-bright"><div className="mx-auto max-w-5xl"><div className="flex justify-between"><h1 className="text-2xl font-semibold">{organization.name}</h1><Link className="rounded bg-indigo-500 px-4 py-2 text-sm" to="projects/new">New project</Link></div><div className="mt-6 grid gap-3">{organization.projects.map(p=><div className="rounded-lg border border-grid-bright bg-background-bright p-4" key={p.slug}><h2 className="font-medium">{p.name}</h2><div className="mt-3 flex gap-2">{p.environments.map(e=><Link className="rounded border border-grid-bright px-3 py-1 text-sm" key={e.slug} to={`projects/${p.slug}/env/${e.slug}/agents`}>{e.name}</Link>)}</div></div>)}</div></div></main>;}

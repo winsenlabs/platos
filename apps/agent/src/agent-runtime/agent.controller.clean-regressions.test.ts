@@ -47,6 +47,7 @@ describe("AgentController clean scope regressions", () => {
         entityPk: "entity-pk",
         callbackUrl: "https://entity.test/tools",
         enabled: true,
+        dispatchable: true,
       },
       {
         toolId: "tool-b",
@@ -58,6 +59,7 @@ describe("AgentController clean scope regressions", () => {
         entityPk: "entity-pk",
         callbackUrl: "https://entity.test/tools",
         enabled: false,
+        dispatchable: false,
       },
     ]);
     controller.agentService.prisma.toolHealth.findMany.mockResolvedValue([
@@ -82,11 +84,13 @@ describe("AgentController clean scope regressions", () => {
     expect(result.rows[0]).toMatchObject({
       toolId: "tool-a",
       category: "uncategorized",
+      dispatchable: true,
       health: { lastStatus: "healthy", totalCalls: 9, avgLatencyMs: 12 },
     });
     expect(result.rows[1]).toMatchObject({
       toolId: "tool-b",
       category: "support",
+      dispatchable: false,
       health: {
         lastStatus: null,
         failCount: 0,

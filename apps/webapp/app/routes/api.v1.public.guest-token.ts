@@ -1,0 +1,3 @@
+import { json,type ActionFunctionArgs } from "@remix-run/node";
+import { publicAgentResponse } from "~/services/platosAgent.server";
+export async function action({request}:ActionFunctionArgs){const form=await request.formData();const agentId=String(form.get("agentId")??"");if(!/^[A-Za-z0-9_-]{1,80}$/.test(agentId))return json({error:"Not found"},{status:404});const response=await publicAgentResponse("/api/v1/public/guest-token",{body:{agentId},forwardedFor:request.headers.get("X-Forwarded-For")??"unknown"});const payload=await response.json().catch(()=>({error:"Guest session unavailable"}));return json(payload,{status:response.status});}

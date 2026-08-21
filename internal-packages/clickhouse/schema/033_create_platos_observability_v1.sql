@@ -58,8 +58,8 @@ CREATE TABLE IF NOT EXISTS platos_observability.turns_v1
   -- after 30 days, and are cleared independently of everything else.
   end_user_id String DEFAULT '' CODEC(ZSTD(1)),
   subject_key_hash String DEFAULT '' CODEC(ZSTD(1)),
-  user_display_name Nullable(String) TTL toDateTime(completed_at) + INTERVAL 30 DAY CODEC(ZSTD(1)),
-  user_email Nullable(String) TTL toDateTime(completed_at) + INTERVAL 30 DAY CODEC(ZSTD(1)),
+  user_display_name Nullable(String) CODEC(ZSTD(1)) TTL toDateTime(completed_at) + INTERVAL 30 DAY,
+  user_email Nullable(String) CODEC(ZSTD(1)) TTL toDateTime(completed_at) + INTERVAL 30 DAY,
 
   trace_id String DEFAULT '' CODEC(ZSTD(1)),
   root_span_id String DEFAULT '' CODEC(ZSTD(1)),

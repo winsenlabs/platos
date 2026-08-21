@@ -344,33 +344,6 @@ importers:
       '@heroicons/react':
         specifier: ^2.0.12
         version: 2.0.13(react@18.3.1)
-      '@internal/cache':
-        specifier: workspace:*
-        version: link:../../internal-packages/cache
-      '@internal/compute':
-        specifier: workspace:*
-        version: link:../../internal-packages/compute
-      '@internal/docs':
-        specifier: workspace:*
-        version: link:../../internal-packages/docs
-      '@internal/redis':
-        specifier: workspace:*
-        version: link:../../internal-packages/redis
-      '@internal/run-engine':
-        specifier: workspace:*
-        version: link:../../internal-packages/run-engine
-      '@internal/schedule-engine':
-        specifier: workspace:*
-        version: link:../../internal-packages/schedule-engine
-      '@internal/tracing':
-        specifier: workspace:*
-        version: link:../../internal-packages/tracing
-      '@internal/tsql':
-        specifier: workspace:*
-        version: link:../../internal-packages/tsql
-      '@internal/zod-worker':
-        specifier: workspace:*
-        version: link:../../internal-packages/zod-worker
       '@internationalized/date':
         specifier: ^3.5.1
         version: 3.5.5
@@ -440,24 +413,6 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: 1.36.0
         version: 1.36.0
-      '@platos/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@platos/database':
-        specifier: workspace:*
-        version: link:../../internal-packages/database
-      '@platos/otlp-importer':
-        specifier: workspace:*
-        version: link:../../internal-packages/otlp-importer
-      '@platos/react-hooks':
-        specifier: workspace:*
-        version: link:../../packages/react-hooks
-      '@platos/redis-worker':
-        specifier: workspace:*
-        version: link:../../packages/redis-worker
-      '@platos/sdk':
-        specifier: workspace:*
-        version: link:../../packages/trigger-sdk
       '@platos/tenancy-database':
         specifier: workspace:*
         version: link:../../internal-packages/tenancy-database
@@ -635,9 +590,6 @@ importers:
       effect:
         specifier: ^3.11.7
         version: 3.18.4
-      emails:
-        specifier: workspace:*
-        version: link:../../internal-packages/emails
       eventsource:
         specifier: ^4.0.0
         version: 4.0.0
@@ -888,15 +840,6 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0(zod@3.25.76)
     devDependencies:
-      '@internal/clickhouse':
-        specifier: workspace:*
-        version: link:../../internal-packages/clickhouse
-      '@internal/replication':
-        specifier: workspace:*
-        version: link:../../internal-packages/replication
-      '@internal/testcontainers':
-        specifier: workspace:*
-        version: link:../../internal-packages/testcontainers
       '@remix-run/dev':
         specifier: 2.1.0
         version: 2.1.0(@remix-run/serve@2.1.0(typescript@5.5.4))(@types/node@20.14.14)(bufferutil@4.0.9)(encoding@0.1.13)(lightningcss@1.29.2)(terser@5.44.1)(typescript@5.5.4)

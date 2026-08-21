@@ -646,11 +646,19 @@ export class AuthService {
     this.originCacheLoadedAt = 0;
   }
 
-  async getEntity(organizationId: string, projectId: string, entityId: string): Promise<any> {
+  private static entityIdentifierWhere(identifier: string):
+    | { id: string }
+    | { externalId: string } {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier)
+      ? { id: identifier }
+      : { externalId: identifier };
+  }
+
+  async getEntity(organizationId: string, projectId: string, identifier: string): Promise<any> {
     const entity = await this.prisma.entity.findFirst({
       where: {
         projectId,
-        externalId: entityId,
+        ...AuthService.entityIdentifierWhere(identifier),
         project: { organizationId },
       },
       select: AuthService.ENTITY_SAFE_SELECT,
@@ -668,10 +676,14 @@ export class AuthService {
   }
 
   /** Delete an entity, its credentials, and its tool exposure atomically. */
-  async deleteEntity(organizationId: string, projectId: string, entityId: string): Promise<boolean> {
+  async deleteEntity(organizationId: string, projectId: string, identifier: string): Promise<boolean> {
     const entity = await this.prisma.entity.findFirst({
-      where: { projectId, externalId: entityId, project: { organizationId } },
-      select: { id: true },
+      where: {
+        projectId,
+        ...AuthService.entityIdentifierWhere(identifier),
+        project: { organizationId },
+      },
+      select: { id: true, externalId: true },
     });
     if (!entity) return false;
     if (!this.toolRegistry) throw new Error("tool_registry_unavailable");
@@ -682,7 +694,7 @@ export class AuthService {
       await tx.credential.updateMany({
         where: {
           kind: CredentialKind.ENTITY_SECRET,
-          name: entityId,
+          name: entity.externalId,
           revokedAt: null,
           environment: { projectId, project: { organizationId } },
         },
@@ -701,18 +713,18 @@ export class AuthService {
     try {
       const applied = eviction.apply();
       this.logger.log(
-        `deleteEntity ${entityId}: removed ${persisted.mappingsRemoved} tool mappings, evicted ${applied.bucketsEvicted} cache buckets`,
+        `deleteEntity ${entity.externalId}: removed ${persisted.mappingsRemoved} tool mappings, evicted ${applied.bucketsEvicted} cache buckets`,
       );
     } catch (evictionError) {
       this.logger.error(
-        `deleteEntity ${entityId}: post-commit registry eviction failed; rebuilding from canonical database`,
+        `deleteEntity ${entity.externalId}: post-commit registry eviction failed; rebuilding from canonical database`,
         evictionError instanceof Error ? evictionError.stack : String(evictionError),
       );
       try {
         await this.toolRegistry.rebuildIndex();
       } catch (rebuildError) {
         this.logger.error(
-          `deleteEntity ${entityId}: canonical registry rebuild failed`,
+          `deleteEntity ${entity.externalId}: canonical registry rebuild failed`,
           rebuildError instanceof Error ? rebuildError.stack : String(rebuildError),
         );
         throw new AggregateError(
@@ -721,7 +733,7 @@ export class AuthService {
         );
       }
       this.logger.warn(
-        `deleteEntity ${entityId}: registry recovered from canonical database after eviction failure`,
+        `deleteEntity ${entity.externalId}: registry recovered from canonical database after eviction failure`,
       );
     }
     return true;
@@ -751,7 +763,7 @@ export class AuthService {
   async updateEntity(
     organizationId: string,
     projectId: string,
-    entityId: string,
+    identifier: string,
     patch: {
       displayName?: string;
       mcpUrls?: string[];
@@ -775,10 +787,14 @@ export class AuthService {
       data["allowedOrigins"] = normalized;
     }
     if (Object.keys(data).length === 0) {
-      return this.getEntity(organizationId, projectId, entityId);
+      return this.getEntity(organizationId, projectId, identifier);
     }
     const existing = await this.prisma.entity.findFirst({
-      where: { projectId, externalId: entityId, project: { organizationId } },
+      where: {
+        projectId,
+        ...AuthService.entityIdentifierWhere(identifier),
+        project: { organizationId },
+      },
       select: { id: true },
     });
     if (!existing) return null;
@@ -942,7 +958,7 @@ export class AuthService {
   async regenerateServiceSecret(
     organizationId: string,
     projectId: string,
-    entityId: string,
+    identifier: string,
     operatorScope?: AccessKeyOperatorScope,
   ): Promise<{ organizationId: string; projectId: string; entityId: string; serviceSecret: string } | null> {
     if (!this.secretStore || !operatorScope) {
@@ -951,11 +967,12 @@ export class AuthService {
     const entity = await this.prisma.entity.findFirst({
       where: {
         projectId,
-        externalId: entityId,
+        ...AuthService.entityIdentifierWhere(identifier),
         connectionKind: "wire",
         project: { organizationId },
       },
       select: {
+        externalId: true,
         project: {
           select: {
             environments: {
@@ -987,7 +1004,7 @@ export class AuthService {
             environmentId_kind_name: {
               environmentId: environment.id,
               kind: CredentialKind.ENTITY_SECRET,
-              name: entityId,
+              name: entity.externalId,
             },
           },
           select: { id: true, revokedAt: true, activeSecretVersionId: true },
@@ -1004,7 +1021,7 @@ export class AuthService {
           const created = await this.secretStore!.createInTransaction(tx, {
             authorization,
             kind: CredentialKind.ENTITY_SECRET,
-            name: entityId,
+            name: entity.externalId,
             plaintext: newSecret,
           });
           credentialId = created.id;
@@ -1021,7 +1038,12 @@ export class AuthService {
         });
       }
     });
-    return { organizationId, projectId, entityId, serviceSecret: newSecret };
+    return {
+      organizationId,
+      projectId,
+      entityId: entity.externalId,
+      serviceSecret: newSecret,
+    };
   }
 
   /** Resolve a wire entity secret only after canonical Environment authorization. */

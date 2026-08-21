@@ -20,9 +20,8 @@ mode: "wide"
 | `STREAM_ORIGIN`                                  | No       | `APP_ORIGIN`          | Realtime stream origin URL.                                                                                        |
 | `ELECTRIC_ORIGIN`                                | No       | http://localhost:3060 | Electric origin URL.                                                                                               |
 | **Postgres**                                     |          |                       |                                                                                                                    |
-| `DATABASE_URL`                                   | Yes      | —                     | Legacy dashboard PostgreSQL connection string until the M4 resource cutover.                                       |
-| `DIRECT_URL`                                     | Yes      | —                     | Direct connection to the same legacy dashboard database as `DATABASE_URL`.                                         |
-| `PLATOS_CONTROL_DATABASE_URL`                    | Yes      | —                     | Distinct clean control database used for OperatorSession, canonical auth/MFA, and credentials. Never point it at the legacy dashboard database. |
+| `DATABASE_URL`                                   | Yes      | —                     | Canonical clean PostgreSQL connection string shared with the agent.                                                |
+| `DIRECT_URL`                                     | Yes      | —                     | Direct connection to the same canonical clean database as `DATABASE_URL`.                                         |
 | `DATABASE_CONNECTION_LIMIT`                      | No       | 10                    | Max DB connections.                                                                                                |
 | `DATABASE_POOL_TIMEOUT`                          | No       | 60                    | DB pool timeout (s).                                                                                               |
 | `DATABASE_CONNECTION_TIMEOUT`                    | No       | 20                    | DB connect timeout (s).                                                                                            |

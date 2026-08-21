@@ -1,254 +1,97 @@
-/**
- * `/embed/:agentId` — iframe-embedded chat widget for public-guest agents.
- *
- * This route is the iframe target of the `<platos-agent>` web
- * component (@platosdev/embed). It:
- *   1. Fetches the agent's public metadata (name, theme hints) —
- *      404s if the agent isn't marked public-guest so attackers can't
- *      enumerate private agent ids.
- *   2. Client-side calls `/api/v1/public/guest-token` to mint a
- *      session token.
- *   3. Opens a Socket.IO connection with the guest token.
- *   4. Renders a minimal chat UI — no dashboard chrome.
- *
- * EOBD.89 + EOBD.90.
- */
+import { json, type LoaderFunctionArgs } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
+import { FormEvent, useRef, useState } from "react";
 
-import { useEffect, useRef, useState } from "react";
-import { typedjson, useTypedLoaderData } from "remix-typedjson";
-import { type LoaderFunctionArgs } from "@remix-run/server-runtime";
-import { prisma } from "~/db.server";
-
-export async function loader({ params, request }: LoaderFunctionArgs) {
-  const agentId = params.agentId;
-  if (!agentId || !/^[A-Za-z0-9_\-]{1,64}$/.test(agentId)) {
-    throw new Response(undefined, { status: 404 });
-  }
-
-  const agent = await prisma.platosAgent.findUnique({
-    where: { id: agentId },
-    select: { id: true, name: true, visibility: true, isActive: true },
-  });
-  if (!agent || agent.visibility !== "public-guest" || !agent.isActive) {
-    // 404 instead of 403 so private agent ids can't be enumerated.
-    throw new Response(undefined, { status: 404 });
-  }
-
-  const url = new URL(request.url);
-  const theme = url.searchParams.get("theme") === "dark" ? "dark" : "light";
-  // Public-facing URL for the agent API — browser calls this directly.
-  // Falls back to process.env since the embed route is public and
-  // doesn't touch the scoped env surface.
-  const agentApiUrl =
-    process.env.PLATOS_AGENT_PUBLIC_API_URL ||
-    process.env.PLATOS_AGENT_API_URL ||
-    "http://localhost:3100";
-
-  return typedjson({
-    agentId: agent.id,
-    agentName: agent.name,
-    theme,
-    agentApiUrl,
-  });
+export async function loader({ params }: LoaderFunctionArgs) {
+  if (!params.agentId || !/^[A-Za-z0-9_-]{1,80}$/.test(params.agentId)) throw new Response("Not found", { status: 404 });
+  return json({ agentId: params.agentId });
 }
 
-export default function EmbedAgent() {
-  const { agentId, agentName, theme, agentApiUrl } =
-    useTypedLoaderData<typeof loader>();
-  const [token, setToken] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Array<{ role: "user" | "bot"; text: string }>>(
-    [],
-  );
-  const [input, setInput] = useState("");
+type ChatMessage = { role: "user" | "agent" | "error"; content: string };
+
+function tokenText(type: string, value: unknown): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return typeof value === "string" && type === "token" ? value : "";
+  const data = value as Record<string, unknown>;
+  for (const key of ["token", "delta", "text"]) if (typeof data[key] === "string" && ["token", "delta", "text"].includes(type)) return data[key] as string;
+  return "";
+}
+
+export default function Embed() {
+  const { agentId } = useLoaderData<typeof loader>();
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  // Mint guest token on first mount.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`${agentApiUrl}/api/v1/public/guest-token`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agentId }),
-        });
-        if (!res.ok) {
-          const body = await res.text().catch(() => "");
-          throw new Error(`guest-token mint failed: ${res.status} ${body}`);
-        }
-        const data = (await res.json()) as { token: string };
-        if (!cancelled) setToken(data.token);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.message || String(err));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [agentApiUrl, agentId]);
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages]);
-
-  // Simple REST streaming via SSE — avoids pulling the whole Socket.IO
-  // client into the embed bundle. Low-latency enough for a chat.
-  async function send() {
-    if (!input.trim() || !token) return;
-    const userText = input;
-    setInput("");
-    setMessages((prev) => [...prev, { role: "user", text: userText }]);
+  async function send(event: FormEvent) {
+    event.preventDefault();
+    const userMessage = message.trim();
+    if (!userMessage || busy) return;
     setBusy(true);
+    setMessage("");
+    setMessages((current) => [...current, { role: "user", content: userMessage }, { role: "agent", content: "" }]);
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      const res = await fetch(
-        `${agentApiUrl}/api/v1/agent/threads/${encodeURIComponent(`guest-${agentId}`)}/stream`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Platos-Session-Token": token,
-          },
-          body: JSON.stringify({ message: userText, agentId }),
+      const tokenResponse = await fetch("/api/v1/public/guest-token", { method: "POST", body: new URLSearchParams({ agentId }) });
+      if (!tokenResponse.ok) throw new Error("This Agent is not available for public guest access");
+      const tokenPayload = await tokenResponse.json() as Record<string, unknown>;
+      const token = String(tokenPayload.token ?? tokenPayload.sessionToken ?? "");
+      if (!token) throw new Error("Guest session was not issued");
+
+      const response = await fetch(`/api/v1/public/agents/${encodeURIComponent(agentId)}/chat/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Platos-Session-Token": token,
         },
-      );
-      if (!res.ok || !res.body) throw new Error("stream failed");
-      const reader = res.body.getReader();
+        body: JSON.stringify({ message: userMessage }),
+        signal: controller.signal,
+      });
+      if (!response.ok || !response.body) throw new Error("The Agent could not start this Turn");
+
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let botText = "";
-      setMessages((prev) => [...prev, { role: "bot", text: "" }]);
+      let answer = "";
       while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const frames = buffer.split("\n\n");
-        buffer = frames.pop() || "";
-        for (const frame of frames) {
-          const dataLine = frame.split("\n").find((l) => l.startsWith("data: "));
-          if (!dataLine) continue;
-          try {
-            const evt = JSON.parse(dataLine.slice(6)) as { type?: string; text?: string };
-            if (evt.type === "token" && typeof evt.text === "string") {
-              botText += evt.text;
-              setMessages((prev) => {
-                const out = [...prev];
-                out[out.length - 1] = { role: "bot", text: botText };
-                return out;
-              });
-            }
-          } catch {
-            /* non-JSON frames (heartbeats etc.) — ignore */
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        buffer += decoder.decode(chunk.value, { stream: true }).replace(/\r\n/g, "\n");
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() ?? "";
+        for (const block of blocks) {
+          let type = "message";
+          const dataLines: string[] = [];
+          for (const line of block.split("\n")) {
+            if (line.startsWith("event:")) type = line.slice(6).trim();
+            if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
           }
+          if (!dataLines.length) continue;
+          const raw = dataLines.join("\n");
+          let parsed: unknown = raw;
+          try { parsed = JSON.parse(raw); } catch { /* preserve verbatim event data */ }
+          if (type === "message" && parsed && typeof parsed === "object" && !Array.isArray(parsed) && typeof (parsed as Record<string, unknown>).type === "string") type = (parsed as Record<string, unknown>).type as string;
+          answer += tokenText(type, parsed);
         }
+        setMessages((current) => [...current.slice(0, -1), { role: "agent", content: answer }]);
       }
-    } catch (err: any) {
-      setError(err?.message || String(err));
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        setMessages((current) => [...current.slice(0, -1), { role: "error", content: error instanceof Error ? error.message : "Streaming failed" }]);
+      }
     } finally {
+      abortRef.current = null;
       setBusy(false);
     }
   }
 
-  const dark = theme === "dark";
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        background: dark ? "#0a0a0a" : "#ffffff",
-        color: dark ? "#e5e7eb" : "#111827",
-        fontFamily: "system-ui, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          padding: "12px 16px",
-          borderBottom: `1px solid ${dark ? "#1f2937" : "#e5e7eb"}`,
-          fontWeight: 600,
-        }}
-      >
-        {agentName}
-      </div>
-      <div ref={scrollRef} style={{ flex: 1, overflow: "auto", padding: 16 }}>
-        {messages.length === 0 && (
-          <div style={{ opacity: 0.6 }}>Say hi to get started.</div>
-        )}
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              marginBottom: 12,
-              display: "flex",
-              justifyContent: m.role === "user" ? "flex-end" : "flex-start",
-            }}
-          >
-            <div
-              style={{
-                maxWidth: "80%",
-                padding: "8px 12px",
-                borderRadius: 12,
-                background:
-                  m.role === "user"
-                    ? dark
-                      ? "#4f46e5"
-                      : "#6366f1"
-                    : dark
-                    ? "#1f2937"
-                    : "#f3f4f6",
-                color: m.role === "user" ? "#fff" : dark ? "#e5e7eb" : "#111827",
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {m.text || (busy && i === messages.length - 1 ? "…" : "")}
-            </div>
-          </div>
-        ))}
-        {error && (
-          <div style={{ color: "#ef4444", fontSize: 12, marginTop: 8 }}>Error: {error}</div>
-        )}
-      </div>
-      <div style={{ padding: 12, borderTop: `1px solid ${dark ? "#1f2937" : "#e5e7eb"}` }}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void send();
-          }}
-          style={{ display: "flex", gap: 8 }}
-        >
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={token ? "Type a message…" : "Connecting…"}
-            disabled={!token || busy}
-            style={{
-              flex: 1,
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: `1px solid ${dark ? "#374151" : "#d1d5db"}`,
-              background: dark ? "#111827" : "#ffffff",
-              color: dark ? "#e5e7eb" : "#111827",
-            }}
-          />
-          <button
-            type="submit"
-            disabled={!token || busy || !input.trim()}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 8,
-              background: "#6366f1",
-              color: "#fff",
-              border: 0,
-              fontWeight: 600,
-              cursor: "pointer",
-              opacity: !token || busy || !input.trim() ? 0.5 : 1,
-            }}
-          >
-            Send
-          </button>
-        </form>
-      </div>
-    </div>
+    <main className="flex min-h-screen flex-col bg-background-dimmed p-4 text-text-bright">
+      <header className="border-b border-grid-bright pb-3"><h1 className="font-semibold">Platos Agent</h1><p className="text-xs text-text-dimmed">Public guest session · no verified identity claims</p></header>
+      <div className="flex-1 space-y-3 overflow-y-auto py-6 text-sm">{messages.length ? messages.map((entry, index) => <div key={index} className={`rounded border p-3 ${entry.role === "user" ? "ml-8 border-indigo-500/40 bg-indigo-950/20" : entry.role === "error" ? "mr-8 border-red-500/40 bg-red-950/20 text-red-200" : "mr-8 border-grid-bright bg-background-bright"}`}>{entry.content || (busy ? "…" : "No response content")}</div>) : <p className="text-text-dimmed">Start a guest Turn. Visibility and dual IP/Agent rate limits are enforced before a token is issued.</p>}</div>
+      <form onSubmit={send} className="flex gap-2"><input value={message} onChange={(event) => setMessage(event.target.value)} className="flex-1 rounded border border-grid-bright bg-background-bright px-3 py-2" placeholder="Ask the agent…" /><button className="rounded bg-indigo-500 px-4 py-2" disabled={busy}>{busy ? "Streaming…" : "Send"}</button>{busy && <button type="button" onClick={() => abortRef.current?.abort()} className="rounded border border-grid-bright px-3 py-2">Stop</button>}</form>
+    </main>
   );
 }

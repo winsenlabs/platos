@@ -121,6 +121,14 @@ function makeHarness(options?: { credential?: any; updatedKey?: any; auditError?
         previousEnvVarName: "ANTHROPIC_API_KEY",
       };
     }),
+    createProviderCredentialAndKey: vi.fn(async () => ({
+      credential: safeCredential({ name: "ANTHROPIC_API_KEY" }),
+      key: safeKey(),
+    })),
+    rotateProviderCredentialAndKey: vi.fn(async () => ({
+      credential: safeCredential({ name: "ANTHROPIC_API_KEY" }),
+      key: safeKey({ updatedAt: new Date("2026-08-15T00:02:00.000Z") }),
+    })),
   };
   return {
     service: new ProviderKeyService(prisma as any, secretStore as any),
@@ -236,5 +244,46 @@ describe("ProviderKeyService clean-schema linking", () => {
     await expect(service.get(scope, "cross-scope-key")).rejects.toEqual(
       expect.objectContaining<Partial<ProviderKeyError>>({ code: "not_found" })
     );
+  });
+
+  it("routes fresh BYOK creation through PlatosSecretStore and returns metadata only", async () => {
+    const { service, secretStore } = makeHarness();
+    const sentinel = "SENTINEL_FRESH_PROVIDER_SECRET";
+
+    const result = await service.createWithSecret(scope, {
+      provider: "anthropic",
+      label: "Primary",
+      envVarName: "ANTHROPIC_API_KEY",
+      plaintext: sentinel,
+      isDefault: true,
+    });
+
+    expect(secretStore.createProviderCredentialAndKey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "anthropic",
+        name: "ANTHROPIC_API_KEY",
+        plaintext: sentinel,
+        label: "Primary",
+        isDefault: true,
+      }),
+    );
+    expect(result).toMatchObject({ id: "key-1", credentialId: "credential-1" });
+    expect(JSON.stringify(result)).not.toContain(sentinel);
+  });
+
+  it("routes BYOK rotation through PlatosSecretStore and returns metadata only", async () => {
+    const { service, secretStore } = makeHarness();
+    const sentinel = "SENTINEL_ROTATED_PROVIDER_SECRET";
+
+    const result = await service.rotateSecret(scope, "key-1", sentinel);
+
+    expect(secretStore.rotateProviderCredentialAndKey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyId: "key-1",
+        plaintext: sentinel,
+      }),
+    );
+    expect(result).toMatchObject({ id: "key-1", envVarName: "ANTHROPIC_API_KEY" });
+    expect(JSON.stringify(result)).not.toContain(sentinel);
   });
 });

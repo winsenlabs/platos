@@ -12,9 +12,8 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 
 | Variable | Default | Required | Purpose |
 |---|---|---|---|
-| `DATABASE_URL` | — | Yes | Service-primary Postgres connection string. During the dashboard M1–M4 split, the webapp must point this at the legacy dashboard database (for example `platos_legacy`), while the agent points it at the clean control database (for example `platos_control`). Never repoint the webapp value globally before M4. |
-| `DIRECT_URL` | `$DATABASE_URL` | No | Unpooled connection used for migrations against the same database as that service's `DATABASE_URL`. The webapp value remains legacy until M4. |
-| `PLATOS_CONTROL_DATABASE_URL` | — | **Yes (webapp)** | Webapp-only connection to the distinct clean control database used for `OperatorSession`, canonical authorization, MFA, and credential metadata/mutations. It must not name the legacy `DATABASE_URL` database. |
+| `DATABASE_URL` | — | Yes | Canonical clean Postgres connection string shared by the webapp and agent (for example `platos_control`). |
+| `DIRECT_URL` | `$DATABASE_URL` | No | Unpooled connection used for migrations against the same canonical database. |
 | `REDIS_URL` | — | Yes | Redis connection string. Both services. ACL-enabled URIs supported. |
 | `REDIS_TLS_DISABLED` | `false` | No | Set `true` to disable TLS for Redis (e.g. local Docker). |
 | `SESSION_SECRET` | — | Yes | Strong random value (minimum 16 chars; recommended: `openssl rand -base64 24`). Signs webapp cookies and platform bridge JWTs; the same value is supplied to the agent. Rotating invalidates all sessions. |
@@ -55,7 +54,7 @@ Every environment variable Platos reads. Sourced from `.env` for the webapp and 
 
 ## Provider keys
 
-These are **seed** keys for bootstrap / local dev. Platos does NOT have a separate encrypted provider-credential store. In production, add provider keys via the dashboard's **Side menu → Providers** page (route: `/agent-providers`). Each provider manifest declares `required_env`; clicking **[Link env]** redirects to `/environment-variables/new?key=<KEY>`, where the value is stored in trigger.dev's Environment Variables table, encrypted at rest, and scoped per `(org, project, env)`. See [quickstart.md §4](./quickstart.md#4-link-a-provider-api-key).
+These are optional bootstrap keys for local development. In production, create an encrypted Environment-owned Credential, then link its reference name on the dashboard **Providers** page. Provider metadata APIs never reveal stored key material, and scoped runtime resolution does not fall back to deployment environment variables.
 
 | Variable | Default | Required | Purpose |
 |---|---|---|---|
@@ -179,9 +178,8 @@ Platos stores multimodal attachments (images, audio, video, documents) in MinIO 
 The shortest env file that will boot a working Platos:
 
 ```bash
-DATABASE_URL=postgresql://platos:platos@localhost:5432/platos_legacy
-DIRECT_URL=postgresql://platos:platos@localhost:5432/platos_legacy
-PLATOS_CONTROL_DATABASE_URL=postgresql://platos:platos@localhost:5432/platos_control
+DATABASE_URL=postgresql://platos:platos@localhost:5432/platos_control
+DIRECT_URL=postgresql://platos:platos@localhost:5432/platos_control
 REDIS_URL=redis://localhost:6379
 SESSION_SECRET=$(openssl rand -base64 24 | tr -d '\n')
 MAGIC_LINK_SECRET=$(openssl rand -base64 24 | tr -d '\n')
@@ -193,6 +191,4 @@ PLATOS_INTERNAL_AUTH_TOKEN=$(openssl rand -hex 32)
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-The agent's `DATABASE_URL` must use the same `platos_control` database named by
-the webapp's `PLATOS_CONTROL_DATABASE_URL`. The two webapp database URLs remain
-distinct until the M4 dashboard resource cutover.
+The webapp and agent must use the same canonical `platos_control` database.

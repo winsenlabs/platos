@@ -25,6 +25,10 @@ function harness() {
   controller.authService = authService;
   controller.agentService = { prisma };
   controller.entityMcpDiscovery = undefined;
+  controller.toolSync = {
+    isEntityConnected: vi.fn().mockReturnValue(false),
+    getConnectedSources: vi.fn().mockReturnValue([]),
+  };
   return { controller, prisma, authService, req: { scope } as any };
 }
 
@@ -80,6 +84,28 @@ describe("AgentController clean Entity transport routes", () => {
       consentCopy: null,
       exists: false,
     });
+  });
+
+  it("accepts a canonical Entity UUID and returns the external identifier", async () => {
+    const h = harness();
+    const canonicalId = "11111111-1111-4111-8111-111111111111";
+    h.authService.getEntity.mockResolvedValue({ id: canonicalId, entityId: "support-core" });
+    h.prisma.entityMcpConfig.findUnique.mockResolvedValue(null);
+
+    const detail = await h.controller.getEntity(h.req, canonicalId);
+    const mcp = await h.controller.getEntityMcpConfig(h.req, canonicalId);
+
+    expect(h.authService.getEntity).toHaveBeenCalledWith("org_1", "proj_1", canonicalId);
+    expect(detail).toMatchObject({ id: canonicalId, entityId: "support-core" });
+    expect(mcp).toMatchObject({ entityPk: canonicalId, entityId: "support-core" });
+  });
+
+  it("throws true HTTP 404 errors for absent Entity detail and MCP config", async () => {
+    const h = harness();
+    h.authService.getEntity.mockResolvedValue(null);
+
+    await expect(h.controller.getEntity(h.req, "missing")).rejects.toMatchObject({ status: 404 });
+    await expect(h.controller.getEntityMcpConfig(h.req, "missing")).rejects.toMatchObject({ status: 404 });
   });
 
   it("upserts EntityMcpConfig without retired denormalized fields", async () => {

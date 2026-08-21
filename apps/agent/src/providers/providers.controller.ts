@@ -84,6 +84,73 @@ export class ProvidersController {
     }
   }
 
+  @Post("keys/byok")
+  async createKeyWithSecret(
+    @Req() req: Request,
+    @Body() body: {
+      provider: string;
+      label: string;
+      envVarName: string;
+      plaintext: string;
+      isDefault?: boolean;
+    },
+  ) {
+    const scope = this.operatorScope(req);
+    const provider = body.provider?.trim();
+    const label = body.label?.trim();
+    const envVarName = body.envVarName?.trim();
+    const plaintext = body.plaintext;
+    if (
+      !provider ||
+      !label ||
+      !envVarName ||
+      typeof plaintext !== "string" ||
+      plaintext.length === 0 ||
+      plaintext.length > 16_384
+    ) {
+      throw new HttpException(
+        "provider, label, envVarName, and secret are required",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    try {
+      const key = await this.providerKeys.createWithSecret(scope, {
+        provider,
+        label,
+        envVarName,
+        plaintext,
+        isDefault: body.isDefault ?? false,
+      });
+      this.modelCatalog.invalidate(provider);
+      return { key };
+    } catch (error: unknown) {
+      this.throwProviderKeyError(error);
+    }
+  }
+
+  @Post("keys/:id/rotate-secret")
+  async rotateKeySecret(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: { plaintext: string },
+  ) {
+    const scope = this.operatorScope(req);
+    if (
+      typeof body.plaintext !== "string" ||
+      body.plaintext.length === 0 ||
+      body.plaintext.length > 16_384
+    ) {
+      throw new HttpException("secret is required", HttpStatus.BAD_REQUEST);
+    }
+    try {
+      const key = await this.providerKeys.rotateSecret(scope, id, body.plaintext);
+      this.modelCatalog.invalidate(key.provider);
+      return { key };
+    } catch (error: unknown) {
+      this.throwProviderKeyError(error);
+    }
+  }
+
   @Patch("keys/:id")
   async updateKey(
     @Req() req: Request,

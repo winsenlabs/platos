@@ -12,8 +12,8 @@ import {
   OperatorIdentityProvider,
   OrganizationRole,
   PrincipalTier,
+  Prisma,
   ProjectRole,
-  type Prisma,
   type PrismaClient,
 } from "../generated/control";
 
@@ -44,6 +44,7 @@ export type AuthErrorCode =
   | "invite_invalid"
   | "invite_email_mismatch"
   | "invite_consumed"
+  | "owner_invariant"
   | "impersonation_forbidden";
 
 export class PlatosAuthError extends Error {
@@ -396,10 +397,86 @@ export class PlatosAuthService {
     return result.count === 1;
   }
 
-  async changeMembershipRole(membershipId: string, role: OrganizationRole): Promise<void> {
-    await this.#database.organizationMembership.update({
-      where: { id: membershipId },
-      data: { role },
+  async changeMembershipRole(params: {
+    organizationId: string;
+    membershipId: string;
+    actorUserId: string;
+    role: OrganizationRole;
+  }): Promise<void> {
+    const now = this.#now();
+    await this.#database.$transaction(async (tx) => {
+      // Serialize role changes per Organization so two concurrent owner
+      // demotions cannot both observe another active owner.
+      const organization = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT id
+          FROM "public"."Organization"
+         WHERE id = ${params.organizationId}::uuid
+           AND "archivedAt" IS NULL
+         FOR UPDATE
+      `);
+      if (organization.length !== 1) throw forbiddenMembershipMutation();
+
+      const actor = await tx.organizationMembership.findFirst({
+        where: {
+          organizationId: params.organizationId,
+          userId: params.actorUserId,
+          deactivatedAt: null,
+          role: { in: [OrganizationRole.OWNER, OrganizationRole.ADMIN] },
+        },
+        select: { role: true },
+      });
+      const target = await tx.organizationMembership.findFirst({
+        where: {
+          id: params.membershipId,
+          organizationId: params.organizationId,
+          deactivatedAt: null,
+        },
+        select: { id: true, userId: true, role: true },
+      });
+      if (!actor || !target) throw forbiddenMembershipMutation();
+      if (
+        actor.role !== OrganizationRole.OWNER &&
+        (target.role === OrganizationRole.OWNER || params.role === OrganizationRole.OWNER)
+      ) {
+        throw forbiddenMembershipMutation();
+      }
+      if (target.role === params.role) return;
+      if (target.role === OrganizationRole.OWNER && params.role !== OrganizationRole.OWNER) {
+        const owners = await tx.organizationMembership.count({
+          where: {
+            organizationId: params.organizationId,
+            deactivatedAt: null,
+            role: OrganizationRole.OWNER,
+          },
+        });
+        if (owners <= 1) {
+          throw new PlatosAuthError(
+            "owner_invariant",
+            409,
+            "An organization must retain at least one active owner"
+          );
+        }
+      }
+
+      await tx.organizationMembership.update({
+        where: {
+          id_organizationId: {
+            id: target.id,
+            organizationId: params.organizationId,
+          },
+        },
+        data: { role: params.role },
+      });
+      // Revoke both direct and impersonated sessions for the affected user in
+      // the same transaction as the privilege mutation. The database trigger
+      // remains defense in depth for callers that bypass this service.
+      await tx.operatorSession.updateMany({
+        where: {
+          revokedAt: null,
+          OR: [{ userId: target.userId }, { impersonatedUserId: target.userId }],
+        },
+        data: { revokedAt: now },
+      });
     });
   }
 
@@ -1096,6 +1173,10 @@ function decodeBase32(input: string): Buffer {
 
 function unauthorized(): PlatosAuthError {
   return new PlatosAuthError("unauthorized", 401, "Invalid operator session");
+}
+
+function forbiddenMembershipMutation(): PlatosAuthError {
+  return new PlatosAuthError("forbidden", 403, "Membership role change is not authorized");
 }
 
 function environmentForbidden(): PlatosAuthError {
