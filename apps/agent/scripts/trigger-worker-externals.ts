@@ -30,6 +30,36 @@ function isBareRuntimeImport(importPath: string): boolean {
 }
 
 /**
+ * Imports whose absence is the normal case, not a packaging mistake.
+ *
+ * The check below exists because a bare external that cannot resolve becomes a
+ * MODULE_NOT_FOUND once the generated worker runs. These three never do: each
+ * is loaded inside a try/catch by a dependency that has a working fallback, so
+ * requiring them to resolve would fail the build over a module the worker is
+ * designed to run without.
+ *
+ *   bufferutil, utf-8-validate  `ws` native performance addons. It requires
+ *                               them in a try/catch and falls back to its JS
+ *                               implementations. Both are optional
+ *                               dependencies, so pnpm may legitimately not
+ *                               install them.
+ *   pnpapi                      Yarn Plug'n'Play's runtime module, referenced
+ *                               by resolver code that first checks whether it
+ *                               is running under PnP. This repo uses pnpm, so
+ *                               it never exists — and declaring it a
+ *                               dependency is not possible, since no such
+ *                               package is published.
+ *
+ * Keep this list closed. Anything added here is a module the worker will run
+ * without, which is a claim worth making one import at a time.
+ */
+const optionalRuntimeExternals = new Set([
+  "bufferutil",
+  "utf-8-validate",
+  "pnpapi",
+]);
+
+/**
  * Trigger's worker bundle can leave packages external (including packages in
  * Trigger's own forced `alwaysExternal` list). Those imports execute from the
  * generated worker directory, so they must also resolve from this package's
@@ -44,7 +74,11 @@ export function unresolvedGeneratedWorkerExternals(
 
   for (const output of Object.values(metafile.outputs)) {
     for (const imported of output.imports ?? []) {
-      if (imported.external && isBareRuntimeImport(imported.path)) {
+      if (
+        imported.external &&
+        isBareRuntimeImport(imported.path) &&
+        !optionalRuntimeExternals.has(imported.path)
+      ) {
         externalImports.add(imported.path);
       }
     }

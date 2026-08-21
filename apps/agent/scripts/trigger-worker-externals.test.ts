@@ -48,4 +48,37 @@ describe("generated Trigger worker externals", () => {
       unresolvedGeneratedWorkerExternals(metafileWithExternal("node:crypto"), agentDir)
     ).toEqual([]);
   });
+
+  it("tolerates optional externals the worker is designed to run without", () => {
+    // Trigger's build emits these as bare externals, but each is loaded inside
+    // a try/catch by a dependency with a working fallback. Failing the build
+    // over them blocked every task deploy: ws's two native addons are optional
+    // dependencies pnpm may not install, and pnpapi is a Yarn PnP module that
+    // is not a publishable package at all.
+    for (const optional of ["bufferutil", "utf-8-validate", "pnpapi"]) {
+      expect(
+        unresolvedGeneratedWorkerExternals(metafileWithExternal(optional), agentDir),
+        optional
+      ).toEqual([]);
+    }
+  });
+
+  it("still reports a genuinely missing external alongside optional ones", () => {
+    // The allowlist must narrow the check, not disable it.
+    expect(
+      unresolvedGeneratedWorkerExternals(
+        {
+          outputs: {
+            "worker.js": {
+              imports: [
+                { external: true, path: "bufferutil" },
+                { external: true, path: "not-a-real-trigger-worker-package" },
+              ],
+            },
+          },
+        },
+        agentDir
+      )
+    ).toEqual(["not-a-real-trigger-worker-package"]);
+  });
 });
