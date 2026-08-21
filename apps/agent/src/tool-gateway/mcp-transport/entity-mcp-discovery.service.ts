@@ -91,7 +91,7 @@ export class EntityMcpDiscoveryService {
    * `connectionStatus` so census/list don't show every MCP entity disconnected
    * forever (design §1.5a).
    *
-   * `environmentId` comes SOLELY from `runtimeEnvironment.findMany` here — the
+   * `environmentId` comes SOLELY from the canonical `Environment` lookup here — the
    * caller never passes one.
    */
   async discover(entityPk: string): Promise<DiscoveryResult> {

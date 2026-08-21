@@ -1,558 +1,188 @@
-import { BookOpenIcon, KeyIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
-import { useFetcher, type MetaFunction } from "@remix-run/react";
-import { type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/server-runtime";
-import { useEffect, useState } from "react";
-import { typedjson, useTypedLoaderData } from "remix-typedjson";
-import { AdminDebugTooltip } from "~/components/admin/debugTooltip";
-import { CodeBlock } from "~/components/code/CodeBlock";
-import { InlineCode } from "~/components/code/InlineCode";
-import {
-  EnvironmentCombo,
-  environmentFullTitle,
-  environmentTextClassName,
-} from "~/components/environments/EnvironmentLabel";
-import { RegenerateApiKeyModal } from "~/components/environments/RegenerateApiKeyModal";
-import {
-  MainHorizontallyCenteredContainer,
-  PageBody,
-  PageContainer,
-} from "~/components/layout/AppLayout";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "~/components/primitives/Accordion";
-import { LinkButton } from "~/components/primitives/Buttons";
-import { Callout } from "~/components/primitives/Callout";
-import { ClipboardField } from "~/components/primitives/ClipboardField";
-import { Header2, Header3 } from "~/components/primitives/Headers";
-import { Hint } from "~/components/primitives/Hint";
-import { InputGroup } from "~/components/primitives/InputGroup";
-import { Label } from "~/components/primitives/Label";
-import { NavBar, PageAccessories, PageTitle } from "~/components/primitives/PageHeader";
-import { DocsLink } from "~/components/primitives/DocsLink";
-import * as Property from "~/components/primitives/PropertyTable";
-import { useOrganization } from "~/hooks/useOrganizations";
-import { findProjectBySlug } from "~/models/project.server";
-import { findEnvironmentBySlug } from "~/models/runtimeEnvironment.server";
-import { ApiKeysPresenter } from "~/presenters/v3/ApiKeysPresenter.server";
-import { requireUserId } from "~/services/session.server";
-import {
-  safeMutationResult,
-  sanitizeAccessKeyPayload,
-  type SafeAccessKey,
-} from "~/services/platosSecretPayloads.server";
-import { generateAccessKey } from "~/utils/accessKey.client";
-import { cn } from "~/utils/cn";
-import { docsPath, EnvironmentParamSchema } from "~/utils/pathBuilder";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
+import { useFetcher, useLoaderData } from "@remix-run/react";
+import { useState } from "react";
+import { Page } from "~/components/platos/DashboardShell";
+import { asArray, asRecord, asString } from "~/components/platos/safe";
+import { requireEnvironmentScope } from "~/services/auth.server";
+import { credentialErrorMessage, credentialPanel, credentialRequest } from "~/services/platosAgent.server";
 
-export const meta: MetaFunction = () => {
-  return [
-    {
-      title: `API keys | Platos`,
-    },
-  ];
-};
-
-export const loader = async ({ request, params }: LoaderFunctionArgs) => {
-  const userId = await requireUserId(request);
-  const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
-
-  try {
-    const presenter = new ApiKeysPresenter();
-    const { environment, hasVercelIntegration } = await presenter.call({
-      userId,
-      projectSlug: projectParam,
-      environmentSlug: envParam,
-    });
-
-    // Fetch Platos agent access key — non-fatal
-    let platosKey: SafeAccessKey | null = null;
-    let retiringPlatosKey: SafeAccessKey | null = null;
-    try {
-      const project = await findProjectBySlug(organizationSlug, projectParam, userId);
-      if (project) {
-        const env = await findEnvironmentBySlug(project.id, envParam, userId);
-        if (env) {
-          const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
-          const res = await fetch(`${AGENT_API_URL}/api/v1/agent/access-key`, {
-            headers: {
-              "X-Platos-Organization-Id": project.organizationId,
-              "X-Platos-Project-Id": project.id,
-              "X-Platos-Environment-Id": env.id,
-              "X-Platos-User-Id": userId,
-            },
-            signal: AbortSignal.timeout(3000),
-          });
-          if (res.ok) {
-            const data = sanitizeAccessKeyPayload(await res.json());
-            platosKey = data.key;
-            retiringPlatosKey = data.retiringKey;
-          }
-        }
-      }
-    } catch {
-      // agent service unavailable — show empty state
-    }
-
-    return typedjson({
-      environment,
-      hasVercelIntegration,
-      platosKey,
-      retiringPlatosKey,
-    });
-  } catch {
-    console.error("API keys loader failed");
-    throw new Response(undefined, {
-      status: 400,
-      statusText: "Something went wrong, if this problem persists please contact support.",
-    });
+async function environmentScope(args: LoaderFunctionArgs | ActionFunctionArgs, access?: "metadata" | "secret:mutate") {
+  const organizationSlug = args.params.organizationSlug;
+  const projectSlug = args.params.projectParam;
+  const environmentSlug = args.params.envParam;
+  if (!organizationSlug || !projectSlug || !environmentSlug) {
+    throw new Response("Invalid scope", { status: 400 });
   }
-};
-
-export const action = async ({ request, params }: ActionFunctionArgs) => {
-  const userId = await requireUserId(request);
-  const { organizationSlug, projectParam, envParam } = EnvironmentParamSchema.parse(params);
-
-  const project = await findProjectBySlug(organizationSlug, projectParam, userId);
-  if (!project) return { ok: false as const, error: "Project not found" };
-  const environment = await findEnvironmentBySlug(project.id, envParam, userId);
-  if (!environment) return { ok: false as const, error: "Environment not found" };
-
-  const AGENT_API_URL = process.env.PLATOS_AGENT_API_URL || "http://localhost:3100";
-  const scopeHeaders = {
-    "X-Platos-Organization-Id": project.organizationId,
-    "X-Platos-Project-Id": project.id,
-    "X-Platos-Environment-Id": environment.id,
-    "X-Platos-User-Id": userId,
-  };
-
-  const fd = await request.formData();
-  const intent = String(fd.get("intent") || "");
-
-  if (intent === "create-or-rotate-platos-key") {
-    if (fd.has("rawKey") || fd.has("key") || fd.has("accessKey")) {
-      return { ok: false as const, error: "Raw access keys are not accepted by this action." };
-    }
-    const keyHash = String(fd.get("keyHash") || "");
-    const keyPrefix = String(fd.get("keyPrefix") || "");
-    if (!/^[a-f0-9]{64}$/.test(keyHash) || !/^platos_live_[A-Za-z0-9_-]{1,12}$/.test(keyPrefix)) {
-      return { ok: false as const, error: "Invalid access key material." };
-    }
-    try {
-      const res = await fetch(`${AGENT_API_URL}/api/v1/agent/access-key`, {
-        method: "POST",
-        headers: { ...scopeHeaders, "content-type": "application/json" },
-        body: JSON.stringify({ keyHash, keyPrefix }),
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!res.ok) return { ok: false as const, error: `Agent error ${res.status}` };
-      return safeMutationResult(intent, await res.json());
-    } catch {
-      return { ok: false as const, error: "Agent service unavailable" };
-    }
-  }
-
-  if (intent === "delete-platos-key") {
-    try {
-      const res = await fetch(`${AGENT_API_URL}/api/v1/agent/access-key`, {
-        method: "DELETE",
-        headers: scopeHeaders,
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!res.ok) return { ok: false as const, error: `Agent error ${res.status}` };
-      return safeMutationResult(intent);
-    } catch {
-      return { ok: false as const, error: "Agent service unavailable" };
-    }
-  }
-
-  if (intent === "update-origins") {
-    const raw = String(fd.get("allowedOrigins") || "");
-    const origins = raw
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    try {
-      const res = await fetch(`${AGENT_API_URL}/api/v1/agent/access-key/origins`, {
-        method: "POST",
-        headers: { ...scopeHeaders, "content-type": "application/json" },
-        body: JSON.stringify({ origins }),
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!res.ok) return { ok: false as const, error: `Agent error ${res.status}` };
-      return safeMutationResult(intent, await res.json());
-    } catch {
-      return { ok: false as const, error: "Agent service unavailable" };
-    }
-  }
-
-  return { ok: false as const, error: "Unknown access key operation." };
-};
-
-// ─── Platos Access Key section ───────────────────────────────────────────────
-
-type AccessKeyActionData = {
-  ok: boolean;
-  error?: string;
-  intent?: string;
-  key?: SafeAccessKey;
-  retiringKey?: SafeAccessKey;
-};
-
-function PlatosAccessKeySection({
-  initialKey,
-  retiringKey,
-}: {
-  initialKey: SafeAccessKey | null;
-  retiringKey: SafeAccessKey | null;
-}) {
-  const fetcher = useFetcher<AccessKeyActionData>();
-  const isBusy = fetcher.state !== "idle";
-  const [pendingRawKey, setPendingRawKey] = useState<string | null>(null);
-  const [revealApproved, setRevealApproved] = useState(false);
-  const [generationPending, setGenerationPending] = useState(false);
-  const [originsText, setOriginsText] = useState(initialKey?.allowedOrigins.join("\n") ?? "");
-
-  const actionData = fetcher.data;
-  const completedIntent = actionData?.intent ?? null;
-  const isDeleted = actionData?.ok === true && completedIntent === "delete-platos-key";
-  const currentKey = isDeleted ? null : actionData?.key ?? initialKey;
-  const currentRetiringKey = actionData?.retiringKey ?? retiringKey;
-
-  useEffect(() => {
-    if (!generationPending || fetcher.state !== "idle" || !actionData) return;
-    if (actionData.ok && completedIntent === "create-or-rotate-platos-key") {
-      setRevealApproved(true);
-    } else {
-      setPendingRawKey(null);
-    }
-    setGenerationPending(false);
-  }, [actionData, completedIntent, fetcher.state, generationPending]);
-
-  async function createOrRotateKey() {
-    setRevealApproved(false);
-    const generated = await generateAccessKey();
-    setPendingRawKey(generated.rawKey);
-    setGenerationPending(true);
-    fetcher.submit(
-      {
-        intent: "create-or-rotate-platos-key",
-        keyHash: generated.keyHash,
-        keyPrefix: generated.keyPrefix,
-      },
-      { method: "post" }
-    );
-  }
-
-  const revealedKey = revealApproved ? pendingRawKey : null;
-
-  return (
-    <div className="flex flex-col gap-4 rounded-lg border border-charcoal-700 bg-charcoal-900/30 p-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <ShieldCheckIcon className="size-4 text-emerald-500" />
-            <Header3 className="text-sm font-semibold text-text-bright">
-              Platos Agent Access Key
-            </Header3>
-            {currentKey && (
-              <span className="rounded-full border border-emerald-700 bg-emerald-950 px-2 py-0.5 text-[10px] text-emerald-300">
-                Active
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-text-dimmed">
-            Environment access keys authenticate external consumers and the{" "}
-            <InlineCode variant="extra-small">@platosdev/client</InlineCode>. Platos stores only a
-            SHA-256 hash; the raw key cannot be recovered later.
-          </p>
-        </div>
-        {currentKey && (
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={isBusy}
-              onClick={() => void createOrRotateKey()}
-              className="rounded border border-amber-500/40 px-2.5 py-1.5 text-xs text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
-            >
-              {generationPending ? "Rotating…" : "Rotate key"}
-            </button>
-            <fetcher.Form method="post">
-              <input type="hidden" name="intent" value="delete-platos-key" />
-              <button
-                type="submit"
-                disabled={isBusy}
-                onClick={(event) => {
-                  if (
-                    !confirm(
-                      "Revoke this access key? Consumers using it will be unable to authenticate."
-                    )
-                  ) {
-                    event.preventDefault();
-                  }
-                }}
-                className="rounded border border-rose-500/40 px-2.5 py-1.5 text-xs text-rose-300 hover:bg-rose-500/10 disabled:opacity-50"
-              >
-                Revoke
-              </button>
-            </fetcher.Form>
-          </div>
-        )}
-      </div>
-
-      {revealedKey && (
-        <div
-          className="flex flex-col gap-3 rounded border border-amber-500/40 bg-amber-500/10 p-3"
-          data-secret-safe-state="client-memory-one-time-reveal"
-        >
-          <div>
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
-              <KeyIcon className="size-3.5" />
-              Access key created — copy it now
-            </p>
-            <p className="mt-1 text-[11px] text-text-dimmed">
-              This value exists only in this browser tab's memory. Store it in your secrets manager
-              before leaving this state.
-            </p>
-          </div>
-          <ClipboardField
-            className="w-full max-w-none font-mono"
-            value={revealedKey}
-            variant="secondary/small"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              setPendingRawKey(null);
-              setRevealApproved(false);
-            }}
-            className="self-end rounded border border-charcoal-600 px-3 py-1.5 text-xs text-text-bright hover:bg-charcoal-700"
-          >
-            Done, I've saved it
-          </button>
-        </div>
-      )}
-
-      {fetcher.data && "error" in fetcher.data && (
-        <p className="text-xs text-rose-400">{fetcher.data.error}</p>
-      )}
-
-      {currentKey ? (
-        <div className="flex flex-col gap-4" data-secret-safe-state="hash-only-metadata">
-          <div className="grid gap-px overflow-hidden rounded border border-charcoal-700 bg-charcoal-700 sm:grid-cols-3">
-            <AccessKeyMetadata label="Key prefix" value={`${currentKey.keyPrefix}••••••••`} mono />
-            <AccessKeyMetadata label="Created" value={formatKeyDate(currentKey.createdAt)} />
-            <AccessKeyMetadata
-              label="Last used"
-              value={currentKey.lastUsedAt ? formatKeyDate(currentKey.lastUsedAt) : "Never"}
-            />
-          </div>
-
-          {currentRetiringKey?.validUntil && (
-            <div className="rounded border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200">
-              Previous key prefix{" "}
-              <span className="font-mono">{currentRetiringKey.keyPrefix}••••</span> remains valid
-              only until {formatKeyDate(currentRetiringKey.validUntil)} for bounded rotation
-              overlap.
-            </div>
-          )}
-
-          <fetcher.Form method="post" className="flex flex-col gap-2">
-            <input type="hidden" name="intent" value="update-origins" />
-            <InputGroup fullWidth>
-              <Label>Allowed Origins</Label>
-              <textarea
-                name="allowedOrigins"
-                rows={3}
-                value={originsText}
-                onChange={(event) => setOriginsText(event.target.value)}
-                placeholder={"https://yourapp.com\nhttps://staging.yourapp.com"}
-                className="w-full rounded border border-charcoal-600 bg-charcoal-800 px-2 py-1.5 font-mono text-xs text-text-bright focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              <Hint>
-                One exact origin per line. Leave blank only when browser-origin restrictions are not
-                required.
-              </Hint>
-            </InputGroup>
-            <button
-              type="submit"
-              disabled={isBusy}
-              className="self-start rounded bg-charcoal-700 px-3 py-1.5 text-xs text-text-bright hover:bg-charcoal-600 disabled:opacity-50"
-            >
-              {isBusy && fetcher.formData?.get("intent") === "update-origins"
-                ? "Saving…"
-                : "Save origins"}
-            </button>
-          </fetcher.Form>
-        </div>
-      ) : (
-        !revealedKey && (
-          <button
-            type="button"
-            disabled={isBusy || generationPending}
-            onClick={() => void createOrRotateKey()}
-            className="inline-flex items-center gap-2 self-start rounded bg-emerald-700 px-4 py-2 text-sm text-white hover:bg-emerald-600 disabled:opacity-50"
-          >
-            <KeyIcon className="size-4" />
-            {generationPending ? "Creating…" : "Create Access Key"}
-          </button>
-        )
-      )}
-    </div>
-  );
-}
-
-function AccessKeyMetadata({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="bg-charcoal-850 p-3">
-      <div className="text-[10px] uppercase tracking-wide text-text-dimmed">{label}</div>
-      <div className={cn("mt-1 text-xs text-text-bright", mono && "font-mono")}>{value}</div>
-    </div>
-  );
-}
-
-function formatKeyDate(value: string) {
-  return new Date(value).toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+  return requireEnvironmentScope({
+    request: args.request,
+    organizationSlug,
+    projectSlug,
+    environmentSlug,
+    ...(access ? { access } : {}),
   });
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+export async function loader(args: LoaderFunctionArgs) {
+  const { scope } = await environmentScope(args, "metadata");
+  return json({ panel: await credentialPanel("/api/v1/agent/access-key", scope) });
+}
 
-export default function Page() {
-  const { environment, hasVercelIntegration, platosKey, retiringPlatosKey } =
-    useTypedLoaderData<typeof loader>();
-  const organization = useOrganization();
+export async function action(args: ActionFunctionArgs) {
+  const { scope } = await environmentScope(args, "secret:mutate");
+  const form = await args.request.formData();
+  const intent = String(form.get("intent") ?? "");
+  const submittedFields = [...form.keys()];
 
-  if (!environment) {
-    throw new Response(undefined, {
-      status: 404,
-      statusText: "Environment not found",
-    });
+  try {
+    if (intent === "rotate") {
+      if (submittedFields.some((field) => !["intent", "keyHash", "keyPrefix"].includes(field))) {
+        return json({ ok: false, error: "Raw key material is not accepted" }, { status: 400 });
+      }
+      const keyHash = String(form.get("keyHash") ?? "");
+      const keyPrefix = String(form.get("keyPrefix") ?? "");
+      if (!/^[a-f0-9]{64}$/.test(keyHash) || !/^platos_live_[A-Za-z0-9_-]{1,12}$/.test(keyPrefix)) {
+        return json({ ok: false, error: "Invalid generated key metadata" }, { status: 400 });
+      }
+      const result = await credentialRequest("/api/v1/agent/access-key", scope, {
+        method: "POST",
+        body: { keyHash, keyPrefix },
+      });
+      return json({ ok: true, result });
+    }
+
+    if (intent === "origins") {
+      const origins = String(form.get("origins") ?? "")
+        .split(/\r?\n/)
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+      const result = await credentialRequest("/api/v1/agent/access-key/origins", scope, {
+        method: "POST",
+        body: { origins },
+      });
+      return json({ ok: true, result });
+    }
+
+    if (intent === "revoke") {
+      const result = await credentialRequest("/api/v1/agent/access-key", scope, { method: "DELETE" });
+      return json({ ok: true, result });
+    }
+
+    return json({ ok: false, error: "Unsupported operation" }, { status: 400 });
+  } catch (error) {
+    return json({ ok: false, error: credentialErrorMessage(error, "API key operation") }, { status: 400 });
   }
+}
 
-  let envBlock = `TRIGGER_SECRET_KEY="${environment.apiKey}"`;
-  if (environment.branchName) {
-    envBlock += `\nTRIGGER_PREVIEW_BRANCH="${environment.branchName}"`;
+function base64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function generateAccessKey(): Promise<{ rawKey: string; keyHash: string; keyPrefix: string }> {
+  const secret = new Uint8Array(32);
+  crypto.getRandomValues(secret);
+  const rawKey = `platos_live_${base64Url(secret)}`;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
+  const keyHash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return { rawKey, keyHash, keyPrefix: rawKey.slice(0, 24) };
+}
+
+export default function ApiKeysRoute() {
+  const { panel } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher<typeof action>();
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const accessKeys = panel.ok ? asRecord(panel.data) : {};
+  const metadata = asRecord(accessKeys.key);
+  const retiringKey = asRecord(accessKeys.retiringKey);
+  const origins = asArray(metadata.allowedOrigins).filter((value): value is string => typeof value === "string");
+  const active = typeof metadata.id === "string";
+  const busy = fetcher.state !== "idle" || generating;
+
+  async function rotate() {
+    setGenerating(true);
+    try {
+      const generated = await generateAccessKey();
+      setRevealedKey(generated.rawKey);
+      fetcher.submit(
+        { intent: "rotate", keyHash: generated.keyHash, keyPrefix: generated.keyPrefix },
+        { method: "post" },
+      );
+    } finally {
+      setGenerating(false);
+    }
   }
 
   return (
-    <PageContainer>
-      <NavBar>
-        <PageTitle title="API keys" />
-        <PageAccessories>
-          <AdminDebugTooltip>
-            <Property.Table>
-              <Property.Item key={environment.id}>
-                <Property.Label>{environment.slug}</Property.Label>
-                <Property.Value>{environment.id}</Property.Value>
-              </Property.Item>
-            </Property.Table>
-          </AdminDebugTooltip>
+    <Page>
+      <header className="mb-6">
+        <div className="text-xs uppercase tracking-widest text-text-dimmed">Platos / Security</div>
+        <h1 className="mt-1 text-2xl font-semibold">Environment API key</h1>
+        <p className="mt-1 max-w-3xl text-sm text-text-dimmed">
+          The browser generates the bearer with Web Crypto. Platos receives only its SHA-256 hash and display prefix.
+        </p>
+      </header>
 
-          <DocsLink slug="auth-modes" />
-        </PageAccessories>
-      </NavBar>
-      <PageBody>
-        <MainHorizontallyCenteredContainer>
-          <div className="mb-3 border-b border-grid-dimmed pb-1">
-            <Header2
-              className={cn(
-                "inline-flex items-center gap-1 font-normal",
-                environmentTextClassName(environment)
-              )}
-            >
-              <EnvironmentCombo
-                environment={environment}
-                className="text-base"
-                iconClassName="size-5"
-              />
-              API keys
-            </Header2>
-          </div>
-          <div className="flex flex-col gap-6">
-            <InputGroup fullWidth>
-              <div className="flex w-full items-center justify-between">
-                <Label>Secret key</Label>
-                <RegenerateApiKeyModal
-                  id={environment.parentEnvironment?.id ?? environment.id}
-                  title={environmentFullTitle(environment)}
-                  hasVercelIntegration={hasVercelIntegration}
-                  isDevelopment={environment.type === "DEVELOPMENT"}
-                />
+      {!panel.ok ? (
+        <div className="rounded-lg border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-200">
+          {panel.error.message} <code className="ml-2 text-xs">{panel.error.code}</code>
+        </div>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-[1fr_22rem]">
+          <section className="rounded-lg border border-grid-bright bg-background-bright p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-semibold">Hash-only credential</h2>
+                <p className="mt-1 text-sm text-text-dimmed">
+                  Prefix: <code>{asString(metadata.keyPrefix, "No active key")}</code>
+                </p>
+                <p className="mt-1 text-xs text-text-dimmed">Created {asString(metadata.createdAt, "—")}</p>
+                <p className="mt-1 text-xs text-text-dimmed">
+                  Prior key {asString(retiringKey.keyPrefix, "none")} · overlap ends {asString(retiringKey.validUntil, "not rotating")}
+                </p>
               </div>
-              <ClipboardField
-                className="w-full max-w-none"
-                secure={`tr_${environment.apiKey.split("_")[1]}_••••••••`}
-                value={environment.apiKey}
-                variant={"secondary/small"}
-              />
-              <Hint>
-                Set this as your <InlineCode variant="extra-small">TRIGGER_SECRET_KEY</InlineCode>{" "}
-                env var in your backend.
-              </Hint>
-            </InputGroup>
-            {environment.branchName && (
-              <InputGroup fullWidth>
-                <Label>Branch name</Label>
-                <ClipboardField
-                  className="w-full max-w-none"
-                  value={environment.branchName}
-                  variant={"secondary/small"}
-                />
-                <Hint>
-                  Set this as your{" "}
-                  <InlineCode variant="extra-small">TRIGGER_PREVIEW_BRANCH</InlineCode> env var in
-                  your backend.
-                </Hint>
-              </InputGroup>
-            )}
-            {environment.type === "DEVELOPMENT" && (
-              <Callout variant="info">
-                Every team member gets their own dev Secret key. Make sure you're using the one
-                above otherwise you will trigger runs on your team member's machine.
-              </Callout>
+              <span className="rounded-full bg-green-500/15 px-2 py-1 text-xs text-green-300">
+                {active ? "Active" : "Not configured"}
+              </span>
+            </div>
+
+            {revealedKey && (
+              <div className="mt-5 rounded-lg border border-amber-400/50 bg-amber-950/20 p-4">
+                <div className="text-sm font-semibold text-amber-200">Copy this key now</div>
+                <p className="mt-1 text-xs text-amber-100/80">It exists only in this browser tab and cannot be retrieved again.</p>
+                <code className="mt-3 block break-all rounded bg-charcoal-950 p-3 text-sm text-amber-100">{revealedKey}</code>
+                <div className="mt-3 flex gap-2">
+                  <button type="button" className="rounded bg-amber-300 px-3 py-2 text-xs font-medium text-black" onClick={() => navigator.clipboard.writeText(revealedKey)}>Copy</button>
+                  <button type="button" className="rounded border border-amber-300/40 px-3 py-2 text-xs" onClick={() => setRevealedKey(null)}>I saved it</button>
+                </div>
+              </div>
             )}
 
-            <Accordion type="single" collapsible>
-              <AccordionItem value="item-1">
-                <AccordionTrigger>How to set these environment variables</AccordionTrigger>
-                <AccordionContent>
-                  <div className="flex flex-col gap-2">
-                    <div>
-                      You need to set these environment variables in your backend. This allows the
-                      SDK to authenticate with Platos.
-                    </div>
-                    <CodeBlock
-                      language="javascript"
-                      code={envBlock}
-                      showOpenInModal={false}
-                      showLineNumbers={false}
-                    />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+            <div className="mt-5 flex gap-2">
+              <button type="button" disabled={busy} onClick={rotate} className="rounded bg-indigo-500 px-4 py-2 text-sm text-white disabled:opacity-50">
+                {active ? "Rotate key" : "Generate key"}
+              </button>
+              {active && (
+                <fetcher.Form method="post">
+                  <input type="hidden" name="intent" value="revoke" />
+                  <button disabled={busy} className="rounded border border-red-500/50 px-4 py-2 text-sm text-red-200 disabled:opacity-50">Revoke</button>
+                </fetcher.Form>
+              )}
+            </div>
+            {fetcher.data && fetcher.data.ok === false && <p className="mt-3 text-sm text-red-300">{asString(asRecord(fetcher.data).error, "API key operation failed")}</p>}
+          </section>
 
-            {/* Platos Agent Access Key section */}
-            <PlatosAccessKeySection initialKey={platosKey} retiringKey={retiringPlatosKey} />
-          </div>
-        </MainHorizontallyCenteredContainer>
-      </PageBody>
-    </PageContainer>
+          <fetcher.Form method="post" className="rounded-lg border border-grid-bright bg-background-bright p-5">
+            <input type="hidden" name="intent" value="origins" />
+            <h2 className="font-semibold">Allowed browser origins</h2>
+            <p className="mt-1 text-xs text-text-dimmed">One exact HTTPS origin per line. Origin checks apply after key verification.</p>
+            <textarea name="origins" defaultValue={origins.join("\n")} className="mt-4 min-h-44 w-full rounded border border-grid-bright bg-charcoal-950 p-3 font-mono text-xs" placeholder="https://app.example.com" />
+            <button disabled={busy} className="mt-3 rounded border border-grid-bright px-3 py-2 text-sm disabled:opacity-50">Save origins</button>
+          </fetcher.Form>
+        </div>
+      )}
+    </Page>
   );
 }

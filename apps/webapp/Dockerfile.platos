@@ -46,8 +46,8 @@ RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 ENV NODE_ENV=development
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store pnpm install --no-frozen-lockfile
 # Generate Prisma client here where all deps are installed
-COPY --from=pruner --chown=node:node /triggerdotdev/internal-packages/database/prisma/schema.prisma /triggerdotdev/internal-packages/database/prisma/schema.prisma
-RUN pnpx prisma@6.14.0 generate --schema /triggerdotdev/internal-packages/database/prisma/schema.prisma
+COPY --from=pruner --chown=node:node /triggerdotdev/internal-packages/tenancy-database/prisma /triggerdotdev/internal-packages/tenancy-database/prisma
+RUN cd /triggerdotdev/internal-packages/tenancy-database && pnpx prisma@6.14.0 generate --schema prisma/schema.prisma
 
 ## Production deps
 FROM base AS production-deps
@@ -68,11 +68,13 @@ RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
 ARG SENTRY_RELEASE
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
+ARG BUILD_GIT_SHA
 ARG WEBAPP_BUILD_MAX_OLD_SPACE_SIZE_MB=1536
 ARG WEBAPP_BUILD_SOURCEMAPS=false
 ENV SENTRY_RELEASE=${SENTRY_RELEASE} \
     SENTRY_ORG=${SENTRY_ORG} \
     SENTRY_PROJECT=${SENTRY_PROJECT} \
+    BUILD_GIT_SHA=${BUILD_GIT_SHA} \
     WEBAPP_BUILD_MAX_OLD_SPACE_SIZE_MB=${WEBAPP_BUILD_MAX_OLD_SPACE_SIZE_MB} \
     WEBAPP_BUILD_SOURCEMAPS=${WEBAPP_BUILD_SOURCEMAPS}
 
@@ -95,7 +97,8 @@ COPY --chown=node:node scripts/updateVersion.ts scripts/updateVersion.ts
 # A ~7.9 GiB host with only ~3 GiB available therefore fails safely instead of
 # threatening the running services. Source maps are opt-in because Remix's map
 # generation has materially higher peak memory. Production images should be
-# built off-box.
+# built off-box. Opted-in release builds upload maps to Sentry and delete every
+# map from build/public before the runtime image is assembled.
 RUN --mount=type=secret,id=sentry_auth_token \
     SENTRY_AUTH_TOKEN=$(cat /run/secrets/sentry_auth_token 2>/dev/null || true) \
     pnpm run build:platos:webapp
@@ -109,8 +112,8 @@ ENV NODE_ENV=production
 COPY --from=base /usr/bin/dumb-init /usr/bin/dumb-init
 COPY --from=pruner --chown=node:node /triggerdotdev/out/full/ .
 COPY --from=production-deps --chown=node:node /triggerdotdev .
-# Copy generated Prisma client from dev-deps
-COPY --from=dev-deps --chown=node:node /triggerdotdev/internal-packages/database/generated ./internal-packages/database/generated
+# Copy the generated canonical control-plane client.
+COPY --from=dev-deps --chown=node:node /triggerdotdev/internal-packages/tenancy-database/generated ./internal-packages/tenancy-database/generated
 COPY --from=builder --chown=node:node /triggerdotdev/apps/webapp/build/server.js ./apps/webapp/build/server.js
 COPY --from=builder --chown=node:node /triggerdotdev/apps/webapp/build ./apps/webapp/build
 COPY --from=builder --chown=node:node /triggerdotdev/apps/webapp/public ./apps/webapp/public
@@ -132,10 +135,12 @@ ENV PLATOS_DOCS_CONTENT_ROOT=/triggerdotdev
 # Build info
 ARG BUILD_APP_VERSION
 ARG BUILD_GIT_SHA
+ARG SENTRY_RELEASE
 ARG BUILD_GIT_REF_NAME
 ARG BUILD_TIMESTAMP_SECONDS
 ENV BUILD_APP_VERSION=${BUILD_APP_VERSION} \
     BUILD_GIT_SHA=${BUILD_GIT_SHA} \
+    SENTRY_RELEASE=${SENTRY_RELEASE} \
     BUILD_GIT_REF_NAME=${BUILD_GIT_REF_NAME} \
     BUILD_TIMESTAMP_SECONDS=${BUILD_TIMESTAMP_SECONDS}
 

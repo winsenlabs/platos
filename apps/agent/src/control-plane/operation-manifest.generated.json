@@ -9704,6 +9704,40 @@
         ]
       },
       {
+        "id": "POST /api/v1/agent/providers/keys/:id/rotate-secret",
+        "method": "POST",
+        "path": "/api/v1/agent/providers/keys/:id/rotate-secret",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "ProvidersController",
+            "handler": "rotateKeySecret",
+            "source": "apps/agent/src/providers/providers.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/agent/providers/keys/byok",
+        "method": "POST",
+        "path": "/api/v1/agent/providers/keys/byok",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "ProvidersController",
+            "handler": "createKeyWithSecret",
+            "source": "apps/agent/src/providers/providers.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
         "id": "GET /api/v1/agent/providers/models",
         "method": "GET",
         "path": "/api/v1/agent/providers/models",
@@ -11874,15 +11908,15 @@
       "MAPPED": 83,
       "MCP_ONLY": 123
     },
-    "restOperations": 288,
-    "restRouteBindings": 289,
+    "restOperations": 290,
+    "restRouteBindings": 291,
     "ambiguousRestOperations": 1,
     "restClassifications": {
       "DEPRECATED": 13,
       "INTERNAL": 13,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 135
+      "REST_ONLY": 137
     }
   }
 }

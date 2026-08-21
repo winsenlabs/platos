@@ -16,7 +16,7 @@ import { EntityMcpDiscoveryService } from "./entity-mcp-discovery.service";
  * cache-TTL constant" cadence Phase 1 used. This mirrors a wire backend
  * re-registering its tools on reconnect: `EntityMcpDiscoveryService.discover`
  * loops the entity's existing `(entity, env)` mappings' env set (via
- * `runtimeEnvironment.findMany` — §1.5b) and re-runs `tools/list` +
+ * canonical `Environment` lookup — §1.5b) and re-runs `tools/list` +
  * reconcile-prune per env, re-stamping `connectionStatus` so census/list stay
  * accurate. A never-yet-discovered entity (`lastDiscoveryAt == null`) is picked
  * up too, so a transient discovery failure at register-time self-heals.

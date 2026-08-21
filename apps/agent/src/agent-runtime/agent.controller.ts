@@ -986,6 +986,19 @@ export class AgentController {
         approvalId,
       });
     }
+    // Idempotency boundary: an approval that already has a persisted outcome
+    // must never wake the runtime waitpoint a second time. Return the canonical
+    // decision instead of replaying Redis side effects.
+    if ((found as any).status !== "pending") {
+      return {
+        resolved: true,
+        approvalId,
+        approved: (found as any).status === "approved",
+        status: (found as any).status,
+        persisted: true,
+        ...((found as any).editedArgs != null ? { editedArgsApplied: true } : {}),
+      };
+    }
     // Wave 2 — validate editedArgs early. Reject malformed shapes
     // before any side effects (Redis push or ledger write). Also
     // ignore stray editedArgs on a rejection so a malicious client
@@ -1013,14 +1026,14 @@ export class AgentController {
       // wants to react to edits) can see the marker without re-reading
       // the DB row.
       ...(validatedEditedArgs ? { editedArgsApplied: true } : {}),
+      // The waiting executor consumes these exact operator-approved args.
+      // Persisted audit metadata keeps the same value for later inspection.
+      ...(validatedEditedArgs ? { editedArgs: validatedEditedArgs } : {}),
     });
-    const redisKey = approvalRedisKey(scopeTuple, approvalId);
-    await (this.agentService as any).redis.rpush(redisKey, payload);
-    await (this.agentService as any).redis.expire(redisKey, 60); // cleanup
-    // Persist the transition to the governance ledger (Theme E.6). Best-effort
-    // — a resolve on a non-existent / already-resolved approval is a no-op in
-    // the service.
-    await this.approvalsService.resolve({
+    // Claim the pending row before waking Redis. updateMany(status=PENDING)
+    // makes concurrent resolves exactly-once. A loser returns the persisted
+    // outcome below and cannot enqueue a second dispatch decision.
+    const changed = await this.approvalsService.resolve({
       scope: scopeTuple,
       approvalId,
       status: body.approved ? "approved" : "rejected",
@@ -1033,6 +1046,26 @@ export class AgentController {
           }
         : {}),
     });
+    if (changed === false) {
+      const persisted = await this.approvalsService.getById(scopeTuple, approvalId);
+      if (persisted && persisted.status !== "pending") {
+        return {
+          resolved: true,
+          approvalId,
+          approved: persisted.status === "approved",
+          status: persisted.status,
+          persisted: true,
+          ...(persisted.editedArgs != null ? { editedArgsApplied: true } : {}),
+        };
+      }
+      throw new ServiceUnavailableException({
+        error: "Approval decision could not be persisted",
+        approvalId,
+      });
+    }
+    const redisKey = approvalRedisKey(scopeTuple, approvalId);
+    await (this.agentService as any).redis.rpush(redisKey, payload);
+    await (this.agentService as any).redis.expire(redisKey, 60); // cleanup
     // Broadcast the resolution to every chat tab subscribed to the scope's
     // approval feed. Without this, a second tab (or the same tab after a
     // reconnect) keeps showing the modal in "pending" state.
@@ -1255,6 +1288,7 @@ export class AgentController {
         toolName: t.toolName,
         sourceEntity: t.sourceEntityId,
         enabled: t.enabled,
+        dispatchable: t.dispatchable,
         health: healthByKey.get(`${t.toolId}:${t.sourceEntityId}`) ?? "unknown",
         params: resolved.params,
         mapped,
@@ -1265,6 +1299,10 @@ export class AgentController {
     return {
       tools: rows,
       declaredKeys: mapping?.declaredKeys ?? [],
+      toolExposure:
+        (agent as { toolsBlockConfig?: { toolExposure?: unknown } }).toolsBlockConfig?.toolExposure === "direct"
+          ? "direct"
+          : "meta",
       agentId,
       total: rows.length,
       fetchedAt: new Date().toISOString(),
@@ -1464,8 +1502,8 @@ export class AgentController {
 
   /**
    * Theme G.6 — canary metrics side-by-side.
-   * Returns cost / latency / error rate grouped by `version_id` (the value
-   * AgentTaskService stamps into `PlatosAgentMessage.responseJson`).
+   * Returns cost / latency / error rate grouped by persisted Turn.agentVersionId,
+   * with the active/canary cohort read from the scoped AgentBinding.
    * Default window: last 24h. Max: 720h (30d).
    */
   @Get("agents/:agentId/canary/metrics")
@@ -1744,6 +1782,7 @@ export class AgentController {
           entityPk: t.entityPk,
           callbackUrl: t.callbackUrl,
           enabled: t.enabled,
+          dispatchable: t.dispatchable,
           health: {
             lastStatus: health?.lastStatus ?? null,
             failCount: health?.failCount ?? 0,
@@ -2238,7 +2277,7 @@ export class AgentController {
     const result = await this.entityMcpDiscovery.discover(
       (entity as { id: string }).id,
     );
-    return { entityId, ...result };
+    return { entityId: (entity as { entityId: string }).entityId, ...result };
   }
 
   @Post("entities/:entityId/regenerate-secret")
@@ -2257,7 +2296,9 @@ export class AgentController {
       entityId,
       scope,
     );
-    if (!result) return { error: "Entity not found", status: 404 };
+    if (!result) {
+      throw new NotFoundException({ error: "Entity not found", entityId });
+    }
     // Force-close any live WS sessions still authenticated with the OLD
     // secret. Without this, an entity backend that already established
     // a connection keeps serving tool-calls with the rotated-out secret
@@ -2266,7 +2307,7 @@ export class AgentController {
     const closed = this.toolSync.disconnectEntity(
       scope.organizationId,
       scope.projectId,
-      entityId,
+      result.entityId,
     );
     return { ...result, sessionsClosed: closed };
   }
@@ -2285,6 +2326,15 @@ export class AgentController {
     @Body() body: { toolName?: string; params?: Record<string, unknown> },
   ) {
     const scope = this.getScope(req);
+    const entity = await this.authService.getEntity(
+      scope.organizationId,
+      scope.projectId,
+      entityId,
+    );
+    if (!entity) {
+      throw new NotFoundException({ error: "Entity not found", entityId });
+    }
+    const externalId = (entity as { entityId: string }).entityId;
     const toolName = (body?.toolName || "ping").trim();
     if (!toolName) {
       return { error: "toolName is required", status: 400 };
@@ -2314,9 +2364,9 @@ export class AgentController {
         result: result.status === "success" ? result.result : undefined,
         error: result.status !== "success" ? result.error : undefined,
         request: {
-          url: `(internal dispatch) entity=${entityId}`,
+          url: `(internal dispatch) entity=${externalId}`,
           headers: {
-            "X-Platos-Entity-Id": entityId,
+            "X-Platos-Entity-Id": externalId,
             "X-Platos-Tool": toolName,
           },
           body: outboundBody,
@@ -2332,8 +2382,8 @@ export class AgentController {
         latencyMs: Date.now() - startedAt,
         error: err?.message || String(err),
         request: {
-          url: `(internal dispatch) entity=${entityId}`,
-          headers: { "X-Platos-Entity-Id": entityId, "X-Platos-Tool": toolName },
+          url: `(internal dispatch) entity=${externalId}`,
+          headers: { "X-Platos-Entity-Id": externalId, "X-Platos-Tool": toolName },
           body: outboundBody,
         },
       };
@@ -2348,15 +2398,18 @@ export class AgentController {
       scope.projectId,
       entityId,
     );
-    if (!entity) return { error: "Entity not found", status: 404 };
-    const connected = this.toolSync.isEntityConnected(entityId, scope.environmentId);
+    if (!entity) {
+      throw new NotFoundException({ error: "Entity not found", entityId });
+    }
+    const externalId = (entity as { entityId: string }).entityId;
+    const connected = this.toolSync.isEntityConnected(externalId, scope.environmentId);
     const connectedInOtherEnv =
       !connected &&
       this.toolSync
         .getConnectedSources()
         .some(
           (s) =>
-            s.entityId === entityId &&
+            s.entityId === externalId &&
             s.organizationId === scope.organizationId &&
             s.projectId === scope.projectId &&
             s.environmentId !== scope.environmentId,
@@ -2500,7 +2553,7 @@ export class AgentController {
       await this.authService.updateEntity(
         scope.organizationId,
         scope.projectId,
-        entityId,
+        (entity as { entityId: string }).entityId,
         { allowedOrigins: deduped },
       );
     }
@@ -2517,7 +2570,7 @@ export class AgentController {
     const updated = await this.authService.getEntity(
       scope.organizationId,
       scope.projectId,
-      entityId,
+      (entity as { entityId: string }).entityId,
     );
     return updated;
   }
@@ -2573,6 +2626,7 @@ export class AgentController {
     }
     const prisma = this.prisma;
     const entityPk = (entity as { id: string }).id;
+    const externalId = (entity as { entityId: string }).entityId;
     const [config, bearerTokenCount] = await Promise.all([
       prisma.entityMcpConfig.findUnique({ where: { entityId: entityPk } }),
       prisma.mcpBearerToken.count({
@@ -2583,7 +2637,7 @@ export class AgentController {
       // Default: MCP is disabled by default per PIFSP-21 decisions.
       return {
         entityPk,
-        entityId,
+        entityId: externalId,
         enabled: false,
         identityMode: "bearer",
         identityProviders: [],
@@ -2598,7 +2652,7 @@ export class AgentController {
     }
     return {
       entityPk: config.entityId,
-      entityId,
+      entityId: externalId,
       enabled: config.enabled,
       identityMode: config.identityMode,
       identityProviders: config.identityProviders,
@@ -2638,6 +2692,7 @@ export class AgentController {
       throw new NotFoundException({ error: "Entity not found", entityId });
     }
     const entityPk = (entity as { id: string }).id;
+    const externalId = (entity as { entityId: string }).entityId;
     const prisma = this.prisma;
 
     const update: Record<string, unknown> = {};
@@ -2696,7 +2751,7 @@ export class AgentController {
     }
     return {
       entityPk,
-      entityId,
+      entityId: externalId,
       enabled: fresh.enabled,
       identityMode: fresh.identityMode,
       identityProviders: fresh.identityProviders,

@@ -204,7 +204,14 @@ describe("ScopeGuard — Path 2 direct headers", () => {
     },
   );
 
-  it("continues to verify raw bearer material for non-lifecycle direct-header routes", async () => {
+  it.each([
+    ["POST", "/api/v1/agent/threads"],
+    ["GET", "/api/v1/agent/providers"],
+    ["GET", "/api/v1/agent/access-key/origins"],
+    ["POST", "/api/v1/agent/access-key/"],
+    ["POST", "/api/v1/agent/access-key/rotate"],
+    ["POST", "/api/v1/agent/access-key/origins/extra?from=dashboard"],
+  ])("rejects trusted direct-header %s %s when the AccessKey is missing or invalid", async (method, url) => {
     const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
     const guard = new ScopeGuard(authService as any);
     const ctx = mockExecutionContext(
@@ -214,13 +221,80 @@ describe("ScopeGuard — Path 2 direct headers", () => {
         "x-platos-environment-id": "env_1",
         "x-platos-user-id": "user_1",
       },
-      "/api/v1/agent/threads",
+      url,
+      undefined,
+      method,
+    );
+
+    await expect(guard.canActivate(ctx)).resolves.toBe(false);
+    expect(authService.verifyAccessKey).toHaveBeenCalledWith(
+      {
+        organizationId: "org_1",
+        projectId: "proj_1",
+        environmentId: "env_1",
+        userId: "user_1",
+      },
+      undefined,
+      undefined,
+    );
+    const response = ctx.switchToHttp().getResponse() as any;
+    expect(response.status).toHaveBeenCalledWith(401);
+    expect(response.json).toHaveBeenCalledWith({
+      error: "INVALID_ACCESS_KEY",
+      message: "X-Platos-Api-Key is missing or invalid for this scope.",
+    });
+  });
+
+  it("allows an arbitrary trusted direct-header route with a valid AccessKey", async () => {
+    const authService = { verifyAccessKey: vi.fn().mockResolvedValue(true) };
+    const guard = new ScopeGuard(authService as any);
+    const ctx = mockExecutionContext(
+      {
+        "x-platos-organization-id": "org_1",
+        "x-platos-project-id": "proj_1",
+        "x-platos-environment-id": "env_1",
+        "x-platos-user-id": "user_1",
+        "x-platos-api-key": "platos_live_valid",
+        origin: "https://app.example",
+      },
+      "/api/v1/agent/threads?agentId=agent_1",
       undefined,
       "POST",
     );
 
-    await expect(guard.canActivate(ctx)).resolves.toBe(false);
-    expect(authService.verifyAccessKey).toHaveBeenCalledOnce();
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(authService.verifyAccessKey).toHaveBeenCalledWith(
+      {
+        organizationId: "org_1",
+        projectId: "proj_1",
+        environmentId: "env_1",
+        userId: "user_1",
+      },
+      "platos_live_valid",
+      "https://app.example",
+    );
+  });
+
+  it("allows a server-authenticated dashboard request without retaining an Environment AccessKey", async () => {
+    const previous = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "dashboard-control-plane-token-32chars";
+    try {
+      const authService = { verifyAccessKey: vi.fn().mockResolvedValue(false) };
+      const guard = new ScopeGuard(authService as any);
+      const ctx = mockExecutionContext({
+        "x-platos-organization-id": "org_1",
+        "x-platos-project-id": "proj_1",
+        "x-platos-environment-id": "env_1",
+        "x-platos-user-id": "user_1",
+        "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
+      }, "/api/v1/agent/entities/entity_1");
+
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(authService.verifyAccessKey).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+      else process.env.PLATOS_INTERNAL_AUTH_TOKEN = previous;
+    }
   });
 });
 

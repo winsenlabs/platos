@@ -199,6 +199,29 @@ export class ScopeGuard implements CanActivate {
     );
   }
 
+  /**
+   * The webapp calls the agent over the private Docker network with this
+   * server-only token. It must keep working after an Environment API key is
+   * created: that key is browser-generated, revealed once, and deliberately
+   * unavailable to loaders. Runtime callers without this token still require
+   * the Environment AccessKey when one is configured.
+   */
+  private hasValidControlPlaneAuth(request: { headers?: Record<string, unknown> }): boolean {
+    // Read directly instead of through the complete config proxy: this guard
+    // is deliberately usable in lightweight test harnesses before unrelated
+    // runtime integrations (Redis/credential root keys) are configured.
+    const expected = process.env.PLATOS_INTERNAL_AUTH_TOKEN?.trim();
+    const provided = request.headers?.["x-platos-internal-auth"];
+    if (!expected || typeof provided !== "string" || provided.length !== expected.length) {
+      return false;
+    }
+    try {
+      return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+    } catch {
+      return false;
+    }
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
@@ -594,7 +617,11 @@ export class ScopeGuard implements CanActivate {
       // exact AccessKey lifecycle routes are operator-authorized by their
       // controller/service and cannot require raw bearer material that the
       // dashboard intentionally discards after the one-time reveal.
-      if (this.authService && !this.isDirectAccessKeyLifecycleRequest(request)) {
+      if (
+        this.authService &&
+        !this.isDirectAccessKeyLifecycleRequest(request) &&
+        !this.hasValidControlPlaneAuth(request)
+      ) {
         const providedKey = request.headers["x-platos-api-key"] as string | undefined;
         const origin = (request.headers["origin"] || request.headers["referer"]) as string | undefined;
         const scopeForCheck = {

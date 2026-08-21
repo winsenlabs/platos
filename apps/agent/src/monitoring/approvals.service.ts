@@ -153,18 +153,18 @@ export class MonitoringApprovalsService {
     }
   }
 
-  async resolve(input: ResolveApprovalInput): Promise<void> {
+  async resolve(input: ResolveApprovalInput): Promise<boolean> {
     try {
       const row = await this.findRawByApprovalId(
         input.scope,
         input.approvalId,
       );
-      if (!row || row.status !== "PENDING") return;
+      if (!row || row.status !== "PENDING") return false;
       const stored = this.readArguments(row.arguments);
       const persistEdits =
         input.status === "approved" && input.editedArgs != null;
-      await this.prisma.agentApproval.update({
-        where: { id: row.id },
+      const result = await this.prisma.agentApproval.updateMany({
+        where: { id: row.id, status: "PENDING" },
         data: {
           status: this.databaseStatus(input.status),
           respondedBy: input.respondedBy ?? null,
@@ -182,8 +182,10 @@ export class MonitoringApprovalsService {
           ),
         },
       });
+      return result.count === 1;
     } catch (err) {
       console.error("[Platos Approvals] resolve failed:", err);
+      return false;
     }
   }
 

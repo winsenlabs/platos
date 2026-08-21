@@ -5,14 +5,6 @@ if [ -n "$DATABASE_HOST" ]; then
   scripts/wait-for-it.sh ${DATABASE_HOST} -- echo "database is up"
 fi
 
-if [ "$SKIP_POSTGRES_MIGRATIONS" != "1" ]; then
-  echo "Running prisma migrations"
-  pnpm --filter @platos/database db:migrate:deploy
-  echo "Prisma migrations done"
-else
-  echo "SKIP_POSTGRES_MIGRATIONS=1, skipping Postgres migrations."
-fi
-
 if [ -n "$CLICKHOUSE_URL" ] && [ "$SKIP_CLICKHOUSE_MIGRATIONS" != "1" ]; then
   # Run ClickHouse migrations
   echo "Running ClickHouse migrations..."
@@ -38,12 +30,6 @@ elif [ "$SKIP_CLICKHOUSE_MIGRATIONS" = "1" ]; then
 else
   echo "CLICKHOUSE_URL not set, skipping ClickHouse migrations."
 fi
-
-# Copy over required prisma files
-cp internal-packages/database/prisma/schema.prisma apps/webapp/prisma/
-# @prisma/engines isn't in the prod image (devDep); the client has its own
-# engine binary in the generated dir which is already on the module path.
-cp node_modules/@prisma/engines/*.node apps/webapp/prisma/ 2>/dev/null || true
 
 cd /triggerdotdev/apps/webapp
 

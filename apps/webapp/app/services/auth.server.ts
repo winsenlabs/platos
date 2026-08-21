@@ -1,46 +1,126 @@
-import { createCookieSessionStorage } from "@remix-run/node";
-import { Authenticator } from "remix-auth";
-import type { AuthUser } from "./authUser";
-import { addGitHubStrategy } from "./gitHubAuth.server";
-import { addGoogleStrategy } from "./googleAuth.server";
+import { createCookie, redirect } from "@remix-run/node";
+import {
+  PlatosAuthError,
+  PlatosAuthService,
+  authorizeEnvironmentOperator,
+  type EnvironmentAuthorizationAccess,
+  type OperatorAuthorization,
+} from "@platos/tenancy-database";
 import { env } from "~/env.server";
+import { database } from "./database.server";
 
-// Remix Auth is retained only for the OAuth handshake. Keep its transient
-// state isolated from the legacy dashboard `__session` cookie so an inherited
-// Trigger auth payload can never be treated as a successful OAuth result.
-const oauthSessionStorage = createCookieSessionStorage({
-  cookie: {
-    name: env.NODE_ENV === "production" ? "__Host-platos_oauth" : "platos_oauth",
-    httpOnly: true,
-    path: "/",
-    sameSite: "lax",
-    secrets: [env.SESSION_SECRET],
-    secure: env.NODE_ENV === "production",
-    maxAge: 15 * 60,
-  },
+export const operatorAuth = new PlatosAuthService(database, { encryptionKey: env.ENCRYPTION_KEY });
+export const OPERATOR_SESSION_COOKIE_NAME =
+  env.NODE_ENV === "production" ? "__Host-platos_operator_session" : "platos_operator_session";
+
+const cookie = createCookie(OPERATOR_SESSION_COOKIE_NAME, {
+  httpOnly: true,
+  path: "/",
+  sameSite: "lax",
+  secure: env.NODE_ENV === "production",
 });
 
-const authenticator = new Authenticator<AuthUser>(oauthSessionStorage);
+export type DashboardOperator = {
+  authorization: OperatorAuthorization;
+  userId: string;
+  actorUserId: string;
+  email: string;
+};
 
-const isGithubAuthSupported =
-  typeof env.AUTH_GITHUB_CLIENT_ID === "string" &&
-  typeof env.AUTH_GITHUB_CLIENT_SECRET === "string";
-
-const isGoogleAuthSupported =
-  typeof env.AUTH_GOOGLE_CLIENT_ID === "string" &&
-  typeof env.AUTH_GOOGLE_CLIENT_SECRET === "string";
-
-if (env.AUTH_GITHUB_CLIENT_ID && env.AUTH_GITHUB_CLIENT_SECRET) {
-  addGitHubStrategy(authenticator, env.AUTH_GITHUB_CLIENT_ID, env.AUTH_GITHUB_CLIENT_SECRET);
+export async function readOperatorToken(request: Request): Promise<string | null> {
+  const value = await cookie.parse(request.headers.get("Cookie"));
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-if (env.AUTH_GOOGLE_CLIENT_ID && env.AUTH_GOOGLE_CLIENT_SECRET) {
-  addGoogleStrategy(authenticator, env.AUTH_GOOGLE_CLIENT_ID, env.AUTH_GOOGLE_CLIENT_SECRET);
+export function commitOperatorSession(token: string, expiresAt: Date) {
+  return cookie.serialize(token, { expires: expiresAt });
 }
 
-export { authenticator, isGithubAuthSupported, isGoogleAuthSupported };
+export function clearOperatorSession() {
+  return cookie.serialize("", { expires: new Date(0), maxAge: 0 });
+}
 
-export async function clearOAuthSession(request: Request): Promise<string> {
-  const session = await oauthSessionStorage.getSession(request.headers.get("Cookie"));
-  return oauthSessionStorage.destroySession(session);
+export async function optionalOperator(request: Request): Promise<DashboardOperator | null> {
+  const token = await readOperatorToken(request);
+  if (!token) return null;
+  try {
+    const authorization = await operatorAuth.authorizeOperatorSession(token);
+    return {
+      authorization,
+      userId: authorization.effectiveUserId,
+      actorUserId: authorization.actorUserId,
+      email: authorization.email,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function requireOperator(request: Request): Promise<DashboardOperator> {
+  const operator = await optionalOperator(request);
+  if (operator) return operator;
+  const url = new URL(request.url);
+  throw redirect(`/login?redirectTo=${encodeURIComponent(url.pathname + url.search)}`);
+}
+
+export async function requireEnvironmentScope(params: {
+  request: Request;
+  organizationSlug: string;
+  projectSlug: string;
+  environmentSlug: string;
+  access?: EnvironmentAuthorizationAccess;
+}) {
+  const operator = await requireOperator(params.request);
+  const environment = await database.environment.findFirst({
+    where: {
+      slug: params.environmentSlug,
+      archivedAt: null,
+      project: {
+        slug: params.projectSlug,
+        archivedAt: null,
+        organization: { slug: params.organizationSlug, archivedAt: null },
+      },
+    },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      project: {
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          organization: { select: { id: true, slug: true, name: true } },
+        },
+      },
+    },
+  });
+  if (!environment) throw new Response("Environment not found", { status: 404 });
+  const authorization = await authorizeEnvironmentOperator(
+    database,
+    operator.authorization,
+    environment.id,
+    params.access ?? "metadata"
+  );
+  return {
+    authorization,
+    operator,
+    scope: {
+      organizationId: authorization.organizationId,
+      projectId: authorization.projectId,
+      environmentId: authorization.environmentId,
+      userId: authorization.effectiveUserId,
+    },
+    workspace: {
+      organization: environment.project.organization,
+      project: { id: environment.project.id, slug: environment.project.slug, name: environment.project.name },
+      environment: { id: environment.id, slug: environment.slug, name: environment.name, type: environment.slug },
+      operator: { id: operator.userId, email: operator.email },
+    },
+  };
+}
+
+export function authErrorResponse(error: unknown): Response {
+  if (error instanceof PlatosAuthError) return new Response(error.message, { status: error.status });
+  throw error;
 }

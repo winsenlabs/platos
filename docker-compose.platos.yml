@@ -316,48 +316,6 @@ services:
         echo '[migrations-init] done'
     restart: "no"
 
-  # Deploys the legacy schema into a SEPARATE database, for the dashboard.
-  #
-  # The webapp has not been migrated yet (M4 rebuilds it), so it still reads
-  # TaskRun, TaskQueue, RuntimeEnvironment and the Platos* models. Those cannot
-  # share a database with the clean schema: both define User, Organization and
-  # Project with different columns. Giving the legacy set its own Postgres
-  # schema does not work either — its migrations hardcode `public.` prefixes
-  # and fail partway with `relation "public.JobRun" does not exist` — so it
-  # gets its own database instead.
-  #
-  # Retire this service, and POSTGRES_LEGACY_DB, once the dashboard reads the
-  # clean schema.
-  migrations-init-legacy:
-    image: node:22-alpine
-    logging: *default-logging
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      PGPASSWORD: "${POSTGRES_PASSWORD}"
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_LEGACY_DB:-platos_legacy}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
-      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_LEGACY_DB:-platos_legacy}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
-    volumes:
-      - ./internal-packages/database:/work
-    working_dir: /work
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        set -e
-        echo '[migrations-init-legacy] ensuring the legacy database exists...'
-        apk add --no-cache postgresql-client >/dev/null
-        psql -h postgres -U "${POSTGRES_USER:-postgres}" -d postgres -tAc \
-          "SELECT 1 FROM pg_database WHERE datname='${POSTGRES_LEGACY_DB:-platos_legacy}'" \
-          | grep -q 1 || psql -h postgres -U "${POSTGRES_USER:-postgres}" -d postgres \
-          -c "CREATE DATABASE \"${POSTGRES_LEGACY_DB:-platos_legacy}\""
-        echo '[migrations-init-legacy] installing prisma...'
-        npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
-        echo '[migrations-init-legacy] deploying the legacy schema...'
-        npx prisma migrate deploy
-        echo '[migrations-init-legacy] done'
-    restart: "no"
 
   agent:
     build:
@@ -549,8 +507,6 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
-      migrations-init-legacy:
-        condition: service_completed_successfully
       migrations-init:
         condition: service_completed_successfully
       clickhouse-migrate:
@@ -564,12 +520,9 @@ services:
       APP_ORIGIN: "${APP_ORIGIN:-http://localhost:3030}"
       LOGIN_ORIGIN: "${LOGIN_ORIGIN:-http://localhost:3030}"
       API_ORIGIN: "${API_ORIGIN:-http://localhost:3030}"
-      # The dashboard still reads the legacy schema; see migrations-init-legacy.
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_LEGACY_DB:-platos_legacy}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
-      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_LEGACY_DB:-platos_legacy}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
-      # Explicit clean control-plane connection. Never substitute either of the
-      # legacy URLs above: the dashboard remains split until the M4 cutover.
-      PLATOS_CONTROL_DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=10&pool_timeout=20"
+      # Webapp and agent share the canonical clean database.
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
       DATABASE_HOST: "postgres:5432"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -610,6 +563,9 @@ services:
       OBJECT_STORE_ACCESS_KEY_ID: "${OBJECT_STORE_ACCESS_KEY_ID:-}"
       OBJECT_STORE_SECRET_ACCESS_KEY: "${OBJECT_STORE_SECRET_ACCESS_KEY:-}"
       APP_LOG_LEVEL: info
+      # Optional production server error reporting. The webapp keeps default
+      # PII disabled and is a no-op when this is unset.
+      SENTRY_DSN: "${SENTRY_DSN:-}"
       # EOBD.55 — migrations-init runs before webapp boot, but the
       # prod webapp image still doesn't carry Prisma, so keep these
       # flags. The init container handles the DDL.

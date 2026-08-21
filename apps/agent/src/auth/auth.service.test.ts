@@ -509,6 +509,26 @@ describe("AuthService — clean Entity registry", () => {
     expect(JSON.stringify(result)).not.toContain("encryptedReference");
   });
 
+  it("accepts the canonical Entity UUID while retaining externalId compatibility", async () => {
+    const prisma = entityPrisma();
+    const canonicalId = "11111111-1111-4111-8111-111111111111";
+    prisma.entity.findFirst.mockResolvedValue({ ...cleanEntity, id: canonicalId });
+    const auth = new AuthService(prisma, {} as any, undefined, secretStore() as any);
+
+    const result = await auth.getEntity("org_1", "proj_1", canonicalId);
+
+    expect(prisma.entity.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          projectId: "proj_1",
+          id: canonicalId,
+          project: { organizationId: "org_1" },
+        },
+      }),
+    );
+    expect(result).toMatchObject({ id: canonicalId, entityId: "support-core" });
+  });
+
   it("lists clean project Entities through canonical Organization ancestry", async () => {
     const prisma = entityPrisma();
     prisma.entity.findMany.mockResolvedValue([cleanEntity]);
@@ -532,7 +552,10 @@ describe("AuthService — clean Entity registry", () => {
 
   it("updates only the scoped clean Entity row", async () => {
     const prisma = entityPrisma();
-    prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
+    prisma.entity.findFirst.mockResolvedValue({
+      id: cleanEntity.id,
+      externalId: cleanEntity.externalId,
+    });
     prisma.entity.update.mockResolvedValue({
       ...cleanEntity,
       displayName: "Renamed",
@@ -565,6 +588,7 @@ describe("AuthService — clean Entity registry", () => {
     const prisma = entityPrisma();
     prisma.entity.findFirst.mockResolvedValue({
       id: cleanEntity.id,
+      externalId: cleanEntity.externalId,
       project: { environments: project.environments },
     });
     prisma.credential.findUnique
@@ -598,7 +622,10 @@ describe("AuthService — clean Entity registry", () => {
 
   it("atomically revokes credentials, removes mappings, and deletes the Entity before cache eviction", async () => {
     const prisma = entityPrisma();
-    prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
+    prisma.entity.findFirst.mockResolvedValue({
+      id: cleanEntity.id,
+      externalId: cleanEntity.externalId,
+    });
     prisma.entity.deleteMany.mockResolvedValue({ count: 1 });
     prisma.environmentEntityTool.deleteMany.mockResolvedValue({ count: 2 });
     const tools = toolRegistry();
@@ -634,7 +661,10 @@ describe("AuthService — clean Entity registry", () => {
 
   it("does not start a database transaction when registry eviction cannot be prepared", async () => {
     const prisma = entityPrisma();
-    prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
+    prisma.entity.findFirst.mockResolvedValue({
+      id: cleanEntity.id,
+      externalId: cleanEntity.externalId,
+    });
     const tools = toolRegistry();
     tools.registry.prepareEntityEviction.mockImplementation(() => {
       throw new Error("index build failed");
@@ -652,7 +682,10 @@ describe("AuthService — clean Entity registry", () => {
 
   it("does not evict cache/index when the entity transaction fails", async () => {
     const prisma = entityPrisma();
-    prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
+    prisma.entity.findFirst.mockResolvedValue({
+      id: cleanEntity.id,
+      externalId: cleanEntity.externalId,
+    });
     prisma.$transaction.mockRejectedValue(new Error("transaction failed"));
     const tools = toolRegistry();
     const auth = new AuthService(prisma, {} as any, tools.registry as any);
@@ -666,7 +699,10 @@ describe("AuthService — clean Entity registry", () => {
 
   it("returns success after recovering a post-commit eviction failure from canonical DB", async () => {
     const prisma = entityPrisma();
-    prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
+    prisma.entity.findFirst.mockResolvedValue({
+      id: cleanEntity.id,
+      externalId: cleanEntity.externalId,
+    });
     prisma.environmentEntityTool.deleteMany.mockResolvedValue({ count: 1 });
     prisma.entity.deleteMany.mockResolvedValue({ count: 1 });
     const tools = toolRegistry();
@@ -683,7 +719,10 @@ describe("AuthService — clean Entity registry", () => {
 
   it("fails loudly only when post-commit eviction and canonical recovery both fail", async () => {
     const prisma = entityPrisma();
-    prisma.entity.findFirst.mockResolvedValue({ id: cleanEntity.id });
+    prisma.entity.findFirst.mockResolvedValue({
+      id: cleanEntity.id,
+      externalId: cleanEntity.externalId,
+    });
     prisma.environmentEntityTool.deleteMany.mockResolvedValue({ count: 1 });
     prisma.entity.deleteMany.mockResolvedValue({ count: 1 });
     const tools = toolRegistry();

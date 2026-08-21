@@ -271,8 +271,6 @@ describe("Platos secret store integration", () => {
         store.rotateProviderCredentialAndKey({
           authorization: operator,
           keyId: created.key.id,
-          credentialId: created.credential.id,
-          provider: "anthropic",
           plaintext: "must-roll-back",
         })
       ).rejects.toThrow(/provider key link blocked/);

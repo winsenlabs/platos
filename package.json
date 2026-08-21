@@ -12,7 +12,7 @@
     "build:force": "turbo run build --force",
     "build:platos": "pnpm run build:platos:agent && pnpm run build:platos:webapp",
     "build:platos:agent": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
-    "build:platos:webapp": "pnpm --filter @platos/database generate && node apps/webapp/scripts/memory-policy.mjs build -- pnpm exec turbo run build --filter='webapp...' --concurrency=1",
+    "build:platos:webapp": "pnpm --filter @platos/tenancy-database build && node apps/webapp/scripts/memory-policy.mjs build -- pnpm exec turbo run build --filter='webapp' --concurrency=1",
     "build:db:seed": "turbo run build:db:seed",
     "db:migrate": "turbo run db:migrate:deploy generate",
     "db:seed": "turbo run db:seed",

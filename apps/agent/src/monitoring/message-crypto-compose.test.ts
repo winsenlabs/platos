@@ -3,25 +3,25 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("message encryption Compose configuration", () => {
-  it("passes bounded historical read keys to both worker and agent", () => {
+  it("passes the primary and bounded historical read keys to the active agent service", () => {
     const compose = readFileSync(
       resolve(__dirname, "../../../../docker-compose.platos.yml"),
       "utf8"
     );
 
-    const worker = compose.slice(compose.indexOf("  worker:"), compose.indexOf("  agent:"));
-    const agent = compose.slice(compose.indexOf("  agent:"));
+    const services = compose.slice(compose.indexOf("services:"), compose.indexOf("volumes:"));
+    const agent = compose.match(/^  agent:\n[\s\S]*?(?=^  [a-zA-Z0-9_-]+:\n)/m)?.[0];
 
-    for (const service of [worker, agent]) {
-      expect(service).toContain('PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:');
-      expect(service).toContain(
-        'PLATOS_MESSAGE_ENCRYPTION_KEY_V: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V:-1}"'
+    expect(agent).toBeDefined();
+    expect(agent).toContain('PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"');
+    expect(agent).toContain(
+      'PLATOS_MESSAGE_ENCRYPTION_KEY_V: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V:-1}"'
+    );
+    for (let version = 1; version <= 5; version += 1) {
+      expect(agent).toContain(
+        `PLATOS_MESSAGE_ENCRYPTION_KEY_V${version}: "\${PLATOS_MESSAGE_ENCRYPTION_KEY_V${version}:-}"`
       );
-      for (let version = 1; version <= 5; version += 1) {
-        expect(service).toContain(
-          `PLATOS_MESSAGE_ENCRYPTION_KEY_V${version}: "\${PLATOS_MESSAGE_ENCRYPTION_KEY_V${version}:-}"`
-        );
-      }
     }
+    expect(services).not.toMatch(/^  worker:/m);
   });
 });

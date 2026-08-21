@@ -7,10 +7,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **206** across **35** namespaces (24 admin-tier).
-- REST operations: **288** unique method/path pairs from **289** route bindings.
+- REST operations: **290** unique method/path pairs from **291** route bindings.
 - Ambiguous duplicate REST method/path pairs: **1**.
 - MCP classifications: MAPPED=83, MCP_ONLY=123.
-- REST classifications: DEPRECATED=13, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=135.
+- REST classifications: DEPRECATED=13, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=137.
 
 ## REST inventory
 
@@ -180,6 +180,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/providers/keys` | MAPPED | `providers.add_key` | Reviewed behavioral equivalence: the REST adapter and providers.add_key invoke the same authorized provider registry/key operation; only transport parameters/envelopes differ. | `apps/agent/src/providers/providers.controller.ts#createKey` |
 | `DELETE /api/v1/agent/providers/keys/:id` | MAPPED | `providers.delete_key` | Reviewed behavioral equivalence: the REST adapter and providers.delete_key invoke the same authorized provider registry/key operation; only transport parameters/envelopes differ. | `apps/agent/src/providers/providers.controller.ts#deleteKey` |
 | `PATCH /api/v1/agent/providers/keys/:id` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/providers/providers.controller.ts#updateKey` |
+| `POST /api/v1/agent/providers/keys/:id/rotate-secret` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/providers/providers.controller.ts#rotateKeySecret` |
+| `POST /api/v1/agent/providers/keys/byok` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/providers/providers.controller.ts#createKeyWithSecret` |
 | `GET /api/v1/agent/providers/models` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#availableModels` |
 | `GET /api/v1/agent/secrets/status` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#secretsStatus` |
 | `GET /api/v1/agent/skills` | MAPPED | `skills.list` | Reviewed behavioral equivalence: the REST adapter and skills.list invoke the same scope-pinned skill registry/import operation; only transport parameters/envelopes differ. | `apps/agent/src/skills/skills.controller.ts#list` |

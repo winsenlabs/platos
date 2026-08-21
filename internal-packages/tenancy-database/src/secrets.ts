@@ -364,8 +364,6 @@ export class PlatosSecretStore {
   async rotateProviderCredentialAndKey(params: {
     authorization: EnvironmentOperatorAuthorization;
     keyId: string;
-    credentialId: string;
-    provider: string;
     plaintext: string;
   }): Promise<{ credential: SafeCredential; key: SafeProviderKey }> {
     requireMutation(params.authorization);
@@ -374,12 +372,10 @@ export class PlatosSecretStore {
         where: {
           id: params.keyId,
           environmentId: params.authorization.environmentId,
-          credentialId: params.credentialId,
-          provider: params.provider,
         },
         select: PROVIDER_KEY_SAFE_SELECT,
       });
-      if (!key) throw unavailable();
+      if (!key) throw new PlatosSecretStoreError("provider_key_unavailable");
 
       const credential = await tx.credential.findFirst({
         where: {

@@ -104,6 +104,63 @@ export class ProviderKeyService {
     }
   }
 
+  /** Create or rotate a provider Credential and link metadata atomically. */
+  async createWithSecret(
+    scope: ProviderOperatorScope,
+    input: {
+      provider: string;
+      label: string;
+      envVarName: string;
+      plaintext: string;
+      isDefault: boolean;
+    }
+  ): Promise<SafeProviderKeyView> {
+    const authorization = await this.authorize(scope, "secret:mutate");
+    try {
+      const result = await this.secretStore.createProviderCredentialAndKey({
+        authorization,
+        provider: input.provider,
+        name: input.envVarName,
+        plaintext: input.plaintext,
+        label: input.label,
+        isDefault: input.isDefault,
+      });
+      return toView(result.key);
+    } catch (error: unknown) {
+      if (error instanceof PlatosSecretStoreError) {
+        throw new ProviderKeyError("credential_unavailable");
+      }
+      if ((error as { code?: string })?.code === "P2002") {
+        throw new ProviderKeyError("already_exists");
+      }
+      throw error;
+    }
+  }
+
+  /** Rotate the secret behind an existing same-Environment ProviderKey. */
+  async rotateSecret(
+    scope: ProviderOperatorScope,
+    id: string,
+    plaintext: string
+  ): Promise<SafeProviderKeyView> {
+    const authorization = await this.authorize(scope, "secret:mutate");
+    try {
+      const result = await this.secretStore.rotateProviderCredentialAndKey({
+        authorization,
+        keyId: id,
+        plaintext,
+      });
+      return toView(result.key);
+    } catch (error: unknown) {
+      if (error instanceof PlatosSecretStoreError) {
+        throw new ProviderKeyError(
+          error.code === "provider_key_unavailable" ? "not_found" : "credential_unavailable"
+        );
+      }
+      throw error;
+    }
+  }
+
   async update(
     scope: ProviderOperatorScope,
     id: string,
