@@ -166,12 +166,33 @@ export class AuthService {
    * exactly matches the signed claims. This single method is shared by the
    * HTTP ScopeGuard and WebSocket gateway.
    */
+  /**
+   * Reject a session token with a reason on the record.
+   *
+   * validateSessionToken has sixteen ways to fail and used to return null from
+   * every one of them in silence, so an operator saw only the client-side
+   * "Invalid or expired session token." and had no way to tell an expired
+   * token from a signature mismatch from a revoked authorization.
+   *
+   * Reason strings are fixed vocabulary. Never pass token material, claim
+   * values, secrets, or anything caller-controlled through here — the reason
+   * is for whoever is reading agent logs, and it must stay safe to read.
+   */
+  private rejectSessionToken(reason: string): null {
+    this.logger.warn(`validateSessionToken rejected: ${reason}`);
+    return null;
+  }
+
   async validateSessionToken(token: string): Promise<SessionPayload | null> {
     try {
       const parts = token.split(".");
-      if (parts.length !== 3) return null;
+      if (parts.length !== 3) {
+        return this.rejectSessionToken("malformed token — expected three segments");
+      }
       const [headerB64, payloadB64, signatureB64] = parts;
-      if (!headerB64 || !payloadB64 || !signatureB64) return null;
+      if (!headerB64 || !payloadB64 || !signatureB64) {
+        return this.rejectSessionToken("malformed token — empty segment");
+      }
 
       let header: unknown;
       let claims: SessionPayload;
@@ -179,7 +200,7 @@ export class AuthService {
         header = JSON.parse(Buffer.from(headerB64, "base64url").toString("utf8"));
         claims = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
       } catch {
-        return null;
+        return this.rejectSessionToken("header or claims are not base64url JSON");
       }
       if (
         !header ||
@@ -196,33 +217,48 @@ export class AuthService {
         typeof claims.exp !== "number" ||
         !Number.isFinite(claims.exp)
       ) {
-        return null;
+        return this.rejectSessionToken(
+          "missing or malformed required claims (iss/organizationId/projectId/environmentId/userId/iat/exp) or alg is not HS256",
+        );
       }
 
       const signingSecret = this.platformSigningSecret;
       if (!signingSecret) {
-        this.logger.warn(
-          "validateSessionToken: SESSION_SECRET not set — rejecting scoped token.",
+        return this.rejectSessionToken(
+          "SESSION_SECRET is not set on this deployment — no scoped token can validate",
         );
-        return null;
       }
       const signingInput = `${headerB64}.${payloadB64}`;
       const expected = crypto
         .createHmac("sha256", signingSecret)
         .update(signingInput)
         .digest("base64url");
-      if (expected.length !== signatureB64.length) return null;
+      if (expected.length !== signatureB64.length) {
+        return this.rejectSessionToken(
+          "signature does not verify — token was signed with a different SESSION_SECRET",
+        );
+      }
       if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureB64))) {
-        return null;
+        return this.rejectSessionToken(
+          "signature does not verify — token was signed with a different SESSION_SECRET",
+        );
       }
 
       const now = new Date();
-      if (claims.exp * 1000 <= now.getTime()) return null;
-      if (claims.iat > Math.floor(now.getTime() / 1000) + 60) return null;
+      if (claims.exp * 1000 <= now.getTime()) {
+        return this.rejectSessionToken("token expired — mint a fresh one");
+      }
+      if (claims.iat > Math.floor(now.getTime() / 1000) + 60) {
+        return this.rejectSessionToken(
+          "token issued more than 60s in the future — check clock skew on the minting host",
+        );
+      }
 
       if (claims.authorizationId !== undefined) {
         if (typeof claims.authorizationId !== "string" || typeof claims.entityId !== "string") {
-          return null;
+          return this.rejectSessionToken(
+            "authorizationId present but authorizationId/entityId claims are malformed",
+          );
         }
         const authorization = await this.prisma.mcpBearerToken.findUnique({
           where: { id: claims.authorizationId },
@@ -248,7 +284,11 @@ export class AuthService {
           authorization.entity.project.id !== claims.projectId ||
           authorization.entity.project.organizationId !== claims.organizationId
         ) {
-          return null;
+          return this.rejectSessionToken(
+            !authorization
+              ? "no McpBearerToken row for this authorizationId — the end-user authorization does not exist in this database"
+              : "McpBearerToken is revoked, expired, or its entity/project/environment does not match the token's claims",
+          );
         }
 
         const environment = await this.prisma.environment.findUnique({
@@ -260,7 +300,9 @@ export class AuthService {
           environment.project.id !== authorization.entity.project.id ||
           environment.project.organizationId !== authorization.entity.project.organizationId
         ) {
-          return null;
+          return this.rejectSessionToken(
+            "the token's environment does not belong to the authorization's project/organization",
+          );
         }
 
         // Close the lookup→use revocation race. A revoke/expiry that wins here
@@ -274,7 +316,11 @@ export class AuthService {
           },
           data: { lastUsedAt: now },
         });
-        if (active.count !== 1) return null;
+        if (active.count !== 1) {
+          return this.rejectSessionToken(
+            "authorization was revoked or expired between lookup and use",
+          );
+        }
       }
 
       return claims;
