@@ -155,6 +155,44 @@ describe("AuthService — clean bearer-backed session tokens", () => {
     });
   });
 
+  it("names the stale environment id when a migrated deployment re-keys its scopes", async () => {
+    // A cutover that re-keys Organization/Project/Environment (cuid -> uuid on
+    // test.platos) leaves every integrator minting tokens against ids that no
+    // longer exist. That failure is indistinguishable from a bad secret unless
+    // the log prints the id, so it must.
+    const h = makeSessionHarness();
+    h.prisma.environment.findUnique = vi.fn(async () => null);
+    const warn = vi
+      .spyOn((h.auth as any).logger, "warn")
+      .mockImplementation(() => undefined);
+
+    const stale = { ...SCOPE, environmentId: "cmrci97ty000dpb0jq01pbdac" };
+    await expect(
+      h.auth.validateSessionToken(entitySignedToken(stale, "any-secret-abcdefghijkl")),
+    ).resolves.toBeNull();
+
+    const reason = String(warn.mock.calls.at(-1)?.[0] ?? "");
+    expect(reason).toContain("cmrci97ty000dpb0jq01pbdac");
+    expect(reason).toMatch(/pre-migration ids/i);
+  });
+
+  it("names both sides when the claimed project/org do not own the environment", async () => {
+    const h = makeSessionHarness();
+    const warn = vi
+      .spyOn((h.auth as any).logger, "warn")
+      .mockImplementation(() => undefined);
+
+    await expect(
+      h.auth.validateSessionToken(
+        entitySignedToken({ ...SCOPE, organizationId: "org_someone_else" }, "any-secret-abcdefghijkl"),
+      ),
+    ).resolves.toBeNull();
+
+    const reason = String(warn.mock.calls.at(-1)?.[0] ?? "");
+    expect(reason).toContain("org_someone_else");
+    expect(reason).toContain(SCOPE.organizationId);
+  });
+
   it("refuses an entity-signed token for a scope that entity does not own", async () => {
     // resolveEntityServiceSecret re-derives organization/project from the
     // Environment and returns null when they disagree with the claims. That
