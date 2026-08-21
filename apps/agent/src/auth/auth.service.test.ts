@@ -117,6 +117,40 @@ describe("AuthService — clean bearer-backed session tokens", () => {
     await expect(h.auth.validateSessionToken(token!)).resolves.toBeNull();
   });
 
+  it("records a distinct reason for each rejection, and never the token itself", async () => {
+    // validateSessionToken had sixteen silent `return null` paths, so a Slack
+    // turn failing on test.platos surfaced as "Invalid or expired session
+    // token." with nothing in the agent log to say which of the sixteen fired.
+    const h = makeSessionHarness();
+    const warn = vi
+      .spyOn((h.auth as any).logger, "warn")
+      .mockImplementation(() => undefined);
+    const lastReason = () => String(warn.mock.calls.at(-1)?.[0] ?? "");
+
+    const expired = await h.auth.createEntitySessionToken(entityClaims(), "bearer_1", -1);
+    await expect(h.auth.validateSessionToken(expired!)).resolves.toBeNull();
+    const expiredReason = lastReason();
+    expect(expiredReason).toMatch(/expired/i);
+
+    const valid = (await h.auth.createEntitySessionToken(entityClaims(), "bearer_1", 60))!;
+    const [header, payload] = valid.split(".");
+    const forged = `${header}.${payload}.${"A".repeat(43)}`;
+    await expect(h.auth.validateSessionToken(forged)).resolves.toBeNull();
+    const forgedReason = lastReason();
+    expect(forgedReason).toMatch(/signature does not verify/i);
+
+    // An expiry and a bad signature are different operator problems and must
+    // not be reported with the same words.
+    expect(expiredReason).not.toBe(forgedReason);
+
+    // A reason is for the log, so it must never carry token material.
+    for (const call of warn.mock.calls) {
+      const line = String(call[0] ?? "");
+      expect(line).not.toContain(header);
+      expect(line).not.toContain(payload);
+    }
+  });
+
   it("immediately rejects bearer expiry and revocation", async () => {
     const h = makeSessionHarness();
     const token = (await h.auth.createEntitySessionToken(entityClaims(), "bearer_1", 60))!;
