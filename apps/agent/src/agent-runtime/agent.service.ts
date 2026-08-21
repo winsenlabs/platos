@@ -274,6 +274,13 @@ function resolveModel(
   // the agent passes its own rules, those win; else use sensible defaults.
   const retryFetch = makeRetryFetch(retryRules ?? DEFAULT_RETRY_RULES);
   if (!apiKey) {
+    // The client only ever sees the safe message, so name the model and
+    // provider here or an operator cannot tell WHICH provider was unresolved
+    // on an agent whose model routes span several of them.
+    new Logger("resolveModel").warn(
+      `no API key resolved for provider=${provider} model=${modelString} — ` +
+        "no default ProviderKey is registered for this provider in this environment",
+    );
     throw new ProviderRuntimeError("provider_configuration_unavailable");
   }
 
