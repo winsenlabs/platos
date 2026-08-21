@@ -58,6 +58,24 @@ function makeSessionHarness() {
   };
 }
 
+/**
+ * Mint a token the way @platosdev/token-mint does: signed with the ENTITY's
+ * service secret, and carrying no `iss` claim.
+ */
+function entitySignedToken(claims: Record<string, unknown>, secret: string): string {
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString(
+    "base64url",
+  );
+  const iat = Math.floor(Date.now() / 1000);
+  const payload = Buffer.from(
+    JSON.stringify({ ...claims, iat, exp: iat + 300 }),
+  ).toString("base64url");
+  const signature = createHmac("sha256", secret)
+    .update(`${header}.${payload}`)
+    .digest("base64url");
+  return `${header}.${payload}.${signature}`;
+}
+
 function entityClaims(overrides: Record<string, unknown> = {}) {
   return {
     ...SCOPE,
@@ -117,6 +135,51 @@ describe("AuthService — clean bearer-backed session tokens", () => {
     await expect(h.auth.validateSessionToken(token!)).resolves.toBeNull();
   });
 
+  it("accepts a token signed with the entity's own service secret and no iss", async () => {
+    // This is exactly what @platosdev/token-mint emits. Before per-entity
+    // verification the agent required SESSION_SECRET + iss=platos-platform,
+    // so EVERY externally minted token was rejected — a Slack turn through
+    // Walle failed on the claims check before signature was even reached.
+    // Requiring SESSION_SECRET instead would hand every integrator one key
+    // that unlocks every tenant on the deployment.
+    const h = makeSessionHarness();
+    const entitySecret = "walle-entity-service-secret-abcdef";
+    vi.spyOn(h.auth, "resolveEntityServiceSecret").mockResolvedValue(entitySecret);
+
+    await expect(
+      h.auth.validateSessionToken(entitySignedToken(SCOPE, entitySecret)),
+    ).resolves.toMatchObject({
+      organizationId: SCOPE.organizationId,
+      projectId: SCOPE.projectId,
+      entityId: SCOPE.entityId,
+    });
+  });
+
+  it("refuses an entity-signed token for a scope that entity does not own", async () => {
+    // resolveEntityServiceSecret re-derives organization/project from the
+    // Environment and returns null when they disagree with the claims. That
+    // is the guard stopping a valid entity secret becoming a cross-tenant key.
+    const h = makeSessionHarness();
+    vi.spyOn(h.auth, "resolveEntityServiceSecret").mockResolvedValue(null);
+
+    await expect(
+      h.auth.validateSessionToken(
+        entitySignedToken({ ...SCOPE, organizationId: "org_someone_else" }, "any-secret-abcdefghijkl"),
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it("refuses a token signed with the wrong entity secret", async () => {
+    const h = makeSessionHarness();
+    vi.spyOn(h.auth, "resolveEntityServiceSecret").mockResolvedValue(
+      "the-real-entity-secret-0000000000",
+    );
+
+    await expect(
+      h.auth.validateSessionToken(entitySignedToken(SCOPE, "an-attackers-guess-1111111111")),
+    ).resolves.toBeNull();
+  });
+
   it("records a distinct reason for each rejection, and never the token itself", async () => {
     // validateSessionToken had sixteen silent `return null` paths, so a Slack
     // turn failing on test.platos surfaced as "Invalid or expired session
@@ -132,6 +195,12 @@ describe("AuthService — clean bearer-backed session tokens", () => {
     const expiredReason = lastReason();
     expect(expiredReason).toMatch(/expired/i);
 
+    // A forged signature must fail against BOTH signing authorities before it
+    // can be reported as a signature problem, so give the entity a real secret
+    // the forgery still will not match.
+    vi.spyOn(h.auth, "resolveEntityServiceSecret").mockResolvedValue(
+      "the-real-entity-secret-0000000000",
+    );
     const valid = (await h.auth.createEntitySessionToken(entityClaims(), "bearer_1", 60))!;
     const [header, payload] = valid.split(".");
     const forged = `${header}.${payload}.${"A".repeat(43)}`;

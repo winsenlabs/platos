@@ -183,6 +183,25 @@ export class AuthService {
     return null;
   }
 
+  /**
+   * Constant-time HMAC-SHA256 comparison for a JWT signing input.
+   *
+   * timingSafeEqual throws on length mismatch, so the length check is a
+   * precondition rather than an early-out optimisation.
+   */
+  private signatureMatches(
+    signingInput: string,
+    signatureB64: string,
+    secret: string,
+  ): boolean {
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(signingInput)
+      .digest("base64url");
+    if (expected.length !== signatureB64.length) return false;
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureB64));
+  }
+
   async validateSessionToken(token: string): Promise<SessionPayload | null> {
     try {
       const parts = token.split(".");
@@ -207,7 +226,6 @@ export class AuthService {
         typeof header !== "object" ||
         (header as { alg?: unknown }).alg !== "HS256" ||
         !claims ||
-        claims.iss !== "platos-platform" ||
         typeof claims.organizationId !== "string" ||
         typeof claims.projectId !== "string" ||
         typeof claims.environmentId !== "string" ||
@@ -218,30 +236,58 @@ export class AuthService {
         !Number.isFinite(claims.exp)
       ) {
         return this.rejectSessionToken(
-          "missing or malformed required claims (iss/organizationId/projectId/environmentId/userId/iat/exp) or alg is not HS256",
+          "missing or malformed required claims (organizationId/projectId/environmentId/userId/iat/exp) or alg is not HS256",
         );
       }
 
-      const signingSecret = this.platformSigningSecret;
-      if (!signingSecret) {
-        return this.rejectSessionToken(
-          "SESSION_SECRET is not set on this deployment — no scoped token can validate",
-        );
-      }
       const signingInput = `${headerB64}.${payloadB64}`;
-      const expected = crypto
-        .createHmac("sha256", signingSecret)
-        .update(signingInput)
-        .digest("base64url");
-      if (expected.length !== signatureB64.length) {
-        return this.rejectSessionToken(
-          "signature does not verify — token was signed with a different SESSION_SECRET",
-        );
-      }
-      if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureB64))) {
-        return this.rejectSessionToken(
-          "signature does not verify — token was signed with a different SESSION_SECRET",
-        );
+
+      // ── Two signing authorities ────────────────────────────────────────────
+      //
+      //  1. SESSION_SECRET — for tokens this agent minted itself
+      //     (mintPlatformToken). Those always carry iss=platos-platform.
+      //
+      //  2. The presenting entity's own ENTITY_SECRET — for tokens minted
+      //     off-box by @platosdev/token-mint. An integrator signs with the
+      //     secret it already holds, so a leaked key is scoped to that one
+      //     entity instead of every tenant on the deployment. Handing every
+      //     integrator SESSION_SECRET would make one shared key the blast
+      //     radius for the whole install, which is why it is not an option.
+      //
+      // An entity-signed token is authoritative ONLY for its own scope:
+      // resolveEntityServiceSecret re-derives organization and project from
+      // the Environment and refuses when they disagree with the claims, so a
+      // valid entity secret can never mint itself into another tenant.
+      const platformSecret = this.platformSigningSecret;
+      const platformSigned =
+        claims.iss === "platos-platform" &&
+        !!platformSecret &&
+        this.signatureMatches(signingInput, signatureB64, platformSecret);
+
+      if (!platformSigned) {
+        if (typeof claims.entityId !== "string" || !claims.entityId) {
+          return this.rejectSessionToken(
+            platformSecret
+              ? "signature does not verify against SESSION_SECRET, and the token carries no entityId to check an entity-signed token against"
+              : "SESSION_SECRET is not set and the token carries no entityId — nothing can verify this token",
+          );
+        }
+        const entitySecret = await this.resolveEntityServiceSecret({
+          organizationId: claims.organizationId,
+          projectId: claims.projectId,
+          environmentId: claims.environmentId,
+          entityId: claims.entityId,
+        });
+        if (!entitySecret) {
+          return this.rejectSessionToken(
+            "no usable ENTITY_SECRET for this entity in the claimed environment, or the claimed organization/project does not own that environment",
+          );
+        }
+        if (!this.signatureMatches(signingInput, signatureB64, entitySecret)) {
+          return this.rejectSessionToken(
+            "signature does not verify against SESSION_SECRET or against the entity's own service secret",
+          );
+        }
       }
 
       const now = new Date();
