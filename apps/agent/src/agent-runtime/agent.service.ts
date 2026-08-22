@@ -5312,6 +5312,61 @@ export class AgentService {
       }
     }
 
+    // An agent's prompt lives in `promptBlocks`. `AgentVersion.systemPrompt`
+    // is the older single-string form and is NULL for every block-based agent
+    // — nothing pre-assembles the blocks at save time, and the retrieval
+    // re-assembly below only runs for agents that HAVE a retrieval block.
+    //
+    // Without this, a block-based agent with no retrieval block silently ran
+    // on defaultAgentConfig()'s "You are a helpful AI assistant powered by
+    // Platos." and lost its entire configured identity, tools guidance and
+    // guardrails. Every agent on test.platos was in that state: six populated
+    // blocks in the database, none of them reaching the model.
+    //
+    // Gated on a cache miss like the retrieval path, so a warm prefix is still
+    // reused. `omitDateTimeBlock` because the streaming path injects a fresh
+    // `__datetime` into dynamicContext further down: rendering it here too
+    // would duplicate the clock AND put a per-turn-varying byte inside the
+    // cached prefix. No retrieval resolver here — retrieval blocks are the
+    // next block's job, and it overwrites this result for those agents.
+    if (
+      !promptCacheHit &&
+      !(turnOverrides?.systemPromptOverride &&
+        turnOverrides.systemPromptOverride.length > 0)
+    ) {
+      const basePb = this.getPromptBuilder();
+      const configuredBlocks = Array.isArray(agentConfig.promptBlocks)
+        ? (agentConfig.promptBlocks as Array<{ enabled?: boolean }>)
+        : [];
+      const hasEnabledBlock = configuredBlocks.some(
+        (block) => block && block.enabled !== false,
+      );
+      if (basePb && hasEnabledBlock) {
+        try {
+          const assembled = await basePb.assembleAsync(
+            agentConfig.promptBlocks as unknown as Parameters<
+              PromptBuilderService["assembleAsync"]
+            >[0],
+            {
+              user_message: typeof message === "string" ? message : "",
+              thread_id: scope.sessionId ?? "",
+              user_id: scope.userId ?? "",
+            },
+            undefined,
+            undefined,
+            { omitDateTimeBlock: true },
+          );
+          if (assembled && assembled.trim().length > 0) {
+            systemPrompt = assembled;
+          }
+        } catch (err: any) {
+          this.logger.warn(
+            `[agent.stream] prompt-block assembly failed — falling back to the stored systemPrompt: ${err?.message ?? err}`,
+          );
+        }
+      }
+    }
+
     // RG.1.5 (follow-up) — if the agent has any retrieval blocks declared in
     // its saved `promptBlocks`, re-assemble the system prompt at turn time
     // via `promptBuilder.assembleAsync` so the retrieval tool fires AGAINST
@@ -6766,6 +6821,47 @@ export class AgentService {
       turnOverrides.systemPromptOverride.length > 0
         ? turnOverrides.systemPromptOverride
         : agentConfig.systemPrompt;
+
+    // Mirror of the stream() base assembly: compose the agent's promptBlocks
+    // when nothing pre-assembled them into `systemPrompt`. See the stream()
+    // copy for the full rationale. Unlike stream(), run() renders the datetime
+    // block INLINE (it does not inject `__datetime` separately), so the block
+    // is NOT omitted here.
+    {
+      const basePb = this.getPromptBuilder();
+      const configuredBlocks = Array.isArray(agentConfig.promptBlocks)
+        ? (agentConfig.promptBlocks as Array<{ enabled?: boolean }>)
+        : [];
+      const hasEnabledBlock = configuredBlocks.some(
+        (block) => block && block.enabled !== false,
+      );
+      if (
+        basePb &&
+        hasEnabledBlock &&
+        !(turnOverrides?.systemPromptOverride &&
+          turnOverrides.systemPromptOverride.length > 0)
+      ) {
+        try {
+          const assembled = await basePb.assembleAsync(
+            agentConfig.promptBlocks as unknown as Parameters<
+              PromptBuilderService["assembleAsync"]
+            >[0],
+            {
+              user_message: typeof message === "string" ? message : "",
+              thread_id: scope.sessionId ?? "",
+              user_id: scope.userId ?? "",
+            },
+          );
+          if (assembled && assembled.trim().length > 0) {
+            systemPrompt = assembled;
+          }
+        } catch (err: any) {
+          this.logger.warn(
+            `[agent.run] prompt-block assembly failed — falling back to the stored systemPrompt: ${err?.message ?? err}`,
+          );
+        }
+      }
+    }
 
     // RG.1.5 (follow-up) — mirror the stream() retrieval assembly into the
     // non-streaming run() path so batch / run-once callers also re-resolve
