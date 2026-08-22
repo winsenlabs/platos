@@ -8,6 +8,7 @@ import {
   type PrismaClient,
 } from "@platos/tenancy-database";
 import type { RequestScope } from "../auth/scope.guard";
+import { unwrapEntitySecretMaterial } from "../shared/entity-secret";
 import { ProviderRuntimeError } from "./provider-runtime.error";
 import {
   PLATOS_SECRET_STORE_TOKEN,
@@ -80,6 +81,40 @@ export class ScopedEnvService {
         kind: "SECRET_REFERENCE",
       });
       return material.reveal();
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Resolve an entity's ENTITY_SECRET — the key its outbound tool calls are
+   * signed with.
+   *
+   * `get()` above reads `EnvironmentVariable`. An entity's service secret is
+   * NOT an environment variable: it is a `Credential` of kind ENTITY_SECRET
+   * keyed by the entity's `externalId`. Resolving one through `get()`
+   * therefore always missed, and every signed outbound call to a wire entity
+   * failed with "signing credential is unavailable" — while tool-sync stayed
+   * connected, because that path authenticates by hash instead.
+   *
+   * Unwraps migration envelopes for the same reason AuthService does: the
+   * stored plaintext may be `{"secret":…}` / `{"serviceSecret":…}` rather than
+   * the bare key, and signing with the envelope produces a wrong signature.
+   */
+  async getEntitySecret(
+    scope: ScopeTuple,
+    entityExternalId: string,
+  ): Promise<string | undefined> {
+    if (!entityExternalId || typeof entityExternalId !== "string") return undefined;
+    try {
+      const authorization = await this.authorize(scope);
+      const material = await this.secretStore.readForRuntime({
+        authorization,
+        name: entityExternalId,
+        kind: "ENTITY_SECRET",
+      } as never);
+      const revealed = material.reveal();
+      return revealed ? unwrapEntitySecretMaterial(revealed) : undefined;
     } catch {
       return undefined;
     }

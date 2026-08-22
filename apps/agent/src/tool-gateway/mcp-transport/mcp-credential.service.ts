@@ -199,7 +199,18 @@ export class McpCredentialService {
     scope: ScopeTuple,
     credentialName: string,
   ): Promise<string | undefined> {
-    return this.scopedEnv.get(scope, credentialName);
+    // An MCP header template names an Environment VARIABLE, so that stays the
+    // first lookup and existing behaviour is unchanged.
+    const variable = await this.scopedEnv.get(scope, credentialName);
+    if (variable) return variable;
+
+    // A wire entity's signing key is not a variable — it is a Credential of
+    // kind ENTITY_SECRET keyed by the entity's externalId, which is what
+    // ToolExecutorService passes here. Without this fallback every signed
+    // outbound tool call failed with "signing credential is unavailable"
+    // while tool-sync stayed happily connected (that path authenticates by
+    // hash, not by reading the secret back).
+    return this.scopedEnv.getEntitySecret(scope, credentialName);
   }
 
   /**
