@@ -15,6 +15,8 @@
 
 **/dist
 **/node_modules
+.pnpm-store
+**/.pnpm-store
 
 # Theme BR deploy workaround — temporarily permit
 # packages/core/{dist,.tshy-build} so webapp Dockerfile's transitive
