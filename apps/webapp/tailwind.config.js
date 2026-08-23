@@ -56,22 +56,22 @@ const midnight = {
 
 // V3
 const charcoal = {
-  100: "#E8E9EC",
-  200: "#D7D9DD",
-  300: "#B5B8C0",
-  400: "#878C99",
-  500: "#5F6570",
-  550: "#4D525B",
-  600: "#3B3E45",
-  650: "#2C3034",
-  700: "#272A2E",
-  750: "#212327",
-  775: "#1C1E21",
-  800: "#1A1B1F",
-  850: "#15171A",
-  900: "#121317",
-  950: "#0D0E12",
-  1000: "#0B0C0F",
+  100: "var(--ink)",
+  200: "var(--ink)",
+  300: "var(--ink-2)",
+  400: "var(--ink-3)",
+  500: "var(--ink-4)",
+  550: "var(--border-2)",
+  600: "var(--border-2)",
+  650: "var(--border)",
+  700: "var(--bg-3)",
+  750: "var(--bg-3)",
+  775: "var(--bg-2)",
+  800: "var(--surface-2)",
+  850: "var(--bg-2)",
+  900: "var(--bg)",
+  950: "var(--bg)",
+  1000: "var(--bg)",
 };
 
 const apple = {
@@ -118,7 +118,7 @@ const sun = {
 };
 
 const lavender = {
-  50: "##f4f2ff",
+  50: "var(--accent-soft)",
   100: "#eae8ff",
   200: "#d7d4ff",
   300: "#bab2ff",
@@ -134,17 +134,17 @@ const lavender = {
 /** Trigger.dev custom palette */
 
 /** Text colors */
-const primary = apple[500];
-const secondary = charcoal[650];
-const tertiary = charcoal[700];
-const textLink = lavender[400];
-const textDimmed = charcoal[400];
-const textBright = charcoal[200];
-const backgroundBright = charcoal[800];
-const backgroundDimmed = charcoal[850];
-const gridBright = charcoal[700];
-const gridDimmed = charcoal[750];
-const success = mint[500];
+const primary = "var(--accent)";
+const secondary = "var(--surface-2)";
+const tertiary = "var(--bg-3)";
+const textLink = "var(--accent)";
+const textDimmed = "var(--ink-3)";
+const textBright = "var(--ink)";
+const backgroundBright = "var(--surface)";
+const backgroundDimmed = "var(--bg)";
+const gridBright = "var(--border)";
+const gridDimmed = "var(--bg-3)";
+const success = "var(--good)";
 const pending = colors.blue[500];
 const warning = colors.amber[500];
 const error = colors.rose[600];
@@ -195,8 +195,8 @@ module.exports = {
     },
     extend: {
       fontFamily: {
-        sans: ["Geist Variable", "Helvetica Neue", "Helvetica", "Arial", "sans-serif"],
-        mono: ["Geist Mono Variable", "monaco", "Consolas", "Lucida Console", "monospace"],
+        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       fontSize: {
         xxs: [

@@ -78,6 +78,9 @@ function prisma(
           identities: [{ subject: "subject" }],
         })),
       },
+      endUserIdentity: {
+        findFirst: vi.fn(async () => ({ endUserId: "end-user", subject: "subject" })),
+      },
       agentBinding,
       memoryEntity: clientMemoryEntity,
       $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
@@ -129,7 +132,7 @@ describe("KnowledgeGraphService.upsertEntity", () => {
     const service = new KnowledgeGraphService(db.client);
 
     await service.upsertEntity(scope as any, {
-      userId: "subject",
+      userId: "46123e5c-e5b2-4829-898d-00ec8a6ae1ce",
       entityKey: "shared-person",
     });
 
@@ -250,5 +253,53 @@ describe("KnowledgeGraphService.upsertEntity", () => {
         "entity-id"
       )
     );
+  });
+});
+
+describe("KnowledgeGraphService.createRelationship", () => {
+  it("stores an object metadata root when optional relationship metadata is omitted", async () => {
+    const memoryRelationship = {
+      upsert: vi.fn(async ({ create }: any) => ({
+        id: "relationship-id",
+        ...create,
+        createdAt: now,
+      })),
+    };
+    const database = {
+      environment: { findFirst: vi.fn(async () => ({ id: scope.environmentId })) },
+      endUser: {
+        findFirst: vi.fn(async () => ({
+          id: "end-user",
+          identities: [{ subject: "subject" }],
+        })),
+      },
+      endUserIdentity: {
+        findFirst: vi.fn(async () => ({ endUserId: "end-user", subject: "subject" })),
+      },
+      memoryEntity: {
+        findMany: vi.fn(async () => [
+          { id: "from-entity", agentId: "agent-a", clusterId: null },
+          { id: "to-entity", agentId: "agent-a", clusterId: null },
+        ]),
+      },
+      agentBinding: {
+        findFirst: vi.fn(async () => ({ agentId: "agent-a", clusterId: null })),
+      },
+      memoryRelationship,
+    } as any;
+    const service = new KnowledgeGraphService(database);
+
+    const relationship = await service.createRelationship(scope as any, {
+      userId: "46123e5c-e5b2-4829-898d-00ec8a6ae1ce",
+      fromEntityId: "from-entity",
+      toEntityId: "to-entity",
+      relationshipType: "knows",
+    });
+
+    expect(relationship.metadata).toEqual({});
+    expect(memoryRelationship.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ metadata: {} }),
+      update: expect.objectContaining({ metadata: {} }),
+    }));
   });
 });

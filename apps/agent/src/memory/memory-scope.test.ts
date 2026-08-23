@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveReadAgentIds } from "./memory-scope";
+import { MemoryController } from "./memory.controller";
+import {
+  MemoryEndUserContextError,
+  resolveEndUser,
+  resolveOperatorSelectedEndUser,
+  resolveReadAgentIds,
+} from "./memory-scope";
 
 const scope = {
   organizationId: "org",
@@ -18,7 +24,153 @@ function prisma(bindings: Array<{ agentId: string; clusterId: string | null }>) 
   } as any;
 }
 
+function memoryController(options: {
+  selectedEndUser?: { id: string; identities: Array<{ subject: string }> } | null;
+  list?: ReturnType<typeof vi.fn>;
+} = {}) {
+  const database = {
+    environment: { findFirst: vi.fn().mockResolvedValue({ id: scope.environmentId }) },
+    endUser: { findFirst: vi.fn().mockResolvedValue(options.selectedEndUser ?? null) },
+    endUserIdentity: { findFirst: vi.fn().mockResolvedValue({ endUserId: "end-user-own", subject: "verified-user" }) },
+  };
+  const memoryService = {
+    list: options.list ?? vi.fn().mockResolvedValue([]),
+  };
+  return {
+    database,
+    memoryService,
+    controller: new MemoryController(
+      memoryService as any,
+      {} as any,
+      {} as any,
+      database as any,
+      {} as any,
+    ),
+  };
+}
+
 describe("clean memory Agent/AgentCluster isolation", () => {
+  it("returns a stable typed error when no canonical end-user context exists", async () => {
+    const database = {
+      endUser: { findFirst: vi.fn().mockResolvedValue(null) },
+      endUserIdentity: { findFirst: vi.fn().mockResolvedValue(null) },
+    } as any;
+
+    const error = await resolveEndUser(database, scope, "operator-id").catch((value) => value);
+
+    expect(error).toBeInstanceOf(MemoryEndUserContextError);
+    expect(error).toMatchObject({
+      code: "MEMORY_END_USER_CONTEXT_REQUIRED",
+      message: "Memory end user not found or access denied",
+    });
+  });
+
+  it("resolves a non-UUID verified external subject without querying the UUID EndUser id column", async () => {
+    const database = {
+      endUser: { findFirst: vi.fn() },
+      endUserIdentity: {
+        findFirst: vi.fn().mockResolvedValue({
+          endUserId: "3ec2a3f1-10f9-41a7-9e21-3b6739e84ca1",
+          subject: "operator-selected-external-user",
+        }),
+      },
+    } as any;
+
+    await expect(resolveEndUser(database, scope, "operator-selected-external-user")).resolves.toEqual({
+      id: "3ec2a3f1-10f9-41a7-9e21-3b6739e84ca1",
+      externalId: "operator-selected-external-user",
+    });
+    expect(database.endUser.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("projects a missing operator end-user as an explicit context state", async () => {
+    const { controller, memoryService } = memoryController();
+
+    await expect(controller.listMemories({
+      scope: {
+        ...scope,
+        userId: "operator-id",
+        principal: "operator",
+      },
+    } as any)).resolves.toEqual({
+      memories: [],
+      total: 0,
+      requiresEndUserContext: true,
+      code: "MEMORY_END_USER_CONTEXT_REQUIRED",
+    });
+    expect(memoryService.list).not.toHaveBeenCalled();
+  });
+
+  it("accepts only a direct active same-organization EndUser selection for operators", async () => {
+    const database = {
+      environment: { findFirst: vi.fn().mockResolvedValue({ id: scope.environmentId }) },
+      endUser: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "end-user-selected",
+          identities: [{ subject: "external-selected" }],
+        }),
+      },
+    } as any;
+
+    await expect(resolveOperatorSelectedEndUser(
+      database,
+      scope,
+      "end-user-selected",
+    )).resolves.toEqual({ id: "end-user-selected", externalId: "external-selected" });
+    expect(database.endUser.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        id: "end-user-selected",
+        organizationId: scope.organizationId,
+        disabledAt: null,
+      },
+    }));
+  });
+
+  it("rejects an operator selection outside the canonical scope", async () => {
+    const database = {
+      environment: { findFirst: vi.fn().mockResolvedValue({ id: scope.environmentId }) },
+      endUser: { findFirst: vi.fn().mockResolvedValue(null) },
+    } as any;
+
+    await expect(resolveOperatorSelectedEndUser(
+      database,
+      scope,
+      "foreign-user",
+    )).rejects.toBeInstanceOf(MemoryEndUserContextError);
+  });
+
+  it("uses a validated operator selection and never substitutes the operator identity", async () => {
+    const list = vi.fn().mockResolvedValue([]);
+    const { controller, memoryService } = memoryController({
+      selectedEndUser: { id: "end-user-selected", identities: [{ subject: "external-selected" }] },
+      list,
+    });
+
+    await controller.listMemories({
+      scope: { ...scope, userId: "operator-id", principal: "operator" },
+    } as any, "end-user-selected");
+
+    expect(memoryService.list).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      userId: "external-selected",
+    }));
+  });
+
+  it("forces non-operators to their verified scope userId", async () => {
+    const list = vi.fn().mockResolvedValue([]);
+    const { controller, memoryService, database } = memoryController({ list });
+
+    await controller.listMemories({
+      scope: { ...scope, userId: "46123e5c-e5b2-4829-898d-00ec8a6ae1ce", principal: "end-user" },
+    } as any, "forged-user");
+
+    expect(database.endUser.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: "46123e5c-e5b2-4829-898d-00ec8a6ae1ce" }),
+    }));
+    expect(memoryService.list).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      userId: "verified-user",
+    }));
+  });
+
   it("allows the current Agent", async () => {
     await expect(resolveReadAgentIds(
       prisma([{ agentId: "agent-a", clusterId: null }]),

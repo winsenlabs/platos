@@ -18,6 +18,7 @@ export const newProjectPath = (o: OrgForPath) => `${organizationPath(o)}/project
 export const v3ProjectPath = (o: OrgForPath, p: ProjectForPath) => `${organizationPath(o)}/projects/${p.slug}`;
 export const v3EnvironmentPath = (o: OrgForPath, p: ProjectForPath, e: EnvironmentForPath) => `${v3ProjectPath(o,p)}/env/${e.slug}`;
 const envPath = v3EnvironmentPath;
+export const homePath = envPath;
 export const agentsPath = (o: OrgForPath,p: ProjectForPath,e: EnvironmentForPath) => `${envPath(o,p,e)}/agents`;
 export const agentPath = (o: OrgForPath,p: ProjectForPath,e: EnvironmentForPath,a:{id:string}) => `${agentsPath(o,p,e)}/${a.id}`;
 export const agentChatPath = (o: OrgForPath,p: ProjectForPath,e: EnvironmentForPath,a:{id:string}) => `${agentPath(o,p,e,a)}/chat`;
@@ -26,6 +27,11 @@ export const agentConversationPath = (o: OrgForPath,p: ProjectForPath,e: Environ
 export const agentVersionsPath = (o: OrgForPath,p: ProjectForPath,e: EnvironmentForPath,a:{id:string}) => `${agentPath(o,p,e,a)}/versions`;
 export const agentCanaryPath = (o: OrgForPath,p: ProjectForPath,e: EnvironmentForPath,a:{id:string}) => `${agentPath(o,p,e,a)}/canary`;
 const scoped = (name:string) => (o:OrgForPath,p:ProjectForPath,e:EnvironmentForPath) => `${envPath(o,p,e)}/${name}`;
+export const threadsPath = scoped("threads");
+export const threadPath = (o:OrgForPath,p:ProjectForPath,e:EnvironmentForPath,t:{id:string}) => `${threadsPath(o,p,e)}/${t.id}`;
+export const tracePath = (o:OrgForPath,p:ProjectForPath,e:EnvironmentForPath,t:{id:string}) => `${threadPath(o,p,e,t)}/trace`;
+export const costPath = scoped("cost");
+export const auditPath = scoped("audit");
 export const agentToolsPath = scoped("agent-tools");
 export const agentEntitiesPath = scoped("agent-entities");
 export const agentAccountsPath = scoped("agent-accounts");

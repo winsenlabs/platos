@@ -260,6 +260,8 @@ export interface CreateAgentDto {
    * means "enabled with defaults" — see MemoryExtractionService.
    */
   extractionPolicy?: ExtractionPolicyInput | null;
+  /** Anonymous embed access is opt-in and Environment deployment specific. */
+  visibility?: "private" | "public-guest";
 }
 
 export interface UpdateAgentDto {
@@ -295,6 +297,8 @@ export interface UpdateAgentDto {
    * (falls back to defaults); undefined to leave unchanged.
    */
   extractionPolicy?: ExtractionPolicyInput | null;
+  /** Anonymous embed access is opt-in and Environment deployment specific. */
+  visibility?: "private" | "public-guest";
   /**
    * Theme CTX.1 / CTX.6 — session-context mapping JSON. Extended shape in
    * CTX.6 adds `declaredKeys`, `constants`, and the `_auto` / `_global` /

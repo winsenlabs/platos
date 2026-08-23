@@ -4,7 +4,7 @@ import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
 import { parseJobForm } from "~/services/jobConfig.server";
 import { agentRequest, jsonObject, m4Mutation, optionalText } from "~/services/m4Mutation.server";
-const config = { surface: "jobs", title: "Background Job", description: "Persisted Job state, schedule and execution history.", endpoint: "/api/v1/agent/platos-tasks/:id", parameterAliases: { id: "taskId" }, secondaryEndpoint: undefined, provenance: "Canonical clean database ancestry and platos-agent API", notFoundAsResponse: true };
+const config = { surface: "jobs" as const, title: "Background Job", description: "Persisted Job state, schedule and execution history.", endpoint: "/api/v1/agent/platos-tasks/:id", parameterAliases: { id: "taskId" }, secondaryEndpoint: undefined, provenance: "Canonical clean database ancestry and platos-agent API", notFoundAsResponse: true };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   return m4Mutation(args, "Job mutation", async ({ scope, form }) => {

@@ -126,7 +126,7 @@ export default function ApiKeysRoute() {
       </header>
 
       {!panel.ok ? (
-        <div className="rounded-lg border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-200">
+        <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger)]">
           {panel.error.message} <code className="ml-2 text-xs">{panel.error.code}</code>
         </div>
       ) : (
@@ -152,7 +152,7 @@ export default function ApiKeysRoute() {
               <div className="mt-5 rounded-lg border border-amber-400/50 bg-amber-950/20 p-4">
                 <div className="text-sm font-semibold text-amber-200">Copy this key now</div>
                 <p className="mt-1 text-xs text-amber-100/80">It exists only in this browser tab and cannot be retrieved again.</p>
-                <code className="mt-3 block break-all rounded bg-charcoal-950 p-3 text-sm text-amber-100">{revealedKey}</code>
+                <code className="mt-3 block break-all rounded border border-[var(--warn)] bg-[var(--warn-soft)] p-3 text-sm text-[var(--warn)]">{revealedKey}</code>
                 <div className="mt-3 flex gap-2">
                   <button type="button" className="rounded bg-amber-300 px-3 py-2 text-xs font-medium text-black" onClick={() => navigator.clipboard.writeText(revealedKey)}>Copy</button>
                   <button type="button" className="rounded border border-amber-300/40 px-3 py-2 text-xs" onClick={() => setRevealedKey(null)}>I saved it</button>
@@ -161,24 +161,24 @@ export default function ApiKeysRoute() {
             )}
 
             <div className="mt-5 flex gap-2">
-              <button type="button" disabled={busy} onClick={rotate} className="rounded bg-indigo-500 px-4 py-2 text-sm text-white disabled:opacity-50">
+              <button type="button" disabled={busy} onClick={rotate} className="rounded bg-primary px-4 py-2 text-sm text-white disabled:opacity-50">
                 {active ? "Rotate key" : "Generate key"}
               </button>
               {active && (
                 <fetcher.Form method="post">
                   <input type="hidden" name="intent" value="revoke" />
-                  <button disabled={busy} className="rounded border border-red-500/50 px-4 py-2 text-sm text-red-200 disabled:opacity-50">Revoke</button>
+                  <button disabled={busy} className="rounded border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-2 text-sm text-[var(--danger)] disabled:opacity-50">Revoke</button>
                 </fetcher.Form>
               )}
             </div>
-            {fetcher.data && fetcher.data.ok === false && <p className="mt-3 text-sm text-red-300">{asString(asRecord(fetcher.data).error, "API key operation failed")}</p>}
+            {fetcher.data && fetcher.data.ok === false && <p className="mt-3 text-sm text-[var(--danger)]">{asString(asRecord(fetcher.data).error, "API key operation failed")}</p>}
           </section>
 
           <fetcher.Form method="post" className="rounded-lg border border-grid-bright bg-background-bright p-5">
             <input type="hidden" name="intent" value="origins" />
             <h2 className="font-semibold">Allowed browser origins</h2>
             <p className="mt-1 text-xs text-text-dimmed">One exact HTTPS origin per line. Origin checks apply after key verification.</p>
-            <textarea name="origins" defaultValue={origins.join("\n")} className="mt-4 min-h-44 w-full rounded border border-grid-bright bg-charcoal-950 p-3 font-mono text-xs" placeholder="https://app.example.com" />
+            <textarea name="origins" defaultValue={origins.join("\n")} className="mt-4 min-h-44 w-full rounded border border-grid-bright bg-[var(--bg)] p-3 font-mono text-xs text-text-bright" placeholder="https://app.example.com" />
             <button disabled={busy} className="mt-3 rounded border border-grid-bright px-3 py-2 text-sm disabled:opacity-50">Save origins</button>
           </fetcher.Form>
         </div>

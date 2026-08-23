@@ -36,15 +36,27 @@ function makeController() {
     rotateSecret: vi.fn(async () => key),
   };
   const modelCatalog = { invalidate: vi.fn() };
+  const registry = { list: vi.fn(async () => [{ id: "anthropic", probeModel: "claude-haiku-4-5-20251001", models: ["claude-sonnet-4-6"] }]) };
   const controller = new ProvidersController(
-    { list: vi.fn() } as any,
+    registry as any,
     modelCatalog as any,
     providerKeys as any,
   );
-  return { controller, providerKeys, modelCatalog };
+  return { controller, providerKeys, modelCatalog, registry };
 }
 
 describe("ProvidersController safe payloads", () => {
+  it("owns provider listing and exposes the manifest probe model as safe metadata", async () => {
+    const { controller, registry } = makeController();
+
+    const result = await controller.listProviders(request);
+
+    expect(result.providers).toEqual([
+      expect.objectContaining({ id: "anthropic", probeModel: "claude-haiku-4-5-20251001" }),
+    ]);
+    expect(registry.list).toHaveBeenCalledWith(expect.objectContaining({ environmentId: "env-1" }));
+  });
+
   it("lists safe ProviderKey metadata without decrypting or probing credentials", async () => {
     const { controller, providerKeys } = makeController();
 

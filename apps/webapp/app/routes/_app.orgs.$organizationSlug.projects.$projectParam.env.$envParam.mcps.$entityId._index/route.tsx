@@ -11,7 +11,7 @@ import {
   stringList,
 } from "~/services/m4Mutation.server";
 import { loadSurface } from "~/services/m4Route.server";
-const config = { surface: "mcp-config", title: "MCP Entity", description: "Safe MCP config, Credential-backed connectivity and current discovery output.", endpoint: "/api/v1/agent/entities/:entityId/mcp/config", secondaryEndpoint: "/api/v1/agent/entities/:entityId", provenance: "Canonical clean database ancestry and platos-agent API", notFoundAsResponse: true };
+const config = { surface: "mcp-config" as const, title: "MCP Entity", description: "Safe MCP config, Credential-backed connectivity and current discovery output.", endpoint: "/api/v1/agent/entities/:entityId/mcp/config", provenance: "Canonical clean database ancestry and platos-agent API", notFoundAsResponse: true };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   return m4Mutation(args, "MCP Entity configuration", ({ scope, form }) => {

@@ -596,8 +596,33 @@ export class ScopeGuard implements CanActivate {
     const userId = request.headers["x-platos-user-id"];
     const userToken = request.headers["x-platos-user-token"];
     const entityId = request.headers["x-platos-entity-id"];
+    const requestedAgentId = request.headers["x-platos-agent-id"];
 
     if (!viaProxy && organizationId && projectId && environmentId && userId) {
+      let validatedAgentId: string | undefined;
+      if (requestedAgentId) {
+        const controlPlaneAuthenticated = this.hasValidControlPlaneAuth(request);
+        const validPin =
+          controlPlaneAuthenticated &&
+          this.authService &&
+          await this.authService.validateOperatorAgentPin(
+            {
+              organizationId: String(organizationId),
+              projectId: String(projectId),
+              environmentId: String(environmentId),
+            },
+            String(requestedAgentId),
+          );
+        if (!validPin) {
+          const resp = context.switchToHttp().getResponse();
+          resp.status(403).json({
+            error: "INVALID_AGENT_SCOPE",
+            message: "The requested Agent is not bound to the authenticated control-plane scope.",
+          });
+          return false;
+        }
+        validatedAgentId = String(requestedAgentId);
+      }
       request.scope = {
         organizationId: String(organizationId),
         projectId: String(projectId),
@@ -607,6 +632,7 @@ export class ScopeGuard implements CanActivate {
         // through Caddy — enforced by the !viaProxy guard above). This IS the
         // control-plane, so it authorizes operator surfaces.
         principal: "operator",
+        ...(validatedAgentId ? { agentId: validatedAgentId } : {}),
         ...(entityId ? { entityId: String(entityId) } : {}),
         ...(userToken ? { userToken: String(userToken) } : {}),
         // EOBD.40 — propagate inbound traceparent on the direct-header

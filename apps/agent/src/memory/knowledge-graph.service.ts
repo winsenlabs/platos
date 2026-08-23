@@ -588,7 +588,11 @@ export class KnowledgeGraphService {
         throw new Error("KnowledgeGraphService.createRelationship: source memory not found or access denied");
       }
     }
-    const metadata = this.crypto?.encryptJsonField(input.metadata ?? null) ?? input.metadata ?? null;
+    // The database validates JSON metadata as an object when it is present.
+    // Prisma serializes a JavaScript null as JSON `null` (not SQL NULL), which
+    // violates that contract for callers that omit optional relationship metadata.
+    const metadataInput = input.metadata ?? {};
+    const metadata = this.crypto?.encryptJsonField(metadataInput) ?? metadataInput;
     const row = await this.prisma.memoryRelationship.upsert({
       where: {
         fromEntityId_toEntityId_relationshipType: {

@@ -40,6 +40,7 @@ describe("FilesController clean attachment transport", () => {
     expect(sql).toContain('JOIN "Turn" turn ON turn."threadId" = t.id');
     expect(sql).toContain('JOIN "MessageAttachment" att ON att."turnId" = turn.id');
     expect(sql).toContain('JOIN "Environment" environment ON environment.id = t."environmentId"');
+    expect(sql.match(/CAST\(\s+AS uuid\)/g)).toHaveLength(4);
     expect(values).toEqual([
       "env-a",
       "env-a",

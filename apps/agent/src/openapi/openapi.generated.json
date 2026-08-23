@@ -1119,7 +1119,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "budgets.list"
@@ -1247,7 +1247,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -4904,7 +4904,7 @@
     "/api/v1/agent/providers": {
       "get": {
         "operationId": "get__api_v1_agent_providers",
-        "summary": "AgentController.listProviders",
+        "summary": "ProvidersController.listProviders",
         "tags": [
           "mapped"
         ],

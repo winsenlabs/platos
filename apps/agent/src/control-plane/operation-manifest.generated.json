@@ -7359,7 +7359,7 @@
             "controller": "AgentController",
             "handler": "listBudgets",
             "source": "apps/agent/src/agent-runtime/agent.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -7431,7 +7431,7 @@
             "controller": "AgentController",
             "handler": "budgetStatus",
             "source": "apps/agent/src/agent-runtime/agent.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -9527,16 +9527,10 @@
         "mappingRationale": "Reviewed behavioral equivalence: the REST adapter and providers.list invoke the same authorized provider registry/key operation; only transport parameters/envelopes differ.",
         "implementations": [
           {
-            "controller": "AgentController",
-            "handler": "listProviders",
-            "source": "apps/agent/src/agent-runtime/agent.controller.ts",
-            "requiresOperator": true
-          },
-          {
             "controller": "ProvidersController",
             "handler": "listProviders",
             "source": "apps/agent/src/providers/providers.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11909,8 +11903,8 @@
       "MCP_ONLY": 123
     },
     "restOperations": 290,
-    "restRouteBindings": 291,
-    "ambiguousRestOperations": 1,
+    "restRouteBindings": 290,
+    "ambiguousRestOperations": 0,
     "restClassifications": {
       "DEPRECATED": 13,
       "INTERNAL": 13,

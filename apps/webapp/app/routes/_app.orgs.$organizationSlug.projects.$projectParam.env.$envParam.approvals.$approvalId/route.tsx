@@ -3,7 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
 import { agentRequest, jsonObject, m4Mutation, optionalText } from "~/services/m4Mutation.server";
-const config = { surface: "governance", title: "Approval detail", description: "Resolve exactly once; repeated decisions return the persisted outcome.", endpoint: "/api/v1/agent/monitoring/approvals/:approvalId", secondaryEndpoint: undefined, provenance: "Canonical clean database ancestry and platos-agent API" };
+const config = { surface: "governance" as const, title: "Approval detail", description: "Resolve exactly once; repeated decisions return the persisted outcome.", endpoint: "/api/v1/agent/monitoring/approvals/:approvalId", secondaryEndpoint: undefined, provenance: "Canonical clean database ancestry and platos-agent API" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   return m4Mutation(args, "Approval resolution", async ({ scope, form }) => {

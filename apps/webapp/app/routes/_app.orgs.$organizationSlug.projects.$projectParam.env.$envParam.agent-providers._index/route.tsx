@@ -2,7 +2,18 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useFetcher, useLoaderData } from "@remix-run/react";
 import { Page } from "~/components/platos/DashboardShell";
-import { asArray, asBoolean, asRecord, asString, firstArray, stableJson } from "~/components/platos/safe";
+import {
+  Alert,
+  Button,
+  DataTable,
+  EmptyState,
+  PageHeader,
+  Panel,
+  PanelFailure,
+  SectionHeader,
+  StatusChip,
+} from "~/components/platos/ProductPrimitives";
+import { asArray, asBoolean, asRecord, asString, firstArray } from "~/components/platos/safe";
 import { requireEnvironmentScope } from "~/services/auth.server";
 import { credentialErrorMessage, credentialPanel, credentialRequest } from "~/services/platosAgent.server";
 
@@ -40,7 +51,7 @@ export async function action(args: ActionFunctionArgs) {
   const { scope } = await scoped(args, "secret:mutate");
   const form = await args.request.formData();
   const intent = String(form.get("intent") ?? "");
-  if ([...form.keys()].some((key) => /secret|apiKey|rawKey|credentialValue/i.test(key))) {
+  if ([...form.keys()].some((key) => key !== "intent" && /secret|apiKey|rawKey|credentialValue/i.test(key))) {
     return json({ ok: false, error: "Provider key material is not accepted by this route" }, { status: 400 });
   }
 
@@ -102,8 +113,23 @@ export async function action(args: ActionFunctionArgs) {
   }
 }
 
-function Failure({ panel }: { panel: { ok: false; error: { code: string; message: string } } }) {
-  return <div className="rounded-lg border border-red-500/40 bg-red-950/20 p-4 text-sm text-red-200">{panel.error.message} <code className="ml-2 text-xs">{panel.error.code}</code></div>;
+const fieldClass = "mt-1 w-full rounded-md border border-grid-bright bg-background-bright px-3 py-2 text-sm text-text-bright";
+
+function providerId(value: unknown, index: number): string {
+  const provider = asRecord(value);
+  return asString(provider.id, asString(provider.displayName, `provider-${index + 1}`)).toLowerCase();
+}
+
+function modelRows(value: unknown): Array<{ provider: string; displayName: string; model: string }> {
+  return asArray(value).flatMap((entry, providerIndex) => {
+    const provider = asRecord(entry);
+    const id = asString(provider.provider, asString(provider.displayName, `Provider ${providerIndex + 1}`));
+    return asArray(provider.models).map((model) => ({
+      provider: id,
+      displayName: asString(provider.displayName, id),
+      model: asString(model, "Unknown model"),
+    }));
+  });
 }
 
 export default function ProvidersRoute() {
@@ -111,84 +137,163 @@ export default function ProvidersRoute() {
   const fetcher = useFetcher<typeof action>();
   const providerRows = data.providers.ok ? firstArray(asRecord(data.providers.data), "providers", "items") : [];
   const keyRows = data.keys.ok ? firstArray(asRecord(data.keys.data), "keys", "items") : [];
-  const models = data.models.ok ? data.models.data : null;
+  const catalogue = modelRows(data.models.ok ? data.models.data : []);
   const busy = fetcher.state !== "idle";
+  const missing = providerRows.filter((value) => !asBoolean(asRecord(value).envReady));
+  const feedbackError = fetcher.data && "error" in fetcher.data
+    ? asString(fetcher.data.error, "The operation failed without exposing credential detail.")
+    : "The operation failed without exposing credential detail.";
 
   return (
     <Page>
-      <header className="mb-6">
-        <div className="text-xs uppercase tracking-widest text-text-dimmed">Platos / Models</div>
-        <h1 className="mt-1 text-2xl font-semibold">Providers and model routes</h1>
-        <p className="mt-1 max-w-3xl text-sm text-text-dimmed">Credential-backed readiness, explicit probe models, strict route arrays, and reserved compaction resolution.</p>
-      </header>
+      <PageHeader
+        title="Providers and model routes"
+        description="Credential readiness and model availability from safe Environment metadata. Stored provider secrets are never revealed after submission."
+        breadcrumbs={[{ label: "Platos" }, { label: "Providers" }]}
+        actions={<StatusChip tone={missing.length ? "warning" : "good"}>{missing.length ? `${missing.length} need credentials` : "Provider routes ready"}</StatusChip>}
+      />
 
-      {!data.providers.ok ? <Failure panel={data.providers} /> : (
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {providerRows.map((value, index) => {
-            const provider = asRecord(value);
-            const id = asString(provider.provider, asString(provider.id, asString(provider.name, `provider-${index + 1}`)));
-            const linked = asBoolean(provider.linked) || asBoolean(provider.enabled);
-            return (
-              <article key={id} className="rounded-lg border border-grid-bright bg-background-bright p-4">
-                <div className="flex items-center justify-between"><h2 className="font-semibold">{id}</h2><span className={`rounded-full px-2 py-1 text-xs ${asBoolean(provider.envReady) ? "bg-green-500/15 text-green-300" : "bg-amber-500/15 text-amber-200"}`}>{asBoolean(provider.envReady) ? "Credential ready" : "Credential required"}</span></div>
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs"><div><dt className="text-text-dimmed">Probe model</dt><dd className="mt-1 font-mono">{asString(provider.probeModel, "catalog default")}</dd></div><div><dt className="text-text-dimmed">State</dt><dd className="mt-1">{linked ? "Linked" : "Not linked"}</dd></div></dl>
-                <fetcher.Form method="post" className="mt-4 flex flex-wrap gap-2">
-                  <input type="hidden" name="provider" value={id} />
-                  <button name="intent" value="probe" disabled={busy} className="rounded border border-grid-bright px-2 py-1 text-xs">Run live probe</button>
-                  <button name="intent" value={linked ? "unlink" : "link"} disabled={busy} className="rounded border border-grid-bright px-2 py-1 text-xs">{linked ? "Unlink" : "Link"}</button>
-                  {linked && <button name="intent" value="toggle" disabled={busy} className="rounded border border-grid-bright px-2 py-1 text-xs"><input type="hidden" name="enabled" value={asBoolean(provider.enabled) ? "false" : "true"} />{asBoolean(provider.enabled) ? "Disable" : "Enable"}</button>}
-                </fetcher.Form>
-              </article>
-            );
-          })}
-        </section>
+      {fetcher.data && (
+        <div className="mb-5">
+          {fetcher.data.ok
+            ? <Alert tone="good" title="Provider operation persisted">The canonical Agent API accepted the operation. Credential material was not returned or rendered.</Alert>
+            : <Alert tone="danger" title="Provider operation failed">{feedbackError}</Alert>}
+        </div>
       )}
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-[1fr_24rem]">
-        <section>
-          <h2 className="mb-3 font-semibold">Credential references</h2>
-          {!data.keys.ok ? <Failure panel={data.keys} /> : (
-            <div className="overflow-x-auto rounded-lg border border-grid-bright">
-              <table className="w-full text-left text-sm"><thead className="bg-background-bright text-xs uppercase text-text-dimmed"><tr><th className="px-3 py-2">Provider</th><th className="px-3 py-2">Label</th><th className="px-3 py-2">Credential name</th><th className="px-3 py-2">State</th><th className="px-3 py-2">Actions</th></tr></thead><tbody>{keyRows.map((value, index) => { const key = asRecord(value); const id = asString(key.id, `key-${index}`); return <tr key={id} className="border-t border-grid-bright"><td className="px-3 py-2">{asString(key.provider)}</td><td className="px-3 py-2">{asString(key.label)}</td><td className="px-3 py-2 font-mono text-xs">{asString(key.environmentKeyName, asString(key.envVarName))}</td><td className="px-3 py-2">{asBoolean(key.isDefault) ? "Default" : "Available"}</td><td className="px-3 py-2"><fetcher.Form method="post" className="flex gap-2"><input type="hidden" name="keyId" value={id} />{!asBoolean(key.isDefault) && <button name="intent" value="default-key" className="text-xs text-indigo-300">Make default</button>}<button name="intent" value="delete-key" className="text-xs text-red-300">Delete</button></fetcher.Form></td></tr>; })}</tbody></table>
-            </div>
-          )}
-        </section>
+      {missing.length > 0 && (
+        <Alert tone="warning" title="One or more provider routes are inert">
+          A missing same-Environment credential keeps the affected provider unavailable. Platos does not fall back to deployment environment variables.
+        </Alert>
+      )}
 
-        <fetcher.Form method="post" className="rounded-lg border border-grid-bright bg-background-bright p-4">
-          <input type="hidden" name="intent" value="create-key" />
-          <h2 className="font-semibold">Link a stored credential</h2>
-          <p className="mt-1 text-xs text-text-dimmed">Enter a same-Environment Credential name. Secret material is created and rotated in the Environment credential store, never here.</p>
-          <label className="mt-4 block text-xs">Provider<input required name="provider" className="mt-1 w-full rounded border border-grid-bright bg-charcoal-950 px-3 py-2" placeholder="anthropic" /></label>
-          <label className="mt-3 block text-xs">Label<input required name="label" className="mt-1 w-full rounded border border-grid-bright bg-charcoal-950 px-3 py-2" placeholder="Primary" /></label>
-          <label className="mt-3 block text-xs">Credential reference<input required name="envVarName" className="mt-1 w-full rounded border border-grid-bright bg-charcoal-950 px-3 py-2 font-mono" placeholder="ANTHROPIC_API_KEY" /></label>
-          <label className="mt-3 flex items-center gap-2 text-xs"><input type="checkbox" name="isDefault" /> Default for this provider</label>
-          <button disabled={busy} className="mt-4 rounded bg-indigo-500 px-3 py-2 text-sm text-white">Link credential</button>
-        </fetcher.Form>
+      <section className="mt-5">
+        <SectionHeader title="Provider readiness" description="Run a live probe only after the provider is linked to safe credential metadata." />
+        {!data.providers.ok ? <PanelFailure error={data.providers.error} /> : providerRows.length ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {providerRows.map((value, index) => {
+              const provider = asRecord(value);
+              const id = providerId(value, index);
+              const linked = asBoolean(provider.linked);
+              const enabled = asBoolean(provider.enabled);
+              const ready = asBoolean(provider.envReady);
+              const models = asArray(provider.models);
+              return (
+                <Panel key={id} tone={!ready ? "warning" : "default"} className="min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="font-semibold">{asString(provider.displayName, id)}</h2>
+                      <p className="mt-1 break-words text-xs text-text-dimmed">{asString(provider.description, "Environment-scoped model provider")}</p>
+                    </div>
+                    <StatusChip tone={ready && linked && enabled ? "good" : ready ? "accent" : "warning"}>
+                      {ready && linked && enabled ? "ready" : ready ? "credential ready" : "credential required"}
+                    </StatusChip>
+                  </div>
+                  <dl className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 text-xs">
+                    <div className="min-w-0"><dt className="text-text-dimmed">Probe model</dt><dd className="mt-1 break-all font-mono">{asString(provider.probeModel, "catalog default")}</dd></div>
+                    <div className="min-w-0"><dt className="text-text-dimmed">Catalogue</dt><dd className="mt-1">{models.length} model{models.length === 1 ? "" : "s"}</dd></div>
+                    <div className="min-w-0"><dt className="text-text-dimmed">Credential</dt><dd className="mt-1">{linked ? "Linked" : "Not linked"}</dd></div>
+                    <div className="min-w-0"><dt className="text-text-dimmed">Runtime</dt><dd className="mt-1">{enabled ? "Enabled" : "Disabled"}</dd></div>
+                  </dl>
+                  <fetcher.Form method="post" className="mt-4 flex flex-wrap gap-2">
+                    <input type="hidden" name="provider" value={id} />
+                    <Button type="submit" name="intent" value="probe" disabled={busy || !ready} className="min-h-8 py-1 text-xs">Test credential</Button>
+                    <Button type="submit" name="intent" value={linked ? "unlink" : "link"} disabled={busy || (!ready && !linked)} className="min-h-8 py-1 text-xs">{linked ? "Unlink" : "Link"}</Button>
+                    {linked && <Button type="submit" name="intent" value="toggle" disabled={busy} tone="ghost" className="min-h-8 py-1 text-xs">{enabled ? "Disable" : "Enable"}</Button>}
+                    {linked && <input type="hidden" name="enabled" value={enabled ? "false" : "true"} />}
+                  </fetcher.Form>
+                </Panel>
+              );
+            })}
+          </div>
+        ) : <EmptyState title="No providers registered" description="The canonical provider endpoint returned no safe provider metadata." />}
+      </section>
 
-        <fetcher.Form method="post" className="rounded-lg border border-grid-bright bg-background-bright p-4">
-          <input type="hidden" name="intent" value="create-secret" />
-          <h2 className="font-semibold">Create a BYOK credential</h2>
-          <p className="mt-1 text-xs text-text-dimmed">The secret is encrypted by the Platos Environment credential store and is never returned in provider payloads.</p>
-          <label className="mt-4 block text-xs">Provider<input required name="provider" className="mt-1 w-full rounded border border-grid-bright bg-charcoal-950 px-3 py-2" placeholder="anthropic" /></label>
-          <label className="mt-3 block text-xs">Label<input required name="label" className="mt-1 w-full rounded border border-grid-bright bg-charcoal-950 px-3 py-2" placeholder="Primary" /></label>
-          <label className="mt-3 block text-xs">Credential name<input required name="envVarName" className="mt-1 w-full rounded border border-grid-bright bg-charcoal-950 px-3 py-2 font-mono" placeholder="ANTHROPIC_API_KEY" /></label>
-          <label className="mt-3 block text-xs">Provider secret<input required type="password" autoComplete="new-password" name="plaintext" className="mt-1 w-full rounded border border-grid-bright bg-charcoal-950 px-3 py-2 font-mono" /></label>
-          <label className="mt-3 flex items-center gap-2 text-xs"><input type="checkbox" name="isDefault" /> Default for this provider</label>
-          <button disabled={busy} className="mt-4 rounded bg-indigo-500 px-3 py-2 text-sm text-white">Encrypt and link credential</button>
-        </fetcher.Form>
+      <section className="mt-6">
+        <SectionHeader title="Credential route readiness" description="Bare credential names are compatibility references; the same-Environment Credential ID remains authoritative." />
+        {!data.keys.ok ? <PanelFailure error={data.keys.error} /> : (
+          <DataTable
+            headers={["Provider", "Credential", "Reference", "Resolution", "Last used", "Actions"]}
+            rows={keyRows.map((value, index) => {
+              const key = asRecord(value);
+              const id = asString(key.id, `key-${index}`);
+              return [
+                asString(key.provider),
+                <div><div className="font-medium">{asString(key.label, "Unnamed credential")}</div><code className="text-[10px] text-text-dimmed">{id}</code></div>,
+                <code className="text-xs">{asString(key.envVarName, "No compatibility name")}</code>,
+                <StatusChip tone={asBoolean(key.isDefault) ? "accent" : "good"}>{asBoolean(key.isDefault) ? "provider default" : "available"}</StatusChip>,
+                asString(key.lastUsedAt, "Never"),
+                <fetcher.Form method="post" className="flex flex-wrap gap-3">
+                  <input type="hidden" name="keyId" value={id} />
+                  {!asBoolean(key.isDefault) && <button name="intent" value="default-key" className="text-xs text-[var(--accent)]">Make default</button>}
+                  <button name="intent" value="delete-key" className="text-xs text-[var(--danger)]">Delete</button>
+                </fetcher.Form>,
+              ];
+            })}
+            empty={<EmptyState title="No provider credentials" description="Create an encrypted BYOK credential or link a stored same-Environment credential below." />}
+          />
+        )}
+      </section>
 
-        <fetcher.Form method="post" className="rounded-lg border border-grid-bright bg-background-bright p-4">
-          <input type="hidden" name="intent" value="rotate-secret" />
-          <h2 className="font-semibold">Rotate a BYOK credential</h2>
-          <p className="mt-1 text-xs text-text-dimmed">Rotation replaces the encrypted active version; no reveal response is produced.</p>
-          <label className="mt-4 block text-xs">ProviderKey ID<input required name="keyId" className="mt-1 w-full rounded border border-grid-bright bg-charcoal-950 px-3 py-2 font-mono" /></label>
-          <label className="mt-3 block text-xs">Replacement secret<input required type="password" autoComplete="new-password" name="plaintext" className="mt-1 w-full rounded border border-grid-bright bg-charcoal-950 px-3 py-2 font-mono" /></label>
-          <button disabled={busy} className="mt-4 rounded border border-grid-bright px-3 py-2 text-sm">Rotate encrypted credential</button>
-        </fetcher.Form>
-      </div>
+      <section className="mt-6">
+        <SectionHeader title="Model catalogue" description="Model names come from the canonical provider catalogue. Pricing classes are omitted because this endpoint does not expose pinned rate provenance." />
+        {!data.models.ok ? <PanelFailure error={data.models.error} /> : (
+          <DataTable
+            headers={["Provider", "Display name", "Model", "Rate provenance"]}
+            rows={catalogue.map((row) => [row.provider, row.displayName, <code className="text-xs">{row.model}</code>, "Not exposed by catalogue"])}
+            empty={<EmptyState title="Model catalogue is empty" description="No canonical provider model names are available for this Environment." />}
+          />
+        )}
+      </section>
 
-      {fetcher.data && <pre className={`mt-5 overflow-auto rounded border p-3 text-xs ${fetcher.data.ok ? "border-grid-bright" : "border-red-500/40 text-red-300"}`}>{stableJson(fetcher.data)}</pre>}
-      <details className="mt-5 text-xs text-text-dimmed"><summary>Available model catalogue</summary><pre className="mt-2 max-h-64 overflow-auto rounded bg-charcoal-950 p-3">{stableJson(models)}</pre></details>
+      <section className="mt-6">
+        <SectionHeader title="Credential operations" description="Guided operations submit plaintext only to the encrypted Environment store. No operation reveals an already-stored value." />
+        <div className="grid gap-4 xl:grid-cols-3">
+          <fetcher.Form method="post">
+            <Panel className="h-full">
+              <input type="hidden" name="intent" value="create-key" />
+              <SectionHeader title="Link stored credential" description="Reference an existing bare same-Environment credential name." />
+              <label className="block text-xs">Provider<input required name="provider" className={fieldClass} placeholder="anthropic" /></label>
+              <label className="mt-3 block text-xs">Label<input required name="label" className={fieldClass} placeholder="Primary" /></label>
+              <label className="mt-3 block text-xs">Credential reference<input required name="envVarName" className={`${fieldClass} font-mono`} placeholder="ANTHROPIC_API_KEY" /></label>
+              <label className="mt-3 flex items-center gap-2 text-xs"><input type="checkbox" name="isDefault" /> Default for this provider</label>
+              <Button type="submit" disabled={busy} tone="primary" className="mt-4">Link credential</Button>
+            </Panel>
+          </fetcher.Form>
+
+          <fetcher.Form method="post">
+            <Panel className="h-full">
+              <input type="hidden" name="intent" value="create-secret" />
+              <SectionHeader title="Create encrypted BYOK credential" description="The submitted value is never returned in provider payloads." />
+              <label className="block text-xs">Provider<input required name="provider" className={fieldClass} placeholder="anthropic" /></label>
+              <label className="mt-3 block text-xs">Label<input required name="label" className={fieldClass} placeholder="Primary" /></label>
+              <label className="mt-3 block text-xs">Credential name<input required name="envVarName" className={`${fieldClass} font-mono`} placeholder="ANTHROPIC_API_KEY" /></label>
+              <label className="mt-3 block text-xs">Provider secret<input required type="password" autoComplete="new-password" name="plaintext" className={`${fieldClass} font-mono`} /></label>
+              <label className="mt-3 flex items-center gap-2 text-xs"><input type="checkbox" name="isDefault" /> Default for this provider</label>
+              <Button type="submit" disabled={busy} tone="primary" className="mt-4">Encrypt and link</Button>
+            </Panel>
+          </fetcher.Form>
+
+          <fetcher.Form method="post">
+            <Panel className="h-full">
+              <input type="hidden" name="intent" value="rotate-secret" />
+              <SectionHeader title="Rotate encrypted credential" description="Select safe ProviderKey metadata; no manual ID transcription or reveal response." />
+              <label className="block text-xs">Provider credential
+                <select required name="keyId" className={fieldClass} defaultValue="">
+                  <option value="" disabled>Select credential</option>
+                  {keyRows.map((value, index) => {
+                    const key = asRecord(value);
+                    const id = asString(key.id, `key-${index}`);
+                    return <option key={id} value={id}>{asString(key.provider)} · {asString(key.label, id)}</option>;
+                  })}
+                </select>
+              </label>
+              <label className="mt-3 block text-xs">Replacement secret<input required type="password" autoComplete="new-password" name="plaintext" className={`${fieldClass} font-mono`} /></label>
+              <Button type="submit" disabled={busy || !keyRows.length} className="mt-4">Rotate active version</Button>
+            </Panel>
+          </fetcher.Form>
+        </div>
+      </section>
     </Page>
   );
 }

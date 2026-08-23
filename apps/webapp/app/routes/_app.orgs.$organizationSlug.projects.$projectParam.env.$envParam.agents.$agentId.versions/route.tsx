@@ -3,7 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
 import { agentRequest, m4Mutation, requiredText } from "~/services/m4Mutation.server";
-const config = { surface: "versions", title: "Agent Versions", description: "Immutable, field-aware config history with readable semantic diffs.", endpoint: "/api/v1/agent/agents/:agentId/versions", secondaryEndpoint: "/api/v1/agent/agents/:agentId", provenance: "Canonical clean database ancestry and platos-agent API" };
+const config = { surface: "versions" as const, title: "Agent Versions", description: "Immutable, field-aware config history with readable semantic diffs.", endpoint: "/api/v1/agent/agents/:agentId/versions", provenance: "Canonical clean database ancestry and platos-agent API" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   return m4Mutation(args, "Version rollback", async ({ scope, form }) => {

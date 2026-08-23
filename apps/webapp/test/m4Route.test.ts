@@ -10,15 +10,22 @@ vi.mock("../app/services/auth.server", () => ({ requireEnvironmentScope }));
 vi.mock("../app/services/platosAgent.server", () => ({ agentPanel }));
 
 import { loadSurface } from "../app/services/m4Route.server";
+import { loader as loadMonitoringUsers } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-monitoring.users._index/route";
+import { loader as loadConversations } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations._index/route";
+import { loader as loadThread } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route";
+import { loader as loadTrace } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId.trace/route";
+import { loader as loadMemories } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route";
 
-function args(): LoaderFunctionArgs {
+function args(url = "https://dashboard.example/entity"): LoaderFunctionArgs {
   return {
-    request: new Request("https://dashboard.example/entity"),
+    request: new Request(url),
     params: {
       organizationSlug: "org",
       projectParam: "project",
       envParam: "env",
+      agentId: "agent-1",
       entityId: "11111111-1111-4111-8111-111111111111",
+      threadId: "thread-1",
     },
     context: {},
   };
@@ -85,5 +92,120 @@ describe("M4 route HTTP contracts", () => {
 
     expect(agentPanel).toHaveBeenCalledTimes(1);
     expect(agentPanel).toHaveBeenCalledWith("/api/v1/agent/platos-tasks/job-1", expect.anything());
+  });
+
+  it("bounds monitoring-user pages and rejects unsafe cursors", async () => {
+    agentPanel.mockResolvedValue({ ok: true, data: { users: [] } });
+
+    await loadMonitoringUsers(args("https://dashboard.example/monitoring/users?limit=500&cursor=unsafe%2Fcursor"));
+
+    expect(agentPanel).toHaveBeenCalledWith(
+      "/api/v1/agent/monitoring/users?limit=100&sinceDays=7",
+      expect.anything(),
+    );
+
+    vi.clearAllMocks();
+    requireEnvironmentScope.mockResolvedValue({ scope: {} });
+    agentPanel.mockResolvedValue({ ok: true, data: { users: [] } });
+
+    await loadMonitoringUsers(args("https://dashboard.example/monitoring/users?limit=1&cursor=next_page-2"));
+
+    expect(agentPanel).toHaveBeenCalledWith(
+      "/api/v1/agent/monitoring/users?limit=10&sinceDays=7&cursor=next_page-2",
+      expect.anything(),
+    );
+  });
+
+  it("bounds conversation limit and offset before calling the Agent", async () => {
+    agentPanel.mockResolvedValue({ ok: true, data: { threads: [] } });
+
+    await loadConversations(args("https://dashboard.example/threads?limit=1000&offset=-30"));
+
+    expect(agentPanel).toHaveBeenCalledWith(
+      "/api/v1/agent/threads?agentId=agent-1&allUsers=true&limit=100&offset=0",
+      expect.anything(),
+    );
+
+    vi.clearAllMocks();
+    requireEnvironmentScope.mockResolvedValue({ scope: {} });
+    agentPanel.mockResolvedValue({ ok: true, data: { threads: [] } });
+
+    await loadConversations(args("https://dashboard.example/threads?limit=5&offset=999999"));
+
+    expect(agentPanel).toHaveBeenCalledWith(
+      "/api/v1/agent/threads?agentId=agent-1&allUsers=true&limit=10&offset=100000",
+      expect.anything(),
+    );
+  });
+
+  it("preserves a canonical Thread 404 without fetching subordinate panels", async () => {
+    agentPanel.mockResolvedValue({
+      ok: false,
+      error: { status: 404, code: "AGENT_API_ERROR", message: "Thread not found" },
+    });
+
+    await expect(loadThread(args())).rejects.toMatchObject({ status: 404 });
+
+    expect(agentPanel).toHaveBeenCalledTimes(1);
+    expect(agentPanel).toHaveBeenCalledWith(
+      "/api/v1/agent/threads/thread-1?allUsers=true",
+      expect.anything(),
+    );
+  });
+
+  it("keeps Thread message, trace, and audit failures subordinate", async () => {
+    agentPanel.mockImplementation(async (path: string) => path.includes("?allUsers=true") && !path.includes("/messages")
+      ? { ok: true, data: { id: "thread-1", turns: [] } }
+      : { ok: false, error: { status: 503, code: "AGENT_UNAVAILABLE", message: path } });
+
+    const response = await loadThread(args());
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.panel.ok).toBe(true);
+    expect(payload.panel.data.thread).toEqual({ id: "thread-1", turns: [] });
+    expect(payload.panel.data.unavailable).toHaveLength(3);
+  });
+
+  it("preserves a canonical Trace 404 before fetching tool audit", async () => {
+    agentPanel.mockResolvedValue({
+      ok: false,
+      error: { status: 404, code: "AGENT_API_ERROR", message: "Trace not found" },
+    });
+
+    await expect(loadTrace(args())).rejects.toMatchObject({ status: 404 });
+    expect(agentPanel).toHaveBeenCalledTimes(1);
+    expect(agentPanel).toHaveBeenCalledWith(
+      "/api/v1/agent/monitoring/trace/thread-1",
+      expect.anything(),
+    );
+  });
+
+  it("pins Memory reads to the selected Agent while loading selector options unpinned", async () => {
+    agentPanel.mockResolvedValue({ ok: true, data: { memories: [] } });
+
+    await loadMemories(args("https://dashboard.example/memories?userId=end-user-1&agentId=agent-1"));
+
+    expect(agentPanel).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/memory?userId=end-user-1",
+      expect.objectContaining({ agentId: "agent-1" }),
+    );
+    expect(agentPanel).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/agent/agents",
+      expect.not.objectContaining({ agentId: expect.anything() }),
+    );
+  });
+
+  it("does not call Memory without an explicit Agent pin in a potentially multi-Agent Environment", async () => {
+    agentPanel.mockResolvedValue({ ok: true, data: { agents: [] } });
+
+    const response = await loadMemories(args("https://dashboard.example/memories?userId=end-user-1"));
+    const payload = await response.json();
+
+    expect(payload.panel).toEqual({ ok: true, data: { requiresAgentContext: true } });
+    expect(agentPanel).toHaveBeenCalledTimes(1);
+    expect(agentPanel).toHaveBeenCalledWith("/api/v1/agent/agents", expect.anything());
   });
 });
