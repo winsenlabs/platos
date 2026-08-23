@@ -1034,7 +1034,7 @@ export class ToolExecutorService {
         select: { name: true },
       });
       serviceSecret = credential
-        ? (await this.mcpCredentials?.resolveCredentialReference(
+        ? (await this.mcpCredentials?.resolveEntitySigningCredential(
             {
               organizationId: scope.organizationId,
               projectId: scope.projectId,

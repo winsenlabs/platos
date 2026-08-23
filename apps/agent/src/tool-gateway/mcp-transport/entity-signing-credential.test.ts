@@ -30,21 +30,21 @@ function makeService(options: {
 }
 
 describe("resolveCredentialReference", () => {
-  it("resolves a wire entity's ENTITY_SECRET when no variable matches", async () => {
+  it("resolves a wire entity's ENTITY_SECRET without consulting variables", async () => {
     const { service, get, getEntitySecret } = makeService({
+      variables: { "walle-mcp-service": "poisoning-variable" },
       entitySecrets: { "walle-mcp-service": "bare-signing-secret" },
     });
 
     await expect(
-      service.resolveCredentialReference(SCOPE, "walle-mcp-service"),
+      service.resolveEntitySigningCredential(SCOPE, "walle-mcp-service"),
     ).resolves.toBe("bare-signing-secret");
 
-    // The variable lookup is still tried first, then the credential.
-    expect(get).toHaveBeenCalledWith(SCOPE, "walle-mcp-service");
+    expect(get).not.toHaveBeenCalled();
     expect(getEntitySecret).toHaveBeenCalledWith(SCOPE, "walle-mcp-service");
   });
 
-  it("still prefers an Environment variable, so MCP header templates are unchanged", async () => {
+  it("still resolves MCP header templates from Environment variables", async () => {
     const { service, getEntitySecret } = makeService({
       variables: { MY_MCP_TOKEN: "from-variable" },
       entitySecrets: { MY_MCP_TOKEN: "from-credential" },
@@ -56,7 +56,7 @@ describe("resolveCredentialReference", () => {
     expect(getEntitySecret).not.toHaveBeenCalled();
   });
 
-  it("returns undefined when neither source has it, so the caller fails closed", async () => {
+  it("returns undefined when an MCP variable is absent", async () => {
     const { service } = makeService({});
     await expect(
       service.resolveCredentialReference(SCOPE, "nothing-here"),
