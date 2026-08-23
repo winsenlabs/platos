@@ -202,6 +202,14 @@ export class McpCredentialService {
     return this.scopedEnv.get(scope, credentialName);
   }
 
+  /** Resolve only an entity signing credential, never a same-named variable. */
+  async resolveEntitySigningCredential(
+    scope: ScopeTuple,
+    entityExternalId: string,
+  ): Promise<string | undefined> {
+    return this.scopedEnv.getEntitySecret(scope, entityExternalId);
+  }
+
   /**
    * Coerce `server.headersTemplate` (a `Json?` column) into a
    * { header: valueTemplate } string map.

@@ -1,4 +1,5 @@
 import { Injectable, Inject, Logger, Optional } from "@nestjs/common";
+import { unwrapEntitySecretMaterial } from "../shared/entity-secret";
 import {
   ACCESS_KEY_SAFE_SELECT,
   CredentialKind,
@@ -220,23 +221,9 @@ export class AuthService {
    * credentials and idempotent if it ever runs twice.
    */
   static unwrapEntitySecretMaterial(plaintext: string): string {
-    const trimmed = plaintext.trim();
-    if (!trimmed.startsWith("{")) return plaintext;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(trimmed);
-    } catch {
-      return plaintext;
-    }
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return plaintext;
-    }
-    const record = parsed as Record<string, unknown>;
-    for (const key of ["serviceSecret", "PlatosConnectedEntity.serviceSecret"]) {
-      const value = record[key];
-      if (typeof value === "string" && value.length > 0) return value;
-    }
-    return plaintext;
+    // Shared with ScopedEnvService.getEntitySecret — the outbound signing path
+    // resolves the same credential and must unwrap it identically.
+    return unwrapEntitySecretMaterial(plaintext);
   }
 
   async validateSessionToken(token: string): Promise<SessionPayload | null> {
