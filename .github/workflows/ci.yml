@@ -34,6 +34,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # The WIN-234/WIN-238 parity gate independently inspects the pinned v0
+          # archaeology commit instead of trusting counts stored in the matrix.
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
