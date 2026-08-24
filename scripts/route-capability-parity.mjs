@@ -114,8 +114,7 @@ const REQUIRED_CAPABILITY_CONTRACTS = Object.freeze({
   },
   "postman-executable-mode": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx",
-    methods: [["NONE", "Socket.IO Agent Postman execution"]],
-    defect: true,
+    methods: [["POST", "/api/v1/agent/postman-templates/:id/execute"]],
   },
   "entity-mcp-bearer-token-list": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx",
@@ -225,11 +224,24 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
   },
   "postman-executable-mode": {
     fragments: {
-      currentBehavior: ["executable Postman control is absent"],
-      identifiers: ["simulateEndUserId", "sessionContextOverride"],
+      currentBehavior: ["canonical REST turn", "Environment-present EndUser", "sessionContextOverride"],
+      identifiers: ["templateId", "simulateEndUserId", "requestId", "threadId", "turnId"],
       permission: ["Organization OWNER or ADMIN"],
+      persistedReadBack: ["exactly one sequence-1 Turn"],
+      secretExposure: ["omits template context", "provider errors"],
     },
-    statuses: { "defect.status": "confirmed-defect", "persistedReadBack.status": "confirmed-defect" },
+    statuses: {
+      "permission.status": "verified",
+      "actionState.status": "implemented",
+      "formState.status": "implemented",
+      "linkState.status": "implemented",
+      "persistedReadBack.status": "verified",
+      "idempotency.status": "verified",
+      "recovery.status": "verified",
+      "secretExposure.status": "verified",
+      "automatedEvidence.status": "verified",
+      "defect.status": "verified",
+    },
   },
   "entity-mcp-bearer-token-list": {
     fragments: { http: ["plt_ent_", "McpBearerToken", "tokenHash"] },

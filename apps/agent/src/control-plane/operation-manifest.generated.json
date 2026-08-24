@@ -9586,6 +9586,23 @@
         ]
       },
       {
+        "id": "POST /api/v1/agent/postman-templates/:id/execute",
+        "method": "POST",
+        "path": "/api/v1/agent/postman-templates/:id/execute",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "AgentController",
+            "handler": "executePostmanTemplate",
+            "source": "apps/agent/src/agent-runtime/agent.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
         "id": "POST /api/v1/agent/prompt/assemble",
         "method": "POST",
         "path": "/api/v1/agent/prompt/assemble",

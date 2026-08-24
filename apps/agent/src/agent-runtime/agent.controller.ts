@@ -99,6 +99,7 @@ import {
   environmentScopeWhere,
 } from "../shared/database.provider";
 import {
+  isUuid,
   pageMetadata,
   isUuid,
   parseBooleanFilter,
@@ -123,6 +124,10 @@ function currentEnvironmentEndUserPresence(environmentId: string) {
       { safetyEvents: { some: { environmentId } } },
     ],
   };
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -6497,6 +6502,250 @@ Write the summary now:`;
       where: { id, ...environmentScopeWhere(scope) },
     });
     return { ok: true };
+  }
+
+  @Post("postman-templates/:id/execute")
+  async executePostmanTemplate(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: unknown,
+  ) {
+    const scope = this.getScope(req);
+    requireOperator(scope);
+    const prisma = this.prisma;
+    if (!prisma) {
+      throw new ServiceUnavailableException({
+        code: "POSTMAN_EXECUTION_UNAVAILABLE",
+        message: "Postman execution is unavailable",
+      });
+    }
+
+    // Authorization intentionally precedes template and EndUser lookup. A
+    // MEMBER must not be able to use response differences as a scoped ID
+    // oracle, even when they guess a valid template UUID.
+    const actorUserId = scope.operatorUserId || scope.userId;
+    let role: string | undefined;
+    try {
+      role = (await prisma.organizationMembership.findFirst({
+        where: {
+          organizationId: scope.organizationId,
+          userId: actorUserId,
+          deactivatedAt: null,
+        },
+        select: { role: true },
+      }))?.role;
+    } catch {
+      role = undefined;
+    }
+    if (role !== "OWNER" && role !== "ADMIN") {
+      throw new ForbiddenException({
+        code: "POSTMAN_EXECUTION_FORBIDDEN",
+        message: "Postman execution requires an Organization OWNER or ADMIN",
+      });
+    }
+
+    if (!isUuid(id) || !isJsonObject(body)) {
+      throw new BadRequestException({
+        code: "POSTMAN_EXECUTION_INVALID_REQUEST",
+        message: "A canonical template ID and request body are required",
+      });
+    }
+    const allowedFields = new Set(["message", "sessionContextOverride", "requestId"]);
+    if (Object.keys(body).some((field) => !allowedFields.has(field))) {
+      throw new BadRequestException({
+        code: "POSTMAN_EXECUTION_INVALID_REQUEST",
+        message: "Postman execution contains unsupported fields",
+      });
+    }
+    const message = typeof body.message === "string" ? body.message.trim() : "";
+    const requestId = typeof body.requestId === "string" ? body.requestId.trim() : "";
+    const override = body.sessionContextOverride;
+    if (
+      !message ||
+      message.length > 20_000 ||
+      !isUuid(requestId) ||
+      !isJsonObject(override)
+    ) {
+      throw new BadRequestException({
+        code: "POSTMAN_EXECUTION_INVALID_REQUEST",
+        message: "message, requestId, and a JSON object sessionContextOverride are required",
+      });
+    }
+
+    try {
+      const template = await prisma.postmanTemplate.findFirst({
+        where: {
+          id,
+          ...environmentScopeWhere(scope),
+          agent: { projectId: scope.projectId },
+        },
+        select: {
+          id: true,
+          agentId: true,
+          simulateUserId: true,
+          sessionContext: true,
+        },
+      });
+      if (!template || !isUuid(template.simulateUserId)) {
+        throw new NotFoundException({
+          code: "POSTMAN_EXECUTION_NOT_FOUND",
+          message: "Postman execution target was not found in scope",
+        });
+      }
+
+      // simulateUserId is the canonical EndUser UUID. Resolve runtime material
+      // only from an active, Environment-present source row; never accept a free
+      // form external subject from the execution request.
+      const simulatedEndUser = await prisma.endUser.findFirst({
+        where: {
+          id: template.simulateUserId,
+          organizationId: scope.organizationId,
+          disabledAt: null,
+          ...currentEnvironmentEndUserPresence(scope.environmentId),
+        },
+        select: {
+          id: true,
+          identities: {
+            where: {
+              ...EXTERNAL_END_USER_IDENTITY,
+              verifiedAt: { not: null },
+            },
+            orderBy: { createdAt: "asc" },
+            take: 1,
+            select: { subject: true },
+          },
+        },
+      });
+      const externalSubject = simulatedEndUser?.identities[0]?.subject;
+      if (!simulatedEndUser || !externalSubject) {
+        throw new NotFoundException({
+          code: "POSTMAN_EXECUTION_NOT_FOUND",
+          message: "Postman execution target was not found in scope",
+        });
+      }
+
+      const idempotencyKey = `postman:${template.id}:${requestId}`;
+      const readEvidence = async (threadId: string, recovered: boolean) => {
+        const thread = await prisma.thread.findFirst({
+          where: {
+            id: threadId,
+            environmentId: scope.environmentId,
+            agentId: template.agentId,
+            endUserId: simulatedEndUser.id,
+            environment: {
+              projectId: scope.projectId,
+              project: { organizationId: scope.organizationId },
+            },
+          },
+          select: { id: true },
+        });
+        const turns = thread
+          ? await prisma.turn.findMany({
+              where: { threadId: thread.id },
+              orderBy: { sequence: "asc" },
+              select: {
+                id: true,
+                threadId: true,
+                sequence: true,
+                status: true,
+                idempotencyKey: true,
+                inputText: true,
+                outputText: true,
+                createdAt: true,
+                completedAt: true,
+              },
+            })
+          : [];
+        const turn = turns[0];
+        if (
+          !thread ||
+          turns.length !== 1 ||
+          !turn ||
+          turn.sequence !== 1 ||
+          turn.idempotencyKey !== idempotencyKey
+        ) {
+          throw new ServiceUnavailableException({
+            code: "POSTMAN_EXECUTION_EVIDENCE_UNAVAILABLE",
+            message: "Persisted Postman execution evidence is unavailable",
+          });
+        }
+        return {
+          execution: {
+            requestId,
+            templateId: template.id,
+            agentId: template.agentId,
+            simulatedEndUserId: simulatedEndUser.id,
+            threadId: thread.id,
+            turnId: turn.id,
+            turnCount: turns.length,
+            status: turn.status,
+            inputText: turn.inputText,
+            outputText: turn.outputText,
+            createdAt: turn.createdAt,
+            completedAt: turn.completedAt,
+            recovered,
+          },
+        };
+      };
+
+      // A retry after an ambiguous timeout reads the original persisted Turn
+      // back instead of dispatching another one. The template UUID is embedded
+      // in the persisted key so a request ID cannot recover another template.
+      const existing = await prisma.turn.findFirst({
+        where: {
+          idempotencyKey,
+          thread: {
+            environmentId: scope.environmentId,
+            agentId: template.agentId,
+            endUserId: simulatedEndUser.id,
+            environment: {
+              projectId: scope.projectId,
+              project: { organizationId: scope.organizationId },
+            },
+          },
+        },
+        select: { threadId: true },
+      });
+      if (existing) return readEvidence(existing.threadId, true);
+
+      const templateContext = isJsonObject(template.sessionContext)
+        ? template.sessionContext
+        : {};
+      try {
+        const result = await this.dispatch.collectTurn(template.agentId, {
+          scope: {
+            ...scope,
+            agentId: template.agentId,
+            userId: externalSubject,
+            userIdentities: undefined,
+            signedUserMeta: undefined,
+            operatorUserId: actorUserId,
+            // This request-local scope is the only carrier of the override. It
+            // is not written onto the new Thread, so it cannot affect a later
+            // Turn.
+            sessionContext: { ...templateContext, ...override },
+          },
+          message,
+          idempotencyKey,
+        });
+        if (!result.threadId) throw new Error("missing persisted thread");
+        return readEvidence(result.threadId, false);
+      } catch (error) {
+        if (error instanceof HttpException) throw error;
+        // Do not include provider/runtime error text: it can contain request
+        // context, credential metadata, or upstream response material.
+        throw new ServiceUnavailableException({
+          code: "POSTMAN_EXECUTION_UNAVAILABLE",
+          message: "Postman execution is unavailable; retry with the same requestId",
+        });
+      }
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new ServiceUnavailableException({
+        code: "POSTMAN_EXECUTION_UNAVAILABLE",
+        message: "Postman execution is unavailable; retry with the same requestId",
+      });
+    }
   }
 
   // ═══════════════════════════════════════════════════════

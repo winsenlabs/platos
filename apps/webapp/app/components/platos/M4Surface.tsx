@@ -108,7 +108,7 @@ export function M4Surface({ data }: { data: SurfaceData }) {
   const supporting = data.supporting?.ok ? data.supporting.data : null;
   const selection = data.selection?.ok ? data.selection.data : null;
   const renderer = renderers[data.surface];
-  const props = { data: content, secondary, supporting, selection, title: data.title };
+  const props = { data: content, secondary, supporting, selection, title: data.title, mutation: actionData };
 
   return (
     <Page>

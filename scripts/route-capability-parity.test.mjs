@@ -240,10 +240,11 @@ test("Entity bearer PAT contracts stay separate from platform tokens", () => {
   assert.match(errors, /entity-mcp-bearer-token-delete lacks DELETE/);
 });
 
-test("confirmed Postman defects remain gated while repaired M4 evidence cannot regress", () => {
+test("repaired M4 evidence cannot regress", () => {
   const matrix = clone(readMatrix());
   capability(matrix, "mcp-token-list").loaderState.status = "confirmed-defect";
-  capability(matrix, "postman-executable-mode").defect.status = "required-not-verified";
+  capability(matrix, "postman-executable-mode").defect.status = "confirmed-defect";
+  capability(matrix, "postman-executable-mode").persistedReadBack.status = "required-not-verified";
   capability(matrix, "access-key-one-time-reveal").defect.status = "confirmed-defect";
   capability(matrix, "access-key-browser-request-correlation").defect.status = "confirmed-defect";
   capability(matrix, "thread-artifacts").loaderState.status = "confirmed-defect";
@@ -252,7 +253,8 @@ test("confirmed Postman defects remain gated while repaired M4 evidence cannot r
   capability(matrix, "entity-mcp-bearer-token-create").actionState.status = "confirmed-defect";
   const errors = errorsFor(matrix);
   assert.match(errors, /mcp-token-list loaderState\.status must be implemented/);
-  assert.match(errors, /postman-executable-mode defect\.status must be confirmed-defect/);
+  assert.match(errors, /postman-executable-mode defect\.status must be verified/);
+  assert.match(errors, /postman-executable-mode persistedReadBack\.status must be verified/);
   assert.match(errors, /access-key-one-time-reveal defect\.status must be verified/);
   assert.match(errors, /access-key-browser-request-correlation defect\.status must be verified/);
   assert.match(errors, /thread-artifacts loaderState\.status must be implemented/);

@@ -168,6 +168,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/postman-templates` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#createPostmanTemplate` |
 | `DELETE /api/v1/agent/postman-templates/:id` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#deletePostmanTemplate` |
 | `PUT /api/v1/agent/postman-templates/:id` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#updatePostmanTemplate` |
+| `POST /api/v1/agent/postman-templates/:id/execute` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#executePostmanTemplate` |
 | `POST /api/v1/agent/prompt/assemble` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#assemblePrompt` |
 | `GET /api/v1/agent/prompt/defaults` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getDefaultBlocks` |
 | `POST /api/v1/agent/prompt/preview` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#previewPrompt` |

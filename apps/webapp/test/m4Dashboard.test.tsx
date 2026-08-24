@@ -656,8 +656,10 @@ describe("M4 dashboard rebuild", () => {
     expect(skills).toContain("Skill URL");
     expect(skills).toContain("Import and validate");
     const postman = render({ surface: "postman", title: "Postman templates", description: "Debug", panel: { ok: true, data: { templates: [{ id: "template-1", name: "Ada", simulateUserId: "user-1", sessionContext: { account: "a" }, isDefault: true }] } } });
-    expect(postman).toContain("Simulated user ID");
+    expect(postman).toContain("Canonical EndUser ID");
     expect(postman).toContain("Session Context — JSON object");
+    expect(postman).toContain("Execute one Turn");
+    expect(postman).toContain("Organization OWNER/ADMIN only");
     const mcp = render({ surface: "mcp-config", title: "MCP Entity", description: "Gateway", panel: { ok: true, data: { enabled: true, identityMode: "bearer", bearerTokenCount: 2, rateLimitPerMinute: 60 } } });
     expect(mcp).toContain("Save typed MCP config");
     expect(mcp).toContain("Inject MCP context");

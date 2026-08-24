@@ -72,7 +72,7 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations.$threadId/route.tsx` | `route-031` | redirect | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations.$threadId/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations._index/route.tsx` | `route-032` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations._index/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.evals-ab/route.tsx` | `route-033` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.evals-ab/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx` | `postman-executable-mode` | improve | NONE Socket.IO Agent Postman execution | confirmed-defect | confirmed-defect | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx` | `postman-executable-mode` | improve | POST /api/v1/agent/postman-templates/:id/execute | verified | verified | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx` | `postman-template-crud` | improve | GET /api/v1/agent/postman-templates?agentId=:agentId; POST /api/v1/agent/postman-templates; PUT /api/v1/agent/postman-templates/:id; DELETE /api/v1/agent/postman-templates/:id | required-not-verified | required-not-verified | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx` | `route-034` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx` | `route-035` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
@@ -148,25 +148,22 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 
 | Blocker category | Count | Requirement |
 |---|---:|---|
-| confirmed defects | 1 | Repair the source-backed defect and replace the defect status with verified evidence. |
-| permission | 97 | Verify permission behavior or record an approved not-applicable/justified-exclusion status. |
+| permission | 96 | Verify permission behavior or record an approved not-applicable/justified-exclusion status. |
 | organization scope | 84 | Verify Organization isolation or record an approved not-applicable status. |
 | project scope | 84 | Verify Project isolation or record an approved not-applicable status. |
 | environment scope | 84 | Verify Environment isolation or record an approved not-applicable status. |
 | EndUser scope | 2 | Verify EndUser isolation or record an approved not-applicable status. |
 | Agent scope | 19 | Verify Agent isolation or record an approved not-applicable status. |
 | cluster scope | 1 | Verify cluster isolation or record an approved not-applicable status. |
-| loader behavior | 1 | Verify loader behavior or record an approved redirect/not-applicable status. |
-| action behavior | 1 | Verify action behavior or record an approved redirect/not-applicable status. |
-| form behavior | 48 | Verify form behavior or record an approved redirect/not-applicable status. |
-| link behavior | 106 | Verify link and deep-link behavior or record an approved redirect/not-applicable status. |
-| destructive confirmation | 13 | Verify destructive confirmation or record an approved not-applicable/justified-exclusion status. |
-| idempotency | 20 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
+| form behavior | 47 | Verify form behavior or record an approved redirect/not-applicable status. |
+| link behavior | 105 | Verify link and deep-link behavior or record an approved redirect/not-applicable status. |
+| destructive confirmation | 12 | Verify destructive confirmation or record an approved not-applicable/justified-exclusion status. |
+| idempotency | 19 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
 | concurrency | 19 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
-| recovery | 102 | Verify failure, retry, and unavailable-backend recovery or record an approved not-applicable/justified-exclusion status. |
-| secret exposure | 103 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |
-| persisted-state evidence | 10 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |
-| automated behavioral evidence | 87 | Replace static or pending references with passing behavioral test evidence. |
+| recovery | 101 | Verify failure, retry, and unavailable-backend recovery or record an approved not-applicable/justified-exclusion status. |
+| secret exposure | 102 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |
+| persisted-state evidence | 9 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |
+| automated behavioral evidence | 86 | Replace static or pending references with passing behavioral test evidence. |
 | browser evidence | 107 | Provide authenticated browser evidence or a source-backed justified exclusion. |
 | pagination and totals | 1 | Prove complete totals and usable pagination/virtualization for dense retained data. |
 

@@ -1,4 +1,5 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
+import { randomUUID } from "node:crypto";
 import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import {
@@ -16,6 +17,18 @@ export async function action(args: ActionFunctionArgs) {
     const agentId = args.params.agentId;
     if (!agentId) throw new Error("Agent is required");
     const intent = String(form.getAll("intent").at(-1) ?? "create");
+    if (intent === "execute") {
+      const templateId = requiredText(form, "templateId", "Template ID");
+      return agentRequest(`/api/v1/agent/postman-templates/${encodeURIComponent(templateId)}/execute`, scope, {
+        method: "POST",
+        body: {
+          message: requiredText(form, "message", "Message"),
+          sessionContextOverride: jsonObject(form, "sessionContextOverride"),
+          requestId: randomUUID(),
+        },
+        signal: AbortSignal.timeout(120_000),
+      });
+    }
     if (intent === "delete") {
       const templateId = requiredText(form, "templateId", "Template ID");
       return agentRequest(`/api/v1/agent/postman-templates/${encodeURIComponent(templateId)}`, scope, {

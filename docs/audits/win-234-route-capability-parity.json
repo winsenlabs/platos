@@ -6570,47 +6570,74 @@
       "intent": "Execute Agent Postman mode while simulating a scoped EndUser and applying a one-turn sessionContextOverride only after Organization OWNER/ADMIN validation.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "The executable Postman control is absent from the retained route; EndUser simulation and session overrides exist only in ConnectionsGateway and are not wired to this UI.",
+      "currentBehavior": "The retained Postman route now executes one canonical REST turn from a persisted template, resolves an Environment-present EndUser by canonical UUID, applies a request-only sessionContextOverride, and reads the single persisted Turn back before returning safe evidence.",
       "http": [
         {
-          "role": "authenticated WebSocket interaction",
-          "method": "NONE",
-          "endpoint": "Socket.IO Agent Postman execution",
+          "role": "canonical contract",
+          "method": "POST",
+          "endpoint": "/api/v1/agent/postman-templates/:id/execute",
           "requestDto": {
-            "status": "not-applicable",
-            "shape": "{ postmanUserId: simulateEndUserId; sessionContextOverride; message; agentId }"
+            "status": "verified",
+            "shape": "{ message: string; requestId: UUID; sessionContextOverride: JSON object }"
           },
           "response": {
             "successStatuses": [
-              "not-applicable"
+              200
             ],
-            "shape": "Streamed Agent turn under a verified simulated EndUser while preserving operatorUserId."
+            "shape": "Safe persisted execution evidence: requestId, templateId, agentId, simulatedEndUserId, threadId, turnId, turnCount=1, status, input/output text, timestamps, and recovered; no session context is returned."
           },
           "stableErrors": [
             {
-              "status": "not-applicable",
-              "codeOrMessage": "not-applicable"
+              "status": 400,
+              "codeOrMessage": "POSTMAN_EXECUTION_INVALID_REQUEST"
+            },
+            {
+              "status": 403,
+              "codeOrMessage": "POSTMAN_EXECUTION_FORBIDDEN"
+            },
+            {
+              "status": 404,
+              "codeOrMessage": "POSTMAN_EXECUTION_NOT_FOUND"
+            },
+            {
+              "status": 503,
+              "codeOrMessage": "POSTMAN_EXECUTION_UNAVAILABLE or POSTMAN_EXECUTION_EVIDENCE_UNAVAILABLE"
             }
           ]
         }
       ],
       "identifiers": {
-        "status": "static-contract-only",
+        "status": "verified",
         "values": [
+          {
+            "name": "templateId",
+            "type": "PostmanTemplate UUID",
+            "source": "canonical route parameter"
+          },
           {
             "name": "agentId",
             "type": "Agent UUID",
-            "source": "route and socket payload"
+            "source": "scoped PostmanTemplate.agentId"
           },
           {
             "name": "simulateEndUserId",
-            "type": "EndUser/runtime principal identifier",
-            "source": "PostmanTemplate.simulateUserId"
+            "type": "EndUser UUID",
+            "source": "scoped PostmanTemplate.simulateUserId"
           },
           {
-            "name": "sessionContextOverride",
-            "type": "one-turn JSON context",
-            "source": "PostmanTemplate.sessionContext"
+            "name": "requestId",
+            "type": "execution UUID",
+            "source": "dashboard action and REST request"
+          },
+          {
+            "name": "threadId",
+            "type": "Thread UUID",
+            "source": "persisted execution read-back"
+          },
+          {
+            "name": "turnId",
+            "type": "Turn UUID",
+            "source": "persisted execution read-back"
           }
         ]
       },
@@ -6641,29 +6668,30 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; simulating another EndUser or asserting identity in sessionContextOverride requires Organization OWNER or ADMIN validation."
+        "status": "verified",
+        "requirement": "Authenticated operator with an active Organization OWNER or ADMIN membership; authorization runs before target lookup."
       },
       "loaderState": {
-        "status": "confirmed-defect",
-        "detail": "Template loader does not load an executable dispatch contract or execution state."
+        "status": "implemented",
+        "detail": "The loader supplies the scoped persisted templates that own each executable control."
       },
       "actionState": {
-        "status": "confirmed-defect",
-        "detail": "Route action persists templates but does not execute Postman mode."
+        "status": "implemented",
+        "detail": "The Remix action submits an exact one-Turn execution DTO to the canonical Agent endpoint and preserves stable status/code failures."
       },
       "formState": {
-        "status": "confirmed-defect",
-        "detail": "No execute control binds simulateEndUserId and sessionContextOverride to an Agent turn."
+        "status": "implemented",
+        "detail": "Each retained template renders a required message and JSON-object one-Turn sessionContextOverride control."
       },
       "linkState": {
-        "status": "confirmed-defect",
-        "detail": "No authenticated route-to-execution navigation or result panel exists."
+        "status": "implemented",
+        "detail": "Successful read-back renders canonical Thread and Turn IDs plus a link to the persisted chat thread."
       },
       "persistedReadBack": {
-        "status": "confirmed-defect",
+        "status": "verified",
         "references": [
-          "No UI execution result is correlated with the selected PostmanTemplate, simulated EndUser, or one-turn context override."
+          "apps/agent/src/agent-runtime/agent.controller.postman.test.ts proves the scoped Thread contains exactly one sequence-1 Turn with the matching template-qualified idempotency key.",
+          "apps/webapp/test/postmanExecution.test.ts proves the complete safe execution evidence reaches the route action without echoing sessionContextOverride."
         ]
       },
       "pagination": {
@@ -6677,41 +6705,44 @@
         "semantics": "Capability postman-executable-mode does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Delete must require explicit confirmation and preserve a recoverable error state."
+          "Executing a Postman template creates a fresh Thread and Turn; it does not delete or overwrite persisted state."
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "A template-qualified requestId is persisted as Turn.idempotencyKey; retries read the original scoped Turn back and do not dispatch again."
         ]
       },
       "concurrency": {
         "status": "required-not-verified",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "Concurrent first submissions with the same requestId still require persisted integration evidence."
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "Ambiguous timeout recovery with the same requestId returns recovered=true from persisted evidence; incomplete/multi-Turn read-back fails closed without a second dispatch."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
+        "status": "verified",
+        "classification": "The execution response projects explicit safe Turn evidence and omits template context, sessionContextOverride, provider errors, and runtime exception detail.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "Backend whole-response tests assert the override sentinel and sessionContext key are absent.",
+          "Frontend whole-action payload and stable-error tests assert the submitted override sentinel is absent."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/agent/src/connections/session-context-override.test.ts",
-          "apps/agent/src/connections/connections.gateway.ts"
+          "apps/agent/src/agent-runtime/agent.controller.postman.test.ts",
+          "apps/webapp/test/postmanExecution.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx",
+          "apps/agent/src/connections/session-context-override.test.ts"
         ]
       },
       "browserEvidence": {
@@ -6732,18 +6763,18 @@
         "44-debug.dc.html"
       ],
       "ownershipIssues": [
-        "WIN-138"
+        "WIN-138 resolved by the canonical AgentController executable Postman endpoint and TurnDispatchService boundary."
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Executable Postman mode is absent from the retained route despite source-backed EndUser simulation, session override, and admin-validation behavior."
+        "status": "verified",
+        "summary": "The retained route now exposes source-backed executable Postman mode with scoped EndUser simulation, one-Turn override semantics, Organization role gating, idempotent recovery, and persisted read-back."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
         "controllers": [
           {
-            "symbol": "ConnectionsGateway",
-            "source": "apps/agent/src/connections/connections.gateway.ts"
+            "symbol": "AgentController",
+            "source": "apps/agent/src/agent-runtime/agent.controller.ts"
           }
         ],
         "services": [
@@ -6754,32 +6785,44 @@
         ],
         "models": [
           {
+            "symbol": "model PostmanTemplate",
+            "source": "internal-packages/tenancy-database/prisma/schema.prisma"
+          },
+          {
             "symbol": "model EndUser",
             "source": "internal-packages/tenancy-database/prisma/schema.prisma"
           },
           {
             "symbol": "model Thread",
             "source": "internal-packages/tenancy-database/prisma/schema.prisma"
+          },
+          {
+            "symbol": "model Turn",
+            "source": "internal-packages/tenancy-database/prisma/schema.prisma"
           }
         ],
         "sourceEvidence": [
           {
-            "source": "apps/agent/src/connections/connections.gateway.ts",
+            "source": "apps/agent/src/agent-runtime/agent.controller.ts",
             "fragments": [
-              "ConnectionsGateway"
+              "executePostmanTemplate",
+              "POSTMAN_EXECUTION_FORBIDDEN",
+              "POSTMAN_EXECUTION_EVIDENCE_UNAVAILABLE"
             ]
           },
           {
             "source": "apps/agent/src/agent-runtime/turn-dispatch.service.ts",
             "fragments": [
-              "TurnDispatchService"
+              "collectTurn"
             ]
           },
           {
             "source": "internal-packages/tenancy-database/prisma/schema.prisma",
             "fragments": [
+              "model PostmanTemplate",
               "model EndUser",
-              "model Thread"
+              "model Thread",
+              "model Turn"
             ]
           }
         ]

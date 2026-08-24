@@ -47,6 +47,7 @@ export type SurfaceProps = {
   supporting?: unknown;
   selection?: unknown;
   title: string;
+  mutation?: MutationData;
 };
 
 export const fieldClass =

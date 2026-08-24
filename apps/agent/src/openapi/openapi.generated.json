@@ -4867,6 +4867,42 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/api/v1/agent/postman-templates/{id}/execute": {
+      "post": {
+        "operationId": "post__api_v1_agent_postman_templates_by_id_execute",
+        "summary": "AgentController.executePostmanTemplate",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/api/v1/agent/prompt/assemble": {
       "post": {
         "operationId": "post__api_v1_agent_prompt_assemble",
