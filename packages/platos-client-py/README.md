@@ -2,7 +2,7 @@
 
 Official Python SDK for [Platos](https://platos.dev) — the open-source agent runtime.
 
-Agents · threads · realtime streaming · approvals · budgets · background operations · monitoring.
+Agents · threads · Turns · Jobs · realtime streaming.
 
 ## Install
 
@@ -132,10 +132,11 @@ except PlatosServerError:
 |---|---|
 | `client.agents` | `list`, `get`, `list_versions` |
 | `client.threads` | `create`, `list`, `get`, `messages`, `artifacts`, `send` (streaming) |
-| `client.approvals` | `list`, `resolve` (human-in-the-loop) |
-| `client.budgets` | `list`, `status` (read-only — caps managed in the dashboard) |
-| `client.monitoring` | `runs`, `traces`, `cost_by_agent`, `cost_by_scope` |
-| `client.bgo` | `tasks`, `runs`, `schedules`, `batches` (background-operation engine; `client.trigger` is the deprecated alias) |
+| `client.turns` | `list`, `get` |
+| `client.jobs` | `list`, `spawn`, `get`, `cancel`, `replay` |
+
+`client.bgo` and `client.trigger` are deprecated compatibility aliases for
+`client.jobs`. They were deprecated in 1.0.0 and are removed in 2.0.0.
 
 ## Cross-language parity
 

@@ -15,6 +15,7 @@ from platools.transport.protocol import (
     ToolRegisterMessage,
     ToolResultMessage,
     ToolSchemaPayload,
+    ToolsRegisteredMessage,
     WelcomeMessage,
 )
 from pydantic import TypeAdapter
@@ -116,3 +117,13 @@ def test_welcome_back_compat_org_id_only() -> None:
     assert welcome.entity_id is None
     assert welcome.environment_id is None
     assert welcome.project_id is None
+
+
+def test_tools_registered_reports_shrinking_declaration() -> None:
+    adapter: TypeAdapter[PlatformToSdk] = TypeAdapter(PlatformToSdk)
+    ack = adapter.validate_python(
+        {"type": "tools_registered", "count": 9, "new_tools": [], "pruned": 13}
+    )
+    assert isinstance(ack, ToolsRegisteredMessage)
+    assert ack.count == 9
+    assert ack.pruned == 13

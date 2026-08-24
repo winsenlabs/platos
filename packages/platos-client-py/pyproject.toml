@@ -1,7 +1,7 @@
 [project]
 name = "platos-client"
-version = "0.1.0"
-description = "Official Python SDK for Platos — agents, threads, realtime streaming."
+version = "1.0.0"
+description = "Official Python SDK for Platos — agents, threads, Turns, Jobs, and realtime streaming."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Winsen Labs", email = "hello@winsenlabs.com" }]

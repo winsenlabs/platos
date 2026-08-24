@@ -99,7 +99,7 @@ export type AgentStreamEvent =
        */
       code?: "structured_output_invalid";
       validationErrors?: string[];
-      attempts?: number;
+      retryCount?: number;
     }
   | {
       /**
@@ -110,7 +110,7 @@ export type AgentStreamEvent =
        */
       type: "structured_output";
       object: unknown;
-      attempts: number;
+      retryCount: number;
     }
   /**
    * Theme F.7 — artifact streaming lifecycle. Emitted by the agent when
@@ -153,15 +153,13 @@ export type AgentStreamEvent =
       message: string;
     }
   /**
-   * PPR-26 — realtime trigger.dev run update forwarded by the agent's
-   * RunsBridgeService into the thread + scope Socket.IO rooms. The
-   * `spawn_bgo` (formerly `spawn_task` — kept as a deprecated alias)
-   * meta-tool hands out the `runId`; a consumer that wants
-   * a progress UI filters incoming stream events by `runId`.
+   * Realtime Job update forwarded into the thread and scope rooms. The
+   * `spawn_job` runtime tool returns the `jobId`; consumers can filter
+   * progress events by that identifier.
    */
   | {
-      type: "run_update";
-      runId: string;
+      type: "job_update";
+      jobId: string;
       status: string;
       metadata?: Record<string, unknown> | null;
       output?: unknown;

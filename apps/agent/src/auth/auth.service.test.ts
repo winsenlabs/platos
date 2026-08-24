@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { mintSessionToken } from "@platosdev/token-mint";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthService } from "./auth.service";
 
@@ -176,7 +177,11 @@ describe("AuthService — clean bearer-backed session tokens", () => {
     vi.spyOn(h.auth, "resolveEntityServiceSecret").mockResolvedValue(entitySecret);
 
     await expect(
-      h.auth.validateSessionToken(entitySignedToken(SCOPE, entitySecret)),
+      h.auth.validateSessionToken(mintSessionToken({
+        serviceSecret: entitySecret,
+        claims: SCOPE,
+        ttlSeconds: 300,
+      })),
     ).resolves.toMatchObject({
       organizationId: SCOPE.organizationId,
       projectId: SCOPE.projectId,

@@ -96,15 +96,23 @@ class PlatosClient:
         # Avoid a circular import by importing the API modules here.
         from platos_client.apis.agents import AgentsApi
         from platos_client.apis.threads import ThreadsApi
-        from platos_client.apis.trigger import TriggerApi
+        from platos_client.apis.jobs import JobsApi
+        from platos_client.apis.turns import TurnsApi
 
         self.agents = AgentsApi(self)
         self.threads = ThreadsApi(self)
-        # Theme BGO — `bgo` is the canonical background-operations
-        # namespace; `trigger` is kept as a deprecated alias pointing at
-        # the same instance for one release. See docs/BGO_RENAME.md.
-        self.bgo = TriggerApi(self)
-        self.trigger = self.bgo
+        self.turns = TurnsApi(self)
+        self.jobs = JobsApi(self)
+
+    @property
+    def bgo(self) -> Any:
+        """Deprecated since 1.0.0; use ``jobs``. Removed in 2.0.0."""
+        return self.jobs
+
+    @property
+    def trigger(self) -> Any:
+        """Deprecated since 1.0.0; use ``jobs``. Removed in 2.0.0."""
+        return self.jobs
 
     async def __aenter__(self) -> "PlatosClient":
         return self
@@ -213,7 +221,7 @@ class PlatosClient:
             payload = json.dumps(body).encode("utf-8")
 
         last_err: BaseException | None = None
-        for attempt in range(self._retry.max_retries + 1):
+        for retry_count in range(self._retry.max_retries + 1):
             try:
                 resp = await self._httpx.request(
                     method, url, headers=headers, content=payload
@@ -221,8 +229,8 @@ class PlatosClient:
             except (httpx.TransportError, httpx.TimeoutException) as exc:
                 net_err = PlatosNetworkError(exc)
                 last_err = net_err
-                if attempt < self._retry.max_retries:
-                    await asyncio.sleep(self._backoff(attempt))
+                if retry_count < self._retry.max_retries:
+                    await asyncio.sleep(self._backoff(retry_count))
                     continue
                 raise net_err from exc
 
@@ -236,11 +244,11 @@ class PlatosClient:
 
             parsed = _error_from_response(resp)
             last_err = parsed
-            if attempt < self._retry.max_retries and is_retryable(parsed):
+            if retry_count < self._retry.max_retries and is_retryable(parsed):
                 delay = (
                     parsed.retry_after_ms / 1000
                     if isinstance(parsed, PlatosRateLimitError) and parsed.retry_after_ms
-                    else self._backoff(attempt)
+                    else self._backoff(retry_count)
                 )
                 await asyncio.sleep(delay)
                 continue
@@ -248,8 +256,8 @@ class PlatosClient:
         assert last_err is not None
         raise last_err
 
-    def _backoff(self, attempt: int) -> float:
-        base = self._retry.base_delay_s * (2**attempt)
+    def _backoff(self, retry_count: int) -> float:
+        base = self._retry.base_delay_s * (2**retry_count)
         capped = min(base, self._retry.max_delay_s)
         jitter_frac = self._retry.jitter
         rand = 1 + (random.random() * 2 - 1) * jitter_frac

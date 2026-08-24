@@ -87,7 +87,7 @@ export interface OtpEndpoints {
 }
 
 export interface PlatosFabProps {
-  /** Required: the Platos deployment URL. e.g. https://play.platos.dev */
+  /** Required: the Platos service URL. e.g. https://platos.example.com */
   baseUrl: string;
   /** Required: the agent id. */
   agentId: string;

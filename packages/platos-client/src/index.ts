@@ -10,10 +10,8 @@
  *   - `client.messages.rate / unrate / getForMessage` — thumbs up/down votes
  *     on assistant messages (uses the server messageId from the
  *     `message_persisted` stream event)
- *   - `client.bgo.tasks / runs / schedules / batches` — unified durable
- *     background-operation ops via the agent's meta-tool shim (Theme BGO,
- *     formerly `client.trigger.*`; the old namespace is kept as a
- *     deprecated alias for one release — see docs/BGO_RENAME.md).
+ *   - `client.turns` — completed user-to-agent units of work.
+ *   - `client.jobs` — Platos-owned asynchronous background work.
  *   - Error hierarchy (`PlatosAuthError`, `PlatosRateLimitError`, …) +
  *     configurable retry + `onTokenRefresh` hook.
  *
@@ -51,13 +49,19 @@ export type {
   SendMessageOptions,
 } from "./types.js";
 
+export { JobsApi } from "./apis/jobs.js";
 export type {
+  PlatosJob,
+  JobOptions,
+  JobHandle,
   TriggerTaskCatalogEntry,
   TriggerRunSummary,
   TriggerScheduleSummary,
   TriggerTaskOptions,
   TriggerHandle,
-} from "./apis/trigger.js";
+} from "./apis/jobs.js";
+export { TurnsApi } from "./apis/turns.js";
+export type { PlatosTurn } from "./apis/turns.js";
 
 export type {
   PlatosTool,

@@ -58,7 +58,7 @@ function Chat({ agentId }: { agentId: string }) {
     if (!inputValue.trim()) return;
     if (!threadId) {
       // First message — defer thread creation to the server on next send.
-      // MVP: trigger a stream with no thread id; server auto-creates.
+      // Start a Turn stream with no thread id; the server auto-creates one.
       setThreadId("new");
     }
     setPending(inputValue);

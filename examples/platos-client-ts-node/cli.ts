@@ -35,7 +35,7 @@ async function main(): Promise<void> {
       } else if (event.type === "tool_call") {
         process.stderr.write(`\n[tool → ${(event as any).name}]`);
       } else if (event.type === "reconnecting") {
-        process.stderr.write(`\n[reconnecting attempt ${(event as any).attempt}]`);
+        process.stderr.write(`\n[reconnecting retry ${(event as any).retryCount}]`);
       } else if (event.type === "error") {
         process.stderr.write(`\n[error] ${(event as any).message}\n`);
       } else if (event.type === "done") {

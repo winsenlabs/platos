@@ -21,6 +21,7 @@ describe("decodePlatformMessage — platform acknowledgements", () => {
         environment_id: "478bc711-229c-544b-a346-254ada4bd84e",
         count: 12,
         new_tools: ["search_book", "draft_outreach"],
+        pruned: 13,
       }),
     ).toEqual({
       type: "tools_registered",
@@ -28,6 +29,7 @@ describe("decodePlatformMessage — platform acknowledgements", () => {
       environment_id: "478bc711-229c-544b-a346-254ada4bd84e",
       count: 12,
       new_tools: ["search_book", "draft_outreach"],
+      pruned: 13,
     });
   });
 

@@ -1,6 +1,6 @@
 [project]
 name = "platools"
-version = "0.2.1"
+version = "1.0.0"
 description = "Platools — Your AI Arsenal. Turn any backend function into a managed, authenticated, monitored MCP tool with one decorator."
 readme = "README.md"
 # The SDK ships to PyPI independently and must support older Pythons that

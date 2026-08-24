@@ -20,6 +20,8 @@ Public exports:
 from __future__ import annotations
 
 from platos_client.client import PlatosClient, PlatosScope
+from platos_client.apis.jobs import JobsApi
+from platos_client.apis.turns import TurnsApi
 from platos_client.errors import (
     PlatosAuthError,
     PlatosError,
@@ -33,6 +35,8 @@ from platos_client.errors import (
 __all__ = [
     "PlatosClient",
     "PlatosScope",
+    "JobsApi",
+    "TurnsApi",
     "PlatosError",
     "PlatosAuthError",
     "PlatosNotFoundError",

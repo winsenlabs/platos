@@ -76,7 +76,7 @@ def lookup(query: str, ctx: PlatosContext) -> dict:
 The `ctx` parameter is stripped from the generated MCP schema — the LLM
 never sees it.
 
-### Upgrade path for existing deployments
+### Upgrade path for existing instances
 
 If your live entity backend is on `platools 0.0.0` and you see
 `TypeError: got an unexpected keyword argument '_context'` in your logs:

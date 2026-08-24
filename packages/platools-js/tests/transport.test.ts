@@ -177,12 +177,12 @@ describe("PlatoolsClient.websocketUrl", () => {
 
   it("handles multiple query params (source + env)", () => {
     const client = new PlatoolsClient({
-      url: "wss://play.platos.dev/tools/sync?source=winsen-brain-demo-app&env=prod",
+      url: "wss://platos.example.com/tools/sync?source=demo-app&env=prod",
       secret: "s",
       registry: new ToolRegistry(),
     });
     expect(client.websocketUrl()).toBe(
-      "wss://play.platos.dev/tools/sync/ws/sdk?source=winsen-brain-demo-app&env=prod",
+      "wss://platos.example.com/tools/sync/ws/sdk?source=demo-app&env=prod",
     );
   });
 });
@@ -301,6 +301,57 @@ describe("PlatoolsClient session dispatch", () => {
     // Close the socket and wait for session to resolve.
     socket.close();
     await sessionPromise;
+  });
+
+  it("re-registers the complete current declaration when the registry shrinks from 22 to 9", async () => {
+    const registry = new ToolRegistry();
+    const tool = makeToolFactory(registry);
+    for (let index = 0; index < 22; index += 1) {
+      tool(
+        {
+          name: `tool_${index}`,
+          description: `Tool ${index}`,
+          input: z.object({ value: z.string() }),
+          output: z.object({ value: z.string() }),
+        },
+        async ({ value }) => ({ value }),
+      );
+    }
+
+    const sockets: FakeWebSocket[] = [];
+    const wsFactory: WsFactory = (url, headers) => {
+      const socket = new FakeWebSocket(url, headers);
+      sockets.push(socket);
+      return socket.asWs();
+    };
+    const client = new PlatoolsClient({
+      url: "http://platform.test",
+      secret: "tok",
+      registry,
+      wsFactory,
+      logger: new SilentLogger(),
+    });
+
+    const firstSession = client.runSession();
+    sockets[0]!.open();
+    const firstDeclaration = JSON.parse(sockets[0]!.sent[0]!) as ToolRegisterMessage;
+    expect(firstDeclaration.tools).toHaveLength(22);
+    sockets[0]!.close();
+    await firstSession;
+
+    for (let index = 0; index < 13; index += 1) {
+      expect(registry.remove(`tool_${index}`)).toBe(true);
+    }
+
+    const secondSession = client.runSession();
+    sockets[1]!.open();
+    const secondDeclaration = JSON.parse(sockets[1]!.sent[0]!) as ToolRegisterMessage;
+    expect(secondDeclaration.tools).toHaveLength(9);
+    expect(secondDeclaration.tools.map(({ name }) => name)).toEqual(
+      Array.from({ length: 9 }, (_, index) => `tool_${index + 13}`),
+    );
+    sockets[1]!.close();
+    await secondSession;
   });
 
   it("sends a heartbeat every HEARTBEAT_INTERVAL_MS", async () => {
@@ -476,9 +527,9 @@ describe("PlatoolsClient reconnect flow", () => {
     // before `stop()` breaks the loop.
     expect(sockets.length).toBeGreaterThanOrEqual(2);
     // A clean close counts as a successful session and resets the
-    // attempt counter back to 0 — matching the Python SDK's behavior
+    // retry counter back to 0 — matching the Python SDK's behavior
     // in `PlatoolsClient.run_forever()`. Every reconnect after a
-    // clean close therefore uses the base delay (attempt 1).
+    // clean close therefore uses the base delay (retry 1).
     expect(sleepDelays[0]).toBe(50);
     expect(sleepDelays[1]).toBe(50);
   });
@@ -486,13 +537,13 @@ describe("PlatoolsClient reconnect flow", () => {
   it("grows the backoff delay when sessions fail before opening", async () => {
     // Unlike the clean-close case above, a factory that throws
     // synchronously never enters `runSession` so the reconnect loop
-    // treats each attempt as a failure and lets the curve climb.
+    // treats each retry as a failure and lets the curve climb.
     const sockets: FakeWebSocket[] = [];
     const wsFactory: WsFactory = (url, headers) => {
       const s = new FakeWebSocket(url, headers);
       sockets.push(s);
       // Fire an error asynchronously *before* opening — the client
-      // treats this as a session that never succeeded, so `attempt`
+      // treats this as a session that never succeeded, so the retry count
       // is not reset between retries.
       queueMicrotask(() => {
         s.fireError(new Error("connection refused"));
@@ -524,9 +575,9 @@ describe("PlatoolsClient reconnect flow", () => {
     await client.runForever();
 
     expect(sleepDelays.length).toBeGreaterThanOrEqual(3);
-    expect(sleepDelays[0]).toBe(10); // attempt 1
-    expect(sleepDelays[1]).toBe(20); // attempt 2
-    expect(sleepDelays[2]).toBe(40); // attempt 3
+    expect(sleepDelays[0]).toBe(10); // retry 1
+    expect(sleepDelays[1]).toBe(20); // retry 2
+    expect(sleepDelays[2]).toBe(40); // retry 3
   });
 
   it("stop() aborts the reconnect loop cleanly", async () => {

@@ -24,7 +24,7 @@ describe("client.messages", () => {
     fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     client = new PlatosClient({
-      baseUrl: "https://play.platos.dev",
+      baseUrl: "https://platos.example.com",
       sessionToken: "test-token",
     });
   });
@@ -40,7 +40,7 @@ describe("client.messages", () => {
     const row = await client.messages.rate("msg_1", "up");
     expect(row.rating).toBe(1);
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("https://play.platos.dev/api/v1/agent/messages/msg_1/rating");
+    expect(url).toBe("https://platos.example.com/api/v1/agent/messages/msg_1/rating");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body)).toEqual({ rating: 1 });
   });
@@ -64,7 +64,7 @@ describe("client.messages", () => {
     const removed = await client.messages.unrate("msg_4");
     expect(removed).toBe(true);
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("https://play.platos.dev/api/v1/agent/messages/msg_4/rating");
+    expect(url).toBe("https://platos.example.com/api/v1/agent/messages/msg_4/rating");
     expect(init.method).toBe("DELETE");
   });
 
@@ -75,7 +75,7 @@ describe("client.messages", () => {
     const state = await client.messages.getForMessage("msg_5");
     expect(state?.aggregate).toEqual({ ups: 3, downs: 1 });
     const [url, init] = fetchSpy.mock.calls[0];
-    expect(url).toBe("https://play.platos.dev/api/v1/agent/messages/msg_5/rating");
+    expect(url).toBe("https://platos.example.com/api/v1/agent/messages/msg_5/rating");
     expect(init.method).toBe("GET");
   });
 
@@ -84,7 +84,7 @@ describe("client.messages", () => {
     await client.messages.rate("msg/with space", "up");
     const [url] = fetchSpy.mock.calls[0];
     expect(url).toBe(
-      "https://play.platos.dev/api/v1/agent/messages/msg%2Fwith%20space/rating",
+      "https://platos.example.com/api/v1/agent/messages/msg%2Fwith%20space/rating",
     );
   });
 });

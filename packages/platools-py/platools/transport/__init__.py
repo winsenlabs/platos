@@ -17,6 +17,7 @@ from platools.transport.protocol import (
     ToolRegisterMessage,
     ToolResultMessage,
     ToolSchemaPayload,
+    ToolsRegisteredMessage,
     WelcomeMessage,
 )
 
@@ -35,5 +36,6 @@ __all__ = [
     "ToolRegisterMessage",
     "ToolResultMessage",
     "ToolSchemaPayload",
+    "ToolsRegisteredMessage",
     "WelcomeMessage",
 ]

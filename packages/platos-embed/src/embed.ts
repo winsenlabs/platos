@@ -11,7 +11,7 @@
  *     token-url="/api/platos-guest-token"></platos-agent>
  *
  * Attributes:
- *   - `base-url`   (required) — the Platos deployment.
+ *   - `base-url`   (required) — the Platos service.
  *   - `agent-id`   (required) — public agent id (only `visibility: "public-guest"` agents accept anonymous traffic).
  *   - `theme`      ("light" | "dark" | "auto") — defaults to `auto`.
  *   - `token-url`  (optional) — server endpoint minting guest session tokens. When omitted, the component calls `{base-url}/api/v1/public/guest-token?agentId=...`.

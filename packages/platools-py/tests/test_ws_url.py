@@ -45,9 +45,9 @@ def test_ws_url_inserts_before_query_single_param() -> None:
 
 def test_ws_url_inserts_before_query_multiple_params() -> None:
     client = _make_client(
-        "wss://play.platos.dev/tools/sync?source=winsen-brain-demo-app&env=prod",
+        "wss://platos.example.com/tools/sync?source=winsen-brain-demo-app&env=prod",
     )
     assert (
         client._ws_url()
-        == "wss://play.platos.dev/tools/sync/ws/sdk?source=winsen-brain-demo-app&env=prod"
+        == "wss://platos.example.com/tools/sync/ws/sdk?source=winsen-brain-demo-app&env=prod"
     )

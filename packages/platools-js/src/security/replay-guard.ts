@@ -74,7 +74,7 @@ class NonceLru {
   }
 }
 
-/** Per-entity LRU. Keyed by `entityId` so multi-tenant SDK deployments don't collide. */
+/** Per-entity LRU. Keyed by `entityId` so multi-tenant SDK instances don't collide. */
 const caches: Map<string, NonceLru> = new Map();
 
 function getCacheFor(entityId: string, capacity: number): NonceLru {

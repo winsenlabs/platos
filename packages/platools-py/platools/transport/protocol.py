@@ -27,6 +27,8 @@ class ToolSchemaPayload(BaseModel):
 
 
 class ToolRegisterMessage(BaseModel):
+    """Complete declaration; omitted tools are pruned by the platform."""
+
     type: Literal["tool_register"] = "tool_register"
     tools: list[ToolSchemaPayload]
 
@@ -71,6 +73,15 @@ class HeartbeatAckMessage(BaseModel):
     type: Literal["heartbeat_ack"] = "heartbeat_ack"
 
 
+class ToolsRegisteredMessage(BaseModel):
+    type: Literal["tools_registered"] = "tools_registered"
+    entity_id: str | None = None
+    environment_id: str | None = None
+    count: int | None = None
+    new_tools: list[str] = Field(default_factory=list)
+    pruned: int = 0
+
+
 class WelcomeMessage(BaseModel):
     """Sent by the platform on successful handshake so the SDK knows the
     connection is authenticated and its tools are queued for registration.
@@ -99,4 +110,4 @@ class WelcomeMessage(BaseModel):
 
 
 SdkToPlatform = ToolRegisterMessage | ToolResultMessage | ToolErrorMessage | HeartbeatMessage
-PlatformToSdk = ToolCallMessage | HeartbeatAckMessage | WelcomeMessage
+PlatformToSdk = ToolCallMessage | HeartbeatAckMessage | WelcomeMessage | ToolsRegisteredMessage
