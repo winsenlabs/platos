@@ -292,6 +292,7 @@ describe("clean-slate domain schema", () => {
       "00000000000000_initial",
       "20260824010000_win144_observability_retry_vocabulary",
       "20260824111500_memory_profile_key_and_source_contract",
+      "20260824233000_m4_forward_upgrade_contract",
     ]);
 
     const observabilityVocabularyMigration = readFileSync(
