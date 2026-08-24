@@ -61,6 +61,9 @@ jobs:
       - name: Audit Platos build and external-Trigger invariants
         run: pnpm audit:platos-build
 
+      - name: Platos vocabulary boundary gate
+        run: pnpm test:vocabulary && pnpm audit:vocabulary
+
       - name: External Trigger configuration and direct-dispatch tests
         run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
 
