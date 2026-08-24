@@ -1182,9 +1182,9 @@ export class OAuthController {
   // Entity operators register Platos' callback URL once in their system:
   //   https://<host>/oauth/entity/<entityId>/oidc-callback
   //
-  // They paste their provider config into PlatosEntityMcpConfig.identityProviders:
-  //   { "type": "oauth2_pkce", "authorizationUrl": "...", "tokenUrl": "...",
-  //     "clientId": "...", "clientSecret": "...", "scopes": ["..."] }
+  // They paste provider descriptors into PlatosEntityMcpConfig.identityProviders:
+  //   [{ "type": "oauth2_pkce", "authorizationUrl": "...", "tokenUrl": "...",
+  //      "clientId": "...", "clientSecret": "...", "scopes": ["..."] }]
   // ═════════════════════════════════════════════════════════════════════
 
   /**
@@ -1542,18 +1542,33 @@ export class OAuthController {
     clientSecret?: string;
     scopes?: string[];
   } | null {
-    if (!raw || typeof raw !== "object") return null;
-    const cfg = raw as Record<string, unknown>;
-    if (typeof cfg.authorizationUrl !== "string" || !cfg.authorizationUrl) return null;
-    if (typeof cfg.tokenUrl !== "string" || !cfg.tokenUrl) return null;
-    if (typeof cfg.clientId !== "string" || !cfg.clientId) return null;
+    if (!Array.isArray(raw)) return null;
+    const cfg = raw.find((entry): entry is Record<string, unknown> => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+      const type = (entry as Record<string, unknown>).type;
+      return type === "oidc" || type === "oauth2_pkce";
+    });
+    if (!cfg) return null;
+    if (typeof cfg.authorizationUrl !== "string" || !cfg.authorizationUrl.trim()) return null;
+    if (typeof cfg.tokenUrl !== "string" || !cfg.tokenUrl.trim()) return null;
+    if (typeof cfg.clientId !== "string" || !cfg.clientId.trim()) return null;
+    if (cfg.clientSecret !== undefined && typeof cfg.clientSecret !== "string") return null;
+    if (
+      cfg.scopes !== undefined &&
+      (!Array.isArray(cfg.scopes) ||
+        cfg.scopes.some((scope) => typeof scope !== "string" || !scope.trim()))
+    ) {
+      return null;
+    }
     return {
-      type: typeof cfg.type === "string" ? cfg.type : "oauth2_pkce",
-      authorizationUrl: cfg.authorizationUrl,
-      tokenUrl: cfg.tokenUrl,
-      clientId: cfg.clientId,
-      clientSecret: typeof cfg.clientSecret === "string" ? cfg.clientSecret : undefined,
-      scopes: Array.isArray(cfg.scopes) ? cfg.scopes.filter((s: unknown) => typeof s === "string") : undefined,
+      type: cfg.type as string,
+      authorizationUrl: cfg.authorizationUrl.trim(),
+      tokenUrl: cfg.tokenUrl.trim(),
+      clientId: cfg.clientId.trim(),
+      clientSecret: typeof cfg.clientSecret === "string" && cfg.clientSecret
+        ? cfg.clientSecret
+        : undefined,
+      scopes: Array.isArray(cfg.scopes) ? cfg.scopes.map((scope) => scope.trim()) : undefined,
     };
   }
 

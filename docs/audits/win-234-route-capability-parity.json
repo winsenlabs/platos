@@ -12536,7 +12536,7 @@
         ]
       },
       "secretExposure": {
-        "status": "verified",
+        "status": "required-not-verified",
         "classification": "MCP raw bearer is reveal-once; persistence and list/revoke responses are hash-only.",
         "requirements": [
           "Never serialize tokenHash.",
@@ -12764,7 +12764,7 @@
         ]
       },
       "secretExposure": {
-        "status": "verified",
+        "status": "required-not-verified",
         "classification": "MCP raw bearer is reveal-once; persistence and list/revoke responses are hash-only.",
         "requirements": [
           "Never serialize tokenHash.",
@@ -12985,7 +12985,7 @@
         ]
       },
       "secretExposure": {
-        "status": "verified",
+        "status": "required-not-verified",
         "classification": "MCP raw bearer is reveal-once; persistence and list/revoke responses are hash-only.",
         "requirements": [
           "Never serialize tokenHash.",

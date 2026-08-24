@@ -260,7 +260,18 @@ describe("McpEntityController full transport authentication", () => {
   });
 
   it("carries the entity-pinned route to the executor for same-name isolation", async () => {
-    h.acl.getExposedPoliciesByName.mockResolvedValue([]);
+    h.acl.getExposedPoliciesByName.mockResolvedValue([{
+      id: "policy_1",
+      entityPk: "entity_1",
+      toolId: "tool_acme",
+      toolName: "calendar.create",
+      exposed: true,
+      minIdentityMode: "bearer",
+      allowedPatIds: [],
+      scopeLabels: ["mcp:tools"],
+      addedAt: new Date(),
+      lastReviewedAt: null,
+    }]);
     h.acl.filterByIdentity.mockImplementation((rows: unknown[]) => rows);
     h.toolRouter.resolve.mockReturnValue({
       ok: true,
@@ -311,6 +322,77 @@ describe("McpEntityController full transport authentication", () => {
         toolId: "tool_acme",
       },
     );
+  });
+
+  it("lists zero tools when the selected Environment has no ALLOW row", async () => {
+    h.acl.getExposedPoliciesByName.mockResolvedValue([]);
+
+    const response = await h.controller.handleToolsList(
+      1,
+      {
+        entityPk: "entity_1",
+        entityId: "acme",
+        organizationId: "org_1",
+        projectId: "project_1",
+        displayName: "Acme",
+        // A stale Entity-global projection must not expose this name.
+        config: { ...entityRow.mcpConfig, toolAllowlist: ["calendar.create"] },
+      },
+      {
+        clientId: "pat",
+        mcpUserId: "mcp:pat:pat_1",
+        entityPk: "entity_1",
+        environmentId: "env_without_allow",
+        identityMode: "bearer",
+        scopes: ["mcp:tools"],
+      },
+    );
+
+    expect(response).toEqual({ jsonrpc: "2.0", id: 1, result: { tools: [] } });
+    expect(h.acl.getExposedPoliciesByName).toHaveBeenCalledWith(
+      "entity_1",
+      "env_without_allow",
+    );
+    expect(h.toolRouter.resolve).not.toHaveBeenCalled();
+    expect(h.toolExecutor.execute).not.toHaveBeenCalled();
+  });
+
+  it("denies call before routing when ALLOW exists only in another Environment", async () => {
+    h.acl.getExposedPoliciesByName.mockResolvedValue([]);
+
+    const response = await h.controller.handleToolsCall(
+      1,
+      { name: "calendar.create", arguments: {} },
+      {
+        entityPk: "entity_1",
+        entityId: "acme",
+        organizationId: "org_1",
+        projectId: "project_1",
+        displayName: "Acme",
+        // This projection may include an ALLOW row from env_other.
+        config: { ...entityRow.mcpConfig, toolAllowlist: ["calendar.create"] },
+      },
+      {
+        clientId: "pat",
+        mcpUserId: "mcp:pat:pat_1",
+        entityPk: "entity_1",
+        environmentId: "env_selected",
+        identityMode: "bearer",
+        scopes: ["mcp:tools"],
+      },
+    );
+
+    expect(response).toMatchObject({
+      error: { message: "tool 'calendar.create' not exposed in this environment" },
+    });
+    expect(h.acl.getExposedPoliciesByName).toHaveBeenCalledWith(
+      "entity_1",
+      "env_selected",
+      "calendar.create",
+    );
+    expect(h.acl.filterByIdentity).not.toHaveBeenCalled();
+    expect(h.toolRouter.resolve).not.toHaveBeenCalled();
+    expect(h.toolExecutor.execute).not.toHaveBeenCalled();
   });
 
   it("revalidates the exact PAT environment on SSE messages", async () => {

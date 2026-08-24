@@ -164,7 +164,7 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 | idempotency | 21 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
 | concurrency | 21 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
 | recovery | 105 | Verify failure, retry, and unavailable-backend recovery or record an approved not-applicable/justified-exclusion status. |
-| secret exposure | 104 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |
+| secret exposure | 107 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |
 | persisted-state evidence | 19 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |
 | automated behavioral evidence | 98 | Replace static or pending references with passing behavioral test evidence. |
 | browser evidence | 107 | Provide authenticated browser evidence or a source-backed justified exclusion. |

@@ -528,11 +528,6 @@ export class McpEntityController {
     }
   }
 
-  /** Filter the entity's matrix to `toolAllowlist`. Empty list = no tools. */
-  private filteredAllowlist(entityCfg: { toolAllowlist: string[] }): Set<string> {
-    return new Set(entityCfg.toolAllowlist ?? []);
-  }
-
   // ═════════════════════════════════════════════════════════════════════
   // HTTP (streamable JSON-RPC)
   // ═════════════════════════════════════════════════════════════════════
@@ -961,22 +956,10 @@ export class McpEntityController {
     },
   ): Promise<JsonRpcResponse> {
     const scope = this.buildScope(entity, token);
-    const allowlist = this.filteredAllowlist(entity.config);
-    // PIFSP-25 — empty allowlist = zero tools. We intentionally do NOT
-    // fall back to the full matrix here.
-    if (allowlist.size === 0) {
-      return { jsonrpc: "2.0", id, result: { tools: [] } };
-    }
-    // Narrow the scope matrix to this entity + to tools on the allowlist.
-    const visibleEntities = this.toolRouter.visibleEntitiesForAgent(scope);
-    // FINDING H12 — per-tool identity ACL. The allowlist above is the coarse
-    // entity-wide gate; each exposed tool also carries an ACL row with
-    // minIdentityMode / allowedPatIds / scopeLabels. Hide any tool the
-    // caller's identity is not permitted to see. Build a name->row map so a
-    // tool with no ACL row falls back to the system default below (symmetric
-    // with handleToolsCall — a rowless allowlisted tool is gated at the
-    // default "bearer" floor in BOTH list and call, never list-hidden-yet-
-    // callable).
+    // Environment-owned ALLOW rows are the sole runtime exposure authority.
+    // EntityMcpConfig.toolAllowlist is only a compatibility/dashboard
+    // projection because it can contain the union of names from other
+    // Environments owned by this Entity.
     const caller = {
       identityMode: token.identityMode,
       mcpUserId: token.mcpUserId,
@@ -986,13 +969,12 @@ export class McpEntityController {
       entity.entityPk,
       token.environmentId,
     );
-    // FINDING H12 (residual) — the ACL uniqueness key is (entityPk, toolId), so
-    // ONE entity can hold several exposed rows for the SAME toolName. The old
-    // `new Map(rows.map(...))` let the LAST row win while handleToolsCall's
-    // findFirst took the FIRST — the two paths could pick different rows for
-    // one name (list-hidden yet callable). Group ALL rows per name; the gate
-    // below requires EVERY row to admit the caller (most-restrictive wins),
-    // which is order-independent and mirrored exactly in handleToolsCall.
+    if (aclRows.length === 0) {
+      return { jsonrpc: "2.0", id, result: { tools: [] } };
+    }
+    // Several canonical Tool rows can share one name. Group all selected-
+    // Environment rows and require every row to admit the caller so list and
+    // call apply the same order-independent, most-restrictive rule.
     const aclByName = new Map<string, any[]>();
     for (const r of aclRows as Array<{ toolName: string }>) {
       const existing = aclByName.get(r.toolName);
@@ -1005,20 +987,7 @@ export class McpEntityController {
       inputSchema: Record<string, unknown>;
       category: string;
     }> = [];
-    // We piggy-back on toolRouter.resolve's matrix by calling it per tool in
-    // the allowlist — keeps a single source-of-truth + reuses enabledOnly.
-    for (const toolName of allowlist) {
-      // FINDING H12 — skip tools the caller's identity may not access. Rowless
-      // allowlisted tools use the system-default ACL (min "bearer"), matching
-      // handleToolsCall's fallback.
-      const effectiveAcls: any[] = aclByName.get(toolName) ?? [
-        {
-          toolName,
-          minIdentityMode: "bearer",
-          allowedPatIds: [] as string[],
-          scopeLabels: ["mcp:tools"],
-        },
-      ];
+    for (const [toolName, effectiveAcls] of aclByName) {
       // Most-restrictive wins: the tool is visible only if EVERY exposed row
       // for this name admits the caller. Identical rule in handleToolsCall.
       if (
@@ -1045,10 +1014,6 @@ export class McpEntityController {
         });
       }
     }
-    // Silence unused warning on visibleEntities — kept for future
-    // debugging (e.g. if the entity has zero tools mapped we can report
-    // a clearer error in PIFSP-25).
-    void visibleEntities;
     return { jsonrpc: "2.0", id, result: { tools: matches } };
   }
 
@@ -1073,60 +1038,30 @@ export class McpEntityController {
         error: { code: RPC_ERRORS.INVALID_PARAMS, message: "`name` is required" },
       };
     }
-    const allowlist = this.filteredAllowlist(entity.config);
-    if (!allowlist.has(name)) {
-      return {
-        jsonrpc: "2.0",
-        id,
-        error: {
-          code: RPC_ERRORS.PERMISSION_DENIED,
-          message: `tool '${name}' not in entity allowlist`,
-        },
-      };
-    }
-
-    // FINDING H12 — per-tool identity ACL. The allowlist above is the coarse
-    // entity-wide gate; enforce the tool's ACL row (minIdentityMode /
-    // allowedPatIds / scopeLabels) against the caller's identity. Fail CLOSED
-    // to the SYSTEM DEFAULT ACL when no row exists: the coarse allowlist can
-    // be written directly via the entity config PATCH (patchEntityMcpConfig)
-    // without creating an ACL row, and autoInsert() has no callers, so "a row
-    // always exists" is NOT an enforced invariant. Skipping the gate on a
-    // rowless tool (the old `if (aclRow)`) was a fail-open bypass AND was
-    // asymmetric with tools/list (which hid such tools). The default row
-    // (min "bearer") denies anonymous callers and matches the synthetic
-    // default used across mcp-tool-acl.service.ts.
-    // `exposed: true` mirrors handleToolsList's filter so an un-exposed row
-    // (e.g. one re-added to toolAllowlist via the config PATCH) is ignored
-    // here too and falls back to the default below — keeps list and call
-    // applying the SAME effective ACL (no callable-but-list-hidden drift).
-    // FINDING H12 (residual) — findFirst took whichever duplicate-toolName row
-    // the DB happened to return first while tools/list took the last, so the
-    // two paths could apply different gates to one tool name. Load ALL exposed
-    // rows for the name and require every one of them to admit the caller
-    // (most-restrictive wins) — same rule, same result, no ordering assumed.
+    // Load only selected-Environment ALLOW rows. A missing row fails closed;
+    // Entity-global toolAllowlist projections and rows in other Environments
+    // cannot authorize dispatch.
     const aclRowsForName = await this.toolAclService.getExposedPoliciesByName(
       entity.entityPk,
       token.environmentId,
       name,
     );
-    const effectiveAcls: any[] =
-      aclRowsForName.length > 0
-        ? aclRowsForName
-        : [
-            {
-              toolName: name,
-              minIdentityMode: "bearer",
-              allowedPatIds: [] as string[],
-              scopeLabels: ["mcp:tools"],
-            },
-          ];
-    const permitted = this.toolAclService.filterByIdentity(effectiveAcls, {
+    if (aclRowsForName.length === 0) {
+      return {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: RPC_ERRORS.PERMISSION_DENIED,
+          message: `tool '${name}' not exposed in this environment`,
+        },
+      };
+    }
+    const permitted = this.toolAclService.filterByIdentity(aclRowsForName, {
       identityMode: token.identityMode,
       mcpUserId: token.mcpUserId,
       scopes: token.scopes,
     });
-    if (permitted.length !== effectiveAcls.length) {
+    if (permitted.length !== aclRowsForName.length) {
       return {
         jsonrpc: "2.0",
         id,

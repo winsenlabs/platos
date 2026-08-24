@@ -136,6 +136,24 @@ describe("McpToolAclService clean policy cutover", () => {
     ).toEqual([row]);
   });
 
+  it("loads runtime ALLOW rows only from the selected Environment", async () => {
+    prisma.entityToolPolicy.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.getExposedPoliciesByName("entity_1", "env_selected", "calendar.create"),
+    ).resolves.toEqual([]);
+
+    expect(prisma.entityToolPolicy.findMany).toHaveBeenCalledWith({
+      where: {
+        entityId: "entity_1",
+        environmentId: "env_selected",
+        effect: "ALLOW",
+        tool: { name: "calendar.create" },
+      },
+      include: { tool: { select: { name: true } } },
+    });
+  });
+
   it("bulk mutation resolves only mappings owned by the requested entity", async () => {
     prisma.environmentEntityTool.findMany.mockResolvedValue([
       { toolId: "tool_owned" },
