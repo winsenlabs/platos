@@ -173,8 +173,19 @@ describe("M4 route HTTP contracts", () => {
 
     expect(agentPanel).toHaveBeenNthCalledWith(1, "/api/v1/agent/threads/thread-1", expect.anything());
     expect(agentPanel).toHaveBeenNthCalledWith(2, "/api/v1/agent/threads/thread-1/messages?limit=10&offset=20", expect.anything());
-    expect(agentPanel).toHaveBeenNthCalledWith(3, "/api/v1/agent/threads/thread-1/artifacts?limit=100", expect.anything());
+    expect(agentPanel).toHaveBeenNthCalledWith(3, "/api/v1/agent/threads/thread-1/artifacts?limit=25&offset=0", expect.anything());
     expect(agentPanel.mock.calls.flat().join(" ")).not.toContain("allUsers=true");
+  });
+
+  it("pages Thread artifacts independently and rejects malformed Artifact pages", async () => {
+    agentPanel.mockResolvedValue({ ok: true, data: { id: "thread-1" } });
+
+    await loadThread(args("https://dashboard.example/threads/thread-1?page=2&pageSize=10&artifactPage=3&artifactPageSize=20"));
+
+    expect(agentPanel).toHaveBeenNthCalledWith(2, "/api/v1/agent/threads/thread-1/messages?limit=10&offset=10", expect.anything());
+    expect(agentPanel).toHaveBeenNthCalledWith(3, "/api/v1/agent/threads/thread-1/artifacts?limit=20&offset=40", expect.anything());
+    await expect(loadThread(args("https://dashboard.example/threads/thread-1?artifactPage=bad"))).rejects.toMatchObject({ status: 400 });
+    await expect(loadThread(args("https://dashboard.example/threads/thread-1?artifactPageSize=101"))).rejects.toMatchObject({ status: 400 });
   });
 
   it("reads back a persisted fork and redirects to the canonical child Thread", async () => {

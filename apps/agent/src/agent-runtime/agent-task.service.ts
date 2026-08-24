@@ -657,6 +657,7 @@ export class AgentTaskService {
         resolvedAttachments = await this.attachmentsService.resolveAttachments(
           options.attachmentIds,
           scope,
+          { agentId, threadId: thread.id, endUserId: thread.endUserId },
         );
       } catch (err: any) {
         yield {
@@ -693,6 +694,7 @@ export class AgentTaskService {
         options.attachmentIds!,
         userMessage.id,
         scope,
+        { agentId, threadId: thread.id, endUserId: thread.endUserId },
       );
     }
 

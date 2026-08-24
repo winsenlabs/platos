@@ -582,6 +582,8 @@ CREATE TABLE "public"."Thread" (
     "endUserId" UUID NOT NULL,
     "clusterId" UUID,
     "parentThreadId" UUID,
+    "forkedUpToTurnId" UUID,
+    "forkedTurnIds" UUID[] DEFAULT ARRAY[]::UUID[],
     "compactedUpToTurnId" UUID,
     "title" TEXT,
     "status" "public"."WorkStatus" NOT NULL DEFAULT 'ACTIVE',
@@ -754,6 +756,8 @@ CREATE TABLE "public"."MessageAttachment" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
     "endUserId" UUID NOT NULL,
+    "agentId" UUID NOT NULL,
+    "threadId" UUID NOT NULL,
     "turnId" UUID,
     "kind" TEXT NOT NULL,
     "mimeType" TEXT NOT NULL,
@@ -1813,6 +1817,9 @@ CREATE INDEX "Thread_clusterId_idx" ON "public"."Thread"("clusterId");
 CREATE INDEX "Thread_parentThreadId_idx" ON "public"."Thread"("parentThreadId");
 
 -- CreateIndex
+CREATE INDEX "Thread_forkedUpToTurnId_idx" ON "public"."Thread"("forkedUpToTurnId");
+
+-- CreateIndex
 CREATE INDEX "Thread_compactionState_compactedAt_idx" ON "public"."Thread"("compactionState", "compactedAt");
 
 -- CreateIndex
@@ -1865,6 +1872,12 @@ CREATE UNIQUE INDEX "Artifact_threadId_artifactKey_revision_key" ON "public"."Ar
 
 -- CreateIndex
 CREATE INDEX "MessageAttachment_environmentId_endUserId_createdAt_idx" ON "public"."MessageAttachment"("environmentId", "endUserId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "MessageAttachment_agentId_threadId_createdAt_idx" ON "public"."MessageAttachment"("agentId", "threadId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "MessageAttachment_threadId_turnId_idx" ON "public"."MessageAttachment"("threadId", "turnId");
 
 -- CreateIndex
 CREATE INDEX "MessageAttachment_turnId_idx" ON "public"."MessageAttachment"("turnId");
@@ -2332,6 +2345,9 @@ ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_clusterId_fkey" FOREIGN KEY
 ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_parentThreadId_fkey" FOREIGN KEY ("parentThreadId") REFERENCES "public"."Thread"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_forkedUpToTurnId_fkey" FOREIGN KEY ("forkedUpToTurnId") REFERENCES "public"."Turn"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_compactedUpToTurnId_fkey" FOREIGN KEY ("compactedUpToTurnId") REFERENCES "public"."Turn"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2372,6 +2388,12 @@ ALTER TABLE "public"."MessageAttachment" ADD CONSTRAINT "MessageAttachment_envir
 
 -- AddForeignKey
 ALTER TABLE "public"."MessageAttachment" ADD CONSTRAINT "MessageAttachment_endUserId_fkey" FOREIGN KEY ("endUserId") REFERENCES "public"."EndUser"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."MessageAttachment" ADD CONSTRAINT "MessageAttachment_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."MessageAttachment" ADD CONSTRAINT "MessageAttachment_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "public"."Thread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."MessageAttachment" ADD CONSTRAINT "MessageAttachment_turnId_fkey" FOREIGN KEY ("turnId") REFERENCES "public"."Turn"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2877,7 +2899,7 @@ CREATE TRIGGER "Agent_owner_immutable" BEFORE UPDATE ON "public"."Agent" FOR EAC
 CREATE TRIGGER "AgentVersion_owner_immutable" BEFORE UPDATE ON "public"."AgentVersion" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('agentId');
 CREATE TRIGGER "AgentCluster_owner_immutable" BEFORE UPDATE ON "public"."AgentCluster" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
 CREATE TRIGGER "Credential_owner_immutable" BEFORE UPDATE ON "public"."Credential" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'kind', 'name', 'provider');
-CREATE TRIGGER "Thread_owner_immutable" BEFORE UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId');
+CREATE TRIGGER "Thread_owner_immutable" BEFORE UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'parentThreadId', 'forkedUpToTurnId', 'forkedTurnIds');
 CREATE TRIGGER "Turn_owner_immutable" BEFORE UPDATE ON "public"."Turn" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('threadId', 'agentVersionId', 'versionBucket');
 CREATE TRIGGER "Step_owner_immutable" BEFORE UPDATE ON "public"."Step" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('turnId');
 CREATE TRIGGER "Entity_owner_immutable" BEFORE UPDATE ON "public"."Entity" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('projectId');
@@ -2891,7 +2913,7 @@ CREATE TRIGGER "MemoryEntity_owner_immutable" BEFORE UPDATE ON "public"."MemoryE
 CREATE TRIGGER "MemoryRelationship_owner_immutable" BEFORE UPDATE ON "public"."MemoryRelationship" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'endUserId', 'agentId', 'clusterId', 'fromEntityId', 'toEntityId');
 CREATE TRIGGER "EndUserIdentity_owner_immutable" BEFORE UPDATE ON "public"."EndUserIdentity" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('endUserId', 'organizationId');
 CREATE TRIGGER "Thread_subject_immutable" BEFORE UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('endUserId');
-CREATE TRIGGER "MessageAttachment_owner_immutable" BEFORE UPDATE ON "public"."MessageAttachment" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'endUserId');
+CREATE TRIGGER "MessageAttachment_owner_immutable" BEFORE UPDATE ON "public"."MessageAttachment" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('environmentId', 'endUserId', 'agentId', 'threadId');
 CREATE TRIGGER "ChannelInstallation_owner_immutable" BEFORE UPDATE ON "public"."ChannelInstallation" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('appId');
 CREATE TRIGGER "OAuthClient_owner_immutable" BEFORE UPDATE ON "public"."OAuthClient" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('organizationId');
 CREATE TRIGGER "MemoryEntity_subject_immutable" BEFORE UPDATE ON "public"."MemoryEntity" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('endUserId');
@@ -2904,6 +2926,21 @@ CREATE TRIGGER "OAuthConsentTransaction_owner_immutable" BEFORE UPDATE ON "publi
 CREATE TRIGGER "OAuthAccessToken_scope_immutable" BEFORE UPDATE ON "public"."OAuthAccessToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('clientId', 'userId', 'scopeKind', 'organizationId', 'projectId', 'environmentId');
 CREATE TRIGGER "OAuthRefreshToken_scope_immutable" BEFORE UPDATE ON "public"."OAuthRefreshToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('clientId', 'userId', 'scopeKind', 'organizationId', 'projectId', 'environmentId', 'rotationFamilyId', 'parentRefreshTokenId');
 CREATE TRIGGER "McpBearerToken_owner_immutable" BEFORE UPDATE ON "public"."McpBearerToken" FOR EACH ROW EXECUTE FUNCTION "public"."reject_canonical_owner_change"('entityId', 'environmentId', 'createdByUserId');
+
+CREATE FUNCTION "public"."enforce_message_attachment_binding_transition"()
+RETURNS trigger AS $$
+BEGIN
+  IF OLD."turnId" IS NOT NULL AND NEW."turnId" IS DISTINCT FROM OLD."turnId" THEN
+    RAISE EXCEPTION 'MessageAttachment turn binding is one-way and immutable'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "MessageAttachment_binding_one_way"
+BEFORE UPDATE ON "public"."MessageAttachment"
+FOR EACH ROW EXECUTE FUNCTION "public"."enforce_message_attachment_binding_transition"();
 
 -- A Redis thread lock may select any historical version of an Environment-bound
 -- agent. All of those versions are therefore executable, including their
@@ -3014,11 +3051,30 @@ BEGIN
         JOIN "Agent" a ON a.id = NEW."agentId" AND a."projectId" = p.id
         JOIN "EndUser" u ON u.id = NEW."endUserId" AND u."organizationId" = p."organizationId"
         LEFT JOIN "AgentCluster" c ON c.id = NEW."clusterId" AND c."environmentId" = e.id
-        LEFT JOIN "Thread" parent ON parent.id = NEW."parentThreadId" AND parent."environmentId" = e.id AND parent."endUserId" = u.id
+        LEFT JOIN "Thread" parent ON parent.id = NEW."parentThreadId" AND parent."environmentId" = e.id AND parent."endUserId" = u.id AND parent."agentId" = a.id
+        LEFT JOIN "Turn" fork_boundary ON fork_boundary.id = NEW."forkedUpToTurnId"
+          AND (fork_boundary."threadId" = parent.id OR fork_boundary.id = ANY(parent."forkedTurnIds"))
         LEFT JOIN "Turn" cursor ON cursor.id = NEW."compactedUpToTurnId" AND cursor."threadId" = NEW.id
         WHERE e.id = NEW."environmentId"
           AND (NEW."clusterId" IS NULL OR c.id IS NOT NULL)
           AND (NEW."parentThreadId" IS NULL OR parent.id IS NOT NULL)
+          AND (
+            cardinality(NEW."forkedTurnIds") = 0 AND NEW."forkedUpToTurnId" IS NULL
+            OR parent.id IS NOT NULL
+              AND fork_boundary.id IS NOT NULL
+              AND NEW."forkedUpToTurnId" = NEW."forkedTurnIds"[cardinality(NEW."forkedTurnIds")]
+              AND cardinality(NEW."forkedTurnIds") = (
+                SELECT count(DISTINCT forked_id)
+                FROM unnest(NEW."forkedTurnIds") AS forked_id
+              )
+              AND NOT EXISTS (
+                SELECT 1
+                FROM unnest(NEW."forkedTurnIds") AS forked_id
+                LEFT JOIN "Turn" inherited_turn ON inherited_turn.id = forked_id
+                  AND (inherited_turn."threadId" = parent.id OR inherited_turn.id = ANY(parent."forkedTurnIds"))
+                WHERE inherited_turn.id IS NULL
+              )
+          )
           AND (NEW."compactedUpToTurnId" IS NULL OR cursor.id IS NOT NULL)
       ) INTO valid;
     WHEN 'Turn' THEN
@@ -3041,9 +3097,10 @@ BEGIN
         SELECT 1 FROM "Environment" e
         JOIN "Project" p ON p.id = e."projectId"
         JOIN "EndUser" u ON u.id = NEW."endUserId" AND u."organizationId" = p."organizationId"
-        LEFT JOIN "Turn" turn ON turn.id = NEW."turnId"
-        LEFT JOIN "Thread" t ON t.id = turn."threadId" AND t."environmentId" = e.id AND t."endUserId" = u.id
-        WHERE e.id = NEW."environmentId" AND (NEW."turnId" IS NULL OR t.id IS NOT NULL)
+        JOIN "Agent" a ON a.id = NEW."agentId" AND a."projectId" = p.id
+        JOIN "Thread" t ON t.id = NEW."threadId" AND t."environmentId" = e.id AND t."endUserId" = u.id AND t."agentId" = a.id
+        LEFT JOIN "Turn" turn ON turn.id = NEW."turnId" AND turn."threadId" = t.id
+        WHERE e.id = NEW."environmentId" AND (NEW."turnId" IS NULL OR turn.id IS NOT NULL)
       ) INTO valid;
     WHEN 'ChannelConnection' THEN
       SELECT EXISTS (

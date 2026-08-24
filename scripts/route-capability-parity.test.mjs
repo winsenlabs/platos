@@ -187,12 +187,20 @@ test("named DTO, scope, secret, pagination, and correlation semantics are mutati
   capability(matrix, "access-key-rotation-correlation").currentBehavior =
     "Rotation replaces one key with another.";
   capability(matrix, "message-pagination").pagination.limit = "A bounded page is loaded.";
+  capability(matrix, "attachment-presign-upload").currentBehavior = "Uploads a scoped attachment.";
+  capability(matrix, "thread-artifacts").pagination.strategy = "Returns a bounded page.";
+  capability(matrix, "message-rating-lifecycle").currentBehavior = "Reads and writes a rating.";
+  capability(matrix, "thread-fork").currentBehavior = "Copies a child Thread.";
   const errors = errorsFor(matrix);
   assert.match(errors, /mcp-tool-acl-policy http\.1\.requestDto lacks reviewed semantic fragment allowedPatIds/);
   assert.match(errors, /attachment-presign-upload endUserScope\.status must be enforced/);
   assert.match(errors, /access-key-one-time-reveal secretExposure lacks reviewed semantic fragment private pending material/);
   assert.match(errors, /access-key-rotation-correlation currentBehavior lacks reviewed semantic fragment validUntil/);
   assert.match(errors, /message-pagination pagination lacks reviewed semantic fragment Default 25/);
+  assert.match(errors, /attachment-presign-upload currentBehavior lacks reviewed semantic fragment Agent\/Thread boundary/);
+  assert.match(errors, /thread-artifacts pagination lacks reviewed semantic fragment createdAt descending/);
+  assert.match(errors, /message-rating-lifecycle currentBehavior lacks reviewed semantic fragment userRating\.rating/);
+  assert.match(errors, /thread-fork currentBehavior lacks reviewed semantic fragment forkedTurnIds/);
 });
 
 test("every capability has source-backed canonical owners or an exact no-backend classification", () => {

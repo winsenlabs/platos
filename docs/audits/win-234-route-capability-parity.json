@@ -5055,7 +5055,7 @@
       "intent": "Presign and upload a scoped chat attachment, then submit only attachmentIds to collect/stream operations.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "Chat creates or reuses a scoped Thread, requests a bounded presigned PUT, uploads the File directly, discards the presigned URL, and retains only attachmentIds.",
+      "currentBehavior": "Chat creates or reuses a scoped Thread, persists each pending MessageAttachment with its canonical Organization/Project/Environment/EndUser/Agent/Thread boundary, uploads directly through a bounded presigned PUT, discards the presigned URL, and retains only attachmentIds. Final binding is a one-way transition from pending to the exact Turn and repeated binding to that same Turn is idempotent; rebinding to another Turn is rejected.",
       "http": [
         {
           "role": "canonical contract",
@@ -5161,7 +5161,10 @@
         "references": [
           "apps/agent/src/agent-runtime/attachment-presign.service.test.ts",
           "apps/agent/src/agent-runtime/attachment-upload.controller.test.ts",
-          "apps/webapp/test/threadChatLifecycle.test.ts"
+          "apps/agent/src/agent-runtime/attachment-binding.service.test.ts",
+          "internal-packages/tenancy-database/src/integration.test.ts",
+          "apps/webapp/test/threadChatLifecycle.test.ts",
+          "apps/agent/src/skills/official/attachment-clean-transport.test.ts"
         ]
       },
       "pagination": {
@@ -5181,9 +5184,10 @@
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "apps/agent/src/agent-runtime/attachment-binding.service.test.ts: repeated binding to the same Turn succeeds without rewriting the owner boundary",
+          "internal-packages/tenancy-database/src/integration.test.ts: same-Turn binding is idempotent and different-Turn rebinding is rejected by the one-way trigger"
         ]
       },
       "concurrency": {
@@ -5212,7 +5216,10 @@
         "references": [
           "apps/agent/src/agent-runtime/attachment-presign.service.test.ts",
           "apps/agent/src/agent-runtime/attachment-upload.controller.test.ts",
-          "apps/webapp/test/threadChatLifecycle.test.ts"
+          "apps/agent/src/agent-runtime/attachment-binding.service.test.ts",
+          "internal-packages/tenancy-database/src/integration.test.ts",
+          "apps/webapp/test/threadChatLifecycle.test.ts",
+          "apps/agent/src/skills/official/attachment-clean-transport.test.ts"
         ]
       },
       "browserEvidence": {
@@ -5237,7 +5244,7 @@
       ],
       "defect": {
         "status": "verified",
-        "summary": "Repaired: scoped presign, direct browser PUT, safe serialization, persisted row read-back, and attachmentId-only retention are implemented."
+        "summary": "Repaired: pending rows persist the exact Agent and Thread boundary, scoped presign and safe serialization are implemented, and final Turn binding is transactional, one-way, and idempotent for the same Turn. Environment-only attachment consumers fail closed."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -5284,10 +5291,10 @@
     {
       "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route.tsx",
       "capabilityId": "message-rating-lifecycle",
-      "intent": "Read, create/update, and remove a rating for one scoped Message.",
+      "intent": "Read one scoped EndUser rating; permit only the canonical EndUser principal to create/update/remove it.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "Chat reads the persisted rating, POSTs create/update, DELETEs removal, and performs canonical GET read-back after each mutation.",
+      "currentBehavior": "The operator Playground reads canonical rating state and parses nested userRating.rating, but renders it read-only. EndUser principals may POST create/update and DELETE removal; operator mutations fail before Message lookup with 403 RATING_ACTOR_FORBIDDEN so they cannot overwrite or delete the EndUser row.",
       "http": [
         {
           "role": "canonical contract",
@@ -5301,7 +5308,7 @@
             "successStatuses": [
               200
             ],
-            "shape": "Current scoped MessageRating or absence."
+            "shape": "Nested { userRating: { rating: 1 | -1, ... } | null, aggregate } for the scoped Message."
           },
           "stableErrors": [
             {
@@ -5338,7 +5345,7 @@
             "successStatuses": [
               200
             ],
-            "shape": "Created or updated MessageRating."
+            "shape": "Created or updated MessageRating. Success is available only to the canonical EndUser principal."
           },
           "stableErrors": [
             {
@@ -5354,12 +5361,12 @@
               "codeOrMessage": "unauthenticated"
             },
             {
-              "status": 403,
-              "codeOrMessage": "forbidden"
-            },
-            {
               "status": 404,
               "codeOrMessage": "message not found"
+            },
+            {
+              "status": 403,
+              "codeOrMessage": "RATING_ACTOR_FORBIDDEN for operator principals"
             }
           ]
         },
@@ -5375,7 +5382,7 @@
             "successStatuses": [
               200
             ],
-            "shape": "Rating deletion result."
+            "shape": "Rating deletion result. Success is available only to the canonical EndUser principal."
           },
           "stableErrors": [
             {
@@ -5387,16 +5394,16 @@
               "codeOrMessage": "unauthenticated"
             },
             {
-              "status": 403,
-              "codeOrMessage": "forbidden"
-            },
-            {
               "status": 404,
               "codeOrMessage": "not found"
             },
             {
               "status": 500,
               "codeOrMessage": "unavailable"
+            },
+            {
+              "status": 403,
+              "codeOrMessage": "RATING_ACTOR_FORBIDDEN for operator principals"
             }
           ]
         }
@@ -5439,7 +5446,7 @@
       },
       "permission": {
         "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "requirement": "Authenticated EndUser may mutate only the canonical (messageId, endUserId) row. Authenticated operators may read in scope but POST and DELETE are denied with 403 RATING_ACTOR_FORBIDDEN before Message lookup or mutation."
       },
       "loaderState": {
         "status": "implemented",
@@ -5447,11 +5454,11 @@
       },
       "actionState": {
         "status": "implemented",
-        "detail": "Route-defined result; persisted mutation/read-back, non-200 error mapping, idempotency, and concurrency require focused proof."
+        "detail": "The operator dashboard action proxies GET read-back only and returns stable 403 RATING_ACTOR_FORBIDDEN for rate or rating-delete intents without calling the Agent mutation endpoint."
       },
       "formState": {
         "status": "implemented",
-        "detail": "Useful, Not useful, and explicit Remove rating controls represent the complete lifecycle."
+        "detail": "The Playground renders nested EndUser rating and aggregate values as operator read-only indicators; it exposes no operator mutation control."
       },
       "linkState": {
         "status": "required-not-verified",
@@ -5461,6 +5468,7 @@
         "status": "verified",
         "references": [
           "apps/agent/src/evals/rating-memory-feedback.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.rating.test.ts",
           "apps/webapp/test/threadChatLifecycle.test.ts"
         ]
       },
@@ -5475,9 +5483,9 @@
         "semantics": "Capability message-rating-lifecycle does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "verified",
+        "status": "not-applicable",
         "references": [
-          "apps/webapp/test/threadChatLifecycle.test.ts: explicit rating-delete intent and Remove rating control"
+          "The operator dashboard exposes no rating deletion control."
         ]
       },
       "idempotency": {
@@ -5509,6 +5517,7 @@
         "status": "verified",
         "references": [
           "apps/agent/src/evals/rating-memory-feedback.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.rating.test.ts",
           "apps/webapp/test/threadChatLifecycle.test.ts"
         ]
       },
@@ -5534,7 +5543,7 @@
       ],
       "defect": {
         "status": "verified",
-        "summary": "Repaired: GET/POST/DELETE lifecycle, stable MESSAGE_NOT_FOUND, explicit removal, and canonical read-back are implemented."
+        "summary": "Repaired: the UI reads nested userRating.rating, operator POST/DELETE receive stable 403 RATING_ACTOR_FORBIDDEN, and EndUser mutations remain keyed to the canonical EndUser without operator overwrite/delete."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -18080,21 +18089,21 @@
       "intent": "List canonical artifacts generated for one scoped Thread.",
       "disposition": "improve",
       "v0Behavior": "No path-identical v0 module; semantic archaeology is required where a legacy capability maps here.",
-      "currentBehavior": "Thread loader calls the canonical artifacts endpoint, isolates subordinate failures, and renders latest revision content plus stable total.",
+      "currentBehavior": "Thread loader independently parses artifactPage and artifactPageSize, calls the canonical endpoint with stable limit/offset, isolates subordinate failures, and renders latest revision content, exact distinct-key total, and Artifact pagination controls.",
       "http": [
         {
           "role": "canonical contract",
           "method": "GET",
           "endpoint": "/api/v1/agent/threads/:threadId/artifacts",
           "requestDto": {
-            "status": "not-applicable",
-            "shape": "No request body."
+            "status": "verified",
+            "shape": "Query { limit?: 1..100; offset?: non-negative integer; page?: positive integer }; default limit is 25 and page derives offset."
           },
           "response": {
             "successStatuses": [
               200
             ],
-            "shape": "Scoped artifact list for the canonical Thread."
+            "shape": "Stable latest-revision Artifact page plus exact total, limit, offset, hasMore, and pagination metadata."
           },
           "stableErrors": [
             {
@@ -18162,15 +18171,15 @@
       },
       "loaderState": {
         "status": "implemented",
-        "detail": "Thread loader calls GET /api/v1/agent/threads/:threadId/artifacts and carries safe data or a subordinate error."
+        "detail": "Thread loader independently parses artifactPage/artifactPageSize and calls GET /api/v1/agent/threads/:threadId/artifacts with limit/offset while preserving subordinate error state."
       },
       "actionState": {
         "status": "not-applicable",
         "detail": "Not applicable."
       },
       "formState": {
-        "status": "not-applicable",
-        "detail": "No action-backed form/control contract observed."
+        "status": "implemented",
+        "detail": "PaginationRange provides independent Previous/Next and page-size controls using artifactPage and artifactPageSize query parameters."
       },
       "linkState": {
         "status": "required-not-verified",
@@ -18179,15 +18188,16 @@
       "persistedReadBack": {
         "status": "verified",
         "references": [
+          "apps/agent/src/memory/conversation-fork-artifact.test.ts",
           "apps/webapp/test/m4Route.test.ts",
           "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "pagination": {
         "status": "implemented",
-        "strategy": "The endpoint returns the latest revision per artifactKey in a bounded page.",
-        "limit": "Thread detail requests at most 100 latest artifact keys.",
-        "totalStatus": "Backend computes the complete distinct artifactKey total before applying the bound."
+        "strategy": "Stable offset pagination after grouping the latest revision per artifactKey and sorting by createdAt descending with id descending as the tie-breaker; UI controls are independent from Message pagination.",
+        "limit": "Default 25, maximum 100; artifactPage and artifactPageSize derive a non-negative offset.",
+        "totalStatus": "Backend computes the complete distinct artifactKey total before slicing; first, middle, final, past-end, and empty pages are covered."
       },
       "totals": {
         "status": "verified",
@@ -18227,6 +18237,7 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
+          "apps/agent/src/memory/conversation-fork-artifact.test.ts",
           "apps/webapp/test/m4Route.test.ts",
           "apps/webapp/test/m4Dashboard.test.tsx"
         ]
@@ -18253,7 +18264,7 @@
       ],
       "defect": {
         "status": "verified",
-        "summary": "Repaired: scoped Artifact rows, latest revisions, stable total, empty state, and subordinate failure now reach the UI."
+        "summary": "Repaired: stable limit/offset pagination, exact distinct-key total, latest revisions, independent UI controls, empty/past-end state, and subordinate failures reach the UI."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -18308,7 +18319,7 @@
       "intent": "Fork one scoped Thread from a selected message and navigate to the persisted child Thread.",
       "disposition": "improve",
       "v0Behavior": "No path-identical v0 module; semantic archaeology is required where a legacy capability maps here.",
-      "currentBehavior": "Thread detail exposes a selected persisted Message boundary and optional title, POSTs the scoped fork, GETs the child for persisted read-back, and redirects to it.",
+      "currentBehavior": "Thread detail selects a persisted Message boundary and creates a child with immutable parentThreadId, forkedUpToTurnId, and ordered forkedTurnIds ancestry references. Reads merge canonical ancestor Turns before local child Turns; fork never clones or bills Turn, Step, or ToolCall ledger rows, then canonical child read-back redirects to the child.",
       "http": [
         {
           "role": "canonical contract",
@@ -18322,7 +18333,7 @@
             "successStatuses": [
               200
             ],
-            "shape": "Persisted child Thread identity and fork metadata."
+            "shape": "Persisted child Thread identity plus parentThreadId, forkedUpToTurnId, and ordered forkedTurnIds; no cloned Turn/Step/ToolCall rows."
           },
           "stableErrors": [
             {
@@ -18412,8 +18423,9 @@
       "persistedReadBack": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/m4Route.test.ts",
-          "apps/agent/src/memory/conversation-pagination.test.ts"
+          "apps/agent/src/memory/conversation-fork-artifact.test.ts",
+          "internal-packages/tenancy-database/src/integration.test.ts",
+          "apps/webapp/test/m4Route.test.ts"
         ]
       },
       "pagination": {
@@ -18460,6 +18472,8 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
+          "apps/agent/src/memory/conversation-fork-artifact.test.ts",
+          "internal-packages/tenancy-database/src/integration.test.ts",
           "apps/webapp/test/m4Route.test.ts",
           "apps/webapp/test/m4Dashboard.test.tsx"
         ]
@@ -18486,7 +18500,7 @@
       ],
       "defect": {
         "status": "verified",
-        "summary": "Repaired: scoped fork control, stable errors, canonical child read-back, and child navigation are implemented."
+        "summary": "Repaired: forks persist ordered immutable ancestry references and canonical child read-back/navigation without duplicating Turn, Step, ToolCall, token, cost, latency, pricing, or observability ledger rows."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",

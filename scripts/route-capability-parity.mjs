@@ -244,19 +244,19 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
     statuses: { "destructiveConfirmation.status": "verified", "tenantScope.status": "enforced", "actionState.status": "implemented", "defect.status": "verified" },
   },
   "attachment-presign-upload": {
-    fragments: { currentBehavior: ["scoped Thread", "discards the presigned URL", "attachmentIds"], secretExposure: ["presigned", "object-store"] },
-    statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "actionState.status": "implemented", "formState.status": "implemented", "persistedReadBack.status": "verified", "defect.status": "verified" },
+    fragments: { currentBehavior: ["Agent/Thread boundary", "one-way", "idempotent", "discards the presigned URL", "attachmentIds"], secretExposure: ["presigned", "object-store"], defect: ["Environment-only", "fail closed"] },
+    statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "actionState.status": "implemented", "formState.status": "implemented", "persistedReadBack.status": "verified", "idempotency.status": "verified", "defect.status": "verified" },
   },
   "thread-artifacts": {
-    fragments: { identifiers: ["threadId"], totals: ["distinct artifact keys"] },
-    statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "loaderState.status": "implemented", "persistedReadBack.status": "verified", "totals.status": "verified", "defect.status": "verified" },
+    fragments: { identifiers: ["threadId"], currentBehavior: ["artifactPage", "artifactPageSize", "limit/offset", "pagination controls"], pagination: ["Default 25", "maximum 100", "createdAt descending", "id descending", "past-end"], totals: ["distinct artifact keys"] },
+    statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "loaderState.status": "implemented", "formState.status": "implemented", "persistedReadBack.status": "verified", "pagination.status": "implemented", "totals.status": "verified", "defect.status": "verified" },
   },
   "message-rating-lifecycle": {
-    fragments: { http: ["rating: 1 | -1", "Rating must be +1 or -1", "Invalid message id"], currentBehavior: ["GET read-back", "DELETE"] },
+    fragments: { http: ["rating: 1 | -1", "Rating must be +1 or -1", "Invalid message id", "RATING_ACTOR_FORBIDDEN"], currentBehavior: ["userRating.rating", "EndUser principals", "operator mutations", "RATING_ACTOR_FORBIDDEN"], formState: ["operator read-only"] },
     statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "formState.status": "implemented", "persistedReadBack.status": "verified", "defect.status": "verified" },
   },
   "thread-fork": {
-    fragments: { identifiers: ["threadId", "messageId"], linkState: ["child Thread"] },
+    fragments: { identifiers: ["threadId", "messageId"], currentBehavior: ["forkedUpToTurnId", "forkedTurnIds", "ordered", "never clones or bills", "Turn, Step, or ToolCall"], linkState: ["child Thread"], defect: ["token", "cost", "pricing", "observability"] },
     statuses: { "actionState.status": "implemented", "formState.status": "implemented", "linkState.status": "implemented", "persistedReadBack.status": "verified", "defect.status": "verified" },
   },
   "message-pagination": {

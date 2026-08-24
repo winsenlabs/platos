@@ -38,7 +38,6 @@ describe("AttachmentsService EndUser isolation", () => {
   };
 
   it("denies a same-Environment attachment owned by a different EndUser before fetch", async () => {
-    const threadFindFirst = vi.fn().mockResolvedValue({ endUserId: "end-user-b" });
     const attachmentFindMany = vi.fn().mockImplementation(
       (args: { where: { endUserId: string } }) =>
         Promise.resolve(
@@ -52,7 +51,6 @@ describe("AttachmentsService EndUser isolation", () => {
         ),
     );
     const prisma = {
-      thread: { findFirst: threadFindFirst },
       messageAttachment: { findMany: attachmentFindMany },
     } as unknown as PrismaClient;
     const service = new AttachmentsService(prisma);
@@ -64,19 +62,15 @@ describe("AttachmentsService EndUser isolation", () => {
     );
 
     await expect(
-      service.resolveAttachments(["attachment-owned-by-a"], baseScope),
-    ).rejects.toThrow(/not accessible/);
-    expect(threadFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          id: baseScope.sessionId,
-          environmentId: baseScope.environmentId,
-        }),
+      service.resolveAttachments(["attachment-owned-by-a"], baseScope, {
+        agentId: "agent-b",
+        threadId: baseScope.sessionId,
+        endUserId: "end-user-b",
       }),
-    );
+    ).rejects.toThrow(/not accessible/);
     expect(attachmentFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ endUserId: "end-user-b" }),
+        where: expect.objectContaining({ endUserId: "end-user-b", agentId: "agent-b", threadId: baseScope.sessionId }),
       }),
     );
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -86,14 +80,14 @@ describe("AttachmentsService EndUser isolation", () => {
     const updateMany = vi.fn();
     const turnFindFirst = vi.fn().mockResolvedValue(null);
     const prisma = {
-      thread: {
-        findFirst: vi.fn().mockResolvedValue({ endUserId: "end-user-a" }),
-      },
-      turn: { findFirst: turnFindFirst },
-      messageAttachment: {
+      $transaction: vi.fn(async (callback: (tx: any) => unknown) => callback({
+        turn: { findFirst: turnFindFirst },
+        messageAttachment: {
         findMany: vi.fn().mockResolvedValue([{ id: "attachment-a" }]),
         updateMany,
-      },
+          count: vi.fn(),
+        },
+      })),
     } as unknown as PrismaClient;
     const service = new AttachmentsService(prisma);
 
@@ -101,7 +95,7 @@ describe("AttachmentsService EndUser isolation", () => {
       service.markAttachedToMessage(["attachment-a"], "turn-owned-by-b", {
         ...baseScope,
         userId: "caller-a",
-      }),
+      }, { agentId: "agent-a", threadId: baseScope.sessionId, endUserId: "end-user-a" }),
     ).rejects.toThrow(/Target turn is not accessible/);
     expect(turnFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -154,8 +148,11 @@ describe("Platos attachment E2E", async () => {
   let createdEndUserIds: string[] = [];
   let createdAgentId: string | null = null;
   let createdAgentVersionId: string | null = null;
+  let agentId = "";
   let endUserId = "";
   let otherEndUserId = "";
+  let ownerThreadId = "";
+  let otherThreadId = "";
   let ownTurnId = "";
   let otherTurnId = "";
 
@@ -199,6 +196,7 @@ describe("Platos attachment E2E", async () => {
       select: { id: true },
     });
     if (!existingAgent) createdAgentId = agent.id;
+    agentId = agent.id;
     const existingAgentVersion = await prisma.agentVersion.findFirst({
       where: { agentId: agent.id },
       select: { id: true },
@@ -253,6 +251,8 @@ describe("Platos attachment E2E", async () => {
       }),
     ]);
     createdThreadIds = [ownerThread.id, otherThread.id];
+    ownerThreadId = ownerThread.id;
+    otherThreadId = otherThread.id;
     const [ownerTurn, otherTurn] = await Promise.all([
       prisma.turn.create({
         data: {
@@ -362,6 +362,8 @@ describe("Platos attachment E2E", async () => {
         id,
         environmentId: scopeA.environmentId,
         endUserId,
+        agentId,
+        threadId: ownerThreadId,
         kind: "image",
         mimeType: "image/png",
         bytes: payload.byteLength,
@@ -374,7 +376,7 @@ describe("Platos attachment E2E", async () => {
 
     // 3. Agent resolves in scope A → gets bytes.
     const svc = new AttachmentsService(prisma);
-    const resolved = await svc.resolveAttachments([id], scopeA);
+    const resolved = await svc.resolveAttachments([id], scopeA, { agentId, threadId: ownerThreadId, endUserId });
     expect(resolved).toHaveLength(1);
     expect(resolved[0].kind).toBe("image");
     expect(resolved[0].bytes).toBe(payload.byteLength);
@@ -405,6 +407,8 @@ describe("Platos attachment E2E", async () => {
         id,
         environmentId: scopeA.environmentId,
         endUserId,
+        agentId,
+        threadId: ownerThreadId,
         kind: "image",
         mimeType: "image/png",
         bytes: 32,
@@ -416,7 +420,7 @@ describe("Platos attachment E2E", async () => {
 
     const svc = new AttachmentsService(prisma);
     // Scope B must NOT see this attachment. resolveAttachments fails closed.
-    await expect(svc.resolveAttachments([id], scopeB)).rejects.toThrow(
+    await expect(svc.resolveAttachments([id], scopeB, { agentId, threadId: ownerThreadId, endUserId })).rejects.toThrow(
       /not accessible/
     );
   }, 30_000);
@@ -430,6 +434,8 @@ describe("Platos attachment E2E", async () => {
         id,
         environmentId: scopeA.environmentId,
         endUserId,
+        agentId,
+        threadId: ownerThreadId,
         kind: "document",
         mimeType: "text/plain",
         bytes: 1,
@@ -440,7 +446,7 @@ describe("Platos attachment E2E", async () => {
 
     const svc = new AttachmentsService(prisma);
     await expect(
-      svc.resolveAttachments([id], sameEnvironmentOtherEndUserScope),
+      svc.resolveAttachments([id], sameEnvironmentOtherEndUserScope, { agentId, threadId: otherThreadId, endUserId: otherEndUserId }),
     ).rejects.toThrow(/not accessible/);
   });
 
@@ -453,6 +459,8 @@ describe("Platos attachment E2E", async () => {
         id,
         environmentId: scopeA.environmentId,
         endUserId,
+        agentId,
+        threadId: ownerThreadId,
         kind: "document",
         mimeType: "text/plain",
         bytes: 1,
@@ -463,7 +471,7 @@ describe("Platos attachment E2E", async () => {
 
     const svc = new AttachmentsService(prisma);
     await expect(
-      svc.markAttachedToMessage([id], otherTurnId, scopeA),
+      svc.markAttachedToMessage([id], otherTurnId, scopeA, { agentId, threadId: ownerThreadId, endUserId }),
     ).rejects.toThrow(/Target turn is not accessible/);
     const unchanged = await prisma.messageAttachment.findUnique({
       where: { id },
@@ -481,6 +489,8 @@ describe("Platos attachment E2E", async () => {
         id,
         environmentId: scopeA.environmentId,
         endUserId,
+        agentId,
+        threadId: ownerThreadId,
         kind: "document",
         mimeType: "text/plain",
         bytes: 1,
@@ -490,7 +500,7 @@ describe("Platos attachment E2E", async () => {
     createdRowIds.push(id);
 
     const svc = new AttachmentsService(prisma);
-    await svc.markAttachedToMessage([id], ownTurnId, scopeA);
+    await svc.markAttachedToMessage([id], ownTurnId, scopeA, { agentId, threadId: ownerThreadId, endUserId });
     const attached = await prisma.messageAttachment.findUnique({
       where: { id },
       select: { turnId: true },

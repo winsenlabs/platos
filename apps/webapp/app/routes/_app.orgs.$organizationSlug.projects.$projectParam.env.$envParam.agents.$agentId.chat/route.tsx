@@ -66,14 +66,14 @@ export async function action(args: ActionFunctionArgs) {
 
   if (["rating-get", "rate", "rating-delete"].includes(intent)) {
     const path = `/api/v1/agent/messages/${encodeURIComponent(safeMessageId(body.messageId))}/rating`;
+    if (intent !== "rating-get") {
+      return json({
+        ok: false,
+        error: "Operator principals cannot mutate EndUser ratings",
+        code: "RATING_ACTOR_FORBIDDEN",
+      }, { status: 403 });
+    }
     try {
-      if (intent === "rate") {
-        const rating = body.rating === 1 ? 1 : body.rating === -1 ? -1 : null;
-        if (rating === null) return json({ ok: false, error: "Rating must be +1 or -1" }, { status: 400 });
-        await agentRequest(path, agentScope, { method: "POST", body: { rating } });
-      } else if (intent === "rating-delete") {
-        await agentRequest(path, agentScope, { method: "DELETE" });
-      }
       const ratingState = await agentRequest(path, agentScope);
       return json({ ok: true, ratingState });
     } catch (error) {
@@ -321,6 +321,11 @@ function RawInspector({ events }: { events: TimelineEvent[] }) {
     : <p className="text-sm text-text-dimmed">Raw transport events appear here after the Turn starts.</p>;
 }
 
+export function ratingValue(value: unknown): 1 | -1 | null {
+  const rating = asNumber(asRecord(asRecord(value).userRating).rating);
+  return rating === 1 ? 1 : rating === -1 ? -1 : null;
+}
+
 export default function ChatRoute() {
   const data = useLoaderData<typeof loader>();
   const [message, setMessage] = useState("");
@@ -360,7 +365,7 @@ export default function ChatRoute() {
       const payload = asRecord(await response.json());
       const state = asRecord(payload.ratingState);
       if (!cancelled) {
-        setRating(state.userRating === 1 ? 1 : state.userRating === -1 ? -1 : null);
+        setRating(ratingValue(state));
         const aggregate = asRecord(state.aggregate);
         setRatingAggregate({ ups: asNumber(aggregate.ups), downs: asNumber(aggregate.downs) });
       }
@@ -447,24 +452,6 @@ export default function ChatRoute() {
       abortRef.current = null;
       setBusy(false);
     }
-  }
-
-  async function rate(nextRating: 1 | -1 | null) {
-    if (!messageId) return;
-    const response = await fetch(window.location.pathname, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: nextRating === null ? "rating-delete" : "rate", messageId, rating: nextRating }),
-    });
-    if (!response.ok) {
-      setError(await response.text());
-      return;
-    }
-    const payload = asRecord(await response.json());
-    const state = asRecord(payload.ratingState);
-    setRating(state.userRating === 1 ? 1 : state.userRating === -1 ? -1 : null);
-    const aggregate = asRecord(state.aggregate);
-    setRatingAggregate({ ups: asNumber(aggregate.ups), downs: asNumber(aggregate.downs) });
   }
 
   async function uploadAttachment() {
@@ -588,10 +575,10 @@ export default function ChatRoute() {
                   <span>Persisted message <code>{messageId}</code></span>
                   {asNumber(persistedData.costCents) > 0 && <span>{(asNumber(persistedData.costCents) / 100).toLocaleString("en-US", { style: "currency", currency: "USD" })}</span>}
                   {asNumber(persistedData.totalTokens) > 0 && <span>{asNumber(persistedData.totalTokens).toLocaleString()} tokens</span>}
-                  <button type="button" onClick={() => rate(1)} className={`rounded border px-2 py-1 ${rating === 1 ? "border-[var(--good)] text-[var(--good)]" : "border-grid-bright"}`}>Useful</button>
-                  <button type="button" onClick={() => rate(-1)} className={`rounded border px-2 py-1 ${rating === -1 ? "border-[var(--danger)] text-[var(--danger)]" : "border-grid-bright"}`}>Not useful</button>
-                  {rating !== null && <button type="button" onClick={() => rate(null)} className="rounded border border-grid-bright px-2 py-1">Remove rating</button>}
+                  <span className={`rounded border px-2 py-1 ${rating === 1 ? "border-[var(--good)] text-[var(--good)]" : "border-grid-bright"}`}>Useful</span>
+                  <span className={`rounded border px-2 py-1 ${rating === -1 ? "border-[var(--danger)] text-[var(--danger)]" : "border-grid-bright"}`}>Not useful</span>
                   <span>{ratingAggregate.ups} useful · {ratingAggregate.downs} not useful</span>
+                  <span>EndUser rating · operator read-only</span>
                 </div>
               )}
             </>}

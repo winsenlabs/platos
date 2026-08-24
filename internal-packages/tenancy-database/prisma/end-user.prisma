@@ -112,6 +112,8 @@ model Thread {
   endUserId           String                @db.Uuid
   clusterId           String?               @db.Uuid
   parentThreadId      String?               @db.Uuid
+  forkedUpToTurnId    String?               @db.Uuid
+  forkedTurnIds       String[]              @default([]) @db.Uuid
   compactedUpToTurnId String?               @db.Uuid
   title               String?
   status              WorkStatus            @default(ACTIVE)
@@ -128,8 +130,10 @@ model Thread {
   endUser           EndUser         @relation(fields: [endUserId], references: [id], onDelete: Cascade)
   parentThread      Thread?         @relation("ThreadFork", fields: [parentThreadId], references: [id], onDelete: SetNull)
   forks             Thread[]        @relation("ThreadFork")
+  forkedUpToTurn    Turn?           @relation("ThreadForkBoundary", fields: [forkedUpToTurnId], references: [id], onDelete: Restrict)
   compactedUpToTurn Turn?           @relation("ThreadCompactionCursor", fields: [compactedUpToTurnId], references: [id], onDelete: SetNull)
   turns             Turn[]          @relation("ThreadTurns")
+  messageAttachments MessageAttachment[]
   sourceMemories    Memory[]        @relation("MemorySourceThread")
   artifacts         Artifact[]
   approvals         AgentApproval[]
@@ -138,6 +142,7 @@ model Thread {
   @@index([agentId, status])
   @@index([clusterId])
   @@index([parentThreadId])
+  @@index([forkedUpToTurnId])
   @@index([compactionState, compactedAt])
 }
 
@@ -166,6 +171,7 @@ model Turn {
   parentTurn                 Turn?               @relation("TurnRevision", fields: [parentTurnId], references: [id], onDelete: SetNull)
   revisions                  Turn[]              @relation("TurnRevision")
   compactionCursorForThreads Thread[]            @relation("ThreadCompactionCursor")
+  forkBoundaryForThreads     Thread[]            @relation("ThreadForkBoundary")
   steps                      Step[]
   attachments                MessageAttachment[]
   artifacts                  Artifact[]
@@ -272,6 +278,8 @@ model MessageAttachment {
   id            String    @id @default(uuid()) @db.Uuid
   environmentId String    @db.Uuid
   endUserId     String    @db.Uuid
+  agentId       String    @db.Uuid
+  threadId      String    @db.Uuid
   turnId        String?   @db.Uuid
   kind          String
   mimeType      String
@@ -286,9 +294,12 @@ model MessageAttachment {
   expiresAt     DateTime?
 
   endUser EndUser @relation(fields: [endUserId], references: [id], onDelete: Cascade)
+  thread  Thread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
   turn    Turn?   @relation(fields: [turnId], references: [id], onDelete: Cascade)
 
   @@index([environmentId, endUserId, createdAt])
+  @@index([agentId, threadId, createdAt])
+  @@index([threadId, turnId])
   @@index([turnId])
 }
 

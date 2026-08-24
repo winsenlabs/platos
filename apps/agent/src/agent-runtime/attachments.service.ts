@@ -67,6 +67,12 @@ type AttachmentAccessScope = Pick<
 > &
   Partial<Pick<RequestScope, "userId" | "sessionId">>;
 
+export type AttachmentBindingBoundary = {
+  agentId: string;
+  threadId: string;
+  endUserId: string;
+};
+
 /**
  * AttachmentsService — agent-side resolver for multimodal attachments.
  *
@@ -190,6 +196,8 @@ export class AttachmentsService {
   async createPresignedUpload(input: {
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
     endUserId: string;
+    agentId: string;
+    threadId: string;
     filename?: string;
     mimeType: string;
     bytes: number;
@@ -239,6 +247,8 @@ export class AttachmentsService {
         id,
         environmentId: input.scope.environmentId,
         endUserId: input.endUserId,
+        agentId: input.agentId,
+        threadId: input.threadId,
         kind,
         mimeType,
         bytes: input.bytes,
@@ -271,6 +281,8 @@ export class AttachmentsService {
         where: {
           id: row.id,
           endUserId: input.endUserId,
+          agentId: input.agentId,
+          threadId: input.threadId,
           environmentId: input.scope.environmentId,
           environment: { project: { id: input.scope.projectId, organizationId: input.scope.organizationId } },
         },
@@ -295,7 +307,14 @@ export class AttachmentsService {
       };
     } catch {
       await this.prisma.messageAttachment.deleteMany({
-        where: { id: row.id, environmentId: input.scope.environmentId, endUserId: input.endUserId },
+        where: {
+          id: row.id,
+          environmentId: input.scope.environmentId,
+          endUserId: input.endUserId,
+          agentId: input.agentId,
+          threadId: input.threadId,
+          turnId: null,
+        },
       });
       throw new AttachmentUploadError("ATTACHMENT_STORAGE_UNAVAILABLE", "Attachment upload is unavailable");
     }
@@ -320,24 +339,26 @@ export class AttachmentsService {
   async resolveAttachments(
     attachmentIds: string[],
     scope: AttachmentAccessScope,
+    boundary: AttachmentBindingBoundary,
   ): Promise<ResolvedAttachment[]> {
     if (!attachmentIds || attachmentIds.length === 0) return [];
-
-    const endUserId = await this.resolveCanonicalEndUserId(scope);
+    const uniqueAttachmentIds = [...new Set(attachmentIds)];
 
     const rows = await this.prisma.messageAttachment.findMany({
       where: {
-        id: { in: attachmentIds },
-        endUserId,
+        id: { in: uniqueAttachmentIds },
+        endUserId: boundary.endUserId,
+        agentId: boundary.agentId,
+        threadId: boundary.threadId,
         ...environmentScopeWhere(scope),
       },
     });
 
     // Any id the caller passed that didn't come back is out-of-scope; refuse
     // quietly (log) rather than silently drop — the agent needs to know.
-    if (rows.length !== attachmentIds.length) {
+    if (rows.length !== uniqueAttachmentIds.length) {
       const foundIds = new Set(rows.map((row) => row.id));
-      const missing = attachmentIds.filter((id) => !foundIds.has(id));
+      const missing = uniqueAttachmentIds.filter((id) => !foundIds.has(id));
       throw new Error(
         `Attachment(s) not accessible in scope: ${missing.join(", ")}`,
       );
@@ -401,17 +422,21 @@ export class AttachmentsService {
     attachmentIds: string[],
     turnId: string,
     scope: AttachmentAccessScope,
+    boundary: AttachmentBindingBoundary,
   ): Promise<void> {
     if (!attachmentIds || attachmentIds.length === 0) return;
-    const endUserId = await this.resolveCanonicalEndUserId(scope);
     const uniqueAttachmentIds = [...new Set(attachmentIds)];
-
-    const [targetTurn, accessibleAttachments] = await Promise.all([
-      this.prisma.turn.findFirst({
+    const newExpiresAt = new Date(
+      Date.now() + this.ttlDays * 24 * 60 * 60 * 1000,
+    );
+    await this.prisma.$transaction(async (tx) => {
+      const targetTurn = await tx.turn.findFirst({
         where: {
           id: turnId,
+          threadId: boundary.threadId,
           thread: {
-            endUserId,
+            agentId: boundary.agentId,
+            endUserId: boundary.endUserId,
             environmentId: scope.environmentId,
             environment: {
               projectId: scope.projectId,
@@ -420,42 +445,35 @@ export class AttachmentsService {
           },
         },
         select: { id: true },
-      }),
-      this.prisma.messageAttachment.findMany({
-        where: {
-          id: { in: uniqueAttachmentIds },
-          endUserId,
-          ...environmentScopeWhere(scope),
-        },
-        select: { id: true },
-      }),
-    ]);
+      });
+      if (!targetTurn) throw new Error("Target turn is not accessible to the attachment owner");
 
-    if (!targetTurn) {
-      throw new Error("Target turn is not accessible to the attachment owner");
-    }
-    if (accessibleAttachments.length !== uniqueAttachmentIds.length) {
-      const foundIds = new Set(accessibleAttachments.map((row) => row.id));
-      const missing = uniqueAttachmentIds.filter((id) => !foundIds.has(id));
-      throw new Error(
-        `Attachment(s) not accessible in scope: ${missing.join(", ")}`,
-      );
-    }
-
-    const newExpiresAt = new Date(
-      Date.now() + this.ttlDays * 24 * 60 * 60 * 1000,
-    );
-    const updated = await this.prisma.messageAttachment.updateMany({
-      where: {
+      const attachmentWhere = {
         id: { in: uniqueAttachmentIds },
-        endUserId,
+        endUserId: boundary.endUserId,
+        agentId: boundary.agentId,
+        threadId: boundary.threadId,
         ...environmentScopeWhere(scope),
-      },
-      data: { turnId, expiresAt: newExpiresAt },
+      };
+      const accessibleAttachments = await tx.messageAttachment.findMany({
+        where: { ...attachmentWhere, OR: [{ turnId: null }, { turnId }] },
+        select: { id: true },
+      });
+      if (accessibleAttachments.length !== uniqueAttachmentIds.length) {
+        throw new Error("Attachment binding does not match its pending Agent and Thread boundary");
+      }
+
+      await tx.messageAttachment.updateMany({
+        where: { ...attachmentWhere, turnId: null },
+        data: { turnId, expiresAt: newExpiresAt },
+      });
+      const readBack = await tx.messageAttachment.count({
+        where: { ...attachmentWhere, turnId },
+      });
+      if (readBack !== uniqueAttachmentIds.length) {
+        throw new Error("Attachment ownership changed before binding completed");
+      }
     });
-    if (updated.count !== uniqueAttachmentIds.length) {
-      throw new Error("Attachment ownership changed before binding completed");
-    }
   }
 
   /**
@@ -504,26 +522,6 @@ export class AttachmentsService {
       new GetObjectCommand({ Bucket: this.bucket, Key: storageKey }),
       { expiresIn: 300 },
     );
-  }
-
-  private async resolveCanonicalEndUserId(
-    scope: AttachmentAccessScope,
-  ): Promise<string> {
-    if (!scope.userId || !scope.sessionId) {
-      throw new Error("Attachment access requires an authenticated thread");
-    }
-    const thread = await this.prisma.thread.findFirst({
-      where: {
-        id: scope.sessionId,
-        endUser: { disabledAt: null },
-        ...environmentScopeWhere(scope),
-      },
-      select: { endUserId: true },
-    });
-    if (!thread) {
-      throw new Error("Authenticated thread is not accessible in scope");
-    }
-    return thread.endUserId;
   }
 
   private async fetchObjectBytes(storageKey: string): Promise<Uint8Array> {

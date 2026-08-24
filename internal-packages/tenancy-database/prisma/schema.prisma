@@ -562,6 +562,7 @@ model Agent {
   channelApps          ChannelApp[]
   channelInstallations ChannelInstallation[]
   toolCallAudits       ToolCallAudit[]
+  messageAttachments   MessageAttachment[]
 
   @@unique([projectId, slug])
   @@index([projectId, isActive])
@@ -959,6 +960,9 @@ model Thread {
   endUserId           String                @db.Uuid
   clusterId           String?               @db.Uuid
   parentThreadId      String?               @db.Uuid
+  forkedUpToTurnId    String?               @db.Uuid
+  /// Ordered references to canonical ancestor Turns. These preserve fork history without duplicating billable ledger rows.
+  forkedTurnIds       String[]              @default([]) @db.Uuid
   compactedUpToTurnId String?               @db.Uuid
   title               String?
   status              WorkStatus            @default(ACTIVE)
@@ -979,8 +983,10 @@ model Thread {
   cluster           AgentCluster?      @relation(fields: [clusterId], references: [id], onDelete: SetNull)
   parentThread      Thread?            @relation("ThreadFork", fields: [parentThreadId], references: [id], onDelete: SetNull)
   forks             Thread[]           @relation("ThreadFork")
+  forkedUpToTurn    Turn?              @relation("ThreadForkBoundary", fields: [forkedUpToTurnId], references: [id], onDelete: Restrict)
   compactedUpToTurn Turn?              @relation("ThreadCompactionCursor", fields: [compactedUpToTurnId], references: [id], onDelete: SetNull)
   turns             Turn[]             @relation("ThreadTurns")
+  messageAttachments MessageAttachment[]
   sourceMemories    Memory[]           @relation("MemorySourceThread")
   artifacts         Artifact[]
   channelThreads    ChannelThread[]
@@ -994,6 +1000,7 @@ model Thread {
   @@index([agentId, status])
   @@index([clusterId])
   @@index([parentThreadId])
+  @@index([forkedUpToTurnId])
   @@index([compactionState, compactedAt])
 }
 
@@ -1082,6 +1089,7 @@ model Turn {
   revisions                  Turn[]              @relation("TurnRevision")
   agentVersion               AgentVersion        @relation(fields: [agentVersionId], references: [id], onDelete: Restrict)
   compactionCursorForThreads Thread[]            @relation("ThreadCompactionCursor")
+  forkBoundaryForThreads     Thread[]            @relation("ThreadForkBoundary")
   steps                      Step[]
   attachments                MessageAttachment[]
   artifacts                  Artifact[]
@@ -1234,6 +1242,8 @@ model MessageAttachment {
   id            String    @id @default(uuid()) @db.Uuid
   environmentId String    @db.Uuid
   endUserId     String    @db.Uuid
+  agentId       String    @db.Uuid
+  threadId      String    @db.Uuid
   turnId        String?   @db.Uuid
   kind          String
   mimeType      String
@@ -1249,9 +1259,13 @@ model MessageAttachment {
 
   environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
   endUser     EndUser     @relation(fields: [endUserId], references: [id], onDelete: Cascade)
+  agent       Agent       @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  thread      Thread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
   turn        Turn?       @relation(fields: [turnId], references: [id], onDelete: Cascade)
 
   @@index([environmentId, endUserId, createdAt])
+  @@index([agentId, threadId, createdAt])
+  @@index([threadId, turnId])
   @@index([turnId])
 }
 

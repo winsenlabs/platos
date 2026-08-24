@@ -47,6 +47,8 @@ export interface Thread {
   pinnedAt: Date | null;
   archivedAt: Date | null;
   parentThreadId: string | null;
+  forkedUpToTurnId: string | null;
+  forkedTurnIds: string[];
   clusterId: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -342,7 +344,7 @@ export class ConversationService {
       endUserId: row.endUserId,
       title: row.title,
       status: row.archivedAt ? "archived" : publicStatus(row.status),
-      turnCount: row._count?.turns ?? 0,
+      turnCount: (row.forkedTurnIds?.length ?? 0) + (row._count?.turns ?? 0),
       compactedSummary: row.summary,
       compactedUpToTurnId: row.compactedUpToTurnId,
       compactionState: row.compactionState,
@@ -350,6 +352,8 @@ export class ConversationService {
       pinnedAt: row.pinnedAt,
       archivedAt: row.archivedAt,
       parentThreadId: row.parentThreadId,
+      forkedUpToTurnId: row.forkedUpToTurnId,
+      forkedTurnIds: row.forkedTurnIds ?? [],
       clusterId: row.clusterId,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -1071,14 +1075,34 @@ export class ConversationService {
     };
   }
 
+  private async visibleTurnReferences(thread: Thread): Promise<Array<{ id: string; status: string }>> {
+    const inheritedIds = thread.forkedTurnIds ?? [];
+    const [inheritedRows, localRows] = await Promise.all([
+      inheritedIds.length
+        ? this.prisma.turn.findMany({
+            where: { id: { in: inheritedIds } },
+            select: { id: true, status: true },
+          })
+        : [],
+      this.prisma.turn.findMany({
+        where: { threadId: thread.id },
+        select: { id: true, status: true },
+        orderBy: { sequence: "asc" },
+      }),
+    ]);
+    const inheritedById = new Map(inheritedRows.map((turn: any) => [turn.id, turn]));
+    const inherited = inheritedIds.flatMap((id) => {
+      const turn = inheritedById.get(id);
+      return turn ? [turn as { id: string; status: string }] : [];
+    });
+    if (inherited.length !== inheritedIds.length) throw new ThreadMessageNotFoundError();
+    return [...inherited, ...localRows];
+  }
+
   async getMessages(threadId: string, scope: RequestScope, options: { limit?: number; offset?: number; allUsers?: boolean } = {}) {
     const thread = await this.getThread(threadId, scope, { allUsers: options.allUsers });
     if (!thread) throw new ThreadNotFoundError();
-    const sides = (await this.prisma.turn.findMany({
-      where: { threadId },
-      select: { id: true, status: true },
-      orderBy: { sequence: "asc" },
-    })).flatMap((turn) => [
+    const sides = (await this.visibleTurnReferences(thread)).flatMap((turn) => [
       { turnId: turn.id, role: "user" as const },
       ...(turn.status === "SUCCEEDED"
         ? [{ turnId: turn.id, role: "assistant" as const }]
@@ -1090,7 +1114,7 @@ export class ConversationService {
     const turnIds = Array.from(new Set(page.map((side) => side.turnId)));
     const turns = turnIds.length
       ? await this.prisma.turn.findMany({
-          where: { id: { in: turnIds }, threadId },
+          where: { id: { in: turnIds } },
           include: {
             steps: {
               include: { toolCalls: { orderBy: { sequence: "asc" } } },
@@ -1114,7 +1138,7 @@ export class ConversationService {
       ? await this.prisma.turn.findUnique({ where: { id: thread.compactedUpToTurnId }, select: { sequence: true } })
       : null;
     const turnLimit = Math.max(1, Math.ceil(limit / 2));
-    const main = await this.prisma.turn.findMany({
+    const local = await this.prisma.turn.findMany({
       where: {
         threadId,
         status: "SUCCEEDED",
@@ -1127,13 +1151,30 @@ export class ConversationService {
       orderBy: { sequence: "desc" },
       take: cursor ? Math.max(turnLimit * 4, turnLimit + 20) : turnLimit,
     });
-    const ordered = main.reverse();
+    const inheritedIds = thread.forkedTurnIds ?? [];
+    const inherited = !cursor && inheritedIds.length
+      ? await this.prisma.turn.findMany({
+          where: { id: { in: inheritedIds }, status: "SUCCEEDED" },
+        })
+      : [];
+    const inheritedById = new Map(inherited.map((turn: any) => [turn.id, turn]));
+    const orderedInherited = inheritedIds.flatMap((id) => {
+      const turn = inheritedById.get(id);
+      return turn ? [turn] : [];
+    });
+    if (!cursor && orderedInherited.length !== inheritedIds.length) {
+      throw new ThreadMessageNotFoundError();
+    }
+    const ordered = [...orderedInherited, ...local.reverse()].slice(-Math.max(turnLimit * 4, turnLimit + 20));
     const history = ordered.flatMap((turn) => [
       ...(turn.inputText ? [{ role: "user" as const, content: turn.inputText }] : []),
       ...(turn.outputText ? [{ role: "assistant" as const, content: turn.outputText }] : []),
     ]);
     if (!replyToMessageId) return history;
-    const parent = await this.prisma.turn.findFirst({ where: { id: replyToMessageId, threadId }, select: { outputText: true, inputText: true } });
+    const visibleIds = new Set([...(thread.forkedTurnIds ?? []), ...local.map((turn: any) => turn.id)]);
+    const parent = visibleIds.has(replyToMessageId)
+      ? await this.prisma.turn.findFirst({ where: { id: replyToMessageId }, select: { outputText: true, inputText: true } })
+      : null;
     return [
       ...history,
       { role: "user" as const, content: `[Sub-thread context: You are replying to this turn: "${parent?.outputText ?? parent?.inputText ?? ""}". Stay focused on this sub-topic.]` },
@@ -1162,49 +1203,22 @@ export class ConversationService {
 
   async forkThread(threadId: string, scope: RequestScope, options: { upToMessageId: string; title?: string; allUsers?: boolean }): Promise<Thread> {
     const parent = await this.findScopedThread(threadId, scope, { allUsers: options.allUsers });
-    const upTo = await this.prisma.turn.findFirst({ where: { id: options.upToMessageId, threadId }, select: { sequence: true } });
-    if (!upTo) throw new ThreadMessageNotFoundError();
+    const visibleTurns = await this.visibleTurnReferences(parent);
+    const boundaryIndex = visibleTurns.findIndex((turn) => turn.id === options.upToMessageId);
+    if (boundaryIndex < 0) throw new ThreadMessageNotFoundError();
     const forkCount = await this.prisma.thread.count({ where: { parentThreadId: threadId, archivedAt: null, ...this.environmentWhere(scope) } });
     if (forkCount >= 10) throw new ThreadForkLimitError();
-    const history = await this.prisma.turn.findMany({ where: { threadId, sequence: { lte: upTo.sequence } }, include: { steps: { include: { toolCalls: true } } }, orderBy: { sequence: "asc" } });
+    const forkedTurnIds = visibleTurns.slice(0, boundaryIndex + 1).map((turn) => turn.id);
     const row = await this.prisma.$transaction(async (tx) => {
       const created = await tx.thread.create({ data: {
         environmentId: parent.environmentId, agentId: parent.agentId, endUserId: parent.endUserId,
         clusterId: parent.clusterId, parentThreadId: threadId, title: options.title ?? (parent.title ? `${parent.title} (fork)` : "Fork"),
-        // A copied summary without a remapped cursor would overlap the cloned
-        // live turns. Start the fork uncompacted and let its own cursor advance.
+        forkedUpToTurnId: options.upToMessageId,
+        forkedTurnIds,
+        // Ordered ancestry pointers preserve history without cloning any
+        // billable Turn, Step, ToolCall, or observability ledger row.
         summary: null,
       }});
-      for (const turn of history) {
-        await tx.turn.create({ data: {
-          threadId: created.id, agentVersionId: turn.agentVersionId, versionBucket: turn.versionBucket,
-          sequence: turn.sequence, inputText: turn.inputText, outputText: turn.outputText, input: turn.input as any,
-          output: turn.output as any, thinkingContent: turn.thinkingContent, status: turn.status,
-          externalRuntimeId: turn.externalRuntimeId, costCents: turn.costCents, latencyMs: turn.latencyMs,
-          startedAt: turn.startedAt, completedAt: turn.completedAt, createdAt: turn.createdAt,
-          steps: { create: turn.steps.map((step) => ({
-            sequence: step.sequence, model: step.model, status: step.status, retryCount: step.retryCount,
-            inputTokens: step.inputTokens, outputTokens: step.outputTokens,
-            cacheCreationInputTokens: step.cacheCreationInputTokens, cacheReadInputTokens: step.cacheReadInputTokens,
-            reasoningTokens: step.reasoningTokens, costCents: step.costCents, latencyMs: step.latencyMs,
-            modelPriceId: step.modelPriceId,
-            inputRate: step.inputRate, outputRate: step.outputRate,
-            cacheReadRate: step.cacheReadRate, cacheWriteRate: step.cacheWriteRate,
-            inputRateSource: step.inputRateSource, outputRateSource: step.outputRateSource,
-            cacheReadRateSource: step.cacheReadRateSource, cacheWriteRateSource: step.cacheWriteRateSource,
-            inputRateObservedAt: step.inputRateObservedAt, outputRateObservedAt: step.outputRateObservedAt,
-            cacheReadRateObservedAt: step.cacheReadRateObservedAt, cacheWriteRateObservedAt: step.cacheWriteRateObservedAt,
-            inputRateSourceRef: step.inputRateSourceRef, outputRateSourceRef: step.outputRateSourceRef,
-            cacheReadRateSourceRef: step.cacheReadRateSourceRef, cacheWriteRateSourceRef: step.cacheWriteRateSourceRef,
-            error: step.error, startedAt: step.startedAt, completedAt: step.completedAt, createdAt: step.createdAt,
-            toolCalls: { create: step.toolCalls.map((call) => ({
-              toolId: call.toolId, sequence: call.sequence, toolName: call.toolName, arguments: call.arguments as any,
-              result: call.result as any, status: call.status, retryCount: call.retryCount, error: call.error,
-              latencyMs: call.latencyMs, startedAt: call.startedAt, completedAt: call.completedAt, createdAt: call.createdAt,
-            })) },
-          })) },
-        }});
-      }
       return tx.thread.findUniqueOrThrow({ where: { id: created.id }, include: this.threadInclude() });
     });
     return this.projectThread(row, scope.userId);
@@ -1227,7 +1241,7 @@ export class ConversationService {
     throw new ConversationRevisionNotSupportedError();
   }
 
-  async listThreadArtifactsPage(threadId: string, scope: RequestScope, options?: { limit?: number; allUsers?: boolean }) {
+  async listThreadArtifactsPage(threadId: string, scope: RequestScope, options?: { limit?: number; offset?: number; allUsers?: boolean }) {
     await this.findScopedThread(threadId, scope, { allUsers: options?.allUsers });
     const rows = await this.prisma.artifact.findMany({
       where: { threadId, ...this.environmentWhere(scope) },
@@ -1252,13 +1266,15 @@ export class ConversationService {
       else byKey.set(row.artifactKey, { ...row, language: objectValue(row.metadata).language ?? null, revisionCount: 1 });
     }
     const total = byKey.size;
+    const limit = Math.max(1, Math.min(options?.limit ?? 25, 100));
+    const offset = Math.max(0, options?.offset ?? 0);
     const artifacts = Array.from(byKey.values())
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id))
-      .slice(0, Math.max(1, Math.min(options?.limit ?? 100, 500)));
+      .slice(offset, offset + limit);
     return { artifacts, total };
   }
 
-  async listThreadArtifacts(threadId: string, scope: RequestScope, options?: { limit?: number; allUsers?: boolean }) {
+  async listThreadArtifacts(threadId: string, scope: RequestScope, options?: { limit?: number; offset?: number; allUsers?: boolean }) {
     return (await this.listThreadArtifactsPage(threadId, scope, options)).artifacts;
   }
 

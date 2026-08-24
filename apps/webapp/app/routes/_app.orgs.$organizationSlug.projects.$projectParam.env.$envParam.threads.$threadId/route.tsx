@@ -6,6 +6,12 @@ import { parseCollectionQuery, withCollectionQuery } from "~/services/pagination
 import { agentPanel, agentRequest, PlatosAgentApiError } from "~/services/platosAgent.server";
 
 const collection = { defaultPageSize: 25, maxPageSize: 100 } as const;
+const artifactCollection = {
+  defaultPageSize: 25,
+  maxPageSize: 100,
+  pageParam: "artifactPage",
+  pageSizeParam: "artifactPageSize",
+} as const;
 const config = {
   surface: "thread" as const,
   title: "Thread diagnostic",
@@ -38,17 +44,21 @@ export async function loader(args: LoaderFunctionArgs) {
     return json({ ...config, panel: thread });
   }
 
-  const query = parseCollectionQuery(new URL(args.request.url), collection);
+  const url = new URL(args.request.url);
+  const query = parseCollectionQuery(url, collection);
+  const artifactQuery = parseCollectionQuery(url, artifactCollection);
   const messagePath = withCollectionQuery(`/api/v1/agent/threads/${id}/messages`, query, collection);
+  const artifactPath = withCollectionQuery(`/api/v1/agent/threads/${id}/artifacts`, artifactQuery, artifactCollection);
   const [messages, artifacts, trace, toolAudit] = await Promise.all([
     agentPanel(messagePath, scope),
-    agentPanel(`/api/v1/agent/threads/${id}/artifacts?limit=100`, scope),
+    agentPanel(artifactPath, scope),
     agentPanel(`/api/v1/agent/monitoring/trace/${id}`, scope),
     agentPanel(`/api/v1/agent/monitoring/tool-audit?threadId=${id}`, scope),
   ]);
   return json({
     ...config,
     collection: query,
+    artifactCollection: artifactQuery,
     panel: {
       ok: true as const,
       data: {

@@ -11,7 +11,6 @@ import {
 import { MemoryService, RAG_MEMORY_SOURCE } from "../../memory/memory.service";
 import {
   environmentScopeWhere,
-  resolveAgentBinding,
   resolveEndUser,
 } from "../../memory/memory-scope";
 import { VercelSandboxService } from "../vercel-sandbox.service";
@@ -314,28 +313,10 @@ export class OfficialSkillHandlers {
     if (trimmed.startsWith("attachmentId:")) {
       const id = trimmed.slice("attachmentId:".length).trim();
       if (!id) throw new Error("rag_ingest_document: attachmentId ref missing id");
-      if (!this.moduleRef) {
-        throw new Error(
-          "rag_ingest_document: ModuleRef unavailable — cannot resolve attachment (test harness?)",
-        );
-      }
-      // Lazy require + lookup avoids a top-level import of AgentRuntimeModule
-      // (would create a DI cycle — AgentRuntimeModule imports SkillsModule).
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { AttachmentsService } = require("../../agent-runtime/attachments.service");
-      const attachments = this.moduleRef.get(AttachmentsService, { strict: false });
-      if (!attachments) {
-        throw new Error("rag_ingest_document: AttachmentsService unavailable");
-      }
-      const resolved = await attachments.resolveAttachments([id], scope);
-      if (!resolved || resolved.length === 0) {
-        throw new Error(`rag_ingest_document: attachment ${id} not found in scope`);
-      }
-      const [att] = resolved;
-      // MVP: treat the bytes as utf-8. Binary/PDF parsing is a follow-up
-      // (TODO(RG.1.4) — route through the existing attachment parser).
-      const text = Buffer.from(att.data).toString("utf8");
-      return { sourceUrl: `attachmentId:${id}`, text };
+      // This skill receives Environment scope only, not the canonical Agent,
+      // Thread, and EndUser boundary persisted on pending attachments. Never
+      // weaken that boundary by resolving an id from Environment scope alone.
+      throw new Error("rag_ingest_document: attachment source requires an authenticated Agent and Thread boundary");
     }
 
     if (!/^https?:\/\//.test(trimmed)) {
@@ -1220,25 +1201,19 @@ export class OfficialSkillHandlers {
     if (!prisma?.messageAttachment) {
       throw new Error("upload_to_sandbox: clean MessageAttachment adapter unavailable.");
     }
-    const endUser = await resolveEndUser(prisma, scope, this.ragResolveUserId(scope));
     const agentId = this.ragResolveAgentId(scope);
     if (!agentId) throw new Error("upload_to_sandbox: acting Agent is required.");
-    const binding = await resolveAgentBinding(prisma, scope, agentId);
-    const threadAgentWhere = binding.clusterId
-      ? { OR: [{ agentId: binding.agentId }, { clusterId: binding.clusterId }] }
-      : { agentId: binding.agentId };
+    const threadId = this.threadIdFromScope(scope);
+    if (!threadId) throw new Error("upload_to_sandbox: acting Thread is required.");
+    const endUser = await resolveEndUser(prisma, scope, this.ragResolveUserId(scope));
     const row = await prisma.messageAttachment.findFirst({
       where: {
         id: attachmentId,
         endUserId: endUser.id,
+        agentId,
+        threadId,
+        turnId: { not: null },
         ...environmentScopeWhere(scope),
-        turn: {
-          thread: {
-            endUserId: endUser.id,
-            ...environmentScopeWhere(scope),
-            ...threadAgentWhere,
-          },
-        },
       },
       select: { id: true, storageKey: true, originalName: true, bytes: true },
     });

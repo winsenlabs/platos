@@ -161,7 +161,7 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 | form behavior | 48 | Verify form behavior or record an approved redirect/not-applicable status. |
 | link behavior | 106 | Verify link and deep-link behavior or record an approved redirect/not-applicable status. |
 | destructive confirmation | 13 | Verify destructive confirmation or record an approved not-applicable/justified-exclusion status. |
-| idempotency | 21 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
+| idempotency | 20 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
 | concurrency | 19 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
 | recovery | 102 | Verify failure, retry, and unavailable-backend recovery or record an approved not-applicable/justified-exclusion status. |
 | secret exposure | 103 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |

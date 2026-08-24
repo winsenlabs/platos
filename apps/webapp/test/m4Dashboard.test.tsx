@@ -155,14 +155,19 @@ describe("M4 dashboard rebuild", () => {
           artifacts: {
             total: 1,
             artifacts: [{ id: "artifact-1", artifactKey: "report", title: "Final report", kind: "document", revision: 2, revisionCount: 2, mimeType: "text/markdown", producedByTurnId: "turn-2", content: "# Canonical report" }],
+            pagination: { page: 2, pageSize: 1, total: 2, totalPages: 2, from: 2, to: 2, hasPrevious: true, hasNext: false },
           },
         },
       },
-    }, "/?page=2&pageSize=25");
+    }, "/?page=2&pageSize=25&artifactPage=2&artifactPageSize=1");
 
     expect(html).toContain("26–31 of 31");
     expect(html).toContain("Final report");
     expect(html).toContain("Revision 2 of 2");
+    expect(html).toContain('aria-label="Thread artifact pagination"');
+    expect(html).toContain("2–2 of 2");
+    expect(html).toContain("artifactPage=1");
+    expect(html).toContain("artifactPageSize=1");
     expect(html).toContain("Fork and open child");
     expect(html).toContain('name="upToMessageId"');
   });

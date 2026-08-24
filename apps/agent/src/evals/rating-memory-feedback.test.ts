@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { RatingService, RatingTargetNotFoundError } from "./rating.service";
+import { RatingMutationForbiddenError, RatingService, RatingTargetNotFoundError } from "./rating.service";
 
 const ids = {
   rating: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -45,6 +45,24 @@ describe("RatingService memory feedback ordering", () => {
       environmentId: "environment",
       userId: ids.endUser,
     } as any, ids.turn)).rejects.toBeInstanceOf(RatingTargetNotFoundError);
+  });
+
+  it("denies operator mutations before they can overwrite or delete the EndUser rating", async () => {
+    const findFirst = vi.fn();
+    const service = new RatingService({ turn: { findFirst } } as any);
+    const operatorScope = {
+      organizationId: "organization",
+      projectId: "project",
+      environmentId: "environment",
+      userId: "operator-1",
+      principal: "operator",
+    } as any;
+
+    await expect(service.upsert(operatorScope, { messageId: ids.turn, rating: 1 }))
+      .rejects.toBeInstanceOf(RatingMutationForbiddenError);
+    await expect(service.remove(operatorScope, ids.turn))
+      .rejects.toBeInstanceOf(RatingMutationForbiddenError);
+    expect(findFirst).not.toHaveBeenCalled();
   });
 
   it("increments the persisted revision and schedules reconciliation by row identity", async () => {

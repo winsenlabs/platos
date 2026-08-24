@@ -6255,7 +6255,7 @@
       },
       {
         "name": "threads.fork",
-        "description": "Branch a new thread from an existing one at a specific message. Clones every active message up to (and including) `upToMessageId` into the new thread. Scope is preserved. Soft cap: 10 active forks per parent — archive an existing fork before exceeding the cap. Returns the new Thread row.",
+        "description": "Branch a new thread from an existing one at a specific message. References every active message up to (and including) `upToMessageId` through ordered non-billable ancestry pointers; Turn, Step, and ToolCall ledger rows are never cloned. Scope is preserved. Soft cap: 10 active forks per parent — archive an existing fork before exceeding the cap. Returns the new Thread row.",
         "inputSchema": {
           "type": "object",
           "required": [

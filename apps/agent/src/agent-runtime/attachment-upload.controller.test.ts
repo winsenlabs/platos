@@ -51,6 +51,8 @@ describe("AttachmentUploadController", () => {
     expect(attachments.createPresignedUpload).toHaveBeenCalledWith(expect.objectContaining({
       scope,
       endUserId: "end-user-1",
+      agentId: "agent-1",
+      threadId: "thread-1",
     }));
     const serialized = JSON.stringify(result);
     expect(serialized).not.toContain("storageKey");

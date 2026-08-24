@@ -50,6 +50,8 @@ describe("AttachmentsService presigned upload persistence", () => {
     const result = await service.createPresignedUpload({
       scope,
       endUserId: "end-user-1",
+      agentId: "agent-1",
+      threadId: "thread-1",
       filename: "pixel.png",
       mimeType: "image/png",
       bytes: 12,
@@ -59,12 +61,19 @@ describe("AttachmentsService presigned upload persistence", () => {
       where: { environment: { project: { organizationId: scope.organizationId } } },
     }));
     expect(prisma.messageAttachment.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ environmentId: scope.environmentId, endUserId: "end-user-1" }),
+      data: expect.objectContaining({
+        environmentId: scope.environmentId,
+        endUserId: "end-user-1",
+        agentId: "agent-1",
+        threadId: "thread-1",
+      }),
     }));
     expect(prisma.messageAttachment.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         environmentId: scope.environmentId,
         endUserId: "end-user-1",
+        agentId: "agent-1",
+        threadId: "thread-1",
         environment: { project: { id: scope.projectId, organizationId: scope.organizationId } },
       }),
     }));
@@ -81,6 +90,8 @@ describe("AttachmentsService presigned upload persistence", () => {
     await expect(service.createPresignedUpload({
       scope,
       endUserId: "end-user-1",
+      agentId: "agent-1",
+      threadId: "thread-1",
       filename: "pixel.png",
       mimeType: "image/png",
       bytes: 12,
@@ -89,7 +100,14 @@ describe("AttachmentsService presigned upload persistence", () => {
       message: "Attachment upload is unavailable",
     } satisfies Partial<AttachmentUploadError>);
     expect(prisma.messageAttachment.deleteMany).toHaveBeenCalledWith({
-      where: { id: "attachment-1", environmentId: scope.environmentId, endUserId: "end-user-1" },
+      where: {
+        id: "attachment-1",
+        environmentId: scope.environmentId,
+        endUserId: "end-user-1",
+        agentId: "agent-1",
+        threadId: "thread-1",
+        turnId: null,
+      },
     });
   });
 });

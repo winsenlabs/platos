@@ -80,7 +80,7 @@ import { SafetyEventService } from "../monitoring/safety-event.service";
 import { GovernanceService } from "../monitoring/governance.service";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
-import { RatingService, RatingTargetNotFoundError } from "../evals/rating.service";
+import { RatingMutationForbiddenError, RatingService, RatingTargetNotFoundError } from "../evals/rating.service";
 import {
   CriterionService,
   type CreateCriterionDto,
@@ -707,9 +707,9 @@ export class AgentController {
   /**
    * Fork a thread at a specific message.
    *
-   * The new thread shares history through `upToMessageId` (inclusive) and
-   * inherits the parent's scope — every row carries the same (org, project,
-   * env) tuple per the Theme A invariant + Theme F §5.1.
+   * The new thread references canonical history through `upToMessageId`
+   * (inclusive) and inherits the parent's scope. Turn/Step/ToolCall ledger rows
+   * are never cloned or billed again.
    */
   @Post("threads/:threadId/fork")
   async forkThread(
@@ -817,16 +817,26 @@ export class AgentController {
     @Req() req: Request,
     @Param("threadId") threadId: string,
     @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+    @Query("page") page?: string,
   ) {
     const scope = this.getScope(req);
-    const artifactLimit = parsePositiveIntegerFilter(limit, "limit", { defaultValue: 100, maximum: 500 });
+    const request = parsePageRequest({ page, limit, offset }, { defaultPageSize: 25, maxPageSize: 100 });
     try {
       const result = await this.conversationService.listThreadArtifactsPage(
         threadId,
         scope,
-        { limit: artifactLimit, allUsers: scope.principal === "operator" },
+        { limit: request.pageSize, offset: request.offset, allUsers: scope.principal === "operator" },
       );
-      return result;
+      const pagination = pageMetadata(result.total, request);
+      return {
+        ...result,
+        items: result.artifacts,
+        limit: request.pageSize,
+        offset: request.offset,
+        hasMore: pagination.hasNext,
+        pagination,
+      };
     } catch (err: any) {
       if (err instanceof ThreadNotFoundError) {
         throw new NotFoundException({ code: err.code, message: err.message });
@@ -5909,8 +5919,9 @@ Write the summary now:`;
 
   /**
    * Theme J.1 — upsert thumbs vote. Body: `{ messageId, rating: 1|-1, comment? }`.
-   * Idempotent per (messageId, scope.userId). Rating must be ±1; zero is not a
-   * valid vote — use DELETE to remove the rating.
+   * EndUser-only and idempotent per canonical (messageId, EndUser). Operator
+   * principals receive RATING_ACTOR_FORBIDDEN so they cannot replace the
+   * EndUser's row. Rating must be ±1; zero is not a valid vote — use DELETE.
    */
   @Post("messages/:messageId/rating")
   async rateMessage(
@@ -5930,6 +5941,9 @@ Write the summary now:`;
       });
       return { rating: row };
     } catch (err: any) {
+      if (err instanceof RatingMutationForbiddenError) {
+        throw new ForbiddenException({ code: err.code, message: err.message });
+      }
       if (err instanceof RatingTargetNotFoundError) {
         throw new NotFoundException({ code: err.code, message: err.message });
       }
@@ -5937,7 +5951,7 @@ Write the summary now:`;
     }
   }
 
-  /** Theme J.1 — remove the current user's rating on a message. */
+  /** Theme J.1 — remove the canonical EndUser rating; operators are denied. */
   @Delete("messages/:messageId/rating")
   async unrateMessage(@Req() req: Request, @Param("messageId") messageId: string) {
     const scope = this.getScope(req);
@@ -5945,6 +5959,9 @@ Write the summary now:`;
       const removed = await this.ratingService.remove(scope, messageId);
       return { removed };
     } catch (error) {
+      if (error instanceof RatingMutationForbiddenError) {
+        throw new ForbiddenException({ code: error.code, message: error.message });
+      }
       if (error instanceof RatingTargetNotFoundError) {
         throw new NotFoundException({ code: error.code, message: error.message });
       }

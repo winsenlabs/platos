@@ -141,7 +141,8 @@ describe("clean-slate domain schema", () => {
       OAuthAccessToken: ["clientId", "userId", "scopeKind", "scopes"],
       OAuthRefreshToken: ["accessTokenId", "rotationFamilyId", "parentRefreshTokenId", "consumedAt", "replayDetectedAt"],
       McpBearerToken: ["entityId", "environmentId", "mcpUserId", "createdByUserId", "scopes"],
-      Thread: ["compactedUpToTurnId", "compactionState", "compactedAt"],
+      Thread: ["parentThreadId", "forkedUpToTurnId", "forkedTurnIds", "compactedUpToTurnId", "compactionState", "compactedAt"],
+      MessageAttachment: ["environmentId", "endUserId", "agentId", "threadId", "turnId"],
       Turn: ["agentVersionId", "versionBucket", "costCents", "latencyMs"],
       Model: ["key", "provider", "name", "sourceUpdatedAt"],
       ModelPrice: [
@@ -347,6 +348,7 @@ describe("clean-slate domain schema", () => {
       "EndUserIdentity_owner_immutable",
       "Thread_subject_immutable",
       "MessageAttachment_owner_immutable",
+      "MessageAttachment_binding_one_way",
       "ChannelInstallation_owner_immutable",
       "OAuthClient_owner_immutable",
       "MemoryEntity_subject_immutable",

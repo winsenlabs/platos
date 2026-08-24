@@ -56,6 +56,8 @@ export class AttachmentUploadController {
       return await this.attachments.createPresignedUpload({
         scope,
         endUserId: thread.endUserId,
+        agentId,
+        threadId,
         filename: body.filename,
         mimeType: body.mimeType,
         bytes: body.bytes!,

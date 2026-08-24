@@ -78,6 +78,61 @@ describe("domain schema integration", () => {
     }
   });
 
+  test("preserves fork ancestry without ledger duplication and enforces one-way attachment binding", async () => {
+    const ledgerBefore = await Promise.all([
+      control.turn.count(),
+      control.step.count(),
+      control.toolCall.count(),
+    ]);
+    const fork = await control.thread.create({
+      data: {
+        environmentId: seeded.environment.id,
+        agentId: seeded.agent.id,
+        endUserId: seeded.endUser.id,
+        parentThreadId: seeded.thread.id,
+        forkedUpToTurnId: seeded.turn.id,
+        forkedTurnIds: [seeded.turn.id],
+      },
+    });
+    expect(await Promise.all([
+      control.turn.count(),
+      control.step.count(),
+      control.toolCall.count(),
+    ])).toEqual(ledgerBefore);
+    expect(fork).toMatchObject({
+      parentThreadId: seeded.thread.id,
+      forkedUpToTurnId: seeded.turn.id,
+      forkedTurnIds: [seeded.turn.id],
+    });
+
+    const attachment = await control.messageAttachment.create({
+      data: {
+        environmentId: seeded.environment.id,
+        endUserId: seeded.endUser.id,
+        agentId: seeded.agent.id,
+        threadId: seeded.thread.id,
+        kind: "file",
+        mimeType: "text/plain",
+        bytes: 1,
+        storageKey: `binding-${Date.now()}`,
+      },
+    });
+    await control.messageAttachment.update({ where: { id: attachment.id }, data: { turnId: seeded.turn.id } });
+    await expect(control.messageAttachment.update({ where: { id: attachment.id }, data: { turnId: seeded.turn.id } }))
+      .resolves.toMatchObject({ turnId: seeded.turn.id });
+
+    const secondTurn = await control.turn.create({
+      data: {
+        threadId: seeded.thread.id,
+        agentVersionId: seeded.agentVersion.id,
+        versionBucket: AgentVersionBucket.CURRENT,
+        sequence: 2,
+      },
+    });
+    await expect(control.messageAttachment.update({ where: { id: attachment.id }, data: { turnId: secondTurn.id } }))
+      .rejects.toThrow(/one-way and immutable/);
+  });
+
   test("exposes only subject delegates and no operator, configuration, or raw SQL path", async () => {
     expect(Object.keys(endUser).sort()).toEqual([...endUserDelegateNames, "disconnect"].sort());
     for (const forbidden of [
@@ -1097,6 +1152,8 @@ describe("domain schema integration", () => {
       data: {
         environmentId: seeded.environment.id,
         endUserId: subject.id,
+        agentId: seeded.agent.id,
+        threadId: thread.id,
         kind: "file",
         mimeType: "text/plain",
         bytes: 7,
@@ -1499,6 +1556,8 @@ async function seedEveryModel(control: PrismaClient) {
     data: {
       environmentId: environment.id,
       endUserId: endUser.id,
+      agentId: agent.id,
+      threadId: thread.id,
       turnId: turn.id,
       kind: "file",
       mimeType: "text/plain",

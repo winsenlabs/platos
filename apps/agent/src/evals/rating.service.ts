@@ -35,6 +35,14 @@ export class RatingTargetNotFoundError extends Error {
   }
 }
 
+export class RatingMutationForbiddenError extends Error {
+  readonly code = "RATING_ACTOR_FORBIDDEN";
+  constructor() {
+    super("Operator principals cannot mutate EndUser ratings");
+    this.name = "RatingMutationForbiddenError";
+  }
+}
+
 /**
  * Theme J.1 + J.2 — message rating persistence + aggregated satisfaction.
  *
@@ -129,6 +137,7 @@ export class RatingService {
     scope: RequestScope,
     input: { messageId: string; rating: 1 | -1; comment?: string | null }
   ): Promise<RatingRecord> {
+    if (scope.principal === "operator") throw new RatingMutationForbiddenError();
     if (input.rating !== 1 && input.rating !== -1) {
       throw new Error("rating must be 1 or -1");
     }
@@ -214,6 +223,7 @@ export class RatingService {
 
   /** Remove this user's rating for a message. Idempotent. */
   async remove(scope: RequestScope, messageId: string): Promise<boolean> {
+    if (scope.principal === "operator") throw new RatingMutationForbiddenError();
     // A delete without reconciliation would leave confidence/quarantine stale.
     // Production always wires MemoryModule; fail closed if a partial test or
     // misconfigured module invokes this mutation without the reconciler.
