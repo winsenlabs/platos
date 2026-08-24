@@ -52,21 +52,24 @@ That set is what lets you ship "let users edit a past prompt and rerun" without 
 
 ## How to use it
 
-### Reply in a sub-thread
+### Read sub-thread replies
 
 ```ts
-await platos.threads.update({
-  threadId,
-  messages: [{ role: "user", content: "follow-up", threadReplyToId: parentMessageId }],
-});
+const replies = await fetch(
+  "https://platos.example.com/api/v1/agent/threads/{threadId}/messages/{messageId}/replies",
+).then((response) => response.json());
 ```
 
-Or click the reply icon on a message in the chat panel; the right-side `ThreadPanel` opens. The agent's `enableThreading` config decides whether sub-threads are surfaced as a tab or inlined.
+Supply the same authorization and scope headers as other generated requests. The generated public route reads replies for a parent message; the current OpenAPI contract does not publish a matching write route.
 
 ### Fork a conversation
 
 ```ts
-const forked = await platos.threads.fork({ threadId, atMessageId });
+const forked = await fetch("https://platos.example.com/api/v1/agent/threads/{threadId}/fork", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ atMessageId }),
+});
 ```
 
 The new thread inherits the prefix up to (and including) `atMessageId`. Memory writes from the forked thread land in the same user scope; the agent does not get amnesia.
@@ -74,10 +77,10 @@ The new thread inherits the prefix up to (and including) `atMessageId`. Memory w
 ### Edit and rerun
 
 ```ts
-await platos.threads.edit_and_rerun({
-  threadId,
-  messageId,
-  newContent: "What about Tuesday?",
+await fetch("https://platos.example.com/api/v1/agent/threads/{threadId}/messages/{messageId}/edit-and-rerun", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ newContent: "What about Tuesday?" }),
 });
 ```
 

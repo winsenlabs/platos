@@ -1,13 +1,13 @@
 ---
 slug: jobs
 title: Jobs
-description: Platos-owned asynchronous background work and the spawn_job runtime tool.
+description: Environment-owned asynchronous definitions, jobs.* platform operations, and the spawn_job runtime tool.
 category: platform
 order: 9
 questions:
   - "What is a Job?"
-  - "How does an Agent start background work?"
-  - "How are scheduled Jobs represented?"
+  - "How do I create and dispatch a Job?"
+  - "What payload does spawn_job accept?"
 related:
   - turns
   - schedules
@@ -17,33 +17,60 @@ related:
 
 # Jobs
 
-A **Job** is user-visible, trackable asynchronous work owned by Platos. Jobs belong to an Environment and have a display name, input schema, handler, timeout, retry policy, schedule metadata, status, and optional Agent allow-list.
+A **Job** is Environment-owned asynchronous work. A persisted Job definition has an external `jobId`, display name, CommonJS handler source, payload schema, timeout, retry policy, invocation type, optional schedule metadata, status, and optional Agent allow-list.
 
-## Start a Job from an Agent
+## Persisted Job definitions
 
-`spawn_job` is a Platos runtime tool. It accepts a Job identifier and validated input, returns the Job execution identity, and lets the originating Turn continue without waiting for completion.
+Create a definition through `POST /api/v1/agent/jobs` or `jobs.create`:
 
-```json
+```http
+POST /api/v1/agent/jobs
+Content-Type: application/json
+
 {
-  "jobId": "job_monthly_summary",
-  "input": {
-    "accountId": "acct_123"
-  }
+  "jobId": "monthly-summary",
+  "displayName": "Monthly summary",
+  "invocationType": "manual",
+  "payloadSchema": {
+    "type": "object",
+    "required": ["accountId"],
+    "properties": {
+      "accountId": { "type": "string" }
+    }
+  },
+  "handler": "return { accountId: payload.accountId, complete: true };",
+  "timeout": 300,
+  "maxRetries": 3
 }
 ```
 
-## Status and retries
+The REST collection supports `GET` and `POST`; `/jobs/{id}` supports `GET`, `PATCH`, and `DELETE`; `/jobs/{id}/dispatch` accepts `{ "payload": { ... } }`. The `{id}` parameter is the persisted `job.id`, while `jobId` is its Environment-scoped external name.
 
-A Job uses the standard work statuses: `PENDING`, `ACTIVE`, `SUCCEEDED`, `FAILED`, and `CANCELLED`. Retry count and retry events are Job metadata. Runtime process details are not tenant-owned resources.
+Platform MCP exposes `jobs.list`, `jobs.get`, `jobs.create`, `jobs.update`, `jobs.delete`, `jobs.dispatch`, `jobs.set_enabled`, and `jobs.validate_handler`.
 
-## Scheduling
+## The `spawn_job` runtime tool
 
-A Job may be started immediately, at a future instant, or on a cron schedule. Time zone and schedule metadata remain on the Job. Disabling a schedule does not delete the Job definition or its history.
+`spawn_job` is an Agent runtime tool for background instructions. Its source contract requires `jobType` and `instruction`; `tools` and `timeout` are optional:
+
+```json
+{
+  "jobType": "monthly-summary",
+  "instruction": "Summarize account acct_123 for August 2026.",
+  "tools": ["billing.list_invoices"],
+  "timeout": "5m"
+}
+```
+
+The tool returns `spawned`, `durable`, `jobId`, `jobType`, and a message. `durable: true` means the configured external durable-runtime adapter accepted the work. Without that adapter, the local Redis runtime returns `durable: false` and retains the queued record for 24 hours.
+
+`spawn_job` does not accept the persisted Job dispatch shape `{ jobId, input }`. To dispatch a persisted definition with schema-validated payload, use `POST /api/v1/agent/jobs/{id}/dispatch` or `jobs.dispatch`.
+
+## Status and scheduling
+
+Persisted Job definitions use `PENDING`, `ACTIVE`, `SUCCEEDED`, `FAILED`, and `CANCELLED` storage states. `isActive` projects whether the definition is dispatchable; it is not a completion state for an individual execution.
+
+Invocation types are `manual`, `schedule`, `webhook`, and `agent-spawn`. Schedule cron and time zone remain on the Job definition. The current public API does not provide a general outbound webhook delivery surface.
 
 ## External execution provider
 
-Trigger may execute a Job through an optional external durable-runtime vendor integration. Its identifiers remain private integration metadata. The public Platos resource remains the Job.
-
-## API direction
-
-Use `/jobs` for REST resources, `jobs_*` for platform MCP operations, and `spawn_job` from an Agent. Older names are not public aliases.
+Trigger may execute Job work through the optional external durable-runtime vendor adapter. Its identifiers remain private integration metadata; the public resource remains the Platos Job.

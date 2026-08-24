@@ -28,10 +28,10 @@ PLATOS_MESSAGE_ENCRYPTION_KEY=$(openssl rand -hex 32)
 
 Run each command separately. Do not reuse one value across variables; the agent rejects duplicate key material. A 32-character hex string from `openssl rand -hex 16` is accepted only when it is the exact historical UTF-8 `ENCRYPTION_KEY`; it is not a valid format for a newly generated key.
 
-Restart webapp, agent, and workers after updating the secret manager or `.env`:
+Restart the two application services after updating the secret manager or `.env`:
 
 ```bash
-docker compose -f docker-compose.platos.yml restart webapp agent start-worker
+docker compose -f docker-compose.platos.yml restart webapp agent
 ```
 
 ## Verify

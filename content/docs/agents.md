@@ -52,25 +52,28 @@ Without it, every team would be wiring its own loop: managing retries, encryptin
 
 Navigate to `/orgs/{org}/projects/{project}/env/{env}/agents/new`. The wizard walks you through identity (name, slug), model + provider key, prompt blocks, tools, and a starter context mapping. Hit save and the runtime persists the agent and writes the first `AgentVersion` snapshot in the same transaction.
 
-### Create from MCP
+### Create through REST
 
 ```ts
-import { PlatosClient } from "@platosdev/client";
-
-const platos = new PlatosClient({ token: process.env.PLATOS_PAT });
-
-const agent = await platos.agents.create({
-  name: "Wally Chat",
-  slug: "wally-chat",
-  model: "anthropic:claude-opus-4-7",
-  promptBlocks: [
-    { id: "role", type: "role", name: "Role", content: "You are Wally, a calendar assistant.", enabled: true, editable: true, order: 0 },
-  ],
-  toolsBlockConfig: { enabledTools: ["calendar.create_event"], toolExposure: "direct" },
+const response = await fetch("https://platos.example.com/api/v1/agent/agents", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.PLATOS_PAT}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    name: "Wally Chat",
+    slug: "wally-chat",
+    model: "anthropic:claude-opus-4-7",
+    systemPrompt: "You are Wally, a calendar assistant.",
+  }),
 });
+
+if (!response.ok) throw new Error(`Agent creation failed: ${response.status}`);
+const agent = await response.json();
 ```
 
-The runtime auto-derives `systemPrompt` from `promptBlocks` when you pass blocks but omit the string, so MCP callers can stay block-only.
+Platform MCP clients may instead use the generated `agents.create` operation.
 
 ### Update vs version
 
@@ -83,7 +86,7 @@ The runtime auto-derives `systemPrompt` from `promptBlocks` when you pass blocks
 ## Common pitfalls
 
 - The model picker is scope-filtered. If a provider's `required_env` keys are not linked in the current environment, its models do not appear. Wire up keys in [Providers](/docs/providers) first.
-- `spawn_job` and `spawn_task` both default on for new agents during the rename grace window. Customers should switch tool prompts to `spawn_job`; `spawn_task` will be removed once the alias window closes.
+- `spawn_job` defaults on for new agents and is the only authored background-work runtime tool name.
 - An agent's slug is unique per `(projectId, environmentId)`. Cloning across environments works; cloning within the same env auto-suffixes with a base36 timestamp.
 - Hard-deleting an agent before exporting its conversations loses the encrypted message history. Export first via `threads.list` + `messages.list`.
 

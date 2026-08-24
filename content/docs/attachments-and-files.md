@@ -41,22 +41,13 @@ Retention matters for compliance. A self-hosted Platos that keeps every attachme
 
 Drag a file onto the chat box. The UI calls the presigned endpoint, uploads to MinIO, and includes the reference in the next message. The agent receives the attachment in its turn assembly.
 
-### Attach from the SDK
+### Read Thread attachments through REST
 
-```ts
-const presigned = await platos.attachments.presigned({
-  filename: "invoice.pdf",
-  mimeType: "application/pdf",
-  conversationId,
-});
-
-await fetch(presigned.url, { method: "PUT", body: fileBlob });
-
-await platos.threads.update({
-  threadId,
-  messages: [{ role: "user", content: "Summarise this invoice", attachments: [presigned.attachmentId] }],
-});
+```http
+GET /api/v1/agent/files/threads/{threadId}/attachments
 ```
+
+The first-party consumer SDK does not currently expose an attachment-upload namespace. Use the dashboard upload flow or generated HTTP operations present in your installation's OpenAPI document; do not infer a presign route.
 
 ### Vision routing
 

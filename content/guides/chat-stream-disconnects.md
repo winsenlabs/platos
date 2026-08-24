@@ -41,15 +41,19 @@ A stable WebSocket that survives long turns and ordinary network blips.
    }
    ```
 
-2. **Force WebSocket transport.**
+2. **Use the supported stream method.**
 
-   Some networks force long-polling fallback. The SDK respects `transports`:
+   `threads.send()` is the public streaming method. It already forces the WebSocket transport; it does not expose a consumer-configurable `transports` option:
 
    ```ts
-   const stream = await platos.threads.stream({ threadId, transports: ["websocket"] });
+   const stream = platos.threads.send(threadId, "Continue the report");
+
+   for await (const event of stream) {
+     if (event.type === "reconnecting") console.log("stream reconnecting");
+   }
    ```
 
-   Or in the chat UI's URL `?transport=websocket`.
+   If a proxy strips WebSocket `Upgrade` headers, fix the proxy; the SDK does not fall back to long polling.
 
 3. **Check the early-message buffer.**
 
@@ -57,11 +61,11 @@ A stable WebSocket that survives long turns and ordinary network blips.
 
 4. **Check the SDK reconnect backoff.**
 
-   `@platosdev/client` reconnects with exponential backoff (1s, 2s, 4s, ..., max 30s). After 30 seconds disconnected, it re-fetches message history rather than replay. If you see "lost" messages on a long disconnect, this is why; bridge through `messages.list`.
+   `@platosdev/client` retries five times by default with delays of 0.5s, 1s, 2s, 4s, and 8s. On reconnect the client sends `resume_stream` for the current Thread and buffers events received by the iterator.
 
-5. **Check the audit log.**
+5. **Refresh expiring session tokens.**
 
-   `monitoring/admin-audit` shows `auth.session_token.expired` events. Session tokens are 5 minutes; long streams need refresh pings. The SDK does this automatically; raw WebSocket clients must implement.
+   When your backend rotates the consumer's session token, call `platos.setSessionToken(freshToken)` before the next connection. The public stream method does not accept a transport override or a per-stream token.
 
 ## Verify
 

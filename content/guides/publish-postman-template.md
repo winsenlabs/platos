@@ -60,7 +60,7 @@ const thread = await platos.platos_call("postman_templates.run", {
 });
 ```
 
-The runtime returns a fresh thread id; the template's messages are seeded; continue with `threads.update`.
+The runtime returns a fresh Thread id and seeds the template's messages. Continue through the documented Thread stream or `@platosdev/client`'s `threads.send()` method.
 
 ## Parameters
 
@@ -68,5 +68,5 @@ Use `${variable}` placeholders in template messages. The replay UI prompts for v
 
 ## Next steps
 
-- [Evaluate Agent Versions](/guides/evaluate-agent-versions) using template-derived golden sets.
+- [Run a golden set](/guides/run-golden-set) using representative saved Threads.
 - Templates pair well with [Chat and Postman mode](/docs/chat-and-postman) walkthroughs.

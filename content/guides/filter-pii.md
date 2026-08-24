@@ -48,7 +48,7 @@ An agent that automatically redacts (or blocks) sensitive content before it reac
 
 ## Verify
 
-- A turn with a matched pattern starts a `safety.event` webhook.
+- A Turn with a matched pattern creates a scoped safety event visible through monitoring.
 - The governance page (`/agent-governance`) lists the event with category, policy, and decrypted match.
 - Audit shows the redacted-match log row.
 

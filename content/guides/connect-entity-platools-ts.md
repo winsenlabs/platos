@@ -39,22 +39,20 @@ A Node service that holds a long-lived WebSocket to Platos and serves tool calls
 3. **Connect.**
 
    ```ts
-   import { connect } from "@platosdev/platools-sdk";
+   import { Platools } from "@platosdev/platools-sdk";
+   import { z } from "zod";
 
-   const conn = connect({
-     url: process.env.PLATOS_URL ?? "wss://platos.example.com/connections",
-     serviceSecret: process.env.PLATOS_SERVICE_SECRET!,
+   const platools = new Platools({
+     url: process.env.PLATOS_URL ?? "wss://platos.example.com/tools/sync?entity=my-entity",
+     secret: process.env.PLATOS_SERVICE_SECRET!,
    });
 
-   conn.tool(
-     "send_email",
+   platools.tool(
      {
-       type: "object",
-       properties: {
-         to: { type: "string", format: "email" },
-         body: { type: "string" },
-       },
-       required: ["to", "body"],
+       name: "send_email",
+       input: z.object({ to: z.string().email(), body: z.string() }),
+       output: z.object({ ok: z.boolean() }),
+       auth: "user",
      },
      async (args, ctx) => {
        // ctx.userToken is X-Platos-User-Token, opaque to us, verified by our auth.
@@ -63,7 +61,7 @@ A Node service that holds a long-lived WebSocket to Platos and serves tool calls
      },
    );
 
-   await conn.start();
+   await platools.connect();
    console.log("entity connected");
    ```
 

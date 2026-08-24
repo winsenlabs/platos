@@ -57,17 +57,18 @@ const cluster = await platos.platos_call("clusters.create", {
 
 ### Spawn cross-agent work
 
-A cluster member's `spawn_job` call can target a sibling agent in the same cluster:
+A cluster member can describe a sibling handoff in the source-defined `spawn_job` instruction:
 
-```text
-spawn_job({
-  targetAgent: "wally-bgo",
-  prompt: "Render the slides into a PDF and reply in the thread when ready",
-  threadId: currentThread,
-})
+```json
+{
+  "jobType": "render-slides",
+  "instruction": "Have the wally-bgo Agent render the slides into a PDF and reply in the originating Thread.",
+  "tools": ["documents.render_pdf"],
+  "timeout": "10m"
+}
 ```
 
-The Job inherits the cluster's user identity and writes its messages to the same `threadId`. The chat panel renders them with the Job's avatar and a sub-label.
+The runtime tool does not accept `targetAgent`, `prompt`, or `threadId` fields. Cluster-aware routing must come from the Agent/runtime configuration and the instruction, not undocumented payload keys.
 
 ### Memory and thread isolation
 
@@ -78,7 +79,7 @@ When the chat agent calls `recall`, the runtime scopes the lookup to `(clusterId
 - An agent can only belong to one cluster at a time. Moving between clusters drops shared memory access from the old cluster.
 - Until the agent detail page surfaces a cluster tab (tracked in drift D-005), the cluster is only reachable from the top-level sidebar. Bookmark `/agent-clusters/{clusterId}` if you need fast access.
 - Memory written before a cluster was formed stays scoped to the original agent. Cluster scope kicks in on writes that happen after the link.
-- Cross-cluster `spawn_job` calls are rejected. If you need a cross-cluster handoff, run a tool call instead.
+- Do not add cross-cluster routing fields to `spawn_job`; its accepted keys are `jobType`, `instruction`, `tools`, and `timeout`.
 
 ## Related
 

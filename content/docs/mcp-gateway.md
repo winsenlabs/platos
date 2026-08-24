@@ -92,7 +92,7 @@ Per-entity endpoints expose `serverInfo` (name, description, logo, support URL) 
 - Never depend on project creation order to select an environment. Supply `?environmentId=<canonical-id>` for anonymous and entity OAuth discovery/authorization. Bearer routes validate the token first, load its authoritative entity and environment, then compare the requested slug.
 - External tool arguments cannot set Platos transport authority. The gateway recursively removes reserved `_context`, `__platos`, `_platos`, `platos_context`, `platosContext`, and `__platosContext` envelopes before MCP or wire dispatch, then adds server-derived context only when the entity enables it.
 - OIDC federation requires `OIDC_ISSUER`, `OIDC_AUDIENCE`, and `OIDC_JWKS_URL` env vars. Misconfigured OIDC silently rejects valid tokens.
-- The Settings -> Integrations route exists in two scopes (project and org) with similar names (drift D-006). The org-scoped page is for OAuth-style integrations like Slack; the project-scoped page is for MCP and webhook config. Cross-link from this doc to disambiguate.
+- The Settings -> Integrations route exists in two scopes (Project and Organization) with similar names. Use the Environment's MCP configuration for MCP clients; Organization integrations cover external channel adapters such as Slack.
 
 ## Related
 

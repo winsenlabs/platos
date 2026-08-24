@@ -26,7 +26,7 @@ No. `play.platos.dev` is a clean-slate installation target, not a public playgro
 
 ## How does background work execute?
 
-Platos records asynchronous work as Jobs. Trigger can be configured as an external durable-runtime vendor integration, but its resource model does not become the Platos public API.
+Platos records asynchronous work as Jobs. An external durable-runtime vendor adapter can execute that work, but its resource model does not become the Platos public API.
 
 ## How do I change Agent behavior safely?
 

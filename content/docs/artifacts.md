@@ -35,7 +35,7 @@ Seven canonical types:
 
 Artifacts are emitted via `generate_artifact` and `revise_artifact` meta-tools. The meta-tool wraps the LLM response in an `<PlatosArtifact>` envelope; the runtime persists the row, streams an `artifact-created` event over the websocket, and the consumer renders.
 
-`@platosdev/client` ships a `<PlatosArtifact>` component that picks the renderer based on type and applies the sandbox guarantees (CSP, iframe isolation, etc.).
+Consumers load persisted Thread artifacts through the generated REST route and choose their own renderer for each artifact kind.
 
 ## Why it matters
 
@@ -57,13 +57,7 @@ Subsequent turns can reference the id and call `revise_artifact({ artifactId, pa
 
 ### Render in your UI
 
-```tsx
-import { PlatosArtifact } from "@platosdev/client/react";
-
-<PlatosArtifact id={artifact.id} />;
-```
-
-Load Thread artifacts with `GET /api/v1/agent/threads/{threadId}/artifacts`, select the returned artifact by ID, and pass it to the renderer. Override per-type renderers when your UI needs a custom presentation.
+Load Thread artifacts with `GET /api/v1/agent/threads/{threadId}/artifacts`, select the returned artifact by ID, and render it according to its kind. The current `@platosdev/client` package exposes `threads.artifacts()` for retrieval but does not publish a React artifact-renderer subpath.
 
 ### Sandbox details
 
@@ -84,4 +78,4 @@ Some tool results are too good to leave as ephemeral output (a generated PDF, a 
 
 - [Attachments and files](/docs/attachments-and-files): for binary uploads going into the conversation, not coming out of the agent.
 - [Chat and Postman mode](/docs/chat-and-postman): the chat panel renders artifacts inline.
-- [SDKs](/docs/sdks): `@platosdev/client` is the React + JS SDK that ships the renderer.
+- [SDKs](/docs/sdks): `@platosdev/client` retrieves Thread artifacts for consumer-owned rendering.

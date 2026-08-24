@@ -8,10 +8,10 @@ questions:
   - "How do I create a canary version of my agent?"
   - "What percentage of traffic does the canary get?"
   - "How do I roll back to the previous version?"
-  - "How do I gate canary promotion on an A/B eval?"
+  - "How do I review evaluation evidence before promotion?"
 related:
   - create-first-agent
-  - evaluate-agent-versions
+  - run-golden-set
 ---
 
 # Version, canary, and roll back an agent
@@ -55,11 +55,11 @@ A change that flows through canary at a small percentage, gets watched on metric
 - Post-promote: every thread shows the new prompt.
 - Post-rollback: every thread shows the old prompt within the next turn.
 
-## Gate on an A/B eval
+## Review evaluation evidence
 
-Configure the canary policy to require an A/B eval pass before promote. The button stays disabled until the eval clears the threshold. See [Evaluate Agent Versions](/guides/evaluate-agent-versions).
+Run a representative golden set, then inspect evaluation rows filtered to the candidate `agentVersionId`. Platos does not expose a first-class pairwise comparison gate, so promotion remains an operator decision.
 
 ## Next steps
 
-- [Evaluate Agent Versions](/guides/evaluate-agent-versions) for structured comparison before promote.
+- [Run a golden set](/guides/run-golden-set) for repeatable criterion evidence before promotion.
 - [Set a per-agent budget cap](/guides/set-budget-cap) if the canary unexpectedly increases cost.

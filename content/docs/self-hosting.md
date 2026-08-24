@@ -1,17 +1,14 @@
 ---
 slug: self-hosting
 title: Self-hosting
-description: Run Platos on your own infra with a single docker compose up. Postgres, Redis, ClickHouse, MinIO, agent, webapp.
+description: Operate the source-defined Docker Compose stack with its exact services, required secrets, resource floor, and optional durable-runtime adapter.
 category: dx
 order: 90
 questions:
-  - "What does it take to self-host Platos?"
-  - "Which services run in the compose file?"
-  - "How do I run database migrations against the deployed Postgres?"
-  - "What format do the three encryption keys use?"
-  - "How do I back up Postgres, ClickHouse, and MinIO?"
-  - "How do I put Caddy or another TLS terminator in front?"
-  - "What env vars are required vs optional?"
+  - "Which Compose services run?"
+  - "Which environment variables are required?"
+  - "How much memory does the default profile need?"
+  - "Which secrets configure the external durable-runtime adapter?"
 related:
   - encryption-and-secrets
   - environments
@@ -20,111 +17,104 @@ related:
 
 # Self-hosting
 
-Self-host with one `docker compose up`. The compose file ships everything Platos needs to run end-to-end: Postgres for the relational store, Redis for scheduler state and rate limits, ClickHouse for traces and cost rollups, MinIO for attachments and artifacts, plus the agent service and the webapp.
+`docker-compose.platos.yml` is the installation contract. It runs six long-lived product/data services, four one-shot initialization services, and one optional integration sidecar.
 
-## What it is
+## Service names
 
-`docker-compose.platos.yml` orchestrates six services:
+| Compose service | Lifecycle | Purpose |
+| --- | --- | --- |
+| `postgres` | long-running | Canonical Postgres and pgvector store |
+| `redis` | long-running | Ephemeral coordination, rate limits, and local Job state |
+| `clickhouse` | long-running | Analytical and observability projections |
+| `minio` | long-running | S3-compatible attachment and Artifact bytes |
+| `webapp` | long-running | Dashboard on host port 3030 |
+| `agent` | long-running | Agent runtime on loopback host port 3100 |
+| `migrations-init` | one-shot | Postgres Prisma migrations |
+| `clickhouse-migrate` | one-shot | ClickHouse Goose migrations |
+| `clickhouse-ttl-apply` | one-shot | ClickHouse system-log TTLs |
+| `minio-init` | one-shot | Private bucket creation |
+| `docs-mcp-bridge` | optional sidecar | Connects the public Docs MCP when its entity secret is set |
 
-| Service | Image | Purpose |
-|---|---|---|
-| postgres | postgres:16 | Relational data (agents, threads, memory, audits) |
-| redis | redis:7 | Scheduling, rate limit counters, ephemeral state |
-| clickhouse | clickhouse/clickhouse-server | Spans + cost rollups |
-| minio | minio/minio | Attachments + artifact binaries |
-| agent | platos-agent | NestJS agent runtime, port 3100 |
-| webapp | platos-webapp | Remix dashboard, port 3030 |
+The persistent volume names are `platos-postgres`, `platos-redis`, `platos-clickhouse`, and `platos-minio`; they are not service names.
 
-A single `.env` file feeds the compose. The example file ships every required and optional variable with comments.
+## Resource floor
 
-Migrations: Postgres uses Prisma migrations; ClickHouse uses goose. The compose webapp applies Postgres migrations at boot; apply ClickHouse migrations through the one-shot goose container or by executing `pnpm run db:migrate` from the host.
+Default memory limits are:
 
-## Why it matters
+| Service | Default limit |
+| --- | ---: |
+| `postgres` | 1 GiB |
+| `redis` | 256 MiB |
+| `clickhouse` | 4 GiB |
+| `minio` | 256 MiB |
+| `agent` | 2 GiB |
+| `webapp` | 2 GiB |
 
-A self-hosted installation is the OSS pitch. You own the data, the infra, the cost curve, the upgrade cadence. The single-compose approach takes a customer from "I want to try it" to "I have an executionning instance" in under fifteen minutes. The migration paths into Kubernetes (helm chart, K.12) are post-launch; for now, compose plus a TLS terminator gets you to production.
+That is approximately **9.5 GiB** before Docker, build, filesystem cache, and migration overhead. Use **12 GiB RAM as the practical minimum** and **16 GiB or more for production**. Platos does not publish a supported reduced-memory profile; lowering limits requires installation-specific load testing. In particular, the 4 GiB ClickHouse limit addresses observed merge OOMs.
 
-## How to use it
+## Required Compose variables
 
-### First-time install
+Compose requires these variables through `${NAME:?required}`:
+
+- `POSTGRES_PASSWORD`
+- `CLICKHOUSE_PASSWORD`
+- `SESSION_SECRET`
+- `MAGIC_LINK_SECRET`
+- `ENCRYPTION_KEY`
+- `PLATOS_ENCRYPTION_KEY`
+- `PLATOS_MESSAGE_ENCRYPTION_KEY`
+- `PLATOS_CREDENTIAL_ROOT_KEY_VERSION`
+- `PLATOS_CREDENTIAL_ROOT_KEYS`
+- `PLATOS_COMPONENT_AUTH_SECRET`
+- `PLATOS_ERASURE_HASH_SALT`
+- `MANAGED_WORKER_SECRET`
+
+Production must also replace the default `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD`; the application rejects the development sentinels.
+
+Generate independent key material. Do not reuse a value across encryption, signing, credential-root, erasure, or component-auth domains.
 
 ```bash
-git clone https://github.com/winsenlabs/platos.git
-cd platos
-cp .env.example .env
-# Edit .env: set ENCRYPTION_KEY, PLATOS_MESSAGE_ENCRYPTION_KEY, MINIO_ROOT_*
+openssl rand -hex 32
+openssl rand -base64 24
+```
+
+Use 64 hex characters for `ENCRYPTION_KEY`, `PLATOS_ENCRYPTION_KEY`, `PLATOS_MESSAGE_ENCRYPTION_KEY`, each value inside `PLATOS_CREDENTIAL_ROOT_KEYS`, `PLATOS_COMPONENT_AUTH_SECRET`, `PLATOS_ERASURE_HASH_SALT`, and `MANAGED_WORKER_SECRET`. `SESSION_SECRET` and `MAGIC_LINK_SECRET` accept independent high-entropy strings. The credential root map is JSON, for example `{"1":"<64-hex-root>"}`, with `PLATOS_CREDENTIAL_ROOT_KEY_VERSION=1`.
+
+## Provider and embedding credentials
+
+Create provider and embedding credentials in the dashboard for each Environment. Scoped provider, health, and embedding resolution does not fall back to `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, or `VOYAGE_API_KEY` from the Agent process.
+
+`PLATOS_EMBEDDING_PROVIDER` and `PLATOS_EMBEDDING_MODEL` select the embedding configuration, but the corresponding raw key must be an Environment credential linked through the dashboard.
+
+## External durable-runtime vendor boundary
+
+Direct Turns and the local Redis Job path do not require a vendor account. To enable the optional external durable-runtime adapter, set both:
+
+- `TRIGGER_API_URL`: the explicit external or self-hosted vendor API URL.
+- `TRIGGER_SECRET_KEY`: that vendor installation's secret key.
+
+`PLATOS_COMPONENT_AUTH_SECRET` is the required Platos-side HMAC boundary for component callbacks and must be set independently. No hosted, localhost, webapp, or ambient provider fallback is inferred when the adapter pair is absent.
+
+## Install and verify
+
+```bash
 docker compose -f docker-compose.platos.yml up -d --build
+docker compose -f docker-compose.platos.yml ps
+curl --fail http://127.0.0.1:3030/healthcheck
+curl --fail http://127.0.0.1:3100/api/health
 ```
 
-Open `http://localhost:3030` and sign in. See the [Quickstart](/guides/quickstart) for the post-install steps (provider key, first agent).
+Expect the six long-running services to be healthy, the four init/migration services to exit zero, and `docs-mcp-bridge` either to run with a valid entity secret or exit zero when disabled.
 
-### Run Postgres migrations from the host
+## Network boundary
 
-```bash
-pnpm run db:migrate
-```
+The Compose file publishes the webapp on `0.0.0.0:3030`, binds Agent port 3100 to `127.0.0.1`, and binds Postgres, Redis, ClickHouse, and MinIO to loopback by default. Put TLS and access controls in front of the webapp and Agent ports; do not expose data-store ports directly.
 
-Migrations are idempotent; re-active is safe.
+## Backup
 
-### Required env vars
-
-**Boot-required (compose refuses to start without these):**
-
-- `ENCRYPTION_KEY`: new values use 64 hex chars / 32 bytes (`openssl rand -hex 32`); existing exact 32-byte UTF-8 values remain valid and must not be replaced without re-encryption.
-- `PLATOS_ENCRYPTION_KEY`: 64 hex chars / 32 bytes (`openssl rand -hex 32`).
-- `PLATOS_MESSAGE_ENCRYPTION_KEY`: 64 hex chars / 32 bytes.
-- `SESSION_SECRET`: one shared platform/session JWT secret for webapp and agent.
-- `MAGIC_LINK_SECRET`: a distinct login-link signing secret.
-- `MANAGED_WORKER_SECRET`: 64 hex chars (`openssl rand -hex 32`).
-- `PLATOS_WORKER_AUTH_SECRET`: 64 hex chars.
-- `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`: MinIO admin credentials.
-- `POSTGRES_PASSWORD`, `CLICKHOUSE_PASSWORD`: db credentials.
-
-**Feature-required (compose boots without these, but the named feature errors at runtime):**
-
-- **At least one LLM provider key** — `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `GOOGLE_GENERATIVE_AI_API_KEY`. Without one, no agent can run a turn; the model picker shows zero options. Per-scope keys via the dashboard Providers UI override these.
-- **An embedding provider key** — `VOYAGE_API_KEY` (default, recommended) or `OPENAI_API_KEY` with `PLATOS_EMBEDDING_PROVIDER=openai`. Without one, **every memory write throws** — including the hourly `MemoryExtractionScheduler` cron — so multi-turn conversations never produce long-term memory. The agent log surfaces `VOYAGE_API_KEY not configured` (or the OpenAI equivalent) on every failed extraction; the [Memory](/docs/memory) doc explains the cascade. Voyage's `voyage-large-2` is 1536-dim native, matching the pgvector column with no schema migration. See [Memory § Setup](/docs/memory#setup).
-
-Optional but commonly set:
-
-- `PLATOS_OTEL_CLICKHOUSE_URL`: enables ClickHouse-backed traces. Without it, falls back to Redis sorted-sets.
-- `PLATOS_TELEMETRY_DISABLED`: set to `true` to opt out of anonymised usage telemetry.
-- `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_JWKS_URL`: enables OIDC mode on MCP gateway.
-- `E2B_API_KEY`: enables `platos-code-runner` skill.
-- `RESEND_API_KEY` + `EMAIL_TRANSPORT=resend` + `FROM_EMAIL`: magic-link email delivery (without this, links print to console).
-
-### Put Caddy in front
-
-```caddyfile
-platos.example.com {
-  reverse_proxy webapp:3030
-}
-
-agent.platos.example.com {
-  reverse_proxy agent:3100
-}
-```
-
-Bind only the agent and webapp ports; Postgres/Redis/ClickHouse/MinIO stay private.
-
-### Backup
-
-- Postgres: `pg_dump` to S3-compatible storage on a cron.
-- ClickHouse: `clickhouse-backup` is the canonical tool; configure with the same S3-compatible target.
-- MinIO: `mc mirror` to a sibling MinIO or to S3 directly.
-- Run all three in the same window so a restore is point-in-time consistent.
+- Postgres: `pg_dump`.
+- ClickHouse: `clickhouse-backup` or another tested snapshot process.
+- MinIO: `mc mirror` to independent S3-compatible storage.
+- Redis contains ephemeral state but still affects in-flight work; document the recovery behavior for your installation.
 
 See [Backup and restore](/guides/backup-and-restore).
-
-## Common pitfalls
-
-- Do NOT run `pnpm run docker`; that brings up the legacy dev stack and collides with `docker-compose.platos.yml`. The platos compose is the only source of truth.
-- Generate new encryption-domain keys independently as 64-hex-character (32-byte) values. Existing 32-byte UTF-8 `ENCRYPTION_KEY` values remain supported; reusing key material is rejected.
-- ClickHouse 25.3 broke JSON-column VIEWs; the `tmp_eric_*` views were dropped in Theme R.3. If you import older migrations, re-drop.
-- `pnpm-workspace.yaml` includes `docs` which is `.dockerignore`d, so Dockerfiles run `RUN sed -i '/docs/d' pnpm-workspace.yaml` before `pnpm install`. If you fork the build, mirror that pattern.
-- A `references/entity-hello-world/` standalone example exists outside the workspace (drift D-010). The quickstart guide tells you to install it with its own `package.json`; do not try to make pnpm pick it up from the root.
-
-## Related
-
-- [Encryption and secrets](/docs/encryption-and-secrets): the env keys this doc references.
-- [Environments](/docs/environments): the runtime axis you create after install.
-- [Providers](/docs/providers): the BYOK keys you wire after first login.

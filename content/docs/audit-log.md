@@ -45,15 +45,13 @@ The encrypted-at-rest tool audit is a key compliance feature: it records the arg
 
 The trace view's tool span has a "View audit" link. The audit page shows the full args (decrypted) and the result, plus a "Replay" button.
 
-### Replay a tool call
+### Replay a Tool Call
 
-`POST /api/v1/agent/monitoring/tool-audit/:callId/replay` re-dispatches the tool call with the same args, scoped to the original agent and user. The replay writes a new audit row. Useful for "did the entity backend really return 500?" investigations.
+`POST /api/v1/agent/tool-calls/{toolCallId}/replay` re-dispatches a persisted Tool Call through the generated public contract. The replay is a new operation; the original evidence remains unchanged. Replays execute real work and remain subject to authorization and Budget enforcement.
 
 ### Export
 
-`GET /api/v1/agent/monitoring/tool-audit?agent=...&format=csv` for tool audit export.
-
-Both decrypt on the fly. The export honours the requesting user's scope; cross-scope export requires admin.
+The generated public contract does not currently expose a tool-audit CSV export route. If an installation needs compliance export, query its operator-owned audit store through a separately reviewed, scope-enforcing process rather than relying on an undocumented HTTP endpoint.
 
 ### Retention
 

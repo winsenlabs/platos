@@ -58,29 +58,9 @@ Open the chat panel, click the trace icon next to a message. Or navigate directl
 
 The trace view has filters: by span name, by minimum duration, by attribute. Useful for "show me every tool call over 1 second on this thread".
 
-### Add a custom span
+### Custom instrumentation
 
-Inside a skill or a sub-agent, use the trace context:
-
-```ts
-import { trace } from "@platos/agent/trace";
-
-await trace.span("my.custom.op", { foo: "bar" }, async () => {
-  await doWork();
-});
-```
-
-The span auto-attaches to the current parent span and shows up in the trace view alongside built-in spans.
-
-### Timeline events
-
-Inside a span, emit timeline events for points-in-time without their own span:
-
-```ts
-trace.event("retry-retry", { retry: 2 });
-```
-
-Renders as a vertical pip on the span row. See the span-timeline-events skill for the full event catalogue.
+The published consumer SDKs do not export an `@platos/agent/trace` package or a public custom-span helper. Instrument an entity backend in its own observability stack, and correlate it with the Platos Tool Call or Thread identifier available at that boundary. Do not rely on undocumented `trace.span()` or `trace.event()` examples.
 
 ### Trace cost
 

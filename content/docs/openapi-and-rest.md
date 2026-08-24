@@ -13,7 +13,7 @@ questions:
 related:
   - sdks
   - auth-modes
-  - webhooks
+  - events-and-polling
 ---
 
 # OpenAPI and REST
@@ -73,4 +73,4 @@ PAT bearer is the simplest path. See [Auth modes](/docs/auth-modes) for the thre
 
 - [SDKs](/docs/sdks): first-party clients that already wrap the spec.
 - [Auth modes](/docs/auth-modes): the three modes the spec documents.
-- [Webhooks](/docs/webhooks): the outbound REST surface (events Platos pushes to you).
+- [Events, streaming, and polling](/docs/events-and-polling): the supported alternatives to an outbound event-delivery API.

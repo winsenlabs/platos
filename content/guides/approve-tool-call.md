@@ -1,7 +1,7 @@
 ---
 slug: approve-tool-call
 title: Add a human approval gate to a tool
-description: Mark a tool as needing approval, then approve or reject from the inbox or via webhook.
+description: Mark a tool as needing approval, then approve or reject it through the documented approval API.
 category: recipes
 order: 70
 questions:
@@ -59,7 +59,7 @@ The runtime opens a [waiting state](/docs/approvals-and-hitl), sends a notificat
 
 ## Auto-approve based on args
 
-Wire a webhook on `approval.requested`. Your handler reads the safe argument summary, decides, and calls `POST /api/v1/agent/approvals/{approvalId}/resolve` when the conditions match. The dashboard records the machine actor.
+An operator-owned automation may poll the approval queue, read the safe argument summary, and call `POST /api/v1/agent/approvals/{approvalId}/resolve` when its policy matches. The dashboard records the machine actor.
 
 ## Next steps
 

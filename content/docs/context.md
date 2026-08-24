@@ -78,10 +78,13 @@ Use `${key}` placeholders in any prompt block. The builder resolves at render ti
 Pass `sessionContext` on the chat or messages endpoint:
 
 ```ts
-await platos.threads.update({
-  threadId,
-  messages: [{ role: "user", content: "Ship this order." }],
-  sessionContext: { entity_ids: ["entity-1"], shipping_address_id: "addr-9" },
+await fetch("https://platos.example.com/api/v1/agent/threads/{threadId}/stream", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    message: "Ship this order.",
+    sessionContext: { entity_ids: ["entity-1"], shipping_address_id: "addr-9" },
+  }),
 });
 ```
 

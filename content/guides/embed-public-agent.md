@@ -11,7 +11,7 @@ questions:
   - "How do I capture the visitor's email after a chat?"
 related:
   - consume-platos-mcp
-  - webhook-on-conversation-events
+  - events-and-polling
 ---
 
 # Embed a public agent on a website
@@ -72,11 +72,7 @@ A `<platos-chat>` element on your page wired to a Platos agent, mint-on-demand f
 - Send a message; tokens stream.
 - Hit the rate cap (e.g. 31 messages in a minute). The 32nd request returns `RATE_LIMITED` with a `Retry-After` header.
 
-## Lock down with a webhook
-
-Subscribe to `conversation.created` and `message.created` for audit. See [Subscribe to conversation events](/guides/webhook-on-conversation-events).
-
 ## Next steps
 
 - [Consume Platos via MCP](/guides/consume-platos-mcp) if you want the same agent's tools to power a non-embedded MCP client.
-- [Subscribe to conversation events](/guides/webhook-on-conversation-events) for downstream notifications.
+- [Events, streaming, and polling](/docs/events-and-polling) for the documented event-consumption boundary.

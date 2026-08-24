@@ -79,5 +79,5 @@ Use Postman mode in the chat panel to inspect the assembled prompt and any tool 
 
 - [Connect an entity (TypeScript)](/guides/connect-entity-platools-ts) to give the agent tools.
 - [Version, canary, and roll back an agent](/guides/version-and-rollback) for safe iteration.
-- [Evaluate Agent Versions](/guides/evaluate-agent-versions) to compare versions on a fixed set.
+- [Run a golden set](/guides/run-golden-set) to evaluate representative Threads against fixed criteria.
 - [Set a per-agent budget cap](/guides/set-budget-cap) before exposing the agent to traffic.

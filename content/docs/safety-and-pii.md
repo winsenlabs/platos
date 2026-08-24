@@ -58,7 +58,7 @@ In the agent's safety tab, toggle default categories on/off and add custom regex
 
 ### Auto-pause on incident
 
-Wire a webhook on the `safety.event` topic. When a `block` event fires more than N times in M seconds for the same agent, your alerting flips a feature flag (or calls `agents.update` with `isActive: false`) to pause the agent for review.
+Poll the scoped safety-event monitoring resource from an operator-owned alerting adapter. When block events exceed your threshold, pause the Agent through a documented control-plane operation and record the action in audit.
 
 ### Export for compliance
 

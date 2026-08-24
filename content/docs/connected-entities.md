@@ -26,14 +26,16 @@ A connected entity is an external backend (your service, a SaaS adapter, a micro
 
 ## What it is
 
-An `Entity` record plus a live connection. The record stores:
+An `Entity` record plus a live connection. The safe Entity row exposes:
 
-- `slug` and `name`: identifier for the entity within the project scope.
-- `serviceSecret`: encrypted, used to authenticate the entity when it connects. Dashboard provider/MCP credentials live separately in the Platos-native Environment credential store; neither path dual-writes to an external vendor secret store.
-- `entityType`: a discriminator (e.g. `slack`, `calendar`, `custom`).
-- `status`: `online` or `offline`, updated by the gateway on connect/disconnect.
+- `entityId` and `displayName`: the external identifier and label within a Project.
+- `connectionKind`: `wire` for an inbound platools connection or `mcp` for an outbound MCP client.
+- `connectionStatus`: `connected` or `disconnected`, updated by connection or discovery state.
+- `mcpUrls`, `allowedOrigins`, and connection metadata appropriate to the selected kind.
 
-The entity opens a Socket.IO connection at `/connections` with its `serviceSecret` on the upgrade. `tool-sync-ws.service.ts` owns the lifecycle: the early-message buffer is attached before the async auth completes, and once the secret verifies, the buffered frames are replayed in order. This is the load-bearing race-fix at lines 130-135 and 281-284 of that file. Do not violate it.
+For a wire Entity, Platos stores the service secret as an encrypted Environment credential and reveals the raw value only when it is created or rotated. Secret material is not a field on the safe Entity response.
+
+The entity opens a raw WebSocket connection through the platools `/tools/sync` transport. The SDK normalizes that base URL to `/tools/sync/ws/sdk`, sends the service secret as a bearer credential, and identifies the Entity with the `entity` query parameter. `tool-sync-ws.service.ts` attaches an early-message buffer before asynchronous authentication and replays those frames after the secret verifies.
 
 After auth, the entity pushes its tool catalogue. The registry mirrors the catalogue per scope, the agent matrix picks it up, and tool calls dispatch back to the entity over the same socket.
 
@@ -67,18 +69,29 @@ curl -X POST https://platos.example.com/api/v1/agent/entities \
 Use `@platosdev/platools-sdk` (Node) or `platools` (Python):
 
 ```ts
-import { connect } from "@platosdev/platools-sdk";
+import { Platools } from "@platosdev/platools-sdk";
+import { z } from "zod";
 
-const conn = connect({
-  url: "wss://platos.example.com/connections",
-  serviceSecret: process.env.PLATOS_SERVICE_SECRET,
+const platools = new Platools({
+  url: "wss://platos.example.com/tools/sync?entity=my-entity",
+  secret: process.env.PLATOS_SERVICE_SECRET,
 });
 
-conn.tool("send_email", { to: { type: "string" }, body: { type: "string" } }, async (args, ctx) => {
-  // ctx carries forwarded user-token from Platos.
-  await mailer.send(args);
-  return { ok: true };
-});
+platools.tool(
+  {
+    name: "send_email",
+    input: z.object({ to: z.string().email(), body: z.string() }),
+    output: z.object({ ok: z.boolean() }),
+    auth: "user",
+  },
+  async (args, ctx) => {
+    // ctx carries the mapped per-call context from Platos.
+    await mailer.send(args);
+    return { ok: true };
+  },
+);
+
+await platools.connect();
 ```
 
 ### HMAC nonce signing

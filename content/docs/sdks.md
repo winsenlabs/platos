@@ -33,7 +33,7 @@ Platos ships first-party SDK packages on **npm** and **PyPI**. They split along 
 | `@platosdev/platools-sdk` | npm | Entity backend (Node) | TypeScript SDK for connecting an entity, declaring tools, and serving tool calls over WebSocket. |
 | `platools` | PyPI | Entity backend (Python) | Python SDK with the same surface as the Node version. |
 
-`@platosdev/client` (and its Python twin `platos-client`) covers `agents.*`, `threads.*`, `messages.*`, `attachments.*`, plus the streaming endpoint. It is the same surface external customers code against; the dashboard uses it internally.
+`@platosdev/client` covers `agents.*`, `threads.*`, `messages.*`, `approvals.*`, `budgets.*`, `monitoring.*`, and `tools.*`. Thread attachments are selected through `threads.send(..., { attachmentIds })`; the client does not expose a first-party `attachments.*` namespace.
 
 The platools packages cover entity registration: declare tools, handle the WebSocket lifecycle (auth, reconnect, replay), sign HMAC nonces, and dispatch tool calls. The Python and Node implementations are kept feature-equivalent.
 
@@ -60,7 +60,7 @@ import { PlatosClient } from "@platosdev/client";
 
 const platos = new PlatosClient({
   baseUrl: "https://platos.example.com",
-  token: process.env.PLATOS_PAT, // PAT for server-side, session token for browser
+  sessionToken,
 });
 
 const agents = await platos.agents.list();
@@ -69,11 +69,11 @@ const agents = await platos.agents.list();
 ### Consumer SDK: stream a turn
 
 ```ts
-const stream = await platos.threads.stream({ threadId, message: "Hi" });
+const stream = platos.threads.send(threadId, "Hi");
 
 for await (const event of stream) {
-  if (event.type === "text-delta") process.stdout.write(event.delta);
-  if (event.type === "artifact-created") console.log("artifact", event.artifactId);
+  if (event.type === "token") process.stdout.write(event.text);
+  if (event.type === "artifact_committed") console.log("artifact", event.artifactId);
 }
 ```
 
@@ -111,19 +111,20 @@ on each assistant bubble — see the [React widget](/docs/react-widget) doc.
 ### Entity SDK (Node)
 
 ```ts
-import { connect } from "@platosdev/platools-sdk";
+import { Platools } from "@platosdev/platools-sdk";
+import { z } from "zod";
 
-const conn = connect({
+const platools = new Platools({
   url: process.env.PLATOS_URL,
-  serviceSecret: process.env.PLATOS_SERVICE_SECRET,
+  secret: process.env.PLATOS_SERVICE_SECRET,
 });
 
-conn.tool(
-  "send_email",
+platools.tool(
   {
-    type: "object",
-    properties: { to: { type: "string" }, body: { type: "string" } },
-    required: ["to", "body"],
+    name: "send_email",
+    input: z.object({ to: z.string().email(), body: z.string() }),
+    output: z.object({ ok: z.boolean() }),
+    auth: "user",
   },
   async (args, ctx) => {
     // ctx.userToken is X-Platos-User-Token, opaque to us, verified by our auth.
@@ -132,23 +133,23 @@ conn.tool(
   },
 );
 
-await conn.start();
+await platools.connect();
 ```
 
 ### Entity SDK (Python)
 
 ```python
-from platools import connect
+from platools import Platools
 
 async def main():
-    conn = connect(url=..., service_secret=...)
+    platools = Platools(url=PLATOS_URL, secret=PLATOS_SERVICE_SECRET)
 
-    @conn.tool("send_email", input_schema={...})
-    async def send_email(args, ctx):
-        await mailer.send(args)
+    @platools.tool(name="send_email", auth="user")
+    async def send_email(to: str, body: str, ctx=None) -> dict[str, bool]:
+        await mailer.send({"to": to, "body": body})
         return {"ok": True}
 
-    await conn.start()
+    await platools.connect()
 ```
 
 ### Extend with a custom tool

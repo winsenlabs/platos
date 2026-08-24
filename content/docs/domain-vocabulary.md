@@ -48,4 +48,4 @@ A **meta-tool** is only a router. Platos reserves that term for `find_tools` and
 
 ## External durable execution
 
-Trigger is an optional external durable-runtime vendor integration. Vendor identifiers and vendor terminology stay at that adapter boundary. Platos records user work as Turns and background work as Jobs regardless of which execution provider performs the work.
+An optional external vendor adapter can provide durable execution. Vendor identifiers and terminology stay at that adapter boundary. Platos records user work as Turns and background work as Jobs regardless of which execution provider performs the work.

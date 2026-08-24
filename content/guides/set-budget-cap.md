@@ -42,13 +42,13 @@ A budget that fails loud and (optionally) refuses new turns when the cap is exce
 
 4. **Wire alerts (optional).**
 
-   Subscribe a webhook to `budget.soft_warn` and `budget.exceeded`. Tie to your alerting channel.
+   Poll budget status from your operator-owned alerting adapter and notify on the warning or hard-cap threshold.
 
 ## Verify
 
 - The agent's header shows the budget pill.
-- Crossing the soft warn produces a `budget.soft_warn` webhook.
-- Crossing the cap produces a `budget.exceeded` webhook; with hard cap on, the next turn returns `BUDGET_CAP_EXCEEDED` plus the reset time.
+- Crossing the soft warning changes the budget status while Turns continue.
+- Crossing the hard cap makes the next Turn return `BUDGET_CAP_EXCEEDED` plus the reset time.
 
 ## Bypass during incident
 

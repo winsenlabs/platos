@@ -19,7 +19,7 @@ related:
 
 # Budget caps
 
-A budget cap is a per-period spend ceiling. When an agent or environment hits its cap, the runtime blocks new turns (and emits a webhook). Caps roll up across the four spend lanes the runtime tracks: model inference, embeddings, LLM-judge evals, and skill metering. Without caps, an executionaway prompt loop is an executionaway invoice.
+A budget cap is a per-period spend ceiling. When an Agent or Environment hits its cap, the runtime blocks new Turns. Caps roll up across the four spend lanes the runtime tracks: model inference, embeddings, LLM-judge evals, and skill metering.
 
 ## What it is
 
@@ -27,7 +27,7 @@ A `Budget` record keyed by Environment and optional Agent. It carries:
 
 - `period`: `daily`, `weekly`, `monthly`. Wall-clock periods aligned to UTC midnight.
 - `capCents`: the limit.
-- `softWarnCents`: optional; emits a warn webhook when crossed.
+- `softWarnCents`: optional warning threshold surfaced in budget status.
 - `hardCap`: when true, blocks turns. When false, alerts only.
 - `lanes`: optional; restrict to specific cost lanes (e.g. cap only on `model_inference`, leave embeddings unmetered).
 
@@ -53,11 +53,11 @@ The agent detail header shows a budget pill with "X% used today" when a cap exis
 
 ### When the cap hits
 
-A turn that would exceed the cap is rejected before it dispatches to the model. The agent's response to the user is `BUDGET_CAP_EXCEEDED` plus the reset time (next period boundary). A webhook (`budget.exceeded`) fires; tie it to your alerting.
+A Turn that would exceed the cap is rejected before it dispatches to the model. The Agent's response is `BUDGET_CAP_EXCEEDED` plus the reset time. Poll budget status or read monitoring records from your operator-owned alerting adapter.
 
 ### Soft warn
 
-Set `softWarnCents` to (say) 80% of cap. A `budget.soft_warn` webhook fires when spend crosses the threshold. The agent keeps active; the warn is informational.
+Set `softWarnCents` to 80% of the cap, for example. The Agent remains active after crossing this informational threshold; monitor the budget status from the documented API.
 
 ### Bypass during an incident
 
