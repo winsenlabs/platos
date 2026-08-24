@@ -368,9 +368,14 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
     });
 
     await check("controller.thread.archive-and-restore", async () => {
+      const threadOwnerScope = {
+        ...primary,
+        userId: primary.externalUserId,
+        agentId: primary.agentIds[0],
+      };
       const archive = await agentRequestResult(
         `/api/v1/agent/threads/${primary.threadId}/archive`,
-        primary,
+        threadOwnerScope,
         {
           method: "POST",
         }
@@ -380,7 +385,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
       expect(archived?.archivedAt).not.toBeNull();
       const restore = await agentRequestResult(
         `/api/v1/agent/threads/${primary.threadId}/unarchive`,
-        primary,
+        threadOwnerScope,
         {
           method: "POST",
         }
@@ -657,7 +662,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
       );
       const payload = await responsePayload(response);
       expect(response.status).toBe(400);
-      expect(payload).toMatchObject({ ok: false, error: { code: "INVALID_REQUEST" } });
+      expect(payload).toEqual({ ok: false, error: "Invalid toolMode" });
       expect(
         await database.agent.count({
           where: {
@@ -668,7 +673,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
       ).toBe(0);
       return {
         httpStatus: response.status,
-        errorCode: payload.error.code,
+        errorCode: payload.error,
         readBack: { persisted: false },
       };
     });
