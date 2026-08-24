@@ -281,8 +281,20 @@ describe("clean-slate domain schema", () => {
     }).filter((entry) => entry.isDirectory());
     expect(migrationDirectories.map((entry) => entry.name).sort()).toEqual([
       "00000000000000_initial",
+      "20260824010000_win144_observability_retry_vocabulary",
       "20260824111500_memory_profile_key_and_source_contract",
     ]);
+
+    const observabilityVocabularyMigration = readFileSync(
+      resolve(
+        packageRoot,
+        "prisma/migrations/20260824010000_win144_observability_retry_vocabulary/migration.sql"
+      ),
+      "utf8"
+    );
+    expect(observabilityVocabularyMigration).toContain(
+      'RENAME COLUMN "attempts" TO "retryCount"'
+    );
 
     const generated = execFileSync(resolve(packageRoot, "node_modules/.bin/prisma"), [
       "migrate",

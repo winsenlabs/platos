@@ -214,7 +214,7 @@ describe("AgentController clean scope regressions", () => {
     const { controller, req } = controllerHarness();
     controller.agentCrud.rollbackToVersion.mockResolvedValue({ id: AGENT_ID });
 
-    const result = await controller.rollbackAgentVersion(req, AGENT_ID, "version-target");
+    const result = await controller.rollbackAgentVersion(req, { agentId: AGENT_ID }, "version-target");
 
     expect(controller.agentCrud.rollbackToVersion).toHaveBeenCalledWith(
       AGENT_ID,
