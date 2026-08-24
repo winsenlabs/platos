@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { PlatosTaskExecutionController } from "./platos-task-execution.controller";
+import { JobExecutionController } from "./job-execution.controller";
 
 function responseMock() {
   return { status: vi.fn() };
@@ -7,7 +7,7 @@ function responseMock() {
 
 const body = {
   requestId: "run-a",
-  taskRowId: "job-a",
+  jobId: "job-a",
   payload: {},
   scope: {
     organizationId: "org-a",
@@ -17,10 +17,10 @@ const body = {
   invokedBy: "manual",
 };
 
-describe("PlatosTaskExecutionController", () => {
+describe("JobExecutionController", () => {
   it("rejects missing and invalid internal authentication before dispatch", async () => {
     const executionService = { execute: vi.fn() };
-    const controller = new PlatosTaskExecutionController(executionService as any);
+    const controller = new JobExecutionController(executionService as any);
 
     const missingResponse = responseMock();
     const missing = await controller.execute(
@@ -50,7 +50,7 @@ describe("PlatosTaskExecutionController", () => {
 
   it("rejects a same-length invalid token", async () => {
     const executionService = { execute: vi.fn() };
-    const controller = new PlatosTaskExecutionController(executionService as any);
+    const controller = new JobExecutionController(executionService as any);
     const response = responseMock();
 
     const result = await controller.execute(
@@ -74,7 +74,7 @@ describe("PlatosTaskExecutionController", () => {
         body: { status: "completed", result: { ok: true } },
       }),
     };
-    const controller = new PlatosTaskExecutionController(executionService as any);
+    const controller = new JobExecutionController(executionService as any);
     const response = responseMock();
 
     const result = await controller.execute(
@@ -96,7 +96,7 @@ describe("PlatosTaskExecutionController", () => {
         new Error("postgresql://writer:secret@db.internal/platos raw upstream body"),
       ),
     };
-    const controller = new PlatosTaskExecutionController(executionService as any);
+    const controller = new JobExecutionController(executionService as any);
     const response = responseMock();
 
     const result = await controller.execute(
@@ -108,7 +108,7 @@ describe("PlatosTaskExecutionController", () => {
     expect(response.status).toHaveBeenCalledWith(503);
     expect(result).toEqual({
       status: "failed",
-      error: { code: "TASK_SERVICE_UNAVAILABLE" },
+      error: { code: "JOB_SERVICE_UNAVAILABLE" },
     });
     expect(JSON.stringify(result)).not.toContain("writer:secret");
   });

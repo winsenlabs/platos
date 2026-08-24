@@ -153,14 +153,14 @@ export const agentSubrun = task({
     const agentUrl =
       env.PLATOS_AGENT_HTTP_URL || env.PLATOS_AGENT_API_URL || "http://localhost:3100";
 
-    const internalSecret = env.TRIGGER_INTERNAL_SECRET;
+    const internalSecret = env.PLATOS_COMPONENT_AUTH_SECRET;
     if (!internalSecret || internalSecret === "dev-internal-secret-change-me") {
       if (env.NODE_ENV === "production") {
         throw new Error(
-          "TRIGGER_INTERNAL_SECRET must be set to a secure value in production (openssl rand -hex 32)",
+          "PLATOS_COMPONENT_AUTH_SECRET must be set to a secure value in production (openssl rand -hex 32)",
         );
       }
-      logger.warn("TRIGGER_INTERNAL_SECRET is using the insecure default — set it before production deploy");
+      logger.warn("PLATOS_COMPONENT_AUTH_SECRET is using the insecure default — set it before production deploy");
     }
     const resolvedInternalSecret = internalSecret || "dev-internal-secret-change-me";
     const adminToken = env.PLATOS_INTERNAL_AUTH_TOKEN;

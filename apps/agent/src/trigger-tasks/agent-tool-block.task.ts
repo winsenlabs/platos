@@ -5,8 +5,7 @@ const env = process.env;
 /**
  * Durable tool block execution — PPR-25 full impl.
  *
- * Triggered by the agent runtime (via the `spawn_bgo` meta-tool — formerly
- * `spawn_task`, kept as a deprecated alias) whenever the
+ * Invoked by the agent runtime through the `spawn_job` tool whenever the
  * LLM decides a tool call needs to survive a restart, exceed the default
  * 30s agent HTTP budget, or benefit from trigger.dev's retry policy.
  *
@@ -20,6 +19,8 @@ const env = process.env;
  * rather than re-throwing, so `runs.retrieve` callers see a clean handle.
  */
 export interface AgentToolBlockPayload {
+  /** Platos-owned Job identifier; external execution ids stay adapter-local. */
+  jobId?: string;
   /**
    * The tool to invoke, exactly as it appears in the scoped tool registry
    * (e.g. `list_deals`). Matches the MCP `tools/call` name.
@@ -61,7 +62,7 @@ export interface AgentToolBlockPayload {
   };
   /**
    * Legacy fields retained from the BLOCK-1 scaffold so existing callers
-   * (the old `spawn_task` — now `spawn_bgo` — payload shape) stay
+   * the external Trigger task payload shape stay
    * wire-compatible. Ignored when the new `tool` field is present.
    */
   taskId?: string;
@@ -76,7 +77,7 @@ export interface AgentToolBlockPayload {
   /**
    * IDENTITY-CORE §B.1 (G2) — the resolved end-user EXTERNAL id
    * ({{endUserId}} = Composio `user_id`), resolved ONCE by the parent
-   * (`spawn_bgo` handler, post-§C-gate) and carried on the LEGACY top-level
+   * (`spawn_job` handler, post-§C-gate) and carried on the LEGACY top-level
    * payload shape. `null` when the origin thread gated closed. The task
    * forwards it into the HMAC-signed `/internal/execute-tool` body so the
    * durable tool call substitutes the same person the streaming turn would.
@@ -94,7 +95,7 @@ export interface AgentToolBlockOutput {
 }
 
 /**
- * Backwards-compat shim: the original `spawn_task` (now `spawn_bgo`) payload used
+ * External adapter shim: the Trigger task payload uses
  * `{ organizationId, projectId, ... }` at the top level. If we receive a
  * legacy payload, lift it into the new shape so BLOCK-2 contract holds.
  */
@@ -119,7 +120,7 @@ function normalizePayload(p: AgentToolBlockPayload): AgentToolBlockPayload | nul
       // IDENTITY-CORE §B.1 (G2) — this legacy branch RECONSTRUCTS a fresh
       // payload object, so it must explicitly carry the top-level `endUserId`
       // through; without this line the resolved end user is silently dropped
-      // (the whole point of G2). `spawn_bgo` hits THIS branch, not the
+      // (the whole point of G2). `spawn_job` hits THIS branch, not the
       // new-shape `:93` passthrough.
       endUserId: p.endUserId,
     };
@@ -168,12 +169,12 @@ export const agentToolBlock = task({
       env.PLATOS_AGENT_HTTP_URL ||
       env.PLATOS_AGENT_API_URL ||
       "http://localhost:3100";
-    const internalSecret = env.TRIGGER_INTERNAL_SECRET;
+    const internalSecret = env.PLATOS_COMPONENT_AUTH_SECRET;
     if (!internalSecret || internalSecret === "dev-internal-secret-change-me") {
       if (env.NODE_ENV === "production") {
-        throw new Error("TRIGGER_INTERNAL_SECRET must be set to a secure value in production (openssl rand -hex 32)");
+        throw new Error("PLATOS_COMPONENT_AUTH_SECRET must be set to a secure value in production (openssl rand -hex 32)");
       }
-      logger.warn("TRIGGER_INTERNAL_SECRET is using the insecure default — set it via env var before production deploy");
+      logger.warn("PLATOS_COMPONENT_AUTH_SECRET is using the insecure default — set it via env var before production deploy");
     }
     const resolvedInternalSecret = internalSecret || "dev-internal-secret-change-me";
     const timestamp = new Date().toISOString();

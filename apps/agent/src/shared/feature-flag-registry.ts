@@ -74,9 +74,9 @@ export const FEATURE_FLAG_REGISTRY: readonly FeatureFlagDefinition[] = [
     defaultValue: true,
   },
   {
-    key: "enable_bgo_cap",
+    key: "enable_job_cap",
     description:
-      "Enforce PLATOS_MAX_BGOS_PER_TURN per-thread cap. Kill-switch in case of false-positive caps on legit workloads.",
+      "Enforce PLATOS_MAX_JOBS_PER_TURN per-thread cap. Kill-switch in case of false-positive caps on legit workloads.",
     defaultValue: true,
   },
   {

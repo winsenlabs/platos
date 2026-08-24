@@ -374,7 +374,7 @@ export interface AgentVersionSnapshot {
   contextMapping?: Record<string, unknown> | null;
   providerKeyId?: string | null;
   visibility?: string | null;
-  maxBgosPerTurn?: number | null;
+  maxJobsPerTurn?: number | null;
   agentRetryConfig?: Record<string, unknown> | null;
 }
 
@@ -444,7 +444,7 @@ export interface AgentRecord {
   clusteringId?: string | null;
   /** Compatibility settings carried inside the active AgentVersion. */
   visibility?: string | null;
-  maxBgosPerTurn?: number | null;
+  maxJobsPerTurn?: number | null;
   agentRetryConfig?: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
@@ -477,8 +477,7 @@ export class AgentCrudService {
     list_memories: true,
     relate: true,
     memory_extract: false,
-    spawn_bgo: true,
-    spawn_task: true,
+    spawn_job: true,
     agent_batch: true,
   };
 
@@ -572,7 +571,7 @@ export class AgentCrudService {
       contextMapping: (source.contextMapping as Record<string, unknown> | null) ?? null,
       providerKeyId: source.providerKeyId ?? null,
       visibility: source.visibility ?? null,
-      maxBgosPerTurn: source.maxBgosPerTurn ?? null,
+      maxJobsPerTurn: source.maxJobsPerTurn ?? null,
       agentRetryConfig: (source.agentRetryConfig as Record<string, unknown> | null) ?? null,
     };
   }
@@ -604,7 +603,7 @@ export class AgentCrudService {
       contextMapping: runtime.contextMapping,
       providerKeyId: runtime.providerKeyId,
       visibility: runtime.visibility,
-      maxBgosPerTurn: runtime.maxBgosPerTurn,
+      maxJobsPerTurn: runtime.maxJobsPerTurn,
       agentRetryConfig: runtime.agentRetryConfig,
     });
   }
@@ -642,7 +641,7 @@ export class AgentCrudService {
       contextMapping: snapshot.contextMapping ?? null,
       providerKeyId: snapshot.providerKeyId ?? null,
       visibility: snapshot.visibility ?? null,
-      maxBgosPerTurn: snapshot.maxBgosPerTurn ?? null,
+      maxJobsPerTurn: snapshot.maxJobsPerTurn ?? null,
       agentRetryConfig: snapshot.agentRetryConfig ?? null,
       ...(enabledTools ? { enabledTools } : {}),
     };

@@ -328,7 +328,7 @@ export function buildPlatosControlToolHandlers(deps: {
     {
       name: "memories.extract_now",
       description:
-        "Trigger the memory extractor against a thread immediately (bypassing " +
+        "Dispatch the memory extractor against a thread immediately (bypassing " +
         "the scheduled sweep). Honours the agent's stored `extractionPolicy`; " +
         "pass `policyOverride` to tweak `enabled` / `kinds` / " +
         "`confidenceThreshold` / `maxPerSession` / `minMessagesBeforeRun` for " +
@@ -800,9 +800,9 @@ export function buildPlatosControlToolHandlers(deps: {
       },
     },
     {
-      name: "evals.run",
+      name: "evals.dispatch",
       description:
-        "Run the judge-LLM pipeline against (agentId, threadId, criterionId). " +
+        "Dispatch the judge-LLM pipeline against (agentId, threadId, criterionId). " +
         "Blocks a turn when no self-evaluation guard is violated. Writes a PlatosAgentEval row.",
       inputSchema: {
         type: "object",
@@ -923,9 +923,9 @@ export function buildPlatosControlToolHandlers(deps: {
       },
     },
 
-    // ── audit.* ────────────────────────────────────────────────────
+    // ── tool_calls.* ───────────────────────────────────────────────
     {
-      name: "audit.tool_calls.query",
+      name: "tool_calls.list",
       description:
         "Query the tool-call audit ledger. Scope-filtered, paginated.",
       inputSchema: {

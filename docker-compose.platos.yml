@@ -366,7 +366,7 @@ services:
       # direct. Self-hosted Trigger.dev URLs are supported.
       TRIGGER_API_URL: "${TRIGGER_API_URL:-}"
       TRIGGER_SECRET_KEY: "${TRIGGER_SECRET_KEY:-}"
-      TRIGGER_INTERNAL_SECRET: "${TRIGGER_INTERNAL_SECRET:?required — openssl rand -hex 32}"
+      PLATOS_COMPONENT_AUTH_SECRET: "${PLATOS_COMPONENT_AUTH_SECRET:?required — openssl rand -hex 32}"
       # Trigger Sessions durable chat (Option 1 — Platos proxies). When true,
       # durable-mode agents route turns through the platos.chat.session worker
       # + gateway proxy-bridge instead of the durable-turn task path.
@@ -376,7 +376,7 @@ services:
       PLATOS_PER_ORG_CONCURRENCY: "${PLATOS_PER_ORG_CONCURRENCY:-10}"
       PLATOS_PER_ORG_BATCH_CONCURRENCY: "${PLATOS_PER_ORG_BATCH_CONCURRENCY:-10}"
       PLATOS_BATCH_ITEM_CONCURRENCY: "${PLATOS_BATCH_ITEM_CONCURRENCY:-3}"
-      PLATOS_MAX_BGOS_PER_TURN: "${PLATOS_MAX_BGOS_PER_TURN:-5}"
+      PLATOS_MAX_JOBS_PER_TURN: "${PLATOS_MAX_JOBS_PER_TURN:-5}"
       PLATOS_TURN_MAX_MS: "${PLATOS_TURN_MAX_MS:-300000}"
       PLATOS_RATE_LIMIT_PER_MIN: "${PLATOS_RATE_LIMIT_PER_MIN:-30}"
       PLATOS_RATE_LIMIT_PER_DAY: "${PLATOS_RATE_LIMIT_PER_DAY:-200}"

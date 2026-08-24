@@ -100,14 +100,14 @@ const REPRESENTATIVE_REAL_TOOLS: Record<string, string> = {
   notifications: "notifications.delete",
   oauth: "oauth.create_client",
   org: "org.add_member",
-  platos_tasks: "platos_tasks.create",
+  jobs: "jobs.create",
   platos: "platos.diff_agents",
   projects: "projects.list_all",
   providers: "providers.add_key",
-  runs: "runs.get_trace",
-  scopes: "scopes.bootstrap_demo_data",
+    scopes: "scopes.bootstrap_demo_data",
   skills: "skills.disable",
   threads: "threads.create",
+  tool_calls: "tool_calls.list",
   traces: "traces.get",
   trigger: "trigger.batches.get",
 };
@@ -384,9 +384,9 @@ describe("WIN-129 canonical control-plane contract", () => {
     const handlers = runtimeHandlers().sort((a, b) => a.name.localeCompare(b.name));
     const generated = manifest.inventories.mcpTools;
 
-    expect(handlers).toHaveLength(206);
-    expect(manifest.summary.mcpTools).toBe(206);
-    expect(new Set(handlers.map((handler) => handler.name)).size).toBe(206);
+    expect(handlers).toHaveLength(202);
+    expect(manifest.summary.mcpTools).toBe(202);
+    expect(new Set(handlers.map((handler) => handler.name)).size).toBe(202);
     expect(handlers.map((handler) => handler.name)).toEqual(generated.map((tool) => tool.name));
 
     for (let index = 0; index < handlers.length; index++) {
@@ -400,7 +400,7 @@ describe("WIN-129 canonical control-plane contract", () => {
     }
 
     const namePattern = new RegExp(manifest.toolNamePolicy.syntax);
-    expect(manifest.toolNamePolicy.baseline).toBe("existing-dotted-206");
+    expect(manifest.toolNamePolicy.baseline).toBe("canonical-dotted-202");
     expect(generated.every((tool) => namePattern.test(tool.name))).toBe(true);
   });
 

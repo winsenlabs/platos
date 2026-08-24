@@ -9,11 +9,12 @@ import {
 } from "../shared/database.provider";
 import { env } from "../shared/env";
 import { REDIS_TOKEN } from "../shared/redis.provider";
+import { jobInvocationSelect, jobInvocationType } from "./job-persistence";
 
 const INVOCATION_TYPES = ["agent", "manual", "schedule", "webhook"] as const;
 const REQUEST_KEYS = new Set([
   "requestId",
-  "taskRowId",
+  "jobId",
   "payload",
   "scope",
   "invokedBy",
@@ -40,20 +41,20 @@ const SENSITIVE_KEY_NAMES = new Set([
   "connectionstring",
 ]);
 const IDENTIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
-const REGISTERED_TASK_ID_RE = /^[a-z0-9-]{1,64}$/;
+const REGISTERED_JOB_ID_RE = /^[a-z0-9-]{1,64}$/;
 const MAX_JSON_BYTES = 64 * 1024;
 const MAX_DEPTH = 8;
 const MAX_COLLECTION_ITEMS = 100;
 const MAX_STRING_LENGTH = 8192;
 const IDEMPOTENCY_TTL_SECONDS = 7 * 24 * 60 * 60;
-const MAX_TASK_TIMEOUT_MS = 580_000;
+const MAX_JOB_TIMEOUT_MS = 580_000;
 
 type InvocationType = (typeof INVOCATION_TYPES)[number];
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
-export interface PlatosTaskExecutionRequest {
+export interface JobExecutionRequest {
   requestId: string;
-  taskRowId: string;
+  jobId: string;
   payload: Record<string, JsonValue>;
   scope: {
     organizationId: string;
@@ -65,40 +66,40 @@ export interface PlatosTaskExecutionRequest {
   agentId?: string;
 }
 
-export type PlatosTaskExecutionErrorCode =
+export type JobExecutionErrorCode =
   | "INVALID_REQUEST"
-  | "TASK_NOT_FOUND_OR_INACTIVE"
-  | "TASK_NOT_AUTHORIZED"
-  | "TASK_NOT_REGISTERED"
+  | "JOB_NOT_FOUND_OR_INACTIVE"
+  | "JOB_NOT_AUTHORIZED"
+  | "JOB_NOT_REGISTERED"
   | "IDEMPOTENCY_CONFLICT"
   | "IDEMPOTENCY_IN_PROGRESS"
   | "IDEMPOTENCY_UNAVAILABLE"
-  | "TASK_SERVICE_UNAVAILABLE"
-  | "TASK_TIMEOUT"
-  | "TASK_EXECUTION_FAILED"
-  | "TASK_RESULT_REJECTED";
+  | "JOB_SERVICE_UNAVAILABLE"
+  | "JOB_TIMEOUT"
+  | "JOB_EXECUTION_FAILED"
+  | "JOB_RESULT_REJECTED";
 
-export type PlatosTaskExecutionBody =
+export type JobExecutionBody =
   | { status: "completed"; result?: JsonValue; replayed?: true }
-  | { status: "failed"; error: { code: PlatosTaskExecutionErrorCode } };
+  | { status: "failed"; error: { code: JobExecutionErrorCode } };
 
-export interface PlatosTaskExecutionHttpResult {
+export interface JobExecutionHttpResult {
   httpStatus: number;
-  body: PlatosTaskExecutionBody;
+  body: JobExecutionBody;
 }
 
 interface IdempotencyRecord {
   hash: string;
   state: "running" | "completed" | "failed";
   result?: JsonValue;
-  code?: PlatosTaskExecutionErrorCode;
+  code?: JobExecutionErrorCode;
   httpStatus?: number;
 }
 
-class TaskTimeoutError extends Error {}
-class TaskResultRejectedError extends Error {}
+class JobTimeoutError extends Error {}
+class JobResultRejectedError extends Error {}
 
-function registeredTaskWorkerMain(): void {
+function registeredJobWorkerMain(): void {
   const { parentPort, workerData } =
     require("node:worker_threads") as typeof import("node:worker_threads");
   const { createContext, runInContext } = require("node:vm") as typeof import("node:vm");
@@ -148,7 +149,7 @@ function registeredTaskWorkerMain(): void {
               const output = outputWasSet ? outputValue : returned;
               if (output === undefined) return undefined;
               const serialized = stringify(output);
-              if (typeof serialized !== "string") throw new Error("task result is not JSON");
+              if (typeof serialized !== "string") throw new Error("job result is not JSON");
               return serialized;
             },
           });
@@ -157,7 +158,7 @@ function registeredTaskWorkerMain(): void {
         { timeout: 1_000, displayErrors: false }
       ) as { serializeOutput: (returned: unknown) => string | undefined };
       const wrappedSource = `
-        (async function __platosTaskWrapper__(payload, ctx) {
+        (async function __platosJobWrapper__(payload, ctx) {
           ${data.source}
           if (typeof run !== "function") throw new Error("invalid registered handler");
           return await run(payload, ctx);
@@ -190,7 +191,7 @@ function registeredTaskWorkerMain(): void {
   })();
 }
 
-const REGISTERED_TASK_WORKER_SOURCE = `(${registeredTaskWorkerMain.toString()})()`;
+const REGISTERED_JOB_WORKER_SOURCE = `(${registeredJobWorkerMain.toString()})()`;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
@@ -270,10 +271,10 @@ function configuredSensitiveValues(): string[] {
   );
 }
 
-export function parsePlatosTaskExecutionRequest(input: unknown): PlatosTaskExecutionRequest | null {
+export function parseJobExecutionRequest(input: unknown): JobExecutionRequest | null {
   if (!isPlainObject(input) || !exactKeys(input, REQUEST_KEYS)) return null;
   if (!IDENTIFIER_RE.test(String(input.requestId ?? ""))) return null;
-  if (!IDENTIFIER_RE.test(String(input.taskRowId ?? ""))) return null;
+  if (!IDENTIFIER_RE.test(String(input.jobId ?? ""))) return null;
   if (!isPlainObject(input.scope) || !exactKeys(input.scope, SCOPE_KEYS)) return null;
 
   const organizationId = input.scope.organizationId;
@@ -310,7 +311,7 @@ export function parsePlatosTaskExecutionRequest(input: unknown): PlatosTaskExecu
 
   return {
     requestId: String(input.requestId),
-    taskRowId: String(input.taskRowId),
+    jobId: String(input.jobId),
     payload: payload as Record<string, JsonValue>,
     scope: {
       organizationId,
@@ -332,12 +333,12 @@ function stableJson(value: JsonValue): string {
     .join(",")}}`;
 }
 
-function requestHash(request: PlatosTaskExecutionRequest): string {
+function requestHash(request: JobExecutionRequest): string {
   return createHash("sha256")
     .update(
       stableJson({
         requestId: request.requestId,
-        taskRowId: request.taskRowId,
+        jobId: request.jobId,
         payload: request.payload,
         scope: request.scope,
         invokedBy: request.invokedBy,
@@ -349,30 +350,29 @@ function requestHash(request: PlatosTaskExecutionRequest): string {
 
 function failure(
   httpStatus: number,
-  code: PlatosTaskExecutionErrorCode
-): PlatosTaskExecutionHttpResult {
+  code: JobExecutionErrorCode
+): JobExecutionHttpResult {
   return { httpStatus, body: { status: "failed", error: { code } } };
 }
 
 @Injectable()
-export class PlatosTaskExecutionService {
+export class JobExecutionService {
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
     @Inject(REDIS_TOKEN) private readonly redis: Redis
   ) {}
 
-  async execute(request: PlatosTaskExecutionRequest): Promise<PlatosTaskExecutionHttpResult> {
-    let task: {
+  async execute(request: JobExecutionRequest): Promise<JobExecutionHttpResult> {
+    let job: {
       externalId: string | null;
       handler: string;
       timeoutSeconds: number;
-      triggerType: string;
       allowedAgentIds: string[];
     } | null;
     try {
-      task = await this.prisma.job.findFirst({
+      job = await this.prisma.job.findFirst({
         where: {
-          id: request.taskRowId,
+          id: request.jobId,
           status: "ACTIVE",
           ...environmentScopeWhere(request.scope),
         },
@@ -380,33 +380,33 @@ export class PlatosTaskExecutionService {
           externalId: true,
           handler: true,
           timeoutSeconds: true,
-          triggerType: true,
+          ...jobInvocationSelect(),
           allowedAgentIds: true,
         },
       });
     } catch {
-      return failure(503, "TASK_SERVICE_UNAVAILABLE");
+      return failure(503, "JOB_SERVICE_UNAVAILABLE");
     }
-    if (!task) return failure(404, "TASK_NOT_FOUND_OR_INACTIVE");
-    if (!task.externalId || !REGISTERED_TASK_ID_RE.test(task.externalId) || !task.handler.trim()) {
-      return failure(422, "TASK_NOT_REGISTERED");
+    if (!job) return failure(404, "JOB_NOT_FOUND_OR_INACTIVE");
+    if (!job.externalId || !REGISTERED_JOB_ID_RE.test(job.externalId) || !job.handler.trim()) {
+      return failure(422, "JOB_NOT_REGISTERED");
     }
     if (
-      task.triggerType !== request.invokedBy &&
-      !(request.invokedBy === "agent" && task.triggerType === "agent-spawn")
+      jobInvocationType(job) !== request.invokedBy &&
+      !(request.invokedBy === "agent" && jobInvocationType(job) === "agent-spawn")
     ) {
-      return failure(403, "TASK_NOT_AUTHORIZED");
+      return failure(403, "JOB_NOT_AUTHORIZED");
     }
     if (
       request.invokedBy === "agent" &&
-      task.allowedAgentIds.length > 0 &&
-      !task.allowedAgentIds.includes(request.agentId!)
+      job.allowedAgentIds.length > 0 &&
+      !job.allowedAgentIds.includes(request.agentId!)
     ) {
-      return failure(403, "TASK_NOT_AUTHORIZED");
+      return failure(403, "JOB_NOT_AUTHORIZED");
     }
 
     const hash = requestHash(request);
-    const key = `internal-task-execution:${createHash("sha256")
+    const key = `internal-job-execution:${createHash("sha256")
       .update(`${request.scope.environmentId}:${request.requestId}`)
       .digest("hex")}`;
     const running: IdempotencyRecord = { hash, state: "running" };
@@ -444,18 +444,18 @@ export class PlatosTaskExecutionService {
       return failure(409, "IDEMPOTENCY_IN_PROGRESS");
     }
 
-    let result: PlatosTaskExecutionHttpResult;
+    let result: JobExecutionHttpResult;
     try {
       const output = await this.runRegisteredHandler(
-        task.handler,
-        task.externalId,
-        task.timeoutSeconds,
+        job.handler,
+        job.externalId,
+        job.timeoutSeconds,
         request.payload
       );
       await this.prisma.job
         .updateMany({
           where: {
-            id: request.taskRowId,
+            id: request.jobId,
             status: "ACTIVE",
             ...environmentScopeWhere(request.scope),
           },
@@ -464,10 +464,10 @@ export class PlatosTaskExecutionService {
         .catch(() => undefined);
       result = { httpStatus: 200, body: { status: "completed", result: output } };
     } catch (error: unknown) {
-      if (error instanceof TaskTimeoutError) result = failure(504, "TASK_TIMEOUT");
-      else if (error instanceof TaskResultRejectedError)
-        result = failure(422, "TASK_RESULT_REJECTED");
-      else result = failure(500, "TASK_EXECUTION_FAILED");
+      if (error instanceof JobTimeoutError) result = failure(504, "JOB_TIMEOUT");
+      else if (error instanceof JobResultRejectedError)
+        result = failure(422, "JOB_RESULT_REJECTED");
+      else result = failure(500, "JOB_EXECUTION_FAILED");
     }
 
     const record: IdempotencyRecord =
@@ -489,26 +489,26 @@ export class PlatosTaskExecutionService {
 
   private async runRegisteredHandler(
     source: string,
-    taskId: string,
+    jobId: string,
     timeoutSeconds: number,
     payload: Record<string, JsonValue>
   ): Promise<JsonValue | undefined> {
-    const timeoutMs = Math.min(Math.max(timeoutSeconds, 1) * 1000, MAX_TASK_TIMEOUT_MS);
-    const taskHash = createHash("sha256").update(taskId).digest("hex").slice(0, 12);
-    const worker = new Worker(REGISTERED_TASK_WORKER_SOURCE, {
+    const timeoutMs = Math.min(Math.max(timeoutSeconds, 1) * 1000, MAX_JOB_TIMEOUT_MS);
+    const jobHash = createHash("sha256").update(jobId).digest("hex").slice(0, 12);
+    const worker = new Worker(REGISTERED_JOB_WORKER_SOURCE, {
       eval: true,
       env: {},
       argv: [],
       execArgv: [],
-      name: `platos-task-${taskHash}`,
+      name: `platos-job-${jobHash}`,
       resourceLimits: {
         maxOldGenerationSizeMb: 32,
         maxYoungGenerationSizeMb: 8,
         stackSizeMb: 2,
       },
       workerData: {
-        contextName: `platos-task-${taskHash}`,
-        filename: `platos-task-${taskHash}.js`,
+        contextName: `platos-job-${jobHash}`,
+        filename: `platos-job-${jobHash}.js`,
         payloadJson: JSON.stringify(payload),
         source,
         timeoutMs,
@@ -526,31 +526,31 @@ export class PlatosTaskExecutionService {
         else resolve(value);
       };
       const timer = setTimeout(() => {
-        void finish(new TaskTimeoutError());
+        void finish(new JobTimeoutError());
       }, timeoutMs);
 
       worker.once("message", (message: unknown) => {
         if (!isPlainObject(message) || typeof message.ok !== "boolean") {
-          void finish(new Error("registered task execution failed"));
+          void finish(new Error("registered job execution failed"));
           return;
         }
         if (message.ok) {
           if (message.serialized !== undefined && typeof message.serialized !== "string") {
-            void finish(new TaskResultRejectedError());
+            void finish(new JobResultRejectedError());
             return;
           }
           void finish(undefined, message.serialized as string | undefined);
           return;
         }
-        if (message.kind === "timeout") void finish(new TaskTimeoutError());
-        else if (message.kind === "result") void finish(new TaskResultRejectedError());
-        else void finish(new Error("registered task execution failed"));
+        if (message.kind === "timeout") void finish(new JobTimeoutError());
+        else if (message.kind === "result") void finish(new JobResultRejectedError());
+        else void finish(new Error("registered job execution failed"));
       });
       worker.once("error", () => {
-        void finish(new Error("registered task execution failed"));
+        void finish(new Error("registered job execution failed"));
       });
       worker.once("exit", (code) => {
-        if (!settled && code !== 0) void finish(new Error("registered task execution failed"));
+        if (!settled && code !== 0) void finish(new Error("registered job execution failed"));
       });
     });
 
@@ -559,12 +559,12 @@ export class PlatosTaskExecutionService {
     try {
       normalized = JSON.parse(serialized) as unknown;
     } catch {
-      throw new TaskResultRejectedError();
+      throw new JobResultRejectedError();
     }
     const sensitiveValues = configuredSensitiveValues();
-    if (!validateJsonValue(normalized, sensitiveValues)) throw new TaskResultRejectedError();
+    if (!validateJsonValue(normalized, sensitiveValues)) throw new JobResultRejectedError();
     if (Buffer.byteLength(serialized, "utf8") > MAX_JSON_BYTES) {
-      throw new TaskResultRejectedError();
+      throw new JobResultRejectedError();
     }
     return normalized as JsonValue;
   }

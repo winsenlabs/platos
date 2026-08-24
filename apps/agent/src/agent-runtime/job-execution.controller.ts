@@ -3,27 +3,27 @@ import { timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 import { env } from "../shared/env";
 import {
-  parsePlatosTaskExecutionRequest,
-  PlatosTaskExecutionService,
-  type PlatosTaskExecutionBody,
-  type PlatosTaskExecutionHttpResult,
-} from "./platos-task-execution.service";
+  parseJobExecutionRequest,
+  JobExecutionService,
+  type JobExecutionBody,
+  type JobExecutionHttpResult,
+} from "./job-execution.service";
 
 type AuthErrorCode =
   | "INTERNAL_AUTH_NOT_CONFIGURED"
   | "INTERNAL_AUTH_REQUIRED"
   | "INTERNAL_AUTH_INVALID";
 
-@Controller("api/v1/agent/internal/platos-tasks")
-export class PlatosTaskExecutionController {
-  constructor(private readonly executionService: PlatosTaskExecutionService) {}
+@Controller("api/v1/agent/internal/jobs")
+export class JobExecutionController {
+  constructor(private readonly executionService: JobExecutionService) {}
 
   @Post("execute")
   async execute(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Body() body: unknown,
-  ): Promise<PlatosTaskExecutionBody | { status: "failed"; error: { code: AuthErrorCode } }> {
+  ): Promise<JobExecutionBody | { status: "failed"; error: { code: AuthErrorCode } }> {
     const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
     if (!expected) {
       res.status(503);
@@ -45,18 +45,18 @@ export class PlatosTaskExecutionController {
       return { status: "failed", error: { code: "INTERNAL_AUTH_INVALID" } };
     }
 
-    const request = parsePlatosTaskExecutionRequest(body);
+    const request = parseJobExecutionRequest(body);
     if (!request) {
       res.status(400);
       return { status: "failed", error: { code: "INVALID_REQUEST" } };
     }
 
-    let result: PlatosTaskExecutionHttpResult;
+    let result: JobExecutionHttpResult;
     try {
       result = await this.executionService.execute(request);
     } catch {
       res.status(503);
-      return { status: "failed", error: { code: "TASK_SERVICE_UNAVAILABLE" } };
+      return { status: "failed", error: { code: "JOB_SERVICE_UNAVAILABLE" } };
     }
     res.status(result.httpStatus);
     return result.body;

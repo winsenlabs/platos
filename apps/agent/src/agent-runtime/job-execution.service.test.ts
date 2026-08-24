@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  parsePlatosTaskExecutionRequest,
-  PlatosTaskExecutionService,
-  type PlatosTaskExecutionRequest,
-} from "./platos-task-execution.service";
+  parseJobExecutionRequest,
+  JobExecutionService,
+  type JobExecutionRequest,
+} from "./job-execution.service";
+import { jobInvocationProperty, jobInvocationSelect } from "./job-persistence";
 
-const request: PlatosTaskExecutionRequest = {
+const request: JobExecutionRequest = {
   requestId: "run-a",
-  taskRowId: "job-a",
+  jobId: "job-a",
   payload: { value: "safe-input" },
   scope: {
     organizationId: "org-a",
@@ -32,34 +33,34 @@ function redisMock() {
   };
 }
 
-function task(overrides: Record<string, unknown> = {}) {
+function job(overrides: Record<string, unknown> = {}) {
   return {
-    externalId: "registered-task",
+    externalId: "registered-job",
     handler: "async function run(payload) { return { echo: payload.value }; }",
     timeoutSeconds: 5,
-    triggerType: "manual",
+    ...jobInvocationProperty("manual"),
     allowedAgentIds: [],
     ...overrides,
   };
 }
 
-describe("PlatosTaskExecutionService", () => {
+describe("JobExecutionService", () => {
   let prisma: any;
   let redis: ReturnType<typeof redisMock>;
-  let service: PlatosTaskExecutionService;
+  let service: JobExecutionService;
 
   beforeEach(() => {
     prisma = {
       job: {
-        findFirst: vi.fn().mockResolvedValue(task()),
+        findFirst: vi.fn().mockResolvedValue(job()),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
     };
     redis = redisMock();
-    service = new PlatosTaskExecutionService(prisma, redis as any);
+    service = new JobExecutionService(prisma, redis as any);
   });
 
-  it("looks up only an active registered task through canonical Environment ancestry", async () => {
+  it("looks up only an active registered Job through canonical Environment ancestry", async () => {
     prisma.job.findFirst.mockResolvedValue(null);
 
     const result = await service.execute(request);
@@ -78,13 +79,13 @@ describe("PlatosTaskExecutionService", () => {
         externalId: true,
         handler: true,
         timeoutSeconds: true,
-        triggerType: true,
+        ...jobInvocationSelect(),
         allowedAgentIds: true,
       },
     });
     expect(result).toEqual({
       httpStatus: 404,
-      body: { status: "failed", error: { code: "TASK_NOT_FOUND_OR_INACTIVE" } },
+      body: { status: "failed", error: { code: "JOB_NOT_FOUND_OR_INACTIVE" } },
     });
   });
 
@@ -103,13 +104,13 @@ describe("PlatosTaskExecutionService", () => {
     'async function run(_payload, ctx) { return ctx.fetch.constructor("return process")().versions.node; }',
     'async function run(payload) { return payload.constructor.constructor("return process")().versions.node; }',
   ])("blocks registered handlers from recovering host constructors", async (handler) => {
-    prisma.job.findFirst.mockResolvedValue(task({ handler }));
+    prisma.job.findFirst.mockResolvedValue(job({ handler }));
 
     const result = await service.execute(request);
 
     expect(result).toEqual({
       httpStatus: 500,
-      body: { status: "failed", error: { code: "TASK_EXECUTION_FAILED" } },
+      body: { status: "failed", error: { code: "JOB_EXECUTION_FAILED" } },
     });
     expect(JSON.stringify(result)).not.toContain(process.versions.node);
   });
@@ -125,9 +126,9 @@ describe("PlatosTaskExecutionService", () => {
       "sensitive header smuggling",
       'await ctx.fetch("https://upstream.example", { headers: { authorization: "smuggled" } })',
     ],
-  ])("provides no network capability for %s", async (_description, attemptedFetch) => {
+  ])("provides no network capability for %s", async (_description, candidateFetch) => {
     prisma.job.findFirst.mockResolvedValue(
-      task({ handler: `async function run(_payload, ctx) { ${attemptedFetch}; }` })
+      job({ handler: `async function run(_payload, ctx) { ${candidateFetch}; }` })
     );
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -136,7 +137,7 @@ describe("PlatosTaskExecutionService", () => {
 
     expect(result).toEqual({
       httpStatus: 500,
-      body: { status: "failed", error: { code: "TASK_EXECUTION_FAILED" } },
+      body: { status: "failed", error: { code: "JOB_EXECUTION_FAILED" } },
     });
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
@@ -144,7 +145,7 @@ describe("PlatosTaskExecutionService", () => {
 
   it("enforces invocation type and the registered agent allowlist", async () => {
     prisma.job.findFirst.mockResolvedValue(
-      task({ triggerType: "agent-spawn", allowedAgentIds: ["agent-allowed"] })
+      job({ ...jobInvocationProperty("agent-spawn"), allowedAgentIds: ["agent-allowed"] })
     );
 
     const result = await service.execute({
@@ -155,7 +156,7 @@ describe("PlatosTaskExecutionService", () => {
 
     expect(result.body).toEqual({
       status: "failed",
-      error: { code: "TASK_NOT_AUTHORIZED" },
+      error: { code: "JOB_NOT_AUTHORIZED" },
     });
     expect(redis.set).not.toHaveBeenCalled();
   });
@@ -216,7 +217,7 @@ describe("PlatosTaskExecutionService", () => {
 
     expect(result).toEqual({
       httpStatus: 503,
-      body: { status: "failed", error: { code: "TASK_SERVICE_UNAVAILABLE" } },
+      body: { status: "failed", error: { code: "JOB_SERVICE_UNAVAILABLE" } },
     });
     expect(JSON.stringify(result)).not.toContain(sensitiveFailure.message);
     expect(redis.set).not.toHaveBeenCalled();
@@ -224,7 +225,7 @@ describe("PlatosTaskExecutionService", () => {
 
   it("terminates an asynchronous infinite loop and keeps the parent execution service healthy", async () => {
     prisma.job.findFirst.mockResolvedValue(
-      task({
+      job({
         handler: "async function run() { while (true) { await Promise.resolve(); } }",
         timeoutSeconds: 1,
       })
@@ -235,11 +236,11 @@ describe("PlatosTaskExecutionService", () => {
 
     expect(result).toEqual({
       httpStatus: 504,
-      body: { status: "failed", error: { code: "TASK_TIMEOUT" } },
+      body: { status: "failed", error: { code: "JOB_TIMEOUT" } },
     });
     expect(Date.now() - startedAt).toBeLessThan(5_000);
 
-    prisma.job.findFirst.mockResolvedValue(task());
+    prisma.job.findFirst.mockResolvedValue(job());
     const subsequent = await service.execute({ ...request, requestId: "run-after-timeout" });
     expect(subsequent).toEqual({
       httpStatus: 200,
@@ -249,20 +250,20 @@ describe("PlatosTaskExecutionService", () => {
 
   it("bounds synchronous registered code and maps VM cancellation to the timeout code", async () => {
     prisma.job.findFirst.mockResolvedValue(
-      task({ handler: "function run() { while (true) {} }", timeoutSeconds: 1 })
+      job({ handler: "function run() { while (true) {} }", timeoutSeconds: 1 })
     );
 
     const result = await service.execute(request);
 
     expect(result).toEqual({
       httpStatus: 504,
-      body: { status: "failed", error: { code: "TASK_TIMEOUT" } },
+      body: { status: "failed", error: { code: "JOB_TIMEOUT" } },
     });
   });
 
   it("rejects sensitive handler output instead of returning or storing it", async () => {
     prisma.job.findFirst.mockResolvedValue(
-      task({
+      job({
         handler: "async function run() { return { authorization: 'Bearer credential-sentinel' }; }",
       })
     );
@@ -272,7 +273,7 @@ describe("PlatosTaskExecutionService", () => {
 
     expect(result.body).toEqual({
       status: "failed",
-      error: { code: "TASK_RESULT_REJECTED" },
+      error: { code: "JOB_RESULT_REJECTED" },
     });
     expect(serialized).not.toContain("credential-sentinel");
     expect(serialized).not.toContain("authorization");
@@ -292,13 +293,13 @@ describe("PlatosTaskExecutionService", () => {
       "async function run() { return Array.from({ length: 101 }, (_, index) => index); }",
     ],
   ])("rejects %s before idempotency persistence", async (_description, handler) => {
-    prisma.job.findFirst.mockResolvedValue(task({ handler }));
+    prisma.job.findFirst.mockResolvedValue(job({ handler }));
 
     const result = await service.execute(request);
 
     expect(result).toEqual({
       httpStatus: 422,
-      body: { status: "failed", error: { code: "TASK_RESULT_REJECTED" } },
+      body: { status: "failed", error: { code: "JOB_RESULT_REJECTED" } },
     });
     const persisted = [...redis.values.values()].join(" ");
     expect(persisted).toContain('"state":"failed"');
@@ -306,20 +307,20 @@ describe("PlatosTaskExecutionService", () => {
   });
 });
 
-describe("parsePlatosTaskExecutionRequest", () => {
+describe("parseJobExecutionRequest", () => {
   it("accepts the strict secret-free callback contract", () => {
-    expect(parsePlatosTaskExecutionRequest(request)).toEqual(request);
+    expect(parseJobExecutionRequest(request)).toEqual(request);
   });
 
   it.each([
-    { ...request, handler: "source supplied by Trigger" },
-    { ...request, arbitraryTaskId: "not-registered" },
+    { ...request, handler: "source supplied by external runtime" },
+    { ...request, arbitraryJobId: "not-registered" },
     { ...request, payload: { apiKey: "credential-sentinel" } },
     { ...request, payload: { internalAuthToken: "credential-sentinel" } },
-    { ...request, payload: { handlerSource: "source supplied by Trigger" } },
+    { ...request, payload: { handlerSource: "source supplied by external runtime" } },
     { ...request, payload: { nested: { password: "credential-sentinel" } } },
     { ...request, scope: { ...request.scope, forged: "ancestry" } },
   ])("rejects extra, executable, ancestry, and secret-bearing fields", (candidate) => {
-    expect(parsePlatosTaskExecutionRequest(candidate)).toBeNull();
+    expect(parseJobExecutionRequest(candidate)).toBeNull();
   });
 });

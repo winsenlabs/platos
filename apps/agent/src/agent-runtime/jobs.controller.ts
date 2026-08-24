@@ -22,9 +22,14 @@ import {
 } from "../shared/database.provider";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 import { pageMetadata, parseEnumFilter, parsePageRequest } from "../shared/pagination";
+import {
+  jobInvocationProperty,
+  jobInvocationType,
+  setJobInvocationType,
+} from "./job-persistence";
 
-@Controller("api/v1/agent/platos-tasks")
-export class PlatosTasksController {
+@Controller("api/v1/agent/jobs")
+export class JobsController {
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
   ) {}
@@ -88,11 +93,11 @@ export class PlatosTasksController {
       }),
       this.prisma.job.count({ where }),
     ]);
-    const tasks = jobs.map((job) => this.toTask(job));
+    const items = jobs.map((job) => this.toJob(job));
     const pagination = pageMetadata(total, request);
     return {
-      tasks,
-      items: tasks,
+      jobs: items,
+      items,
       total,
       limit: request.pageSize,
       offset: request.offset,
@@ -108,8 +113,8 @@ export class PlatosTasksController {
     const job = await this.prisma.job.findFirst({
       where: { id, ...environmentScopeWhere(scope) },
     });
-    if (!job) throw new HttpException("Task not found", HttpStatus.NOT_FOUND);
-    return { task: this.toTask(job) };
+    if (!job) throw new HttpException("Job not found", HttpStatus.NOT_FOUND);
+    return { job: this.toJob(job) };
   }
 
   @Post()
@@ -117,10 +122,10 @@ export class PlatosTasksController {
     @Req() req: Request,
     @Body()
     body: {
-      taskId: string;
+      jobId: string;
       displayName: string;
       description?: string;
-      triggerType?: string;
+      invocationType?: string;
       scheduleCron?: string;
       scheduleTimezone?: string;
       allowedAgentIds?: string[];
@@ -131,9 +136,9 @@ export class PlatosTasksController {
     },
   ) {
     const scope = this.getScope(req);
-    if (!body.taskId || !/^[a-z0-9-]{1,64}$/.test(body.taskId)) {
+    if (!body.jobId || !/^[a-z0-9-]{1,64}$/.test(body.jobId)) {
       throw new HttpException(
-        "taskId must be 1-64 lowercase alphanumeric + hyphens",
+        "jobId must be 1-64 lowercase alphanumeric + hyphens",
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -153,14 +158,14 @@ export class PlatosTasksController {
     const syntaxError = this.checkSyntax(body.handler);
     const existing = await this.prisma.job.findFirst({
       where: {
-        externalId: body.taskId,
+        externalId: body.jobId,
         ...environmentScopeWhere(scope),
       },
       select: { id: true },
     });
     if (existing) {
       throw new HttpException(
-        "A task with this taskId already exists in this scope",
+        "A job with this jobId already exists in this scope",
         HttpStatus.CONFLICT,
       );
     }
@@ -168,10 +173,10 @@ export class PlatosTasksController {
     const job = await this.prisma.job.create({
       data: {
         environmentId: scope.environmentId,
-        externalId: body.taskId,
+        externalId: body.jobId,
         displayName: body.displayName.trim(),
         description: body.description?.trim() ?? null,
-        triggerType: body.triggerType ?? "manual",
+        ...jobInvocationProperty(body.invocationType ?? "manual"),
         scheduleCron: body.scheduleCron ?? null,
         scheduleTimezone: body.scheduleTimezone ?? null,
         allowedAgentIds: body.allowedAgentIds ?? [],
@@ -183,9 +188,9 @@ export class PlatosTasksController {
         timeoutSeconds: body.timeout ?? 300,
         maxRetries: body.maxRetries ?? 3,
         createdBy: scope.userId,
-      },
+      } as Prisma.JobUncheckedCreateInput,
     });
-    return { task: this.toTask(job), syntaxError };
+    return { job: this.toJob(job), syntaxError };
   }
 
   @Patch(":id")
@@ -196,7 +201,7 @@ export class PlatosTasksController {
     body: {
       displayName?: string;
       description?: string;
-      triggerType?: string;
+      invocationType?: string;
       scheduleCron?: string;
       scheduleTimezone?: string;
       allowedAgentIds?: string[];
@@ -213,7 +218,7 @@ export class PlatosTasksController {
       select: { id: true, handler: true },
     });
     if (!existing) {
-      throw new HttpException("Task not found", HttpStatus.NOT_FOUND);
+      throw new HttpException("Job not found", HttpStatus.NOT_FOUND);
     }
 
     const data: Prisma.JobUpdateInput = {};
@@ -223,7 +228,7 @@ export class PlatosTasksController {
     if (body.description !== undefined) {
       data.description = body.description.trim() || null;
     }
-    if (body.triggerType !== undefined) data.triggerType = body.triggerType;
+    if (body.invocationType !== undefined) setJobInvocationType(data, body.invocationType);
     if (body.scheduleCron !== undefined) data.scheduleCron = body.scheduleCron;
     if (body.scheduleTimezone !== undefined) {
       data.scheduleTimezone = body.scheduleTimezone;
@@ -248,7 +253,7 @@ export class PlatosTasksController {
     }
 
     const updated = await this.prisma.job.update({ where: { id }, data });
-    return { task: this.toTask(updated), syntaxError };
+    return { job: this.toJob(updated), syntaxError };
   }
 
   @Delete(":id")
@@ -258,19 +263,19 @@ export class PlatosTasksController {
       where: { id, ...environmentScopeWhere(scope) },
     });
     if (result.count === 0) {
-      throw new HttpException("Task not found", HttpStatus.NOT_FOUND);
+      throw new HttpException("Job not found", HttpStatus.NOT_FOUND);
     }
     return { deleted: true };
   }
 
-  @Post(":id/run")
-  async run(
+  @Post(":id/dispatch")
+  async dispatch(
     @Req() req: Request,
     @Param("id") id: string,
     @Body() body: { payload?: Record<string, unknown> },
   ) {
     const scope = this.getScope(req);
-    const task = await this.prisma.job.findFirst({
+    const job = await this.prisma.job.findFirst({
       where: {
         id,
         status: "ACTIVE",
@@ -278,9 +283,9 @@ export class PlatosTasksController {
       },
       select: { id: true, externalId: true, displayName: true },
     });
-    if (!task) {
+    if (!job) {
       throw new HttpException(
-        "Task not found or inactive",
+        "Job not found or inactive",
         HttpStatus.NOT_FOUND,
       );
     }
@@ -288,18 +293,17 @@ export class PlatosTasksController {
     const triggerSdk = await import("@trigger.dev/sdk");
     if (configureExternalTriggerSdk(triggerSdk).status !== "configured") {
       return {
-        queued: false,
-        message:
-          "External Trigger endpoint and credentials are not configured — task execution unavailable.",
-        taskId: task.externalId,
+        accepted: false,
+        message: "The durable Job runtime is not configured.",
+        jobId: job.externalId ?? job.id,
       };
     }
 
     try {
-      const run = await triggerSdk.tasks.trigger(
+      await triggerSdk.tasks.trigger(
         "platos-custom-task",
         {
-          taskRowId: id,
+          jobId: id,
           payload: body.payload ?? {},
           scope: {
             organizationId: scope.organizationId,
@@ -324,23 +328,22 @@ export class PlatosTasksController {
           },
         },
       );
-      return { queued: true, runId: run.id, taskId: task.externalId };
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
+      return { accepted: true, jobId: job.externalId ?? job.id };
+    } catch {
       throw new HttpException(
-        `Dispatch failed: ${message}`,
+        "The Job could not be dispatched.",
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
   }
 
-  private toTask(job: Job) {
+  private toJob(job: Job) {
     return {
       id: job.id,
-      taskId: job.externalId ?? job.id,
+      jobId: job.externalId ?? job.id,
       displayName: job.displayName,
       description: job.description,
-      triggerType: job.triggerType,
+      invocationType: jobInvocationType(job),
       scheduleCron: job.scheduleCron,
       scheduleTimezone: job.scheduleTimezone,
       allowedAgentIds: job.allowedAgentIds,
@@ -353,7 +356,7 @@ export class PlatosTasksController {
       createdBy: job.createdBy,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
-      lastRunAt: job.lastStartedAt,
+      lastStartedAt: job.lastStartedAt,
     };
   }
 }

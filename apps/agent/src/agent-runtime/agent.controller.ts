@@ -1595,10 +1595,10 @@ export class AgentController {
    * compatible; offset callers additionally receive a truthful scoped total
    * and range metadata. `take` remains the page-size parameter.
    */
-  @Get("agents/:agentId/versions")
+  @Get("agent-versions")
   async listAgentVersions(
     @Req() req: Request,
-    @Param("agentId") agentId: string,
+    @Query("agentId") agentId: string,
     @Query("cursor") cursor?: string,
     @Query("take") take?: string,
     @Query("offset") offsetRaw?: string,
@@ -1606,6 +1606,7 @@ export class AgentController {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — version history exposes full config; operator-only.
     requireOperator(scope);
+    if (!agentId) throw new BadRequestException("agentId is required");
     const request = parsePageRequest({ limit: take, offset: offsetRaw }, { defaultPageSize: 50 });
     try {
       const result = await this.agentCrud.listVersions(agentId, scope, {
@@ -1617,7 +1618,7 @@ export class AgentController {
         ? undefined
         : pageMetadata(result.total, { pageSize: result.limit, offset: result.offset });
       return {
-        versions: result.versions,
+        agentVersions: result.versions,
         items: result.versions,
         nextCursor: result.nextCursor,
         pageSize: result.versions.length,
@@ -1629,37 +1630,39 @@ export class AgentController {
         filters: {},
       };
     } catch (err: any) {
-      throw new NotFoundException(err?.message || "List versions failed");
+      throw new NotFoundException(err?.message || "List Agent Versions failed");
     }
   }
 
   /** Fetch a single version — used by diff + rollback confirmation. */
-  @Get("agents/:agentId/versions/:versionId")
+  @Get("agent-versions/:versionId")
   async getAgentVersion(
     @Req() req: Request,
-    @Param("agentId") agentId: string,
+    @Query("agentId") agentId: string,
     @Param("versionId") versionId: string,
   ) {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — version config read; operator-only.
     requireOperator(scope);
+    if (!agentId) throw new BadRequestException("agentId is required");
     const version = await this.agentCrud.getVersion(agentId, versionId, scope);
-    if (!version) throw new NotFoundException("Version not found");
-    return version;
+    if (!version) throw new NotFoundException("Agent Version not found");
+    return { agentVersion: version };
   }
 
   /** Roll back to an older version. See AgentCrudService.rollbackToVersion. */
-  @Post("agents/:agentId/versions/:versionId/rollback")
+  @Post("agent-versions/:versionId/rollback")
   async rollbackAgentVersion(
     @Req() req: Request,
-    @Param("agentId") agentId: string,
+    @Body() body: { agentId?: string },
     @Param("versionId") versionId: string,
   ) {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — version rollback is operator-only.
     requireOperator(scope);
+    if (!body.agentId) throw new BadRequestException("agentId is required");
     try {
-      const agent = await this.agentCrud.rollbackToVersion(agentId, versionId, scope);
+      const agent = await this.agentCrud.rollbackToVersion(body.agentId, versionId, scope);
       await this.toolRegistry.refreshEnvironmentPolicies(this.scopeTuple(scope));
       return { agent };
     } catch (err: any) {
@@ -4344,8 +4347,8 @@ Write the summary now:`;
    *   - sinceDays (default 30) — time window
    *   - limit (default 50, max 200) / offset — pagination
    */
-  @Get("monitoring/tool-audit")
-  async listToolAudit(
+  @Get("tool-calls")
+  async listToolCalls(
     @Req() req: Request,
     @Query("threadId") threadId?: string,
     @Query("agentId") agentId?: string,
@@ -4381,11 +4384,11 @@ Write the summary now:`;
    * Fetch a single tool-call audit row for drilldown. Scope-gated.
    * Theme E.5.
    */
-  @Get("monitoring/tool-audit/:callId")
-  async getToolAudit(@Req() req: Request, @Param("callId") callId: string) {
+  @Get("tool-calls/:toolCallId")
+  async getToolCall(@Req() req: Request, @Param("toolCallId") toolCallId: string) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const row = await this.toolAuditService.getById(this.scopeTuple(scope), callId);
+    const row = await this.toolAuditService.getById(this.scopeTuple(scope), toolCallId);
     if (!row) throw new NotFoundException("Tool call not found");
     return row;
   }
@@ -4402,10 +4405,10 @@ Write the summary now:`;
    * Response shape is `{ original, replay }` so the UI can diff the two
    * results side by side. The replay itself appends its own audit row.
    */
-  @Post("monitoring/tool-audit/:callId/replay")
-  async replayToolAudit(
+  @Post("tool-calls/:toolCallId/replay")
+  async replayToolCall(
     @Req() req: Request,
-    @Param("callId") callId: string,
+    @Param("toolCallId") toolCallId: string,
   ): Promise<any> {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
@@ -4430,7 +4433,7 @@ Write the summary now:`;
       }, HttpStatus.TOO_MANY_REQUESTS);
     }
 
-    const original = await this.toolAuditService.getById(this.scopeTuple(scope), callId);
+    const original = await this.toolAuditService.getById(this.scopeTuple(scope), toolCallId);
     if (!original) throw new NotFoundException("Tool call not found");
 
     // Replay uses the SAME scope from the current request — not the original
@@ -4545,7 +4548,7 @@ Write the summary now:`;
    *
    * Gated by `X-Platos-Internal-Auth` (same gate as other internal callbacks).
    * The task already verified the token at dispatch time but we re-verify
-   * here so a leaked URL alone can't trigger compactions.
+   * here so a leaked URL alone can't dispatch compactions.
    */
   @Post("internal/compaction")
   async internalCompaction(
@@ -6127,8 +6130,8 @@ Write the summary now:`;
    * Self-evaluation is blocked: if the judge model equals the agent's model
    * the request is rejected with status 409.
    */
-  @Post("evals/run")
-  async runEval(
+  @Post("evals/dispatch")
+  async dispatchEval(
     @Req() req: Request,
     @Body() body: {
       agentId: string;
@@ -6147,7 +6150,7 @@ Write the summary now:`;
       if (err instanceof SelfEvaluationError) {
         throw new HttpException(err.message, HttpStatus.CONFLICT);
       }
-      throw new BadRequestException(err?.message || "Eval run failed");
+      throw new BadRequestException(err?.message || "Eval dispatch failed");
     }
   }
 

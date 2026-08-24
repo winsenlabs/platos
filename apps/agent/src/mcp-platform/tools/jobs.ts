@@ -7,11 +7,16 @@ import {
   environmentScopeWhere,
 } from "../../shared/database.provider";
 import type { McpToolHandler } from "../mcp-router";
+import {
+  jobInvocationProperty,
+  jobInvocationType,
+  setJobInvocationType,
+} from "../../agent-runtime/job-persistence";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
-const TASK_ID_RE = /^[a-z0-9-]{1,64}$/;
-const TRIGGER_TYPES = new Set(["manual", "schedule", "webhook", "agent-spawn"]);
+const JOB_ID_RE = /^[a-z0-9-]{1,64}$/;
+const INVOCATION_TYPES = new Set(["manual", "schedule", "webhook", "agent-spawn"]);
 
 function tuple(scope: RequestScope): ScopeTuple {
   return {
@@ -48,10 +53,10 @@ function detectEsmSyntax(source: string): string | null {
 function publicJob(job: Job, includeHandler: boolean) {
   return {
     id: job.id,
-    taskId: job.externalId ?? job.id,
+    jobId: job.externalId ?? job.id,
     displayName: job.displayName,
     description: job.description,
-    triggerType: job.triggerType,
+    invocationType: jobInvocationType(job),
     scheduleCron: job.scheduleCron,
     scheduleTimezone: job.scheduleTimezone,
     allowedAgentIds: job.allowedAgentIds,
@@ -63,11 +68,11 @@ function publicJob(job: Job, includeHandler: boolean) {
     createdBy: job.createdBy,
     createdAt: job.createdAt.toISOString(),
     updatedAt: job.updatedAt.toISOString(),
-    lastRunAt: job.lastStartedAt?.toISOString() ?? null,
+    lastStartedAt: job.lastStartedAt?.toISOString() ?? null,
   };
 }
 
-export function buildPlatosTaskToolHandlers(deps: {
+export function buildJobToolHandlers(deps: {
   toolAudit: ToolAuditService;
   prisma: ControlDatabaseClient;
 }): McpToolHandler[] {
@@ -96,18 +101,18 @@ export function buildPlatosTaskToolHandlers(deps: {
       })
       .catch(() => {
         // eslint-disable-next-line no-console
-        console.warn("[platos_tasks] tool audit write failed");
+        console.warn("[jobs] tool audit write failed");
       });
   }
 
   return [
     {
-      name: "platos_tasks.list",
+      name: "jobs.list",
       description: "List canonical jobs in the current Environment. Handler source is omitted.",
       inputSchema: {
         type: "object",
         properties: {
-          triggerType: { type: "string", enum: [...TRIGGER_TYPES] },
+          invocationType: { type: "string", enum: [...INVOCATION_TYPES] },
           isActive: { type: "boolean" },
           limit: { type: "integer", minimum: 1, maximum: 500 },
         },
@@ -118,8 +123,8 @@ export function buildPlatosTaskToolHandlers(deps: {
         const jobs = await prisma.job.findMany({
           where: {
             ...environmentScopeWhere(requestScope),
-            ...(typeof params["triggerType"] === "string"
-              ? { triggerType: params["triggerType"] }
+            ...(typeof params["invocationType"] === "string"
+              ? jobInvocationProperty(params["invocationType"])
               : {}),
             ...(typeof params["isActive"] === "boolean"
               ? { status: params["isActive"] ? "ACTIVE" : { not: "ACTIVE" } }
@@ -128,11 +133,11 @@ export function buildPlatosTaskToolHandlers(deps: {
           orderBy: { createdAt: "desc" },
           take: Math.min(500, Math.max(1, Number(params["limit"] ?? 100))),
         });
-        return { tasks: jobs.map((job) => publicJob(job, false)) };
+        return { jobs: jobs.map((job) => publicJob(job, false)) };
       },
     },
     {
-      name: "platos_tasks.get",
+      name: "jobs.get",
       description: "Fetch one canonical job in scope, including its handler source.",
       inputSchema: {
         type: "object",
@@ -145,20 +150,20 @@ export function buildPlatosTaskToolHandlers(deps: {
         const job = await prisma.job.findFirst({
           where: { id, ...environmentScopeWhere(scope as RequestScope) },
         });
-        return job ? { task: publicJob(job, true) } : { error: "not_found", id };
+        return job ? { job: publicJob(job, true) } : { error: "not_found", id };
       },
     },
     {
-      name: "platos_tasks.create",
+      name: "jobs.create",
       description: "Create a canonical Environment-owned job after syntax validation.",
       inputSchema: {
         type: "object",
-        required: ["taskId", "displayName", "handler"],
+        required: ["jobId", "displayName", "handler"],
         properties: {
-          taskId: { type: "string", minLength: 1, maxLength: 64 },
+          jobId: { type: "string", minLength: 1, maxLength: 64 },
           displayName: { type: "string", minLength: 1, maxLength: 200 },
           description: { type: "string", maxLength: 2000 },
-          triggerType: { type: "string", enum: [...TRIGGER_TYPES] },
+          invocationType: { type: "string", enum: [...INVOCATION_TYPES] },
           scheduleCron: { type: "string", maxLength: 200 },
           scheduleTimezone: { type: "string", maxLength: 100 },
           allowedAgentIds: { type: "array", items: { type: "string" }, maxItems: 100 },
@@ -172,31 +177,31 @@ export function buildPlatosTaskToolHandlers(deps: {
       async execute(params, scope) {
         const startedAt = Date.now();
         const requestScope = scope as RequestScope;
-        const taskId = String(params["taskId"] ?? "").trim();
+        const jobId = String(params["jobId"] ?? "").trim();
         const displayName = String(params["displayName"] ?? "").trim();
         const handler = String(params["handler"] ?? "");
-        const triggerType = String(params["triggerType"] ?? "manual");
+        const invocationType = String(params["invocationType"] ?? "manual");
         const auditArgs = {
-          taskId,
+          jobId,
           displayName,
-          triggerType,
+          invocationType,
           handlerLength: handler.length,
         };
 
-        if (!TASK_ID_RE.test(taskId)) {
-          auditMutation(requestScope, "platos_tasks.create", auditArgs, null, "failed", startedAt, "invalid_task_id");
-          return { error: "invalid_task_id", message: "taskId must be 1-64 lowercase alphanumeric + hyphens" };
+        if (!JOB_ID_RE.test(jobId)) {
+          auditMutation(requestScope, "jobs.create", auditArgs, null, "failed", startedAt, "invalid_job_id");
+          return { error: "invalid_job_id", message: "jobId must be 1-64 lowercase alphanumeric + hyphens" };
         }
         if (!displayName || !handler.trim()) {
-          auditMutation(requestScope, "platos_tasks.create", auditArgs, null, "failed", startedAt, "invalid_input");
+          auditMutation(requestScope, "jobs.create", auditArgs, null, "failed", startedAt, "invalid_input");
           return { error: "invalid_input", message: "displayName and handler are required" };
         }
-        if (!TRIGGER_TYPES.has(triggerType)) {
-          auditMutation(requestScope, "platos_tasks.create", auditArgs, null, "failed", startedAt, "invalid_trigger_type");
-          return { error: "invalid_trigger_type" };
+        if (!INVOCATION_TYPES.has(invocationType)) {
+          auditMutation(requestScope, "jobs.create", auditArgs, null, "failed", startedAt, "invalid_invocation_type");
+          return { error: "invalid_invocation_type" };
         }
         const duplicate = await prisma.job.findFirst({
-          where: { externalId: taskId, ...environmentScopeWhere(requestScope) },
+          where: { externalId: jobId, ...environmentScopeWhere(requestScope) },
           select: { id: true },
         });
         if (duplicate) return { error: "already_exists" };
@@ -206,10 +211,10 @@ export function buildPlatosTaskToolHandlers(deps: {
           const job = await prisma.job.create({
             data: {
               environmentId: requestScope.environmentId,
-              externalId: taskId,
+              externalId: jobId,
               displayName,
               description: typeof params["description"] === "string" ? params["description"].trim() : null,
-              triggerType,
+              ...jobInvocationProperty(invocationType),
               scheduleCron: typeof params["scheduleCron"] === "string" ? params["scheduleCron"] : null,
               scheduleTimezone:
                 typeof params["scheduleTimezone"] === "string" ? params["scheduleTimezone"] : null,
@@ -225,19 +230,19 @@ export function buildPlatosTaskToolHandlers(deps: {
               maxRetries: Number(params["maxRetries"] ?? 3),
               status: syntaxError ? "FAILED" : "ACTIVE",
               createdBy: requestScope.userId,
-            },
+            } as Prisma.JobUncheckedCreateInput,
           });
-          const result = { task: publicJob(job, true), syntaxError };
-          auditMutation(requestScope, "platos_tasks.create", auditArgs, { id: job.id }, "success", startedAt);
+          const result = { job: publicJob(job, true), syntaxError };
+          auditMutation(requestScope, "jobs.create", auditArgs, { id: job.id }, "success", startedAt);
           return result;
         } catch {
-          auditMutation(requestScope, "platos_tasks.create", auditArgs, null, "failed", startedAt, "create_failed");
-          return { error: "create_failed", message: "The task could not be created." };
+          auditMutation(requestScope, "jobs.create", auditArgs, null, "failed", startedAt, "create_failed");
+          return { error: "create_failed", message: "The job could not be created." };
         }
       },
     },
     {
-      name: "platos_tasks.update",
+      name: "jobs.update",
       description: "Update canonical job fields. Handler changes are syntax checked.",
       inputSchema: {
         type: "object",
@@ -246,7 +251,7 @@ export function buildPlatosTaskToolHandlers(deps: {
           id: { type: "string" },
           displayName: { type: "string", minLength: 1, maxLength: 200 },
           description: { type: ["string", "null"], maxLength: 2000 },
-          triggerType: { type: "string", enum: [...TRIGGER_TYPES] },
+          invocationType: { type: "string", enum: [...INVOCATION_TYPES] },
           scheduleCron: { type: ["string", "null"], maxLength: 200 },
           scheduleTimezone: { type: ["string", "null"], maxLength: 100 },
           allowedAgentIds: { type: "array", items: { type: "string" }, maxItems: 100 },
@@ -277,11 +282,11 @@ export function buildPlatosTaskToolHandlers(deps: {
           data.description = params["description"] === null ? null : String(params["description"]).trim();
           changedFields.push("description");
         }
-        if (params["triggerType"] !== undefined) {
-          const triggerType = String(params["triggerType"]);
-          if (!TRIGGER_TYPES.has(triggerType)) return { error: "invalid_trigger_type" };
-          data.triggerType = triggerType;
-          changedFields.push("triggerType");
+        if (params["invocationType"] !== undefined) {
+          const invocationType = String(params["invocationType"]);
+          if (!INVOCATION_TYPES.has(invocationType)) return { error: "invalid_invocation_type" };
+          setJobInvocationType(data, invocationType);
+          changedFields.push("invocationType");
         }
         if (params["scheduleCron"] !== undefined) {
           data.scheduleCron = params["scheduleCron"] === null ? null : String(params["scheduleCron"]);
@@ -327,24 +332,24 @@ export function buildPlatosTaskToolHandlers(deps: {
 
         try {
           const job = await prisma.job.update({ where: { id }, data });
-          const result = { task: publicJob(job, true), syntaxError };
+          const result = { job: publicJob(job, true), syntaxError };
           auditMutation(
             requestScope,
-            "platos_tasks.update",
-            { id, taskId: existing.externalId, changedFields },
+            "jobs.update",
+            { id, jobId: existing.externalId, changedFields },
             { id },
             "success",
             startedAt,
           );
           return result;
         } catch {
-          auditMutation(requestScope, "platos_tasks.update", { id, changedFields }, null, "failed", startedAt, "update_failed");
-          return { error: "update_failed", message: "The task could not be updated." };
+          auditMutation(requestScope, "jobs.update", { id, changedFields }, null, "failed", startedAt, "update_failed");
+          return { error: "update_failed", message: "The job could not be updated." };
         }
       },
     },
     {
-      name: "platos_tasks.delete",
+      name: "jobs.delete",
       description: "Delete one canonical job in the current Environment.",
       inputSchema: {
         type: "object",
@@ -368,16 +373,16 @@ export function buildPlatosTaskToolHandlers(deps: {
         const result = {
           deleted: true,
           id,
-          taskId: existing.externalId ?? id,
+          jobId: existing.externalId ?? id,
           displayName: existing.displayName,
         };
-        auditMutation(requestScope, "platos_tasks.delete", { id }, result, "success", startedAt);
+        auditMutation(requestScope, "jobs.delete", { id }, result, "success", startedAt);
         return result;
       },
     },
     {
-      name: "platos_tasks.run",
-      description: "Dispatch an active canonical job through Trigger.dev.",
+      name: "jobs.dispatch",
+      description: "Dispatch an active canonical Job through the durable runtime.",
       inputSchema: {
         type: "object",
         required: ["id"],
@@ -397,13 +402,17 @@ export function buildPlatosTaskToolHandlers(deps: {
 
         const triggerSdk = await import("@trigger.dev/sdk");
         if (configureExternalTriggerSdk(triggerSdk).status !== "configured") {
-          return { queued: false, message: "Task execution is unavailable.", taskId: job.externalId ?? id };
+          return {
+            accepted: false,
+            message: "The durable Job runtime is not configured.",
+            jobId: job.externalId ?? id,
+          };
         }
         try {
-          const run = await triggerSdk.tasks.trigger(
+          await triggerSdk.tasks.trigger(
             "platos-custom-task",
             {
-              taskRowId: id,
+              jobId: id,
               payload,
               scope: { ...tuple(requestScope), userId: requestScope.userId },
               invokedBy: "manual",
@@ -419,63 +428,20 @@ export function buildPlatosTaskToolHandlers(deps: {
             },
           );
           const result = {
-            queued: true,
-            runId: run.id,
-            taskId: job.externalId ?? id,
+            accepted: true,
+            jobId: job.externalId ?? id,
             displayName: job.displayName,
           };
-          auditMutation(requestScope, "platos_tasks.run", { id, payloadKeys: Object.keys(payload) }, result, "success", startedAt);
+          auditMutation(requestScope, "jobs.dispatch", { id, payloadKeys: Object.keys(payload) }, result, "success", startedAt);
           return result;
         } catch {
-          auditMutation(requestScope, "platos_tasks.run", { id }, null, "failed", startedAt, "dispatch_failed");
-          return { error: "dispatch_failed", message: "The task could not be dispatched." };
+          auditMutation(requestScope, "jobs.dispatch", { id }, null, "failed", startedAt, "dispatch_failed");
+          return { error: "dispatch_failed", message: "The job could not be dispatched." };
         }
       },
     },
     {
-      name: "platos_tasks.get_runs",
-      description: "Run history is unavailable through the canonical control database.",
-      inputSchema: {
-        type: "object",
-        required: ["id"],
-        properties: {
-          id: { type: "string" },
-          status: { type: "string" },
-          limit: { type: "integer", minimum: 1, maximum: 200 },
-        },
-        additionalProperties: false,
-      },
-      async execute(params, scope) {
-        const id = String(params["id"]);
-        const job = await prisma.job.findFirst({
-          where: { id, ...environmentScopeWhere(scope as RequestScope) },
-          select: { id: true },
-        });
-        if (!job) return { error: "not_found", id };
-        return {
-          error: "unsupported",
-          message: "Task run history is not available through the canonical control database.",
-        };
-      },
-    },
-    {
-      name: "platos_tasks.get_run",
-      description: "Run details are unavailable through the canonical control database.",
-      inputSchema: {
-        type: "object",
-        required: ["runId"],
-        properties: { runId: { type: "string" } },
-        additionalProperties: false,
-      },
-      async execute() {
-        return {
-          error: "unsupported",
-          message: "Task run details are not available through the canonical control database.",
-        };
-      },
-    },
-    {
-      name: "platos_tasks.set_enabled",
+      name: "jobs.set_enabled",
       description: "Enable or disable a canonical job by changing its WorkStatus.",
       inputSchema: {
         type: "object",
@@ -498,7 +464,7 @@ export function buildPlatosTaskToolHandlers(deps: {
         }
         const nextStatus = enabled ? "ACTIVE" : "CANCELLED";
         if (job.status === nextStatus) {
-          return { id, taskId: job.externalId ?? id, isActive: enabled, changed: false };
+          return { id, jobId: job.externalId ?? id, isActive: enabled, changed: false };
         }
         const updated = await prisma.job.update({
           where: { id },
@@ -506,16 +472,16 @@ export function buildPlatosTaskToolHandlers(deps: {
         });
         const result = {
           id,
-          taskId: updated.externalId ?? id,
+          jobId: updated.externalId ?? id,
           isActive: updated.status === "ACTIVE",
           changed: true,
         };
-        auditMutation(requestScope, "platos_tasks.set_enabled", { id, enabled }, result, "success", startedAt);
+        auditMutation(requestScope, "jobs.set_enabled", { id, enabled }, result, "success", startedAt);
         return result;
       },
     },
     {
-      name: "platos_tasks.validate_handler",
+      name: "jobs.validate_handler",
       description: "Syntax-check CommonJS handler source without executing it.",
       inputSchema: {
         type: "object",

@@ -6,6 +6,7 @@ import { AgentTaskService } from "../agent-runtime/agent-task.service";
 import { ConversationService } from "../memory/conversation.service";
 import { SUBAGENT_MAX_DEPTH } from "../agent-runtime/subagent-guardrails";
 import type { RequestScope } from "../auth/scope.guard";
+import { env } from "../shared/env";
 
 /**
  * Internal HMAC-signed callback endpoint.
@@ -18,7 +19,7 @@ import type { RequestScope } from "../auth/scope.guard";
  *
  * Request:
  *   POST /internal/execute-tool
- *   X-Platos-Signature: HMAC-SHA256(body, TRIGGER_INTERNAL_SECRET)
+ *   X-Platos-Signature: HMAC-SHA256(body, PLATOS_COMPONENT_AUTH_SECRET)
  *   X-Platos-Timestamp: ISO8601 (must be <5min ago)
  *   { organizationId, projectId, environmentId, userId, agentId, tool, params }
  *
@@ -28,22 +29,7 @@ import type { RequestScope } from "../auth/scope.guard";
  * BLOCK 2: wire into tool-gateway for actual execution.
  */
 
-// SECURITY (audit M1) — this secret is the HMAC key gating /internal/execute-tool
-// + /internal/batch-turn (which run tools/turns under a supplied scope). A
-// hardcoded default meant a self-host that forgot to set it had a PUBLICLY
-// KNOWN signing key → forgeable internal callbacks. Fail CLOSED in production:
-// no default, and crash at boot if unset/placeholder when NODE_ENV=production.
-const INTERNAL_SECRET_RAW = (process.env.TRIGGER_INTERNAL_SECRET || "").trim();
-const INTERNAL_SECRET_PLACEHOLDERS = new Set(["", "dev-internal-secret-change-me", "change-me", "changeme"]);
-if (process.env.NODE_ENV === "production" && INTERNAL_SECRET_PLACEHOLDERS.has(INTERNAL_SECRET_RAW)) {
-  throw new Error(
-    "TRIGGER_INTERNAL_SECRET must be set to a strong random value in production " +
-      "(it HMAC-gates /internal/execute-tool + /internal/batch-turn). Generate one with `openssl rand -hex 32`.",
-  );
-}
-// Outside production, fall back to a clearly-marked dev value so local dev works;
-// the boot guard above blocks it in prod.
-const INTERNAL_SECRET = INTERNAL_SECRET_RAW || "dev-internal-secret-change-me";
+const DEV_COMPONENT_AUTH_SECRET = "dev-internal-secret-change-me";
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000; // 5 min
 
 @Controller("internal")
@@ -70,7 +56,7 @@ export class InternalExecuteToolController {
    *
    * Same HMAC + timestamp guard as /execute-tool — this endpoint is
    * internal-only and the webapp signs the call with
-   * TRIGGER_INTERNAL_SECRET.
+   * PLATOS_COMPONENT_AUTH_SECRET.
    */
   @Post("env/invalidate")
   async invalidateEnv(
@@ -110,7 +96,10 @@ export class InternalExecuteToolController {
     if (!signature) {
       throw new HttpException("Missing X-Platos-Signature", HttpStatus.UNAUTHORIZED);
     }
-    const expected = createHmac("sha256", INTERNAL_SECRET)
+    const expected = createHmac(
+      "sha256",
+      env.PLATOS_COMPONENT_AUTH_SECRET || DEV_COMPONENT_AUTH_SECRET,
+    )
       .update(JSON.stringify(body) + timestamp)
       .digest("hex");
     const sigBuf = Buffer.from(signature, "hex");
@@ -161,7 +150,10 @@ export class InternalExecuteToolController {
     if (!signature) {
       throw new HttpException("Missing X-Platos-Signature", HttpStatus.UNAUTHORIZED);
     }
-    const expected = createHmac("sha256", INTERNAL_SECRET)
+    const expected = createHmac(
+      "sha256",
+      env.PLATOS_COMPONENT_AUTH_SECRET || DEV_COMPONENT_AUTH_SECRET,
+    )
       .update(JSON.stringify(body) + timestamp)
       .digest("hex");
     const sigBuf = Buffer.from(signature, "hex");

@@ -5,12 +5,12 @@ import { postInternalCallback, type InternalCallbackFailureCode } from "./intern
  * PIFSP-12 / WIN-132 — callback-only Platos custom task shell.
  *
  * Trigger receives only identifiers, canonical scope, invocation metadata, and
- * the operator-supplied task input. Handler source, database credentials, and
+ * the operator-supplied job input. Handler source, database credentials, and
  * Platos authentication never appear in the Trigger payload. The Platos agent
- * owns task lookup, scope enforcement, handler execution, and last-run writes.
+ * owns Job lookup, scope enforcement, handler execution, and start-time writes.
  */
 export interface PlatosCustomTaskPayload {
-  taskRowId: string;
+  jobId: string;
   payload?: Record<string, unknown>;
   scope: {
     organizationId: string;
@@ -38,7 +38,7 @@ interface CallbackOutput {
   result?: unknown;
 }
 
-const CALLBACK_PATH = "/api/v1/agent/internal/platos-tasks/execute";
+const CALLBACK_PATH = "/api/v1/agent/internal/jobs/execute";
 const CALLBACK_TIMEOUT_MS = 590_000;
 
 async function failRun(error: PlatosCustomTaskError): Promise<never> {
@@ -61,7 +61,7 @@ export const platosCustomTask = task({
   run: async (payload: PlatosCustomTaskPayload, context): Promise<PlatosCustomTaskOutput> => {
     const startMs = Date.now();
     await metadata.set("stage", "dispatching");
-    await metadata.set("taskId", payload.taskRowId);
+    await metadata.set("jobId", payload.jobId);
 
     const requestId = context?.ctx?.run?.id;
     if (typeof requestId !== "string" || requestId.length === 0) {
@@ -73,7 +73,7 @@ export const platosCustomTask = task({
       timeoutMs: CALLBACK_TIMEOUT_MS,
       body: {
         requestId,
-        taskRowId: payload.taskRowId,
+        jobId: payload.jobId,
         payload: payload.payload ?? {},
         scope: payload.scope,
         invokedBy: payload.invokedBy,

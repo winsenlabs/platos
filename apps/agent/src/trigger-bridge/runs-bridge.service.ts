@@ -41,7 +41,7 @@ const TERMINAL_RUN_STATUSES = new Set([
  * via ConnectionsGateway. Tears the subscription down automatically on
  * terminal statuses.
  *
- * Usage from AgentService (spawn_bgo meta-tool; deprecated alias spawn_task):
+ * Usage from AgentService (spawn_job meta-tool):
  *   const unsubscribe = runsBridge.subscribe(runId, scope, threadId);
  *   // events flow: agent_event { type: "run_update", runId, status, metadata, output? }
  *   // call unsubscribe() early to cancel.
@@ -141,7 +141,7 @@ export class RunsBridgeService {
           // ONE chained emit — Socket.IO dedupes per socket only within a
           // single .to(a).to(b).emit() chain. Two separate emits delivered
           // every run_update TWICE to any client joined to both rooms (the
-          // chat client always is) — the "bgo run · DEQUEUED ×2" noise.
+          // chat client always is) — the "job run · DEQUEUED ×2" noise.
           const runTarget = ownerUserRoom
             ? this.connections.server?.to(scopeRoom).to(threadRoom).to(ownerUserRoom)
             : this.connections.server?.to(scopeRoom).to(threadRoom);

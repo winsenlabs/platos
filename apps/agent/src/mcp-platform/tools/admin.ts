@@ -14,7 +14,7 @@
  *
  * Tools:
  *   - scopes.list_all
- *   - audit.cross_scope_tool_calls
+ *   - tool_calls.cross_scope_audit
  *   - budgets.rollup_org_wide
  *   - agents.census
  *   - entities.census
@@ -134,9 +134,9 @@ export function buildAdminToolHandlers(deps: AdminToolsDeps): McpToolHandler[] {
     },
 
     {
-      name: "audit.cross_scope_tool_calls",
+      name: "tool_calls.cross_scope_audit",
       description:
-        "Admin-tier. Query the tool-call audit ledger across every scope in the token's organization. Same filter shape as `audit.tool_calls.query` plus an optional `scopes` array to restrict the fan-out.",
+        "Admin-tier. Query ToolCalls across every scope in the token's organization. Same filter shape as `tool_calls.list` plus an optional `scopes` array to restrict the fan-out.",
       requiresAdminTier: true,
       inputSchema: {
         type: "object",

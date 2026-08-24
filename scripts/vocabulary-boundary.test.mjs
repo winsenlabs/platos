@@ -357,9 +357,20 @@ test("the production manifest separates SecondarySurfaces vendor and product con
   const entries = manifest.exceptions.filter(
     (entry) => entry.path === "apps/webapp/app/components/platos/surfaces/SecondarySurfaces.tsx" && entry.rule === "trigger"
   );
-  assert(entries.some((entry) => entry.line === 37 && entry.classification === "vendor"));
-  assert(entries.some((entry) => entry.line === 37 && entry.classification === "migration-debt"));
-  assert(entries.some((entry) => entry.line === 39 && entry.classification === "migration-debt"));
+  const entriesByAnchor = new Map();
+  for (const entry of entries) {
+    const anchor = `${entry.line}:${entry.semanticContextSha256}`;
+    entriesByAnchor.set(anchor, [...(entriesByAnchor.get(anchor) ?? []), entry]);
+  }
+  assert(entries.some((entry) => entry.classification === "vendor"));
+  assert(entries.some((entry) => entry.classification === "migration-debt"));
+  assert(
+    [...entriesByAnchor.values()].some(
+      (anchoredEntries) =>
+        anchoredEntries.some((entry) => entry.classification === "vendor") &&
+        anchoredEntries.some((entry) => entry.classification === "migration-debt")
+    )
+  );
   assert(entries.every((entry) => entry.localContextSha256 && entry.semanticContextSha256));
 });
 

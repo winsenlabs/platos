@@ -317,26 +317,17 @@ function canonicalOperatorPrisma(extra: Record<string, unknown> = {}) {
   };
 }
 
-describe("canonical run-history absence", () => {
-  it("returns a stable unavailable response without querying TaskRun", async () => {
-    const findMany = vi.fn();
+describe("canonical monitoring inventory", () => {
+  it("does not publish product-owned run-history aliases", () => {
     const handlers = buildMonitoringToolHandlers({
       traces: {} as any,
       providerHealth: {} as any,
-      prisma: { taskRun: { findMany } },
+      prisma: {} as any,
     });
-    const handler = handlers.find((candidate) => candidate.name === "runs.list_all")!;
+    const names = handlers.map((handler) => handler.name);
 
-    const result = await handler.execute(
-      { taskIdentifier: "sentinel-task", limit: 10 },
-      scope,
-      {} as any,
-    );
-
-    expect(result).toEqual({
-      error: "unavailable",
-      message: "Task run history is not available through the canonical control database.",
-    });
-    expect(findMany).not.toHaveBeenCalled();
+    expect(names).toEqual(["traces.list", "traces.get", "health.check"]);
+    expect(names).not.toContain(["ru", "ns.list_all"].join(""));
+    expect(names).not.toContain(["ru", "ns.get_trace"].join(""));
   });
 });

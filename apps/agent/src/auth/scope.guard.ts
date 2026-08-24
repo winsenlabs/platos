@@ -400,7 +400,7 @@ export class ScopeGuard implements CanActivate {
     // WIN-132 — callback-only custom task execution. This route has no user
     // session; its controller performs the timing-safe internal-token check and
     // rejects every other auth path before parsing or executing the body.
-    if (url.split("?", 1)[0] === "/api/v1/agent/internal/platos-tasks/execute") {
+    if (url.split("?", 1)[0] === "/api/v1/agent/internal/jobs/execute") {
       return true;
     }
 
@@ -471,12 +471,12 @@ export class ScopeGuard implements CanActivate {
       url.startsWith("/api/v1/agent/monitoring/budget/email") ||
       url.startsWith("/api/v1/agent/monitoring/approvals/expiry-sweep") ||
       url.startsWith("/api/v1/agent/evals/sample") ||
-      url.startsWith("/api/v1/agent/evals/run") ||
+      url.startsWith("/api/v1/agent/evals/dispatch") ||
       url.startsWith("/api/v1/agent/attachments/retention") ||
       // memory-extraction sweep callback (platos.memory.extract task). Note
       // the non-/agent prefix — served by the memory module's own controller;
       // needs its own Caddy route (/api/v1/memory/* → agent) or it lands on
-      // the webapp and 401s with the trigger-style problem+json.
+      // the webapp and 401s with the callback-style problem+json.
       url.startsWith("/api/v1/memory/admin/extraction-sweep")
     ) {
       const expected = env.PLATOS_INTERNAL_AUTH_TOKEN;
