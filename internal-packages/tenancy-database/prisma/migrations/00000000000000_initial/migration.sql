@@ -1449,6 +1449,7 @@ CREATE TABLE "public"."McpOidcSession" (
 -- CreateTable
 CREATE TABLE "public"."EntityToolPolicy" (
     "id" UUID NOT NULL,
+    "environmentId" UUID NOT NULL,
     "entityId" UUID NOT NULL,
     "toolId" UUID NOT NULL,
     "effect" "public"."PolicyEffect" NOT NULL,
@@ -2106,7 +2107,7 @@ CREATE UNIQUE INDEX "McpOidcSession_environmentId_entityId_provider_externalSubj
 CREATE INDEX "EntityToolPolicy_toolId_idx" ON "public"."EntityToolPolicy"("toolId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EntityToolPolicy_entityId_toolId_key" ON "public"."EntityToolPolicy"("entityId", "toolId");
+CREATE UNIQUE INDEX "EntityToolPolicy_environmentId_entityId_toolId_key" ON "public"."EntityToolPolicy"("environmentId", "entityId", "toolId");
 
 -- CreateIndex
 CREATE INDEX "ErasureOperation_organizationId_subjectKeyHash_requestedAt_idx" ON "public"."ErasureOperation"("organizationId", "subjectKeyHash", "requestedAt");
@@ -2691,6 +2692,9 @@ ALTER TABLE "public"."McpOidcSession" ADD CONSTRAINT "McpOidcSession_credentialI
 ALTER TABLE "public"."EntityToolPolicy" ADD CONSTRAINT "EntityToolPolicy_entityId_fkey" FOREIGN KEY ("entityId") REFERENCES "public"."Entity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."EntityToolPolicy" ADD CONSTRAINT "EntityToolPolicy_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."EntityToolPolicy" ADD CONSTRAINT "EntityToolPolicy_toolId_fkey" FOREIGN KEY ("toolId") REFERENCES "public"."Tool"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -3081,6 +3085,8 @@ BEGIN
       ) INTO valid;
     WHEN 'EnvironmentEntityTool' THEN
       SELECT EXISTS (SELECT 1 FROM "Environment" e JOIN "Entity" entity ON entity."projectId" = e."projectId" WHERE e.id = NEW."environmentId" AND entity.id = NEW."entityId") INTO valid;
+    WHEN 'EntityToolPolicy' THEN
+      SELECT EXISTS (SELECT 1 FROM "Environment" e JOIN "Entity" entity ON entity."projectId" = e."projectId" WHERE e.id = NEW."environmentId" AND entity.id = NEW."entityId") INTO valid;
     WHEN 'ToolCallAudit' THEN
       SELECT EXISTS (
         SELECT 1 FROM "Environment" e JOIN "Project" p ON p.id = e."projectId"
@@ -3343,6 +3349,7 @@ CREATE TRIGGER "ChannelInstallation_ancestry" BEFORE INSERT OR UPDATE ON "public
 CREATE TRIGGER "ChannelAppThread_ancestry" BEFORE INSERT OR UPDATE ON "public"."ChannelAppThread" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "EntityMcpClient_ancestry" BEFORE INSERT OR UPDATE ON "public"."EntityMcpClient" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "EnvironmentEntityTool_ancestry" BEFORE INSERT OR UPDATE ON "public"."EnvironmentEntityTool" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
+CREATE TRIGGER "EntityToolPolicy_ancestry" BEFORE INSERT OR UPDATE ON "public"."EntityToolPolicy" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "ToolCallAudit_ancestry" BEFORE INSERT OR UPDATE ON "public"."ToolCallAudit" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "AgentApproval_ancestry" BEFORE INSERT OR UPDATE ON "public"."AgentApproval" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "Budget_ancestry" BEFORE INSERT OR UPDATE ON "public"."Budget" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();

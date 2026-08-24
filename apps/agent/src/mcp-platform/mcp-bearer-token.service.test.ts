@@ -124,6 +124,36 @@ describe("McpBearerTokenService credential lifecycle", () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it("returns bounded metadata pages with the full Entity and Environment total", async () => {
+    const createdAt = new Date("2026-08-14T00:00:00.000Z");
+    const row = (id: string) => ({
+      id,
+      environmentId: "env_1",
+      label: id,
+      mcpUserId: `mcp:pat:${id}`,
+      scopes: ["mcp:tools"],
+      createdAt,
+      lastUsedAt: null,
+      expiresAt: null,
+      revokedAt: null,
+    });
+    prisma.mcpBearerToken.findMany.mockResolvedValue([
+      row("token_3"),
+      row("token_2"),
+      row("token_1"),
+    ]);
+
+    await expect(service.list("entity_1", "env_1", { limit: 1, offset: 1 })).resolves.toEqual({
+      tokens: [row("token_2")],
+      total: 3,
+      limit: 1,
+      offset: 1,
+    });
+    await expect(
+      service.list("entity_1", "env_1", { limit: Number.NaN, offset: Number.NaN }),
+    ).resolves.toMatchObject({ total: 3, limit: 50, offset: 0 });
+  });
+
   it("denies use when revocation wins the transactional update race", async () => {
     prisma.mcpBearerToken.findFirst.mockResolvedValue({
       id: "token_1",

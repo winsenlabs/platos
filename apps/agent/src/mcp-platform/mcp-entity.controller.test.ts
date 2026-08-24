@@ -389,3 +389,99 @@ describe("McpEntityController full transport authentication", () => {
     expect(h.redis.publish).not.toHaveBeenCalled();
   });
 });
+
+describe("McpEntityController operator management", () => {
+  const operatorScope = {
+    organizationId: "org_1",
+    projectId: "project_1",
+    environmentId: "env_1",
+    userId: "operator_1",
+    principal: "operator",
+  } as const;
+  const managedEntity = {
+    entityPk: "entity_1",
+    entityId: "acme",
+    organizationId: "org_1",
+    projectId: "project_1",
+    displayName: "Acme",
+    config: entityRow.mcpConfig,
+  };
+
+  function managementHarness() {
+    const controller: any = Object.create(McpEntityController.prototype);
+    controller.loadEntity = vi.fn().mockResolvedValue(managedEntity);
+    controller.bearerTokenService = { list: vi.fn(), generate: vi.fn(), revoke: vi.fn() };
+    controller.toolAclService = { list: vi.fn(), upsert: vi.fn(), bulk: vi.fn() };
+    controller.toolRegistry = { rebuildIndex: vi.fn() };
+    controller.prisma = {
+      entityMcpConfig: {
+        upsert: vi.fn(),
+        findUnique: vi.fn(),
+      },
+      environmentEntityTool: { findFirst: vi.fn() },
+    };
+    return controller;
+  }
+
+  it("rejects end-user management before loading scoped state", async () => {
+    const controller = managementHarness();
+    await expect(controller.listBearerTokens({ scope: { ...operatorScope, principal: "end-user" } }, "acme"))
+      .rejects.toMatchObject({ status: 403 });
+    expect(controller.loadEntity).not.toHaveBeenCalled();
+    expect(controller.bearerTokenService.list).not.toHaveBeenCalled();
+  });
+
+  it("lists ACL rows only from the selected Environment and returns truthful metadata", async () => {
+    const controller = managementHarness();
+    controller.toolAclService.list.mockResolvedValue({ tools: [], total: 7, limit: 2, offset: 4 });
+
+    await expect(controller.listToolAcl({ scope: operatorScope }, "acme", undefined, undefined, "2", "4"))
+      .resolves.toEqual({ tools: [], total: 7, limit: 2, offset: 4 });
+    expect(controller.toolAclService.list).toHaveBeenCalledWith(
+      "entity_1",
+      "env_1",
+      expect.objectContaining({ limit: 2, offset: 4 }),
+    );
+  });
+
+  it("persists combined identity, provider arrays and injectMcpContext then reads them back", async () => {
+    const controller = managementHarness();
+    const persisted = {
+      entityId: "entity_1",
+      enabled: true,
+      identityMode: "bearer+oidc",
+      identityProviders: [{ type: "oidc" }],
+      branding: {},
+      toolAllowlist: [],
+      redirectUriAllowlist: [],
+      rateLimitPerMinute: 60,
+      injectMcpContext: true,
+    };
+    controller.prisma.entityMcpConfig.findUnique.mockResolvedValue(persisted);
+
+    await expect(controller.patchMcpConfig({ scope: operatorScope }, "acme", {
+      enabled: true,
+      identityMode: "bearer+oidc",
+      identityProviders: [{ type: "oidc" }],
+      injectMcpContext: true,
+    })).resolves.toEqual({ entityId: "acme", entityPk: "entity_1", config: persisted });
+    expect(controller.prisma.entityMcpConfig.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          identityMode: "bearer+oidc",
+          identityProviders: [{ type: "oidc" }],
+          injectMcpContext: true,
+        }),
+      }),
+    );
+    expect(controller.toolRegistry.rebuildIndex).toHaveBeenCalledOnce();
+  });
+
+  it("rejects object-root identityProviders", async () => {
+    const controller = managementHarness();
+    await expect(controller.patchMcpConfig({ scope: operatorScope }, "acme", {
+      identityProviders: { type: "oidc" },
+    })).rejects.toMatchObject({ status: 400 });
+    expect(controller.prisma.entityMcpConfig.upsert).not.toHaveBeenCalled();
+  });
+});

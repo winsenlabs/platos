@@ -2349,7 +2349,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "entities.get_mcp_config"
@@ -2385,7 +2385,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -7962,7 +7962,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8031,7 +8031,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8067,7 +8067,41 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      },
+      "patch": {
+        "operationId": "patch__mcp_entity_by_entityId_config",
+        "summary": "McpEntityController.patchMcpConfig",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "entityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8103,7 +8137,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8172,7 +8206,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8201,11 +8235,14 @@
         },
         "security": [
           {
-            "oauthBearer": []
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "ENTITY_OAUTH_BEARER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8307,7 +8344,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       },
@@ -8341,7 +8378,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8385,7 +8422,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8421,7 +8458,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8465,7 +8502,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8501,7 +8538,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8576,7 +8613,7 @@
           }
         ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -8722,9 +8759,16 @@
             "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
           }
         },
-        "security": [],
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
         "x-platos-classification": "REST_ONLY",
-        "x-platos-auth-class": "OAUTH_CLIENT_BODY_OR_BASIC",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
@@ -9135,6 +9179,6 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 294,
+  "x-platos-rest-operation-count": 295,
   "x-platos-mcp-tool-count": 206
 }

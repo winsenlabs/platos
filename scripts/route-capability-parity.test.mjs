@@ -232,24 +232,24 @@ test("Entity bearer PAT contracts stay separate from platform tokens", () => {
   assert.match(errors, /entity-mcp-bearer-token-delete lacks DELETE/);
 });
 
-test("newly confirmed Postman, AccessKey, Entity PAT, and artifact defects cannot be erased", () => {
+test("retained defects and repaired MCP capability states cannot regress", () => {
   const matrix = clone(readMatrix());
-  capability(matrix, "mcp-token-list").loaderState.status = "implemented";
+  capability(matrix, "mcp-token-list").loaderState.status = "confirmed-defect";
   capability(matrix, "postman-executable-mode").defect.status = "required-not-verified";
   capability(matrix, "access-key-one-time-reveal").defect.status = "required-not-verified";
   capability(matrix, "access-key-browser-request-correlation").defect.status = "required-not-verified";
   capability(matrix, "thread-artifacts").loaderState.status = "implemented";
   capability(matrix, "thread-artifacts").defect.status = "required-not-verified";
-  capability(matrix, "entity-mcp-bearer-token-create").defect.status = "required-not-verified";
-  capability(matrix, "entity-mcp-bearer-token-create").actionState.status = "implemented";
+  capability(matrix, "entity-mcp-bearer-token-create").defect.status = "confirmed-defect";
+  capability(matrix, "entity-mcp-bearer-token-create").actionState.status = "confirmed-defect";
   const errors = errorsFor(matrix);
-  assert.match(errors, /mcp-token-list loaderState\.status must be confirmed-defect/);
+  assert.match(errors, /mcp-token-list loaderState\.status must be implemented/);
   assert.match(errors, /postman-executable-mode defect\.status must be confirmed-defect/);
   assert.match(errors, /access-key-one-time-reveal defect\.status must be confirmed-defect/);
   assert.match(errors, /access-key-browser-request-correlation defect\.status must be confirmed-defect/);
   assert.match(errors, /thread-artifacts loaderState\.status must be confirmed-defect/);
-  assert.match(errors, /entity-mcp-bearer-token-create defect\.status must be confirmed-defect/);
-  assert.match(errors, /entity-mcp-bearer-token-create actionState\.status must be confirmed-defect/);
+  assert.match(errors, /entity-mcp-bearer-token-create defect\.status must be verified/);
+  assert.match(errors, /entity-mcp-bearer-token-create actionState\.status must be implemented/);
 });
 
 test("the Agent Tools loader/action mismatch remains a confirmed defect until repaired", () => {

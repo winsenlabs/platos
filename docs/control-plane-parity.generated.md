@@ -7,10 +7,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **206** across **35** namespaces (24 admin-tier).
-- REST operations: **294** unique method/path pairs from **294** route bindings.
+- REST operations: **295** unique method/path pairs from **295** route bindings.
 - Ambiguous duplicate REST method/path pairs: **0**.
 - MCP classifications: MAPPED=83, MCP_ONLY=123.
-- REST classifications: DEPRECATED=15, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=139.
+- REST classifications: DEPRECATED=15, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=140.
 
 ## REST inventory
 
@@ -272,6 +272,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /mcp/entity/:entityId` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#jsonRpc` |
 | `PATCH /mcp/entity/:entityId/branding` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#updateBranding` |
 | `GET /mcp/entity/:entityId/config` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#getMcpConfig` |
+| `PATCH /mcp/entity/:entityId/config` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#patchMcpConfig` |
 | `PATCH /mcp/entity/:entityId/enabled` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#setEnabled` |
 | `GET /mcp/entity/:entityId/events/subscribe` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#eventsSubscribe` |
 | `PATCH /mcp/entity/:entityId/identity` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#updateIdentityMode` |

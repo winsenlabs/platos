@@ -443,6 +443,7 @@ model Environment {
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
   mcpBearerTokens         McpBearerToken[]
+  entityToolPolicies      EntityToolPolicy[]
 
   @@unique([projectId, slug])
   @@index([projectId, archivedAt])
@@ -2294,6 +2295,7 @@ model McpOidcSession {
 
 model EntityToolPolicy {
   id              String       @id @default(uuid()) @db.Uuid
+  environmentId   String       @db.Uuid
   entityId        String       @db.Uuid
   toolId          String       @db.Uuid
   effect          PolicyEffect
@@ -2303,10 +2305,11 @@ model EntityToolPolicy {
   addedAt         DateTime     @default(now())
   lastReviewedAt  DateTime?
 
-  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  tool   Tool   @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  entity      Entity      @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  tool        Tool        @relation(fields: [toolId], references: [id], onDelete: Cascade)
 
-  @@unique([entityId, toolId])
+  @@unique([environmentId, entityId, toolId])
   @@index([toolId])
 }
 

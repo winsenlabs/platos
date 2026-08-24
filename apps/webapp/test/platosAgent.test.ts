@@ -4,7 +4,7 @@ vi.mock("~/env.server", () => ({
   env: { PLATOS_AGENT_API_URL: "http://agent.internal:3100" },
 }));
 
-import { agentRequest, PlatosAgentApiError } from "../app/services/platosAgent.server";
+import { agentRequest, mcpManagementRequest, PlatosAgentApiError } from "../app/services/platosAgent.server";
 
 const scope = {
   organizationId: "org-1",
@@ -72,5 +72,22 @@ describe("platos Agent transport errors", () => {
         }),
       }),
     );
+  });
+
+  it("allows only exact method-aware MCP management operations", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ tokens: [], total: 0, limit: 25, offset: 0 }), { status: 200 }));
+
+    await expect(mcpManagementRequest("/mcp/platform/tokens?limit=25&offset=0", scope, { method: "GET" }))
+      .resolves.toMatchObject({ total: 0 });
+    expect(fetch).toHaveBeenCalledWith(
+      "http://agent.internal:3100/mcp/platform/tokens?limit=25&offset=0",
+      expect.objectContaining({ method: "GET" }),
+    );
+
+    await expect(mcpManagementRequest("/mcp/platform", scope, { method: "POST", body: {} }))
+      .rejects.toThrow("Unsupported MCP management operation");
+    await expect(mcpManagementRequest("/mcp/entity/acme/inject-context", scope, { method: "GET" }))
+      .rejects.toThrow("Unsupported MCP management operation");
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

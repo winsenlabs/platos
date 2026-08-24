@@ -64,6 +64,10 @@ import {
 import { SkillRuntimeService } from "../skills/skill-runtime.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { requireOperator } from "../auth/scope.guard";
+import {
+  validateIdentityProviders,
+  validateMcpIdentityMode,
+} from "../mcp-platform/mcp-management.validation";
 import type { SessionScope } from "./session-scope";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
@@ -2722,6 +2726,7 @@ export class AgentController {
     @Param("entityId") entityId: string,
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope);
     const entity = await this.authService.getEntity(
       scope.organizationId,
       scope.projectId,
@@ -2753,6 +2758,7 @@ export class AgentController {
         consentCopy: null,
         redirectUriAllowlist: [],
         rateLimitPerMinute: 60,
+        injectMcpContext: false,
         exists: false,
       };
     }
@@ -2768,6 +2774,7 @@ export class AgentController {
       consentCopy: null,
       redirectUriAllowlist: config.redirectUriAllowlist,
       rateLimitPerMinute: config.rateLimitPerMinute,
+      injectMcpContext: config.injectMcpContext,
       exists: true,
     };
   }
@@ -2779,16 +2786,18 @@ export class AgentController {
     @Body()
     body: {
       enabled?: boolean;
-      identityMode?: "anonymous" | "oidc" | "bearer";
-      identityProviders?: Record<string, unknown> | null;
+      identityMode?: string;
+      identityProviders?: unknown;
       branding?: Record<string, unknown> | null;
       toolAllowlist?: string[];
       consentCopy?: string | null;
       redirectUriAllowlist?: string[];
       rateLimitPerMinute?: number;
+      injectMcpContext?: boolean;
     },
   ) {
     const scope = this.getScope(req);
+    requireOperator(scope);
     const entity = await this.authService.getEntity(
       scope.organizationId,
       scope.projectId,
@@ -2803,15 +2812,9 @@ export class AgentController {
 
     const update: Record<string, unknown> = {};
     if (typeof body.enabled === "boolean") update.enabled = body.enabled;
-    if (
-      body.identityMode === "anonymous" ||
-      body.identityMode === "oidc" ||
-      body.identityMode === "bearer"
-    ) {
-      update.identityMode = body.identityMode;
-    }
+    if (body.identityMode !== undefined) update.identityMode = validateMcpIdentityMode(body.identityMode);
     if (body.identityProviders !== undefined) {
-      update.identityProviders = body.identityProviders ?? [];
+      update.identityProviders = validateIdentityProviders(body.identityProviders);
     }
     if (body.branding !== undefined) update.branding = body.branding ?? {};
     if (Array.isArray(body.toolAllowlist)) {
@@ -2826,6 +2829,9 @@ export class AgentController {
     }
     if (typeof body.rateLimitPerMinute === "number") {
       update.rateLimitPerMinute = Math.max(1, Math.min(10000, Math.floor(body.rateLimitPerMinute)));
+    }
+    if (typeof body.injectMcpContext === "boolean") {
+      update.injectMcpContext = body.injectMcpContext;
     }
 
     // Upsert so the first PATCH auto-creates the row.
@@ -2842,6 +2848,7 @@ export class AgentController {
         redirectUriAllowlist:
           (update.redirectUriAllowlist as string[] | undefined) ?? [],
         rateLimitPerMinute: (update.rateLimitPerMinute as number | undefined) ?? 60,
+        injectMcpContext: (update.injectMcpContext as boolean | undefined) ?? false,
       },
       update,
     });
@@ -2867,6 +2874,7 @@ export class AgentController {
       consentCopy: null,
       redirectUriAllowlist: fresh.redirectUriAllowlist,
       rateLimitPerMinute: fresh.rateLimitPerMinute,
+      injectMcpContext: fresh.injectMcpContext,
       exists: true,
     };
   }

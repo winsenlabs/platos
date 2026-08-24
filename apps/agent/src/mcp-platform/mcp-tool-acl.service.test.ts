@@ -35,8 +35,11 @@ describe("McpToolAclService clean policy cutover", () => {
       { id: "mapping_2", toolId: "tool_1", tool: { name: "calendar.create" } },
     ]);
 
-    await expect(service.list("entity_1")).resolves.toEqual([
-      {
+    await expect(service.list("entity_1", "env_1")).resolves.toEqual({
+      total: 1,
+      limit: 200,
+      offset: 0,
+      tools: [{
         id: "mapping_1",
         entityPk: "entity_1",
         toolId: "mapping_1",
@@ -47,10 +50,10 @@ describe("McpToolAclService clean policy cutover", () => {
         scopeLabels: ["mcp:tools"],
         addedAt: null,
         lastReviewedAt: null,
-      },
-    ]);
+      }],
+    });
     expect(prisma.environmentEntityTool.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { entityId: "entity_1", enabled: true } }),
+      expect.objectContaining({ where: { entityId: "entity_1", environmentId: "env_1", enabled: true } }),
     );
   });
 
@@ -76,6 +79,7 @@ describe("McpToolAclService clean policy cutover", () => {
 
     const row = await service.upsert(
       "entity_1",
+      "env_1",
       "tool_1",
       "calendar.create",
       "user_1",
@@ -84,7 +88,7 @@ describe("McpToolAclService clean policy cutover", () => {
 
     expect(prisma.entityToolPolicy.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { entityId_toolId: { entityId: "entity_1", toolId: "tool_1" } },
+        where: { environmentId_entityId_toolId: { environmentId: "env_1", entityId: "entity_1", toolId: "tool_1" } },
         update: expect.objectContaining({
           effect: "ALLOW",
           scopeLabels: ["mcp:tools", "platos:pat:pat_1"],
@@ -139,7 +143,7 @@ describe("McpToolAclService clean policy cutover", () => {
     prisma.entityToolPolicy.upsert.mockResolvedValue({});
 
     await expect(
-      service.bulk("entity_1", ["mapping_owned", "mapping_foreign"], "expose", {
+      service.bulk("entity_1", "env_1", ["mapping_owned", "mapping_foreign"], "expose", {
         addedBy: "user_1",
       }),
     ).resolves.toBe(1);
@@ -148,13 +152,14 @@ describe("McpToolAclService clean policy cutover", () => {
       where: {
         id: { in: ["mapping_owned", "mapping_foreign"] },
         entityId: "entity_1",
+        environmentId: "env_1",
       },
       select: { toolId: true },
     });
     expect(prisma.entityToolPolicy.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          entityId_toolId: { entityId: "entity_1", toolId: "tool_owned" },
+          environmentId_entityId_toolId: { environmentId: "env_1", entityId: "entity_1", toolId: "tool_owned" },
         },
       }),
     );

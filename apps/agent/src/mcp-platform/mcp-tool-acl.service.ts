@@ -8,6 +8,12 @@ import {
 const PAT_SCOPE_PREFIX = "platos:pat:";
 const DEFAULT_SCOPE = "mcp:tools";
 
+function boundedInteger(value: number | undefined, fallback: number, minimum: number, maximum: number): number {
+  return Number.isInteger(value)
+    ? Math.max(minimum, Math.min(maximum, value as number))
+    : fallback;
+}
+
 export interface ToolAclRow {
   id: string;
   entityPk: string;
@@ -32,6 +38,7 @@ export interface ToolAclListRow extends Omit<ToolAclRow, "addedAt"> {
 
 interface PolicyWithTool {
   id: string;
+  environmentId: string;
   entityId: string;
   toolId: string;
   effect: PolicyEffect;
@@ -89,10 +96,11 @@ export class McpToolAclService {
 
   async list(
     entityPk: string,
+    environmentId: string,
     options: { exposed?: boolean; search?: string; limit?: number; offset?: number } = {},
-  ): Promise<ToolAclListRow[]> {
+  ): Promise<{ tools: ToolAclListRow[]; total: number; limit: number; offset: number }> {
     const mappings = await this.prisma.environmentEntityTool.findMany({
-      where: { entityId: entityPk, enabled: true },
+      where: { entityId: entityPk, environmentId, enabled: true },
       select: {
         id: true,
         toolId: true,
@@ -100,10 +108,12 @@ export class McpToolAclService {
       },
       orderBy: { tool: { name: "asc" } },
     });
-    if (mappings.length === 0) return [];
+    const offset = boundedInteger(options.offset, 0, 0, Number.MAX_SAFE_INTEGER);
+    const limit = boundedInteger(options.limit, 200, 1, 200);
+    if (mappings.length === 0) return { tools: [], total: 0, limit, offset };
 
-    // EntityToolPolicy is entity-wide while EnvironmentEntityTool is
-    // environment-owned. De-duplicate the same canonical Tool across envs.
+    // Both mappings and policies are Environment-owned. De-duplicate any
+    // duplicate mapping rows for the same canonical Tool within this scope.
     const mappingByToolId = new Map<string, (typeof mappings)[number]>();
     for (const mapping of mappings) {
       if (!mappingByToolId.has(mapping.toolId)) {
@@ -112,7 +122,7 @@ export class McpToolAclService {
     }
 
     const policies = await this.prisma.entityToolPolicy.findMany({
-      where: { entityId: entityPk, toolId: { in: [...mappingByToolId.keys()] } },
+      where: { environmentId, entityId: entityPk, toolId: { in: [...mappingByToolId.keys()] } },
       include: { tool: { select: { name: true } } },
     });
     const policyByToolId = new Map(
@@ -152,9 +162,8 @@ export class McpToolAclService {
       return a.toolName.localeCompare(b.toolName);
     });
 
-    const offset = options.offset ?? 0;
-    const limit = options.limit ?? 200;
-    return merged.slice(offset, offset + limit);
+    const total = merged.length;
+    return { tools: merged.slice(offset, offset + limit), total, limit, offset };
   }
 
   async getExposedToolNames(entityPk: string): Promise<string[]> {
@@ -168,11 +177,13 @@ export class McpToolAclService {
   /** Load every effective allow policy for a name (normally exactly one). */
   async getExposedPoliciesByName(
     entityPk: string,
+    environmentId: string,
     toolName?: string,
   ): Promise<ToolAclRow[]> {
     const rows = await this.prisma.entityToolPolicy.findMany({
       where: {
         entityId: entityPk,
+        environmentId,
         effect: PolicyEffect.ALLOW,
         ...(toolName ? { tool: { name: toolName } } : {}),
       },
@@ -208,6 +219,7 @@ export class McpToolAclService {
 
   async upsert(
     entityPk: string,
+    environmentId: string,
     toolId: string,
     _toolName: string,
     addedBy: string,
@@ -216,13 +228,14 @@ export class McpToolAclService {
     >,
   ): Promise<ToolAclRow> {
     const existing = await this.prisma.entityToolPolicy.findUnique({
-      where: { entityId_toolId: { entityId: entityPk, toolId } },
+      where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
       select: { scopeLabels: true },
     });
     const current = decodeLabels(existing?.scopeLabels ?? [DEFAULT_SCOPE]);
     const row = await this.prisma.entityToolPolicy.upsert({
-      where: { entityId_toolId: { entityId: entityPk, toolId } },
+      where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
       create: {
+        environmentId,
         entityId: entityPk,
         toolId,
         effect: data.exposed ? PolicyEffect.ALLOW : PolicyEffect.DENY,
@@ -255,13 +268,14 @@ export class McpToolAclService {
 
   async bulk(
     entityPk: string,
+    environmentId: string,
     mappingIds: string[],
     action: "expose" | "hide" | "set_identity",
     options: { minIdentityMode?: string; addedBy?: string } = {},
   ): Promise<number> {
     if (mappingIds.length === 0) return 0;
     const mappings = await this.prisma.environmentEntityTool.findMany({
-      where: { id: { in: mappingIds }, entityId: entityPk },
+      where: { id: { in: mappingIds }, entityId: entityPk, environmentId },
       select: { toolId: true },
     });
     const toolIds = Array.from(new Set(mappings.map((mapping) => mapping.toolId)));
@@ -270,8 +284,9 @@ export class McpToolAclService {
     await this.prisma.$transaction(
       toolIds.map((toolId) =>
         this.prisma.entityToolPolicy.upsert({
-          where: { entityId_toolId: { entityId: entityPk, toolId } },
+          where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
           create: {
+            environmentId,
             entityId: entityPk,
             toolId,
             effect:
@@ -299,12 +314,14 @@ export class McpToolAclService {
 
   async autoInsert(
     entityPk: string,
+    environmentId: string,
     toolId: string,
     _toolName: string,
   ): Promise<void> {
     await this.prisma.entityToolPolicy.upsert({
-      where: { entityId_toolId: { entityId: entityPk, toolId } },
+      where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
       create: {
+        environmentId,
         entityId: entityPk,
         toolId,
         effect: PolicyEffect.DENY,

@@ -530,7 +530,9 @@ function extractRestOperations() {
                 controller: statement.name.text,
                 handler: member.name.getText(sf),
                 source: relative(repoDir, path).replaceAll("\\", "/"),
-                requiresOperator: member.getText(sf).includes("requireOperator("),
+                requiresOperator:
+                  member.getText(sf).includes("requireOperator(") ||
+                  member.getText(sf).includes("getOperatorScope("),
               });
             }
           }
@@ -729,26 +731,11 @@ function operationAuth(operation) {
   if (path.startsWith("/api/v1/agent/admin/privacy")) {
     return { authClass: "OPERATOR_ADMIN_BEARER", security: [{ platformMcpBearer: [] }] };
   }
-  if (
-    path === "/mcp/platform" ||
-    path === "/mcp/platform/sse" ||
-    path === "/mcp/platform/messages" ||
-    path === "/mcp/platform/events/subscribe"
-  ) {
+  if (classification === "PUBLIC_TRANSPORT" && path.startsWith("/mcp/platform")) {
     return { authClass: "PLATFORM_MCP_BEARER", security: [{ platformMcpBearer: [] }] };
   }
-  if (path.startsWith("/mcp/entity/")) {
-    const managementSuffixes = [
-      "/tokens",
-      "/tool-acl",
-      "/config",
-      "/branding",
-      "/identity",
-      "/enabled",
-    ];
-    if (!managementSuffixes.some((suffix) => path.includes(suffix))) {
-      return { authClass: "ENTITY_OAUTH_BEARER", security: [{ oauthBearer: [] }] };
-    }
+  if (classification === "PUBLIC_TRANSPORT" && path.startsWith("/mcp/entity/")) {
+    return { authClass: "ENTITY_OAUTH_BEARER", security: [{ oauthBearer: [] }] };
   }
   if (path.startsWith("/.well-known/")) {
     return { authClass: "PUBLIC_PROTOCOL_METADATA", security: [] };
@@ -757,6 +744,12 @@ function operationAuth(operation) {
     return {
       authClass: "OAUTH_CONSENT_HMAC",
       security: [{ consentSignature: [] }],
+    };
+  }
+  if (implementations.some((implementation) => implementation.requiresOperator)) {
+    return {
+      authClass: "OPERATOR",
+      security: [{ sessionToken: [] }, { directHeaders: [] }],
     };
   }
   if (
@@ -796,12 +789,6 @@ function operationAuth(operation) {
     return {
       authClass: "CHANNEL_PROVIDER_SIGNATURE",
       security: [{ channelProviderSignature: [] }],
-    };
-  }
-  if (implementations.some((implementation) => implementation.requiresOperator)) {
-    return {
-      authClass: "OPERATOR",
-      security: [{ sessionToken: [] }, { directHeaders: [] }],
     };
   }
   return {

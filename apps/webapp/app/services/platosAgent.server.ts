@@ -29,6 +29,7 @@ export class UnsafeCredentialResponseError extends Error {
 }
 
 type RequestOptions = { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown; signal?: AbortSignal };
+type McpManagementOptions = RequestOptions & { method: NonNullable<RequestOptions["method"]> };
 
 export type AgentRequestResult<T> = { status: number; payload: T };
 
@@ -38,8 +39,30 @@ function assertAgentPath(path: string) {
   }
 }
 
-export async function agentRequestResult<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<AgentRequestResult<T>> {
-  const response = await agentResponse(path, scope, options);
+function assertMcpManagementPath(path: string, method: string) {
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    throw new Error("MCP management calls must use an absolute local path");
+  }
+  const parsed = new URL(path, "http://platos-agent.local");
+  const pathname = parsed.pathname;
+  const allowed =
+    (pathname === "/mcp/platform/tokens" && (method === "GET" || method === "POST")) ||
+    (method === "POST" && /^\/mcp\/platform\/tokens\/[^/]+\/revoke$/.test(pathname)) ||
+    (method === "GET" && pathname === "/mcp/platform/catalog") ||
+    (method === "GET" && pathname === "/mcp/entity") ||
+    ((method === "GET" || method === "PATCH") && /^\/mcp\/entity\/[^/]+\/config$/.test(pathname)) ||
+    ((method === "GET" || method === "POST") && /^\/mcp\/entity\/[^/]+\/tokens$/.test(pathname)) ||
+    (method === "DELETE" && /^\/mcp\/entity\/[^/]+\/tokens\/[^/]+$/.test(pathname)) ||
+    (method === "GET" && /^\/mcp\/entity\/[^/]+\/tool-acl$/.test(pathname)) ||
+    (method === "PATCH" && /^\/mcp\/entity\/[^/]+\/tool-acl\/[^/]+$/.test(pathname)) ||
+    (method === "POST" && /^\/mcp\/entity\/[^/]+\/tool-acl\/bulk$/.test(pathname)) ||
+    (method === "PATCH" && /^\/mcp\/entity\/[^/]+\/(?:branding|identity|enabled|inject-context)$/.test(pathname));
+  if (!allowed) {
+    throw new Error(`Unsupported MCP management operation: ${method} ${pathname}`);
+  }
+}
+
+async function parseAgentResponse<T>(response: Response): Promise<AgentRequestResult<T>> {
   const status = response.status;
   const text = await response.text();
   let payload: unknown = null;
@@ -59,10 +82,6 @@ export async function agentRequestResult<T = unknown>(path: string, scope: Agent
       record.details
     );
   }
-  // Defensive compatibility while older Agent deployments are draining:
-  // historical handlers returned `{ error, status }` with HTTP 200. Treat the
-  // explicit numeric error status as transport failure rather than rendering
-  // it as successful product data.
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
     const record = payload as Record<string, unknown>;
     const embeddedStatus = typeof record.status === "number" ? record.status : null;
@@ -76,6 +95,15 @@ export async function agentRequestResult<T = unknown>(path: string, scope: Agent
     }
   }
   return { status, payload: payload as T };
+}
+
+export async function agentRequestResult<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<AgentRequestResult<T>> {
+  const response = await agentResponse(path, scope, options);
+  // Defensive compatibility while older Agent deployments are draining:
+  // historical handlers returned `{ error, status }` with HTTP 200. Treat the
+  // explicit numeric error status as transport failure rather than rendering
+  // it as successful product data.
+  return parseAgentResponse<T>(response);
 }
 
 export async function agentRequest<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<T> {
@@ -103,6 +131,53 @@ export function agentResponse(path: string, scope: AgentScope, options: RequestO
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: options.signal ?? AbortSignal.timeout(10_000),
   });
+}
+
+/** Dashboard-only transport for the exact management operations colocated
+ * under public MCP protocol prefixes. The method/path allow-list prevents a
+ * scoped webapp request from ever becoming a broad /mcp protocol bypass. */
+export function mcpManagementResponse(
+  path: string,
+  scope: AgentScope,
+  options: McpManagementOptions,
+): Promise<Response> {
+  assertMcpManagementPath(path, options.method);
+  return fetch(`${env.PLATOS_AGENT_API_URL}${path}`, {
+    method: options.method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Platos-Organization-Id": scope.organizationId,
+      "X-Platos-Project-Id": scope.projectId,
+      "X-Platos-Environment-Id": scope.environmentId,
+      "X-Platos-User-Id": scope.userId,
+      ...(env.PLATOS_INTERNAL_AUTH_TOKEN
+        ? { "X-Platos-Internal-Auth": env.PLATOS_INTERNAL_AUTH_TOKEN }
+        : {}),
+    },
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: options.signal ?? AbortSignal.timeout(10_000),
+  });
+}
+
+export async function mcpManagementRequest<T = unknown>(
+  path: string,
+  scope: AgentScope,
+  options: McpManagementOptions,
+): Promise<T> {
+  return (await parseAgentResponse<T>(await mcpManagementResponse(path, scope, options))).payload;
+}
+
+export async function mcpManagementPanel<T = unknown>(path: string, scope: AgentScope) {
+  try {
+    return { ok: true as const, data: await mcpManagementRequest<T>(path, scope, { method: "GET" }) };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof PlatosAgentApiError
+        ? { status: error.status, code: error.code, message: error.message }
+        : { status: 503, code: "AGENT_UNAVAILABLE", message: "The agent service is unavailable" },
+    };
+  }
 }
 
 export function publicAgentResponse(path: "/api/v1/public/guest-token", options: RequestOptions & { forwardedFor: string }): Promise<Response> {

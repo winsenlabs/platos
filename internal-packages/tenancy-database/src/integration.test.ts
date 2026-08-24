@@ -1929,6 +1929,7 @@ async function seedEveryModel(control: PrismaClient) {
   }));
   track("EntityToolPolicy", await control.entityToolPolicy.create({
     data: {
+      environmentId: environment.id,
       entityId: entity.id,
       toolId: tool.id,
       effect: PolicyEffect.ALLOW,

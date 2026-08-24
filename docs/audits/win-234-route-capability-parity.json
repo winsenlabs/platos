@@ -12406,12 +12406,12 @@
       "intent": "Mint an Environment-owned MCP platform token once.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "McpPlatformController POST tokens delegates to PlatosMCPTokenService.mint; the current settings redirect does not expose platform token creation.",
+      "currentBehavior": "The retained MCP settings route uses the exact method-aware MCP management transport to mint platform tokens and reveal raw plt_mcp_ material once before reloading safe token metadata.",
       "http": [
         {
           "role": "canonical contract",
           "method": "POST",
-          "endpoint": "/api/v1/agent/mcp/platform/tokens",
+          "endpoint": "/mcp/platform/tokens",
           "requestDto": {
             "status": "static-contract-only",
             "shape": "{ name: string; permissions: string[]; ttlSeconds?: number; tier?: \"scope\" | \"admin\" }"
@@ -12476,29 +12476,29 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; admin-tier mint additionally requires Organization ADMIN."
+        "status": "verified",
+        "requirement": "Authenticated Environment operator; admin-tier mint additionally requires Organization ADMIN. End-user principals are rejected before token service access."
       },
       "loaderState": {
         "status": "implemented",
         "detail": "Route-defined payload/redirect; full success, unavailable, malformed, and error serialization requires focused contract proof."
       },
       "actionState": {
-        "status": "confirmed-defect",
-        "detail": "Current MCP settings redirect exposes no platform token create action."
+        "status": "implemented",
+        "detail": "The route POSTs the create DTO through the exact MCP management allow-list and reloads platform token inventory."
       },
       "formState": {
-        "status": "confirmed-defect",
-        "detail": "Settings MCP token create/revoke control requires restoration against Platos endpoints."
+        "status": "implemented",
+        "detail": "The MCP platform surface accepts name, permissions, ttlSeconds, and tier and renders one-time mutation feedback."
       },
       "linkState": {
         "status": "required-not-verified",
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Create/update/delete must be reloaded from the canonical clean-schema owner."
+          "apps/webapp/test/mcpManagementRoute.test.ts proves the create action reloads safe token metadata and omits the raw token from the reloaded inventory."
         ]
       },
       "pagination": {
@@ -12536,7 +12536,7 @@
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "MCP raw bearer is reveal-once; persistence and list/revoke responses are hash-only.",
         "requirements": [
           "Never serialize tokenHash.",
@@ -12545,10 +12545,14 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
+          "apps/agent/src/auth/scope.guard.test.ts",
+          "apps/agent/src/mcp-platform/mcp-platform-management.test.ts",
           "apps/agent/src/mcp-platform/token.service.test.ts",
-          "internal-packages/tenancy-database/prisma/schema.prisma"
+          "apps/webapp/test/platosAgent.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -12572,8 +12576,8 @@
         "WIN-139"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Canonical token CRUD exists, but the retained current MCP settings surface does not expose the complete create/list/revoke lifecycle."
+        "status": "verified",
+        "summary": "The retained MCP settings surface now exposes exact-path platform token create/list/revoke controls without broad /mcp transport access."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -12623,12 +12627,12 @@
       "intent": "List safe metadata for MCP tokens owned by the canonical Environment.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "McpPlatformController GET tokens delegates to PlatosMCPTokenService.list and returns safe metadata; the current settings redirect does not expose platform token inventory.",
+      "currentBehavior": "The retained MCP settings loader reads paginated safe platform token metadata through the exact method-aware MCP management transport.",
       "http": [
         {
           "role": "canonical contract",
           "method": "GET",
-          "endpoint": "/api/v1/agent/mcp/platform/tokens",
+          "endpoint": "/mcp/platform/tokens",
           "requestDto": {
             "status": "not-applicable",
             "shape": "No request body."
@@ -12637,7 +12641,7 @@
             "successStatuses": [
               200
             ],
-            "shape": "{ tokens: Array<{ id; name; permissions; tier; expiresAt; lastUsedAt; revokedAt; createdAt }> }; never raw token or tokenHash."
+            "shape": "{ tokens: Array<{ id; name; permissions; tier; expiresAt; lastUsedAt; revokedAt; createdAt }>; total; limit; offset }; never raw token or tokenHash."
           },
           "stableErrors": [
             {
@@ -12700,12 +12704,12 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; admin-tier mint additionally requires Organization ADMIN."
+        "status": "verified",
+        "requirement": "Authenticated Environment operator; end-user principals are rejected before token service access."
       },
       "loaderState": {
-        "status": "confirmed-defect",
-        "detail": "Current MCP route loader reads entities/tool matrix, not GET /api/v1/agent/mcp/platform/tokens."
+        "status": "implemented",
+        "detail": "The MCP settings loader reads GET /mcp/platform/tokens with bounded limit/offset pagination."
       },
       "actionState": {
         "status": "not-applicable",
@@ -12713,7 +12717,7 @@
       },
       "formState": {
         "status": "not-applicable",
-        "detail": "Settings MCP token create/revoke control requires restoration against Platos endpoints."
+        "detail": "Token inventory is read-only; create and revoke use their dedicated controls."
       },
       "linkState": {
         "status": "required-not-verified",
@@ -12726,14 +12730,14 @@
         ]
       },
       "pagination": {
-        "status": "required-not-verified",
-        "strategy": "List-like surface has no statically obvious pagination contract and requires explicit audit.",
-        "limit": "exact limit/cursor/offset contract requires verification",
-        "totalStatus": "complete totals required-not-verified"
+        "status": "implemented",
+        "strategy": "API offset/limit pagination; dashboard page size defaults to 25 and is capped at 100.",
+        "limit": "limit and offset query params; API default 50, maximum 100",
+        "totalStatus": "Full filtered total is returned separately from page length."
       },
       "totals": {
-        "status": "required-not-verified",
-        "semantics": "Full filtered total must be distinct from returned page length."
+        "status": "verified",
+        "semantics": "The response and surface show total, returned page length, limit, and offset separately."
       },
       "destructiveConfirmation": {
         "status": "not-applicable",
@@ -12760,7 +12764,7 @@
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "MCP raw bearer is reveal-once; persistence and list/revoke responses are hash-only.",
         "requirements": [
           "Never serialize tokenHash.",
@@ -12769,10 +12773,14 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
+          "apps/agent/src/auth/scope.guard.test.ts",
+          "apps/agent/src/mcp-platform/mcp-platform-management.test.ts",
           "apps/agent/src/mcp-platform/token.service.test.ts",
-          "internal-packages/tenancy-database/prisma/schema.prisma"
+          "apps/webapp/test/platosAgent.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -12796,8 +12804,8 @@
         "WIN-139"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Canonical token CRUD exists, but the retained current MCP settings surface does not expose the complete create/list/revoke lifecycle."
+        "status": "verified",
+        "summary": "The retained MCP settings loader now exposes paginated platform token inventory with truthful totals and metadata-only serialization."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -12847,12 +12855,12 @@
       "intent": "Idempotently revoke one MCP token inside the canonical Environment.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "McpPlatformController POST tokens/:id/revoke delegates to PlatosMCPTokenService.revoke; the current settings redirect does not expose platform token revocation.",
+      "currentBehavior": "The retained MCP settings route revokes through the exact method-aware transport; missing and cross-Environment token ids share MCP_TOKEN_NOT_FOUND.",
       "http": [
         {
           "role": "canonical contract",
           "method": "POST",
-          "endpoint": "/api/v1/agent/mcp/platform/tokens/:id/revoke",
+          "endpoint": "/mcp/platform/tokens/:id/revoke",
           "requestDto": {
             "status": "static-contract-only",
             "shape": "No body; token id comes from the scoped path."
@@ -12865,10 +12873,6 @@
           },
           "stableErrors": [
             {
-              "status": 400,
-              "codeOrMessage": "id missing"
-            },
-            {
               "status": 401,
               "codeOrMessage": "unauthenticated"
             },
@@ -12878,7 +12882,7 @@
             },
             {
               "status": 404,
-              "codeOrMessage": "scoped token not found"
+              "codeOrMessage": "MCP_TOKEN_NOT_FOUND"
             }
           ]
         }
@@ -12920,20 +12924,20 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; admin-tier mint additionally requires Organization ADMIN."
+        "status": "verified",
+        "requirement": "Authenticated Environment operator; end-user principals are rejected before token service access."
       },
       "loaderState": {
         "status": "implemented",
         "detail": "Route-defined payload/redirect; full success, unavailable, malformed, and error serialization requires focused contract proof."
       },
       "actionState": {
-        "status": "confirmed-defect",
-        "detail": "Current MCP settings redirect exposes no platform token revoke action."
+        "status": "implemented",
+        "detail": "The route POSTs the scoped token id through the exact MCP management allow-list and reloads inventory."
       },
       "formState": {
-        "status": "confirmed-defect",
-        "detail": "Settings MCP token create/revoke control requires restoration against Platos endpoints."
+        "status": "implemented",
+        "detail": "Each token row exposes a revoke control guarded by explicit browser confirmation."
       },
       "linkState": {
         "status": "required-not-verified",
@@ -12956,9 +12960,10 @@
         "semantics": "Capability mcp-token-revoke does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "not-applicable",
+        "status": "verified",
         "references": [
-          "not-applicable"
+          "apps/webapp/test/m4Dashboard.test.tsx",
+          "apps/webapp/app/components/platos/surfaces/RegistrySurfaces.tsx"
         ]
       },
       "idempotency": {
@@ -12980,7 +12985,7 @@
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "MCP raw bearer is reveal-once; persistence and list/revoke responses are hash-only.",
         "requirements": [
           "Never serialize tokenHash.",
@@ -12989,10 +12994,14 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
+          "apps/agent/src/auth/scope.guard.test.ts",
+          "apps/agent/src/mcp-platform/mcp-platform-management.test.ts",
           "apps/agent/src/mcp-platform/token.service.test.ts",
-          "internal-packages/tenancy-database/prisma/schema.prisma"
+          "apps/webapp/test/platosAgent.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -13016,8 +13025,8 @@
         "WIN-139"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Canonical token CRUD exists, but the retained current MCP settings surface does not expose the complete create/list/revoke lifecycle."
+        "status": "verified",
+        "summary": "The retained MCP settings surface now exposes scoped platform token revocation with a stable no-oracle not-found response."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -13256,12 +13265,12 @@
       "intent": "Create one Entity-scoped plt_ent_ bearer PAT and reveal its raw value exactly once.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "McpBearerTokenService stores SHA-256 tokenHash in McpBearerToken and returns raw plt_ent_ material once; current Entity MCP UI has no create/reveal control.",
+      "currentBehavior": "The retained Entity MCP surface creates hash-only plt_ent_ PATs through the exact management transport and renders the raw bearer only in one-time mutation feedback.",
       "http": [
         {
           "role": "canonical interaction",
           "method": "POST",
-          "endpoint": "/api/v1/agent/mcp/entity/:entityId/tokens",
+          "endpoint": "/mcp/entity/:entityId/tokens",
           "requestDto": {
             "status": "static-contract-only",
             "shape": "{ label: string; scopes?: string[]; expiresIn?: number }"
@@ -13341,20 +13350,20 @@
         ]
       },
       "permission": {
-        "status": "required-not-verified",
-        "requirement": "Server-authoritative Environment operator role plus same-Organization Entity ancestry."
+        "status": "verified",
+        "requirement": "Server-authoritative Environment operator role plus same-Project Entity ancestry; end-user principals are rejected before scoped state loading."
       },
       "loaderState": {
         "status": "implemented",
         "detail": "Route-defined payload/redirect; full success, unavailable, malformed, and error serialization requires focused contract proof."
       },
       "actionState": {
-        "status": "confirmed-defect",
-        "detail": "Current Entity MCP action PATCHes config and does not POST /mcp/entity/:entityId/tokens."
+        "status": "implemented",
+        "detail": "The route POSTs label, scopes, and expiry through the exact MCP management allow-list and reloads PAT inventory."
       },
       "formState": {
-        "status": "confirmed-defect",
-        "detail": "Current Entity MCP route has no PAT label/scopes/expiry form or one-time reveal."
+        "status": "implemented",
+        "detail": "The Entity MCP surface exposes PAT label/scopes/expiry creation and one-time reveal feedback."
       },
       "linkState": {
         "status": "required-not-verified",
@@ -13377,9 +13386,9 @@
         "semantics": "Capability entity-mcp-bearer-token-create does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "PAT creation is not destructive."
         ]
       },
       "idempotency": {
@@ -13410,10 +13419,14 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts",
-          "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts"
+          "apps/agent/src/auth/scope.guard.test.ts",
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts",
+          "apps/agent/src/mcp-platform/mcp-bearer-token.service.test.ts",
+          "apps/webapp/test/platosAgent.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -13437,8 +13450,8 @@
         "WIN-139"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Source-backed Entity PAT create/reveal is absent from the current Entity MCP UI."
+        "status": "verified",
+        "summary": "The retained Entity MCP surface now exposes PAT create and one-time reveal controls."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -13488,12 +13501,12 @@
       "intent": "Revoke one Entity-owned McpBearerToken without affecting platform MCP tokens or another Entity/Environment.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "DELETE is scoped by tokenId, entityId, and environmentId and returns { revoked }; current Entity MCP UI has no revoke control.",
+      "currentBehavior": "The retained Entity MCP surface revokes one Environment- and Entity-scoped PAT through the exact method-aware management transport.",
       "http": [
         {
           "role": "canonical interaction",
           "method": "DELETE",
-          "endpoint": "/api/v1/agent/mcp/entity/:entityId/tokens/:tokenId",
+          "endpoint": "/mcp/entity/:entityId/tokens/:tokenId",
           "requestDto": {
             "status": "static-contract-only",
             "shape": "No body; entityId and tokenId are path identifiers."
@@ -13571,20 +13584,20 @@
         ]
       },
       "permission": {
-        "status": "required-not-verified",
-        "requirement": "Server-authoritative Environment operator role plus same-Organization Entity ancestry."
+        "status": "verified",
+        "requirement": "Server-authoritative Environment operator role plus same-Project Entity ancestry; end-user principals are rejected before scoped state loading."
       },
       "loaderState": {
         "status": "implemented",
         "detail": "Route-defined payload/redirect; full success, unavailable, malformed, and error serialization requires focused contract proof."
       },
       "actionState": {
-        "status": "confirmed-defect",
-        "detail": "Current Entity MCP action PATCHes config and does not DELETE /mcp/entity/:entityId/tokens/:tokenId."
+        "status": "implemented",
+        "detail": "The route DELETEs the scoped token id through the exact MCP management allow-list and reloads PAT inventory."
       },
       "formState": {
-        "status": "confirmed-defect",
-        "detail": "Current Entity MCP route has no PAT revoke control."
+        "status": "implemented",
+        "detail": "Each PAT row exposes a revoke control guarded by explicit browser confirmation."
       },
       "linkState": {
         "status": "required-not-verified",
@@ -13607,9 +13620,10 @@
         "semantics": "Capability entity-mcp-bearer-token-delete does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Entity PAT revoke requires explicit confirmation naming the label/prefix-safe metadata."
+          "apps/webapp/test/m4Dashboard.test.tsx",
+          "apps/webapp/app/components/platos/surfaces/RegistrySurfaces.tsx"
         ]
       },
       "idempotency": {
@@ -13638,10 +13652,14 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts",
-          "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts"
+          "apps/agent/src/auth/scope.guard.test.ts",
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts",
+          "apps/agent/src/mcp-platform/mcp-bearer-token.service.test.ts",
+          "apps/webapp/test/platosAgent.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -13665,8 +13683,8 @@
         "WIN-139"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Source-backed Entity PAT revoke is absent from the current Entity MCP UI."
+        "status": "verified",
+        "summary": "The retained Entity MCP surface now exposes scoped PAT revocation with explicit confirmation."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -13716,12 +13734,12 @@
       "intent": "List safe McpBearerToken metadata for one Entity and Environment, separately from platform plt_mcp_ tokens.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "McpEntityController and McpBearerTokenService implement the scoped list, but the current Entity MCP route does not expose PAT inventory controls.",
+      "currentBehavior": "The retained Entity MCP loader reads bounded safe PAT metadata for the selected Entity and Environment through the exact management transport.",
       "http": [
         {
           "role": "canonical interaction",
           "method": "GET",
-          "endpoint": "/api/v1/agent/mcp/entity/:entityId/tokens",
+          "endpoint": "/mcp/entity/:entityId/tokens",
           "requestDto": {
             "status": "not-applicable",
             "shape": "No request body."
@@ -13730,7 +13748,7 @@
             "successStatuses": [
               200
             ],
-            "shape": "{ tokens: McpBearerToken safe metadata[] }; plt_ent_ raw values and tokenHash are never returned."
+            "shape": "{ tokens: safe McpBearerToken metadata[]; total; limit; offset }; raw plt_ent_ values and tokenHash are never returned."
           },
           "stableErrors": [
             {
@@ -13799,20 +13817,20 @@
         ]
       },
       "permission": {
-        "status": "required-not-verified",
-        "requirement": "Server-authoritative Environment operator role plus same-Organization Entity ancestry."
+        "status": "verified",
+        "requirement": "Server-authoritative Environment operator role plus same-Project Entity ancestry; end-user principals are rejected before scoped state loading."
       },
       "loaderState": {
-        "status": "confirmed-defect",
-        "detail": "Current Entity MCP loader reads only /entities/:entityId/mcp/config, not /mcp/entity/:entityId/tokens."
+        "status": "implemented",
+        "detail": "The Entity MCP loader reads GET /mcp/entity/:entityId/tokens with bounded limit/offset pagination."
       },
       "actionState": {
         "status": "not-applicable",
         "detail": "List is read-only."
       },
       "formState": {
-        "status": "confirmed-defect",
-        "detail": "Current Entity MCP route has no bearer PAT list."
+        "status": "implemented",
+        "detail": "The Entity MCP surface renders the safe PAT inventory separately from platform tokens."
       },
       "linkState": {
         "status": "required-not-verified",
@@ -13825,14 +13843,14 @@
         ]
       },
       "pagination": {
-        "status": "required-not-verified",
-        "strategy": "McpBearerTokenService.list returns the full Entity/Environment metadata list ordered by createdAt descending.",
-        "limit": "No limit, cursor, or virtualization contract is exposed by the current endpoint.",
-        "totalStatus": "No explicit total is returned."
+        "status": "implemented",
+        "strategy": "API offset/limit pagination; dashboard page size defaults to 25 and is capped at 100.",
+        "limit": "limit and offset query params; API default 50, maximum 100",
+        "totalStatus": "Full filtered total is returned separately from page length."
       },
       "totals": {
-        "status": "required-not-verified",
-        "semantics": "Entity PAT inventory must expose a complete safe metadata total without inferring from a bounded page."
+        "status": "verified",
+        "semantics": "The response and surface show total, returned page length, limit, and offset separately."
       },
       "destructiveConfirmation": {
         "status": "required-not-verified",
@@ -13867,10 +13885,14 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts",
-          "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts"
+          "apps/agent/src/auth/scope.guard.test.ts",
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts",
+          "apps/agent/src/mcp-platform/mcp-bearer-token.service.test.ts",
+          "apps/webapp/test/platosAgent.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -13894,8 +13916,8 @@
         "WIN-139"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Source-backed Entity PAT list is absent from the current Entity MCP UI."
+        "status": "verified",
+        "summary": "The retained Entity MCP surface now exposes bounded metadata-only PAT inventory with truthful totals."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -13945,12 +13967,12 @@
       "intent": "Configure combined anonymous, bearer, and OIDC identity modes without losing canonical combinations.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "Runtime accepts plus-delimited combinations such as bearer+oidc+anonymous, but the current route enum accepts only one of anonymous, oidc, or bearer and falls back to bearer.",
+      "currentBehavior": "The canonical Entity MCP config accepts and reads back every unique plus-delimited combination of bearer, oidc, and anonymous, including bearer+oidc+anonymous; the surface exposes all seven combinations.",
       "http": [
         {
           "role": "canonical contract",
           "method": "PATCH",
-          "endpoint": "/api/v1/agent/entities/:entityId/mcp/config",
+          "endpoint": "/mcp/entity/:entityId/config",
           "requestDto": {
             "status": "static-contract-only",
             "shape": "{ identityMode: combined identity-mode contract }"
@@ -14022,29 +14044,30 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment operator; end-user principals are rejected before scoped state loading."
       },
       "loaderState": {
         "status": "implemented",
         "detail": "Route-defined payload/redirect; full success, unavailable, malformed, and error serialization requires focused contract proof."
       },
       "actionState": {
-        "status": "confirmed-defect",
-        "detail": "Form enum cannot submit runtime-supported combined modes."
+        "status": "implemented",
+        "detail": "The route submits combined identity modes to PATCH /mcp/entity/:entityId/config."
       },
       "formState": {
-        "status": "confirmed-defect",
-        "detail": "Single-value control collapses combined mode state."
+        "status": "implemented",
+        "detail": "The control exposes all seven valid single and plus-delimited identity-mode combinations."
       },
       "linkState": {
         "status": "required-not-verified",
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "confirmed-defect",
+        "status": "verified",
         "references": [
-          "Loaded state and mutated state are not the same canonical record."
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts"
         ]
       },
       "pagination": {
@@ -14089,10 +14112,13 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/agent/src/mcp-platform/identity-resolver.service.test.ts",
-          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts"
+          "apps/agent/src/auth/scope.guard.test.ts",
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts",
+          "apps/webapp/test/platosAgent.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -14116,8 +14142,8 @@
         "WIN-139"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Frontend identityMode DTO disagrees with runtime plus-delimited combined identity modes."
+        "status": "verified",
+        "summary": "Frontend, transport, controller validation, and runtime now agree on unique plus-delimited identity modes."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -14167,15 +14193,15 @@
       "intent": "Persist MCP identity provider/context, branding, redirect allowlist, consent, rate limit, and context-injection behavior.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "Current PATCH includes identityProviders, branding, redirectUriAllowlist, toolAllowlist, enabled, and rateLimitPerMinute; runtime context-injection semantics remain split across MCP configuration paths.",
+      "currentBehavior": "One canonical Entity MCP config PATCH persists and reads back identityProviders as an array plus branding, allowlists, rate limit, enabled state, identity mode, and injectMcpContext.",
       "http": [
         {
           "role": "canonical contract",
           "method": "PATCH",
-          "endpoint": "/api/v1/agent/entities/:entityId/mcp/config",
+          "endpoint": "/mcp/entity/:entityId/config",
           "requestDto": {
             "status": "static-contract-only",
-            "shape": "{ enabled; identityMode; identityProviders; branding; toolAllowlist; redirectUriAllowlist; rateLimitPerMinute } with integer rate 1..10000"
+            "shape": "{ enabled; identityMode; identityProviders: object[]; branding; toolAllowlist; redirectUriAllowlist; rateLimitPerMinute; injectMcpContext } with bounded arrays and integer rate 1..10000"
           },
           "response": {
             "successStatuses": [
@@ -14244,29 +14270,31 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment operator; end-user principals are rejected before scoped state loading."
       },
       "loaderState": {
         "status": "implemented",
-        "detail": "Route-defined payload/redirect; full success, unavailable, malformed, and error serialization requires focused contract proof."
+        "detail": "The Entity MCP loader reads the canonical /mcp/entity/:entityId/config projection."
       },
       "actionState": {
         "status": "implemented",
-        "detail": "Route-defined result; persisted mutation/read-back, non-200 error mapping, idempotency, and concurrency require focused proof."
+        "detail": "The route submits all canonical identity/context fields through one config PATCH and reloads the same record."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "Action-bearing route may use FormData, JSON, or a non-form control; exact rendered controls and field/enum agreement require focused source/runtime proof."
+        "status": "implemented",
+        "detail": "The Entity MCP surface exposes array-root identityProviders, branding/allowlist/rate controls, and injectMcpContext."
       },
       "linkState": {
         "status": "required-not-verified",
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Create/update/delete must be reloaded from the canonical clean-schema owner."
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.entity.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts"
         ]
       },
       "pagination": {
@@ -14311,11 +14339,14 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/agent/src/agent-runtime/agent.controller.entity.test.ts",
+          "apps/agent/src/auth/scope.guard.test.ts",
           "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts",
-          "apps/agent/src/oauth/oauth.controller.test.ts"
+          "apps/webapp/test/platosAgent.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx",
+          "apps/agent/src/agent-runtime/agent.controller.entity.test.ts"
         ]
       },
       "browserEvidence": {
@@ -14339,8 +14370,8 @@
         "WIN-139"
       ],
       "defect": {
-        "status": "required-not-verified",
-        "summary": "Credential-safe identity provider context and injectMcpContext migration require one canonical persisted read-back contract."
+        "status": "verified",
+        "summary": "Identity provider and context-injection state now share one validated canonical persisted read-back contract."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -14390,12 +14421,12 @@
       "intent": "List and mutate every per-tool ACL dimension: exposed/effect, minimum identity mode, allowed PAT ids, required scope labels, bulk action, and review metadata.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "McpToolAclService is default-deny and synchronizes EntityMcpConfig.toolAllowlist after per-tool or bulk policy mutation; the current entity MCP route only submits the coarse toolAllowlist.",
+      "currentBehavior": "The retained Entity MCP surface lists and mutates Environment-owned per-tool ACL policy dimensions, including exposed state, minimum identity, allowed PAT ids, scope labels, and bulk actions.",
       "http": [
         {
           "role": "canonical contract",
           "method": "GET",
-          "endpoint": "/api/v1/agent/mcp/entity/:entityId/tool-acl",
+          "endpoint": "/mcp/entity/:entityId/tool-acl",
           "requestDto": {
             "status": "not-applicable",
             "shape": "No request body."
@@ -14404,7 +14435,7 @@
             "successStatuses": [
               200
             ],
-            "shape": "{ tools: Array<{ id; entityPk; toolId; toolName; exposed; minIdentityMode; allowedPatIds; scopeLabels; addedAt; lastReviewedAt }> }"
+            "shape": "{ tools: Array<{ id; entityPk; toolId; toolName; exposed; minIdentityMode; allowedPatIds; scopeLabels; addedAt; lastReviewedAt }>; total; limit; offset }"
           },
           "stableErrors": [
             {
@@ -14432,7 +14463,7 @@
         {
           "role": "canonical contract",
           "method": "PATCH",
-          "endpoint": "/api/v1/agent/mcp/entity/:entityId/tool-acl/:toolId",
+          "endpoint": "/mcp/entity/:entityId/tool-acl/:toolId",
           "requestDto": {
             "status": "static-contract-only",
             "shape": "{ exposed?: boolean; minIdentityMode?: string; allowedPatIds?: string[]; scopeLabels?: string[] }"
@@ -14469,7 +14500,7 @@
         {
           "role": "canonical contract",
           "method": "POST",
-          "endpoint": "/api/v1/agent/mcp/entity/:entityId/tool-acl/bulk",
+          "endpoint": "/mcp/entity/:entityId/tool-acl/bulk",
           "requestDto": {
             "status": "static-contract-only",
             "shape": "{ action: \"expose\" | \"hide\" | \"set_identity\"; toolIds: string[]; minIdentityMode?: string }"
@@ -14546,40 +14577,41 @@
         ]
       },
       "permission": {
-        "status": "required-not-verified",
-        "requirement": "Server-authoritative Environment operator role plus same-Organization Entity ancestry."
+        "status": "verified",
+        "requirement": "Server-authoritative Environment operator role plus same-Project Entity ancestry; runtime authorization filters policies by selected Environment."
       },
       "loaderState": {
         "status": "implemented",
         "detail": "Route-defined payload/redirect; full success, unavailable, malformed, and error serialization requires focused contract proof."
       },
       "actionState": {
-        "status": "confirmed-defect",
-        "detail": "Current route writes only coarse EntityMcpConfig.toolAllowlist and does not expose all EntityToolPolicy dimensions."
+        "status": "implemented",
+        "detail": "The route exposes exact PATCH and bulk POST actions for all EntityToolPolicy dimensions."
       },
       "formState": {
-        "status": "confirmed-defect",
-        "detail": "Per-tool exposed, minIdentityMode, allowedPatIds, scopeLabels, bulk action, and review metadata controls are missing."
+        "status": "implemented",
+        "detail": "Per-tool and bulk controls cover exposed, minIdentityMode, allowedPatIds, scopeLabels, expose, hide, and set_identity."
       },
       "linkState": {
         "status": "required-not-verified",
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Create/update/delete must be reloaded from the canonical clean-schema owner."
+          "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts"
         ]
       },
       "pagination": {
         "status": "implemented",
-        "strategy": "offset/limit after exposed/search filtering; default limit 200",
+        "strategy": "offset/limit after Environment-scoped exposed/search filtering; default and maximum list size 200",
         "limit": "limit and offset query params",
-        "totalStatus": "No total is returned; complete total is required-not-verified."
+        "totalStatus": "Full filtered total is returned before slicing."
       },
       "totals": {
-        "status": "required-not-verified",
-        "semantics": "Return the full filtered total separately from the sliced tools page."
+        "status": "verified",
+        "semantics": "The ACL response and surface distinguish the full filtered total from returned page length and offset."
       },
       "destructiveConfirmation": {
         "status": "required-not-verified",
@@ -14613,10 +14645,14 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts",
-          "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts"
+          "apps/agent/src/auth/scope.guard.test.ts",
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts",
+          "apps/webapp/test/platosAgent.test.ts",
+          "apps/webapp/test/mcpManagementRoute.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx",
+          "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts"
         ]
       },
       "browserEvidence": {
@@ -14640,8 +14676,8 @@
         "WIN-139"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Current retained UI collapses the canonical per-tool ACL to a coarse allowlist and cannot edit all policy dimensions."
+        "status": "verified",
+        "summary": "The retained UI now edits the complete Environment-owned per-tool ACL contract instead of only the coarse Entity allowlist."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",

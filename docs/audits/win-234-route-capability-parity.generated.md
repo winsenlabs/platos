@@ -100,16 +100,16 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files.$agentId.users.$userId.conversations/route.tsx` | `route-051` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files.$agentId.users.$userId.conversations/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files.$agentId.users.$userId.conversations.$threadId.attachments/route.tsx` | `route-052` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files.$agentId.users.$userId.conversations.$threadId.attachments/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files._index/route.tsx` | `route-053` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.files._index/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `entity-mcp-bearer-token-create` | improve | POST /api/v1/agent/mcp/entity/:entityId/tokens | required-not-verified | confirmed-defect | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `entity-mcp-bearer-token-delete` | improve | DELETE /api/v1/agent/mcp/entity/:entityId/tokens/:tokenId | required-not-verified | confirmed-defect | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `entity-mcp-bearer-token-list` | improve | GET /api/v1/agent/mcp/entity/:entityId/tokens | required-not-verified | confirmed-defect | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `mcp-combined-identity-modes` | improve | PATCH /api/v1/agent/entities/:entityId/mcp/config | confirmed-defect | confirmed-defect | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `mcp-identity-context` | improve | PATCH /api/v1/agent/entities/:entityId/mcp/config | required-not-verified | required-not-verified | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `mcp-tool-acl-policy` | improve | GET /api/v1/agent/mcp/entity/:entityId/tool-acl; PATCH /api/v1/agent/mcp/entity/:entityId/tool-acl/:toolId; POST /api/v1/agent/mcp/entity/:entityId/tool-acl/bulk | required-not-verified | confirmed-defect | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `entity-mcp-bearer-token-create` | improve | POST /mcp/entity/:entityId/tokens | required-not-verified | verified | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `entity-mcp-bearer-token-delete` | improve | DELETE /mcp/entity/:entityId/tokens/:tokenId | required-not-verified | verified | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `entity-mcp-bearer-token-list` | improve | GET /mcp/entity/:entityId/tokens | required-not-verified | verified | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `mcp-combined-identity-modes` | improve | PATCH /mcp/entity/:entityId/config | verified | verified | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `mcp-identity-context` | improve | PATCH /mcp/entity/:entityId/config | verified | verified | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `mcp-tool-acl-policy` | improve | GET /mcp/entity/:entityId/tool-acl; PATCH /mcp/entity/:entityId/tool-acl/:toolId; POST /mcp/entity/:entityId/tool-acl/bulk | verified | verified | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `route-054` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `mcp-token-create` | improve | POST /api/v1/agent/mcp/platform/tokens | required-not-verified | confirmed-defect | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `mcp-token-list` | improve | GET /api/v1/agent/mcp/platform/tokens | not-applicable | confirmed-defect | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `mcp-token-revoke` | improve | POST /api/v1/agent/mcp/platform/tokens/:id/revoke | required-not-verified | confirmed-defect | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `mcp-token-create` | improve | POST /mcp/platform/tokens | verified | verified | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `mcp-token-list` | improve | GET /mcp/platform/tokens | not-applicable | verified | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `mcp-token-revoke` | improve | POST /mcp/platform/tokens/:id/revoke | required-not-verified | verified | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `route-055` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route.tsx` | `route-056` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.export/route.tsx` | `route-057` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.export/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
@@ -148,27 +148,27 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 
 | Blocker category | Count | Requirement |
 |---|---:|---|
-| confirmed defects | 17 | Repair the source-backed defect and replace the defect status with verified evidence. |
-| permission | 107 | Verify permission behavior or record an approved not-applicable/justified-exclusion status. |
+| confirmed defects | 9 | Repair the source-backed defect and replace the defect status with verified evidence. |
+| permission | 98 | Verify permission behavior or record an approved not-applicable/justified-exclusion status. |
 | organization scope | 84 | Verify Organization isolation or record an approved not-applicable status. |
 | project scope | 84 | Verify Project isolation or record an approved not-applicable status. |
 | environment scope | 84 | Verify Environment isolation or record an approved not-applicable status. |
 | EndUser scope | 2 | Verify EndUser isolation or record an approved not-applicable status. |
 | Agent scope | 19 | Verify Agent isolation or record an approved not-applicable status. |
 | cluster scope | 1 | Verify cluster isolation or record an approved not-applicable status. |
-| loader behavior | 4 | Verify loader behavior or record an approved redirect/not-applicable status. |
-| action behavior | 9 | Verify action behavior or record an approved redirect/not-applicable status. |
-| form behavior | 59 | Verify form behavior or record an approved redirect/not-applicable status. |
+| loader behavior | 2 | Verify loader behavior or record an approved redirect/not-applicable status. |
+| action behavior | 3 | Verify action behavior or record an approved redirect/not-applicable status. |
+| form behavior | 51 | Verify form behavior or record an approved redirect/not-applicable status. |
 | link behavior | 107 | Verify link and deep-link behavior or record an approved redirect/not-applicable status. |
-| destructive confirmation | 17 | Verify destructive confirmation or record an approved not-applicable/justified-exclusion status. |
+| destructive confirmation | 15 | Verify destructive confirmation or record an approved not-applicable/justified-exclusion status. |
 | idempotency | 21 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
 | concurrency | 21 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
 | recovery | 105 | Verify failure, retry, and unavailable-backend recovery or record an approved not-applicable/justified-exclusion status. |
-| secret exposure | 107 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |
-| persisted-state evidence | 23 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |
-| automated behavioral evidence | 107 | Replace static or pending references with passing behavioral test evidence. |
+| secret exposure | 104 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |
+| persisted-state evidence | 19 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |
+| automated behavioral evidence | 98 | Replace static or pending references with passing behavioral test evidence. |
 | browser evidence | 107 | Provide authenticated browser evidence or a source-backed justified exclusion. |
-| pagination and totals | 6 | Prove complete totals and usable pagination/virtualization for dense retained data. |
+| pagination and totals | 3 | Prove complete totals and usable pagination/virtualization for dense retained data. |
 
 ## v0 archaeology by family
 

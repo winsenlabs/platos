@@ -43,6 +43,12 @@ export interface VerifiedToken {
 }
 
 const DEFAULT_TTL_SECONDS = 90 * 24 * 3600;
+
+function boundedInteger(value: number | undefined, fallback: number, minimum: number, maximum: number): number {
+  return Number.isInteger(value)
+    ? Math.max(minimum, Math.min(maximum, value as number))
+    : fallback;
+}
 const TOKEN_PREFIX = "plt_mcp_";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
@@ -222,8 +228,12 @@ export class PlatosMCPTokenService {
   }
 
   /** List redacted token metadata for a canonically resolved Environment. */
-  async list(scope: ScopeTuple): Promise<
-    Array<{
+  async list(
+    scope: ScopeTuple,
+    options: { limit?: number; offset?: number } = {},
+  ): Promise<
+    {
+      tokens: Array<{
       id: string;
       name: string;
       permissions: string[];
@@ -233,10 +243,16 @@ export class PlatosMCPTokenService {
       lastUsedAt: Date | null;
       revokedAt: Date | null;
       createdAt: Date;
-    }>
+      }>;
+      total: number;
+      limit: number;
+      offset: number;
+    }
   > {
     const canonical = await this.resolveScope(scope);
-    if (!canonical) return [];
+    const limit = boundedInteger(options.limit, 50, 1, 100);
+    const offset = boundedInteger(options.offset, 0, 0, Number.MAX_SAFE_INTEGER);
+    if (!canonical) return { tokens: [], total: 0, limit, offset };
     const rows = await this.prisma.mcpToken.findMany({
       where: { environmentId: canonical.environmentId },
       orderBy: { createdAt: "desc" },
@@ -252,7 +268,7 @@ export class PlatosMCPTokenService {
         createdAt: true,
       },
     });
-    return rows.map((row: any) => ({
+    const tokens = rows.slice(offset, offset + limit).map((row: any) => ({
       id: row.id,
       name: row.name,
       permissions: row.permissions,
@@ -263,6 +279,7 @@ export class PlatosMCPTokenService {
       revokedAt: row.revokedAt,
       createdAt: row.createdAt,
     }));
+    return { tokens, total: rows.length, limit, offset };
   }
 
   /** Idempotently revoke a token in the caller's canonical Environment. */

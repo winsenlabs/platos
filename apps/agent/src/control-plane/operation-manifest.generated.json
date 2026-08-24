@@ -8131,7 +8131,7 @@
             "controller": "AgentController",
             "handler": "getEntityMcpConfig",
             "source": "apps/agent/src/agent-runtime/agent.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -8148,7 +8148,7 @@
             "controller": "AgentController",
             "handler": "patchEntityMcpConfig",
             "source": "apps/agent/src/agent-runtime/agent.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11365,7 +11365,7 @@
             "controller": "McpEntityController",
             "handler": "listMcps",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11399,7 +11399,7 @@
             "controller": "McpEntityController",
             "handler": "updateBranding",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11416,7 +11416,24 @@
             "controller": "McpEntityController",
             "handler": "getMcpConfig",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "PATCH /mcp/entity/:entityId/config",
+        "method": "PATCH",
+        "path": "/mcp/entity/:entityId/config",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "McpEntityController",
+            "handler": "patchMcpConfig",
+            "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -11433,7 +11450,7 @@
             "controller": "McpEntityController",
             "handler": "setEnabled",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11467,7 +11484,7 @@
             "controller": "McpEntityController",
             "handler": "updateIdentityMode",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11484,7 +11501,7 @@
             "controller": "McpEntityController",
             "handler": "setInjectMcpContext",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11535,7 +11552,7 @@
             "controller": "McpEntityController",
             "handler": "listBearerTokens",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11552,7 +11569,7 @@
             "controller": "McpEntityController",
             "handler": "generateBearerToken",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11569,7 +11586,7 @@
             "controller": "McpEntityController",
             "handler": "revokeBearerToken",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11586,7 +11603,7 @@
             "controller": "McpEntityController",
             "handler": "listToolAcl",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11603,7 +11620,7 @@
             "controller": "McpEntityController",
             "handler": "patchToolAcl",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11620,7 +11637,7 @@
             "controller": "McpEntityController",
             "handler": "bulkToolAcl",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -11671,7 +11688,7 @@
             "controller": "McpPlatformController",
             "handler": "toolCatalog",
             "source": "apps/agent/src/mcp-platform/mcp-platform.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -12076,15 +12093,15 @@
       "MAPPED": 83,
       "MCP_ONLY": 123
     },
-    "restOperations": 294,
-    "restRouteBindings": 294,
+    "restOperations": 295,
+    "restRouteBindings": 295,
     "ambiguousRestOperations": 0,
     "restClassifications": {
       "DEPRECATED": 15,
       "INTERNAL": 13,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 139
+      "REST_ONLY": 140
     }
   }
 }

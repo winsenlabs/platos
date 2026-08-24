@@ -21,6 +21,34 @@ export function requireOperator(scope: Pick<RequestScope, "principal">): void {
   }
 }
 
+/** Public MCP protocol transports self-authenticate in their controllers.
+ * Keep this matcher method-aware and exact because the same route prefixes
+ * also contain operator-only management endpoints. */
+export function isPublicMcpTransport(methodValue: unknown, urlValue: unknown): boolean {
+  const method = typeof methodValue === "string" ? methodValue.toUpperCase() : "";
+  const url = typeof urlValue === "string" ? urlValue : "";
+  const pathname = url.split("?", 1)[0];
+  if (
+    (method === "POST" && pathname === "/mcp/platform") ||
+    (method === "GET" && pathname === "/mcp/platform/sse") ||
+    (method === "POST" && pathname === "/mcp/platform/messages") ||
+    (method === "GET" && pathname === "/mcp/platform/events/subscribe")
+  ) {
+    return true;
+  }
+  const entityProtocol = pathname.match(
+    /^\/mcp\/entity\/[^/]+(?:\/(sse|messages|events\/subscribe))?$/,
+  );
+  if (!entityProtocol) return false;
+  const suffix = entityProtocol[1];
+  return (
+    (!suffix && method === "POST") ||
+    (suffix === "sse" && method === "GET") ||
+    (suffix === "messages" && method === "POST") ||
+    (suffix === "events/subscribe" && method === "GET")
+  );
+}
+
 /**
  * EOBD.40 — parse a W3C traceparent header into its trace-id +
  * parent-span-id components. Returns null if the header is missing or
@@ -293,17 +321,7 @@ export class ScopeGuard implements CanActivate {
     // pin happens inside McpPlatformController. Token CRUD sub-routes
     // (tokens, tokens/:id/revoke) still run under the normal ScopeGuard
     // — they're admin actions dispatched by the webapp.
-    if (
-      url === "/mcp/platform" ||
-      url === "/mcp/platform/sse" ||
-      url.startsWith("/mcp/platform?") ||
-      url === "/mcp/platform/messages" ||
-      url.startsWith("/mcp/platform/messages?") ||
-      url === "/mcp/platform/events/subscribe" ||
-      url.startsWith("/mcp/platform/events/subscribe?")
-    ) {
-      return true;
-    }
+    if (isPublicMcpTransport(request.method, url)) return true;
 
     // Phase 3 — public docs MCP. Read-only catalog of `content/{docs,guides}`
     // exposed as MCP resources + a `search_docs` tool. Intentionally
@@ -339,20 +357,9 @@ export class ScopeGuard implements CanActivate {
     // from the webapp WITH X-Platos-* scope headers. Only bypass the
     // protocol routes — management routes need the scope guard to populate
     // req.scope from the headers.
-    if (url.startsWith("/mcp/entity/")) {
-      const path = url.split("?")[0];
-      const managementSuffixes = [
-        "/tokens",
-        "/tool-acl",
-        "/config",
-        "/branding",
-        "/identity",
-        "/enabled",
-      ];
-      const isManagement = managementSuffixes.some((suffix) => path.includes(suffix));
-      if (!isManagement) return true;
-      // management endpoint — fall through to normal scope extraction
-    }
+    // Every other /mcp/entity route is management and falls through to the
+    // normal ScopeGuard path. In particular, inject-context must never inherit
+    // the protocol bypass.
 
     // Theme K.10 — OAuth 2.1 endpoints. Public by design; each endpoint
     // does its own protocol-level auth (client credentials, PKCE,

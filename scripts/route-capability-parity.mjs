@@ -73,31 +73,31 @@ const REQUIRED_CAPABILITY_FIELDS = [
 const REQUIRED_CAPABILITY_CONTRACTS = Object.freeze({
   "mcp-token-create": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx",
-    methods: [["POST", "/api/v1/agent/mcp/platform/tokens"]],
+    methods: [["POST", "/mcp/platform/tokens"]],
   },
   "mcp-token-list": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx",
-    methods: [["GET", "/api/v1/agent/mcp/platform/tokens"]],
+    methods: [["GET", "/mcp/platform/tokens"]],
   },
   "mcp-token-revoke": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx",
-    methods: [["POST", "/api/v1/agent/mcp/platform/tokens/:id/revoke"]],
+    methods: [["POST", "/mcp/platform/tokens/:id/revoke"]],
   },
   "mcp-tool-acl-policy": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx",
     methods: [
-      ["GET", "/api/v1/agent/mcp/entity/:entityId/tool-acl"],
-      ["PATCH", "/api/v1/agent/mcp/entity/:entityId/tool-acl/:toolId"],
-      ["POST", "/api/v1/agent/mcp/entity/:entityId/tool-acl/bulk"],
+      ["GET", "/mcp/entity/:entityId/tool-acl"],
+      ["PATCH", "/mcp/entity/:entityId/tool-acl/:toolId"],
+      ["POST", "/mcp/entity/:entityId/tool-acl/bulk"],
     ],
   },
   "mcp-combined-identity-modes": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx",
-    methods: [["PATCH", "/api/v1/agent/entities/:entityId/mcp/config"]],
+    methods: [["PATCH", "/mcp/entity/:entityId/config"]],
   },
   "mcp-identity-context": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx",
-    methods: [["PATCH", "/api/v1/agent/entities/:entityId/mcp/config"]],
+    methods: [["PATCH", "/mcp/entity/:entityId/config"]],
   },
   "mcp-credential-reference-migration": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.new/route.tsx",
@@ -119,15 +119,15 @@ const REQUIRED_CAPABILITY_CONTRACTS = Object.freeze({
   },
   "entity-mcp-bearer-token-list": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx",
-    methods: [["GET", "/api/v1/agent/mcp/entity/:entityId/tokens"]],
+    methods: [["GET", "/mcp/entity/:entityId/tokens"]],
   },
   "entity-mcp-bearer-token-create": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx",
-    methods: [["POST", "/api/v1/agent/mcp/entity/:entityId/tokens"]],
+    methods: [["POST", "/mcp/entity/:entityId/tokens"]],
   },
   "entity-mcp-bearer-token-delete": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx",
-    methods: [["DELETE", "/api/v1/agent/mcp/entity/:entityId/tokens/:tokenId"]],
+    methods: [["DELETE", "/mcp/entity/:entityId/tokens/:tokenId"]],
   },
   "attachment-presign-upload": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route.tsx",
@@ -190,15 +190,15 @@ const REQUIRED_CAPABILITY_CONTRACTS = Object.freeze({
 const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
   "mcp-token-create": {
     fragments: { http: ["name", "permissions", "ttlSeconds", "tier"], secretExposure: ["plt_mcp_", "tokenHash"] },
-    statuses: { "tenantScope.status": "enforced", "actionState.status": "confirmed-defect", "defect.status": "confirmed-defect" },
+    statuses: { "tenantScope.status": "enforced", "actionState.status": "implemented", "defect.status": "verified" },
   },
   "mcp-token-list": {
     fragments: { http: ["permissions", "revokedAt", "createdAt"], secretExposure: ["tokenHash"] },
-    statuses: { "tenantScope.status": "enforced", "loaderState.status": "confirmed-defect", "defect.status": "confirmed-defect" },
+    statuses: { "tenantScope.status": "enforced", "loaderState.status": "implemented", "defect.status": "verified" },
   },
   "mcp-token-revoke": {
-    fragments: { http: ["id missing", "scoped token not found"] },
-    statuses: { "tenantScope.status": "enforced", "actionState.status": "confirmed-defect", "defect.status": "confirmed-defect" },
+    fragments: { http: ["MCP_TOKEN_NOT_FOUND"] },
+    statuses: { "tenantScope.status": "enforced", "actionState.status": "implemented", "defect.status": "verified" },
   },
   "mcp-tool-acl-policy": {
     fragments: {
@@ -206,11 +206,11 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
       "http.1.requestDto": ["exposed", "minIdentityMode", "allowedPatIds", "scopeLabels"],
       "http.2.requestDto": ["expose", "hide", "set_identity", "toolIds"],
     },
-    statuses: { "defect.status": "confirmed-defect" },
+    statuses: { "defect.status": "verified" },
   },
   "mcp-combined-identity-modes": {
     fragments: { currentBehavior: ["bearer+oidc+anonymous"], defect: ["plus-delimited"] },
-    statuses: { "persistedReadBack.status": "confirmed-defect", "defect.status": "confirmed-defect" },
+    statuses: { "persistedReadBack.status": "verified", "defect.status": "verified" },
   },
   "mcp-identity-context": {
     fragments: { http: ["identityProviders", "branding", "redirectUriAllowlist", "rateLimitPerMinute"] },
@@ -234,15 +234,15 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
   },
   "entity-mcp-bearer-token-list": {
     fragments: { http: ["plt_ent_", "McpBearerToken", "tokenHash"] },
-    statuses: { "tenantScope.status": "enforced", "agentScope.status": "not-applicable", "loaderState.status": "confirmed-defect", "defect.status": "confirmed-defect" },
+    statuses: { "tenantScope.status": "enforced", "agentScope.status": "not-applicable", "loaderState.status": "implemented", "defect.status": "verified" },
   },
   "entity-mcp-bearer-token-create": {
     fragments: { http: ["label", "scopes", "expiresIn", "plt_ent_"], secretExposure: ["shown once", "tokenHash"] },
-    statuses: { "tenantScope.status": "enforced", "actionState.status": "confirmed-defect", "defect.status": "confirmed-defect" },
+    statuses: { "tenantScope.status": "enforced", "actionState.status": "implemented", "defect.status": "verified" },
   },
   "entity-mcp-bearer-token-delete": {
     fragments: { identifiers: ["entityId", "tokenId"], http: ["revoked"] },
-    statuses: { "destructiveConfirmation.status": "required-not-verified", "tenantScope.status": "enforced", "actionState.status": "confirmed-defect", "defect.status": "confirmed-defect" },
+    statuses: { "destructiveConfirmation.status": "verified", "tenantScope.status": "enforced", "actionState.status": "implemented", "defect.status": "verified" },
   },
   "attachment-presign-upload": {
     fragments: { currentBehavior: ["resolves attachmentIds", "no canonical presign/upload control"], secretExposure: ["presigned", "object-store"] },

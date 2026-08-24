@@ -128,6 +128,27 @@ describe("PlatosMCPTokenService clean-tenancy lifecycle", () => {
     });
   });
 
+  it("returns bounded metadata pages with the full Environment total", async () => {
+    const createdAt = new Date("2026-08-14T00:00:00.000Z");
+    prisma.mcpToken.findMany.mockResolvedValue([
+      { id: "token_3", name: "three", permissions: ["agents.read"], tier: "scope", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt },
+      { id: "token_2", name: "two", permissions: ["agents.read"], tier: "scope", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt },
+      { id: "token_1", name: "one", permissions: ["agents.read"], tier: "scope", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt },
+    ]);
+
+    await expect(service.list(scope, { limit: 1, offset: 1 })).resolves.toEqual({
+      tokens: [{ id: "token_2", name: "two", permissions: ["agents.read"], tier: "scope", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt }],
+      total: 3,
+      limit: 1,
+      offset: 1,
+    });
+    await expect(service.list(scope, { limit: Number.NaN, offset: Number.NaN })).resolves.toMatchObject({
+      total: 3,
+      limit: 50,
+      offset: 0,
+    });
+  });
+
   it("revokes only a token owned by the canonical Environment", async () => {
     prisma.mcpToken.findFirst.mockResolvedValue({ id: "token_1", revokedAt: null });
 

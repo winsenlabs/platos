@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -28,11 +29,16 @@ import { ToolExecutorService } from "../tool-gateway/tool-executor.service";
 import { ToolRouterService } from "../tool-gateway/tool-router.service";
 import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
 import type { RequestScope } from "../auth/scope.guard";
+import { requireOperator } from "../auth/scope.guard";
 import type { JsonRpcRequest, JsonRpcResponse } from "./mcp-router";
 import { RPC_ERRORS } from "./mcp-router";
 import { McpBearerTokenService } from "./mcp-bearer-token.service";
 import { McpIdentityResolverService } from "./identity-resolver.service";
 import { McpToolAclService } from "./mcp-tool-acl.service";
+import {
+  validateIdentityProviders,
+  validateMcpIdentityMode,
+} from "./mcp-management.validation";
 
 /**
  * PIFSP-21 — per-entity MCP Gateway.
@@ -75,6 +81,12 @@ export class McpEntityController {
     // that silently pass through to DB queries.
     if (!(req as any).scope) throw new UnauthorizedException("Missing scope");
     return (req as any).scope;
+  }
+
+  private getOperatorScope(req: Request): RequestScope {
+    const scope = this.getScope(req);
+    requireOperator(scope);
+    return scope;
   }
 
   private extractBearer(authorization: string | undefined): string | null {
@@ -972,6 +984,7 @@ export class McpEntityController {
     };
     const aclRows = await this.toolAclService.getExposedPoliciesByName(
       entity.entityPk,
+      token.environmentId,
     );
     // FINDING H12 (residual) — the ACL uniqueness key is (entityPk, toolId), so
     // ONE entity can hold several exposed rows for the SAME toolName. The old
@@ -1094,6 +1107,7 @@ export class McpEntityController {
     // (most-restrictive wins) — same rule, same result, no ordering assumed.
     const aclRowsForName = await this.toolAclService.getExposedPoliciesByName(
       entity.entityPk,
+      token.environmentId,
       name,
     );
     const effectiveAcls: any[] =
@@ -1229,19 +1243,27 @@ export class McpEntityController {
 
   /** List PATs for an entity (hashes never returned). Scope-gated by ScopeGuard. */
   @Get(":entityId/tokens")
-  async listBearerTokens(@Req() req: Request, @Param("entityId") entityId: string) {
+  async listBearerTokens(
+    @Req() req: Request,
+    @Param("entityId") entityId: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
     // BUG-1: get scope first so loadEntity can scope the slug lookup to this tenant.
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) {
       throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
     }
-    const tokens = await this.bearerTokenService.list(
+    return this.bearerTokenService.list(
       entity.entityPk,
       scope.environmentId,
+      {
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined,
+      },
     );
-    return { tokens };
   }
 
   /** Generate a new PAT. Returns the raw token — shown once. */
@@ -1252,7 +1274,7 @@ export class McpEntityController {
     @Body() body: { label: string; scopes?: string[]; expiresIn?: number },
   ) {
     // BUG-1: get scope first so loadEntity can scope the slug lookup to this tenant.
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) {
@@ -1277,7 +1299,7 @@ export class McpEntityController {
     @Param("tokenId") tokenId: string,
   ) {
     // BUG-1: get scope first so loadEntity can scope the slug lookup to this tenant.
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) {
@@ -1304,17 +1326,17 @@ export class McpEntityController {
     @Query("offset") offset?: string,
   ) {
     // BUG-1: get scope first so loadEntity can scope the slug lookup to this tenant.
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
-    const rows = await this.toolAclService.list(entity.entityPk, {
+    const result = await this.toolAclService.list(entity.entityPk, scope.environmentId, {
       exposed: exposed === "true" ? true : exposed === "false" ? false : undefined,
       search,
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
     });
-    return { tools: rows };
+    return result;
   }
 
   @Patch(":entityId/tool-acl/:toolId")
@@ -1325,7 +1347,7 @@ export class McpEntityController {
     @Body() body: { exposed?: boolean; minIdentityMode?: string; allowedPatIds?: string[]; scopeLabels?: string[] },
   ) {
     // BUG-1: get scope first so loadEntity can scope the slug lookup to this tenant.
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
@@ -1335,12 +1357,13 @@ export class McpEntityController {
     // (FK → PlatosConnectedEntity.id) — NOT `entityPk` — and the
     // human-readable name lives on the joined PlatosToolDefinition.
     const toolReg = await this.prisma.environmentEntityTool.findFirst({
-      where: { id: toolId, entityId: entity.entityPk },
+      where: { id: toolId, entityId: entity.entityPk, environmentId: scope.environmentId },
       select: { toolId: true, tool: { select: { name: true } } },
     });
     if (!toolReg) throw new HttpException("Tool not found", HttpStatus.NOT_FOUND);
     const row = await this.toolAclService.upsert(
       entity.entityPk,
+      scope.environmentId,
       toolReg.toolId,
       toolReg.tool.name,
       scope.userId,
@@ -1356,11 +1379,11 @@ export class McpEntityController {
     @Body() body: { action: "expose" | "hide" | "set_identity"; toolIds: string[]; minIdentityMode?: string },
   ) {
     // BUG-1: get scope first so loadEntity can scope the slug lookup to this tenant.
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
-    const count = await this.toolAclService.bulk(entity.entityPk, body.toolIds, body.action, {
+    const count = await this.toolAclService.bulk(entity.entityPk, scope.environmentId, body.toolIds, body.action, {
       minIdentityMode: body.minIdentityMode,
       addedBy: scope.userId,
     });
@@ -1375,7 +1398,7 @@ export class McpEntityController {
    */
   @Get()
   async listMcps(@Req() req: Request) {
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     // Entity ownership is canonical through Project. Environment-specific
     // enablement is represented by tool mappings rather than an Entity column.
     const entities = await this.prisma.entity.findMany({
@@ -1408,13 +1431,93 @@ export class McpEntityController {
   @Get(":entityId/config")
   async getMcpConfig(@Req() req: Request, @Param("entityId") entityId: string) {
     // BUG-1: get scope first so loadEntity can scope the slug lookup to this tenant.
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
     const config = await this.prisma.entityMcpConfig.findUnique({
       where: { entityId: entity.entityPk },
     });
+    return { entityId, entityPk: entity.entityPk, config };
+  }
+
+  /** Canonical dashboard write contract for the complete persisted MCP config. */
+  @Patch(":entityId/config")
+  async patchMcpConfig(
+    @Req() req: Request,
+    @Param("entityId") entityId: string,
+    @Body() body: {
+      enabled?: boolean;
+      identityMode?: string;
+      identityProviders?: unknown;
+      branding?: unknown;
+      toolAllowlist?: unknown;
+      redirectUriAllowlist?: unknown;
+      rateLimitPerMinute?: unknown;
+      injectMcpContext?: boolean;
+    },
+  ) {
+    const scope = this.getOperatorScope(req);
+    const entity = await this.loadEntity(entityId, scope);
+    if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
+    const update: Record<string, unknown> = {};
+    if (typeof body.enabled === "boolean") update.enabled = body.enabled;
+    if (body.identityMode !== undefined) {
+      update.identityMode = validateMcpIdentityMode(body.identityMode);
+    }
+    if (body.identityProviders !== undefined) {
+      update.identityProviders = validateIdentityProviders(body.identityProviders);
+    }
+    if (body.branding !== undefined) {
+      if (!body.branding || typeof body.branding !== "object" || Array.isArray(body.branding)) {
+        throw new BadRequestException("branding must be a JSON object");
+      }
+      update.branding = body.branding;
+    }
+    if (body.toolAllowlist !== undefined) {
+      if (!Array.isArray(body.toolAllowlist)) throw new BadRequestException("toolAllowlist must be an array");
+      update.toolAllowlist = body.toolAllowlist.filter((value): value is string => typeof value === "string").slice(0, 500);
+    }
+    if (body.redirectUriAllowlist !== undefined) {
+      if (!Array.isArray(body.redirectUriAllowlist)) throw new BadRequestException("redirectUriAllowlist must be an array");
+      update.redirectUriAllowlist = body.redirectUriAllowlist.filter((value): value is string => typeof value === "string").slice(0, 50);
+    }
+    if (body.rateLimitPerMinute !== undefined) {
+      if (!Number.isInteger(body.rateLimitPerMinute) || Number(body.rateLimitPerMinute) < 1 || Number(body.rateLimitPerMinute) > 10_000) {
+        throw new BadRequestException("rateLimitPerMinute must be an integer between 1 and 10000");
+      }
+      update.rateLimitPerMinute = body.rateLimitPerMinute;
+    }
+    if (typeof body.injectMcpContext === "boolean") {
+      update.injectMcpContext = body.injectMcpContext;
+    }
+    await this.prisma.entityMcpConfig.upsert({
+      where: { entityId: entity.entityPk },
+      create: {
+        entityId: entity.entityPk,
+        enabled: false,
+        identityMode: "bearer",
+        identityProviders: [],
+        branding: {},
+        toolAllowlist: [],
+        rateLimitPerMinute: 60,
+        redirectUriAllowlist: [],
+        injectMcpContext: false,
+        ...update,
+      },
+      update,
+    });
+    const config = await this.prisma.entityMcpConfig.findUnique({
+      where: { entityId: entity.entityPk },
+    });
+    if (!config) throw new HttpException("MCP config unavailable", HttpStatus.SERVICE_UNAVAILABLE);
+    if (body.injectMcpContext !== undefined) {
+      try {
+        await this.toolRegistry.rebuildIndex();
+      } catch {
+        // Persisted state remains authoritative; registry repair is retryable.
+      }
+    }
     return { entityId, entityPk: entity.entityPk, config };
   }
 
@@ -1426,7 +1529,7 @@ export class McpEntityController {
     @Body() branding: Record<string, unknown>,
   ) {
     // BUG-1: get scope first so loadEntity can scope the slug lookup to this tenant.
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
@@ -1455,13 +1558,13 @@ export class McpEntityController {
     @Body() body: { identityMode?: string; identityProviders?: unknown },
   ) {
     // BUG-1: get scope first so loadEntity can scope the slug lookup to this tenant.
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
     const updateData: Record<string, unknown> = {};
-    if (body.identityMode !== undefined) updateData.identityMode = body.identityMode;
-    if (body.identityProviders !== undefined) updateData.identityProviders = body.identityProviders;
+    if (body.identityMode !== undefined) updateData.identityMode = validateMcpIdentityMode(body.identityMode);
+    if (body.identityProviders !== undefined) updateData.identityProviders = validateIdentityProviders(body.identityProviders);
     await this.prisma.entityMcpConfig.updateMany({
       where: { entityId: entity.entityPk },
       data: updateData,
@@ -1477,7 +1580,7 @@ export class McpEntityController {
     @Body() body: { enabled: boolean },
   ) {
     // BUG-1: scope the lookup to (organizationId, projectId) to prevent cross-tenant discovery.
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const ent = await this.prisma.entity.findFirst({
       where: {
         externalId: entityId,
@@ -1518,7 +1621,7 @@ export class McpEntityController {
     @Param("entityId") entityId: string,
     @Body() body: { injectMcpContext: boolean },
   ) {
-    const scope = this.getScope(req);
+    const scope = this.getOperatorScope(req);
     const ent = await this.prisma.entity.findFirst({
       where: {
         externalId: entityId,

@@ -601,7 +601,8 @@ describe("M4 dashboard rebuild", () => {
     expect(postman).toContain("Session Context — JSON object");
     const mcp = render({ surface: "mcp-config", title: "MCP Entity", description: "Gateway", panel: { ok: true, data: { enabled: true, identityMode: "bearer", bearerTokenCount: 2, rateLimitPerMinute: 60 } } });
     expect(mcp).toContain("Save typed MCP config");
-    expect(mcp).toContain("Active bearer tokens");
+    expect(mcp).toContain("Inject MCP context");
+    expect(mcp).toContain("Identity providers — JSON array");
   });
 
   it("keeps the agent-service failure isolated to its panel", () => {
@@ -729,7 +730,7 @@ describe("M4 dashboard rebuild", () => {
         route: "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId",
       },
       {
-        operation: "GET /api/v1/agent/entities/:entityId/mcp/config",
+        operation: "GET /mcp/entity/:entityId/config",
         route: "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index",
       },
       {

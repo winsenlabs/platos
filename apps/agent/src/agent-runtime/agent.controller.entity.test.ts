@@ -143,18 +143,20 @@ describe("AgentController clean Entity transport routes", () => {
       toolAllowlist: ["tickets.list"],
       redirectUriAllowlist: ["https://client.example/callback"],
       rateLimitPerMinute: 120,
+      injectMcpContext: true,
     });
     h.prisma.mcpBearerToken.count.mockResolvedValue(2);
 
     const result = await h.controller.patchEntityMcpConfig(h.req, "support-core", {
       enabled: true,
-      identityMode: "oidc",
-      identityProviders: { type: "oidc" },
+      identityMode: "bearer+oidc",
+      identityProviders: [{ type: "oidc" }],
       branding: { name: "Support" },
       toolAllowlist: ["tickets.list"],
       consentCopy: "retired field",
       redirectUriAllowlist: ["https://client.example/callback"],
       rateLimitPerMinute: 120,
+      injectMcpContext: true,
     });
 
     const upsert = h.prisma.entityMcpConfig.upsert.mock.calls[0][0];
@@ -162,7 +164,7 @@ describe("AgentController clean Entity transport routes", () => {
     expect(upsert.create).toMatchObject({
       entityId: "entity_pk",
       enabled: true,
-      identityMode: "oidc",
+      identityMode: "bearer+oidc",
       branding: { name: "Support" },
     });
     expect(upsert.create).not.toHaveProperty("entityPk");
@@ -174,7 +176,23 @@ describe("AgentController clean Entity transport routes", () => {
       bearerTokenCount: 2,
       consentCopy: null,
       exists: true,
+      injectMcpContext: true,
     });
+    expect(upsert.update).toMatchObject({
+      identityMode: "bearer+oidc",
+      identityProviders: [{ type: "oidc" }],
+      injectMcpContext: true,
+    });
+  });
+
+  it("rejects an object-root identityProviders payload before persistence", async () => {
+    const h = harness();
+
+    await expect(h.controller.patchEntityMcpConfig(h.req, "support-core", {
+      identityProviders: { type: "oidc" },
+    })).rejects.toMatchObject({ status: 400 });
+
+    expect(h.prisma.entityMcpConfig.upsert).not.toHaveBeenCalled();
   });
 
   it("rejects legacy linked-agent and test-credential mutations", async () => {

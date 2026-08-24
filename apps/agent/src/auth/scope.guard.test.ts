@@ -11,7 +11,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UnauthorizedException } from "@nestjs/common";
-import { ScopeGuard } from "./scope.guard";
+import { isPublicMcpTransport, ScopeGuard } from "./scope.guard";
 import { AuthService } from "./auth.service";
 import { AgentController } from "../agent-runtime/agent.controller";
 import type { ExecutionContext } from "@nestjs/common";
@@ -131,6 +131,27 @@ describe("ScopeGuard — health/test allowlist", () => {
   it("allows /test/* without auth", async () => {
     const guard = new ScopeGuard();
     await expect(guard.canActivate(mockExecutionContext({}, "/test/ping"))).resolves.toBe(true);
+  });
+});
+
+describe("ScopeGuard — exact MCP protocol isolation", () => {
+  it.each([
+    ["POST", "/mcp/platform"],
+    ["GET", "/mcp/platform/sse?sessionId=one"],
+    ["POST", "/mcp/entity/entity-1"],
+    ["GET", "/mcp/entity/entity-1/events/subscribe?cursor=one"],
+  ])("recognizes public %s %s", (method, url) => {
+    expect(isPublicMcpTransport(method, url)).toBe(true);
+  });
+
+  it.each([
+    ["GET", "/mcp/platform"],
+    ["POST", "/mcp/platform/tokens"],
+    ["GET", "/mcp/entity/entity-1/tokens"],
+    ["PATCH", "/mcp/entity/entity-1/inject-context"],
+    ["POST", "/mcp/entity/entity-1/tool-acl/bulk"],
+  ])("keeps management %s %s behind normal scope auth", (method, url) => {
+    expect(isPublicMcpTransport(method, url)).toBe(false);
   });
 });
 
