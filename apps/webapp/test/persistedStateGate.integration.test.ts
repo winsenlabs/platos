@@ -63,11 +63,13 @@ const requiredAssertionIds = new Set([
   "action.agent.update",
   "controller.cluster.bind",
   "controller.thread.archive-and-restore",
-  "action.memory.update",
+  "action.memory.visibility",
+  "action.memory.edit",
   "action.memory.import",
   "controller.memory.relate",
   "controller.provider.rotate",
-  "action.memory.delete",
+  "action.memory.archive",
+  "action.memory.restore",
   "controller.agent.delete",
   "negative.enum-mismatch",
   "negative.organization",
@@ -399,18 +401,18 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
       };
     });
 
-    await check("action.memory.update", async () => {
+    await check("action.memory.visibility", async () => {
       const updateResponse = await webappDataRequest(
         `${environmentPath(primary)}/memories`,
         remixRouteIds.memories,
         {
           method: "POST",
           body: new URLSearchParams({
-            intent: "memory-toggle",
+            intent: "memory-visibility",
             userId: primary.endUserId,
             agentId: primary.agentIds[0],
             id: primary.profileMemoryId,
-            agentVisible: "false",
+            visibility: "hidden",
           }),
         }
       );
@@ -426,6 +428,63 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
           id: primary.profileMemoryId,
           agentVisible: false,
           visibility: readBack?.visibility,
+        },
+      };
+    });
+
+    await check("action.memory.edit", async () => {
+      const editedContent = "WIN-235 edited profile memory";
+      const editedProfileKey = "win235-edited-profile";
+      const updateResponse = await webappDataRequest(
+        `${environmentPath(primary)}/memories`,
+        remixRouteIds.memories,
+        {
+          method: "POST",
+          body: new URLSearchParams({
+            intent: "memory-update",
+            userId: primary.endUserId,
+            agentId: primary.agentIds[0],
+            id: primary.profileMemoryId,
+            content: editedContent,
+            kind: "profile",
+            visibility: "hidden",
+            profileKey: editedProfileKey,
+            metadata: "{}",
+          }),
+        }
+      );
+      const updatePayload = await responsePayload(updateResponse);
+      expect(updateResponse.status, JSON.stringify(updatePayload)).toBe(200);
+      expect(updatePayload.ok).toBe(true);
+
+      const persisted = await database.memory.findUnique({ where: { id: primary.profileMemoryId } });
+      expect(persisted).toMatchObject({
+        id: primary.profileMemoryId,
+        kind: "profile",
+        profileKey: editedProfileKey,
+        visibility: "hidden",
+        agentVisible: false,
+      });
+      const readBack = await agentRequestResult<{
+        memories: Array<{ id: string; content: string; metadata: unknown }>;
+      }>(`/api/v1/memory?userId=${encodeURIComponent(primary.endUserId)}&kind=profile`, {
+        ...primary,
+        agentId: primary.agentIds[0],
+      });
+      expect(readBack.status).toBe(200);
+      expect(readBack.payload.memories.find((memory) => memory.id === primary.profileMemoryId)).toMatchObject({
+        id: primary.profileMemoryId,
+        content: editedContent,
+        metadata: { profileKey: editedProfileKey },
+      });
+      return {
+        httpStatus: updateResponse.status,
+        readBack: {
+          id: primary.profileMemoryId,
+          kind: persisted?.kind,
+          profileKey: persisted?.profileKey,
+          visibility: persisted?.visibility,
+          content: editedContent,
         },
       };
     });
@@ -448,24 +507,31 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
         ).map((memory) => memory.id)
       );
       const bundle = {
+        version: 2,
         memories: [
           {
+            id: "win235-import-memory-1",
             kind: "profile",
             content: importedMemoryContent,
             metadata: { profileKey: "win235-imported-profile" },
             visibility: "private",
             agentVisible: false,
+            source: "manual",
           },
         ],
         entities: [
-          { entityKey: "win235:import:from", entityType: "person", label: "From" },
-          { entityKey: "win235:import:to", entityType: "project", label: "To" },
+          { id: "win235-import-entity-from", entityKey: "win235:import:from", entityType: "person", label: "From", aliases: [] },
+          { id: "win235-import-entity-to", entityKey: "win235:import:to", entityType: "project", label: "To", aliases: [] },
         ],
         relationships: [
           {
+            id: "win235-import-relationship-1",
+            fromEntityId: "win235-import-entity-from",
+            toEntityId: "win235-import-entity-to",
             fromEntityKey: "win235:import:from",
             toEntityKey: "win235:import:to",
             relationshipType: "works_on",
+            sourceMemoryId: "win235-import-memory-1",
           },
         ],
       };
@@ -599,14 +665,14 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
       };
     });
 
-    await check("action.memory.delete", async () => {
+    await check("action.memory.archive", async () => {
       const response = await webappDataRequest(
         `${environmentPath(primary)}/memories`,
         remixRouteIds.memories,
         {
           method: "POST",
           body: new URLSearchParams({
-            intent: "memory-delete",
+            intent: "memory-archive",
             userId: primary.endUserId,
             agentId: primary.agentIds[0],
             id: primary.profileMemoryId,
@@ -614,12 +680,34 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
         }
       );
       expect(response.status).toBe(200);
-      expect(
-        await database.memory.findUnique({ where: { id: primary.profileMemoryId } })
-      ).toBeNull();
+      const archived = await database.memory.findUnique({ where: { id: primary.profileMemoryId } });
+      expect(archived?.archivedAt).not.toBeNull();
       return {
         httpStatus: response.status,
-        readBack: { id: primary.profileMemoryId, exists: false },
+        readBack: { id: primary.profileMemoryId, exists: true, archived: true },
+      };
+    });
+
+    await check("action.memory.restore", async () => {
+      const response = await webappDataRequest(
+        `${environmentPath(primary)}/memories`,
+        remixRouteIds.memories,
+        {
+          method: "POST",
+          body: new URLSearchParams({
+            intent: "memory-restore",
+            userId: primary.endUserId,
+            agentId: primary.agentIds[0],
+            id: primary.profileMemoryId,
+          }),
+        }
+      );
+      expect(response.status).toBe(200);
+      const restored = await database.memory.findUnique({ where: { id: primary.profileMemoryId } });
+      expect(restored?.archivedAt).toBeNull();
+      return {
+        httpStatus: response.status,
+        readBack: { id: primary.profileMemoryId, exists: true, archived: false },
       };
     });
 

@@ -307,6 +307,10 @@ export function MemoryGraphSurface({ data, secondary, supporting, selection }: S
       : <EmptyState title="No Agent bindings" description="Create and bind an Agent in this Environment before traversing Memory." />;
   }
   const entities = firstArray(root, "entities", "items");
+  const selectedAgent = Object.keys(asRecord(selection)).length
+    ? asRecord(selection)
+    : agents.map(asRecord).find((agent) => asString(agent.id) === agentId);
+  const clusterId = asString(selectedAgent?.clusteringId);
   const neighborhood = [...firstArray(operation, "outbound"), ...firstArray(operation, "inbound")];
   const preservedGraphParams = Array.from(searchParams.entries()).filter(([key]) => !["userId", "agentId", "entityId", "from", "to", "maxHops", "entityQ", "entityOffset"].includes(key));
   const contextInputs = <><input type="hidden" name="userId" value={userId} /><input type="hidden" name="agentId" value={agentId} />{preservedGraphParams.map(([key, value], index) => <input key={`${key}-${index}`} type="hidden" name={key} value={value} />)}</>;
@@ -326,7 +330,7 @@ export function MemoryGraphSurface({ data, secondary, supporting, selection }: S
   const entityReference = (name: string, label: string, useKey = false) => <label className="text-xs">{label}<input required list={`entities-${useKey ? "keys" : "references"}`} name={name} defaultValue={searchParams.get(name) ?? ""} placeholder={useKey ? "Entity key" : "Entity ID or key"} className={fieldClass} /></label>;
   return <div className="space-y-5">
     <div className="flex flex-wrap items-end justify-between gap-3"><MemoryAgentSelector userId={userId} agentId={agentId} agentsRoot={agentsRoot} selection={selection} /><Link to={`../memories?${queryContext}`}><Button type="button">Back to memories</Button></Link></div>
-    <Alert title="Selected EndUser knowledge graph">Neighborhood, path traversal, and relationship creation stay bound to <code>{userId}</code> through validated Agent pin <code>{agentId}</code>.</Alert>
+    <Alert title="Selected EndUser knowledge graph">Neighborhood, path traversal, and relationship creation stay bound to <code>{userId}</code> through {clusterId ? <>AgentCluster <code>{clusterId}</code> selected by Agent <code>{agentId}</code></> : <>validated Agent pin <code>{agentId}</code></>}.</Alert>
     <datalist id="entities-references">{entityOptions.flatMap((entity) => [<option key={`id-${asString(entity.id)}`} value={asString(entity.id)}>{asString(entity.label, asString(entity.entityKey))}</option>, <option key={`key-${asString(entity.id)}`} value={asString(entity.entityKey)}>{asString(entity.label, asString(entity.entityKey))}</option>])}</datalist>
     <datalist id="entities-keys">{entityOptions.map((entity) => <option key={`rel-${asString(entity.id)}`} value={asString(entity.entityKey)}>{asString(entity.label, asString(entity.id))}</option>)}</datalist>
     <Form method="get"><Panel>{contextInputs}<SectionHeader title="Find graph entities" description="Search server-side by entity key or paste an ID/key from any entity page into an operation." /><input name="entityQ" defaultValue={searchParams.get("entityQ") ?? ""} placeholder="Entity key or ID" className={fieldClass} /><input type="hidden" name="entityOffset" value="0" /><Button type="submit" className="mt-3">Search entities</Button></Panel></Form>

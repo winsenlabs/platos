@@ -20,7 +20,7 @@ SET
   );
 
 -- Inventory compatibility categories before normalization. Do not emit raw
--- values: source and visibility were operator-controlled in older deployments
+-- values: source and visibility were operator-controlled in older installations
 -- and migration logs must not become a disclosure surface.
 DO $$
 DECLARE

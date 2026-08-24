@@ -872,7 +872,7 @@ async function main() {
     await assertStoresAreIsolatedAndEmpty();
 
     // Keep Agent startup deterministic and offline. A fresh empty catalogue
-    // otherwise triggers the production LiteLLM bootstrap before listen().
+  // otherwise causes the production LiteLLM bootstrap before listen().
     await database.model.create({
       data: {
         id: deterministicUuid("model", "fixture"),
