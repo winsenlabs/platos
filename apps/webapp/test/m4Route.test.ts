@@ -21,6 +21,7 @@ import { loader as loadTrace } from "../app/routes/_app.orgs.$organizationSlug.p
 import { loader as loadMemories } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route";
 import { loader as loadMemoryGraph } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.graph/route";
 import { loader as loadEvaluationAb } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.evals-ab/route";
+import { action as rollbackVersion } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.versions/route";
 
 function args(url = "https://dashboard.example/entity"): LoaderFunctionArgs {
   return {
@@ -320,8 +321,26 @@ describe("M4 route HTTP contracts", () => {
     await loadEvaluationAb(args("https://dashboard.example/agents/agent-1/evals-ab?page=2&pageSize=10"));
 
     expect(agentPanel).toHaveBeenCalledWith(
-      "/api/v1/agent/agents/agent-1/versions?take=10&offset=10",
+      "/api/v1/agent/agent-versions?agentId=agent-1&take=10&offset=10",
       expect.anything(),
+    );
+  });
+
+  it("rolls back through the generated AgentVersion operation contract", async () => {
+    agentRequest.mockResolvedValue({ agent: { id: "agent-1" } });
+    const requestArgs = args("https://dashboard.example/agents/agent-1/versions");
+    requestArgs.request = new Request(requestArgs.request.url, {
+      method: "POST",
+      body: new URLSearchParams({ versionId: "version-2" }),
+    });
+
+    const response = await rollbackVersion(requestArgs as any);
+
+    expect(response.status).toBe(200);
+    expect(agentRequest).toHaveBeenCalledWith(
+      "/api/v1/agent/agent-versions/version-2/rollback",
+      {},
+      { method: "POST", body: { agentId: "agent-1" } },
     );
   });
 });

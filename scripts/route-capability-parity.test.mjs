@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   EXPECTED_BASELINES,
@@ -279,6 +280,29 @@ test("the repaired Agent Tools ownership contract cannot regress to Environment 
   assert.match(errors, /identifiers lacks reviewed semantic fragment toolId/);
   assert.match(errors, /persistedReadBack\.status must be verified/);
   assert.match(errors, /defect\.status must be verified/);
+});
+
+test("authenticated loadSurface route evidence cannot regress to static claims", () => {
+  const matrix = readMatrix();
+  const rows = matrix.capabilities.filter((row) =>
+    /^route-\d+$/.test(row.capabilityId) &&
+    readFileSync(row.currentRoute, "utf8").includes("loadSurface("),
+  );
+
+  assert.equal(rows.length, 44);
+  for (const row of rows) {
+    assert.equal(row.permission.status, "verified", row.capabilityId);
+    assert.equal(row.tenantScope.status, "enforced", row.capabilityId);
+    assert.deepEqual(row.tenantScope.keys, ["organizationId", "projectId", "environmentId"], row.capabilityId);
+    assert.equal(row.linkState.status, "implemented", row.capabilityId);
+    assert.equal(row.recovery.status, "verified", row.capabilityId);
+    assert.equal(row.secretExposure.status, "verified", row.capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", row.capabilityId);
+    assert.ok(
+      row.automatedEvidence.references.includes("apps/webapp/test/authenticatedRouteEvidence.test.ts"),
+      row.capabilityId,
+    );
+  }
 });
 
 test("reviewed v0 dispositions cannot regress", async (t) => {

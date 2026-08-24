@@ -17,7 +17,7 @@ const config: SurfaceConfig = {
       const value = url.searchParams.get(key);
       if (value && /^[A-Za-z0-9_.:-]{1,100}$/.test(value)) query.set(key, value);
     }
-    return `/api/v1/agent/monitoring/tool-audit?${query}`;
+    return `/api/v1/agent/tool-calls?${query}`;
   },
   collection: { defaultPageSize: 50, maxPageSize: 100, search: true, filters: ["sinceDays", "agentId", "threadId", "entityId", "toolName", "status"] },
   provenance: "Canonical scoped Tool audit rows; newest first",

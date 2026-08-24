@@ -13,6 +13,11 @@ import {
   ToolKind,
   WorkStatus,
 } from "@platos/tenancy-database";
+import {
+  canonicalOperatorScope,
+  deterministicFixtureUuid,
+  type CanonicalScopeKey,
+} from "./fixture-contract";
 
 const FIXTURE_TIMESTAMP = new Date("2026-08-24T00:00:00.000Z");
 const AGENTS_PER_SCOPE = 20;
@@ -26,17 +31,8 @@ const GATE_REDIS_PORT = "56379";
 const GATE_CLICKHOUSE_PORT = "58123";
 const GATE_MINIO_PORT = "59001";
 
-type ScopeKey = "alpha" | "beta";
-
-function deterministicUuid(...parts: Array<string | number>): string {
-  const hex = createHash("sha256")
-    .update(["win235", ...parts].join(":"), "utf8")
-    .digest("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(
-    17,
-    20
-  )}-${hex.slice(20, 32)}`;
-}
+type ScopeKey = CanonicalScopeKey;
+const deterministicUuid = deterministicFixtureUuid;
 
 function argument(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -125,18 +121,19 @@ async function seedScope(
   graphEntityCount: number,
   tools: Array<{ id: string; name: string }>
 ) {
-  const organizationId = deterministicUuid(key, "organization");
-  const projectId = deterministicUuid(key, "project");
-  const environmentId = deterministicUuid(key, "environment");
-  const operatorId = deterministicUuid(key, "operator");
+  const canonicalScope = canonicalOperatorScope(key);
+  const organizationId = canonicalScope.organizationId;
+  const projectId = canonicalScope.projectId;
+  const environmentId = canonicalScope.environmentId;
+  const operatorId = canonicalScope.operatorId;
   const membershipId = deterministicUuid(key, "membership");
   const projectMembershipId = deterministicUuid(key, "project-membership");
-  const endUserId = deterministicUuid(key, "end-user");
+  const endUserId = canonicalScope.endUserId;
   const endUserIdentityId = deterministicUuid(key, "end-user-identity");
-  const entityId = deterministicUuid(key, "entity");
-  const clusterId = deterministicUuid(key, "cluster");
-  const threadId = deterministicUuid(key, "thread");
-  const externalUserId = `win235-${key}-end-user`;
+  const entityId = canonicalScope.entityId;
+  const clusterId = canonicalScope.clusterId;
+  const threadId = canonicalScope.threadId;
+  const externalUserId = canonicalScope.externalUserId;
   const agentIds = Array.from({ length: AGENTS_PER_SCOPE }, (_, index) =>
     deterministicUuid(key, "agent", index)
   );

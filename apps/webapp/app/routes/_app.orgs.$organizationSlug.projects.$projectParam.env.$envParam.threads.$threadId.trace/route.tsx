@@ -8,7 +8,7 @@ const config = {
   title: "Trace",
   description: "Nested spans, persisted messages, duration, cost and failure attribution for this Thread.",
   endpoint: "/api/v1/agent/monitoring/trace/:threadId",
-  secondaryEndpoint: "/api/v1/agent/monitoring/tool-audit?threadId=:threadId",
+  secondaryEndpoint: "/api/v1/agent/tool-calls?threadId=:threadId",
   provenance: "Canonical clean observability and Tool audit stores",
   notFoundAsResponse: true,
 };
