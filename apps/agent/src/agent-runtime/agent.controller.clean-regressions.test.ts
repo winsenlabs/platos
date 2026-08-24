@@ -14,7 +14,11 @@ const TOOL_ID = "22222222-2222-4222-8222-222222222222";
 
 function controllerHarness() {
   const controller: any = Object.create(AgentController.prototype);
-  controller.agentCrud = { findById: vi.fn(), setToolEnabled: vi.fn() };
+  controller.agentCrud = {
+    findById: vi.fn(),
+    setToolEnabled: vi.fn(),
+    rollbackToVersion: vi.fn(),
+  };
   controller.agentService = {
     prisma: {
       toolHealth: { findMany: vi.fn().mockResolvedValue([]) },
@@ -204,6 +208,28 @@ describe("AgentController clean scope regressions", () => {
       controller.toolRegistry.refreshEnvironmentPolicies.mock.invocationCallOrder[0],
     );
     expect(result).toMatchObject({ ok: true, agentVersionId: "version-b", toolId: TOOL_ID, enabled: false });
+  });
+
+  it("refreshes effective Tool policy after a version rollback", async () => {
+    const { controller, req } = controllerHarness();
+    controller.agentCrud.rollbackToVersion.mockResolvedValue({ id: AGENT_ID });
+
+    const result = await controller.rollbackAgentVersion(req, AGENT_ID, "version-target");
+
+    expect(controller.agentCrud.rollbackToVersion).toHaveBeenCalledWith(
+      AGENT_ID,
+      "version-target",
+      scope,
+    );
+    expect(controller.toolRegistry.refreshEnvironmentPolicies).toHaveBeenCalledWith({
+      organizationId: "org-a",
+      projectId: "project-a",
+      environmentId: "environment-a",
+    });
+    expect(controller.agentCrud.rollbackToVersion.mock.invocationCallOrder[0]).toBeLessThan(
+      controller.toolRegistry.refreshEnvironmentPolicies.mock.invocationCallOrder[0],
+    );
+    expect(result).toEqual({ agent: { id: AGENT_ID } });
   });
 
   it("returns stable 400 and scoped 404 Agent Tool mapping errors", async () => {

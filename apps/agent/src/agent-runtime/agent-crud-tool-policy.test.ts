@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RequestScope } from "../auth/scope.guard";
+import { TOOL_POLICY_INVALIDATION_CHANNEL } from "../tool-gateway/tool-policy-invalidation";
 import { AgentCrudService } from "./agent-crud.service";
 
 const scope: RequestScope = {
@@ -124,7 +125,10 @@ function harness(agentADefaultPolicy: "NONE" | "ALL" = "ALL") {
   const prisma = {
     $transaction: vi.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   };
-  const redis = { del: vi.fn().mockResolvedValue(0) };
+  const redis = {
+    del: vi.fn().mockResolvedValue(0),
+    publish: vi.fn().mockResolvedValue(1),
+  };
   return {
     service: new AgentCrudService(prisma as any, redis as any),
     versions,
@@ -132,6 +136,7 @@ function harness(agentADefaultPolicy: "NONE" | "ALL" = "ALL") {
     policies,
     environmentMapping,
     tx,
+    redis,
     bindingFindFirst,
     mappingFindFirst,
   };
@@ -173,6 +178,17 @@ describe("AgentCrudService Agent Tool ownership", () => {
     expect(h.tx.agentToolPolicy.createMany).toHaveBeenCalledWith({
       data: [{ agentVersionId: "version-3", toolId: "tool-a", effect: "DENY", priority: 0 }],
     });
+    expect(h.redis.publish).toHaveBeenCalledWith(
+      TOOL_POLICY_INVALIDATION_CHANNEL,
+      JSON.stringify({
+        organizationId: "org-a",
+        projectId: "project-a",
+        environmentId: "env-a",
+      }),
+    );
+    expect(h.tx.agentBinding.update.mock.invocationCallOrder[0]).toBeLessThan(
+      h.redis.publish.mock.invocationCallOrder[0],
+    );
     expect(h.mappingFindFirst).toHaveBeenCalledWith({
       where: {
         environmentId: "env-a",
@@ -204,6 +220,23 @@ describe("AgentCrudService Agent Tool ownership", () => {
     });
   });
 
+  it("preserves the existing Tool policy priority when toggling its effect", async () => {
+    const h = harness();
+    h.policies.push({
+      agentVersionId: "version-a",
+      toolId: "tool-a",
+      effect: "ALLOW",
+      priority: 17,
+    });
+
+    await h.service.setToolEnabled("agent-a", "tool-a", scope, false);
+
+    expect(h.tx.agentToolPolicy.createMany).toHaveBeenCalledWith({
+      data: [{ agentVersionId: "version-3", toolId: "tool-a", effect: "DENY", priority: 17 }],
+    });
+    expect(persistedEnabled(h.bindings, h.versions, h.policies, "agent-a", "tool-a")).toBe(false);
+  });
+
   it("returns the same scoped not-found result without writing for a foreign Tool ID", async () => {
     const h = harness();
 
@@ -212,5 +245,6 @@ describe("AgentCrudService Agent Tool ownership", () => {
     expect(h.versions).toHaveLength(2);
     expect(h.tx.agentBinding.update).not.toHaveBeenCalled();
     expect(h.tx.agentToolPolicy.createMany).not.toHaveBeenCalled();
+    expect(h.redis.publish).not.toHaveBeenCalled();
   });
 });

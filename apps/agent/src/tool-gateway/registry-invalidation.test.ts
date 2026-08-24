@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AuthService } from "../auth/auth.service";
+import {
+  TOOL_POLICY_INVALIDATION_CHANNEL,
+  TOOL_POLICY_INVALIDATION_SUBSCRIPTION_CHANNEL,
+} from "./tool-policy-invalidation";
 import { ToolRegistryService, type ToolSchema } from "./tool-registry.service";
 
 const SCOPE = {
@@ -216,6 +220,54 @@ const tool = (name: string): ToolSchema => ({
   paramSchema: { type: "object", properties: { query: { type: "string" } } },
 });
 
+function makeRedisBus() {
+  const subscriptions = new Map<string, Set<(channel: string, message: string) => void>>();
+  const subscribers: Array<{
+    subscribe: ReturnType<typeof vi.fn>;
+    on: ReturnType<typeof vi.fn>;
+    quit: ReturnType<typeof vi.fn>;
+  }> = [];
+
+  const client = () => ({
+    duplicate: vi.fn(() => {
+      const channels = new Set<string>();
+      let onMessage: ((channel: string, message: string) => void) | undefined;
+      const subscriber = {
+        subscribe: vi.fn(async (...requested: string[]) => {
+          for (const channel of requested) {
+            channels.add(channel);
+            const handlers = subscriptions.get(channel) ?? new Set();
+            subscriptions.set(channel, handlers);
+          }
+          return requested.length;
+        }),
+        on: vi.fn((event: string, handler: (channel: string, message: string) => void) => {
+          if (event === "message") {
+            onMessage = handler;
+            for (const channel of channels) subscriptions.get(channel)?.add(handler);
+          }
+          return subscriber;
+        }),
+        quit: vi.fn(async () => {
+          if (onMessage) {
+            for (const channel of channels) subscriptions.get(channel)?.delete(onMessage);
+          }
+          return "OK";
+        }),
+      };
+      subscribers.push(subscriber);
+      return subscriber;
+    }),
+    publish: vi.fn(async (channel: string, message: string) => {
+      const prefixed = `platos:${channel}`;
+      for (const handler of subscriptions.get(prefixed) ?? []) handler(prefixed, message);
+      return subscriptions.get(prefixed)?.size ?? 0;
+    }),
+  });
+
+  return { client, subscribers };
+}
+
 describe("ToolRegistryService clean tenancy cutover", () => {
   it("initializes successfully on a clean database", async () => {
     const { prisma } = makeDatabase();
@@ -423,6 +475,36 @@ describe("ToolRegistryService clean tenancy cutover", () => {
     expect(
       service.getScopedTools(SCOPE, { agentId: "agent-denied" }).map((x) => x.toolName),
     ).toEqual(["search"]);
+  });
+
+  it("refreshes policy visibility in another process after the scoped Redis event", async () => {
+    const { prisma, declare } = makeDatabase();
+    const bus = makeRedisBus();
+    const publisher = bus.client();
+    const service = new ToolRegistryService(prisma, bus.client() as any);
+    await declare(service, [tool("search")]);
+    await service.onModuleInit();
+
+    expect(service.getScopedTools(SCOPE, { agentId: "agent-denied" })).toEqual([]);
+    prisma.state.bindings[1].activeAgentVersion.toolPolicies = [
+      { toolId: prisma.state.tools[0].id, effect: "ALLOW" },
+    ];
+
+    await publisher.publish(
+      TOOL_POLICY_INVALIDATION_CHANNEL,
+      JSON.stringify(SCOPE),
+    );
+
+    await vi.waitFor(() => {
+      expect(
+        service.getScopedTools(SCOPE, { agentId: "agent-denied" }).map((entry) => entry.toolName),
+      ).toEqual(["search"]);
+    });
+    expect(bus.subscribers[0]?.subscribe).toHaveBeenCalledWith(
+      TOOL_POLICY_INVALIDATION_SUBSCRIPTION_CHANNEL,
+    );
+    await service.onModuleDestroy();
+    expect(bus.subscribers[0]?.quit).toHaveBeenCalledOnce();
   });
 
   it("returns deterministic name ordering regardless of declaration order", async () => {

@@ -1576,6 +1576,7 @@ export class AgentController {
     requireOperator(scope);
     try {
       const agent = await this.agentCrud.rollbackToVersion(agentId, versionId, scope);
+      await this.toolRegistry.refreshEnvironmentPolicies(this.scopeTuple(scope));
       return { agent };
     } catch (err: any) {
       throw new BadRequestException(err?.message || "Rollback failed");

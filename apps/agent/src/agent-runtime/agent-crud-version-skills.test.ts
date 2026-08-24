@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RequestScope } from "../auth/scope.guard";
+import { TOOL_POLICY_INVALIDATION_CHANNEL } from "../tool-gateway/tool-policy-invalidation";
 import { AgentCrudService } from "./agent-crud.service";
 
 const scope: RequestScope = {
@@ -110,7 +111,10 @@ function makeHarness(options: { cloneError?: Error; targetVersion?: ReturnType<t
     agentVersion: { findFirst: vi.fn().mockResolvedValue(targetVersion) },
     $transaction: vi.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   };
-  const redis = { del: vi.fn().mockResolvedValue(0) };
+  const redis = {
+    del: vi.fn().mockResolvedValue(0),
+    publish: vi.fn().mockResolvedValue(1),
+  };
   return {
     binding,
     createdVersion,
@@ -187,6 +191,17 @@ describe("AgentCrudService AgentSkill version rollover", () => {
       where: { agentVersionId: "version-target" },
       select: { toolId: true, effect: true, priority: true },
     });
+    expect(h.redis.publish).toHaveBeenCalledWith(
+      TOOL_POLICY_INVALIDATION_CHANNEL,
+      JSON.stringify({
+        organizationId: "org-a",
+        projectId: "project-a",
+        environmentId: "env-a",
+      }),
+    );
+    expect(h.tx.agentBinding.update.mock.invocationCallOrder[0]).toBeLessThan(
+      h.redis.publish.mock.invocationCallOrder[0],
+    );
   });
 
   it("does not advance the binding or invalidate caches when skill cloning fails", async () => {

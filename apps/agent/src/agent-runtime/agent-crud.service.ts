@@ -2,6 +2,7 @@ import { Injectable, Inject, Optional } from "@nestjs/common";
 import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
+import { TOOL_POLICY_INVALIDATION_CHANNEL } from "../tool-gateway/tool-policy-invalidation";
 import type { RequestScope } from "../auth/scope.guard";
 import { AdminAuditService } from "../monitoring/admin-audit.service";
 import { addUsage, EMPTY_USAGE, roundCents, usageFromTurn } from "../monitoring/usage-ledger";
@@ -743,7 +744,10 @@ export class AgentCrudService {
       policies.map((policy: any) => [policy.toolId, policy]),
     );
     if (replacement) {
-      byToolId.set(replacement.toolId, { ...replacement, priority: 0 });
+      byToolId.set(replacement.toolId, {
+        ...replacement,
+        priority: byToolId.get(replacement.toolId)?.priority ?? 0,
+      });
     }
     if (byToolId.size === 0) return;
     await tx.agentToolPolicy.createMany({
@@ -1100,6 +1104,7 @@ export class AgentCrudService {
       });
     });
     await this.invalidate(agentId, scope);
+    await this.publishToolPolicyInvalidation(scope);
     return (await this.findById(agentId, scope))!;
   }
 
@@ -1178,7 +1183,10 @@ export class AgentCrudService {
         enabled,
       };
     });
-    if (result) await this.invalidate(agentId, scope);
+    if (result) {
+      await this.invalidate(agentId, scope);
+      await this.publishToolPolicyInvalidation(scope);
+    }
     return result;
   }
 
@@ -1418,5 +1426,16 @@ export class AgentCrudService {
       `agent:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${agentId}:config`,
     );
     this.promptCache?.invalidate(agentId).catch(() => undefined);
+  }
+
+  private async publishToolPolicyInvalidation(scope: RequestScope): Promise<void> {
+    await this.redis.publish(
+      TOOL_POLICY_INVALIDATION_CHANNEL,
+      JSON.stringify({
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+      }),
+    );
   }
 }
