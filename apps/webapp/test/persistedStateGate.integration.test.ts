@@ -119,6 +119,7 @@ function webappDataRequest(pathname: string, routeId: string, init: RequestInit 
   url.searchParams.set("_data", routeId);
   return fetch(url, {
     ...init,
+    redirect: "manual",
     headers: {
       Cookie: operatorCookie,
       Accept: "application/json",
@@ -135,8 +136,22 @@ function webappPageRequest(pathname: string) {
 }
 
 async function responsePayload(response: Response) {
-  const payload = await response.json();
-  return payload as Record<string, any>;
+  const body = await response.text();
+  const diagnostics = [
+    `status=${response.status} ${response.statusText}`,
+    `url=${response.url}`,
+    `redirected=${response.redirected}`,
+    `location=${response.headers.get("location") ?? "none"}`,
+    `content-type=${response.headers.get("content-type") ?? "none"}`,
+  ].join(" ");
+  if (!body) {
+    throw new Error(`Expected JSON but received an empty body: ${diagnostics}`);
+  }
+  try {
+    return JSON.parse(body) as Record<string, any>;
+  } catch {
+    throw new Error(`Expected JSON: ${diagnostics} body=${JSON.stringify(body.slice(0, 300))}`);
+  }
 }
 
 function agentForm(name: string, slug = "win235-action-agent") {
@@ -171,10 +186,13 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
     manifest = JSON.parse(await readFile(fixturePath, "utf8")) as FixtureManifest;
     [primary, secondary] = manifest.scopes;
     const session = await operatorAuth.issueOperatorSession({ userId: primary.operatorId });
-    operatorCookie = (await commitOperatorSession(session.token, session.expiresAt)).split(
+    const runnerCookie = (await commitOperatorSession(session.token, session.expiresAt)).split(
       ";",
       1
     )[0];
+    // The test runner uses NODE_ENV=test, while the exact production webapp
+    // candidate intentionally uses the secure __Host- cookie name.
+    operatorCookie = runnerCookie.replace(/^[^=]+=/, "__Host-platos_operator_session=");
   });
 
   afterAll(async () => {

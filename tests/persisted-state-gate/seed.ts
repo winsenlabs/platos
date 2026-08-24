@@ -7,6 +7,7 @@ import {
   ApprovalStatus,
   OperatorIdentityProvider,
   OrganizationRole,
+  ModelRateSource,
   PrismaClient,
   ProjectRole,
   ToolKind,
@@ -869,6 +870,47 @@ async function main() {
   try {
     await database.$connect();
     await assertStoresAreIsolatedAndEmpty();
+
+    // Keep Agent startup deterministic and offline. A fresh empty catalogue
+    // otherwise triggers the production LiteLLM bootstrap before listen().
+    await database.model.create({
+      data: {
+        id: deterministicUuid("model", "fixture"),
+        key: "fixture:deterministic",
+        provider: "fixture",
+        name: "deterministic",
+        displayName: "WIN-235 deterministic fixture model",
+        contextWindow: 1000,
+        maxOutputTokens: 100,
+        capabilities: ["text"],
+        sourceUpdatedAt: FIXTURE_TIMESTAMP,
+        createdAt: FIXTURE_TIMESTAMP,
+        updatedAt: FIXTURE_TIMESTAMP,
+        prices: {
+          create: {
+            id: deterministicUuid("model-price", "fixture"),
+            effectiveFrom: FIXTURE_TIMESTAMP,
+            inputRate: "0",
+            outputRate: "0",
+            cacheReadRate: "0",
+            cacheWriteRate: "0",
+            inputSource: ModelRateSource.VERIFIED_PROVIDER,
+            outputSource: ModelRateSource.VERIFIED_PROVIDER,
+            cacheReadSource: ModelRateSource.VERIFIED_PROVIDER,
+            cacheWriteSource: ModelRateSource.VERIFIED_PROVIDER,
+            inputObservedAt: FIXTURE_TIMESTAMP,
+            outputObservedAt: FIXTURE_TIMESTAMP,
+            cacheReadObservedAt: FIXTURE_TIMESTAMP,
+            cacheWriteObservedAt: FIXTURE_TIMESTAMP,
+            inputSourceRef: "win235:fixture",
+            outputSourceRef: "win235:fixture",
+            cacheReadSourceRef: "win235:fixture",
+            cacheWriteSourceRef: "win235:fixture",
+            createdAt: FIXTURE_TIMESTAMP,
+          },
+        },
+      },
+    });
 
     const tools = Array.from({ length: TOOLS }, (_, index) => ({
       id: deterministicUuid("tool", index),
