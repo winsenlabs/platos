@@ -325,7 +325,8 @@ test("browser verification cannot be claimed without concrete evidence", () => {
 test("completion is a separate expected-red gate with actionable blocker counts", () => {
   const matrix = readMatrix();
   const blockers = completionBlockers(matrix);
-  assert.ok(blockers.find((blocker) => blocker.category === "confirmed defects")?.count > 0);
+  assert.equal(blockers.find((blocker) => blocker.category === "confirmed defects"), undefined);
+  assert.ok(blockers.find((blocker) => blocker.category === "permission")?.count > 0);
   assert.ok(blockers.find((blocker) => blocker.category === "persisted-state evidence")?.count > 0);
   assert.ok(blockers.find((blocker) => blocker.category === "browser evidence")?.count > 0);
   assert.throws(() => runCompletionGate(matrix), /completion gate is RED \(\d+ actionable blockers across \d+ categories\)/);
