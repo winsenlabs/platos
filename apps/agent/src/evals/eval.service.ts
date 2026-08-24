@@ -10,6 +10,7 @@ import type { EvalCriterionRecord } from "./criterion.service";
 import { CriterionService } from "./criterion.service";
 import { CostService } from "../monitoring/cost.service";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
+import { isUuid } from "../shared/pagination";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -46,6 +47,7 @@ export interface EvalListFilters {
   sinceDays?: number;
   limit?: number;
   offset?: number;
+  search?: string;
 }
 
 export interface JudgeRunInput {
@@ -500,12 +502,19 @@ export class EvalService {
     if (filters.agentVersionId) where.agentVersionId = filters.agentVersionId;
     if (filters.criterionId) where.criterionId = filters.criterionId;
     if (filters.threadId) where.threadId = filters.threadId;
+    if (filters.search) {
+      where.OR = [
+        ...(isUuid(filters.search) ? [{ id: { equals: filters.search } }] : []),
+        { rationale: { contains: filters.search, mode: "insensitive" } },
+        { judgeModel: { contains: filters.search, mode: "insensitive" } },
+      ];
+    }
 
     const [total, rows] = await Promise.all([
       this.prisma.agentEval.count({ where }),
       this.prisma.agentEval.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: limit,
         skip: offset,
       }),

@@ -104,8 +104,9 @@ export function M4Surface({ data }: { data: SurfaceData }) {
   const content = data.panel.ok ? data.panel.data : null;
   const secondary = data.secondary?.ok ? data.secondary.data : null;
   const supporting = data.supporting?.ok ? data.supporting.data : null;
+  const selection = data.selection?.ok ? data.selection.data : null;
   const renderer = renderers[data.surface];
-  const props = { data: content, secondary, supporting, title: data.title };
+  const props = { data: content, secondary, supporting, selection, title: data.title };
 
   return (
     <Page>
@@ -119,6 +120,7 @@ export function M4Surface({ data }: { data: SurfaceData }) {
       {data.panel.ok ? renderer(props) : <PanelFailure error={data.panel.error} />}
       {data.secondary && !data.secondary.ok && <div className="mt-5"><PanelFailure error={data.secondary.error} /></div>}
       {data.supporting && !data.supporting.ok && <div className="mt-5"><PanelFailure error={data.supporting.error} /></div>}
+      {data.selection && !data.selection.ok && <div className="mt-5"><PanelFailure error={data.selection.error} /></div>}
       {data.provenance && <ProvenanceNote>{data.provenance}</ProvenanceNote>}
     </Page>
   );

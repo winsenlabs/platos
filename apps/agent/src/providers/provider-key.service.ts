@@ -65,10 +65,41 @@ export class ProviderKeyService {
         environmentId: authorization.environmentId,
         ...(provider ? { provider } : {}),
       },
-      orderBy: [{ provider: "asc" }, { isDefault: "desc" }, { createdAt: "asc" }],
+      orderBy: [{ provider: "asc" }, { isDefault: "desc" }, { createdAt: "asc" }, { id: "asc" }],
       select: PROVIDER_KEY_SAFE_SELECT,
     });
     return keys.map(toView);
+  }
+
+  async listPage(
+    scope: ProviderOperatorScope,
+    options: { limit: number; offset: number; provider?: string; search?: string | null },
+  ): Promise<{ items: SafeProviderKeyView[]; total: number }> {
+    const authorization = await this.authorize(scope, "metadata");
+    const where = {
+      environmentId: authorization.environmentId,
+      ...(options.provider ? { provider: options.provider } : {}),
+      ...(options.search
+        ? {
+            OR: [
+              { provider: { contains: options.search, mode: "insensitive" as const } },
+              { label: { contains: options.search, mode: "insensitive" as const } },
+              { environmentKeyName: { contains: options.search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const [keys, total] = await Promise.all([
+      this.prisma.providerKey.findMany({
+        where,
+        orderBy: [{ provider: "asc" }, { isDefault: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+        select: PROVIDER_KEY_SAFE_SELECT,
+        skip: options.offset,
+        take: options.limit,
+      }),
+      this.prisma.providerKey.count({ where }),
+    ]);
+    return { items: keys.map(toView), total };
   }
 
   async get(scope: ProviderOperatorScope, id: string): Promise<SafeProviderKeyView> {

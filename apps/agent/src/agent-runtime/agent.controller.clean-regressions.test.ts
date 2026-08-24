@@ -97,19 +97,25 @@ describe("AgentController clean scope regressions", () => {
     const result = await controller.toolMatrix(req);
 
     expect(controller.agentService.prisma.toolHealth.findMany).toHaveBeenCalledWith({
-      where: { environmentId: scope.environmentId },
+      where: {
+        environmentId: scope.environmentId,
+        OR: [
+          { toolId: "tool-b", entityExternalId: "support" },
+          { toolId: "tool-a", entityExternalId: "support" },
+        ],
+      },
     });
-    expect(result.rows[0]).toMatchObject({
+    expect(result.rows).toContainEqual(expect.objectContaining({
       toolId: "tool-a",
       category: "uncategorized",
       dispatchable: true,
-      health: { lastStatus: "healthy", totalCalls: 9, avgLatencyMs: 12 },
-    });
-    expect(result.rows[1]).toMatchObject({
+      health: expect.objectContaining({ lastStatus: "healthy", totalCalls: 9, avgLatencyMs: 12 }),
+    }));
+    expect(result.rows).toContainEqual(expect.objectContaining({
       toolId: "tool-b",
       category: "support",
       dispatchable: false,
-      health: {
+      health: expect.objectContaining({
         lastStatus: null,
         failCount: 0,
         totalCalls: 0,
@@ -117,7 +123,25 @@ describe("AgentController clean scope regressions", () => {
         avgLatencyMs: null,
         p95LatencyMs: null,
         lastCalledAt: null,
-      },
-    });
+      }),
+    }));
+    expect(result.aggregates).toEqual({ dispatchable: 1, unavailable: 1, disabled: 1 });
+  });
+
+  it("returns exact Tool availability aggregates beyond the current page", async () => {
+    const { controller, req } = controllerHarness();
+    controller.toolRegistry.getScopedTools.mockReturnValue(Array.from({ length: 30 }, (_, index) => ({
+      toolId: `tool-${String(index + 1).padStart(2, "0")}`,
+      toolName: `tool.${String(index + 1).padStart(2, "0")}`,
+      sourceEntityId: "dense",
+      enabled: true,
+      dispatchable: index < 25,
+    })));
+
+    const result = await controller.toolMatrix(req, undefined, "25");
+
+    expect(result.rows).toHaveLength(25);
+    expect(result.total).toBe(30);
+    expect(result.aggregates).toEqual({ dispatchable: 25, unavailable: 5, disabled: 0 });
   });
 });

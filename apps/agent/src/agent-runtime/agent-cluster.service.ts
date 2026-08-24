@@ -141,9 +141,41 @@ export class AgentClusterService {
     const clusters = await this.prisma.agentCluster.findMany({
       where: this.scopeWhere(scope),
       include: this.includeGraph(),
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
     return clusters.map((cluster: any) => this.projectCluster(cluster));
+  }
+
+  async listPage(
+    scope: RequestScope,
+    options: { limit: number; offset: number; search?: string | null },
+  ): Promise<{ items: ClusterRecord[]; total: number }> {
+    const where = {
+      ...this.scopeWhere(scope),
+      ...(options.search
+        ? {
+            OR: [
+              { name: { contains: options.search, mode: "insensitive" as const } },
+              { slug: { contains: options.search, mode: "insensitive" as const } },
+              { description: { contains: options.search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const [clusters, total] = await Promise.all([
+      this.prisma.agentCluster.findMany({
+        where,
+        include: this.includeGraph(),
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: options.offset,
+        take: options.limit,
+      }),
+      this.prisma.agentCluster.count({ where }),
+    ]);
+    return {
+      items: clusters.map((cluster: any) => this.projectCluster(cluster)),
+      total,
+    };
   }
 
   async update(clusterId: string, scope: RequestScope, dto: UpdateClusterDto): Promise<ClusterRecord> {

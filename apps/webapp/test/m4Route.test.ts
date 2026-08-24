@@ -15,6 +15,8 @@ import { loader as loadConversations } from "../app/routes/_app.orgs.$organizati
 import { loader as loadThread } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route";
 import { loader as loadTrace } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId.trace/route";
 import { loader as loadMemories } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route";
+import { loader as loadMemoryGraph } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.graph/route";
+import { loader as loadEvaluationAb } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.evals-ab/route";
 
 function args(url = "https://dashboard.example/entity"): LoaderFunctionArgs {
   return {
@@ -181,21 +183,29 @@ describe("M4 route HTTP contracts", () => {
     );
   });
 
-  it("pins Memory reads to the selected Agent while loading selector options unpinned", async () => {
+  it("pins Memory reads while independently paging selector options and hydrating the selected Agent", async () => {
     agentPanel.mockResolvedValue({ ok: true, data: { memories: [] } });
 
-    await loadMemories(args("https://dashboard.example/memories?userId=end-user-1&agentId=agent-1"));
+    await loadMemories(args("https://dashboard.example/memories?userId=end-user-1&agentId=agent-40&agentPage=2&agentPageSize=10&agentSearch=deep"));
 
     expect(agentPanel).toHaveBeenNthCalledWith(
       1,
       "/api/v1/memory?userId=end-user-1",
-      expect.objectContaining({ agentId: "agent-1" }),
+      expect.objectContaining({ agentId: "agent-40" }),
     );
     expect(agentPanel).toHaveBeenNthCalledWith(
       2,
-      "/api/v1/agent/agents",
+      "/api/v1/agent/agents?limit=10&offset=10&search=deep",
       expect.not.objectContaining({ agentId: expect.anything() }),
     );
+    expect(agentPanel).toHaveBeenNthCalledWith(
+      3,
+      "/api/v1/agent/agents/agent-40",
+      expect.not.objectContaining({ agentId: expect.anything() }),
+    );
+
+    await loadMemoryGraph(args("https://dashboard.example/memories/graph?userId=end-user-1&agentId=agent-40&agentPage=2&agentPageSize=10"));
+    expect(agentPanel).toHaveBeenNthCalledWith(6, "/api/v1/agent/agents/agent-40", expect.anything());
   });
 
   it("does not call Memory without an explicit Agent pin in a potentially multi-Agent Environment", async () => {
@@ -206,6 +216,17 @@ describe("M4 route HTTP contracts", () => {
 
     expect(payload.panel).toEqual({ ok: true, data: { requiresAgentContext: true } });
     expect(agentPanel).toHaveBeenCalledTimes(1);
-    expect(agentPanel).toHaveBeenCalledWith("/api/v1/agent/agents", expect.anything());
+    expect(agentPanel).toHaveBeenCalledWith("/api/v1/agent/agents?limit=25&offset=0", expect.anything());
+  });
+
+  it("forwards Evaluation A/B page controls using the AgentVersion take contract", async () => {
+    agentPanel.mockResolvedValue({ ok: true, data: { versions: [] } });
+
+    await loadEvaluationAb(args("https://dashboard.example/agents/agent-1/evals-ab?page=2&pageSize=10"));
+
+    expect(agentPanel).toHaveBeenCalledWith(
+      "/api/v1/agent/agents/agent-1/versions?take=10&offset=10",
+      expect.anything(),
+    );
   });
 });

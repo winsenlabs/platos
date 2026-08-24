@@ -9,6 +9,7 @@ import {
   HttpException,
   HttpStatus,
   Optional,
+  Query,
 } from "@nestjs/common";
 import { type Request } from "express";
 import { SkillRegistryService, SkillEnableError } from "./skill-registry.service";
@@ -17,6 +18,7 @@ import { OfficialSkillsSeederService } from "./official-skills-seeder.service";
 import { SkillParseError } from "./skill-manifest.types";
 import type { RequestScope } from "../auth/scope.guard";
 import type { PromptCacheService } from "../agent-runtime/prompt-cache.service";
+import { pageMetadata, parsePageRequest } from "../shared/pagination";
 
 /**
  * Theme S — REST API for the Skills library.
@@ -63,17 +65,41 @@ export class SkillsController {
   }
 
   @Get()
-  async list(@Req() req: Request) {
+  async list(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+  ) {
     const scope = this.scopeTuple(this.getScope(req));
-    let skills = await this.registry.list(scope);
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    let result = await this.registry.listPage(scope, {
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+    });
     // PIFSP-13 — lazy-seed: if no official skills exist for this org yet
     // (happens on fresh installs where the agent booted before the org was
     // created), trigger the seeder now and re-list.
-    if (!skills.some((s) => s.isOfficial)) {
+    if (!result.items.some((s) => s.isOfficial)) {
       await this.seeder.seedForOrg(scope.organizationId).catch(() => {});
-      skills = await this.registry.list(scope);
+      result = await this.registry.listPage(scope, {
+        limit: request.pageSize,
+        offset: request.offset,
+        search: request.search,
+      });
     }
-    return { skills };
+    return {
+      skills: result.items,
+      items: result.items,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + result.items.length < result.total,
+      pagination: pageMetadata(result.total, request),
+      filters: { search: request.search },
+    };
   }
 
   // PIFSP-13 — Skill health aggregate for the Plato Central dashboard widget.

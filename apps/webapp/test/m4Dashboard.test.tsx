@@ -277,7 +277,7 @@ describe("M4 dashboard rebuild", () => {
       secondary: { ok: true, data: { rows: [{ sourceEntityId: "notes", toolName: "notes.list", enabled: true, dispatchable: false, health: { lastStatus: "ENTITY_NOT_CONNECTED" } }] } },
     });
     expect(html).toContain("Entity disconnected");
-    expect(html).toContain("Registry now");
+    expect(html).toContain("Matching Tools");
     expect(html).toContain("undispatchable");
     expect(html).toContain("ENTITY_NOT_CONNECTED");
     expect(html).toContain("Delete Entity and registry residue");
@@ -350,6 +350,77 @@ describe("M4 dashboard rebuild", () => {
     expect(graph).toContain('type="hidden" name="maxHops" value="4"');
   });
 
+  it("keeps dense Memory and graph Agent selectors bounded while hydrating a deep-linked cluster", () => {
+    const pageAgents = Array.from({ length: 25 }, (_, index) => ({
+      id: `agent-${index + 1}`,
+      name: `Agent ${index + 1}`,
+      clusteringId: null,
+    }));
+    const secondary = {
+      ok: true as const,
+      data: {
+        agents: pageAgents,
+        pagination: { page: 1, pageSize: 25, total: 40, totalPages: 2, from: 1, to: 25, hasPrevious: false, hasNext: true },
+      },
+    };
+    const selection = { ok: true as const, data: { id: "agent-40", name: "Agent 40", clusteringId: "cluster-deep" } };
+    const entry = "/?userId=user-1&agentId=agent-40&agentPage=1&agentPageSize=25";
+    const memory = render({
+      surface: "memories",
+      title: "Memory",
+      description: "Scoped recall",
+      panel: { ok: true, data: { total: 0, memories: [] } },
+      secondary,
+      selection,
+    }, entry);
+
+    expect(memory).toContain("Search all Agents");
+    expect(memory).toContain("Agent 40 · cluster cluster-deep");
+    expect(memory).not.toContain("Agent 39");
+    expect(memory).toContain('aria-label="Memory Agent selector pagination"');
+    expect(memory).toContain("1–25 of 40 · Page 1 of 2");
+    expect(memory).toContain('rel="next"');
+    expect(memory).toContain("agentPage=2");
+    expect(memory).toContain("agentPageSize=25");
+    expect(memory).toContain("AgentCluster");
+    expect(memory).toContain("cluster-deep");
+
+    const graph = render({
+      surface: "memory-graph",
+      title: "Memory graph",
+      description: "Relationships",
+      panel: { ok: true, data: { entities: [] } },
+      secondary,
+      selection,
+    }, entry);
+    expect(graph).toContain("Agent 40 · cluster cluster-deep");
+    expect(graph).toContain("AgentCluster <code>cluster-deep</code> selected by Agent <code>agent-40</code>");
+    expect(graph).toContain("agentPage=2");
+  });
+
+  it("renders Home totals and exact unavailable Tools beyond the current pages", () => {
+    const html = render({
+      surface: "home",
+      title: "Home",
+      description: "Overview",
+      panel: {
+        ok: true,
+        data: {
+          agents: { ok: true, data: { agents: Array.from({ length: 25 }, (_, index) => ({ id: `agent-${index}` })), pagination: { total: 40 } } },
+          tools: { ok: true, data: { rows: Array.from({ length: 25 }, (_, index) => ({ toolId: `tool-${index}`, dispatchable: true })), pagination: { total: 200 }, aggregates: { unavailable: 37 } } },
+          approvals: { ok: true, data: { approvals: Array.from({ length: 10 }, (_, index) => ({ id: `approval-${index}` })), pagination: { total: 12 } } },
+          monitoring: { ok: true, data: { cards: [] } },
+        },
+      },
+    });
+
+    expect(html).toMatch(/>Agents<\/div><div[^>]*>40<\/div>/);
+    expect(html).toMatch(/>Tools<\/div><div[^>]*>200<\/div>/);
+    expect(html).toMatch(/>Waiting approvals<\/div><div[^>]*>12<\/div>/);
+    expect(html).toContain("37 undispatchable");
+    expect(html).toContain("37 canonical Tool rows are not dispatchable");
+  });
+
   it("renders every level of the operator-only Files hierarchy", () => {
     const agents = render({ surface: "files", title: "Files", description: "Agents", panel: { ok: true, data: { agents: [{ agentId: "agent-1", name: "Support", attachmentCount: 4 }] } } });
     expect(agents).toContain("View users");
@@ -360,6 +431,98 @@ describe("M4 dashboard rebuild", () => {
     const attachments = render({ surface: "files-attachments", title: "Attachments", description: "Files", panel: { ok: true, data: { attachments: [{ id: "file-1", filename: "invoice.pdf", mimeType: "application/pdf", kind: "document", bytes: 2048, downloadUrl: "https://files.example/invoice" }] } } });
     expect(attachments).toContain("invoice.pdf");
     expect(attachments).toContain("2.0 KB");
+  });
+
+  it("renders truthful accessible ranges and bounded dense tables", () => {
+    const html = render({
+      surface: "files",
+      title: "Files",
+      description: "Agents",
+      panel: {
+        ok: true,
+        data: {
+          agents: Array.from({ length: 25 }, (_, index) => ({
+            agentId: `agent-${index + 26}`,
+            name: `Agent ${index + 26}`,
+            attachmentCount: index + 1,
+          })),
+          pagination: {
+            page: 2,
+            pageSize: 25,
+            total: 60,
+            totalPages: 3,
+            from: 26,
+            to: 50,
+            hasPrevious: true,
+            hasNext: true,
+          },
+        },
+      },
+    }, "/?page=2&pageSize=25&search=Agent");
+
+    expect(html).toContain('aria-label="Agents with files pagination"');
+    expect(html).toContain('aria-live="polite"');
+    expect(html).toContain("26–50 of 60 · Page 2 of 3");
+    expect(html).toContain('rel="prev"');
+    expect(html).toContain('rel="next"');
+    expect(html).toContain("search=Agent");
+    expect(html).toContain("max-h-[70vh]");
+    expect(html).toContain("min-w-max");
+    expect(html).toContain('scope="col"');
+  });
+
+  it("distinguishes filtered-empty and past-end collection states", () => {
+    const filtered = render({
+      surface: "files-attachments",
+      title: "Attachments",
+      description: "Files",
+      panel: {
+        ok: true,
+        data: {
+          attachments: [],
+          pagination: { page: 1, pageSize: 25, total: 0, totalPages: 0, from: 0, to: 0, hasPrevious: false, hasNext: false },
+        },
+      },
+    }, "/?search=invoice&mime=application%2Fpdf");
+    expect(filtered).toContain("No matching attachments");
+    expect(filtered).toContain('aria-disabled="true"');
+
+    const pastEnd = render({
+      surface: "files-attachments",
+      title: "Attachments",
+      description: "Files",
+      panel: {
+        ok: true,
+        data: {
+          attachments: [],
+          pagination: { page: 4, pageSize: 25, total: 60, totalPages: 3, from: 0, to: 0, hasPrevious: true, hasNext: false },
+        },
+      },
+    }, "/?page=4&pageSize=25");
+    expect(pastEnd).toContain("No attachments on this page");
+    expect(pastEnd).toContain('rel="prev"');
+    expect(pastEnd).toContain('aria-disabled="true"');
+  });
+
+  it("keeps truthful Agent navigation on a past-end page", () => {
+    const html = render({
+      surface: "agents",
+      title: "Agents",
+      description: "List",
+      panel: {
+        ok: true,
+        data: {
+          agents: [],
+          pagination: { page: 4, pageSize: 25, total: 60, totalPages: 3, from: 0, to: 0, hasPrevious: true, hasNext: false },
+        },
+      },
+    }, "/?page=4&pageSize=25");
+
+    expect(html).toContain("No Agents on this page");
+    expect(html).not.toContain("No agents yet");
+    expect(html).toContain('aria-label="Agent pagination"');
+    expect(html).toContain('rel="prev"');
+    expect(html).toContain('href="/?page=3&amp;pageSize=25"');
   });
 
   it("renders safe variable, settings, and end-user projections", () => {

@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
 } from "@nestjs/common";
 import { type Request } from "express";
@@ -20,6 +21,7 @@ import {
   type ProviderOperatorScope,
 } from "./provider-key.service";
 import { ProviderRegistryService } from "./provider-registry.service";
+import { pageMetadata, parsePageRequest } from "../shared/pagination";
 
 /** Provider metadata and same-Environment credential-link management. */
 @Controller("api/v1/agent/providers")
@@ -49,14 +51,34 @@ export class ProvidersController {
   }
 
   @Get("keys")
-  async listKeys(@Req() req: Request) {
+  async listKeys(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+  ) {
     const scope = this.operatorScope(req);
-    const keys = await this.providerKeys.list(scope);
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const result = await this.providerKeys.listPage(scope, {
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+    });
     // Metadata listing must not decrypt or probe linked Credentials. A
     // ProviderKey can only be created against an active same-provider
     // Credential; live readiness is exposed by the explicitly gated provider
     // readiness/health routes.
-    return { keys };
+    return {
+      keys: result.items,
+      items: result.items,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + result.items.length < result.total,
+      pagination: pageMetadata(result.total, request),
+      filters: { search: request.search },
+    };
   }
 
   @Post("keys")

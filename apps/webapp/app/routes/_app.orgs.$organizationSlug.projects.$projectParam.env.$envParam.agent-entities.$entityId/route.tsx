@@ -3,7 +3,7 @@ import { useLoaderData, useOutlet } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
 import { agentRequest, booleanField, m4Mutation, optionalText, requiredText, stringList } from "~/services/m4Mutation.server";
-const config = { surface: "entities" as const, title: "Entity diagnostics", description: "Live state, current Tool registry, ACL, linked Agents and safe malformed configuration.", endpoint: "/api/v1/agent/entities/:entityId", secondaryEndpoint: "/api/v1/agent/tools/matrix", provenance: "Canonical clean database ancestry and platos-agent API", notFoundAsResponse: true };
+const config = { surface: "entities" as const, title: "Entity diagnostics", description: "Live state, current Tool registry, ACL, linked Agents and safe malformed configuration.", endpoint: "/api/v1/agent/entities/:entityId", secondaryEndpoint: "/api/v1/agent/tools/matrix?entityId=:entityId", secondaryCollection: { defaultPageSize: 50, maxPageSize: 100, search: true }, provenance: "Canonical clean database ancestry and platos-agent API", notFoundAsResponse: true };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   return m4Mutation(args, "Entity mutation", async ({ scope, form }) => {

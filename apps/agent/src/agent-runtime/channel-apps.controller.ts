@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   Req,
+  Query,
   HttpException,
   HttpStatus,
   Inject,
@@ -19,6 +20,7 @@ import { ChannelRuntimeService } from "../channels/channel-runtime.service";
 import { ChannelPersistenceService } from "../channels/channel-persistence.service";
 import { requireOperator, type RequestScope } from "../auth/scope.guard";
 import { validateAgentRouting } from "./channel-routing";
+import { pageMetadata, parsePageRequest } from "../shared/pagination";
 
 /**
  * Connect v3 — dashboard REST for marketplace-grade channel APPS.
@@ -268,15 +270,47 @@ export class ChannelAppsController {
   // ── Apps CRUD ─────────────────────────────────────────────────────────
 
   @Get()
-  async list(@Req() req: Request) {
+  async list(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+  ) {
     const scope = this.getScope(req);
     requireOperator(scope);
-    const rows = await this.persistence.listApps(scope);
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const result = await this.persistence.listAppsPage(scope, {
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+    });
+    const apps = (result.items as any[]).map((row) => ({
+      ...this.projectApp(row),
+      installUrl: this.installUrl(row.id),
+    }));
+    const appById = new Map(apps.map((app) => [app.id, app]));
+    const installations = await this.persistence.listInstallationsForApps(scope, apps.map((app) => app.id));
+    const installationStatuses: Record<string, { installations: unknown[] }> = Object.fromEntries(
+      apps.map((app) => [app.id, { installations: [] }]),
+    );
+    for (const installation of installations) {
+      const appId = String(installation.appId ?? "");
+      const app = appById.get(appId);
+      if (app && installationStatuses[appId]) {
+        installationStatuses[appId].installations.push(this.installationStatusView(installation, app));
+      }
+    }
     return {
-      apps: (rows as any[]).map((r) => ({
-        ...this.projectApp(r),
-        installUrl: this.installUrl(r.id),
-      })),
+      apps,
+      items: apps,
+      installationStatuses,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + apps.length < result.total,
+      pagination: pageMetadata(result.total, request),
+      filters: { search: request.search },
     };
   }
 

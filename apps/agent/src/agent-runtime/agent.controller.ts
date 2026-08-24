@@ -69,7 +69,7 @@ import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { BudgetService, type BudgetPeriod, type BudgetScopeType } from "../monitoring/budget.service";
 import type { BudgetAlertPayload } from "../monitoring/budget-alert.types";
-import { SafetyEventService, type DetectorKind, type DetectorAction } from "../monitoring/safety-event.service";
+import { SafetyEventService } from "../monitoring/safety-event.service";
 import { GovernanceService } from "../monitoring/governance.service";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
@@ -91,6 +91,13 @@ import {
   type ControlDatabaseClient,
   environmentScopeWhere,
 } from "../shared/database.provider";
+import {
+  pageMetadata,
+  parseBooleanFilter,
+  parseEnumFilter,
+  parsePageRequest,
+  parsePositiveIntegerFilter,
+} from "../shared/pagination";
 
 const EXTERNAL_END_USER_IDENTITY = {
   issuer: "platos:external",
@@ -1112,7 +1119,14 @@ export class AgentController {
   }
 
   @Get("agents")
-  async listAgents(@Req() req: Request) {
+  async listAgents(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+    @Query("status") statusRaw?: string,
+  ) {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — `agentCrud.list` returns the FULL
     // AgentRecord (systemPrompt, promptBlocks, toolsBlockConfig) for every agent
@@ -1120,8 +1134,25 @@ export class AgentController {
     // an end-user/guest reads every agent's config via the list sibling, defeating
     // the getAgent gate. Operator/dashboard-only.
     requireOperator(scope);
-    const agents = await this.agentCrud.list(scope);
-    return { agents, total: agents.length };
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const status = parseEnumFilter(statusRaw, "status", ["active", "paused"] as const);
+    const result = await this.agentCrud.listPage(scope, {
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+      status,
+    });
+    const pagination = pageMetadata(result.total, request);
+    return {
+      agents: result.agents,
+      items: result.agents,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      filters: { search: request.search, status },
+    };
   }
 
   @Get("agents/:agentId")
@@ -1227,6 +1258,10 @@ export class AgentController {
   async getAgentToolMappings(
     @Req() req: Request,
     @Param("agentId") agentId: string,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
   ) {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — per-agent tool matrix + param
@@ -1252,24 +1287,38 @@ export class AgentController {
     // row it gets from `/tools/matrix` — saves a second RTT on tab load.
     // Pass agentId so linkedAgentIds allow-list filter runs — UI and
     // runtime find_tools now show exactly the same tool set.
-    const tools = this.toolRegistry.getScopedTools(this.scopeTuple(scope), {
-      enabledOnly: false,
-      agentId,
-    });
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const tools = this.toolRegistry
+      .getScopedTools(this.scopeTuple(scope), {
+        enabledOnly: false,
+        agentId,
+      })
+      .filter((tool) => !request.search || [tool.toolName, tool.description, tool.sourceEntityId, tool.category]
+        .some((value) => String(value ?? "").toLowerCase().includes(request.search!.toLowerCase())))
+      .sort((left, right) => left.toolName.localeCompare(right.toolName)
+        || String(left.sourceEntityId ?? "").localeCompare(String(right.sourceEntityId ?? ""))
+        || left.toolId.localeCompare(right.toolId));
+    const total = tools.length;
+    const pageTools = tools.slice(request.offset, request.offset + request.pageSize);
     const healthRows: Array<{
       toolId: string;
       entityExternalId: string | null;
       environmentId: string;
       lastStatus: string | null;
-    }> = await this.prisma.toolHealth.findMany({
-      where: { environmentId: scope.environmentId },
-    });
+    }> = pageTools.length
+      ? await this.prisma.toolHealth.findMany({
+          where: {
+            environmentId: scope.environmentId,
+            OR: pageTools.map((tool) => ({ toolId: tool.toolId, entityExternalId: tool.sourceEntityId })),
+          },
+        })
+      : [];
     const healthByKey = new Map<string, string | null>();
     for (const h of healthRows) {
       healthByKey.set(`${h.toolId}:${h.entityExternalId ?? ""}`, h.lastStatus);
     }
 
-    const rows = tools.map((t) => {
+    const rows = pageTools.map((t) => {
       const resolved = resolveToolMappings(
         { name: t.toolName, inputSchema: t.paramSchema },
         {
@@ -1304,7 +1353,12 @@ export class AgentController {
           ? "direct"
           : "meta",
       agentId,
-      total: rows.length,
+      total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + rows.length < total,
+      pagination: pageMetadata(total, request),
+      filters: { search: request.search },
       fetchedAt: new Date().toISOString(),
     };
   }
@@ -1410,12 +1464,9 @@ export class AgentController {
   /**
    * List saved versions of an agent, newest first.
    *
-   * PPR-44 — paginated. `?cursor=<id>` walks older pages; `?take=N` selects
-   * the page size (default 50, max 200). The response carries `nextCursor`
-   * for the UI to request the next page. `total` is intentionally omitted —
-   * computing it on top of pagination is an expensive COUNT on a growing
-   * table with no user-visible value. Callers that need a full count can
-   * raise it as a separate request.
+   * PPR-44 / WIN-236 — paginated. Existing `cursor`/`nextCursor` callers stay
+   * compatible; offset callers additionally receive a truthful scoped total
+   * and range metadata. `take` remains the page-size parameter.
    */
   @Get("agents/:agentId/versions")
   async listAgentVersions(
@@ -1423,20 +1474,32 @@ export class AgentController {
     @Param("agentId") agentId: string,
     @Query("cursor") cursor?: string,
     @Query("take") take?: string,
+    @Query("offset") offsetRaw?: string,
   ) {
     const scope = this.getScope(req);
     // SECURITY (audit authz-2026-07-22 F2) — version history exposes full config; operator-only.
     requireOperator(scope);
+    const request = parsePageRequest({ limit: take, offset: offsetRaw }, { defaultPageSize: 50 });
     try {
-      const parsedTake = take ? Number.parseInt(take, 10) : undefined;
       const result = await this.agentCrud.listVersions(agentId, scope, {
         cursor: cursor || null,
-        take: Number.isFinite(parsedTake) ? parsedTake : undefined,
+        take: request.pageSize,
+        offset: request.offset,
       });
+      const pagination = cursor
+        ? undefined
+        : pageMetadata(result.total, { pageSize: result.limit, offset: result.offset });
       return {
         versions: result.versions,
+        items: result.versions,
         nextCursor: result.nextCursor,
         pageSize: result.versions.length,
+        total: result.total,
+        limit: result.limit,
+        offset: cursor ? null : result.offset,
+        hasMore: cursor ? Boolean(result.nextCursor) : pagination!.hasNext,
+        pagination,
+        filters: {},
       };
     } catch (err: any) {
       throw new NotFoundException(err?.message || "List versions failed");
@@ -1727,15 +1790,43 @@ export class AgentController {
    * per tool from the loader. Theme B.8.
    */
   @Get("tools/matrix")
-  async toolMatrix(@Req() req: Request) {
+  async toolMatrix(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+    @Query("category") category?: string,
+    @Query("status") status?: string,
+    @Query("entityId") entityId?: string,
+  ) {
     const scope = this.getScope(req);
-    const tools = this.toolRegistry.getScopedTools(this.scopeTuple(scope), {
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const allTools = this.toolRegistry.getScopedTools(this.scopeTuple(scope), {
       enabledOnly: false,
     });
-
-    const healthRows = await this.prisma.toolHealth.findMany({
-      where: { environmentId: scope.environmentId },
-    });
+    const normalizedStatus = parseEnumFilter(status?.trim().toLowerCase(), "status", ["dispatchable", "disabled", "unavailable"] as const);
+    const matchingTools = allTools
+      .filter((tool) => !entityId || tool.sourceEntityId === entityId || tool.entityPk === entityId)
+      .filter((tool) => !request.search || [tool.toolName, tool.description, tool.sourceEntityId, tool.category].some((value) => String(value ?? "").toLowerCase().includes(request.search!.toLowerCase())))
+      .filter((tool) => !category || (tool.category ?? "uncategorized") === category)
+      .sort((left, right) => left.toolName.localeCompare(right.toolName) || String(left.sourceEntityId ?? "").localeCompare(String(right.sourceEntityId ?? "")) || left.toolId.localeCompare(right.toolId));
+    const aggregates = {
+      dispatchable: matchingTools.filter((tool) => tool.dispatchable).length,
+      unavailable: matchingTools.filter((tool) => !tool.dispatchable).length,
+      disabled: matchingTools.filter((tool) => !tool.enabled).length,
+    };
+    const tools = matchingTools.filter((tool) => !normalizedStatus || (normalizedStatus === "dispatchable" ? tool.dispatchable : normalizedStatus === "disabled" ? !tool.enabled : normalizedStatus === "unavailable" ? !tool.dispatchable : true));
+    const total = tools.length;
+    const pageTools = tools.slice(request.offset, request.offset + request.pageSize);
+    const healthRows = pageTools.length
+      ? await this.prisma.toolHealth.findMany({
+          where: {
+            environmentId: scope.environmentId,
+            OR: pageTools.map((tool) => ({ toolId: tool.toolId, entityExternalId: tool.sourceEntityId })),
+          },
+        })
+      : [];
     const healthByKey = new Map<string, any>();
     for (const h of healthRows as Array<{
       toolId: string;
@@ -1753,36 +1844,42 @@ export class AgentController {
       healthByKey.set(`${h.toolId}:${h.entityExternalId ?? ""}`, h);
     }
 
+    const rows = pageTools.map((t) => {
+      const health = healthByKey.get(`${t.toolId}:${t.sourceEntityId}`);
+      return {
+        toolId: t.toolId,
+        toolName: t.toolName,
+        description: t.description,
+        category: t.category ?? "uncategorized",
+        paramSchema: t.paramSchema,
+        entityId: t.sourceEntityId,
+        entityPk: t.entityPk,
+        callbackUrl: t.callbackUrl,
+        enabled: t.enabled,
+        dispatchable: t.dispatchable,
+        health: {
+          lastStatus: health?.lastStatus ?? null,
+          failCount: health?.failCount ?? 0,
+          totalCalls: health?.totalCalls ?? 0,
+          totalFailures: health?.totalFailures ?? 0,
+          avgLatencyMs: health?.avgLatencyMs ?? null,
+          p95LatencyMs: health?.p95LatencyMs ?? null,
+          lastCalledAt: health?.lastCalledAt?.toISOString?.() ?? null,
+        },
+      };
+    });
+    const pagination = pageMetadata(total, request);
     return {
       environmentId: scope.environmentId,
-      rows: tools.map((t) => {
-        const health = healthByKey.get(`${t.toolId}:${t.sourceEntityId}`);
-        return {
-          toolId: t.toolId,
-          toolName: t.toolName,
-          description: t.description,
-          // TL.1 — always emit a string so downstream (TL.2 display modes,
-          // TL.3 category UI, TL.5 Tools tab) never has to guard for null.
-          // Falls back to "uncategorized" when neither the SDK nor the
-          // inference chain produced a value.
-          category: t.category ?? "uncategorized",
-          paramSchema: t.paramSchema,
-          entityId: t.sourceEntityId,
-          entityPk: t.entityPk,
-          callbackUrl: t.callbackUrl,
-          enabled: t.enabled,
-          dispatchable: t.dispatchable,
-          health: {
-            lastStatus: health?.lastStatus ?? null,
-            failCount: health?.failCount ?? 0,
-            totalCalls: health?.totalCalls ?? 0,
-            totalFailures: health?.totalFailures ?? 0,
-            avgLatencyMs: health?.avgLatencyMs ?? null,
-            p95LatencyMs: health?.p95LatencyMs ?? null,
-            lastCalledAt: health?.lastCalledAt?.toISOString?.() ?? null,
-          },
-        };
-      }),
+      rows,
+      items: rows,
+      total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      aggregates,
+      filters: { search: request.search, category: category ?? null, status: normalizedStatus, entityId: entityId ?? null },
       fetchedAt: new Date().toISOString(),
     };
   }
@@ -2408,20 +2505,37 @@ export class AgentController {
   }
 
   @Get("entities")
-  async listEntities(@Req() req: Request, @Query("connectionKind") connectionKind?: string) {
+  async listEntities(
+    @Req() req: Request,
+    @Query("connectionKind") connectionKind?: string,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+  ) {
     const scope = this.getScope(req);
-    const entities = await this.authService.listEntities(scope.organizationId, scope.projectId);
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const result = await this.authService.listEntitiesPage(scope.organizationId, scope.projectId, {
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+      connectionKind,
+    });
     const connectedIds = new Set(this.toolSync.getConnectedEntitiesInEnv(scope.environmentId));
-    const filteredEntities = connectionKind === "mcp"
-      ? entities.filter((entity: any) => entity.connectionKind === "mcp")
-      : entities;
+    const entities = result.entities.map((e: any) => {
+      const { serviceSecret, serviceSecretHash, ...safe } = e;
+      return { ...safe, liveConnected: connectedIds.has(e.entityId) };
+    });
+    const pagination = pageMetadata(result.total, request);
     return {
-      // BUG-2: defense-in-depth — strip serviceSecret/serviceSecretHash even
-      // though authService.listEntities now selects safe columns.
-      entities: filteredEntities.map((e: any) => {
-        const { serviceSecret, serviceSecretHash, ...safe } = e;
-        return { ...safe, liveConnected: connectedIds.has(e.entityId) };
-      }),
+      entities,
+      items: entities,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      filters: { search: request.search, connectionKind: connectionKind ?? null },
     };
   }
 
@@ -2833,14 +2947,23 @@ export class AgentController {
     @Req() req: Request,
     @Query("days") days?: string,
     @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const rows = await this.costService.getCostByModel(this.scopeTuple(scope), {
-      days: days ? parseInt(days, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedDays = parsePositiveIntegerFilter(days, "days", { defaultValue: 30, maximum: 3650 });
+    const allRows = await this.costService.getCostByModel(this.scopeTuple(scope), {
+      days: parsedDays,
+      limit: 1_000_000,
     });
-    return { rows, fetchedAt: new Date().toISOString() };
+    const matchingRows = request.search
+      ? allRows.filter((row) => row.model.toLowerCase().includes(request.search!.toLowerCase()))
+      : allRows;
+    const rows = matchingRows.slice(request.offset, request.offset + request.pageSize);
+    const pagination = pageMetadata(matchingRows.length, request);
+    return { rows, items: rows, total: matchingRows.length, limit: request.pageSize, offset: request.offset, hasMore: pagination.hasNext, pagination, filters: { days: parsedDays, search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /**
@@ -2851,14 +2974,23 @@ export class AgentController {
     @Req() req: Request,
     @Query("days") days?: string,
     @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    const rows = await this.costService.getCostByAgent(this.scopeTuple(scope), {
-      days: days ? parseInt(days, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedDays = parsePositiveIntegerFilter(days, "days", { defaultValue: 30, maximum: 3650 });
+    const allRows = await this.costService.getCostByAgent(this.scopeTuple(scope), {
+      days: parsedDays,
+      limit: 1_000_000,
     });
-    return { rows, fetchedAt: new Date().toISOString() };
+    const matchingRows = request.search
+      ? allRows.filter((row) => [row.agentId, row.agentName].some((value) => String(value ?? "").toLowerCase().includes(request.search!.toLowerCase())))
+      : allRows;
+    const rows = matchingRows.slice(request.offset, request.offset + request.pageSize);
+    const pagination = pageMetadata(matchingRows.length, request);
+    return { rows, items: rows, total: matchingRows.length, limit: request.pageSize, offset: request.offset, hasMore: pagination.hasNext, pagination, filters: { days: parsedDays, search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /**
@@ -4091,20 +4223,26 @@ Write the summary now:`;
     @Query("sinceDays") sinceDays?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedSinceDays = parsePositiveIntegerFilter(sinceDays, "sinceDays", { maximum: 3650 });
+    const parsedStatus = parseEnumFilter(status, "status", ["success", "failed", "timeout"] as const);
     const page = await this.toolAuditService.list(this.scopeTuple(scope), {
       threadId,
       agentId,
       toolName,
-      status,
+      status: parsedStatus ?? undefined,
       entityId,
-      sinceDays: sinceDays ? parseInt(sinceDays, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      sinceDays: parsedSinceDays,
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search ?? undefined,
     });
-    return { ...page, fetchedAt: new Date().toISOString() };
+    const pagination = pageMetadata(page.total, { pageSize: page.limit, offset: page.offset });
+    return { ...page, items: page.rows, hasMore: pagination.hasNext, pagination, filters: { threadId, agentId, toolName, status: parsedStatus, entityId, sinceDays: parsedSinceDays ?? null, search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /**
@@ -4226,10 +4364,15 @@ Write the summary now:`;
     @Query("sinceDays") sinceDays?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const scopeTuple = this.scopeTuple(scope);
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedSinceDays = parsePositiveIntegerFilter(sinceDays, "sinceDays", { maximum: 3650 });
+    const parsedStatus = parseEnumFilter(status, "status", ["pending", "approved", "rejected", "timed_out"] as const);
+    const parsedSource = parseEnumFilter(source, "source", ["request_approval", "cancel_run", "mcp_tool_call"] as const);
     // Note: previously this called `sweepExpired` synchronously on every
     // request. The webapp polls this endpoint every ~2s for the pending-
     // approvals badge — under concurrent polls the per-call UPDATE caused
@@ -4241,13 +4384,15 @@ Write the summary now:`;
     const page = await this.approvalsService.list(scopeTuple, {
       threadId,
       agentId,
-      status,
-      source,
-      sinceDays: sinceDays ? parseInt(sinceDays, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      status: parsedStatus ?? undefined,
+      source: parsedSource ?? undefined,
+      sinceDays: parsedSinceDays,
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search ?? undefined,
     });
-    return { ...page, fetchedAt: new Date().toISOString() };
+    const pagination = pageMetadata(page.total, { pageSize: page.limit, offset: page.offset });
+    return { ...page, items: page.rows, hasMore: pagination.hasNext, pagination, filters: { threadId, agentId, status: parsedStatus, source: parsedSource, sinceDays: parsedSinceDays ?? null, search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /** Fetch a single approval row — scope-gated. Theme E.6. */
@@ -5146,22 +5291,49 @@ Write the summary now:`;
     @Query("userId") userId?: string,
     @Query("severity") severity?: string,
     @Query("sinceDays") sinceDays?: string,
-    @Query("limit") limit?: string,
-    @Query("offset") offset?: string,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
-    return this.safetyEventService.list(this.scopeTuple(scope), {
-      detector: detector as DetectorKind | undefined,
-      action: action as DetectorAction | undefined,
+    const request = parsePageRequest(
+      { page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw },
+      { defaultPageSize: 50 },
+    );
+    const parsedDetector = parseEnumFilter(detector, "detector", ["pii", "injection", "grounded", "exfiltration", "tool_param", "rate_limit", "budget", "dispatcher_permission_gate"] as const);
+    const parsedAction = parseEnumFilter(action, "action", ["flag", "redact", "block", "warn"] as const);
+    const parsedSeverity = parseEnumFilter(severity, "severity", ["low", "medium", "high"] as const);
+    const parsedSinceDays = parsePositiveIntegerFilter(sinceDays, "sinceDays", { defaultValue: 30, maximum: 365 });
+    const result = await this.safetyEventService.list(this.scopeTuple(scope), {
+      detector: parsedDetector ?? undefined,
+      action: parsedAction ?? undefined,
       threadId,
       agentId,
       userId,
-      severity: severity as "low" | "medium" | "high" | undefined,
-      sinceDays: sinceDays ? parseInt(sinceDays, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      severity: parsedSeverity ?? undefined,
+      sinceDays: parsedSinceDays,
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
     });
+    return {
+      ...result,
+      items: result.rows,
+      hasMore: request.offset + result.rows.length < result.total,
+      pagination: pageMetadata(result.total, request),
+      filters: {
+        detector: parsedDetector,
+        action: parsedAction,
+        severity: parsedSeverity,
+        sinceDays: parsedSinceDays,
+        threadId: threadId ?? null,
+        agentId: agentId ?? null,
+        userId: userId ?? null,
+        search: request.search,
+      },
+    };
   }
 
   // ── Activity feed ─────────────────────────────────────
@@ -5347,12 +5519,30 @@ Write the summary now:`;
 
   /** List every budget cap configured for the current scope. */
   @Get("budgets")
-  async listBudgets(@Req() req: Request) {
+  async listBudgets(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+  ) {
     const scope = this.getScope(req);
     // SECURITY (audit H16 — budget data is operator-only financial metadata).
     requireOperator(scope);
-    const caps = await this.budgetService.list(this.scopeTuple(scope));
-    return { caps };
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw });
+    const result = await this.budgetService.listPage(this.scopeTuple(scope), {
+      limit: request.pageSize,
+      offset: request.offset,
+    });
+    return {
+      caps: result.items,
+      items: result.items,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + result.items.length < result.total,
+      pagination: pageMetadata(result.total, request),
+      filters: {},
+    };
   }
 
   /**
@@ -5365,14 +5555,31 @@ Write the summary now:`;
     @Req() req: Request,
     @Query("agentId") agentId?: string,
     @Query("userId") userId?: string,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
   ) {
     const scope = this.getScope(req);
     // SECURITY (audit H16 — budget status is operator-only financial metadata).
     requireOperator(scope);
-    return this.budgetService.evaluate(this.scopeTuple(scope), {
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw });
+    const result = await this.budgetService.evaluate(this.scopeTuple(scope), {
       agentId: agentId || undefined,
       userId: userId || scope.userId,
     });
+    const total = result.caps.length;
+    const caps = result.caps.slice(request.offset, request.offset + request.pageSize);
+    return {
+      ...result,
+      caps,
+      items: caps,
+      total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + caps.length < total,
+      pagination: pageMetadata(total, request),
+      filters: { agentId: agentId ?? null, userId: userId ?? null },
+    };
   }
 
   /** Create or update a budget cap (upsert on scope+target+period). */
@@ -5690,13 +5897,31 @@ Write the summary now:`;
     @Req() req: Request,
     @Query("agentId") agentId?: string,
     @Query("activeOnly") activeOnly?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
-    const criteria = await this.criterionService.list(this.scopeTuple(scope), {
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedActiveOnly = parseBooleanFilter(activeOnly, "activeOnly") ?? false;
+    const result = await this.criterionService.listPage(this.scopeTuple(scope), {
       agentId: agentId ?? undefined,
-      activeOnly: activeOnly === "true" || activeOnly === "1",
+      activeOnly: parsedActiveOnly,
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
     });
-    return { criteria, total: criteria.length };
+    const pagination = pageMetadata(result.total, request);
+    return {
+      criteria: result.criteria,
+      items: result.criteria,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      filters: { agentId: agentId ?? null, activeOnly: parsedActiveOnly, search: request.search },
+    };
   }
 
   @Get("eval-criteria/:criterionId")
@@ -5787,19 +6012,24 @@ Write the summary now:`;
     @Query("sinceDays") sinceDays?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
+    const request = parsePageRequest({ limit, offset, search });
+    const parsedSinceDays = parsePositiveIntegerFilter(sinceDays, "sinceDays", { maximum: 3650 });
     const page = await this.evalService.list(this.scopeTuple(scope), {
       agentId,
       agentVersionId,
       criterionId,
       threadId,
       runId,
-      sinceDays: sinceDays ? parseInt(sinceDays, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      sinceDays: parsedSinceDays,
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search ?? undefined,
     });
-    return { ...page, fetchedAt: new Date().toISOString() };
+    const pagination = pageMetadata(page.total, { pageSize: page.limit, offset: page.offset });
+    return { ...page, items: page.rows, evals: page.rows, hasMore: pagination.hasNext, pagination, filters: { agentId, agentVersionId, criterionId, threadId, runId, sinceDays: parsedSinceDays ?? null, search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   @Get("evals/:evalId")
@@ -5992,19 +6222,50 @@ Write the summary now:`;
   // ── Postman Templates ─────────────────────────────────────────────────────
 
   @Get("postman-templates")
-  async listPostmanTemplates(@Req() req: Request, @Query("agentId") agentId?: string) {
+  async listPostmanTemplates(
+    @Req() req: Request,
+    @Query("agentId") agentId?: string,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+  ) {
     const scope = this.getScope(req);
     const prisma = this.prisma;
-    if (!prisma) return { templates: [] };
-    const templates = await prisma.postmanTemplate.findMany({
-      where: {
-        ...environmentScopeWhere(scope),
-        ...(agentId ? { agentId } : {}),
-      },
-      orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
-      select: { id: true, agentId: true, name: true, simulateUserId: true, sessionContext: true, isDefault: true, createdAt: true, updatedAt: true },
-    });
-    return { templates };
+    if (!prisma) throw new ServiceUnavailableException("Postman templates unavailable");
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const where = {
+      ...environmentScopeWhere(scope),
+      ...(agentId ? { agentId } : {}),
+      ...(request.search
+        ? {
+            OR: [
+              { name: { contains: request.search, mode: "insensitive" as const } },
+              { simulateUserId: { contains: request.search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const [templates, total] = await Promise.all([
+      prisma.postmanTemplate.findMany({
+        where,
+        orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+        select: { id: true, agentId: true, name: true, simulateUserId: true, sessionContext: true, isDefault: true, createdAt: true, updatedAt: true },
+        take: request.pageSize,
+        skip: request.offset,
+      }),
+      prisma.postmanTemplate.count({ where }),
+    ]);
+    return {
+      templates,
+      items: templates,
+      total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + templates.length < total,
+      pagination: pageMetadata(total, request),
+      filters: { agentId: agentId ?? null, search: request.search },
+    };
   }
 
   @Post("postman-templates")
@@ -6115,9 +6376,30 @@ Write the summary now:`;
   }
 
   @Get("clusters")
-  async listClusters(@Req() req: Request) {
+  async listClusters(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+  ) {
     const scope = this.getScope(req);
-    return { clusters: await this.clusterService.list(scope) };
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const result = await this.clusterService.listPage(scope, {
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+    });
+    return {
+      clusters: result.items,
+      items: result.items,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + result.items.length < result.total,
+      pagination: pageMetadata(result.total, request),
+      filters: { search: request.search },
+    };
   }
 
   @Get("clusters/:clusterId")

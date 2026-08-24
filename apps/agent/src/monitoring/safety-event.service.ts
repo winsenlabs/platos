@@ -7,6 +7,7 @@ import {
 } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 import { MessageCryptoService } from "./message-crypto.service";
+import { isUuid } from "../shared/pagination";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -148,6 +149,7 @@ export class SafetyEventService {
       sinceDays?: number;
       limit?: number;
       offset?: number;
+      search?: string | null;
     } = {},
   ): Promise<{ rows: SafetyEventRow[]; total: number; limit: number; offset: number }> {
     const sinceDays = Math.max(1, Math.min(options.sinceDays ?? 30, 365));
@@ -169,11 +171,19 @@ export class SafetyEventService {
       };
     }
     if (options.severity) where.severity = options.severity;
+    if (options.search) {
+      where.OR = [
+        { toolName: { contains: options.search, mode: "insensitive" } },
+        ...(isUuid(options.search)
+          ? [{ agentId: options.search }, { threadId: options.search }]
+          : []),
+      ];
+    }
 
     const [rawRows, total] = await Promise.all([
       this.prisma.safetyEvent.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: limit,
         skip: offset,
       }),

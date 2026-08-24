@@ -11,6 +11,7 @@ import {
 } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
 import { MessageCryptoService } from "./message-crypto.service";
+import { isUuid } from "../shared/pagination";
 
 type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
 
@@ -57,6 +58,7 @@ export interface ToolAuditFilters {
   sinceDays?: number;
   limit?: number;
   offset?: number;
+  search?: string;
 }
 
 export interface RecordToolAuditInput {
@@ -209,13 +211,20 @@ export class ToolAuditService {
         },
       });
     }
+    if (filters.search) {
+      where.OR = [
+        ...(isUuid(filters.search) ? [{ id: { equals: filters.search } }] : []),
+        { toolName: { contains: filters.search, mode: "insensitive" } },
+        { error: { contains: filters.search, mode: "insensitive" } },
+      ];
+    }
     if (metadataFilters.length > 0) where.AND = metadataFilters;
 
     const [total, rawRows] = await Promise.all([
       this.prisma.toolCallAudit.count({ where }),
       this.prisma.toolCallAudit.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: limit,
         skip: offset,
       }),
