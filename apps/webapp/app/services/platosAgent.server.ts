@@ -321,6 +321,13 @@ function projectKnownCredentialEndpoint(path: string, method: string, payload: u
     if (method === "DELETE") {
       return projectCredentialMetadata(payload, { ok: true });
     }
+    if (method === "POST") {
+      return projectCredentialMetadata(payload, {
+        attemptId: true,
+        key: ACCESS_KEY_METADATA_SHAPE,
+        retiringKey: ACCESS_KEY_METADATA_SHAPE,
+      });
+    }
     return projectCredentialMetadata(payload, {
       key: ACCESS_KEY_METADATA_SHAPE,
       retiringKey: ACCESS_KEY_METADATA_SHAPE,

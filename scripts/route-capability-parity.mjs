@@ -175,7 +175,7 @@ const REQUIRED_CAPABILITY_CONTRACTS = Object.freeze({
   "access-key-browser-request-correlation": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx",
     methods: [["POST", "/api/v1/agent/access-key"]],
-    defect: true,
+    repairedDefectStatus: "verified",
   },
   "agent-tools-loader-action-mismatch": {
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.tools/route.tsx",
@@ -265,24 +265,24 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
     statuses: { "pagination.status": "confirmed-defect", "totals.status": "confirmed-defect", "persistedReadBack.status": "confirmed-defect" },
   },
   "access-key-one-time-reveal": {
-    fragments: { http: ["keyHash", "keyPrefix", "Raw key material is not accepted"], secretExposure: ["private pending material", "persistence success"] },
-    statuses: { "tenantScope.status": "enforced", "defect.status": "confirmed-defect", "persistedReadBack.status": "confirmed-defect" },
+    fragments: { http: ["attemptId", "keyHash", "keyPrefix", "Raw key material is not accepted"], secretExposure: ["private pending material", "persistence success", "mismatch", "cancellation"] },
+    statuses: { "tenantScope.status": "enforced", "defect.status": "verified", "persistedReadBack.status": "verified", "automatedEvidence.status": "verified", "secretExposure.status": "verified" },
   },
   "access-key-rotation-correlation": {
-    fragments: { currentBehavior: ["validUntil", "replacedById"], concurrency: ["Environment row lock", "one-active-per-Environment"] },
-    statuses: { "concurrency.status": "static-contract-only", "persistedReadBack.status": "required-not-verified" },
+    fragments: { currentBehavior: ["validUntil", "replacedById"], http: ["attemptId", "keyHash", "keyPrefix"], concurrency: ["Environment row lock", "one-active-per-Environment"], persistedReadBack: ["retiring.replacedById", "active.id", "hash/prefix correlation"] },
+    statuses: { "concurrency.status": "static-contract-only", "persistedReadBack.status": "verified", "automatedEvidence.status": "verified", "secretExposure.status": "verified" },
   },
   "access-key-revoke": {
-    fragments: { currentBehavior: ["active/unexpired", "Environment-owned"] },
-    statuses: { "destructiveConfirmation.status": "required-not-verified", "tenantScope.status": "enforced" },
+    fragments: { currentBehavior: ["active or unexpired", "Environment-owned"], automatedEvidence: ["credentialSerialization.test.ts"] },
+    statuses: { "destructiveConfirmation.status": "required-not-verified", "tenantScope.status": "enforced", "automatedEvidence.status": "verified" },
   },
   "access-key-allowed-origins": {
-    fragments: { http: ["origins: string[]"] },
-    statuses: { "persistedReadBack.status": "required-not-verified" },
+    fragments: { http: ["origins: string[]"], currentBehavior: ["exact origins mutation", "closed safe-response contract"], automatedEvidence: ["credentialSerialization.test.ts"] },
+    statuses: { "persistedReadBack.status": "required-not-verified", "automatedEvidence.status": "verified" },
   },
   "access-key-browser-request-correlation": {
-    fragments: { currentBehavior: ["no attempt ID"], secretExposure: ["private pending material", "attempt ID"] },
-    statuses: { "defect.status": "confirmed-defect", "persistedReadBack.status": "confirmed-defect" },
+    fragments: { currentBehavior: ["cryptographically random attempt ID", "stale", "superseded"], secretExposure: ["private pending material", "attempt ID", "mismatched", "cancelled"], concurrency: ["overlapping responses", "latest matching attempt"] },
+    statuses: { "defect.status": "verified", "persistedReadBack.status": "verified", "concurrency.status": "verified", "recovery.status": "verified", "secretExposure.status": "verified", "automatedEvidence.status": "verified" },
   },
   "agent-tools-loader-action-mismatch": {
     fragments: { currentBehavior: ["Agent-specific", "Environment-level"], identifiers: ["agentId", "sourceEntity", "toolName"] },
@@ -615,6 +615,9 @@ export function validateMatrix(matrix, options = {}) {
     }
     if (expected.defect && (capability.defect?.status !== "confirmed-defect" || capability.persistedReadBack?.status !== "confirmed-defect")) {
       errors.push(`required capability ${capabilityId} must record the confirmed loader/action read-back defect`);
+    }
+    if (expected.repairedDefectStatus && capability.defect?.status !== expected.repairedDefectStatus) {
+      errors.push(`required capability ${capabilityId} repaired defect must remain ${expected.repairedDefectStatus}`);
     }
   }
   for (const [capabilityId, expected] of Object.entries(REQUIRED_SEMANTIC_FRAGMENTS)) {

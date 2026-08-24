@@ -12,6 +12,7 @@ const scope = {
 const KEY_HASH = "a".repeat(64);
 const KEY_PREFIX = "platos_live_test";
 const RAW_KEY = "platos_live_RAW_SENTINEL";
+const ATTEMPT_ID = "11111111-1111-4111-8111-111111111111";
 
 function harness() {
   const authService = {
@@ -37,12 +38,13 @@ function harness() {
 }
 
 describe("AgentController AccessKey boundary", () => {
-  it("accepts exactly keyHash and keyPrefix without serializing hash or raw material", async () => {
+  it("echoes the request correlation only after hash persistence succeeds", async () => {
     const { controller, authService, req } = harness();
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     const result = await controller.createOrRotateAccessKey(req, {
+      attemptId: ATTEMPT_ID,
       keyHash: KEY_HASH,
       keyPrefix: KEY_PREFIX,
     });
@@ -51,6 +53,7 @@ describe("AgentController AccessKey boundary", () => {
       keyHash: KEY_HASH,
       keyPrefix: KEY_PREFIX,
     });
+    expect(result.attemptId).toBe(ATTEMPT_ID);
     const serialized = JSON.stringify(result);
     const serializedLogs = JSON.stringify([...log.mock.calls, ...error.mock.calls]);
     expect(serialized).not.toContain(KEY_HASH);
@@ -63,15 +66,17 @@ describe("AgentController AccessKey boundary", () => {
   });
 
   it.each([
-    ["accessKey", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, accessKey: RAW_KEY }],
-    ["rawKey", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, rawKey: RAW_KEY }],
-    ["key", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, key: RAW_KEY }],
-    ["allowedOrigins", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, allowedOrigins: [] }],
+    ["missing attempt ID", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX }],
+    ["malformed attempt ID", { attemptId: "not-random", keyHash: KEY_HASH, keyPrefix: KEY_PREFIX }],
+    ["accessKey", { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, accessKey: RAW_KEY }],
+    ["rawKey", { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, rawKey: RAW_KEY }],
+    ["key", { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, key: RAW_KEY }],
+    ["allowedOrigins", { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, allowedOrigins: [] }],
     [
       "nested secret-bearing field",
-      { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, metadata: { accessKey: RAW_KEY } },
+      { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, metadata: { accessKey: RAW_KEY } },
     ],
-    ["unknown field", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, unknown: true }],
+    ["unknown field", { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, unknown: true }],
   ])("rejects the extra %s field and does not call the service", async (_name, body) => {
     const { controller, authService, req } = harness();
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);

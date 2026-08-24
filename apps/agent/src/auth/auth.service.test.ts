@@ -513,6 +513,49 @@ describe("AuthService — clean-tenancy access keys", () => {
       ),
     ).resolves.toBe(false);
   });
+
+  it("updates allowed origins only on the active Environment-owned key", async () => {
+    const prisma = accessKeyPrisma();
+    prisma.accessKey.updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const auth = new AuthService(prisma, {} as any);
+    auth.authorizeEnvironmentOperatorScope = async () => ({ environmentId: "env_1" } as any);
+
+    await auth.setAllowedOrigins(
+      {
+        organizationId: "org_1",
+        projectId: "proj_1",
+        environmentId: "env_1",
+        userId: "user_1",
+        principal: "operator",
+      } as any,
+      ["https://app.example"],
+    );
+
+    expect(prisma.accessKey.updateMany).toHaveBeenCalledWith({
+      where: { environmentId: "env_1", revokedAt: null, validUntil: null },
+      data: { allowedOrigins: ["https://app.example"] },
+    });
+  });
+
+  it("revokes every active or overlap AccessKey in the authorized Environment", async () => {
+    const prisma = accessKeyPrisma();
+    prisma.accessKey.updateMany = vi.fn().mockResolvedValue({ count: 2 });
+    const auth = new AuthService(prisma, {} as any);
+    auth.authorizeEnvironmentOperatorScope = async () => ({ environmentId: "env_1" } as any);
+
+    await auth.deleteAccessKey({
+      organizationId: "org_1",
+      projectId: "proj_1",
+      environmentId: "env_1",
+      userId: "user_1",
+      principal: "operator",
+    } as any);
+
+    expect(prisma.accessKey.updateMany).toHaveBeenCalledWith({
+      where: { environmentId: "env_1", revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+  });
 });
 
 describe("AuthService — clean Entity registry", () => {

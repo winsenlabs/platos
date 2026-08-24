@@ -232,24 +232,24 @@ test("Entity bearer PAT contracts stay separate from platform tokens", () => {
   assert.match(errors, /entity-mcp-bearer-token-delete lacks DELETE/);
 });
 
-test("retained defects and repaired MCP capability states cannot regress", () => {
+test("confirmed Postman, Entity PAT, and artifact defects cannot be erased while repaired AccessKey gates cannot regress", () => {
   const matrix = clone(readMatrix());
-  capability(matrix, "mcp-token-list").loaderState.status = "confirmed-defect";
+  capability(matrix, "mcp-token-list").loaderState.status = "implemented";
   capability(matrix, "postman-executable-mode").defect.status = "required-not-verified";
-  capability(matrix, "access-key-one-time-reveal").defect.status = "required-not-verified";
-  capability(matrix, "access-key-browser-request-correlation").defect.status = "required-not-verified";
+  capability(matrix, "access-key-one-time-reveal").defect.status = "confirmed-defect";
+  capability(matrix, "access-key-browser-request-correlation").defect.status = "confirmed-defect";
   capability(matrix, "thread-artifacts").loaderState.status = "implemented";
   capability(matrix, "thread-artifacts").defect.status = "required-not-verified";
-  capability(matrix, "entity-mcp-bearer-token-create").defect.status = "confirmed-defect";
-  capability(matrix, "entity-mcp-bearer-token-create").actionState.status = "confirmed-defect";
+  capability(matrix, "entity-mcp-bearer-token-create").defect.status = "required-not-verified";
+  capability(matrix, "entity-mcp-bearer-token-create").actionState.status = "implemented";
   const errors = errorsFor(matrix);
-  assert.match(errors, /mcp-token-list loaderState\.status must be implemented/);
+  assert.match(errors, /mcp-token-list loaderState\.status must be confirmed-defect/);
   assert.match(errors, /postman-executable-mode defect\.status must be confirmed-defect/);
-  assert.match(errors, /access-key-one-time-reveal defect\.status must be confirmed-defect/);
-  assert.match(errors, /access-key-browser-request-correlation defect\.status must be confirmed-defect/);
+  assert.match(errors, /access-key-one-time-reveal defect\.status must be verified/);
+  assert.match(errors, /access-key-browser-request-correlation defect\.status must be verified/);
   assert.match(errors, /thread-artifacts loaderState\.status must be confirmed-defect/);
-  assert.match(errors, /entity-mcp-bearer-token-create defect\.status must be verified/);
-  assert.match(errors, /entity-mcp-bearer-token-create actionState\.status must be implemented/);
+  assert.match(errors, /entity-mcp-bearer-token-create defect\.status must be confirmed-defect/);
+  assert.match(errors, /entity-mcp-bearer-token-create actionState\.status must be confirmed-defect/);
 });
 
 test("the Agent Tools loader/action mismatch remains a confirmed defect until repaired", () => {

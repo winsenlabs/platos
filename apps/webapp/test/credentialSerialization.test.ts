@@ -23,6 +23,7 @@ import { assertCredentialSafePayload, credentialRequest } from "../app/services/
 
 const params = { organizationSlug: "acme", projectParam: "support", envParam: "production" };
 const sentinel = "SENTINEL_PROVIDER_OR_ACCESS_KEY_MATERIAL";
+const attemptId = "11111111-1111-4111-8111-111111111111";
 
 function response(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
@@ -56,9 +57,10 @@ describe("credential route serialization boundaries", () => {
   });
 
   it("submits only hash metadata and refuses to serialize a malicious rotation response", async () => {
-    vi.mocked(fetch).mockResolvedValue(response({ id: "key-2", keyHash: sentinel }));
+    vi.mocked(fetch).mockResolvedValue(response({ attemptId, key: { id: "key-2", keyHash: sentinel }, retiringKey: null }));
     const form = new URLSearchParams({
       intent: "rotate",
+      attemptId,
       keyHash: "a".repeat(64),
       keyPrefix: "platos_live_abcdefghijkl",
     });
@@ -70,11 +72,76 @@ describe("credential route serialization boundaries", () => {
     const body = await serialized(result);
     const request = vi.mocked(fetch).mock.calls[0];
     expect(JSON.parse(String(request?.[1]?.body))).toEqual({
+      attemptId,
       keyHash: "a".repeat(64),
       keyPrefix: "platos_live_abcdefghijkl",
     });
     expect(body).toContain("UNSAFE_CREDENTIAL_RESPONSE");
     expect(body).not.toContain(sentinel);
+  });
+
+  it("returns success only when the persisted response echoes the submitted attempt ID", async () => {
+    vi.mocked(fetch).mockResolvedValue(response({
+      attemptId,
+      key: {
+        id: "key-2",
+        environmentId: "env-1",
+        keyPrefix: "platos_live_abcdefghijkl",
+        allowedOrigins: [],
+        lastUsedAt: null,
+        validUntil: null,
+        replacedById: null,
+        revokedAt: null,
+        createdAt: "2026-08-20T00:00:00.000Z",
+        updatedAt: "2026-08-20T00:00:00.000Z",
+      },
+      retiringKey: null,
+    }));
+    const form = new URLSearchParams({
+      intent: "rotate",
+      attemptId,
+      keyHash: "a".repeat(64),
+      keyPrefix: "platos_live_abcdefghijkl",
+    });
+
+    const result = await accessKeyAction({
+      request: new Request("http://dashboard/apikeys", { method: "POST", body: form }),
+      params,
+      context: {},
+    });
+
+    expect(await result.json()).toMatchObject({
+      ok: true,
+      attemptId,
+      result: { attemptId, key: { id: "key-2" } },
+    });
+  });
+
+  it("fails closed and returns the submitted correlation when the persisted response mismatches", async () => {
+    vi.mocked(fetch).mockResolvedValue(response({
+      attemptId: "22222222-2222-4222-8222-222222222222",
+      key: null,
+      retiringKey: null,
+    }));
+    const form = new URLSearchParams({
+      intent: "rotate",
+      attemptId,
+      keyHash: "a".repeat(64),
+      keyPrefix: "platos_live_abcdefghijkl",
+    });
+
+    const result = await accessKeyAction({
+      request: new Request("http://dashboard/apikeys", { method: "POST", body: form }),
+      params,
+      context: {},
+    });
+
+    expect(result.status).toBe(409);
+    expect(await result.json()).toEqual({
+      ok: false,
+      attemptId,
+      error: "Access key response did not match request",
+    });
   });
 
   it("fails closed across complete provider loader payloads with encrypted material", async () => {
@@ -181,6 +248,59 @@ describe("credential route serialization boundaries", () => {
       key: { id: "key-1", keyPrefix: "platos_live_abc" },
       retiringKey: null,
     });
+  });
+
+  it("preserves the hash-only persisted read-back contract after a correlated rotation", async () => {
+    const persisted = {
+      id: "key-2",
+      environmentId: "env-1",
+      keyPrefix: "platos_live_abcdefghijkl",
+      allowedOrigins: ["https://app.example"],
+      lastUsedAt: null,
+      validUntil: null,
+      replacedById: null,
+      revokedAt: null,
+      createdAt: "2026-08-20T00:00:00.000Z",
+      updatedAt: "2026-08-20T00:00:00.000Z",
+    };
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(response({ attemptId, key: persisted, retiringKey: null }))
+      .mockResolvedValueOnce(response({ key: persisted, retiringKey: null }));
+    const scope = {
+      organizationId: "org-1",
+      projectId: "project-1",
+      environmentId: "env-1",
+      userId: "user-1",
+    };
+
+    const rotated = await credentialRequest("/api/v1/agent/access-key", scope, {
+      method: "POST",
+      body: { attemptId, keyHash: "a".repeat(64), keyPrefix: persisted.keyPrefix },
+    });
+    const readBack = await credentialRequest("/api/v1/agent/access-key", scope);
+
+    expect(rotated).toMatchObject({ attemptId, key: { id: persisted.id, keyPrefix: persisted.keyPrefix } });
+    expect(readBack).toMatchObject({ key: { id: persisted.id, keyPrefix: persisted.keyPrefix } });
+    expect(JSON.stringify({ rotated, readBack })).not.toContain("keyHash");
+  });
+
+  it.each([
+    ["origins", new URLSearchParams({ intent: "origins", origins: "https://one.example\nhttps://two.example" }), "/api/v1/agent/access-key/origins", "POST", { origins: ["https://one.example", "https://two.example"] }, { ok: true, origins: ["https://one.example", "https://two.example"] }],
+    ["revoke", new URLSearchParams({ intent: "revoke" }), "/api/v1/agent/access-key", "DELETE", undefined, { ok: true }],
+  ])("keeps the %s mutation on its exact safe AccessKey contract", async (_name, form, path, method, body, payload) => {
+    vi.mocked(fetch).mockResolvedValue(response(payload));
+
+    const result = await accessKeyAction({
+      request: new Request("http://dashboard/apikeys", { method: "POST", body: form }),
+      params,
+      context: {},
+    });
+    const upstream = vi.mocked(fetch).mock.calls[0];
+
+    expect(String(upstream?.[0])).toContain(path);
+    expect(upstream?.[1]?.method).toBe(method);
+    expect(upstream?.[1]?.body === undefined ? undefined : JSON.parse(String(upstream[1].body))).toEqual(body);
+    expect(await result.json()).toEqual({ ok: true, result: payload });
   });
 
   it("rejects unknown fields even when their names are not on the denylist", async () => {

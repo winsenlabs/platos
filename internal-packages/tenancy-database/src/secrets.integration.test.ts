@@ -365,16 +365,26 @@ describe("Platos secret store integration", () => {
         }),
       ]);
       expect(JSON.stringify(rotations)).not.toContain("keyHash");
-      expect(
-        await database.accessKey.count({
-          where: { environmentId, revokedAt: null, validUntil: null },
-        })
-      ).toBe(1);
-      expect(
-        await database.accessKey.count({
-          where: { environmentId, revokedAt: null, validUntil: { not: null } },
-        })
-      ).toBe(1);
+      const persisted = await database.accessKey.findMany({
+        where: { environmentId, revokedAt: null },
+        select: {
+          id: true,
+          keyHash: true,
+          keyPrefix: true,
+          validUntil: true,
+          replacedById: true,
+        },
+      });
+      const active = persisted.filter((key) => key.validUntil === null);
+      const retiring = persisted.filter((key) => key.validUntil !== null);
+      expect(active).toHaveLength(1);
+      expect(retiring).toHaveLength(1);
+      expect(retiring[0]?.replacedById).toBe(active[0]?.id);
+      expect(active[0]?.keyHash).toBe(
+        active[0]?.keyPrefix === "platos_live_first" ? "a".repeat(64) : "b".repeat(64)
+      );
+      expect(rotations.flatMap((rotation) => [rotation.key.id, rotation.retiringKey?.id]).filter(Boolean))
+        .toEqual(expect.arrayContaining([active[0]?.id, retiring[0]?.id]));
       await expect(
         database.accessKey.create({
           data: {

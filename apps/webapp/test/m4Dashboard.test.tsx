@@ -640,17 +640,24 @@ describe("M4 dashboard rebuild", () => {
   });
 
   it("keeps AccessKey bearer material in browser memory and submits hash metadata only", () => {
-    const source = readFileSync(
+    const routeSource = readFileSync(
       join(process.cwd(), "app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx"),
       "utf8",
     );
-    expect(source).toContain("crypto.getRandomValues");
-    expect(source).toContain('crypto.subtle.digest("SHA-256"');
-    expect(source).toContain('body: { keyHash, keyPrefix }');
-    expect(source).toContain('["intent", "keyHash", "keyPrefix"]');
-    expect(source).toContain("asRecord(accessKeys.key)");
-    expect(source).toContain("asRecord(accessKeys.retiringKey)");
-    expect(source).not.toMatch(/name=["'](?:rawKey|accessKey|key)["']/);
+    const lifecycleSource = readFileSync(join(process.cwd(), "app/components/platos/accessKeyLifecycle.ts"), "utf8");
+    expect(lifecycleSource).toContain("crypto.getRandomValues");
+    expect(lifecycleSource).toContain("crypto.randomUUID()");
+    expect(lifecycleSource).toContain('crypto.subtle.digest("SHA-256"');
+    expect(routeSource).toContain("body: { attemptId, keyHash, keyPrefix }");
+    expect(routeSource).toContain('["intent", "attemptId", "keyHash", "keyPrefix"]');
+    expect(routeSource).toContain("lifecycle.settle(fetcher.data)");
+    expect(routeSource).toContain("lifecycle.begin(await generatePendingAccessKey())");
+    expect(routeSource).toContain("setRevealedKey(settlement.rawKey)");
+    expect(routeSource).toContain("useEffect(() => () => lifecycle.cancel()");
+    expect(routeSource).toContain("asRecord(accessKeys.key)");
+    expect(routeSource).toContain("asRecord(accessKeys.retiringKey)");
+    expect(routeSource).not.toContain("setRevealedKey(generated.rawKey)");
+    expect(routeSource).not.toMatch(/name=["'](?:rawKey|accessKey|key)["']/);
   });
 
   it("keeps Entity secrets reveal-once and renders nested Entity operations", () => {

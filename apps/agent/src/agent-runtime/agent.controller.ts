@@ -6187,15 +6187,18 @@ Write the summary now:`;
       typeof body !== "object" ||
       body === null ||
       Array.isArray(body) ||
-      Object.keys(body).length !== 2 ||
+      Object.keys(body).length !== 3 ||
+      !Object.hasOwn(body, "attemptId") ||
       !Object.hasOwn(body, "keyHash") ||
       !Object.hasOwn(body, "keyPrefix")
     ) {
       throw new BadRequestException("invalid_access_key_material");
     }
 
-    const { keyHash, keyPrefix } = body as Record<string, unknown>;
+    const { attemptId, keyHash, keyPrefix } = body as Record<string, unknown>;
     if (
+      typeof attemptId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(attemptId) ||
       typeof keyHash !== "string" ||
       !/^[a-f0-9]{64}$/.test(keyHash) ||
       typeof keyPrefix !== "string" ||
@@ -6204,10 +6207,11 @@ Write the summary now:`;
       throw new BadRequestException("invalid_access_key_material");
     }
 
-    return this.authService.createOrRotateAccessKey(
+    const result = await this.authService.createOrRotateAccessKey(
       scope,
       { keyHash, keyPrefix },
     );
+    return { attemptId, ...result };
   }
 
   @Post("access-key/origins")

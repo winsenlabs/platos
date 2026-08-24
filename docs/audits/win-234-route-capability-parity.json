@@ -8946,7 +8946,7 @@
       "intent": "Persist the exact allowed origins associated with Environment AccessKey usage.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "Current route submits origins to the canonical AccessKey origins endpoint.",
+      "currentBehavior": "The exact origins mutation is covered by a closed safe-response contract and submits only normalized origins to the canonical AccessKey origins endpoint.",
       "http": [
         {
           "role": "canonical contract",
@@ -9090,13 +9090,10 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/formSubmission.test.tsx",
-          "apps/webapp/test/m4Dashboard.test.tsx",
-          "apps/webapp/test/m4Mutation.test.ts",
-          "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/credentialSerialization.test.ts",
+          "apps/agent/src/auth/auth.service.test.ts"
         ]
       },
       "browserEvidence": {
@@ -9167,7 +9164,7 @@
       "intent": "Correlate each browser-generated AccessKey attempt with exactly one server response before revealing or discarding private pending material.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "Current fetcher submission carries no attempt ID, so overlapping or stale responses cannot be matched to the private pending bearer that produced keyHash/keyPrefix.",
+      "currentBehavior": "Each pending bearer is keyed by a cryptographically random attempt ID; the browser action and successful persisted Agent response echo that ID, while stale, failed, mismatched, cancelled, and superseded attempts cannot reveal material.",
       "http": [
         {
           "role": "canonical interaction",
@@ -9269,9 +9266,10 @@
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "confirmed-defect",
+        "status": "verified",
         "references": [
-          "No attempt ID currently binds a successful response to the private pending material that may be revealed."
+          "apps/webapp/test/credentialSerialization.test.ts proves action success requires the persisted response to echo the submitted attempt ID.",
+          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts proves the Agent echoes attemptId only after createOrRotateAccessKey resolves."
         ]
       },
       "pagination": {
@@ -9297,32 +9295,32 @@
         ]
       },
       "concurrency": {
-        "status": "confirmed-defect",
+        "status": "verified",
         "references": [
-          "Concurrent rotate attempts have no browser request-correlation guard."
+          "apps/webapp/test/accessKeyLifecycle.test.ts settles overlapping responses out of order and reveals only the latest matching attempt."
         ]
       },
       "recovery": {
-        "status": "confirmed-defect",
+        "status": "verified",
         "references": [
-          "Failure or stale response cannot safely select which pending bearer to erase or reveal."
+          "apps/webapp/test/accessKeyLifecycle.test.ts covers failure, mismatch, cancellation, and supersession disposal."
         ]
       },
       "secretExposure": {
-        "status": "confirmed-defect",
-        "classification": "Private pending material requires attempt ID correlation.",
+        "status": "verified",
+        "classification": "Private pending material is keyed by cryptographic attempt ID and never serialized.",
         "requirements": [
           "Keep raw bearer/keyHash/keyPrefix in private pending material keyed by attempt ID.",
-          "Reveal only the pending material whose attempt ID matches the successful response.",
-          "Ignore stale responses and erase superseded/failed pending material."
+          "Reveal only the pending material whose attempt ID matches the successful persisted response.",
+          "Ignore stale responses and erase superseded, failed, mismatched, or cancelled pending material."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
+          "apps/webapp/test/accessKeyLifecycle.test.ts",
           "apps/webapp/test/credentialSerialization.test.ts",
-          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts",
-          "apps/agent/src/auth/auth.service.test.ts"
+          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts"
         ]
       },
       "browserEvidence": {
@@ -9342,8 +9340,8 @@
         "WIN-143"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Browser rotation requests and responses lack an attempt ID, allowing stale response/reveal correlation."
+        "status": "verified",
+        "summary": "Cryptographic attempt correlation prevents stale or overlapping responses from revealing the wrong bearer."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -9393,7 +9391,7 @@
       "intent": "Generate an AccessKey bearer in the browser and reveal it exactly once without sending raw material to the server.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "Current rotate() calls setRevealedKey(generated.rawKey) before fetcher.submit persistence succeeds, so failed or stale requests can reveal unpersisted material.",
+      "currentBehavior": "Raw bearer material remains private pending material until the matching persistence success response; failure, mismatch, cancellation, navigation disposal, and supersession discard it without reveal.",
       "http": [
         {
           "role": "canonical contract",
@@ -9401,13 +9399,13 @@
           "endpoint": "/api/v1/agent/access-key",
           "requestDto": {
             "status": "static-contract-only",
-            "shape": "{ keyHash: 64 lowercase hex characters; keyPrefix: /^platos_live_[A-Za-z0-9_-]{1,12}$/ }; all other fields rejected."
+            "shape": "{ attemptId: cryptographically random UUID; keyHash: 64 lowercase hex characters; keyPrefix: /^platos_live_[A-Za-z0-9_-]{1,12}$/ }; all other fields rejected."
           },
           "response": {
             "successStatuses": [
               200
             ],
-            "shape": "Safe AccessKey metadata only; no raw key or keyHash."
+            "shape": "Safe AccessKey metadata echoes matching attemptId only after persistence; no raw key or keyHash."
           },
           "stableErrors": [
             {
@@ -9432,6 +9430,11 @@
       "identifiers": {
         "status": "static-contract-only",
         "values": [
+          {
+            "name": "attemptId",
+            "type": "non-secret browser request correlation UUID",
+            "source": "private pending lifecycle and persisted response"
+          },
           {
             "name": "accessKeyId",
             "type": "AccessKey UUID",
@@ -9491,9 +9494,10 @@
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "confirmed-defect",
+        "status": "verified",
         "references": [
-          "Reveal must occur only after the matching persisted rotation response succeeds."
+          "apps/webapp/test/credentialSerialization.test.ts covers matching success, mismatch failure, and hash-only POST-to-GET read-back.",
+          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts proves attemptId is returned only after persisted rotation resolves."
         ]
       },
       "pagination": {
@@ -9519,32 +9523,32 @@
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "apps/webapp/test/accessKeyLifecycle.test.ts covers stale overlapping success responses and supersession."
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/accessKeyLifecycle.test.ts covers failure, mismatch, cancellation, and disposal without reveal."
         ]
       },
       "secretExposure": {
-        "status": "confirmed-defect",
-        "classification": "Raw bearer must remain private pending material until correlated persistence success.",
+        "status": "verified",
+        "classification": "Raw bearer remains private pending material until correlated persistence success.",
         "requirements": [
-          "Store raw bearer, keyHash, and keyPrefix as private pending material that is not rendered.",
+          "Store raw bearer, keyHash, and keyPrefix as private pending material that is not rendered or serialized.",
           "Reveal only after the matching persistence success response.",
-          "Clear pending material on failure, supersession, navigation, and acknowledgement."
+          "Clear pending material on failure, mismatch, supersession, navigation disposal, cancellation, and acknowledgement."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
+          "apps/webapp/test/accessKeyLifecycle.test.ts",
           "apps/webapp/test/credentialSerialization.test.ts",
-          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts",
-          "apps/agent/src/auth/auth.service.test.ts"
+          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts"
         ]
       },
       "browserEvidence": {
@@ -9564,8 +9568,8 @@
         "WIN-143"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "AccessKey raw material is revealed before the server confirms hash persistence."
+        "status": "verified",
+        "summary": "The browser reveals raw AccessKey material only after matching persisted response correlation."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -9615,7 +9619,7 @@
       "intent": "Revoke every active or unexpired AccessKey for the canonical Environment.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "DELETE marks revokedAt on active/unexpired Environment-owned keys.",
+      "currentBehavior": "DELETE uses the exact safe response contract and marks every active or unexpired Environment-owned key revoked without serializing raw or hashed material.",
       "http": [
         {
           "role": "canonical contract",
@@ -9759,9 +9763,9 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts",
+          "apps/webapp/test/credentialSerialization.test.ts",
           "apps/agent/src/auth/auth.service.test.ts"
         ]
       },
@@ -9878,13 +9882,13 @@
           "endpoint": "/api/v1/agent/access-key",
           "requestDto": {
             "status": "static-contract-only",
-            "shape": "{ keyHash; keyPrefix } generated in browser."
+            "shape": "{ attemptId; keyHash; keyPrefix } generated in browser."
           },
           "response": {
             "successStatuses": [
               200
             ],
-            "shape": "Safe replacement metadata correlated to the retiring key."
+            "shape": "Safe replacement metadata echoes attemptId and correlates the replacement to the retiring key."
           },
           "stableErrors": [
             {
@@ -9972,9 +9976,10 @@
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Reload must show replacement id correlation and retiring validUntil without any hash."
+          "internal-packages/tenancy-database/src/secrets.integration.test.ts reads active and retiring rows back, proves retiring.replacedById equals active.id, validates active hash/prefix correlation, and checks safe rotation serialization.",
+          "apps/webapp/test/credentialSerialization.test.ts proves the correlated POST result and subsequent GET retain the same safe AccessKey id/prefix without keyHash."
         ]
       },
       "pagination": {
@@ -10006,13 +10011,14 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failed transaction must preserve the previous active key and bounded overlap metadata."
+          "apps/webapp/test/accessKeyLifecycle.test.ts discards failed private pending material without reveal.",
+          "internal-packages/tenancy-database/src/secrets.integration.test.ts verifies serialized concurrent transactions retain exactly one active replacement and one correlated retiring key."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "Hash-only server lifecycle.",
         "requirements": [
           "ACCESS_KEY_SAFE_SELECT omits keyHash.",
@@ -10020,11 +10026,13 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "internal-packages/tenancy-database/src/secrets.integration.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts",
           "apps/agent/src/auth/auth.service.test.ts",
-          "apps/webapp/test/credentialSerialization.test.ts"
+          "apps/webapp/test/credentialSerialization.test.ts",
+          "apps/webapp/test/accessKeyLifecycle.test.ts"
         ]
       },
       "browserEvidence": {
@@ -10044,8 +10052,8 @@
         "WIN-143"
       ],
       "defect": {
-        "status": "required-not-verified",
-        "summary": "Persisted browser read-back of validUntil/replacedById and overlap expiry remains mandatory."
+        "status": "verified",
+        "summary": "Persisted read-back proves validUntil/replacedById correlation, one active replacement, and hash-only serialization."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
