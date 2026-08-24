@@ -408,7 +408,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
           body: new URLSearchParams({
             intent: "memory-toggle",
             userId: primary.externalUserId,
-            agentId: createdAgentId,
+            agentId: primary.agentIds[0],
             id: primary.profileMemoryId,
             agentVisible: "false",
           }),
@@ -608,7 +608,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
           body: new URLSearchParams({
             intent: "memory-delete",
             userId: primary.externalUserId,
-            agentId: createdAgentId,
+            agentId: primary.agentIds[0],
             id: primary.profileMemoryId,
           }),
         }
