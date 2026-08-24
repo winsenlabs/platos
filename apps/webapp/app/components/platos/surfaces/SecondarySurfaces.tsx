@@ -1,5 +1,5 @@
 import { Form, Link, useSearchParams } from "@remix-run/react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { asArray, asBoolean, asNumber, asRecord, asString, firstArray } from "../safe";
 import { Alert, Button, CollectionSearch, DataTable, EmptyState, PaginationRange, Panel, SectionHeader, StatTile, Toolbar } from "../ProductPrimitives";
 import { fieldClass, Status, type SurfaceProps } from "./SurfaceCommon";
@@ -129,6 +129,66 @@ function MemoryAgentSelector({ userId, agentId, agentsRoot, selection }: { userI
   </div>;
 }
 
+function metadataText(metadata: unknown) {
+  return JSON.stringify(metadata && typeof metadata === "object" ? metadata : {}, null, 2);
+}
+
+function MemoryEditorFields({ memory }: { memory?: Record<string, unknown> }) {
+  const metadata = asRecord(memory?.metadata);
+  const initialKind = asString(memory?.kind, "fact");
+  const [kind, setKind] = useState(initialKind);
+  return <>
+    <textarea
+      required
+      name="content"
+      defaultValue={asString(memory?.content, "")}
+      placeholder="Durable memory content"
+      className={`${fieldClass} min-h-24`}
+    />
+    <div className="grid gap-2 sm:grid-cols-2">
+      <label className="text-xs">Kind
+        <select name="kind" value={kind} onChange={(event) => setKind(event.currentTarget.value)} className={fieldClass}>
+          <option value="fact">Fact</option>
+          <option value="preference">Preference</option>
+          <option value="event">Event</option>
+          <option value="relationship">Relationship</option>
+          <option value="profile">Profile</option>
+        </select>
+      </label>
+      <label className="text-xs">Visibility
+        <select name="visibility" defaultValue={asString(memory?.visibility, "private")} className={fieldClass}>
+          <option value="agent_visible">Agent visible</option>
+          <option value="hidden">Hidden from Agent recall</option>
+          <option value="private">Private</option>
+        </select>
+      </label>
+    </div>
+    {kind === "fact" && <div className="grid gap-2 sm:grid-cols-2">
+      <input name="subject" defaultValue={asString(metadata.subject, "")} placeholder="Subject (optional)" className={fieldClass} />
+      <input name="topic" defaultValue={asString(metadata.topic, "")} placeholder="Topic (optional)" className={fieldClass} />
+    </div>}
+    {kind === "preference" && <div className="grid gap-2 sm:grid-cols-2">
+      <input name="over" defaultValue={asArray(metadata.over).map((value) => asString(value)).filter(Boolean).join(", ")} placeholder="Compared values, comma-separated" className={fieldClass} />
+      <input name="ordering" defaultValue={asString(metadata.ordering, "")} placeholder="Ordering (optional)" className={fieldClass} />
+    </div>}
+    {kind === "event" && <div className="grid gap-2 sm:grid-cols-3">
+      <input name="at" defaultValue={asString(metadata.at, "")} placeholder="ISO timestamp (optional)" className={fieldClass} />
+      <input name="location" defaultValue={asString(metadata.location, "")} placeholder="Location (optional)" className={fieldClass} />
+      <input name="participants" defaultValue={asArray(metadata.participants).map((value) => asString(value)).filter(Boolean).join(", ")} placeholder="Participants, comma-separated" className={fieldClass} />
+    </div>}
+    {kind === "relationship" && <div className="grid gap-2 sm:grid-cols-3">
+      <input required name="from" defaultValue={asString(metadata.from, "")} placeholder="From" className={fieldClass} />
+      <input required name="to" defaultValue={asString(metadata.to, "")} placeholder="To" className={fieldClass} />
+      <input required name="type" defaultValue={asString(metadata.type, "")} placeholder="Relationship type" className={fieldClass} />
+    </div>}
+    {kind === "profile" && <input required name="profileKey" defaultValue={asString(metadata.profileKey, "")} placeholder="Profile key" className={fieldClass} />}
+    <details>
+      <summary className="cursor-pointer text-xs text-text-dimmed">Additional metadata JSON</summary>
+      <textarea name="metadata" defaultValue={metadataText(memory?.metadata)} className={`${fieldClass} mt-2 min-h-20 font-mono`} />
+    </details>
+  </>;
+}
+
 export function MemorySurface({ data, secondary, selection }: SurfaceProps) {
   const root = asRecord(data);
   const agentsRoot = asRecord(secondary);
@@ -145,29 +205,93 @@ export function MemorySurface({ data, secondary, selection }: SurfaceProps) {
       ? <EmptyState title="Choose an Agent memory scope" description="Memory must be pinned to one canonical Environment Agent. A clustered Agent automatically uses its persisted AgentCluster boundary." action={<MemoryAgentSelector userId={userId} agentId={agentId} agentsRoot={agentsRoot} selection={selection} />} />
       : <EmptyState title="No Agent bindings" description="Create and bind an Agent in this Environment before reading or writing Memory." />;
   }
+
   const memories = firstArray(root, "memories", "hits");
   const selectedAgent = Object.keys(asRecord(selection)).length
     ? asRecord(selection)
     : agents.map(asRecord).find((agent) => asString(agent.id) === agentId);
   const clusterId = asString(selectedAgent?.clusteringId);
-  const contextParams = new URLSearchParams(searchParams);
-  contextParams.set("userId", userId);
-  contextParams.set("agentId", agentId);
-  const contextQuery = contextParams.toString();
-  const selectorParams = ["agentSearch", "agentPage", "agentPageSize"].flatMap((name) => searchParams.get(name) ? [[name, searchParams.get(name)!]] : []);
-  const contextInputs = <><input type="hidden" name="userId" value={userId} /><input type="hidden" name="agentId" value={agentId} />{selectorParams.map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}</>;
+  const queryContext = new URLSearchParams(searchParams);
+  queryContext.set("userId", userId);
+  queryContext.set("agentId", agentId);
+  const contextInputs = <><input type="hidden" name="userId" value={userId} /><input type="hidden" name="agentId" value={agentId} /></>;
+  const isSearch = Boolean(searchParams.get("q")?.trim());
+  const limit = asNumber(root.limit, Number(searchParams.get("limit")) || 50);
+  const offset = asNumber(root.offset, Number(searchParams.get("offset")) || 0);
+  const pageHref = (nextOffset: number) => {
+    const query = new URLSearchParams(searchParams);
+    query.set("userId", userId);
+    query.set("agentId", agentId);
+    query.set("limit", String(limit));
+    query.set("offset", String(Math.max(0, nextOffset)));
+    return `?${query}`;
+  };
+
   return <div className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><MemoryAgentSelector userId={userId} agentId={agentId} agentsRoot={agentsRoot} selection={selection} /><div className="flex flex-wrap gap-2"><Link to={`export?${contextQuery}`} reloadDocument><Button type="button">Export memory bundle</Button></Link><Link to={`graph?${contextQuery}`}><Button type="button">Open knowledge graph</Button></Link></div></div>
-    <div className="grid gap-3 md:grid-cols-3"><StatTile title="Persisted memories" value={asNumber(root.total, memories.length)} /><StatTile title="Visibility boundary" value="Selected EndUser" hint={userId} /><StatTile title="Agent boundary" value={clusterId ? "AgentCluster" : "Agent"} hint={clusterId || agentId} /></div>
-    <Form method="get"><Panel><SectionHeader title="Semantic memory search" description="The selected canonical EndUser and validated Agent pin remain explicit across every read and mutation." />{contextInputs}<div className="flex flex-col gap-2 sm:flex-row"><input name="q" defaultValue={searchParams.get("q") ?? ""} placeholder="Search memory content" className={fieldClass} /><select name="kind" defaultValue={searchParams.get("kind") ?? ""} className={`${fieldClass} sm:max-w-44`}><option value="">All kinds</option><option value="fact">Fact</option><option value="preference">Preference</option><option value="event">Event</option><option value="relationship">Relationship</option></select><Button type="submit" className="mt-1">Search</Button></div></Panel></Form>
-    <DataTable headers={["Memory", "Kind", "Visibility", "Source", "Updated", "Lifecycle"]} rows={memories.map((value) => { const row = asRecord(value); const nested = asRecord(row.memory); const memory = Object.keys(nested).length ? nested : row; const id = asString(memory.id); return [<div className="max-w-xl whitespace-pre-wrap">{asString(memory.content, "Empty memory")}</div>, asString(memory.kind, "fact"), asString(memory.visibility, asBoolean(memory.agentVisible) ? "agent" : "private"), asString(memory.source, "manual"), displayDate(memory.updatedAt ?? memory.createdAt), <div className="flex gap-2"><Form method="post"><input type="hidden" name="userId" value={userId} /><input type="hidden" name="agentId" value={agentId} /><input type="hidden" name="intent" value="memory-toggle" /><input type="hidden" name="id" value={id} /><input type="hidden" name="agentVisible" value={asBoolean(memory.agentVisible) ? "false" : "true"} /><button type="submit" className="text-xs text-[var(--accent)]">{asBoolean(memory.agentVisible) ? "Make private" : "Allow Agent"}</button></Form><Form method="post"><input type="hidden" name="userId" value={userId} /><input type="hidden" name="agentId" value={agentId} /><input type="hidden" name="intent" value="memory-delete" /><input type="hidden" name="id" value={id} /><button type="submit" className="text-xs text-[var(--danger)]">Archive</button></Form></div>]; })} empty={<EmptyState title="No memories" description="Create a scoped memory or extract durable facts from an existing Thread." />} />
-    <div className="grid gap-4 xl:grid-cols-2"><Form method="post"><Panel>{contextInputs}<input type="hidden" name="intent" value="memory-create" /><SectionHeader title="Create memory" /><textarea required name="content" placeholder="Durable fact, preference, event, or relationship" className={`${fieldClass} min-h-28`} /><div className="grid gap-2 sm:grid-cols-2"><select name="kind" className={fieldClass}><option value="fact">Fact</option><option value="preference">Preference</option><option value="event">Event</option><option value="relationship">Relationship</option></select><select name="visibility" className={fieldClass}><option value="private">Private</option><option value="agent">Agent visible</option><option value="cluster">Cluster visible</option></select></div><Button type="submit" tone="primary" className="mt-3">Persist memory</Button></Panel></Form><Form method="post"><Panel>{contextInputs}<input type="hidden" name="intent" value="memory-extract" /><SectionHeader title="Extract from Thread" description="Runs the canonical manual extraction policy only when the Thread belongs to the selected EndUser and Agent scope." /><input required name="threadId" placeholder="Thread ID" className={fieldClass} /><Button type="submit" className="mt-3">Run extraction</Button></Panel></Form></div>
-    <Form method="post"><Panel>{contextInputs}<input type="hidden" name="intent" value="memory-import" /><SectionHeader title="Import memory bundle" description="Bundle identity and Agent fields are ignored; imported data is forced into the validated selected contexts." /><select name="mode" className={`${fieldClass} sm:max-w-44`}><option value="merge">Merge</option><option value="replace">Replace selected user data</option></select><textarea required name="bundle" placeholder='{"memories":[],"entities":[],"relationships":[]}' className={`${fieldClass} min-h-28 font-mono`} /><Button type="submit" className="mt-3">Import bundle</Button></Panel></Form>
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <MemoryAgentSelector userId={userId} agentId={agentId} agentsRoot={agentsRoot} selection={selection} />
+      <div className="flex flex-wrap gap-2">
+        <Link to={`export?${queryContext}`} reloadDocument><Button type="button">Export complete bundle</Button></Link>
+        <Link to={`graph?${queryContext}`}><Button type="button">Open knowledge graph</Button></Link>
+      </div>
+    </div>
+    <div className="grid gap-3 md:grid-cols-3">
+      <StatTile title={isSearch ? "Search results" : "Persisted memories"} value={isSearch ? asNumber(root.resultCount, memories.length) : asNumber(root.total)} />
+      <StatTile title="Visibility boundary" value="Selected EndUser" hint={userId} />
+      <StatTile title="Agent boundary" value={clusterId ? "AgentCluster" : "Agent"} hint={clusterId || agentId} />
+    </div>
+    <Alert title="Visibility contract">Agent visible permits recall only inside persisted Agent or AgentCluster ownership. Hidden and Private are both excluded from Agent recall; cluster sharing is never a visibility value.</Alert>
+    <Form method="get"><Panel>
+      <SectionHeader title="Search and filter memory" description="Semantic search stays server-side. Search result counts are not presented as persisted totals." />
+      {contextInputs}
+      <input type="hidden" name="limit" value={limit} />
+      <div className="grid gap-2 md:grid-cols-5">
+        <input name="q" defaultValue={searchParams.get("q") ?? ""} placeholder="Semantic search" className={fieldClass} />
+        <select name="kind" defaultValue={searchParams.get("kind") ?? ""} className={fieldClass}>
+          <option value="">All kinds</option><option value="fact">Fact</option><option value="preference">Preference</option><option value="event">Event</option><option value="relationship">Relationship</option><option value="profile">Profile</option>
+        </select>
+        <select name="source" defaultValue={searchParams.get("source") ?? ""} className={fieldClass}>
+          <option value="">All sources</option><option value="manual">Manual</option><option value="extracted">Extracted</option><option value="imported">Imported</option><option value="rag">RAG</option>
+        </select>
+        <select name="archiveState" defaultValue={searchParams.get("archiveState") ?? "active"} className={fieldClass}>
+          <option value="active">Active</option><option value="archived">Archived</option><option value="all">Active and archived</option>
+        </select>
+        <Button type="submit" className="mt-1">Apply</Button>
+      </div>
+    </Panel></Form>
+    <DataTable headers={["Memory", "Kind", "Visibility", "Source", "Updated", "Lifecycle"]} rows={memories.map((value) => {
+      const row = asRecord(value);
+      const nested = asRecord(row.memory);
+      const memory = Object.keys(nested).length ? nested : row;
+      const id = asString(memory.id);
+      const archived = Boolean(memory.archivedAt);
+      return [
+        <details className="max-w-xl"><summary className="cursor-pointer whitespace-pre-wrap">{asString(memory.content, "Empty memory")}</summary><Form method="post" className="mt-3 space-y-2"><input type="hidden" name="intent" value="memory-update" /><input type="hidden" name="id" value={id} />{contextInputs}<MemoryEditorFields memory={memory} /><Button type="submit">Save complete memory</Button></Form></details>,
+        asString(memory.kind, "fact"),
+        asString(memory.visibility),
+        asString(memory.source, "manual"),
+        displayDate(memory.updatedAt ?? memory.createdAt),
+        <div className="flex flex-wrap gap-2">
+          <Form method="post"><input type="hidden" name="intent" value="memory-visibility" /><input type="hidden" name="id" value={id} />{contextInputs}<select aria-label={`Visibility for ${id}`} name="visibility" defaultValue={asString(memory.visibility)} className="rounded border border-grid-bright bg-background-bright px-2 py-1 text-xs"><option value="agent_visible">Agent visible</option><option value="hidden">Hidden</option><option value="private">Private</option></select><button type="submit" className="ml-1 text-xs text-[var(--accent)]">Set</button></Form>
+          <Form method="post"><input type="hidden" name="intent" value={archived ? "memory-restore" : "memory-archive"} /><input type="hidden" name="id" value={id} />{contextInputs}<button type="submit" className={`text-xs ${archived ? "text-[var(--accent)]" : "text-[var(--danger)]"}`}>{archived ? "Restore" : "Archive"}</button></Form>
+        </div>,
+      ];
+    })} empty={<EmptyState title={isSearch ? "No matching memories" : "No memories"} description={isSearch ? "No scoped semantic results matched the current query and filters." : "Create a scoped memory or extract durable facts from an existing Thread."} />} />
+    {!isSearch && <div className="flex items-center justify-between">
+      <span className="text-xs text-text-dimmed">Showing {memories.length ? offset + 1 : 0}–{offset + memories.length} of {asNumber(root.total)}</span>
+      <div className="flex gap-2">{offset > 0 && <Link to={pageHref(offset - limit)}><Button type="button">Previous</Button></Link>}{asBoolean(root.hasNext) && <Link to={pageHref(offset + limit)}><Button type="button">Next</Button></Link>}</div>
+    </div>}
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Form method="post"><Panel>{contextInputs}<input type="hidden" name="intent" value="memory-create" /><SectionHeader title="Create memory" /><div className="space-y-2"><MemoryEditorFields /><Button type="submit" tone="primary">Persist memory</Button></div></Panel></Form>
+      <Form method="post"><Panel>{contextInputs}<input type="hidden" name="intent" value="memory-extract" /><SectionHeader title="Extract from Thread" description="Runs manual extraction only when the Thread belongs to the selected EndUser and Agent scope." /><input required name="threadId" placeholder="Thread ID" className={fieldClass} /><Button type="submit" className="mt-3">Run extraction</Button></Panel></Form>
+    </div>
+    <Form method="post"><Panel>{contextInputs}<input type="hidden" name="intent" value="memory-import" /><SectionHeader title="Import memory bundle" description="Bundle identity and Agent fields are ignored; imported data is forced into the validated selected contexts." /><select name="mode" className={`${fieldClass} sm:max-w-60`}><option value="merge">Merge</option><option value="replace">Replace selected user data</option></select><label className="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" name="confirmReplace" value="true" /> I understand replace permanently deletes the selected scoped memories, entities, and relationships before import.</label><textarea required name="bundle" placeholder='{"version":2,"memories":[],"entities":[],"relationships":[]}' className={`${fieldClass} min-h-28 font-mono`} /><Button type="submit" className="mt-3">Import bundle</Button></Panel></Form>
   </div>;
 }
 
-export function MemoryGraphSurface({ data, secondary, selection }: SurfaceProps) {
+export function MemoryGraphSurface({ data, secondary, supporting, selection }: SurfaceProps) {
   const root = asRecord(data);
+  const operation = asRecord(supporting);
   const agentsRoot = asRecord(secondary);
   const agents = firstArray(agentsRoot, "agents", "items");
   const [searchParams] = useSearchParams();
@@ -183,23 +307,39 @@ export function MemoryGraphSurface({ data, secondary, selection }: SurfaceProps)
       : <EmptyState title="No Agent bindings" description="Create and bind an Agent in this Environment before traversing Memory." />;
   }
   const entities = firstArray(root, "entities", "items");
-  const neighborhood = [...firstArray(root, "outbound"), ...firstArray(root, "inbound")];
-  const selectedAgent = Object.keys(asRecord(selection)).length
-    ? asRecord(selection)
-    : agents.map(asRecord).find((agent) => asString(agent.id) === agentId);
-  const clusterId = asString(selectedAgent?.clusteringId);
-  const selectorParams = ["agentSearch", "agentPage", "agentPageSize"].flatMap((name) => searchParams.get(name) ? [[name, searchParams.get(name)!]] : []);
-  const contextInputs = <><input type="hidden" name="userId" value={userId} /><input type="hidden" name="agentId" value={agentId} />{selectorParams.map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}</>;
-  const contextParams = new URLSearchParams(searchParams);
-  contextParams.set("userId", userId);
-  contextParams.set("agentId", agentId);
+  const neighborhood = [...firstArray(operation, "outbound"), ...firstArray(operation, "inbound")];
+  const preservedGraphParams = Array.from(searchParams.entries()).filter(([key]) => !["userId", "agentId", "entityId", "from", "to", "maxHops", "entityQ", "entityOffset"].includes(key));
+  const contextInputs = <><input type="hidden" name="userId" value={userId} /><input type="hidden" name="agentId" value={agentId} />{preservedGraphParams.map(([key, value], index) => <input key={`${key}-${index}`} type="hidden" name={key} value={value} />)}</>;
+  const queryContext = new URLSearchParams(searchParams);
+  queryContext.set("userId", userId);
+  queryContext.set("agentId", agentId);
+  const limit = asNumber(root.limit, Number(searchParams.get("entityLimit")) || 50);
+  const offset = asNumber(root.offset, Number(searchParams.get("entityOffset")) || 0);
+  const entityOptions = entities.map(asRecord);
+  const hasPath = Object.prototype.hasOwnProperty.call(operation, "path");
+  const pageHref = (nextOffset: number) => {
+    const query = new URLSearchParams(searchParams);
+    query.delete("entityId"); query.delete("from"); query.delete("to"); query.delete("maxHops");
+    query.set("userId", userId); query.set("agentId", agentId); query.set("entityLimit", String(limit)); query.set("entityOffset", String(Math.max(0, nextOffset)));
+    return `?${query}`;
+  };
+  const entityReference = (name: string, label: string, useKey = false) => <label className="text-xs">{label}<input required list={`entities-${useKey ? "keys" : "references"}`} name={name} defaultValue={searchParams.get(name) ?? ""} placeholder={useKey ? "Entity key" : "Entity ID or key"} className={fieldClass} /></label>;
   return <div className="space-y-5">
-    <div className="flex flex-wrap items-end justify-between gap-3"><MemoryAgentSelector userId={userId} agentId={agentId} agentsRoot={agentsRoot} selection={selection} /><Link to={`../memories?${contextParams}`}><Button type="button">Back to memories</Button></Link></div>
-    <Alert title="Selected EndUser knowledge graph">Neighborhood, path traversal, and relationship creation stay bound to <code>{userId}</code> through {clusterId ? <>AgentCluster <code>{clusterId}</code> selected by Agent <code>{agentId}</code></> : <>validated Agent pin <code>{agentId}</code></>}.</Alert>
-    <DataTable headers={["Entity", "Type", "Aliases", "Updated"]} rows={entities.map((value) => { const row = asRecord(value); return [<div><div className="font-medium">{asString(row.label, asString(row.entityKey))}</div><code className="text-xs text-text-dimmed">{asString(row.entityKey, asString(row.id))}</code></div>, asString(row.entityType, "other"), asArray(row.aliases).map((alias) => asString(alias)).filter(Boolean).join(", ") || "—", displayDate(row.updatedAt ?? row.createdAt)]; })} empty={neighborhood.length || Array.isArray(root.path) ? undefined : <EmptyState title="No graph entities" description="Relationships appear after memory extraction or an explicit relate action." />} />
-    <div className="grid gap-4 xl:grid-cols-3"><Form method="get"><Panel>{contextInputs}<SectionHeader title="Relationship neighborhood" /><input required name="entityId" placeholder="Entity ID" className={fieldClass} /><Button type="submit" className="mt-3">Inspect neighborhood</Button></Panel></Form><Form method="get"><Panel>{contextInputs}<SectionHeader title="Shortest path" /><input required name="from" placeholder="From entity ID" className={fieldClass} /><input required name="to" placeholder="To entity ID" className={fieldClass} /><input name="maxHops" type="number" min="1" max="12" defaultValue="6" className={fieldClass} /><Button type="submit" className="mt-3">Find path</Button></Panel></Form><Form method="post"><Panel>{contextInputs}<input type="hidden" name="intent" value="memory-relate" /><SectionHeader title="Create relationship" /><input required name="fromEntityKey" placeholder="From entity key" className={fieldClass} /><input required name="toEntityKey" placeholder="To entity key" className={fieldClass} /><input required name="relationshipType" placeholder="Relationship type" className={fieldClass} /><input name="weight" type="number" min="0" max="1" step="0.01" placeholder="Optional weight" className={fieldClass} /><Button type="submit" tone="primary" className="mt-3">Create relationship</Button></Panel></Form></div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><MemoryAgentSelector userId={userId} agentId={agentId} agentsRoot={agentsRoot} selection={selection} /><Link to={`../memories?${queryContext}`}><Button type="button">Back to memories</Button></Link></div>
+    <Alert title="Selected EndUser knowledge graph">Neighborhood, path traversal, and relationship creation stay bound to <code>{userId}</code> through validated Agent pin <code>{agentId}</code>.</Alert>
+    <datalist id="entities-references">{entityOptions.flatMap((entity) => [<option key={`id-${asString(entity.id)}`} value={asString(entity.id)}>{asString(entity.label, asString(entity.entityKey))}</option>, <option key={`key-${asString(entity.id)}`} value={asString(entity.entityKey)}>{asString(entity.label, asString(entity.entityKey))}</option>])}</datalist>
+    <datalist id="entities-keys">{entityOptions.map((entity) => <option key={`rel-${asString(entity.id)}`} value={asString(entity.entityKey)}>{asString(entity.label, asString(entity.id))}</option>)}</datalist>
+    <Form method="get"><Panel>{contextInputs}<SectionHeader title="Find graph entities" description="Search server-side by entity key or paste an ID/key from any entity page into an operation." /><input name="entityQ" defaultValue={searchParams.get("entityQ") ?? ""} placeholder="Entity key or ID" className={fieldClass} /><input type="hidden" name="entityOffset" value="0" /><Button type="submit" className="mt-3">Search entities</Button></Panel></Form>
+    {entities.length > 0 && <StatTile title="Graph entities" value={asNumber(root.total)} hint={`Showing ${offset + 1}–${offset + entities.length}`} />}
+    <DataTable headers={["Entity", "ID", "Type", "Aliases", "Updated"]} rows={entities.map((value) => { const row = asRecord(value); return [<div><div className="font-medium">{asString(row.label, asString(row.entityKey))}</div><code className="text-xs text-text-dimmed">{asString(row.entityKey)}</code></div>, <code className="text-xs">{asString(row.id)}</code>, asString(row.entityType, "other"), asArray(row.aliases).map((alias) => asString(alias)).filter(Boolean).join(", ") || "—", displayDate(row.updatedAt ?? row.createdAt)]; })} empty={neighborhood.length || Array.isArray(operation.path) ? undefined : <EmptyState title="No graph entities" description="The selected scope has an empty graph. Relationships appear after extraction or an explicit relate action." />} />
+    {entities.length > 0 && <div className="flex justify-end gap-2">{offset > 0 && <Link to={pageHref(offset - limit)}><Button type="button">Previous</Button></Link>}{asBoolean(root.hasNext) && <Link to={pageHref(offset + limit)}><Button type="button">Next</Button></Link>}</div>}
+    <div className="grid gap-4 xl:grid-cols-3">
+      <Form method="get"><Panel>{contextInputs}<SectionHeader title="Relationship neighborhood" />{entityReference("entityId", "Entity")}<Button type="submit" className="mt-3">Inspect neighborhood</Button></Panel></Form>
+      <Form method="get"><Panel>{contextInputs}<SectionHeader title="Shortest path" />{entityReference("from", "From entity")}{entityReference("to", "To entity")}<input name="maxHops" type="number" min="1" max="6" defaultValue="4" className={fieldClass} /><Button type="submit" className="mt-3">Find path</Button></Panel></Form>
+      <Form method="post"><Panel>{contextInputs}<input type="hidden" name="intent" value="memory-relate" /><SectionHeader title="Create relationship" />{entityReference("fromEntityKey", "From entity key", true)}{entityReference("toEntityKey", "To entity key", true)}<input required name="relationshipType" placeholder="Relationship type" className={fieldClass} /><input name="weight" type="number" min="0" max="1" step="0.01" placeholder="Optional weight" className={fieldClass} /><Button type="submit" tone="primary" className="mt-3">Create relationship</Button></Panel></Form>
+    </div>
     {neighborhood.length > 0 && <Panel><SectionHeader title="Relationship neighborhood" /><DataTable headers={["Direction", "Relationship", "Entity", "Weight"]} rows={neighborhood.map((value) => { const row = asRecord(value); const relationship = asRecord(row.relationship); const entity = Object.keys(asRecord(row.to)).length ? asRecord(row.to) : asRecord(row.from); return [Object.keys(asRecord(row.to)).length ? "Outbound" : "Inbound", asString(relationship.relationshipType, asString(row.relationshipType)), asString(entity.label, asString(entity.entityKey, asString(entity.id))), asString(relationship.weight, "—")]; })} /></Panel>}
-    {Array.isArray(root.path) && <Panel><SectionHeader title="Resolved path" /><ol className="space-y-2">{asArray(root.path).map((value, index) => <li key={index} className="rounded border border-grid-bright px-3 py-2 text-sm">{asString(asRecord(value).label, asString(asRecord(value).entityKey, `Hop ${index + 1}`))}</li>)}</ol></Panel>}
+    {hasPath && <Panel><SectionHeader title={operation.path === null ? "No path found in the selected scope" : "Resolved path"} /><ol className="space-y-2">{asArray(operation.path).map((value, index) => { const hop = asRecord(value); const entity = asRecord(hop.entity); return <li key={index} className="rounded border border-grid-bright px-3 py-2 text-sm">{asString(entity.label, asString(entity.entityKey, `Hop ${index + 1}`))}</li>; })}</ol></Panel>}
   </div>;
 }
 

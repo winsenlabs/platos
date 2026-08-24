@@ -450,7 +450,7 @@ export class OfficialSkillHandlers {
           // rag_retrieve/rag_delete_source post-filter on it in JS after
           // decryption. No migration: the column is a bare String.
           source: RAG_MEMORY_SOURCE,
-        });
+        }, { trustedSource: "rag" });
       } catch (err: any) {
         this.logger.warn(
           `rag_ingest_document: chunk ${i} of ${sourceUrl} failed to upsert: ${err?.message ?? err}`,
@@ -587,7 +587,7 @@ export class OfficialSkillHandlers {
       userId,
       kind: "fact", // TODO(RG.1.2): filter by metadata.__rag instead once MemoryService grows it
       limit: searchLimit,
-      agentVisibleOnly: false,
+      agentVisibleOnly: true,
     });
 
     // Post-filter: only RAG rows, optional tag filter. MemoryService doesn't
@@ -648,6 +648,8 @@ export class OfficialSkillHandlers {
         kind: "fact",
         limit: PAGE,
         offset: p * PAGE,
+        agentVisibleOnly: true,
+        visibilityIn: ["agent_visible"],
       });
       if (rows.length === 0) break;
       for (const r of rows) {

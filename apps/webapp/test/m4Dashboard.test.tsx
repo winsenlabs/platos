@@ -325,29 +325,57 @@ describe("M4 dashboard rebuild", () => {
       surface: "memories",
       title: "Memory",
       description: "Scoped recall",
-      panel: { ok: true, data: { total: 1, memories: [{ id: "memory-1", content: "Ada prefers concise answers", kind: "preference", visibility: "private", source: "manual" }] } },
+      panel: { ok: true, data: { total: 384, limit: 50, offset: 50, hasNext: true, memories: [{ id: "memory-1", content: "Ada prefers concise answers", kind: "preference", metadata: { over: ["long", "short"], ordering: "prefer_a_over_b" }, visibility: "private", source: "manual" }, { id: "memory-2", content: "Ada profile", kind: "profile", metadata: { profileKey: "name" }, visibility: "hidden", source: "imported", archivedAt: "2026-08-20T00:00:00.000Z" }] } },
       secondary: { ok: true, data: { agents: [{ id: "agent-1", name: "Support", clusteringId: "cluster-1" }] } },
     }, "/?userId=user-1&agentId=agent-1&q=concise&kind=preference");
     expect(memory).toContain("Ada prefers concise answers");
-    expect(memory).toContain("Semantic memory search");
+    expect(memory).toContain("Search and filter memory");
     expect(memory).toContain("Extract from Thread");
     expect(memory).toContain("Import memory bundle");
+    expect(memory).toContain("Agent visible");
+    expect(memory).toContain("Hidden from Agent recall");
+    expect(memory).toContain('value="profile"');
+    expect(memory).toContain("Profile key");
+    expect(memory).toContain("Archive");
+    expect(memory).toContain("Restore");
+    expect(memory).not.toContain('value="cluster"');
     expect(memory).toContain('type="hidden" name="q" value="concise"');
     expect(memory).toContain('type="hidden" name="kind" value="preference"');
+
+    const pagedMemory = render({
+      surface: "memories",
+      title: "Memory",
+      description: "Scoped recall",
+      panel: { ok: true, data: { total: 384, limit: 50, offset: 50, hasNext: true, memories: [{ id: "memory-1", content: "Page item", kind: "fact", visibility: "agent_visible", source: "manual" }] } },
+      secondary: { ok: true, data: { agents: [{ id: "agent-1", name: "Support" }] } },
+    }, "/?userId=user-1&agentId=agent-1&kind=fact&source=manual&archiveState=active&limit=50&offset=50");
+    expect(pagedMemory).toContain("Showing 51–51 of 384");
+    expect(pagedMemory).toContain("Previous");
+    expect(pagedMemory).toContain("Next");
+    expect(pagedMemory).toContain("source=manual");
+    expect(pagedMemory).toContain("archiveState=active");
 
     const graph = render({
       surface: "memory-graph",
       title: "Memory graph",
       description: "Relationships",
-      panel: { ok: true, data: { entities: [{ id: "entity-1", entityKey: "person:ada", label: "Ada", entityType: "person", aliases: ["A"] }] } },
+      panel: { ok: true, data: { total: 141, limit: 100, offset: 0, hasNext: true, entities: [{ id: "entity-1", entityKey: "person:ada", label: "Ada", entityType: "person", aliases: ["A"] }, { id: "entity-2", entityKey: "company:platos", label: "Platos", entityType: "company", aliases: [] }] } },
       secondary: { ok: true, data: { agents: [{ id: "agent-1", name: "Support", clusteringId: "cluster-1" }] } },
-    }, "/?userId=user-1&agentId=agent-1&from=person%3Aada&to=company%3Aplatos&maxHops=4");
+      supporting: { ok: true, data: { path: [{ entity: { id: "entity-cross-page", entityKey: "person:grace", label: "Grace" } }, { entity: { id: "entity-2", entityKey: "company:platos", label: "Platos" } }] } },
+    }, "/?userId=user-1&agentId=agent-1&from=person%3Agrace&to=company%3Aplatos&maxHops=4&entityLimit=100&entityOffset=0");
     expect(graph).toContain("person:ada");
     expect(graph).toContain("Shortest path");
     expect(graph).toContain("Create relationship");
-    expect(graph).toContain('type="hidden" name="from" value="person:ada"');
+    expect(graph).toContain("entity-1");
+    expect(graph).toContain('value="person:ada"');
+    expect(graph).toContain("Graph entities");
+    expect(graph).toContain("141");
+    expect(graph).toContain("Resolved path");
+    expect(graph).toContain("Grace");
+    expect(graph).toContain('name="from" value="person:grace"');
     expect(graph).toContain('type="hidden" name="to" value="company:platos"');
     expect(graph).toContain('type="hidden" name="maxHops" value="4"');
+    expect(graph).toContain("entityOffset=100");
   });
 
   it("keeps dense Memory and graph Agent selectors bounded while hydrating a deep-linked cluster", () => {

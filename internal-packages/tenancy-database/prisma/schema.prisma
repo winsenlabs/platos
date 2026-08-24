@@ -2010,6 +2010,7 @@ model Memory {
   agentId          String                       @db.Uuid
   clusterId        String?                      @db.Uuid
   kind             String
+  profileKey       String?
   content          String
   /// Object root containing non-secret extraction/source attributes; validated by jsonShapeRegistry.
   metadata         Json?
@@ -2020,6 +2021,10 @@ model Memory {
   sourceThreadId   String?                      @db.Uuid
   sourceTurnIds    String[]                     @default([]) @db.Uuid
   extractorVersion String?
+  /// Inert provenance retained across import and legacy normalization; never resolved as live FKs.
+  originalSource         String?
+  originalSourceThreadId String?
+  originalSourceTurnIds  String[]               @default([])
   contentHash      String?
   confidence       Float?
   feedbackBaselineConfidence Float?

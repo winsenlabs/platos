@@ -42,6 +42,7 @@ import { SkillRegistryService } from "../skills/skill-registry.service";
 import { SkillImporterService } from "../skills/skill-importer.service";
 import { MemoryService } from "../memory/memory.service";
 import { MemoryExtractionService } from "../memory/memory-extraction.service";
+import { MemoryImportService } from "../memory/memory-import.service";
 import { KnowledgeGraphService } from "../memory/knowledge-graph.service";
 import { ProviderRegistryService } from "../providers/provider-registry.service";
 import { ProviderKeyService } from "../providers/provider-key.service";
@@ -123,6 +124,7 @@ export class McpPlatformController {
     private readonly skillImporter: SkillImporterService,
     // K.8 control plane
     private readonly memory: MemoryService,
+    private readonly memoryImport: MemoryImportService,
     // MCPF-W2 — memories.extract_now wraps this service's `extractFromThread`.
     private readonly memoryExtraction: MemoryExtractionService,
     private readonly graph: KnowledgeGraphService,
@@ -193,6 +195,7 @@ export class McpPlatformController {
         skillRegistry: this.skillRegistry,
         skillImporter: this.skillImporter,
         memory: this.memory,
+        memoryImport: this.memoryImport,
         // MCPF-W2 — memories.extract_now.
         memoryExtraction: this.memoryExtraction,
         graph: this.graph,

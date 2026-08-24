@@ -154,4 +154,40 @@ describe("McpRouter tools/call", () => {
     expect(error).toHaveBeenCalledWith("Platform MCP request failed");
     expect(JSON.stringify(error.mock.calls)).not.toContain(secret);
   });
+
+  it("preserves the stable Memory 404 contract without exposing persistence details", async () => {
+    const instance = router();
+    instance.register({
+      name: "harmless.memory_not_found",
+      description: "Missing memory fixture",
+      inputSchema: { type: "object", properties: {}, additionalProperties: false },
+      async execute() {
+        const error = new Error("private persistence detail");
+        (error as any).code = "MEMORY_NOT_FOUND";
+        (error as any).status = 404;
+        throw error;
+      },
+    });
+
+    const response = await instance.handle(
+      {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: { name: "harmless.memory_not_found", arguments: {} },
+      },
+      token,
+    );
+
+    expect(response).toEqual({
+      jsonrpc: "2.0",
+      id: 3,
+      error: {
+        code: 404,
+        message: "memory not found",
+        data: { code: "MEMORY_NOT_FOUND", status: 404 },
+      },
+    });
+    expect(JSON.stringify(response)).not.toContain("private persistence detail");
+  });
 });

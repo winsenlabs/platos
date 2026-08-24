@@ -261,12 +261,13 @@ describe("clean-slate domain schema", () => {
     }
   });
 
-  test("keeps the complete disposable schema in one initial migration", () => {
+  test("keeps the disposable schema rooted in initial plus additive production evolution", () => {
     const migrationDirectories = readdirSync(resolve(packageRoot, "prisma/migrations"), {
       withFileTypes: true,
     }).filter((entry) => entry.isDirectory());
-    expect(migrationDirectories.map((entry) => entry.name)).toEqual([
+    expect(migrationDirectories.map((entry) => entry.name).sort()).toEqual([
       "00000000000000_initial",
+      "20260824111500_memory_profile_key_and_source_contract",
     ]);
 
     const generated = execFileSync(resolve(packageRoot, "node_modules/.bin/prisma"), [

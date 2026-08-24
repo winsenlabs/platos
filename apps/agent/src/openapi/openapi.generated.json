@@ -6949,6 +6949,78 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/api/v1/memory/{id}/archive": {
+      "post": {
+        "operationId": "post__api_v1_memory_by_id_archive",
+        "summary": "MemoryController.archiveMemory",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      }
+    },
+    "/api/v1/memory/{id}/restore": {
+      "post": {
+        "operationId": "post__api_v1_memory_by_id_restore",
+        "summary": "MemoryController.restoreMemory",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/api/v1/memory/admin/extraction-sweep": {
       "post": {
         "operationId": "post__api_v1_memory_admin_extraction_sweep",
@@ -7288,6 +7360,80 @@
       "post": {
         "operationId": "post__api_v1_platos_memory_by_id",
         "summary": "MemoryController.updateMemory",
+        "tags": [
+          "deprecated"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "deprecated": true,
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "DEPRECATED",
+        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-policy-rule": "legacy-platos-memory-prefix",
+        "x-platos-mcp-tools": []
+      }
+    },
+    "/api/v1/platos/memory/{id}/archive": {
+      "post": {
+        "operationId": "post__api_v1_platos_memory_by_id_archive",
+        "summary": "MemoryController.archiveMemory",
+        "tags": [
+          "deprecated"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "deprecated": true,
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "DEPRECATED",
+        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-policy-rule": "legacy-platos-memory-prefix",
+        "x-platos-mcp-tools": []
+      }
+    },
+    "/api/v1/platos/memory/{id}/restore": {
+      "post": {
+        "operationId": "post__api_v1_platos_memory_by_id_restore",
+        "summary": "MemoryController.restoreMemory",
         "tags": [
           "deprecated"
         ],
@@ -8989,6 +9135,6 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 290,
+  "x-platos-rest-operation-count": 294,
   "x-platos-mcp-tool-count": 206
 }

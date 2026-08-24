@@ -190,7 +190,7 @@ describe("M4 route HTTP contracts", () => {
 
     expect(agentPanel).toHaveBeenNthCalledWith(
       1,
-      "/api/v1/memory?userId=end-user-1",
+      "/api/v1/memory?userId=end-user-1&limit=50&offset=0",
       expect.objectContaining({ agentId: "agent-40" }),
     );
     expect(agentPanel).toHaveBeenNthCalledWith(
@@ -205,7 +205,61 @@ describe("M4 route HTTP contracts", () => {
     );
 
     await loadMemoryGraph(args("https://dashboard.example/memories/graph?userId=end-user-1&agentId=agent-40&agentPage=2&agentPageSize=10"));
-    expect(agentPanel).toHaveBeenNthCalledWith(6, "/api/v1/agent/agents/agent-40", expect.anything());
+    expect(agentPanel).toHaveBeenNthCalledWith(7, "/api/v1/agent/agents/agent-40", expect.anything());
+  });
+
+  it("bounds Memory pagination and forwards canonical kind, source, and archive filters", async () => {
+    agentPanel.mockResolvedValue({ ok: true, data: { memories: [] } });
+
+    await loadMemories(args("https://dashboard.example/memories?userId=end-user-1&agentId=agent-1&kind=profile&source=imported&archiveState=archived&limit=999&offset=-5"));
+
+    expect(agentPanel).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/memory?userId=end-user-1&kind=profile&source=imported&archiveState=archived&limit=100&offset=0",
+      expect.objectContaining({ agentId: "agent-1" }),
+    );
+  });
+
+  it("bounds graph entity pages and forwards the entity type in the selected Agent scope", async () => {
+    agentPanel.mockResolvedValue({ ok: true, data: { entities: [] } });
+
+    await loadMemoryGraph(args("https://dashboard.example/memories/graph?userId=end-user-1&agentId=agent-1&entityType=person&entityQ=ada&entityLimit=500&entityOffset=123"));
+
+    expect(agentPanel).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/memory/graph/entities?userId=end-user-1&entityType=person&q=ada&limit=100&offset=123",
+      expect.objectContaining({ agentId: "agent-1" }),
+    );
+  });
+
+  it("loads a graph operation independently without replacing the current entity page", async () => {
+    agentPanel.mockImplementation(async (path: string) => {
+      if (path.includes("/graph/entities?")) {
+        return { ok: true, data: { entities: [{ id: "entity-page-2" }], total: 141, offset: 100 } };
+      }
+      if (path.includes("/graph/path?")) {
+        return { ok: true, data: { path: [{ entity: { id: "entity-cross-page" } }] } };
+      }
+      return { ok: true, data: { agents: [] } };
+    });
+
+    const response = await loadMemoryGraph(args(
+      "https://dashboard.example/memories/graph?userId=end-user-1&agentId=agent-1&entityLimit=100&entityOffset=100&from=person%3Agrace&to=company%3Aplatos&maxHops=6",
+    ));
+    const payload = await response.json();
+
+    expect(agentPanel).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/memory/graph/entities?userId=end-user-1&limit=100&offset=100",
+      expect.objectContaining({ agentId: "agent-1" }),
+    );
+    expect(agentPanel).toHaveBeenNthCalledWith(
+      3,
+      "/api/v1/memory/graph/path?userId=end-user-1&from=person%3Agrace&to=company%3Aplatos&maxHops=6",
+      expect.objectContaining({ agentId: "agent-1" }),
+    );
+    expect(payload.panel.data).toMatchObject({ total: 141, offset: 100 });
+    expect(payload.supporting.data.path[0].entity.id).toBe("entity-cross-page");
   });
 
   it("does not call Memory without an explicit Agent pin in a potentially multi-Agent Environment", async () => {

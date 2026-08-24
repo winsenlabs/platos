@@ -13,6 +13,7 @@ export type SurfaceConfig = {
   secondaryEndpoint?: string | ((params: Record<string, string | undefined>, url: URL) => string);
   supportingEndpoint?: string | ((params: Record<string, string | undefined>, url: URL) => string);
   selectionEndpoint?: string;
+  supportingUsesPinnedScope?: boolean;
   provenance?: string;
   notFoundAsResponse?: boolean;
   parameterAliases?: Record<string, string>;
@@ -69,7 +70,10 @@ export async function loadSurface(args: LoaderFunctionArgs, config: SurfaceConfi
       )
     : undefined;
   const supporting = config.supportingEndpoint
-    ? await agentPanel(endpoint(config.supportingEndpoint, args.params, url, config.parameterAliases), environmentScope)
+    ? await agentPanel(
+        endpoint(config.supportingEndpoint, args.params, url, config.parameterAliases),
+        config.supportingUsesPinnedScope ? scope : environmentScope,
+      )
     : undefined;
   const selection = config.selectionEndpoint && agentId
     ? await agentPanel(
@@ -77,5 +81,5 @@ export async function loadSurface(args: LoaderFunctionArgs, config: SurfaceConfi
         environmentScope,
       )
     : undefined;
-  return json({ ...config, endpoint: undefined, secondaryEndpoint: undefined, supportingEndpoint: undefined, selectionEndpoint: undefined, notFoundAsResponse: undefined, parameterAliases: undefined, agentPinQueryParam: undefined, requireAgentPin: undefined, collection: collectionQuery, secondaryCollection: secondaryCollectionQuery, panel, secondary, supporting, selection });
+  return json({ ...config, endpoint: undefined, secondaryEndpoint: undefined, supportingEndpoint: undefined, selectionEndpoint: undefined, supportingUsesPinnedScope: undefined, notFoundAsResponse: undefined, parameterAliases: undefined, agentPinQueryParam: undefined, requireAgentPin: undefined, collection: collectionQuery, secondaryCollection: secondaryCollectionQuery, panel, secondary, supporting, selection });
 }

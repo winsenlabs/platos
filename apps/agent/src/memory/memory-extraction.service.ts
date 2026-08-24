@@ -347,7 +347,7 @@ export class MemoryExtractionService {
         sourceTurnIds,
         extractorVersion: EXTRACTOR_VERSION,
         confidence,
-      });
+      }, { trustedSource: "extracted" });
       memoriesCreated += 1;
     }
 
@@ -418,12 +418,41 @@ export class MemoryExtractionService {
     if (!userId) return { ok: false, reason: "no-user" };
     const throttleMs = opts?.throttleMs ?? 60 * 60 * 1000; // once/hour by default
     try {
+      const acting = await this.prisma.agentBinding.findFirst({
+        where: {
+          environmentId: scope.environmentId,
+          agentId,
+          agent: { projectId: scope.projectId },
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
+        },
+        select: { clusterId: true },
+      });
+      if (!acting) throw new Error("Profile synthesis AgentBinding not found or access denied");
+      const profileAgentFilter = acting.clusterId
+        ? {
+            agentIds: (await this.prisma.agentBinding.findMany({
+              where: {
+                environmentId: scope.environmentId,
+                clusterId: acting.clusterId,
+                agent: { projectId: scope.projectId },
+                environment: {
+                  project: { id: scope.projectId, organizationId: scope.organizationId },
+                },
+              },
+              select: { agentId: true },
+            })).map((member: { agentId: string }) => member.agentId),
+          }
+        : { agentId };
       const profiles = await this.memoryService.list(scope, {
         userId,
-        agentId,
+        ...profileAgentFilter,
         kind: "profile",
         limit: 100,
         includeArchived: false,
+        agentVisibleOnly: true,
+        visibilityIn: ["agent_visible"],
       });
       const prior = profiles.find((memory) => {
         const metadata = memory.metadata;
@@ -438,7 +467,13 @@ export class MemoryExtractionService {
       }
 
       // The user's durable atoms for THIS agent (decrypted via list()).
-      const all = await this.memoryService.list(scope, { userId, agentId, limit: 80 });
+      const all = await this.memoryService.list(scope, {
+        userId,
+        ...profileAgentFilter,
+        limit: 80,
+        agentVisibleOnly: true,
+        visibilityIn: ["agent_visible"],
+      });
       const atoms = all.filter(
         (m) => ["fact", "preference", "event", "relationship"].includes(m.kind) && m.source !== "rag",
       );
@@ -468,27 +503,16 @@ export class MemoryExtractionService {
         synthesizedAt: new Date().toISOString(),
         atomCount: atoms.length,
       };
-      if (prior) {
-        const updated = await this.memoryService.update(scope, prior.id, {
-          kind: "profile",
-          content: narrative,
-          metadata,
-          visibility: "private",
-          agentVisible: true,
-        }, userId);
-        if (!updated) throw new Error("Synthesized profile disappeared during atomic update");
-      } else {
-        await this.memoryService.add(scope, {
-          userId,
-          agentId,
-          kind: "profile",
-          content: narrative,
-          metadata,
-          source: "manual",
-          visibility: "private",
-          agentVisible: true,
-        });
-      }
+      await this.memoryService.add(scope, {
+        userId,
+        agentId,
+        kind: "profile",
+        content: narrative,
+        metadata,
+        source: "manual",
+        visibility: "agent_visible",
+        agentVisible: true,
+      });
       await this.profileCache?.invalidate(scope, agentId, userId);
       this.logger.log(
         `[profile-synth] ${scope.organizationId}/${userId}/${agentId}: ${atoms.length} atoms -> ${narrative.length} chars`,

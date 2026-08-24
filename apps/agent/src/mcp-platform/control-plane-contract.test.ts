@@ -199,6 +199,9 @@ function strictScopedDependencies() {
       if (!(path[0] === "toolAudit" && path.at(-1) === "record")) {
         args.forEach(inspect);
       }
+      if (path.at(-1) === "$transaction" && typeof args[0] === "function") {
+        return (args[0] as (tx: unknown) => unknown)(dependency([...path, "tx"]));
+      }
       if (path.at(-1)?.match(/^(list|findMany|query|recent|search)/i)) return [];
       return undefined;
     };
