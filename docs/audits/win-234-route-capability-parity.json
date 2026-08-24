@@ -50,7 +50,7 @@
       "path": "apps/webapp/app/components/platos/referenceRouteManifest.ts",
       "kind": "file",
       "availability": "required",
-      "sha256": "3ab7d33755d9f5d532a5cfa80647024b7ea1c842f4a1119ad86d0e32a68c50fd"
+      "sha256": "65d59190f2d1f3fd1fa7e8d82ecb4e2dd1ae629d5b1a00c8eda728d682494efe"
     }
   ],
   "evidencePolicy": {
@@ -15597,17 +15597,17 @@
       }
     },
     {
-      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx",
+      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx",
       "capabilityId": "route-060",
-      "intent": "Inventory the exact Remix route-module shell at apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx.",
+      "intent": "Inventory the exact Remix route-module shell at apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx.",
       "disposition": "improve",
-      "v0Behavior": "Pinned v0 contains the path-identical module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx.",
-      "currentBehavior": "Current source apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx exports loader, action, default; backend interactions require their own source-owned capability rows.",
+      "v0Behavior": "Pinned v0 contains the legacy Platos task module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx; current canonical source moved to apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx.",
+      "currentBehavior": "Current source apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx exports loader, action, default; backend interactions require their own source-owned capability rows.",
       "http": [
         {
           "role": "route inventory only",
           "method": "NONE",
-          "endpoint": "Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx",
+          "endpoint": "Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx",
           "requestDto": {
             "status": "not-applicable",
             "shape": "No HTTP request is claimed by route-shell capability route-060."
@@ -15616,7 +15616,7 @@
             "successStatuses": [
               "not-applicable"
             ],
-            "shape": "Source-presence contract for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx."
+            "shape": "Source-presence contract for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx."
           },
           "stableErrors": [
             {
@@ -15678,19 +15678,19 @@
       },
       "loaderState": {
         "status": "implemented",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx exports loader."
+        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx exports loader."
       },
       "actionState": {
         "status": "implemented",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx exports action; each retained mutation still requires a separate capability row."
+        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
         "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx requires interaction-level form/control inventory."
+        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx requires interaction-level form/control inventory."
       },
       "linkState": {
         "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx."
+        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -15729,14 +15729,14 @@
       "recovery": {
         "status": "required-not-verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx."
+          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx."
         ]
       },
       "secretExposure": {
         "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx.",
+        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx must omit secret material."
+          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx must omit secret material."
         ]
       },
       "automatedEvidence": {
@@ -15775,10 +15775,10 @@
       },
       "sourceOwnership": {
         "classification": "justified-no-backend",
-        "justification": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx capability route-060 inventories only the source route-module shell; backend interactions are separate capability rows and this shell does not claim a backend owner.",
+        "justification": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx capability route-060 inventories only the source route-module shell; backend interactions are separate capability rows and this shell does not claim a backend owner.",
         "sourceEvidence": [
           {
-            "source": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx",
+            "source": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx",
             "fragments": [
               "export async function loader",
               "export async function action",
@@ -15789,17 +15789,17 @@
       }
     },
     {
-      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx",
+      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx",
       "capabilityId": "route-059",
-      "intent": "Inventory the exact Remix route-module shell at apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx.",
+      "intent": "Inventory the exact Remix route-module shell at apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx.",
       "disposition": "improve",
-      "v0Behavior": "Pinned v0 contains the path-identical module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx.",
-      "currentBehavior": "Current source apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx exports loader, action, default; backend interactions require their own source-owned capability rows.",
+      "v0Behavior": "Pinned v0 contains the legacy Platos task module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx; current canonical source moved to apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx.",
+      "currentBehavior": "Current source apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx exports loader, action, default; backend interactions require their own source-owned capability rows.",
       "http": [
         {
           "role": "route inventory only",
           "method": "NONE",
-          "endpoint": "Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx",
+          "endpoint": "Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx",
           "requestDto": {
             "status": "not-applicable",
             "shape": "No HTTP request is claimed by route-shell capability route-059."
@@ -15808,7 +15808,7 @@
             "successStatuses": [
               "not-applicable"
             ],
-            "shape": "Source-presence contract for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx."
+            "shape": "Source-presence contract for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx."
           },
           "stableErrors": [
             {
@@ -15837,7 +15837,7 @@
             "source": "route params or authenticated request"
           },
           {
-            "name": "taskId",
+            "name": "jobId",
             "type": "uuid-or-external-id",
             "source": "route params or authenticated request"
           }
@@ -15875,19 +15875,19 @@
       },
       "loaderState": {
         "status": "implemented",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx exports loader."
+        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx exports loader."
       },
       "actionState": {
         "status": "implemented",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx exports action; each retained mutation still requires a separate capability row."
+        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
         "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx requires interaction-level form/control inventory."
+        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx requires interaction-level form/control inventory."
       },
       "linkState": {
         "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx."
+        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -15926,14 +15926,14 @@
       "recovery": {
         "status": "required-not-verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx."
+          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx."
         ]
       },
       "secretExposure": {
         "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx.",
+        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx must omit secret material."
+          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx must omit secret material."
         ]
       },
       "automatedEvidence": {
@@ -15972,10 +15972,10 @@
       },
       "sourceOwnership": {
         "classification": "justified-no-backend",
-        "justification": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx capability route-059 inventories only the source route-module shell; backend interactions are separate capability rows and this shell does not claim a backend owner.",
+        "justification": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx capability route-059 inventories only the source route-module shell; backend interactions are separate capability rows and this shell does not claim a backend owner.",
         "sourceEvidence": [
           {
-            "source": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx",
+            "source": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx",
             "fragments": [
               "export async function loader",
               "export async function action",
@@ -15986,17 +15986,17 @@
       }
     },
     {
-      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx",
+      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx",
       "capabilityId": "route-061",
-      "intent": "Inventory the exact Remix route-module shell at apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx.",
+      "intent": "Inventory the exact Remix route-module shell at apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx.",
       "disposition": "improve",
-      "v0Behavior": "Pinned v0 contains the path-identical module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx.",
-      "currentBehavior": "Current source apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx exports loader, action, default; backend interactions require their own source-owned capability rows.",
+      "v0Behavior": "Pinned v0 contains the legacy Platos task module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx; current canonical source moved to apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx.",
+      "currentBehavior": "Current source apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx exports loader, action, default; backend interactions require their own source-owned capability rows.",
       "http": [
         {
           "role": "route inventory only",
           "method": "NONE",
-          "endpoint": "Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx",
+          "endpoint": "Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx",
           "requestDto": {
             "status": "not-applicable",
             "shape": "No HTTP request is claimed by route-shell capability route-061."
@@ -16005,7 +16005,7 @@
             "successStatuses": [
               "not-applicable"
             ],
-            "shape": "Source-presence contract for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx."
+            "shape": "Source-presence contract for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx."
           },
           "stableErrors": [
             {
@@ -16067,19 +16067,19 @@
       },
       "loaderState": {
         "status": "implemented",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx exports loader."
+        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx exports loader."
       },
       "actionState": {
         "status": "implemented",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx exports action; each retained mutation still requires a separate capability row."
+        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
         "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx requires interaction-level form/control inventory."
+        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx requires interaction-level form/control inventory."
       },
       "linkState": {
         "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx."
+        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -16118,14 +16118,14 @@
       "recovery": {
         "status": "required-not-verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx."
+          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx."
         ]
       },
       "secretExposure": {
         "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx.",
+        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx must omit secret material."
+          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx must omit secret material."
         ]
       },
       "automatedEvidence": {
@@ -16164,10 +16164,10 @@
       },
       "sourceOwnership": {
         "classification": "justified-no-backend",
-        "justification": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx capability route-061 inventories only the source route-module shell; backend interactions are separate capability rows and this shell does not claim a backend owner.",
+        "justification": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx capability route-061 inventories only the source route-module shell; backend interactions are separate capability rows and this shell does not claim a backend owner.",
         "sourceEvidence": [
           {
-            "source": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx",
+            "source": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx",
             "fragments": [
               "export async function loader",
               "export async function action",
@@ -22262,27 +22262,27 @@
       ]
     },
     {
-      "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx",
+      "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx",
       "family": "connect-share-accounts-jobs",
-      "userIntent": "Connect channels, share/embed Agents, inspect accounts/files, and manage Platos background work.",
+      "userIntent": "Connect channels, share/embed Agents, inspect accounts/files, and manage canonical Jobs.",
       "disposition": "improve",
       "capabilityIds": [
         "route-059"
       ]
     },
     {
-      "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx",
+      "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx",
       "family": "connect-share-accounts-jobs",
-      "userIntent": "Connect channels, share/embed Agents, inspect accounts/files, and manage Platos background work.",
+      "userIntent": "Connect channels, share/embed Agents, inspect accounts/files, and manage canonical Jobs.",
       "disposition": "improve",
       "capabilityIds": [
         "route-060"
       ]
     },
     {
-      "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx",
+      "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx",
       "family": "connect-share-accounts-jobs",
-      "userIntent": "Connect channels, share/embed Agents, inspect accounts/files, and manage Platos background work.",
+      "userIntent": "Connect channels, share/embed Agents, inspect accounts/files, and manage canonical Jobs.",
       "disposition": "improve",
       "capabilityIds": [
         "route-061"
@@ -22994,24 +22994,24 @@
       "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx",
       "family": "connect-share-accounts-jobs",
       "disposition": "improve",
-      "rationale": "Path-identical current route is retained for deliberate improvement or redirect.",
-      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId/route.tsx",
+      "rationale": "Legacy Platos task route is retained as pinned v0 archaeology and maps to the canonical Job route apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx.",
+      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx",
       "capabilityId": "route-059"
     },
     {
       "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx",
       "family": "connect-share-accounts-jobs",
       "disposition": "improve",
-      "rationale": "Path-identical current route is retained for deliberate improvement or redirect.",
-      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks._index/route.tsx",
+      "rationale": "Legacy Platos task route is retained as pinned v0 archaeology and maps to the canonical Job route apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx.",
+      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx",
       "capabilityId": "route-060"
     },
     {
       "path": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx",
       "family": "connect-share-accounts-jobs",
       "disposition": "improve",
-      "rationale": "Path-identical current route is retained for deliberate improvement or redirect.",
-      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new/route.tsx",
+      "rationale": "Legacy Platos task route is retained as pinned v0 archaeology and maps to the canonical Job route apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx.",
+      "currentRoute": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx",
       "capabilityId": "route-061"
     },
     {

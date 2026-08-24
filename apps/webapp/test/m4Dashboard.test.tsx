@@ -684,7 +684,7 @@ describe("M4 dashboard rebuild", () => {
 
   it("centralizes scoped dashboard API transport", () => {
     const routes = files(join(process.cwd(), "app/routes"))
-      .filter((path) => /agent|approvals|eval|clusters|platos-tasks/.test(path))
+      .filter((path) => /agent|approvals|eval|clusters|jobs/.test(path))
       .map((path) => readFileSync(path, "utf8"));
     const directCalls = routes.filter((source) => source.includes("PLATOS_AGENT_API_URL"));
     expect(directCalls).toEqual([]);
@@ -749,7 +749,7 @@ describe("M4 dashboard rebuild", () => {
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId",
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals.$approvalId",
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters._index",
-      "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.new",
+      "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new",
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.eval-criteria._index",
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect",
       "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.skills.new",
@@ -803,8 +803,8 @@ describe("M4 dashboard rebuild", () => {
         route: "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index",
       },
       {
-        operation: "GET /api/v1/agent/platos-tasks/:id",
-        route: "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.platos-tasks.$taskId",
+        operation: "GET /api/v1/agent/jobs/:id",
+        route: "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId",
       },
     ];
 
@@ -814,5 +814,32 @@ describe("M4 dashboard rebuild", () => {
       const source = readFileSync(join(process.cwd(), "app/routes", contract.route, "route.tsx"), "utf8");
       expect(source, contract.route).toContain(contract.operation.slice(4));
     }
+  });
+
+  it("keeps the public Jobs dashboard on the canonical route and dispatch contracts", () => {
+    const routeRoot = join(process.cwd(), "app/routes");
+    const listRoute = readFileSync(
+      join(routeRoot, "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx"),
+      "utf8",
+    );
+    const detailRoute = readFileSync(
+      join(routeRoot, "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx"),
+      "utf8",
+    );
+    const createRoute = readFileSync(
+      join(routeRoot, "_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx"),
+      "utf8",
+    );
+    const webappCorpus = files(join(process.cwd(), "app"))
+      .map((path) => readFileSync(path, "utf8"))
+      .join("\n");
+
+    expect(listRoute).toContain('endpoint: "/api/v1/agent/jobs"');
+    expect(detailRoute).toContain('endpoint: "/api/v1/agent/jobs/:id"');
+    expect(detailRoute).toContain("/api/v1/agent/jobs/${jobId}/dispatch");
+    expect(createRoute).toContain('"/api/v1/agent/jobs"');
+    expect(webappCorpus).not.toContain(["platos", "tasks"].join("-"));
+    expect(webappCorpus).not.toContain(["task", "Id"].join(""));
+    expect(webappCorpus).not.toContain(["tri", "ggerType"].join(""));
   });
 });

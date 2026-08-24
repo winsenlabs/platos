@@ -84,20 +84,20 @@ describe("M4 route HTTP contracts", () => {
   });
 
   it("interpolates a route parameter alias into the canonical generated path", async () => {
-    agentPanel.mockResolvedValue({ ok: true, data: { task: { id: "job-1" } } });
+    agentPanel.mockResolvedValue({ ok: true, data: { job: { id: "job-1" } } });
     const requestArgs = args();
-    requestArgs.params = { ...requestArgs.params, taskId: "job-1" };
+    requestArgs.params = { ...requestArgs.params, jobId: "job-1" };
 
     await loadSurface(requestArgs, {
       surface: "jobs",
       title: "Job",
       description: "Detail",
-      endpoint: "/api/v1/agent/platos-tasks/:id",
-      parameterAliases: { id: "taskId" },
+      endpoint: "/api/v1/agent/jobs/:id",
+      parameterAliases: { id: "jobId" },
     });
 
     expect(agentPanel).toHaveBeenCalledTimes(1);
-    expect(agentPanel).toHaveBeenCalledWith("/api/v1/agent/platos-tasks/job-1", expect.anything());
+    expect(agentPanel).toHaveBeenCalledWith("/api/v1/agent/jobs/job-1", expect.anything());
   });
 
   it("bounds monitoring-user pages and rejects unsafe cursors", async () => {

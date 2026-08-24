@@ -32,16 +32,16 @@ export function ClustersSurface({ data }: SurfaceProps) {
 
 export function JobsSurface({ data, title }: SurfaceProps) {
   const root = asRecord(data);
-  const tasks = firstArray(root, "tasks", "jobs", "items");
-  const task = asRecord(root.task);
+  const jobs = firstArray(root, "jobs", "items");
+  const job = asRecord(root.job);
   const create = title.toLowerCase().includes("create");
-  const current = Object.keys(task).length ? task : {};
+  const current = Object.keys(job).length ? job : {};
   const pagination = asRecord(root.pagination);
-  const total = asNumber(pagination.total, asNumber(root.total, tasks.length));
+  const total = asNumber(pagination.total, asNumber(root.total, jobs.length));
   const [searchParams] = useSearchParams();
   const hasFilters = Boolean(searchParams.get("search") || searchParams.get("status"));
-  const form = <Form method="post"><Panel><SectionHeader title={create ? "Create Platos-native background Job" : "Edit Job"} description="External Trigger tasks are infrastructure, not dashboard-owned domain Jobs." /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{create && <input required name="taskId" pattern="[a-z0-9-]{1,64}" placeholder="Job ID" className={fieldClass} />}<input required={create} name="displayName" defaultValue={asString(current.displayName, "")} placeholder="Display name" className={fieldClass} /><select name="triggerType" defaultValue={asString(current.triggerType, "manual")} className={fieldClass}><option value="manual">Manual</option><option value="schedule">Schedule</option><option value="webhook">Webhook</option></select><input name="scheduleCron" defaultValue={asString(current.scheduleCron, "")} placeholder="Schedule cron" className={fieldClass} /></div><Button type="submit" tone="primary" className="mt-3">{create ? "Create Job" : "Save Job"}</Button></Panel></Form>;
-  if (create || Object.keys(task).length) return <div className="space-y-4">{Object.keys(task).length && <><div className="grid gap-3 md:grid-cols-3"><StatTile title="State" value={<Status value={asBoolean(task.isActive) ? "active" : "inactive"} />} /><StatTile title="Last run" value={displayDate(task.lastRunAt)} /><StatTile title="Schedule" value={asString(task.scheduleCron, "Manual")} /></div><Form method="post"><input type="hidden" name="intent" value="run" /><Button type="submit" tone="primary">Run now</Button></Form></>}{form}</div>;
+  const form = <Form method="post"><Panel><SectionHeader title={create ? "Create Platos-native Job" : "Edit Job"} description="External Trigger infrastructure is not dashboard-owned domain work." /><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{create && <input required name="jobId" pattern="[a-z0-9-]{1,64}" placeholder="Job ID" className={fieldClass} />}<input required={create} name="displayName" defaultValue={asString(current.displayName, "")} placeholder="Display name" className={fieldClass} /><select name="invocationType" defaultValue={asString(current.invocationType, "manual")} className={fieldClass}><option value="manual">Manual</option><option value="schedule">Schedule</option><option value="webhook">Webhook</option></select><input name="scheduleCron" defaultValue={asString(current.scheduleCron, "")} placeholder="Schedule cron" className={fieldClass} /></div><Button type="submit" tone="primary" className="mt-3">{create ? "Create Job" : "Save Job"}</Button></Panel></Form>;
+  if (create || Object.keys(job).length) return <div className="space-y-4">{Object.keys(job).length && <><div className="grid gap-3 md:grid-cols-3"><StatTile title="State" value={<Status value={asBoolean(job.isActive) ? "active" : "inactive"} />} /><StatTile title="Last started" value={displayDate(job.lastStartedAt)} /><StatTile title="Schedule" value={asString(job.scheduleCron, "Manual")} /></div><Form method="post"><input type="hidden" name="intent" value="dispatch" /><Button type="submit" tone="primary">Dispatch now</Button></Form></>}{form}</div>;
   const preserved = Array.from(searchParams.entries()).filter(([name]) => !["status", "page"].includes(name));
   return <div className="space-y-4">
     <div className="flex justify-end"><Link to="new"><Button type="button" tone="primary">Create Job</Button></Link></div>
@@ -53,13 +53,13 @@ export function JobsSurface({ data, title }: SurfaceProps) {
         <Button type="submit">Apply</Button>
       </Form>
     </Toolbar>
-    {!tasks.length ? <EmptyState
+    {!jobs.length ? <EmptyState
       title={total > 0 ? "No Jobs on this page" : hasFilters ? "No matching Jobs" : "No background Jobs"}
       description={total > 0 ? "This page is past the end of the Job list. Use Previous to return to available results." : hasFilters ? "No Platos-native Jobs match the current server-side filters." : "Create a Platos-native Job to schedule or manually queue background work."}
     /> : <DataTable
-      headers={["Job", "Trigger", "State", "Last run"]}
-      rowKeys={tasks.map((value, index) => asString(asRecord(value).id, `job-${index}`))}
-      rows={tasks.map((value) => { const row = asRecord(value); return [<Link to={asString(row.id)} className="text-[var(--accent)]">{asString(row.displayName, asString(row.taskId))}</Link>, asString(row.triggerType, "manual"), <Status value={row.status ?? (asBoolean(row.isActive) ? "active" : "inactive")} />, displayDate(row.lastRunAt)]; })}
+      headers={["Job", "Invocation", "State", "Last started"]}
+      rowKeys={jobs.map((value, index) => asString(asRecord(value).id, `job-${index}`))}
+      rows={jobs.map((value) => { const row = asRecord(value); return [<Link to={asString(row.id)} className="text-[var(--accent)]">{asString(row.displayName, asString(row.jobId))}</Link>, asString(row.invocationType, "manual"), <Status value={row.status ?? (asBoolean(row.isActive) ? "active" : "inactive")} />, displayDate(row.lastStartedAt)]; })}
     />}
     <PaginationRange data={root} label="Job pagination" />
   </div>;
