@@ -20,23 +20,24 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   const search = new URLSearchParams({ message });
-  const upstream = await sessionAgentResponse(
-    `/api/v1/agent/agents/${encodeURIComponent(agentId)}/chat/stream?${search}`,
-    sessionToken,
-    request.signal,
-  );
-  if (!upstream.ok || !upstream.body) {
-    return json(
-      { error: await upstream.text().catch(() => "Streaming failed") },
-      { status: upstream.status || 502 },
+  try {
+    const upstream = await sessionAgentResponse(
+      `/api/v1/agent/agents/${encodeURIComponent(agentId)}/chat/stream?${search}`,
+      sessionToken,
+      request.signal,
     );
+    if (!upstream.ok || !upstream.body) {
+      return json({ error: "Streaming failed" }, { status: upstream.status || 502 });
+    }
+    return new Response(upstream.body, {
+      status: upstream.status,
+      headers: {
+        "Content-Type": upstream.headers.get("Content-Type") ?? "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  } catch {
+    return json({ error: "Streaming failed" }, { status: 503 });
   }
-  return new Response(upstream.body, {
-    status: upstream.status,
-    headers: {
-      "Content-Type": upstream.headers.get("Content-Type") ?? "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      "X-Accel-Buffering": "no",
-    },
-  });
 }

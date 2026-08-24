@@ -30,22 +30,28 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       ],
     } : {}),
   };
-  const [users, total] = await Promise.all([
-    database.endUser.findMany({
-      where,
-      select: {
-        id: true,
-        displayName: true,
-        disabledAt: true,
-        createdAt: true,
-        identities: { select: { issuer: true, channel: true, subject: true, verifiedAt: true, disabledAt: true } },
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: query.pageSize,
-      skip: query.offset,
-    }),
-    database.endUser.count({ where }),
-  ]);
+  let users;
+  let total;
+  try {
+    [users, total] = await Promise.all([
+      database.endUser.findMany({
+        where,
+        select: {
+          id: true,
+          displayName: true,
+          disabledAt: true,
+          createdAt: true,
+          identities: { select: { issuer: true, channel: true, subject: true, verifiedAt: true, disabledAt: true } },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: query.pageSize,
+        skip: query.offset,
+      }),
+      database.endUser.count({ where }),
+    ]);
+  } catch {
+    throw new Response("EndUser accounts unavailable", { status: 503 });
+  }
   const pagination = collectionMetadata(total, query);
   return json({
     surface: "accounts" as const,

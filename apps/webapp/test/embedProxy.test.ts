@@ -66,6 +66,65 @@ describe("public embed streaming proxy", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("rejects a malformed Agent identity before contacting the agent", async () => {
+    const response = await action({
+      request: new Request("https://dashboard.example/api/v1/public/agents/bad%20agent/chat/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Platos-Session-Token": "platform-session-token",
+        },
+        body: JSON.stringify({ message: "Hello" }),
+      }),
+      params: { agentId: "bad agent" },
+      context: {},
+    });
+
+    expect(response.status).toBe(404);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns a stable stream failure without reflecting upstream token details", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response("SENTINEL_UPSTREAM_SESSION_CREDENTIAL", { status: 503 }));
+    const response = await action({
+      request: new Request("https://dashboard.example/api/v1/public/agents/agent-1/chat/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Platos-Session-Token": "platform-session-token",
+        },
+        body: JSON.stringify({ message: "Hello" }),
+      }),
+      params: { agentId: "agent-1" },
+      context: {},
+    });
+    const serialized = JSON.stringify(await response.json());
+
+    expect(response.status).toBe(503);
+    expect(serialized).toContain("Streaming failed");
+    expect(serialized).not.toContain("SENTINEL_UPSTREAM_SESSION_CREDENTIAL");
+    expect(serialized).not.toContain("platform-session-token");
+  });
+
+  it("returns a stable stream failure when transport is unavailable", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("SENTINEL_TRANSPORT_DETAILS"));
+    const response = await action({
+      request: new Request("https://dashboard.example/api/v1/public/agents/agent-1/chat/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Platos-Session-Token": "platform-session-token",
+        },
+        body: JSON.stringify({ message: "Hello" }),
+      }),
+      params: { agentId: "agent-1" },
+      context: {},
+    });
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "Streaming failed" });
+  });
+
   it("requires an Environment UUID on public embed URLs", async () => {
     await expect(embedLoader({
       request: new Request("https://dashboard.example/embed/agent-1"),
@@ -82,8 +141,23 @@ describe("public embed streaming proxy", () => {
     await expect(response.json()).resolves.toEqual({ agentId: "agent-1", environmentId });
   });
 
+  it("rejects a malformed embed Agent identity", async () => {
+    await expect(embedLoader({
+      request: new Request(`https://dashboard.example/embed/bad?environmentId=${environmentId}`),
+      params: { agentId: "bad agent" },
+      context: {},
+    })).rejects.toMatchObject({ status: 404 });
+  });
+
   it("forwards both Agent and Environment identity when minting a guest token", async () => {
-    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ token: "guest-token" }), {
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({
+      token: "guest-token",
+      guestId: "guest-1",
+      expiresAt: 1_800,
+      agentId: "agent-1",
+      environmentId,
+      tokenHash: "SENTINEL_UNEXPECTED_TOKEN_HASH",
+    }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     }));
@@ -102,6 +176,9 @@ describe("public embed streaming proxy", () => {
       }),
     );
     expect(response.status).toBe(200);
+    const serialized = JSON.stringify(await response.json());
+    expect(serialized).toContain("guest-token");
+    expect(serialized).not.toContain("SENTINEL_UNEXPECTED_TOKEN_HASH");
   });
 
   it("rejects malformed guest-token Environment identity before proxying", async () => {
@@ -114,5 +191,40 @@ describe("public embed streaming proxy", () => {
 
     expect(response.status).toBe(404);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("returns a stable guest-token failure without reflecting upstream details", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({
+      error: "SENTINEL_UPSTREAM_GUEST_CREDENTIAL",
+      tokenHash: "SENTINEL_TOKEN_HASH",
+    }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    }));
+    const request = new Request("https://dashboard.example/api/v1/public/guest-token", {
+      method: "POST",
+      body: new URLSearchParams({ agentId: "agent-1", environmentId }),
+    });
+
+    const response = await guestTokenAction({ request, params: {}, context: {} });
+    const serialized = JSON.stringify(await response.json());
+
+    expect(response.status).toBe(503);
+    expect(serialized).toContain("Guest session unavailable");
+    expect(serialized).not.toContain("SENTINEL_UPSTREAM_GUEST_CREDENTIAL");
+    expect(serialized).not.toContain("SENTINEL_TOKEN_HASH");
+  });
+
+  it("returns a stable guest-token failure when transport is unavailable", async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error("SENTINEL_TRANSPORT_DETAILS"));
+    const request = new Request("https://dashboard.example/api/v1/public/guest-token", {
+      method: "POST",
+      body: new URLSearchParams({ agentId: "agent-1", environmentId }),
+    });
+
+    const response = await guestTokenAction({ request, params: {}, context: {} });
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "Guest session unavailable" });
   });
 });

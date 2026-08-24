@@ -5,7 +5,7 @@ import { Page } from "~/components/platos/DashboardShell";
 import { MutationFeedback } from "~/components/platos/surfaces/SurfaceCommon";
 import { asArray, asBoolean, asRecord, asString, firstArray, stableJson } from "~/components/platos/safe";
 import { requireEnvironmentScope } from "~/services/auth.server";
-import { agentPanel, agentRequest } from "~/services/platosAgent.server";
+import { agentPanel, agentRequest, PlatosAgentApiError } from "~/services/platosAgent.server";
 
 async function scoped(args: LoaderFunctionArgs | ActionFunctionArgs, access: "metadata" | "secret:mutate") {
   const organizationSlug = args.params.organizationSlug;
@@ -43,7 +43,11 @@ export async function action(args: ActionFunctionArgs) {
     const result = await agentRequest(`/api/v1/agent/skills/agent/${encodeURIComponent(agentId)}/${encodeURIComponent(skillId)}`, scope, { method: enabled ? "POST" : "DELETE" });
     return json({ ok: true, result });
   } catch (error) {
-    return json({ ok: false, error: error instanceof Error ? error.message : "Skill update failed" }, { status: 400 });
+    return json({
+      ok: false,
+      error: "Skill update failed",
+      ...(error instanceof PlatosAgentApiError ? { code: error.code } : {}),
+    }, { status: error instanceof PlatosAgentApiError ? error.status : 503 });
   }
 }
 

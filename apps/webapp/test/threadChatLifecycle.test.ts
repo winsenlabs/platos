@@ -121,4 +121,42 @@ describe("Thread chat retained lifecycle", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ ok: false, error: "Invalid request" });
   });
+
+  it("does not reflect upstream details from rating failures", async () => {
+    agentRequest.mockRejectedValueOnce(new PlatosAgentApiError(
+      503,
+      "AGENT_UNAVAILABLE",
+      "SENTINEL_UPSTREAM_RATING_CREDENTIAL",
+    ));
+
+    const response = await action(args({ intent: "rating-get", messageId: "turn-1" }));
+    const serialized = JSON.stringify(await response.json());
+
+    expect(response.status).toBe(503);
+    expect(serialized).toContain("AGENT_UNAVAILABLE");
+    expect(serialized).toContain("Rating service is unavailable");
+    expect(serialized).not.toContain("SENTINEL_UPSTREAM_RATING_CREDENTIAL");
+  });
+
+  it("does not reflect upstream details from attachment failures", async () => {
+    agentRequest.mockRejectedValueOnce(new PlatosAgentApiError(
+      503,
+      "AGENT_UNAVAILABLE",
+      "SENTINEL_UPSTREAM_STORAGE_CREDENTIAL",
+    ));
+
+    const response = await action(args({
+      intent: "attachment-presign",
+      threadId: "thread-1",
+      filename: "pixel.png",
+      mimeType: "image/png",
+      bytes: 12,
+    }));
+    const serialized = JSON.stringify(await response.json());
+
+    expect(response.status).toBe(503);
+    expect(serialized).toContain("AGENT_UNAVAILABLE");
+    expect(serialized).toContain("Attachment upload is unavailable");
+    expect(serialized).not.toContain("SENTINEL_UPSTREAM_STORAGE_CREDENTIAL");
+  });
 });

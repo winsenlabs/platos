@@ -846,11 +846,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -872,8 +872,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment operator rejection and scoped authorization are executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -888,8 +888,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam._index/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam._index/route.tsx."
+        "status": "implemented",
+        "detail": "Canonical authenticated deep-link execution is verified by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -926,24 +926,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam._index/route.tsx."
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts: stable AGENT_UNAVAILABLE serialization omits upstream details and server-only credentials."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam._index/route.tsx.",
+        "status": "verified",
+        "classification": "Whole loader/action serialization boundary exercised by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam._index/route.tsx must omit secret material."
+          "Authenticated payloads and stable failures omit server-only operator material and upstream error details."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -1041,11 +1042,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -1067,8 +1068,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment scope rejection and exact canonical-ID data access are executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -1083,8 +1084,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-accounts._index/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-accounts._index/route.tsx."
+        "status": "implemented",
+        "detail": "The canonical authenticated deep link is executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -1121,26 +1122,27 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-accounts._index/route.tsx."
+          "apps/webapp/test/authenticatedDirectRouteEvidence.test.ts: database or Agent failures use stable responses without upstream, submitted-value, or database details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-accounts._index/route.tsx.",
+        "status": "verified",
+        "classification": "Whole route serialization and transport boundaries are executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-accounts._index/route.tsx must omit secret material."
+          "Credential-backed Environment values, server-only operator credentials, submitted values, and upstream/database details are omitted from responses."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/embedProxy.test.ts",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
           "apps/webapp/test/referenceRouteManifest.test.ts",
-          "apps/webapp/test/secondaryRouteContracts.test.ts"
+          "apps/webapp/test/secondaryRouteContracts.test.ts",
+          "apps/webapp/test/authenticatedDirectRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -1628,7 +1630,7 @@
         ]
       },
       "clusterScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "clusterId"
         ]
@@ -1703,7 +1705,9 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/agent/src/agent-runtime/agent-tenancy-cutover.test.ts",
+          "apps/agent/src/agent-runtime/agent-cluster.behavior.test.ts"
         ]
       },
       "browserEvidence": {
@@ -5073,8 +5077,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment/Agent route rejection is executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts; apps/agent/src/agent-runtime/attachment-upload.controller.test.ts verifies stable cross-scope and wrong-Agent denial before upload metadata is returned."
       },
       "loaderState": {
         "status": "implemented",
@@ -5089,8 +5093,8 @@
         "detail": "The chat inspector includes a File picker, explicit upload control, safe uploaded metadata, and advanced attachmentIds fallback."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "The canonical Agent chat deep link is executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -5114,9 +5118,9 @@
         "semantics": "Capability attachment-presign-upload does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "Presign/upload creates pending attachment state; it does not delete or revoke user state, so destructive confirmation does not apply."
         ]
       },
       "idempotency": {
@@ -5133,18 +5137,18 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/threadChatLifecycle.test.ts: malformed requests and upstream failures return stable non-reflective errors",
+          "apps/agent/src/agent-runtime/attachment-presign.service.test.ts: signing failure removes the unbound row and returns one stable unavailable error"
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Presigned URL is short-lived capability material.",
+        "status": "verified",
+        "classification": "Bounded presigned capability material; whole response/error payloads are tested for object-store credential omission.",
         "requirements": [
-          "Never expose object-store access keys.",
-          "Do not log or snapshot presigned query signatures.",
-          "Enforce tenant, EndUser, Agent, Thread, object key, content type, size, and expiry scope."
+          "apps/webapp/test/threadChatLifecycle.test.ts verifies upstream failure details and storage credentials are absent.",
+          "apps/agent/src/agent-runtime/attachment-presign.service.test.ts verifies safe metadata omits storage keys and credentials."
         ]
       },
       "automatedEvidence": {
@@ -5381,8 +5385,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated EndUser may mutate only the canonical (messageId, endUserId) row. Authenticated operators may read in scope but POST and DELETE are denied with 403 RATING_ACTOR_FORBIDDEN before Message lookup or mutation."
+        "status": "verified",
+        "requirement": "apps/webapp/test/threadChatLifecycle.test.ts verifies operator mutation denial before Agent access; Agent controller and rating service tests verify canonical EndUser-only mutation."
       },
       "loaderState": {
         "status": "implemented",
@@ -5397,8 +5401,8 @@
         "detail": "The Playground renders nested EndUser rating and aggregate values as operator read-only indicators; it exposes no operator mutation control."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "The canonical Agent chat deep link is executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -5431,22 +5435,23 @@
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "apps/agent/src/memory/memory-feedback-postgres.integration.test.ts: serializes concurrent rating updates and applies only the persisted winner"
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/threadChatLifecycle.test.ts: rating failures use stable AGENT_UNAVAILABLE serialization without upstream details",
+          "apps/agent/src/evals/rating-memory-feedback.test.ts: missing and cross-scope ratings use stable failures and transactional rollback"
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
+        "status": "verified",
+        "classification": "Rating payloads contain no credential material and upstream error text is not reflected.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "apps/webapp/test/threadChatLifecycle.test.ts serializes the complete failure and rejects the sentinel upstream credential."
         ]
       },
       "automatedEvidence": {
@@ -5579,11 +5584,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -5593,7 +5598,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -5605,8 +5610,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment operator rejection and scoped authorization are executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -5617,12 +5622,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "JSON chat, rating, and attachment action controls are exercised by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts and apps/webapp/test/threadChatLifecycle.test.ts."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route.tsx."
+        "status": "implemented",
+        "detail": "Canonical authenticated deep-link execution is verified by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -5659,27 +5664,28 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route.tsx."
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts: stable AGENT_UNAVAILABLE serialization omits upstream details and server-only credentials."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route.tsx.",
+        "status": "verified",
+        "classification": "Whole loader/action serialization boundary exercised by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route.tsx must omit secret material."
+          "Authenticated payloads and stable failures omit server-only operator material and upstream error details."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
           "apps/webapp/test/playgroundVisual.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -6163,11 +6169,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -6177,9 +6181,9 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "agentId"
+          "not-applicable"
         ]
       },
       "clusterScope": {
@@ -6189,8 +6193,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Compatibility redirect route-031 owns no data access and delegates authorization to its authenticated parent/canonical target; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no backend call."
       },
       "loaderState": {
         "status": "implemented",
@@ -6205,8 +6209,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations.$threadId/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations.$threadId/route.tsx."
+        "status": "redirect",
+        "detail": "Exact canonical redirect target and malformed-identifier behavior are executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -6243,25 +6247,26 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations.$threadId/route.tsx."
+          "Compatibility redirect route-031 performs no backend operation; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies deterministic redirect or 400 behavior."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations.$threadId/route.tsx.",
+        "status": "not-applicable",
+        "classification": "Compatibility redirect route-031 serializes no application data.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations.$threadId/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no Agent transport or authenticated material is accessed."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
           "apps/webapp/test/playgroundVisual.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -7550,11 +7555,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -7576,8 +7581,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment operator rejection and scoped authorization are executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -7588,12 +7593,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.skills/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.skills/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "Skill enable/disable submission with exact secret:mutate authorization is exercised by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.skills/route.tsx."
+        "status": "implemented",
+        "detail": "Canonical authenticated deep-link execution is verified by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -7630,26 +7635,27 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.skills/route.tsx."
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts: stable AGENT_UNAVAILABLE serialization omits upstream details and server-only credentials."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.skills/route.tsx.",
+        "status": "verified",
+        "classification": "Whole loader/action serialization boundary exercised by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.skills/route.tsx must omit secret material."
+          "Authenticated payloads and stable failures omit server-only operator material and upstream error details."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -7834,8 +7840,8 @@
         "detail": "The form submits only canonical toolId and a strict boolean string; legacy sourceEntity/toolName identity is rejected before the API."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts and apps/webapp/test/authenticatedMutationEvidence.test.ts execute the canonical Agent Tools deep link and action."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -7873,9 +7879,10 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/agentToolMappingMutation.test.ts: legacy identity is rejected before transport and scoped 404 is preserved",
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts: stable Agent failure serialization omits upstream details"
         ]
       },
       "secretExposure": {
@@ -8230,11 +8237,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -8244,9 +8249,9 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "agentId"
+          "not-applicable"
         ]
       },
       "clusterScope": {
@@ -8256,8 +8261,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Compatibility redirect route-038 owns no data access and delegates authorization to its authenticated parent/canonical target; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no backend call."
       },
       "loaderState": {
         "status": "implemented",
@@ -8272,8 +8277,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.trace.$threadId/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.trace.$threadId/route.tsx."
+        "status": "redirect",
+        "detail": "Exact canonical redirect target and malformed-identifier behavior are executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -8310,25 +8315,26 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.trace.$threadId/route.tsx."
+          "Compatibility redirect route-038 performs no backend operation; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies deterministic redirect or 400 behavior."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.trace.$threadId/route.tsx.",
+        "status": "not-applicable",
+        "classification": "Compatibility redirect route-038 serializes no application data.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.trace.$threadId/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no Agent transport or authenticated material is accessed."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
           "apps/webapp/test/playgroundVisual.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -8617,11 +8623,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -8631,9 +8635,9 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "agentId"
+          "not-applicable"
         ]
       },
       "clusterScope": {
@@ -8643,8 +8647,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Layout-only shell route-026 owns no loader, action, or data access and delegates authorization to nested route owners."
       },
       "loaderState": {
         "status": "not-applicable",
@@ -8659,8 +8663,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId/route.tsx."
+        "status": "not-applicable",
+        "detail": "Layout-only shell route-026 renders an Outlet and owns no redirect or navigation target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -8697,20 +8701,20 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId/route.tsx."
+          "Layout-only shell route-026 has no backend operation or mutation to recover."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId/route.tsx.",
+        "status": "not-applicable",
+        "classification": "Layout-only shell route-026 serializes no loader/action payload.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId/route.tsx must omit secret material."
+          "Nested route owners retain their own credential-safe serialization contracts."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
@@ -11093,11 +11097,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -11119,8 +11123,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment scope rejection and exact canonical-ID data access are executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "not-applicable",
@@ -11131,12 +11135,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables.new/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables.new/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "Valid, malformed, and unavailable secret:mutate submissions are executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables.new/route.tsx."
+        "status": "implemented",
+        "detail": "The canonical authenticated deep link is executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -11173,26 +11177,27 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables.new/route.tsx."
+          "apps/webapp/test/authenticatedDirectRouteEvidence.test.ts: database or Agent failures use stable responses without upstream, submitted-value, or database details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables.new/route.tsx.",
+        "status": "verified",
+        "classification": "Whole route serialization and transport boundaries are executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables.new/route.tsx must omit secret material."
+          "Credential-backed Environment values, server-only operator credentials, submitted values, and upstream/database details are omitted from responses."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedDirectRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -11290,11 +11295,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -11316,8 +11321,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment scope rejection and exact canonical-ID data access are executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -11332,8 +11337,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables/route.tsx."
+        "status": "implemented",
+        "detail": "The canonical authenticated deep link is executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -11370,24 +11375,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables/route.tsx."
+          "apps/webapp/test/authenticatedDirectRouteEvidence.test.ts: database or Agent failures use stable responses without upstream, submitted-value, or database details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables/route.tsx.",
+        "status": "verified",
+        "classification": "Whole route serialization and transport boundaries are executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.environment-variables/route.tsx must omit secret material."
+          "Credential-backed Environment values, server-only operator credentials, submitted values, and upstream/database details are omitted from responses."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedDirectRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -11879,13 +11885,13 @@
         ]
       },
       "endUserScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "userId"
+          "endUserId"
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -11966,7 +11972,9 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/agent/src/files/files.controller.test.ts",
+          "apps/agent/src/agent-runtime/attachments.test.ts"
         ]
       },
       "browserEvidence": {
@@ -12073,13 +12081,13 @@
         ]
       },
       "endUserScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "userId"
+          "endUserId"
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -12160,7 +12168,9 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/agent/src/files/files.controller.test.ts",
+          "apps/agent/src/agent-runtime/attachments.test.ts"
         ]
       },
       "browserEvidence": {
@@ -15161,11 +15171,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -15187,8 +15197,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment scope rejection and exact canonical-ID data access are executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -15203,8 +15213,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.export/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.export/route.tsx."
+        "status": "implemented",
+        "detail": "The canonical authenticated deep link is executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -15241,24 +15251,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.export/route.tsx."
+          "apps/webapp/test/authenticatedDirectRouteEvidence.test.ts: database or Agent failures use stable responses without upstream, submitted-value, or database details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.export/route.tsx.",
+        "status": "verified",
+        "classification": "Whole route serialization and transport boundaries are executed by apps/webapp/test/authenticatedDirectRouteEvidence.test.ts.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.export/route.tsx must omit secret material."
+          "Credential-backed Environment values, server-only operator credentials, submitted values, and upstream/database details are omitted from responses."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedDirectRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -16293,11 +16304,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -16319,8 +16328,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Compatibility redirect route-065 owns no data access and delegates authorization to its authenticated parent/canonical target; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no backend call."
       },
       "loaderState": {
         "status": "implemented",
@@ -16335,8 +16344,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations.mcp/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations.mcp/route.tsx."
+        "status": "redirect",
+        "detail": "Exact canonical redirect target and malformed-identifier behavior are executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -16373,24 +16382,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations.mcp/route.tsx."
+          "Compatibility redirect route-065 performs no backend operation; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies deterministic redirect or 400 behavior."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations.mcp/route.tsx.",
+        "status": "not-applicable",
+        "classification": "Compatibility redirect route-065 serializes no application data.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations.mcp/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no Agent transport or authenticated material is accessed."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -16488,11 +16498,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -16514,8 +16522,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Compatibility redirect route-064 owns no data access and delegates authorization to its authenticated parent/canonical target; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no backend call."
       },
       "loaderState": {
         "status": "implemented",
@@ -16530,8 +16538,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations/route.tsx."
+        "status": "redirect",
+        "detail": "Exact canonical redirect target and malformed-identifier behavior are executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -16568,24 +16576,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations/route.tsx."
+          "Compatibility redirect route-064 performs no backend operation; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies deterministic redirect or 400 behavior."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations/route.tsx.",
+        "status": "not-applicable",
+        "classification": "Compatibility redirect route-064 serializes no application data.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings.integrations/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no Agent transport or authenticated material is accessed."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -16683,11 +16692,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -16709,8 +16716,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Compatibility redirect route-062 owns no data access and delegates authorization to its authenticated parent/canonical target; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no backend call."
       },
       "loaderState": {
         "status": "implemented",
@@ -16725,8 +16732,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings/route.tsx."
+        "status": "redirect",
+        "detail": "Exact canonical redirect target and malformed-identifier behavior are executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -16763,24 +16770,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings/route.tsx."
+          "Compatibility redirect route-062 performs no backend operation; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies deterministic redirect or 400 behavior."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings/route.tsx.",
+        "status": "not-applicable",
+        "classification": "Compatibility redirect route-062 serializes no application data.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.settings/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no Agent transport or authenticated material is accessed."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -17663,8 +17671,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Thread route rejection is executed by apps/webapp/test/authenticatedRouteEvidence.test.ts; scoped service tests preserve stable cross-scope Thread denial."
       },
       "loaderState": {
         "status": "implemented",
@@ -17679,8 +17687,8 @@
         "detail": "No action-backed form/control contract observed."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the canonical authenticated Thread deep link."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -17725,10 +17733,10 @@
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
+        "status": "verified",
+        "classification": "Bounded Thread collection payloads are metadata/content only and whole authenticated loader failures omit server-only and upstream credential details.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts verifies complete serialized loader success/failure boundaries."
         ]
       },
       "automatedEvidence": {
@@ -18080,8 +18088,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Thread route rejection is executed by apps/webapp/test/authenticatedRouteEvidence.test.ts; scoped service tests preserve stable cross-scope Thread denial."
       },
       "loaderState": {
         "status": "implemented",
@@ -18096,8 +18104,8 @@
         "detail": "PaginationRange provides independent Previous/Next and page-size controls using artifactPage and artifactPageSize query parameters."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the canonical authenticated Thread deep link."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -18142,10 +18150,10 @@
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
+        "status": "verified",
+        "classification": "Bounded Thread collection payloads are metadata/content only and whole authenticated loader failures omit server-only and upstream credential details.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts verifies complete serialized loader success/failure boundaries."
         ]
       },
       "automatedEvidence": {
@@ -18510,11 +18518,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -18536,8 +18544,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated Environment operator rejection and scoped authorization are executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -18552,8 +18560,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam/route.tsx."
+        "status": "implemented",
+        "detail": "Canonical authenticated deep-link execution is verified by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -18590,24 +18598,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam/route.tsx."
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts: the Environment layout has no downstream transport; authentication and mixed-scope rejection are covered as permission evidence."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam/route.tsx.",
+        "status": "verified",
+        "classification": "Whole loader/action serialization boundary exercised by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam/route.tsx must omit secret material."
+          "Authenticated payloads and stable failures omit server-only operator material and upstream error details."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -18884,9 +18893,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "organizationSlug"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -18908,8 +18917,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Compatibility redirect route-072 owns no data access and delegates authorization to its authenticated parent/canonical target; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no backend call."
       },
       "loaderState": {
         "status": "implemented",
@@ -18924,8 +18933,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.settings._index/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings._index/route.tsx."
+        "status": "redirect",
+        "detail": "Exact canonical redirect target and malformed-identifier behavior are executed by apps/webapp/test/authenticatedCustomRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -18962,24 +18971,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings._index/route.tsx."
+          "Compatibility redirect route-072 performs no backend operation; apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies deterministic redirect or 400 behavior."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings._index/route.tsx.",
+        "status": "not-applicable",
+        "classification": "Compatibility redirect route-072 serializes no application data.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings._index/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts verifies no Agent transport or authenticated material is accessed."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -19252,9 +19262,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "organizationSlug"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -19276,8 +19286,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Layout-only shell route-071 owns no loader, action, or data access and delegates authorization to nested route owners."
       },
       "loaderState": {
         "status": "not-applicable",
@@ -19292,8 +19302,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.settings/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings/route.tsx."
+        "status": "not-applicable",
+        "detail": "Layout-only shell route-071 renders an Outlet and owns no redirect or navigation target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -19330,20 +19340,20 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings/route.tsx."
+          "Layout-only shell route-071 has no backend operation or mutation to recover."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings/route.tsx.",
+        "status": "not-applicable",
+        "classification": "Layout-only shell route-071 serializes no loader/action payload.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings/route.tsx must omit secret material."
+          "Nested route owners retain their own credential-safe serialization contracts."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
@@ -19434,9 +19444,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "organizationSlug"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -19458,8 +19468,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Layout-only shell route-003 owns no loader, action, or data access and delegates authorization to nested route owners."
       },
       "loaderState": {
         "status": "not-applicable",
@@ -19474,8 +19484,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug/route.tsx."
+        "status": "not-applicable",
+        "detail": "Layout-only shell route-003 renders an Outlet and owns no redirect or navigation target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -19512,20 +19522,20 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug/route.tsx."
+          "Layout-only shell route-003 has no backend operation or mutation to recover."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug/route.tsx.",
+        "status": "not-applicable",
+        "classification": "Layout-only shell route-003 serializes no loader/action payload.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug/route.tsx must omit secret material."
+          "Nested route owners retain their own credential-safe serialization contracts."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
@@ -19801,9 +19811,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "authenticated operator session"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -19825,8 +19835,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator/session boundary; exact role behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated operator success and redirect-before-route-data rejection are executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -19841,8 +19851,8 @@
         "detail": "apps/webapp/app/routes/_app/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app/route.tsx."
+        "status": "implemented",
+        "detail": "The canonical authenticated application deep link is executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -19879,24 +19889,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app/route.tsx."
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts: unauthenticated access preserves the stable login redirect."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app/route.tsx.",
+        "status": "verified",
+        "classification": "The authenticated route serializes safe operator identity only and never reflects the request session cookie.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app/route.tsx must omit secret material."
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts verifies the complete returned value omits the session-token sentinel."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -19984,9 +19995,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "authenticated operator session"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -20008,8 +20019,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator/session boundary; exact role behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "Authenticated operator success and redirect-before-route-data rejection are executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -20024,8 +20035,8 @@
         "detail": "apps/webapp/app/routes/account._index/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/account._index/route.tsx."
+        "status": "implemented",
+        "detail": "The canonical authenticated account deep link is executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -20062,24 +20073,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/account._index/route.tsx."
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts: unauthenticated access preserves the stable login redirect."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/account._index/route.tsx.",
+        "status": "verified",
+        "classification": "The authenticated route serializes safe operator identity only and never reflects the request session cookie.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/account._index/route.tsx must omit secret material."
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts verifies the complete returned value omits the session-token sentinel."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -20167,9 +20179,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "authenticated operator session"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -20191,8 +20203,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator/session boundary; exact role behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Layout-only shell route-076 owns no loader, action, or data access and delegates authorization to nested route owners."
       },
       "loaderState": {
         "status": "not-applicable",
@@ -20207,8 +20219,8 @@
         "detail": "apps/webapp/app/routes/account/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/account/route.tsx."
+        "status": "not-applicable",
+        "detail": "Layout-only shell route-076 renders an Outlet and owns no redirect or navigation target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -20245,20 +20257,20 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/account/route.tsx."
+          "Layout-only shell route-076 has no backend operation or mutation to recover."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/account/route.tsx.",
+        "status": "not-applicable",
+        "classification": "Layout-only shell route-076 serializes no loader/action payload.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/account/route.tsx must omit secret material."
+          "Nested route owners retain their own credential-safe serialization contracts."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
@@ -20349,9 +20361,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "agentId"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -20361,7 +20375,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -20373,8 +20387,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Public/guest transport boundary; token, origin, and Agent scope enforcement requires negative runtime proof."
+        "status": "verified",
+        "requirement": "A bounded platform guest session is required before transport; malformed Agent identity and missing session rejection are executed by apps/webapp/test/embedProxy.test.ts."
       },
       "loaderState": {
         "status": "not-applicable",
@@ -20385,12 +20399,12 @@
         "detail": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "The same-origin JSON stream action contract and validation are executed by apps/webapp/test/embedProxy.test.ts."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts."
+        "status": "implemented",
+        "detail": "The canonical same-origin /api/v1/public/agents/:agentId/chat/stream link is executed by apps/webapp/test/embedProxy.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -20427,26 +20441,28 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts."
+          "apps/webapp/test/embedProxy.test.ts: non-OK and rejected upstream transport return stable Streaming failed payloads without upstream details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts.",
+        "status": "verified",
+        "classification": "The platform session token is forwarded only in a server-to-Agent header and is never serialized in success or failure bodies.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts must omit secret material."
+          "apps/webapp/test/embedProxy.test.ts serializes complete upstream failure payloads and verifies session/upstream credential sentinels are absent."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/embedProxy.test.ts",
+          "apps/agent/src/auth/scope.guard.test.ts"
         ]
       },
       "browserEvidence": {
@@ -20524,9 +20540,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "authenticated operator session"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -20548,8 +20566,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Public/guest transport boundary; token, origin, and Agent scope enforcement requires negative runtime proof."
+        "status": "verified",
+        "requirement": "Public minting accepts only validated Agent and Environment identities; Agent visibility, rate limits, and canonical ancestry are verified by apps/webapp/test/embedProxy.test.ts and apps/agent/src/auth/public-guest-token.controller.test.ts."
       },
       "loaderState": {
         "status": "not-applicable",
@@ -20560,12 +20578,12 @@
         "detail": "apps/webapp/app/routes/api.v1.public.guest-token.ts exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/api.v1.public.guest-token.ts requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "Agent/Environment guest-token submission is executed by apps/webapp/test/embedProxy.test.ts."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/api.v1.public.guest-token.ts."
+        "status": "implemented",
+        "detail": "The canonical same-origin /api/v1/public/guest-token action is executed by apps/webapp/test/embedProxy.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -20602,20 +20620,20 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/api.v1.public.guest-token.ts."
+          "apps/webapp/test/embedProxy.test.ts: non-OK, malformed, and rejected upstream transport return stable non-reflective failures."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/api.v1.public.guest-token.ts.",
+        "status": "verified",
+        "classification": "The one-time signed guest token is returned only on success; upstream token hashes, error details, and transport errors are never reflected.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/api.v1.public.guest-token.ts must omit secret material."
+          "apps/webapp/test/embedProxy.test.ts verifies complete failure payload omission while preserving the intentional one-time success token."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/embedProxy.test.ts",
           "apps/webapp/test/formSubmission.test.tsx",
@@ -20623,7 +20641,8 @@
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
           "apps/webapp/test/referenceRouteManifest.test.ts",
-          "apps/webapp/test/secondaryRouteContracts.test.ts"
+          "apps/webapp/test/secondaryRouteContracts.test.ts",
+          "apps/agent/src/auth/public-guest-token.controller.test.ts"
         ]
       },
       "browserEvidence": {
@@ -20702,9 +20721,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "agentId"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -20714,9 +20733,9 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "agentId"
+          "not-applicable"
         ]
       },
       "clusterScope": {
@@ -20726,8 +20745,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Public/guest transport boundary; token, origin, and Agent scope enforcement requires negative runtime proof."
+        "status": "not-applicable",
+        "requirement": "The embed bootstrap owns no data access; apps/webapp/test/embedProxy.test.ts verifies it only validates and returns opaque Agent/Environment identifiers before the guest-token authorization flow."
       },
       "loaderState": {
         "status": "implemented",
@@ -20742,8 +20761,8 @@
         "detail": "apps/webapp/app/routes/embed.$agentId.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/embed.$agentId.tsx."
+        "status": "implemented",
+        "detail": "The canonical /embed/:agentId?environmentId= deep link and malformed identity rejection are executed by apps/webapp/test/embedProxy.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -20780,20 +20799,20 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/embed.$agentId.tsx."
+          "The embed loader performs no backend operation and deterministically returns bootstrap identifiers or 404."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/embed.$agentId.tsx.",
+        "status": "verified",
+        "classification": "The loader serializes only validated Agent and Environment identifiers.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/embed.$agentId.tsx must omit secret material."
+          "apps/webapp/test/embedProxy.test.ts verifies the exact complete loader payload."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/embedProxy.test.ts",
           "apps/webapp/test/m4Dashboard.test.tsx",
@@ -20879,9 +20898,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "authenticated operator session"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -20903,8 +20922,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Public/guest transport boundary; token, origin, and Agent scope enforcement requires negative runtime proof."
+        "status": "not-applicable",
+        "requirement": "Public liveness has no authorization contract and exposes no tenant data."
       },
       "loaderState": {
         "status": "implemented",
@@ -20919,8 +20938,8 @@
         "detail": "apps/webapp/app/routes/healthcheck.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/healthcheck.tsx."
+        "status": "implemented",
+        "detail": "The source-owned /healthcheck loader returns the deterministic public liveness response."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -20957,24 +20976,23 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/healthcheck.tsx."
+          "The route has no dependency or mutation recovery contract."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/healthcheck.tsx.",
+        "status": "not-applicable",
+        "classification": "The liveness response is the constant text OK.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/healthcheck.tsx must omit secret material."
+          "No application, tenant, session, or credential data is loaded."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/m4Dashboard.test.tsx",
-          "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/app/routes/healthcheck.tsx: deterministic Response(\"OK\", { status: 200 }) loader"
         ]
       },
       "browserEvidence": {
@@ -21061,9 +21079,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "authenticated operator session"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -21085,8 +21103,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator/session boundary; exact role behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Public session-boundary route route-082 owns no tenant data authorization; credential lifecycle behavior is executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -21097,12 +21115,12 @@
         "detail": "apps/webapp/app/routes/login._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/login._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "Malformed, successful, and unavailable magic-link submissions are executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/login._index/route.tsx."
+        "status": "implemented",
+        "detail": "Canonical login/logout/magic-link URLs and redirects are executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -21139,26 +21157,27 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/login._index/route.tsx."
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts: dependency and invalid-session failures use stable redirects or non-reflective responses."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/login._index/route.tsx.",
+        "status": "verified",
+        "classification": "Whole response boundaries for route-082 preserve token material only in server-side auth calls or HttpOnly cookie handling.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/login._index/route.tsx must omit secret material."
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts verifies magic, operator-session, revocation, and provider-detail sentinels are absent from response bodies and redirect locations."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -21247,9 +21266,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "authenticated operator session"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -21271,8 +21290,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator/session boundary; exact role behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Public session-boundary route route-083 owns no tenant data authorization; credential lifecycle behavior is executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -21283,12 +21302,12 @@
         "detail": "apps/webapp/app/routes/logout.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/logout.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "Both POST action and compatibility GET logout paths are executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/logout.tsx."
+        "status": "implemented",
+        "detail": "Canonical login/logout/magic-link URLs and redirects are executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -21325,26 +21344,27 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/logout.tsx."
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts: dependency and invalid-session failures use stable redirects or non-reflective responses."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/logout.tsx.",
+        "status": "verified",
+        "classification": "Whole response boundaries for route-083 preserve token material only in server-side auth calls or HttpOnly cookie handling.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/logout.tsx must omit secret material."
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts verifies magic, operator-session, revocation, and provider-detail sentinels are absent from response bodies and redirect locations."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -21432,9 +21452,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "keys": [
-          "authenticated operator session"
+          "not-applicable"
         ]
       },
       "endUserScope": {
@@ -21456,8 +21476,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator/session boundary; exact role behavior requires runtime proof."
+        "status": "not-applicable",
+        "requirement": "Public session-boundary route route-084 owns no tenant data authorization; credential lifecycle behavior is executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "loaderState": {
         "status": "implemented",
@@ -21472,8 +21492,8 @@
         "detail": "apps/webapp/app/routes/magic.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/magic.tsx."
+        "status": "implemented",
+        "detail": "Canonical login/logout/magic-link URLs and redirects are executed by apps/webapp/test/operatorSessionRouteEvidence.test.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -21510,24 +21530,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/magic.tsx."
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts: dependency and invalid-session failures use stable redirects or non-reflective responses."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/magic.tsx.",
+        "status": "verified",
+        "classification": "Whole response boundaries for route-084 preserve token material only in server-side auth calls or HttpOnly cookie handling.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/magic.tsx must omit secret material."
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts verifies magic, operator-session, revocation, and provider-detail sentinels are absent from response bodies and redirect locations."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/operatorSessionRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {

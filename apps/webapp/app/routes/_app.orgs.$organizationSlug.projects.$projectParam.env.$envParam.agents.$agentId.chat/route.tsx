@@ -78,7 +78,7 @@ export async function action(args: ActionFunctionArgs) {
       return json({ ok: true, ratingState });
     } catch (error) {
       if (error instanceof PlatosAgentApiError) {
-        return json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+        return json({ ok: false, error: "Rating service is unavailable", code: error.code }, { status: error.status });
       }
       return json({ ok: false, error: "Rating service is unavailable" }, { status: 503 });
     }
@@ -113,7 +113,7 @@ export async function action(args: ActionFunctionArgs) {
       return json({ ok: true, threadId: scopedThreadId, presign });
     } catch (error) {
       if (error instanceof PlatosAgentApiError) {
-        return json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+        return json({ ok: false, error: "Attachment upload is unavailable", code: error.code }, { status: error.status });
       }
       return json({ ok: false, error: "Attachment upload is unavailable" }, { status: 503 });
     }

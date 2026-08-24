@@ -441,6 +441,174 @@ test("focused MCP route and service evidence cannot regress to static claims", (
   assert.ok(reference.automatedEvidence.references.includes("apps/webapp/test/authenticatedMutationEvidence.test.ts"));
 });
 
+test("authenticated custom routes and compatibility redirects cannot regress to static claims", () => {
+  const matrix = readMatrix();
+  const evidence = "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts";
+
+  for (const capabilityId of ["route-007", "route-008", "route-029", "route-036"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "verified", capabilityId);
+    assert.equal(row.tenantScope.status, "enforced", capabilityId);
+    assert.deepEqual(row.tenantScope.keys, ["organizationId", "projectId", "environmentId"], capabilityId);
+    assert.equal(row.linkState.status, "implemented", capabilityId);
+    assert.equal(row.secretExposure.status, "verified", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+  assert.equal(capability(matrix, "route-007").recovery.status, "not-applicable");
+  for (const capabilityId of ["route-008", "route-029", "route-036"]) {
+    assert.equal(capability(matrix, capabilityId).recovery.status, "verified", capabilityId);
+  }
+  assert.equal(capability(matrix, "route-029").agentScope.status, "enforced");
+  assert.equal(capability(matrix, "route-029").formState.status, "implemented");
+  assert.equal(capability(matrix, "route-036").formState.status, "implemented");
+
+  for (const capabilityId of ["route-031", "route-038", "route-062", "route-064", "route-065", "route-072"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "not-applicable", capabilityId);
+    assert.equal(row.tenantScope.status, "not-applicable", capabilityId);
+    assert.equal(row.agentScope.status, "not-applicable", capabilityId);
+    assert.equal(row.linkState.status, "redirect", capabilityId);
+    assert.equal(row.recovery.status, "not-applicable", capabilityId);
+    assert.equal(row.secretExposure.status, "not-applicable", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+});
+
+test("focused Agent, EndUser, cluster, and lifecycle evidence cannot regress", () => {
+  const matrix = readMatrix();
+  assert.equal(capability(matrix, "route-011").clusterScope.status, "enforced");
+  for (const capabilityId of ["route-051", "route-052"]) {
+    assert.equal(capability(matrix, capabilityId).endUserScope.status, "enforced", capabilityId);
+    assert.equal(capability(matrix, capabilityId).agentScope.status, "enforced", capabilityId);
+  }
+
+  const attachment = capability(matrix, "attachment-presign-upload");
+  assert.equal(attachment.permission.status, "verified");
+  assert.equal(attachment.linkState.status, "implemented");
+  assert.equal(attachment.destructiveConfirmation.status, "not-applicable");
+  assert.equal(attachment.recovery.status, "verified");
+  assert.equal(attachment.secretExposure.status, "verified");
+  assert.equal(attachment.concurrency.status, "required-not-verified");
+
+  const rating = capability(matrix, "message-rating-lifecycle");
+  assert.equal(rating.permission.status, "verified");
+  assert.equal(rating.linkState.status, "implemented");
+  assert.equal(rating.concurrency.status, "verified");
+  assert.equal(rating.recovery.status, "verified");
+  assert.equal(rating.secretExposure.status, "verified");
+  assert.equal(rating.idempotency.status, "required-not-verified");
+
+  for (const capabilityId of ["message-pagination", "thread-artifacts"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "verified", capabilityId);
+    assert.equal(row.linkState.status, "implemented", capabilityId);
+    assert.equal(row.secretExposure.status, "verified", capabilityId);
+  }
+  const tools = capability(matrix, "agent-tools-loader-action-mismatch");
+  assert.equal(tools.linkState.status, "implemented");
+  assert.equal(tools.recovery.status, "verified");
+  assert.equal(tools.idempotency.status, "required-not-verified");
+  assert.equal(tools.concurrency.status, "required-not-verified");
+});
+
+test("public guest and embed route evidence cannot regress to reflective failures", () => {
+  const matrix = readMatrix();
+  const evidence = "apps/webapp/test/embedProxy.test.ts";
+
+  for (const capabilityId of ["route-078", "route-079"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "verified", capabilityId);
+    assert.equal(row.tenantScope.status, "enforced", capabilityId);
+    assert.deepEqual(row.tenantScope.keys, ["organizationId", "projectId", "environmentId"], capabilityId);
+    assert.equal(row.formState.status, "implemented", capabilityId);
+    assert.equal(row.linkState.status, "implemented", capabilityId);
+    assert.equal(row.recovery.status, "verified", capabilityId);
+    assert.equal(row.secretExposure.status, "verified", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+  assert.equal(capability(matrix, "route-078").agentScope.status, "enforced");
+
+  const embed = capability(matrix, "route-080");
+  assert.equal(embed.permission.status, "not-applicable");
+  assert.equal(embed.tenantScope.status, "not-applicable");
+  assert.equal(embed.agentScope.status, "not-applicable");
+  assert.equal(embed.linkState.status, "implemented");
+  assert.equal(embed.recovery.status, "not-applicable");
+  assert.equal(embed.secretExposure.status, "verified");
+  assert.ok(embed.automatedEvidence.references.includes(evidence));
+
+  const health = capability(matrix, "route-081");
+  assert.equal(health.permission.status, "not-applicable");
+  assert.equal(health.tenantScope.status, "not-applicable");
+  assert.equal(health.linkState.status, "implemented");
+  assert.equal(health.recovery.status, "not-applicable");
+  assert.equal(health.secretExposure.status, "not-applicable");
+  assert.equal(health.automatedEvidence.status, "verified");
+});
+
+test("layout-only shells cannot claim backend authorization or recovery", () => {
+  const matrix = readMatrix();
+  for (const capabilityId of ["route-003", "route-026", "route-071", "route-076"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "not-applicable", capabilityId);
+    assert.equal(row.tenantScope.status, "not-applicable", capabilityId);
+    assert.equal(row.endUserScope.status, "not-applicable", capabilityId);
+    assert.equal(row.agentScope.status, "not-applicable", capabilityId);
+    assert.equal(row.clusterScope.status, "not-applicable", capabilityId);
+    assert.equal(row.linkState.status, "not-applicable", capabilityId);
+    assert.equal(row.recovery.status, "not-applicable", capabilityId);
+    assert.equal(row.secretExposure.status, "not-applicable", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+  }
+});
+
+test("operator session routes cannot regress to token-reflective behavior", () => {
+  const matrix = readMatrix();
+  const evidence = "apps/webapp/test/operatorSessionRouteEvidence.test.ts";
+  for (const capabilityId of ["route-082", "route-083", "route-084"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "not-applicable", capabilityId);
+    assert.equal(row.tenantScope.status, "not-applicable", capabilityId);
+    assert.equal(row.linkState.status, "implemented", capabilityId);
+    assert.equal(row.recovery.status, "verified", capabilityId);
+    assert.equal(row.secretExposure.status, "verified", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+  assert.equal(capability(matrix, "route-082").formState.status, "implemented");
+  assert.equal(capability(matrix, "route-083").formState.status, "implemented");
+
+  for (const capabilityId of ["route-001", "route-077"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "verified", capabilityId);
+    assert.equal(row.tenantScope.status, "not-applicable", capabilityId);
+    assert.equal(row.linkState.status, "implemented", capabilityId);
+    assert.equal(row.recovery.status, "verified", capabilityId);
+    assert.equal(row.secretExposure.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+});
+
+test("direct authenticated database and export routes cannot regress", () => {
+  const matrix = readMatrix();
+  const evidence = "apps/webapp/test/authenticatedDirectRouteEvidence.test.ts";
+  for (const capabilityId of ["route-009", "route-047", "route-048", "route-057"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "verified", capabilityId);
+    assert.equal(row.tenantScope.status, "enforced", capabilityId);
+    assert.deepEqual(row.tenantScope.keys, ["organizationId", "projectId", "environmentId"], capabilityId);
+    assert.equal(row.linkState.status, "implemented", capabilityId);
+    assert.equal(row.recovery.status, "verified", capabilityId);
+    assert.equal(row.secretExposure.status, "verified", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+  assert.equal(capability(matrix, "route-048").formState.status, "implemented");
+});
+
 test("reviewed v0 dispositions cannot regress", async (t) => {
   const cases = [
     ["agent-connect.mint-token.ts", "intentional-removal"],
