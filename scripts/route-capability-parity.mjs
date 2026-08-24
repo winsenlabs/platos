@@ -281,8 +281,8 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
     statuses: { "tenantScope.status": "enforced", "defect.status": "verified", "persistedReadBack.status": "verified", "automatedEvidence.status": "verified", "secretExposure.status": "verified" },
   },
   "access-key-rotation-correlation": {
-    fragments: { currentBehavior: ["validUntil", "replacedById"], http: ["requestId", "keyHash", "keyPrefix"], concurrency: ["Environment row lock", "one-active-per-Environment"], persistedReadBack: ["retiring.replacedById", "active.id", "hash/prefix correlation"] },
-    statuses: { "concurrency.status": "static-contract-only", "persistedReadBack.status": "verified", "automatedEvidence.status": "verified", "secretExposure.status": "verified" },
+    fragments: { currentBehavior: ["validUntil", "replacedById"], http: ["requestId", "keyHash", "keyPrefix"], concurrency: ["two concurrent rotations", "exactly one active", "correlated retiring key"], persistedReadBack: ["retiring.replacedById", "active.id", "hash/prefix correlation"] },
+    statuses: { "concurrency.status": "verified", "persistedReadBack.status": "verified", "automatedEvidence.status": "verified", "secretExposure.status": "verified" },
   },
   "access-key-revoke": {
     fragments: { currentBehavior: ["active or unexpired", "Environment-owned"], automatedEvidence: ["credentialSerialization.test.ts"] },
@@ -290,7 +290,7 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
   },
   "access-key-allowed-origins": {
     fragments: { http: ["origins: string[]"], currentBehavior: ["exact origins mutation", "closed safe-response contract"], automatedEvidence: ["credentialSerialization.test.ts"] },
-    statuses: { "persistedReadBack.status": "required-not-verified", "automatedEvidence.status": "verified" },
+    statuses: { "persistedReadBack.status": "verified", "automatedEvidence.status": "verified" },
   },
   "access-key-browser-request-correlation": {
     fragments: { currentBehavior: ["cryptographically random request ID", "stale", "superseded"], secretExposure: ["private pending material", "request ID", "mismatched", "cancelled"], concurrency: ["overlapping responses", "latest matching request"] },

@@ -218,7 +218,7 @@ export async function agentPanel<T = unknown>(path: string, scope: AgentScope): 
   }
 }
 
-const FORBIDDEN_CREDENTIAL_FIELDS = /^(?:raw[A-Za-z0-9]*|apiKey|accessKey|keyHash|hash|ciphertext|nonce|authTag|salt|plain(?:text)?(?:Secret|Value|Credential|Material)?|value|secret(?:Material|Value)?|credential(?:Value|Secret|Material)|clientSecret|privateKey|password|token|rootKey|encrypted(?:Value|Secret|Reference)?)$/i;
+const FORBIDDEN_CREDENTIAL_FIELDS = /^(?:raw[A-Za-z0-9]*|apiKey|accessKey|keyHash|tokenHash|hash|ciphertext|nonce|authTag|salt|plain(?:text)?(?:Secret|Value|Credential|Material)?|value|secret(?:Material|Value)?|credential(?:Value|Secret|Material)|clientSecret|privateKey|password|token|rootKey|encrypted(?:Value|Secret|Reference)?)$/i;
 
 type CredentialMetadataShape =
   | true

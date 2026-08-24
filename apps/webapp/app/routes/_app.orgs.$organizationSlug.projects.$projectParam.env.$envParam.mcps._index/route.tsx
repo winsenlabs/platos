@@ -9,7 +9,7 @@ import {
   stringList,
 } from "~/services/m4Mutation.server";
 import { loadSurface } from "~/services/m4Route.server";
-import { mcpManagementRequest } from "~/services/platosAgent.server";
+import { assertCredentialSafePayload, mcpManagementRequest } from "~/services/platosAgent.server";
 const config = { surface: "mcp-platform" as const, title: "Platform MCP tokens", description: "Operator-managed control-plane tokens with one-time bearer reveal and Environment-scoped lifecycle.", endpoint: "/mcp/platform/tokens", transport: "mcp-management" as const, collection: { defaultPageSize: 25, maxPageSize: 100 }, provenance: "Canonical Environment-owned McpToken metadata via the isolated MCP management transport" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
@@ -30,6 +30,7 @@ export async function action(args: ActionFunctionArgs) {
         },
       );
       const { token, ...metadata } = created;
+      assertCredentialSafePayload(metadata);
       return { ...metadata, plaintextSecret: token };
     }
     if (intent === "revoke") {

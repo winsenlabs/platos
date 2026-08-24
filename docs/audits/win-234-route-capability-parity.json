@@ -2969,8 +2969,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedMutationEvidence.test.ts rejects unauthenticated and mixed Organization/Project/Environment Entity registration before transport."
       },
       "loaderState": {
         "status": "implemented",
@@ -2981,12 +2981,12 @@
         "detail": "Route-defined result; persisted mutation/read-back, non-200 error mapping, idempotency, and concurrency require focused proof."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "Action-bearing route may use FormData, JSON, or a non-form control; exact rendered controls and field/enum agreement require focused source/runtime proof."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts submits the MCP Entity form and proves credsSecretKey remains the bare COMPOSIO_API_KEY reference in the Agent DTO."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated Entity-create deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its scoped action."
       },
       "persistedReadBack": {
         "status": "required-not-verified",
@@ -3005,9 +3005,9 @@
         "semantics": "Capability mcp-credential-reference-migration does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "Creating an MCP Entity credential reference does not delete or revoke persisted state."
         ]
       },
       "idempotency": {
@@ -3023,24 +3023,26 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts verifies stable secret-safe Entity registration failure serialization."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "Credential reference-only migration.",
         "requirements": [
           "credsSecretKey remains a bare same-Environment name.",
-          "No plaintext, ciphertext, nonce, tag, salt, hash, or root material may enter loader/action responses, logs, or snapshots."
+          "No plaintext, ciphertext, nonce, tag, salt, hash, or root material may enter loader/action responses, logs, or snapshots.",
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts proves the MCP registration DTO contains only the bare reference and omits server-only operator material."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/agent/src/tool-gateway/mcp-transport/mcp-credential.service.test.ts",
-          "apps/agent/src/mcp-platform/tools/entities.ts"
+          "apps/agent/src/mcp-platform/tools/entities.ts",
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -4094,11 +4096,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -4120,8 +4122,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes authenticated metadata and secret:mutate access and rejects unauthenticated and mixed Organization/Project/Environment requests before Agent transport."
       },
       "loaderState": {
         "status": "implemented",
@@ -4132,12 +4134,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes every supported direct credential intent with valid FormData and validates the generated Agent operation."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route.tsx."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts constructs and executes the authenticated canonical deep link from the Remix route filename."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -4174,20 +4176,21 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route.tsx."
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts verifies stable AGENT_UNAVAILABLE loader/action responses without upstream details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route.tsx must omit secret material."
+          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-providers._index/route.tsx must omit secret material.",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts serializes complete success and failure payloads without provider plaintext, keyHash, upstream details, or the server-only operator credential."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/credentialSerialization.test.ts",
           "apps/webapp/test/formSubmission.test.tsx",
@@ -4195,7 +4198,8 @@
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
           "apps/webapp/test/providerVisual.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -9013,8 +9017,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts requires metadata or secret:mutate access and rejects unauthenticated and mixed Organization/Project/Environment requests before transport."
       },
       "loaderState": {
         "status": "implemented",
@@ -9025,17 +9029,18 @@
         "detail": "Route-defined result; persisted mutation/read-back, non-200 error mapping, idempotency, and concurrency require focused proof."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "Action-bearing route may use FormData, JSON, or a non-form control; exact rendered controls and field/enum agreement require focused source/runtime proof."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the AccessKey rotate, allowed-origins, and revoke forms; apps/webapp/test/accessKeyLifecycle.test.ts verifies browser generation and reveal settlement controls."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the authenticated /orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/apikeys deep link."
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Create/update/delete must be reloaded from the canonical clean-schema owner."
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the mutation and then reloads canonical AccessKey metadata.",
+          "apps/agent/src/auth/auth.service.test.ts proves the origin update targets only the active Environment-owned key."
         ]
       },
       "pagination": {
@@ -9049,9 +9054,9 @@
         "semantics": "Capability access-key-allowed-origins does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "access-key-allowed-origins does not delete or revoke persisted state; AccessKey revoke retains its own confirmation requirement."
         ]
       },
       "idempotency": {
@@ -9067,23 +9072,26 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts verifies stable secret-safe Agent failure serialization.",
+          "apps/webapp/test/accessKeyLifecycle.test.ts verifies mismatch, failure, cancellation, supersession, and disposal recovery without reveal."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material.",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts proves the complete mutation and loader read-back omit raw bearer, keyHash, upstream detail, and server-only credentials."
         ]
       },
       "automatedEvidence": {
         "status": "verified",
         "references": [
           "apps/webapp/test/credentialSerialization.test.ts",
-          "apps/agent/src/auth/auth.service.test.ts"
+          "apps/agent/src/auth/auth.service.test.ts",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -9236,8 +9244,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts requires metadata or secret:mutate access and rejects unauthenticated and mixed Organization/Project/Environment requests before transport."
       },
       "loaderState": {
         "status": "implemented",
@@ -9248,12 +9256,12 @@
         "detail": "Route-defined result; persisted mutation/read-back, non-200 error mapping, idempotency, and concurrency require focused proof."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "Action-bearing route may use FormData, JSON, or a non-form control; exact rendered controls and field/enum agreement require focused source/runtime proof."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the AccessKey rotate, allowed-origins, and revoke forms; apps/webapp/test/accessKeyLifecycle.test.ts verifies browser generation and reveal settlement controls."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the authenticated /orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/apikeys deep link."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -9273,9 +9281,9 @@
         "semantics": "Capability access-key-browser-request-correlation does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "access-key-browser-request-correlation does not delete or revoke persisted state; AccessKey revoke retains its own confirmation requirement."
         ]
       },
       "idempotency": {
@@ -9293,7 +9301,8 @@
       "recovery": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/accessKeyLifecycle.test.ts covers failure, mismatch, cancellation, and supersession disposal."
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts verifies stable secret-safe Agent failure serialization.",
+          "apps/webapp/test/accessKeyLifecycle.test.ts verifies mismatch, failure, cancellation, supersession, and disposal recovery without reveal."
         ]
       },
       "secretExposure": {
@@ -9310,7 +9319,8 @@
         "references": [
           "apps/webapp/test/accessKeyLifecycle.test.ts",
           "apps/webapp/test/credentialSerialization.test.ts",
-          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts"
+          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -9464,8 +9474,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts requires metadata or secret:mutate access and rejects unauthenticated and mixed Organization/Project/Environment requests before transport."
       },
       "loaderState": {
         "status": "implemented",
@@ -9476,12 +9486,12 @@
         "detail": "Route-defined result; persisted mutation/read-back, non-200 error mapping, idempotency, and concurrency require focused proof."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "Action-bearing route may use FormData, JSON, or a non-form control; exact rendered controls and field/enum agreement require focused source/runtime proof."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the AccessKey rotate, allowed-origins, and revoke forms; apps/webapp/test/accessKeyLifecycle.test.ts verifies browser generation and reveal settlement controls."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the authenticated /orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/apikeys deep link."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -9501,9 +9511,9 @@
         "semantics": "Capability access-key-one-time-reveal does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "access-key-one-time-reveal does not delete or revoke persisted state; AccessKey revoke retains its own confirmation requirement."
         ]
       },
       "idempotency": {
@@ -9521,7 +9531,8 @@
       "recovery": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/accessKeyLifecycle.test.ts covers failure, mismatch, cancellation, and disposal without reveal."
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts verifies stable secret-safe Agent failure serialization.",
+          "apps/webapp/test/accessKeyLifecycle.test.ts verifies mismatch, failure, cancellation, supersession, and disposal recovery without reveal."
         ]
       },
       "secretExposure": {
@@ -9538,7 +9549,8 @@
         "references": [
           "apps/webapp/test/accessKeyLifecycle.test.ts",
           "apps/webapp/test/credentialSerialization.test.ts",
-          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts"
+          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -9686,8 +9698,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts requires metadata or secret:mutate access and rejects unauthenticated and mixed Organization/Project/Environment requests before transport."
       },
       "loaderState": {
         "status": "implemented",
@@ -9698,17 +9710,18 @@
         "detail": "Route-defined result; persisted mutation/read-back, non-200 error mapping, idempotency, and concurrency require focused proof."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "Action-bearing route may use FormData, JSON, or a non-form control; exact rendered controls and field/enum agreement require focused source/runtime proof."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the AccessKey rotate, allowed-origins, and revoke forms; apps/webapp/test/accessKeyLifecycle.test.ts verifies browser generation and reveal settlement controls."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the authenticated /orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/apikeys deep link."
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Create/update/delete must be reloaded from the canonical clean-schema owner."
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the mutation and then reloads canonical AccessKey metadata.",
+          "apps/agent/src/auth/auth.service.test.ts proves the revoke updates every active/overlap key in the authorized Environment."
         ]
       },
       "pagination": {
@@ -9740,23 +9753,26 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts verifies stable secret-safe Agent failure serialization.",
+          "apps/webapp/test/accessKeyLifecycle.test.ts verifies mismatch, failure, cancellation, supersession, and disposal recovery without reveal."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "Hash-only revocation.",
         "requirements": [
-          "DELETE response and subsequent loader omit keyHash and raw bearer."
+          "DELETE response and subsequent loader omit keyHash and raw bearer.",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts proves the complete mutation and loader read-back omit raw bearer, keyHash, upstream detail, and server-only credentials."
         ]
       },
       "automatedEvidence": {
         "status": "verified",
         "references": [
           "apps/webapp/test/credentialSerialization.test.ts",
-          "apps/agent/src/auth/auth.service.test.ts"
+          "apps/agent/src/auth/auth.service.test.ts",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -9946,8 +9962,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts requires metadata or secret:mutate access and rejects unauthenticated and mixed Organization/Project/Environment requests before transport."
       },
       "loaderState": {
         "status": "implemented",
@@ -9958,12 +9974,12 @@
         "detail": "Route-defined result; persisted mutation/read-back, non-200 error mapping, idempotency, and concurrency require focused proof."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "Action-bearing route may use FormData, JSON, or a non-form control; exact rendered controls and field/enum agreement require focused source/runtime proof."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the AccessKey rotate, allowed-origins, and revoke forms; apps/webapp/test/accessKeyLifecycle.test.ts verifies browser generation and reveal settlement controls."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes the authenticated /orgs/:organizationSlug/projects/:projectSlug/env/:environmentSlug/apikeys deep link."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -9995,16 +10011,16 @@
         ]
       },
       "concurrency": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "Environment row lock plus one-active-per-Environment constraint serialize rotation."
+          "internal-packages/tenancy-database/src/secrets.integration.test.ts serializes two concurrent rotations, reads back exactly one active and one correlated retiring key, and proves the uniqueness constraint rejects a second active key."
         ]
       },
       "recovery": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/accessKeyLifecycle.test.ts discards failed private pending material without reveal.",
-          "internal-packages/tenancy-database/src/secrets.integration.test.ts verifies serialized concurrent transactions retain exactly one active replacement and one correlated retiring key."
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts verifies stable secret-safe Agent failure serialization.",
+          "apps/webapp/test/accessKeyLifecycle.test.ts verifies mismatch, failure, cancellation, supersession, and disposal recovery without reveal."
         ]
       },
       "secretExposure": {
@@ -10022,7 +10038,8 @@
           "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts",
           "apps/agent/src/auth/auth.service.test.ts",
           "apps/webapp/test/credentialSerialization.test.ts",
-          "apps/webapp/test/accessKeyLifecycle.test.ts"
+          "apps/webapp/test/accessKeyLifecycle.test.ts",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -10138,11 +10155,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -10164,8 +10181,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes authenticated metadata and secret:mutate access and rejects unauthenticated and mixed Organization/Project/Environment requests before Agent transport."
       },
       "loaderState": {
         "status": "implemented",
@@ -10176,12 +10193,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts executes every supported direct credential intent with valid FormData and validates the generated Agent operation."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts constructs and executes the authenticated canonical deep link from the Remix route filename."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -10218,26 +10235,28 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx."
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts verifies stable AGENT_UNAVAILABLE loader/action responses without upstream details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx must omit secret material."
+          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx must omit secret material.",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts serializes complete success and failure payloads without provider plaintext, keyHash, upstream details, or the server-only operator credential."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -12460,8 +12479,8 @@
         "detail": "The MCP platform surface accepts name, permissions, ttlSeconds, and tier and renders one-time mutation feedback."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated canonical MCP deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its mutation route where applicable."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -12498,18 +12517,20 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/mcpManagementRoute.test.ts verifies stable AGENT_UNAVAILABLE create failures without upstream secret details.",
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts and apps/webapp/test/authenticatedMutationEvidence.test.ts verify authenticated loader/action recovery contracts."
         ]
       },
       "secretExposure": {
-        "status": "required-not-verified",
+        "status": "verified",
         "classification": "MCP raw bearer is reveal-once; persistence and list/revoke responses are hash-only.",
         "requirements": [
           "Never serialize tokenHash.",
           "Raw plt_mcp_ bearer may appear only in the successful create response and one-time browser state.",
-          "Errors, logs, traces, and snapshots must omit raw and hashed token material."
+          "Errors, logs, traces, and snapshots must omit raw and hashed token material.",
+          "apps/webapp/test/mcpManagementRoute.test.ts proves create payloads fail closed on tokenHash and loader read-back omits one-time raw plt_mcp_/plt_ent_ values."
         ]
       },
       "automatedEvidence": {
@@ -12688,8 +12709,8 @@
         "detail": "Token inventory is read-only; create and revoke use their dedicated controls."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated canonical MCP deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its mutation route where applicable."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -12714,30 +12735,32 @@
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "mcp-token-list is a read-only metadata query and has no mutation replay contract."
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "mcp-token-list performs no concurrent mutation."
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/mcpManagementRoute.test.ts verifies stable AGENT_UNAVAILABLE create failures without upstream secret details.",
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts and apps/webapp/test/authenticatedMutationEvidence.test.ts verify authenticated loader/action recovery contracts."
         ]
       },
       "secretExposure": {
-        "status": "required-not-verified",
+        "status": "verified",
         "classification": "MCP raw bearer is reveal-once; persistence and list/revoke responses are hash-only.",
         "requirements": [
           "Never serialize tokenHash.",
           "Raw plt_mcp_ bearer may appear only in the successful create response and one-time browser state.",
-          "Errors, logs, traces, and snapshots must omit raw and hashed token material."
+          "Errors, logs, traces, and snapshots must omit raw and hashed token material.",
+          "apps/webapp/test/mcpManagementRoute.test.ts proves create payloads fail closed on tokenHash and loader read-back omits one-time raw plt_mcp_/plt_ent_ values."
         ]
       },
       "automatedEvidence": {
@@ -12908,13 +12931,13 @@
         "detail": "Each token row exposes a revoke control guarded by explicit browser confirmation."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated canonical MCP deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its mutation route where applicable."
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Create/update/delete must be reloaded from the canonical clean-schema owner."
+          "apps/webapp/test/mcpManagementRoute.test.ts executes Platform revoke and reloads revokedAt from the metadata inventory."
         ]
       },
       "pagination": {
@@ -12941,24 +12964,26 @@
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "apps/agent/src/mcp-platform/token.service.test.ts proves verification fails closed when revocation wins the last-used update race."
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/mcpManagementRoute.test.ts verifies stable AGENT_UNAVAILABLE create failures without upstream secret details.",
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts and apps/webapp/test/authenticatedMutationEvidence.test.ts verify authenticated loader/action recovery contracts."
         ]
       },
       "secretExposure": {
-        "status": "required-not-verified",
+        "status": "verified",
         "classification": "MCP raw bearer is reveal-once; persistence and list/revoke responses are hash-only.",
         "requirements": [
           "Never serialize tokenHash.",
           "Raw plt_mcp_ bearer may appear only in the successful create response and one-time browser state.",
-          "Errors, logs, traces, and snapshots must omit raw and hashed token material."
+          "Errors, logs, traces, and snapshots must omit raw and hashed token material.",
+          "apps/webapp/test/mcpManagementRoute.test.ts proves create payloads fail closed on tokenHash and loader read-back omits one-time raw plt_mcp_/plt_ent_ values."
         ]
       },
       "automatedEvidence": {
@@ -13332,13 +13357,13 @@
         "detail": "The Entity MCP surface exposes PAT label/scopes/expiry creation and one-time reveal feedback."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated canonical MCP deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its mutation route where applicable."
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Create must read back safe McpBearerToken metadata while retaining raw only for one reveal."
+          "apps/webapp/test/mcpManagementRoute.test.ts executes the Entity bearer lifecycle and reloads safe McpBearerToken metadata without the raw bearer."
         ]
       },
       "pagination": {
@@ -13370,18 +13395,20 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/mcpManagementRoute.test.ts verifies stable AGENT_UNAVAILABLE create failures without upstream secret details.",
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts and apps/webapp/test/authenticatedMutationEvidence.test.ts verify authenticated loader/action recovery contracts."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "Entity plt_ent_ bearer is shown once; database is hash-only.",
         "requirements": [
           "Raw plt_ent_ value is shown once after persistence succeeds.",
           "McpBearerToken.tokenHash is never returned, logged, or snapshotted.",
-          "Platform plt_mcp_ material remains a separate lifecycle."
+          "Platform plt_mcp_ material remains a separate lifecycle.",
+          "apps/webapp/test/mcpManagementRoute.test.ts proves create payloads fail closed on tokenHash and loader read-back omits one-time raw plt_mcp_/plt_ent_ values."
         ]
       },
       "automatedEvidence": {
@@ -13566,13 +13593,13 @@
         "detail": "Each PAT row exposes a revoke control guarded by explicit browser confirmation."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated canonical MCP deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its mutation route where applicable."
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Revoke must read back revokedAt from safe McpBearerToken metadata and prove the bearer no longer authenticates."
+          "apps/webapp/test/mcpManagementRoute.test.ts executes the Entity bearer lifecycle and reloads safe McpBearerToken metadata without the raw bearer."
         ]
       },
       "pagination": {
@@ -13593,28 +13620,30 @@
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "apps/agent/src/mcp-platform/mcp-bearer-token.service.test.ts calls revoke twice, returns success both times, and writes exactly one revoke audit event."
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "apps/agent/src/mcp-platform/mcp-bearer-token.service.test.ts proves a transactional last-used update fails closed when revocation wins the race."
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/mcpManagementRoute.test.ts verifies stable AGENT_UNAVAILABLE create failures without upstream secret details.",
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts and apps/webapp/test/authenticatedMutationEvidence.test.ts verify authenticated loader/action recovery contracts."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material.",
+          "apps/webapp/test/mcpManagementRoute.test.ts proves create payloads fail closed on tokenHash and loader read-back omits one-time raw plt_mcp_/plt_ent_ values."
         ]
       },
       "automatedEvidence": {
@@ -13799,13 +13828,13 @@
         "detail": "The Entity MCP surface renders the safe PAT inventory separately from platform tokens."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated canonical MCP deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its mutation route where applicable."
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Safe list must read back McpBearerToken metadata without raw/tokenHash fields."
+          "apps/webapp/test/mcpManagementRoute.test.ts executes the Entity bearer lifecycle and reloads safe McpBearerToken metadata without the raw bearer."
         ]
       },
       "pagination": {
@@ -13819,35 +13848,37 @@
         "semantics": "The response and surface show total, returned page length, limit, and offset separately."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "The metadata inventory is read-only; Entity bearer revoke has its own confirmed destructive control."
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "entity-mcp-bearer-token-list is a read-only metadata query and has no mutation replay contract."
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "entity-mcp-bearer-token-list performs no concurrent mutation."
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/mcpManagementRoute.test.ts verifies stable AGENT_UNAVAILABLE create failures without upstream secret details.",
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts and apps/webapp/test/authenticatedMutationEvidence.test.ts verify authenticated loader/action recovery contracts."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "Entity plt_ent_ PAT metadata list.",
         "requirements": [
           "Never return raw plt_ent_ bearer or tokenHash.",
-          "Keep platform plt_mcp_ token inventory separate."
+          "Keep platform plt_mcp_ token inventory separate.",
+          "apps/webapp/test/mcpManagementRoute.test.ts proves create payloads fail closed on tokenHash and loader read-back omits one-time raw plt_mcp_/plt_ent_ values."
         ]
       },
       "automatedEvidence": {
@@ -14026,8 +14057,8 @@
         "detail": "The control exposes all seven valid single and plus-delimited identity-mode combinations."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated canonical MCP deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its mutation route where applicable."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -14047,9 +14078,9 @@
         "semantics": "Capability mcp-combined-identity-modes does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "mcp-combined-identity-modes updates Entity MCP configuration and does not delete or revoke a credential."
         ]
       },
       "idempotency": {
@@ -14065,16 +14096,18 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/mcpManagementRoute.test.ts verifies stable AGENT_UNAVAILABLE create failures without upstream secret details.",
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts and apps/webapp/test/authenticatedMutationEvidence.test.ts verify authenticated loader/action recovery contracts."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material.",
+          "apps/webapp/test/mcpManagementRoute.test.ts proves create payloads fail closed on tokenHash and loader read-back omits one-time raw plt_mcp_/plt_ent_ values."
         ]
       },
       "automatedEvidence": {
@@ -14252,8 +14285,8 @@
         "detail": "The Entity MCP surface exposes array-root identityProviders, branding/allowlist/rate controls, and injectMcpContext."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated canonical MCP deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its mutation route where applicable."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -14274,9 +14307,9 @@
         "semantics": "Capability mcp-identity-context does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "mcp-identity-context updates Entity MCP configuration and does not delete or revoke a credential."
         ]
       },
       "idempotency": {
@@ -14292,16 +14325,18 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/mcpManagementRoute.test.ts verifies stable AGENT_UNAVAILABLE create failures without upstream secret details.",
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts and apps/webapp/test/authenticatedMutationEvidence.test.ts verify authenticated loader/action recovery contracts."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material.",
+          "apps/webapp/test/mcpManagementRoute.test.ts proves create payloads fail closed on tokenHash and loader read-back omits one-time raw plt_mcp_/plt_ent_ values."
         ]
       },
       "automatedEvidence": {
@@ -14559,8 +14594,8 @@
         "detail": "Per-tool and bulk controls cover exposed, minIdentityMode, allowedPatIds, scopeLabels, expose, hide, and set_identity."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated canonical MCP deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its mutation route where applicable."
       },
       "persistedReadBack": {
         "status": "verified",
@@ -14598,16 +14633,18 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/mcpManagementRoute.test.ts verifies stable AGENT_UNAVAILABLE create failures without upstream secret details.",
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts and apps/webapp/test/authenticatedMutationEvidence.test.ts verify authenticated loader/action recovery contracts."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
+        "status": "verified",
         "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material.",
+          "apps/webapp/test/mcpManagementRoute.test.ts proves create payloads fail closed on tokenHash and loader read-back omits one-time raw plt_mcp_/plt_ent_ values."
         ]
       },
       "automatedEvidence": {

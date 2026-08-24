@@ -346,6 +346,33 @@ describe("authenticated mutation evidence harness", () => {
     expect(new URL(String(vi.mocked(fetch).mock.calls[1]?.[0])).pathname).toBe("/api/v1/agent/threads/thread-child");
   });
 
+  it("keeps MCP credsSecretKey as a bare same-Environment reference", async () => {
+    const contract = contracts.find(({ capabilityId }) => capabilityId === "route-019");
+    if (!contract) throw new Error("Missing Entity registration contract");
+    const module = await contract.loadModule();
+    if (!module.action) throw new Error("Missing Entity registration action");
+
+    const response = await module.action(requestArgs(contract, {
+      connectionKind: "mcp",
+      transport: "hosted-composio",
+      credsSecretKey: "COMPOSIO_API_KEY",
+      headersTemplate: "{}",
+    }));
+
+    expect(response.status).toBe(200);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      connectionKind: "mcp",
+      mcpClient: {
+        transport: "hosted-composio",
+        credsSecretKey: "COMPOSIO_API_KEY",
+        headersTemplate: {},
+      },
+    });
+    expect(String(init?.body)).not.toContain("SENTINEL_SERVER_ONLY_OPERATOR_CREDENTIAL");
+  });
+
   it("preserves bounded Postman pagination and complete upstream totals", async () => {
     const contract = contracts.find(({ capabilityId }) => capabilityId === "route-034");
     if (!contract) throw new Error("Missing Postman route contract");

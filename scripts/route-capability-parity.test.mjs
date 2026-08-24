@@ -357,6 +357,90 @@ test("authenticated mutation route evidence cannot regress to static claims", ()
   assert.ok(fork.persistedReadBack.references.includes(evidence));
 });
 
+test("direct authenticated credential route evidence cannot regress to static claims", () => {
+  const matrix = readMatrix();
+  const evidence = "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts";
+  for (const capabilityId of ["route-024", "route-042"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "verified", capabilityId);
+    assert.equal(row.tenantScope.status, "enforced", capabilityId);
+    assert.deepEqual(row.tenantScope.keys, ["organizationId", "projectId", "environmentId"], capabilityId);
+    assert.equal(row.formState.status, "implemented", capabilityId);
+    assert.equal(row.linkState.status, "implemented", capabilityId);
+    assert.equal(row.recovery.status, "verified", capabilityId);
+    assert.equal(row.secretExposure.status, "verified", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+
+  for (const capabilityId of [
+    "access-key-allowed-origins",
+    "access-key-browser-request-correlation",
+    "access-key-one-time-reveal",
+    "access-key-revoke",
+    "access-key-rotation-correlation",
+  ]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "verified", capabilityId);
+    assert.equal(row.formState.status, "implemented", capabilityId);
+    assert.equal(row.linkState.status, "implemented", capabilityId);
+    assert.equal(row.recovery.status, "verified", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+  assert.equal(capability(matrix, "access-key-allowed-origins").persistedReadBack.status, "verified");
+  assert.equal(capability(matrix, "access-key-revoke").persistedReadBack.status, "verified");
+  assert.equal(capability(matrix, "access-key-rotation-correlation").concurrency.status, "verified");
+});
+
+test("focused MCP route and service evidence cannot regress to static claims", () => {
+  const matrix = readMatrix();
+  const routeEvidence = "apps/webapp/test/mcpManagementRoute.test.ts";
+  const managed = [
+    "mcp-token-create",
+    "mcp-token-list",
+    "mcp-token-revoke",
+    "entity-mcp-bearer-token-create",
+    "entity-mcp-bearer-token-delete",
+    "entity-mcp-bearer-token-list",
+    "mcp-combined-identity-modes",
+    "mcp-identity-context",
+    "mcp-tool-acl-policy",
+  ];
+  for (const capabilityId of managed) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.linkState.status, "implemented", capabilityId);
+    assert.equal(row.recovery.status, "verified", capabilityId);
+    assert.equal(row.secretExposure.status, "verified", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(routeEvidence), capabilityId);
+  }
+  for (const capabilityId of [
+    "mcp-token-revoke",
+    "entity-mcp-bearer-token-create",
+    "entity-mcp-bearer-token-delete",
+    "entity-mcp-bearer-token-list",
+  ]) {
+    assert.equal(capability(matrix, capabilityId).persistedReadBack.status, "verified", capabilityId);
+  }
+  assert.equal(capability(matrix, "entity-mcp-bearer-token-delete").idempotency.status, "verified");
+  assert.equal(capability(matrix, "entity-mcp-bearer-token-delete").concurrency.status, "verified");
+  assert.equal(capability(matrix, "mcp-token-revoke").concurrency.status, "verified");
+  for (const capabilityId of ["mcp-token-list", "entity-mcp-bearer-token-list"]) {
+    assert.equal(capability(matrix, capabilityId).idempotency.status, "not-applicable", capabilityId);
+    assert.equal(capability(matrix, capabilityId).concurrency.status, "not-applicable", capabilityId);
+  }
+
+  const reference = capability(matrix, "mcp-credential-reference-migration");
+  assert.equal(reference.permission.status, "verified");
+  assert.equal(reference.formState.status, "implemented");
+  assert.equal(reference.linkState.status, "implemented");
+  assert.equal(reference.recovery.status, "verified");
+  assert.equal(reference.secretExposure.status, "verified");
+  assert.equal(reference.automatedEvidence.status, "verified");
+  assert.ok(reference.automatedEvidence.references.includes("apps/webapp/test/authenticatedMutationEvidence.test.ts"));
+});
+
 test("reviewed v0 dispositions cannot regress", async (t) => {
   const cases = [
     ["agent-connect.mint-token.ts", "intentional-removal"],

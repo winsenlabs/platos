@@ -12,7 +12,7 @@ import {
   requiredText,
 } from "~/services/m4Mutation.server";
 import { loadSurface } from "~/services/m4Route.server";
-import { mcpManagementRequest } from "~/services/platosAgent.server";
+import { assertCredentialSafePayload, mcpManagementRequest } from "~/services/platosAgent.server";
 const config = { surface: "mcp-config" as const, title: "MCP Entity", description: "Safe MCP config, bearer lifecycle and Environment-scoped Tool ACL.", endpoint: "/mcp/entity/:entityId/config", secondaryEndpoint: "/mcp/entity/:entityId/tokens", supportingEndpoint: "/mcp/entity/:entityId/tool-acl?limit=200&offset=0", transport: "mcp-management" as const, secondaryCollection: { defaultPageSize: 25, maxPageSize: 100 }, provenance: "Canonical EntityMcpConfig, McpBearerToken and EntityToolPolicy read-back via isolated MCP management transport", notFoundAsResponse: true };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
@@ -31,6 +31,7 @@ export async function action(args: ActionFunctionArgs) {
         },
       });
       const { raw, ...metadata } = created;
+      assertCredentialSafePayload(metadata);
       return { ...metadata, plaintextSecret: raw };
     }
     if (intent === "token-revoke") {
