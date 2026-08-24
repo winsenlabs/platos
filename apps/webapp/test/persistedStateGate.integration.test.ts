@@ -407,7 +407,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
           method: "POST",
           body: new URLSearchParams({
             intent: "memory-toggle",
-            userId: primary.externalUserId,
+            userId: primary.endUserId,
             agentId: primary.agentIds[0],
             id: primary.profileMemoryId,
             agentVisible: "false",
@@ -476,7 +476,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
           method: "POST",
           body: new URLSearchParams({
             intent: "memory-import",
-            userId: primary.externalUserId,
+            userId: primary.endUserId,
             agentId: createdAgentId,
             mode: "merge",
             bundle: JSON.stringify(bundle),
@@ -511,7 +511,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
       const memoryResult = await agentRequestResult<{
         memories: Array<{ id: string; content: string; metadata: unknown }>;
         total: number;
-      }>(`/api/v1/memory?userId=${encodeURIComponent(primary.externalUserId)}&kind=profile`, {
+      }>(`/api/v1/memory?userId=${encodeURIComponent(primary.endUserId)}&kind=profile`, {
         ...primary,
         agentId: createdAgentId,
       });
@@ -545,7 +545,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
         {
           method: "POST",
           body: {
-            userId: primary.externalUserId,
+            userId: primary.endUserId,
             fromEntityKey: "win235:relate:from",
             toEntityKey: "win235:relate:to",
             relationshipType: "depends_on",
@@ -607,7 +607,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
           method: "POST",
           body: new URLSearchParams({
             intent: "memory-delete",
-            userId: primary.externalUserId,
+            userId: primary.endUserId,
             agentId: primary.agentIds[0],
             id: primary.profileMemoryId,
           }),
@@ -716,7 +716,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
 
     await check("negative.agent", async () => {
       const response = await agentResponse(
-        "/api/v1/memory?userId=" + encodeURIComponent(primary.externalUserId),
+        "/api/v1/memory?userId=" + encodeURIComponent(primary.endUserId),
         { ...primary, agentId: secondary.agentIds[0] }
       );
       const payload = await responsePayload(response);
@@ -733,7 +733,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
           method: "POST",
           body: new URLSearchParams({
             intent: "memory-create",
-            userId: secondary.externalUserId,
+            userId: secondary.endUserId,
             agentId: primary.agentIds[0],
             content: "cross-scope EndUser must not persist",
             kind: "fact",
