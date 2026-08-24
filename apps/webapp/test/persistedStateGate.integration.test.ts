@@ -414,8 +414,8 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
           }),
         }
       );
-      expect(updateResponse.status).toBe(200);
       const updatePayload = await responsePayload(updateResponse);
+      expect(updateResponse.status, JSON.stringify(updatePayload)).toBe(200);
       expect(updatePayload.ok).toBe(true);
       const readBack = await database.memory.findUnique({ where: { id: primary.profileMemoryId } });
       expect(readBack?.agentVisible).toBe(false);
