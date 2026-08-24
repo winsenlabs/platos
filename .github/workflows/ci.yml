@@ -70,6 +70,9 @@ jobs:
           pnpm audit:route-parity
           pnpm test:route-parity
 
+      - name: Platos vocabulary boundary gate
+        run: pnpm test:vocabulary && pnpm audit:vocabulary
+
       - name: External Trigger configuration and direct-dispatch tests
         run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
 

@@ -27,6 +27,8 @@
     "audit:route-parity": "node scripts/route-capability-parity.mjs",
     "audit:route-parity:completion": "node scripts/route-capability-parity.mjs --completion",
     "generate:route-parity": "node scripts/route-capability-parity.mjs --write",
+    "audit:vocabulary": "node scripts/vocabulary-boundary.mjs",
+    "test:vocabulary": "node --test scripts/vocabulary-boundary.test.mjs",
     "docker": "docker compose -p triggerdotdev-docker -f docker/docker-compose.yml up -d --build --remove-orphans",
     "docker:stop": "docker compose -p triggerdotdev-docker -f docker/docker-compose.yml stop",
     "dev:docker": "docker compose -p triggerdotdev-dev-docker -f docker/dev-compose.yml up -d --build --remove-orphans",
