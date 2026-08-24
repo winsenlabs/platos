@@ -9,7 +9,7 @@
  * surfacing `StructuredOutputError` to the caller.
  *
  * The module is deliberately dependency-free aside from `ai`, `zod`, and
- * `@ai-sdk/ui-utils` (re-exported by `ai` as `jsonSchema`) so it can be
+ * AJV so it can be
  * unit-tested in isolation. It has no Nest decorators — it's pure logic
  * consumed by `AgentService.stream` / `AgentService.run`.
  *
@@ -23,8 +23,6 @@
 import { z } from "zod";
 import { jsonSchema, type Schema } from "ai";
 import Ajv from "ajv";
-
-const jsonSchemaValidator = new Ajv({ allErrors: true, strict: false });
 
 /**
  * Error thrown when the LLM fails to produce valid output twice in a row
@@ -102,7 +100,10 @@ export function normalizeSchema(
   if (typeof input === "object") {
     const keys = Object.keys(input as Record<string, unknown>);
     if (keys.length === 0) return null;
-    const validateJson = jsonSchemaValidator.compile(input as any);
+    // Keep AJV registration request-local. A shared instance registers caller-
+    // controlled `$id` values globally, so one tenant could make a later turn
+    // with the same ordinary schema ID fail during compilation.
+    const validateJson = new Ajv({ allErrors: true, strict: false }).compile(input as any);
     return jsonSchema(input as any, {
       validate(value) {
         if (validateJson(value)) return { success: true, value };

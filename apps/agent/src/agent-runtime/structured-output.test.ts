@@ -48,6 +48,21 @@ describe("structured-output: normalizeSchema", () => {
     expect(typeof (result as any)?.validate === "function").toBe(true);
   });
 
+  it("isolates repeated caller-controlled JSON Schema IDs", () => {
+    const schema = {
+      $id: "https://example.test/shared-output-schema",
+      type: "object",
+      properties: { count: { type: "integer" } },
+      required: ["count"],
+    };
+
+    const first = normalizeSchema(structuredClone(schema));
+    const second = normalizeSchema(structuredClone(schema));
+
+    expect((first as any).validate({ count: 1 })).toMatchObject({ success: true });
+    expect((second as any).validate({ count: 2 })).toMatchObject({ success: true });
+  });
+
   it("throws on non-object, non-Zod input", () => {
     expect(() => normalizeSchema("not a schema" as any)).toThrow(
       /Unsupported outputSchema type/,
