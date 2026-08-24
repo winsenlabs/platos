@@ -2,7 +2,7 @@
 
 Official JavaScript / TypeScript client SDK for [Platos](https://platos.dev) — the open-source agent runtime.
 
-Agents · threads · Turns · Jobs · realtime streaming · approvals · budgets · monitoring.
+Agents · threads · Jobs · realtime streaming · approvals · budgets · monitoring.
 
 ## Install
 
@@ -126,14 +126,14 @@ try {
 |---|---|
 | `client.agents` | `list`, `get`, `listVersions` |
 | `client.threads` | `create`, `list`, `get`, `messages`, `artifacts`, `send` (streaming) |
-| `client.turns` | `list`, `get` |
-| `client.jobs` | `list`, `spawn`, `get`, `cancel`, `replay` |
+| `client.jobs` | `list`, `create`, `get`, `update`, `delete`, `dispatch` |
 | `client.approvals` | `list`, `resolve` (human-in-the-loop) |
 | `client.budgets` | `list`, `status` (read-only — caps managed in the dashboard) |
 | `client.monitoring` | `turns`, `trace`, `costByAgent`, `costByScope` |
 
-`client.bgo` and `client.trigger` are deprecated compatibility aliases for
-`client.jobs`. They were deprecated in 1.0.0 and are removed in 2.0.0. See
+`client.bgo`, `client.trigger`, and their nested legacy methods are removed in
+1.0.0 because they cannot map truthfully to the canonical Job routes. Canonical
+Turn methods will be added when the runtime exposes `/api/v1/agent/turns`. See
 [`docs/sdk-v1-migration.md`](../../docs/sdk-v1-migration.md).
 
 ## Versioning

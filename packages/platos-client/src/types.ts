@@ -180,8 +180,6 @@ export interface SendMessageOptions {
   contextId?: string;
   dynamicBlocks?: Record<string, string>;
   attachmentIds?: string[];
-  /** Override the resolved context for this Turn. */
-  sessionContextOverride?: Record<string, unknown>;
   /**
    * Optional AbortSignal — when aborted, the Socket.IO connection is
    * closed and the iterator returns `{ type: "done", stopped: true }`.

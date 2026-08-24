@@ -53,20 +53,22 @@ describe("usePlatosChat host contract", () => {
     expect(clientMocks.rate).not.toHaveBeenCalledWith(assistant.id, expect.anything());
   });
 
-  it("forwards every per-Turn context option", async () => {
-    const override = { entity_ids: ["entity_1"] };
+  it("does not accept a browser-provided session context override", async () => {
     const { result } = renderHook(() => usePlatosChat({
       baseUrl: "https://platos.example.com",
       agentId: "agent_1",
       sessionToken: "token",
-      perTurn: { sessionContextOverride: override },
+      perTurn: {
+        dynamicBlocks: { locale: "en" },
+        ...({ sessionContextOverride: { entity_ids: ["entity_1"] } } as object),
+      },
     }));
 
     await act(async () => result.current.send("Hi"));
     expect(clientMocks.send).toHaveBeenCalledWith(
       "thread_1",
       "Hi",
-      expect.objectContaining({ sessionContextOverride: override }),
+      expect.not.objectContaining({ sessionContextOverride: expect.anything() }),
     );
   });
 });

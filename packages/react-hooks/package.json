@@ -37,9 +37,7 @@
     "check-exports": "attw --pack ."
   },
   "dependencies": {
-    "@platos/core": "workspace:^4.4.4",
-    "isomorphic-dompurify": "^2.16.0",
-    "swr": "^2.2.5"
+    "isomorphic-dompurify": "^2.16.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.15.4",

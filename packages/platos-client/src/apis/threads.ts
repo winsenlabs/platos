@@ -171,7 +171,6 @@ export class ThreadsApi {
         contextId: options.contextId,
         dynamicBlocks: options.dynamicBlocks,
         attachmentIds: options.attachmentIds,
-        sessionContextOverride: options.sessionContextOverride,
         // Per-request model routing: caller selects a named route on the agent.
         ...(options.modelLabel ? { modelLabel: options.modelLabel } : {}),
       });

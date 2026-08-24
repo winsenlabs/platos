@@ -3,109 +3,147 @@
 import type { PlatosClient } from "../client.js";
 import type { PlatosScope } from "../types.js";
 
+export type JobStatus =
+  | "PENDING"
+  | "ACTIVE"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "CANCELLED";
+
 export interface PlatosJob {
   id: string;
-  type: string;
-  status: string;
-  createdAt: string;
-  startedAt?: string | null;
-  completedAt?: string | null;
-  output?: unknown;
-  error?: unknown;
-  metadata?: Record<string, unknown> | null;
-  [extra: string]: unknown;
-}
-
-export interface JobOptions {
-  idempotencyKey?: string;
-  metadata?: Record<string, unknown>;
-  delay?: string | Date;
-  ttl?: string;
-  tags?: string[];
-  [extra: string]: unknown;
-}
-
-export interface JobHandle {
   jobId: string;
-  [extra: string]: unknown;
+  displayName: string;
+  description?: string | null;
+  invocationType: string;
+  scheduleCron?: string | null;
+  scheduleTimezone?: string | null;
+  allowedAgentIds: string[];
+  payloadSchema?: Record<string, unknown> | null;
+  handler: string;
+  timeout: number;
+  maxRetries: number;
+  isActive: boolean;
+  handlerVersion: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  lastStartedAt?: string | null;
 }
 
-/** @deprecated since 1.0.0; Job creation no longer uses a task catalog. Removed in 2.0.0. */
-export interface TriggerTaskCatalogEntry {
-  id: string;
-  name?: string;
-  [extra: string]: unknown;
+export interface ListJobsQuery {
+  page?: number;
+  limit?: number;
+  offset?: number;
+  search?: string;
+  status?: JobStatus | Lowercase<JobStatus>;
 }
 
-/** @deprecated since 1.0.0; schedule Jobs through the canonical Jobs API. Removed in 2.0.0. */
-export interface TriggerScheduleSummary {
-  id: string;
-  cron: string;
-  active: boolean;
-  [extra: string]: unknown;
+export interface CreateJobInput {
+  jobId: string;
+  displayName: string;
+  description?: string;
+  invocationType?: string;
+  scheduleCron?: string;
+  scheduleTimezone?: string;
+  allowedAgentIds?: string[];
+  payloadSchema?: Record<string, unknown>;
+  handler: string;
+  timeout?: number;
+  maxRetries?: number;
+}
+
+export interface UpdateJobInput {
+  displayName?: string;
+  description?: string;
+  invocationType?: string;
+  scheduleCron?: string;
+  scheduleTimezone?: string;
+  allowedAgentIds?: string[];
+  payloadSchema?: Record<string, unknown>;
+  handler?: string;
+  timeout?: number;
+  maxRetries?: number;
+  isActive?: boolean;
+}
+
+export interface DeleteJobResult {
+  deleted: true;
+}
+
+export interface DispatchJobResult {
+  accepted: boolean;
+  jobId: string;
+  message?: string;
 }
 
 export class JobsApi {
   constructor(private readonly client: PlatosClient) {}
 
-  async list(
-    query: { type?: string; status?: string; limit?: number } = {},
-    scope?: PlatosScope,
-  ): Promise<PlatosJob[]> {
+  async list(query: ListJobsQuery = {}, scope?: PlatosScope): Promise<PlatosJob[]> {
     const qs = new URLSearchParams();
-    if (query.type) qs.set("type", query.type);
-    if (query.status) qs.set("status", query.status);
-    if (query.limit) qs.set("limit", String(query.limit));
+    if (query.page !== undefined) qs.set("page", String(query.page));
+    if (query.limit !== undefined) qs.set("limit", String(query.limit));
+    if (query.offset !== undefined) qs.set("offset", String(query.offset));
+    if (query.search !== undefined) qs.set("search", query.search);
+    if (query.status !== undefined) qs.set("status", query.status);
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
-    const res = await this.client._fetch<{ jobs: PlatosJob[] }>(
+    const response = await this.client._fetch<{ jobs: PlatosJob[] }>(
       `/api/v1/agent/jobs${suffix}`,
       { method: "GET" },
       scope,
     );
-    return res?.jobs ?? [];
+    return response?.jobs ?? [];
   }
 
-  async spawn<TPayload = unknown>(
-    type: string,
-    payload: TPayload,
-    options: JobOptions = {},
-    scope?: PlatosScope,
-  ): Promise<JobHandle> {
-    return this.client._fetch<JobHandle>(
+  async create(input: CreateJobInput, scope?: PlatosScope): Promise<PlatosJob> {
+    const response = await this.client._fetch<{ job: PlatosJob }>(
       "/api/v1/agent/jobs",
-      { method: "POST", body: JSON.stringify({ type, payload, options }) },
+      { method: "POST", body: JSON.stringify(input) },
       scope,
     );
+    return response.job;
   }
 
   async get(jobId: string, scope?: PlatosScope): Promise<PlatosJob> {
-    return this.client._fetch<PlatosJob>(
+    const response = await this.client._fetch<{ job: PlatosJob }>(
       `/api/v1/agent/jobs/${encodeURIComponent(jobId)}`,
       { method: "GET" },
       scope,
     );
+    return response.job;
   }
 
-  async cancel(jobId: string, scope?: PlatosScope): Promise<{ status: string }> {
-    return this.client._fetch<{ status: string }>(
-      `/api/v1/agent/jobs/${encodeURIComponent(jobId)}/cancel`,
-      { method: "POST" },
+  async update(
+    jobId: string,
+    input: UpdateJobInput,
+    scope?: PlatosScope,
+  ): Promise<PlatosJob> {
+    const response = await this.client._fetch<{ job: PlatosJob }>(
+      `/api/v1/agent/jobs/${encodeURIComponent(jobId)}`,
+      { method: "PATCH", body: JSON.stringify(input) },
+      scope,
+    );
+    return response.job;
+  }
+
+  async delete(jobId: string, scope?: PlatosScope): Promise<DeleteJobResult> {
+    return this.client._fetch<DeleteJobResult>(
+      `/api/v1/agent/jobs/${encodeURIComponent(jobId)}`,
+      { method: "DELETE" },
       scope,
     );
   }
 
-  async replay(jobId: string, scope?: PlatosScope): Promise<JobHandle> {
-    return this.client._fetch<JobHandle>(
-      `/api/v1/agent/jobs/${encodeURIComponent(jobId)}/replay`,
-      { method: "POST" },
+  async dispatch(
+    jobId: string,
+    payload: Record<string, unknown> = {},
+    scope?: PlatosScope,
+  ): Promise<DispatchJobResult> {
+    return this.client._fetch<DispatchJobResult>(
+      `/api/v1/agent/jobs/${encodeURIComponent(jobId)}/dispatch`,
+      { method: "POST", body: JSON.stringify({ payload }) },
       scope,
     );
   }
 }
-
-/** @deprecated since 1.0.0; use `PlatosJob`. Removed in 2.0.0. */
-export type TriggerRunSummary = PlatosJob;
-/** @deprecated since 1.0.0; use `JobOptions`. Removed in 2.0.0. */
-export type TriggerTaskOptions = JobOptions;
-/** @deprecated since 1.0.0; use `JobHandle`. Removed in 2.0.0. */
-export type TriggerHandle = JobHandle;

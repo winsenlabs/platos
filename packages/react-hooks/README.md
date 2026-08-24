@@ -1,14 +1,14 @@
 # `@platos/react-hooks`
 
-Platos-native React hooks for agent streaming, context, input streams, and
-artifact rendering.
+Platos-native React hooks for agent streaming, client context, and artifact
+rendering.
 
-The 1.0 surface exports `usePlatosClient`, `useAgentStream`,
-`useInputStreamSend`, the Platos contexts, and `PlatosArtifact`.
+The 1.0 surface exports `PlatosProvider`, `usePlatosClient`, `useAgentStream`,
+the canonical stream event helpers, and `PlatosArtifact`.
 
-Vendor-bound workflow hooks were removed in 1.0.0. Use `PlatosClient.turns`
-and `PlatosClient.jobs` for canonical Turn and Job workflows. Stream consumers
-must handle `job_update` with `jobId`; the canonical runtime tool is
+Vendor-bound workflow, input-stream, API-client, and auth-context hooks were
+removed in 1.0.0. Use `PlatosClient.jobs` for canonical Job workflows. Stream
+consumers must handle `job_update` with `jobId`; the canonical runtime tool is
 `spawn_job`.
 
 See [`docs/sdk-v1-migration.md`](../../docs/sdk-v1-migration.md).

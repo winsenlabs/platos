@@ -197,7 +197,6 @@ export function usePlatosChat(args: UsePlatosChatArgs): UsePlatosChatResult {
             contextType: args.perTurn?.contextType,
             contextId: args.perTurn?.contextId,
             attachmentIds: args.perTurn?.attachmentIds,
-            sessionContextOverride: args.perTurn?.sessionContextOverride,
             signal: ac.signal,
           },
         )) {
@@ -259,7 +258,6 @@ export function usePlatosChat(args: UsePlatosChatArgs): UsePlatosChatResult {
       args.perTurn?.contextType,
       args.perTurn?.contextId,
       args.perTurn?.attachmentIds,
-      args.perTurn?.sessionContextOverride,
       args.onError,
     ],
   );

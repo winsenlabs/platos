@@ -9,17 +9,12 @@ Python SDKs.
 
 | Before v1 | v1 replacement | Compatibility/removal |
 |---|---|---|
-| `client.bgo` | `client.jobs` | Deprecated in 1.0.0; removed in 2.0.0 |
-| `client.trigger` | `client.jobs` | Deprecated in 1.0.0; removed in 2.0.0 |
-| `TriggerTaskCatalogEntry` | Jobs are created directly by type | Deprecated in 1.0.0; removed in 2.0.0 |
-| `TriggerRunSummary` | `PlatosJob` | Type alias deprecated in 1.0.0; removed in 2.0.0 |
-| `TriggerScheduleSummary` | schedule through the Jobs API | Deprecated in 1.0.0; removed in 2.0.0 |
-| `TriggerTaskOptions` | `JobOptions` | Type alias deprecated in 1.0.0; removed in 2.0.0 |
-| `TriggerHandle` | `JobHandle` | Type alias deprecated in 1.0.0; removed in 2.0.0 |
-| monitoring run lists | `client.turns.list()` | Old method removed in 1.0.0 |
+| `client.bgo` | `client.jobs` | Removed in 1.0.0; the nested legacy API cannot map truthfully to canonical Job routes |
+| `client.trigger` | `client.jobs` | Removed in 1.0.0; the nested legacy API cannot map truthfully to canonical Job routes |
+| `Trigger*` client types | Canonical Job types | Removed in 1.0.0 |
+| monitoring run lists | Canonical Turn collection | Old method removed in 1.0.0; public Turn routes are not exposed by this SDK until the runtime provides `/api/v1/agent/turns` |
 
-The Python `client.bgo`/`client.trigger` properties follow the same 2.0.0
-removal date.
+The Python `client.bgo`/`client.trigger` properties are also removed in 1.0.0.
 
 ## Streaming
 
@@ -35,10 +30,16 @@ emitted as dual aliases.
 
 ## React hooks
 
-`useRun`, `useRealtime`, `useTaskTrigger`, `useWaitToken`, and `trigger-swr`
-were vendor-bound surfaces and are removed from `@platos/react-hooks` in 1.0.0.
-Use `@platosdev/client` through `usePlatosClient`, then call `client.turns` or
-`client.jobs`.
+`useRun`, `useRealtime`, `useTaskTrigger`, `useWaitToken`, `useInputStreamSend`,
+`useApiClient`, the vendor auth contexts, and `trigger-swr` were vendor-bound
+surfaces and are removed from `@platos/react-hooks` in 1.0.0. Use
+`@platosdev/client` through `usePlatosClient`, then call `client.jobs`.
+
+## Browser context safety
+
+The public TypeScript client, Python client, and React widget no longer accept
+per-message session-context overrides. Context simulation is an operator-only
+runtime concern and is not part of a browser or end-user SDK payload.
 
 ## Tool registration
 
@@ -59,5 +60,5 @@ ancestry.
 - npm packages use Changesets and receive a major release for this migration.
 - `platos-client` and `platools` on PyPI are set explicitly to `1.0.0`, because
   Changesets does not update `pyproject.toml`.
-- Deprecated aliases above remain for the full 1.x line and are removed in
-  2.0.0. Names marked removed in 1.0.0 have no compatibility export.
+- Names marked removed in 1.0.0 have no compatibility export. The old nested
+  BGO/Trigger namespaces are intentionally not represented as shallow aliases.

@@ -8,7 +8,7 @@
  *   - Open Socket.IO connections for the realtime streaming module.
  *
  * Agent APIs are attached on construction so consumers can write
- * `client.agents.list()`, `client.turns.list()`, and `client.jobs.list()`.
+ * `client.agents.list()` and `client.jobs.list()`.
  */
 
 import { io, type Socket } from "socket.io-client";
@@ -29,7 +29,6 @@ import { MessagesApi } from "./apis/messages.js";
 import { ThreadsApi } from "./apis/threads.js";
 import { ToolsApi } from "./apis/tools.js";
 import { JobsApi } from "./apis/jobs.js";
-import { TurnsApi } from "./apis/turns.js";
 import type {
   PlatosClientOptions,
   PlatosRetryOptions,
@@ -72,8 +71,6 @@ const sleep = (ms: number, signal?: AbortSignal) =>
 export class PlatosClient {
   readonly agents: AgentsApi;
   readonly threads: ThreadsApi;
-  /** Completed user-to-agent units of work. */
-  readonly turns: TurnsApi;
   /** EOBD.85 — human-in-the-loop approval queue. */
   readonly approvals: ApprovalsApi;
   /** EOBD.85 — read-only budget cap + status surface. */
@@ -98,12 +95,6 @@ export class PlatosClient {
   readonly messages: MessagesApi;
   /** Platos-owned asynchronous background work. */
   readonly jobs: JobsApi;
-  /**
-   * @deprecated since 1.0.0 — use `client.jobs`. Removed in 2.0.0.
-   */
-  readonly bgo: JobsApi;
-  /** @deprecated since 1.0.0 — use `client.jobs`. Removed in 2.0.0. */
-  readonly trigger: JobsApi;
 
   private readonly opts: PlatosClientOptions;
   private sessionToken: string | undefined;
@@ -124,7 +115,6 @@ export class PlatosClient {
     this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.agents = new AgentsApi(this);
     this.threads = new ThreadsApi(this);
-    this.turns = new TurnsApi(this);
     // EOBD.85 — new dashboard-facing namespaces.
     this.approvals = new ApprovalsApi(this);
     this.budgets = new BudgetsApi(this);
@@ -132,8 +122,6 @@ export class PlatosClient {
     this.tools = new ToolsApi(this);
     this.messages = new MessagesApi(this);
     this.jobs = new JobsApi(this);
-    this.bgo = this.jobs;
-    this.trigger = this.jobs;
   }
 
   /** Update the session token in place (e.g. after a manual refresh). */

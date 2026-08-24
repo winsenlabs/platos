@@ -97,22 +97,10 @@ class PlatosClient:
         from platos_client.apis.agents import AgentsApi
         from platos_client.apis.threads import ThreadsApi
         from platos_client.apis.jobs import JobsApi
-        from platos_client.apis.turns import TurnsApi
 
         self.agents = AgentsApi(self)
         self.threads = ThreadsApi(self)
-        self.turns = TurnsApi(self)
         self.jobs = JobsApi(self)
-
-    @property
-    def bgo(self) -> Any:
-        """Deprecated since 1.0.0; use ``jobs``. Removed in 2.0.0."""
-        return self.jobs
-
-    @property
-    def trigger(self) -> Any:
-        """Deprecated since 1.0.0; use ``jobs``. Removed in 2.0.0."""
-        return self.jobs
 
     async def __aenter__(self) -> "PlatosClient":
         return self

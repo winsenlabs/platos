@@ -135,7 +135,6 @@ class ThreadsApi:
         dynamic_blocks: dict[str, str] | None = None,
         attachment_ids: list[str] | None = None,
         model_label: str | None = None,
-        session_context_override: dict[str, Any] | None = None,
         max_reconnect_retries: int = _DEFAULT_MAX_RECONNECT,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Send a message on a thread and stream events back.
@@ -170,8 +169,6 @@ class ThreadsApi:
                 payload["attachmentIds"] = attachment_ids
             if model_label:
                 payload["modelLabel"] = model_label
-            if session_context_override is not None:
-                payload["sessionContextOverride"] = session_context_override
             frame = f'42{self._client.socket_namespace},["message",{json.dumps(payload)}]'
             await ws.send(frame)
 

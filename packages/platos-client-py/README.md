@@ -2,7 +2,7 @@
 
 Official Python SDK for [Platos](https://platos.dev) — the open-source agent runtime.
 
-Agents · threads · Turns · Jobs · realtime streaming.
+Agents · threads · Jobs · realtime streaming.
 
 ## Install
 
@@ -132,11 +132,11 @@ except PlatosServerError:
 |---|---|
 | `client.agents` | `list`, `get`, `list_versions` |
 | `client.threads` | `create`, `list`, `get`, `messages`, `artifacts`, `send` (streaming) |
-| `client.turns` | `list`, `get` |
-| `client.jobs` | `list`, `spawn`, `get`, `cancel`, `replay` |
+| `client.jobs` | `list`, `create`, `get`, `update`, `delete`, `dispatch` |
 
-`client.bgo` and `client.trigger` are deprecated compatibility aliases for
-`client.jobs`. They were deprecated in 1.0.0 and are removed in 2.0.0.
+`client.bgo`, `client.trigger`, and their nested legacy methods are removed in
+1.0.0 because they cannot map truthfully to canonical Job routes. Canonical
+Turn methods will be added when the runtime exposes `/api/v1/agent/turns`.
 
 ## Cross-language parity
 
