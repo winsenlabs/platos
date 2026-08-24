@@ -22,6 +22,9 @@
 
 import { z } from "zod";
 import { jsonSchema, type Schema } from "ai";
+import Ajv from "ajv";
+
+const jsonSchemaValidator = new Ajv({ allErrors: true, strict: false });
 
 /**
  * Error thrown when the LLM fails to produce valid output twice in a row
@@ -99,7 +102,18 @@ export function normalizeSchema(
   if (typeof input === "object") {
     const keys = Object.keys(input as Record<string, unknown>);
     if (keys.length === 0) return null;
-    return jsonSchema(input as any);
+    const validateJson = jsonSchemaValidator.compile(input as any);
+    return jsonSchema(input as any, {
+      validate(value) {
+        if (validateJson(value)) return { success: true, value };
+
+        const error = new Error("JSON Schema validation failed") as Error & {
+          errors?: typeof validateJson.errors;
+        };
+        error.errors = validateJson.errors;
+        return { success: false, error };
+      },
+    });
   }
 
   // Anything else (strings etc.) — refuse rather than silently succeed.

@@ -193,6 +193,9 @@ importers:
       ai:
         specifier: ^7.0.28
         version: 7.0.28(zod@3.25.76)
+      ajv:
+        specifier: 8.18.0
+        version: 8.18.0
       chat:
         specifier: ^4.34.0
         version: 4.34.0(ai@7.0.28(zod@3.25.76))(zod@3.25.76)
