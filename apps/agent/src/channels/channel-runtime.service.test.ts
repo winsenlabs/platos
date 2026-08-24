@@ -465,7 +465,7 @@ describe("ChannelRuntimeService durable Slack rotation", () => {
   });
 
   it.each(["REPAIR_REQUIRED", "REFRESHING"])(
-    "fails closed after restart when a prior attempt is %s",
+    "fails closed after restart when a prior refresh is %s",
     async (tokenRefreshState) => {
       const { service } = serviceHarness();
       const fetchSpy = vi.spyOn(globalThis, "fetch");

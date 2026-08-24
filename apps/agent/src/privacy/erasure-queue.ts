@@ -58,11 +58,11 @@
  * store is finished by an operator supplying the id, not by the queue. Between
  * "the queue can self-heal" and "the receipt never overstates", the second wins.
  *
- * ATTEMPTS AND LEASES
+ * RETRIES AND LEASES
  *
  * Backoff is deterministic rather than jittered. These are rare, operator-
  * visible operations, not a high-fanout retry storm, and a predictable
- * `nextAttemptAt` is one an operator can reason about — and a test can assert.
+ * `nextRetryAt` is one an operator can reason about — and a test can assert.
  *
  * Every destructive pass runs under a lease, including the first one. That is
  * what makes retry idempotent: two concurrent resumes cannot both sweep, and a
@@ -79,9 +79,9 @@ import {
 } from "./erasure-receipt";
 import type { SubjectKeys, SubjectScope } from "./subject-graph";
 
-/** Attempts before the queue stops re-driving and leaves it for an operator. */
-export const DEFAULT_MAX_ATTEMPTS = 8;
-/** First retry delay; doubles per attempt. */
+/** Retries before the queue stops re-driving and leaves it for an operator. */
+export const DEFAULT_MAX_RETRIES = 8;
+/** First retry delay; doubles per retry. */
 export const BASE_BACKOFF_MS = 60_000;
 /** Ceiling, so a long-broken store is still retried roughly four times a day. */
 export const MAX_BACKOFF_MS = 6 * 60 * 60 * 1000;
@@ -135,43 +135,43 @@ export interface ErasureResumePlan {
   attachmentObjects: number;
 }
 
-/** Attempt ceiling, overridable per deployment. */
-export function maxAttempts(): number {
-  const raw = Number(process.env.PLATOS_ERASURE_MAX_ATTEMPTS);
-  if (!Number.isFinite(raw) || raw < 1) return DEFAULT_MAX_ATTEMPTS;
+/** Retry ceiling, overridable per deployment. */
+export function maxRetries(): number {
+  const raw = Number(process.env.PLATOS_ERASURE_MAX_RETRIES);
+  if (!Number.isFinite(raw) || raw < 1) return DEFAULT_MAX_RETRIES;
   return Math.floor(raw);
 }
 
-/** Delay before attempt N+1, doubling and capped. */
-export function backoffMs(attempts: number): number {
-  const exponent = Math.max(0, Math.floor(attempts) - 1);
+/** Delay before retry N+1, doubling and capped. */
+export function backoffMs(retryCount: number): number {
+  const exponent = Math.max(0, Math.floor(retryCount) - 1);
   // Cap the exponent too: 2 ** 1024 is Infinity, and Infinity * 0 is NaN.
   const scaled = BASE_BACKOFF_MS * 2 ** Math.min(exponent, 32);
   return Math.min(scaled, MAX_BACKOFF_MS);
 }
 
 /** True once the queue should stop re-driving and wait for an operator. */
-export function isExhausted(attempts: number): boolean {
-  return attempts >= maxAttempts();
+export function isExhausted(retryCount: number): boolean {
+  return retryCount >= maxRetries();
 }
 
 /**
  * When the operation should next be picked up, or null when it should not be.
  *
- * Null is not "abandoned": the row keeps its receipt, its plan and its attempt
+ * Null is not "abandoned": the row keeps its receipt, its plan and its retry
  * count, and the retry route still works. It only means the queue stops
  * re-driving something that has failed the same way eight times, because the
- * ninth automated attempt teaches nobody anything.
+ * ninth automated pass teaches nobody anything.
  */
-export function scheduleAfterAttempt(
+export function scheduleAfterRetry(
   receipt: ErasureReceipt,
   now: Date,
-): { nextAttemptAt: Date | null; reason: "settled" | "blocked" | "exhausted" | "scheduled" } {
-  if (receipt.status === "completed") return { nextAttemptAt: null, reason: "settled" };
-  if (receipt.status === "blocked_legal_hold") return { nextAttemptAt: null, reason: "blocked" };
-  if (isExhausted(receipt.attempts)) return { nextAttemptAt: null, reason: "exhausted" };
+): { nextRetryAt: Date | null; reason: "settled" | "blocked" | "exhausted" | "scheduled" } {
+  if (receipt.status === "completed") return { nextRetryAt: null, reason: "settled" };
+  if (receipt.status === "blocked_legal_hold") return { nextRetryAt: null, reason: "blocked" };
+  if (isExhausted(receipt.retryCount)) return { nextRetryAt: null, reason: "exhausted" };
   return {
-    nextAttemptAt: new Date(now.getTime() + backoffMs(receipt.attempts)),
+    nextRetryAt: new Date(now.getTime() + backoffMs(receipt.retryCount)),
     reason: "scheduled",
   };
 }

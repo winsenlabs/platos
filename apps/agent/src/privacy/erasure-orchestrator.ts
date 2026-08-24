@@ -118,7 +118,7 @@ export async function runErasure(
       ...receipt,
       status: "blocked_legal_hold",
       legalHoldPolicyId: opts.legalHold.policyId,
-      attempts: receipt.attempts + 1,
+      retryCount: receipt.retryCount + 1,
     };
   }
 
@@ -131,7 +131,7 @@ export async function runErasure(
       ...receipt,
       status: "verification_failed",
       startedAt: receipt.startedAt ?? now(),
-      attempts: receipt.attempts + 1,
+      retryCount: receipt.retryCount + 1,
       stores: receipt.stores.length ? receipt.stores : EXECUTION_ORDER.map(pendingStore),
     };
   }
@@ -178,7 +178,7 @@ export async function runErasure(
     status,
     startedAt: receipt.startedAt ?? now(),
     completedAt: status === "completed" ? now() : receipt.completedAt,
-    attempts: receipt.attempts + 1,
+    retryCount: receipt.retryCount + 1,
   };
 }
 

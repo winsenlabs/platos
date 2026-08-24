@@ -80,7 +80,7 @@ function publicChannel(row: any): Record<string, unknown> {
     deliveryState: latest
       ? {
           status: latest.status,
-          attemptCount: latest.attemptCount,
+          retryCount: latest.retryCount,
           deliveredAt: latest.deliveredAt,
           lastErrorCode: latest.lastErrorCode,
           lastErrorMessage: latest.lastErrorMessage,
@@ -99,7 +99,7 @@ const channelInclude = {
     take: 1,
     select: {
       status: true,
-      attemptCount: true,
+      retryCount: true,
       deliveredAt: true,
       lastErrorCode: true,
       lastErrorMessage: true,
@@ -426,7 +426,7 @@ export function buildAlertChannelToolHandlers(deps: {
     {
       name: "alert_channels.test",
       description:
-        "Send a synthetic test and persist a visible success/failure attempt. Channel credentials are resolved only at dispatch.",
+        "Send a synthetic test and persist a visible delivery result. Channel credentials are resolved only at dispatch.",
       inputSchema: {
         type: "object",
         required: ["id"],
@@ -783,14 +783,14 @@ async function finishDelivery(
   const updated = await prisma.$transaction(async (tx: any) => {
     const current = await tx.alertDelivery.findUniqueOrThrow({
       where: { id: delivery.id },
-      select: { attemptCount: true },
+      select: { retryCount: true },
     });
-    const attemptNumber = current.attemptCount + 1;
-    await tx.alertDeliveryAttempt.create({
+    const retryNumber = current.retryCount + 1;
+    await tx.alertDeliveryRetry.create({
       data: {
         environmentId: delivery.environmentId,
         deliveryId: delivery.id,
-        attemptNumber,
+        retryNumber,
         status: ok ? "SUCCEEDED" : "FAILED",
         responseStatus: statusCode,
         errorCode,
@@ -802,8 +802,8 @@ async function finishDelivery(
       where: { id: delivery.id },
       data: {
         status: ok ? "SUCCEEDED" : "FAILED",
-        attemptCount: attemptNumber,
-        lastAttemptAt: finishedAt,
+        retryCount: retryNumber,
+        lastRetryAt: finishedAt,
         deliveredAt: ok ? finishedAt : null,
         lastStatusCode: statusCode,
         lastErrorCode: errorCode,
@@ -812,7 +812,7 @@ async function finishDelivery(
       select: {
         id: true,
         status: true,
-        attemptCount: true,
+        retryCount: true,
         deliveredAt: true,
         lastStatusCode: true,
         lastErrorCode: true,

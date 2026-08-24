@@ -160,7 +160,7 @@ describe("budget shared-pool floor", () => {
     expect(budgetExhausted(49, 50)).toBe(false);
   });
 
-  it("exhausted at or above the ceiling (clean-stop trigger)", () => {
+  it("exhausted at or above the ceiling (clean-stop condition)", () => {
     expect(budgetExhausted(50, 50)).toBe(true);
     expect(budgetExhausted(51, 50)).toBe(true);
   });

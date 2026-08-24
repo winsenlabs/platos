@@ -40,6 +40,14 @@ const debtLifecycle = {
   expiresOn: "2026-09-15",
 };
 
+const migrationArchaeologyLifecycle = {
+  classification: "migration-archaeology",
+  owner: "Data Platform",
+  rationale: "Preserves immutable SQL migration syntax byte-for-byte.",
+  removalPolicy: "Remove only if the historical migration is removed with its database lineage.",
+  removalEvent: "The immutable migration and every database lineage that applied it are retired.",
+};
+
 function exceptionFor(finding, lifecycle = vendorLifecycle) {
   const exception = {
     path: finding.path,
@@ -361,6 +369,10 @@ test("the production manifest retains only the explicit SecondarySurfaces vendor
   assert(entries.every((entry) => entry.classification === "vendor"));
   assert(!entries.some((entry) => entry.classification === "migration-debt"));
   assert(entries.every((entry) => entry.localContextSha256 && entry.semanticContextSha256));
+  assert(!manifest.exceptions.some((entry) => entry.classification === "migration-debt"));
+  assert(
+    !manifest.exceptions.some((entry) => ["WIN-144", "WIN-145", "WIN-146"].includes(entry.trackingIssue))
+  );
 });
 
 test("one exception cannot approve an added duplicate occurrence", () => {
@@ -490,7 +502,27 @@ test("migration debt requires a valid tracking issue and expires fail-closed", (
   assert.match(expired.manifestErrors.join("\n"), /expired on 2026-08-23/u);
 });
 
-test("vendor and technical exceptions require an event-bound removal condition", () => {
+test("migration archaeology is event-bound and restricted to immutable Prisma migrations", () => {
+  const path = "internal-packages/example/prisma/migrations/20260824000000_example/migration.sql";
+  const { root, manifest } = fixture({ [path]: 'CREATE TRIGGER "immutable_example";\n' });
+  const [finding] = findingsWithoutExceptions(root, manifest);
+  const exception = exceptionFor(finding, migrationArchaeologyLifecycle);
+  assert.deepEqual(validateManifest({ ...manifest, exceptions: [exception] }), []);
+
+  const outsideMigration = {
+    ...exception,
+    path: "src/product.ts",
+  };
+  assert.match(
+    validateManifest({ ...manifest, exceptions: [outsideMigration] }).join("\n"),
+    /restricted to immutable Prisma migration\.sql files/u
+  );
+
+  delete exception.removalEvent;
+  assert.match(validateManifest({ ...manifest, exceptions: [exception] }).join("\n"), /removalEvent/u);
+});
+
+test("non-debt exceptions require an event-bound removal condition", () => {
   const { root, manifest } = fixture({ "src/external.ts": "External Trigger\n" });
   const [finding] = findingsWithoutExceptions(root, manifest);
   const exception = exceptionFor(finding, vendorLifecycle);

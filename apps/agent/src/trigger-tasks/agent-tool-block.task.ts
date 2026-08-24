@@ -91,7 +91,7 @@ export interface AgentToolBlockOutput {
   result?: unknown;
   error?: string;
   latencyMs: number;
-  attempts: number;
+  retryCount: number;
 }
 
 /**
@@ -134,7 +134,7 @@ export const agentToolBlock = task({
   queue: { concurrencyLimit: parseInt(process.env.PLATOS_WORKER_CONCURRENCY ?? "50", 10) },
   maxDuration: 600,
   // Trigger.dev handles exponential backoff via its native retry policy.
-  // We set maxAttempts=3 so transient entity-side 5xx/timeouts self-heal
+  // We set the vendor maxAttempts=3 so transient entity-side 5xx/timeouts self-heal
   // without user intervention; final failure resolves (not rejects) so
   // the handle reports a structured `{ status: "failed" }`.
   retry: { maxAttempts: 3, factor: 2, minTimeoutInMs: 1000, maxTimeoutInMs: 10000 },
@@ -148,7 +148,7 @@ export const agentToolBlock = task({
         tool: payload.tool ?? "unknown",
         error,
         latencyMs: 0,
-        attempts: ctx?.attempt?.number ?? 1,
+        retryCount: Math.max(0, (ctx?.attempt?.number ?? 1) - 1),
       };
     }
     const { tool, params, scope, origin, endUserId } = normalized;
@@ -224,7 +224,7 @@ export const agentToolBlock = task({
         const errText = await res.text().catch(() => "");
         // Throwing here hands control back to trigger.dev's retry engine —
         // 5xx / network errors get retried per the `retry` config above.
-        // On the final attempt the outer catch turns it into a structured
+        // On the final retry the outer catch turns it into a structured
         // failure payload.
         throw new Error(`internal/execute-tool ${res.status}: ${errText.slice(0, 200)}`);
       }
@@ -246,7 +246,7 @@ export const agentToolBlock = task({
           tool,
           error: json.error,
           latencyMs,
-          attempts: ctx?.attempt?.number ?? 1,
+          retryCount: Math.max(0, (ctx?.attempt?.number ?? 1) - 1),
         };
       }
       return {
@@ -254,25 +254,25 @@ export const agentToolBlock = task({
         tool,
         result: json.result,
         latencyMs,
-        attempts: ctx?.attempt?.number ?? 1,
+        retryCount: Math.max(0, (ctx?.attempt?.number ?? 1) - 1),
       };
     } catch (err: any) {
       const latencyMs = Date.now() - startedAt;
-      const attempts = ctx?.attempt?.number ?? 1;
+      const vendorPassNumber = ctx?.attempt?.number ?? 1;
       // `ctx.run.maxAttempts` is optional; default to the task-level retry
       // config (3). If the SDK doesn't surface it on this version we fall
-      // back to the attempt bound.
+      // back to the vendor retry bound.
       const maxAttempts = (ctx as any)?.run?.maxAttempts ?? 3;
-      const isFinal = attempts >= maxAttempts;
+      const isFinal = vendorPassNumber >= maxAttempts;
       if (!isFinal) {
         // Re-throw so trigger.dev's retry policy fires. The dashboard still
-        // shows the attempt + reason thanks to metadata above.
+        // shows the retry + reason thanks to metadata above.
         throw err;
       }
       logger.error("agent-tool-block final failure", {
         tool,
         error: err?.message,
-        attempts,
+        retryCount: Math.max(0, vendorPassNumber - 1),
       });
       metadata.set("progress", { step: 3, total: 3, stage: "failed" });
       return {
@@ -280,7 +280,7 @@ export const agentToolBlock = task({
         tool,
         error: err?.message || String(err),
         latencyMs,
-        attempts,
+        retryCount: Math.max(0, vendorPassNumber - 1),
       };
     }
   },

@@ -23,7 +23,7 @@
  * and `toolkit` — and no marker. So the fallback was dead code and every direct
  * slug call failed with "not found or not enabled for scope".
  *
- * Measured on the live deployment: 13 distinct slugs, 28 failed attempts across
+ * Measured on the live deployment: 13 distinct slugs, 28 failed calls across
  * Slack, Gmail, Google Calendar, Notion and Tavily, over at least three days.
  * Worse than the failures themselves, the error text reads as a permissions
  * problem, so the agent told the operator its Slack connection was broken and

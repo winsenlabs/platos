@@ -82,7 +82,7 @@ PLATOS_URL=ws://<your-host-ip>:3100/tools/sync docker compose up --build
    - **Entity**: `hello-world-local` (or whatever you named it)
    - **Status**: `connected` (green dot)
    - **Tools**: 1
-3. If the row is missing or status shows `disconnected`, check the backend's logs — the SDK prints a reconnect attempt every time it fails, with the reason.
+3. If the row is missing or status shows `disconnected`, check the backend's logs — the SDK prints each reconnect retry with the reason.
 4. Open **Agents → Connected Entities → hello-world-local** — **Last Connected** should be within the last few seconds and **Tools registered** should show 1 (`echo`).
 
 ### 5. Smoke-test the tool

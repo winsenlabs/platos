@@ -78,7 +78,7 @@ async function main(): Promise<void> {
     `[entity-hello-world] connecting to ${process.env.PLATOS_URL} …`,
   );
   // `connect()` runs forever, reconnecting with exponential backoff on
-  // network drops and re-syncing all registered tools on each attempt.
+    // network drops and re-syncing all registered tools on each retry.
   await platools.connect();
 }
 

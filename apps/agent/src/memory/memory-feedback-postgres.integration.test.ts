@@ -527,15 +527,15 @@ describe("memory feedback PostgreSQL recall semantics", () => {
       sourceTurnIds: [turnId],
     });
     await persistRating(prisma, primary, turnId, 1);
-    const attempts = await Promise.all([
+    const updates = await Promise.all([
       persistRating(prisma, primary, turnId, -1),
       persistRating(prisma, primary, turnId, 1),
     ]);
     await Promise.all(
-      attempts.map((attempt) =>
+      updates.map((update) =>
         feedback.reconcilePersistedRating({
-          ratingId: attempt.id,
-          expectedRevision: attempt.revision,
+          ratingId: update.id,
+          expectedRevision: update.revision,
         })
       )
     );

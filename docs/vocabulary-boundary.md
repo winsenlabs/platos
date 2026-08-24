@@ -29,8 +29,8 @@ Each exception records:
   method, so same-named methods in different classes are independent;
 - line and column values for diagnostics only; they do not participate in
   matching;
-- a classification (`vendor`, `migration-debt`, `technical`, or
-  `boundary-spec`), owner, rationale, and removal policy;
+- a classification (`vendor`, `migration-debt`, `migration-archaeology`,
+  `technical`, or `boundary-spec`), owner, rationale, and removal policy;
 - either a concrete removal event, or for migration debt, a tracking issue and
   machine-validated expiry date.
 
@@ -53,11 +53,14 @@ ambiguous exception.
 
 ## Lifecycle policy
 
-Migration-debt exceptions are owned by WIN-144, WIN-145, or WIN-146 and expire
-on **2026-09-15**, the coordinated near-term M5 release deadline. The gate fails
-closed after that date. Vendor, technical, and boundary-spec exceptions do not
+The manifest format supports date-bound migration debt, and the gate fails
+closed after any such expiry date. The production manifest contains no
+migration-debt exceptions and no WIN-144, WIN-145, or WIN-146 tracking waivers.
+Immutable Prisma `migration.sql` findings use the separate
+`migration-archaeology` classification, which validation rejects anywhere else.
+Vendor, migration-archaeology, technical, and boundary-spec exceptions do not
 have calendar waivers; each is bound to the event that removes its exact API,
-artifact, syntax, or boundary test.
+database lineage, artifact, syntax, or boundary test.
 
 ## Legitimate external names
 
@@ -71,8 +74,8 @@ domain identifiers.
 
 `TRIGGER_INTERNAL_SECRET` is not a vendor API name: it authenticates Platos-owned
 components and is therefore forbidden. Likewise, `spawn_bgo` and inherited
-product nouns remain forbidden while anchored migration-debt occurrences await
-the ordered M5 migration.
+product nouns remain forbidden outside explicit historical or boundary
+specifications.
 
 Run the gate and its mutation tests with:
 

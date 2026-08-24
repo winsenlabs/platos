@@ -371,14 +371,14 @@ describeWithDatabase("Postman execution PostgreSQL concurrency and leakage", () 
     });
     expect(JSON.stringify(executionRows[0])).not.toContain(sentinel);
 
-    const triggerScope = buildSessionScope(capturedDispatchScopes[0] as any);
-    expect(triggerScope).toMatchObject({
+    const dispatchScope = buildSessionScope(capturedDispatchScopes[0] as any);
+    expect(dispatchScope).toMatchObject({
       userId: "postman-external-subject",
       operatorUserId: ids.operatorUserId,
       sessionContextHandle: expect.stringMatching(/^[0-9a-f-]{36}$/),
     });
-    expect(triggerScope).not.toHaveProperty("sessionContext");
-    expect(JSON.stringify(triggerScope)).not.toContain(sentinel);
+    expect(dispatchScope).not.toHaveProperty("sessionContext");
+    expect(JSON.stringify(dispatchScope)).not.toContain(sentinel);
     expect(traceSessionContext({
       ...(capturedDispatchScopes[0] as any),
       sessionContext: { account: sentinel },

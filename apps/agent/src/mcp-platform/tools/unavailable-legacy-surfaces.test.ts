@@ -189,12 +189,12 @@ describe("canonical WIN-124 MCP surfaces", () => {
     );
   });
 
-  it("persists webhook test credential failures as terminal delivery attempts", async () => {
-    const attemptCreate = vi.fn().mockResolvedValue({ id: "attempt-a" });
+  it("persists webhook test credential failures as terminal delivery retries", async () => {
+    const retryCreate = vi.fn().mockResolvedValue({ id: "retry-a" });
     const deliveryUpdate = vi.fn().mockResolvedValue({
       id: "delivery-a",
       status: "FAILED",
-      attemptCount: 1,
+      retryCount: 1,
       deliveredAt: null,
       lastStatusCode: null,
       lastErrorCode: "credential_unavailable",
@@ -219,10 +219,10 @@ describe("canonical WIN-124 MCP surfaces", () => {
       },
       $transaction: vi.fn(async (callback: (tx: any) => unknown) => callback({
         alertDelivery: {
-          findUniqueOrThrow: vi.fn().mockResolvedValue({ attemptCount: 0 }),
+          findUniqueOrThrow: vi.fn().mockResolvedValue({ retryCount: 0 }),
           update: deliveryUpdate,
         },
-        alertDeliveryAttempt: { create: attemptCreate },
+        alertDeliveryRetry: { create: retryCreate },
       })),
     });
     const handlers = buildAlertChannelToolHandlers({
@@ -240,13 +240,13 @@ describe("canonical WIN-124 MCP surfaces", () => {
       ok: false,
       error: "credential_unavailable",
       message: "Webhook credential is unavailable",
-      delivery: { status: "FAILED", attemptCount: 1 },
+      delivery: { status: "FAILED", retryCount: 1 },
     });
-    expect(attemptCreate).toHaveBeenCalledWith({
+    expect(retryCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         environmentId: "env-a",
         deliveryId: "delivery-a",
-        attemptNumber: 1,
+        retryNumber: 1,
         status: "FAILED",
         errorCode: "credential_unavailable",
         errorMessage: "Webhook credential is unavailable",

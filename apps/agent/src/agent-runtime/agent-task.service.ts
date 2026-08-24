@@ -856,8 +856,8 @@ export class AgentTaskService {
     // rollups describe the same spend.
     const subAgentSteps: SubAgentUsageEvent[] = [];
     // Theme F.5 — when the agent returns a structured output, capture the
-    // validated object + attempt count so it lands in the normalized Turn output.
-    let structuredOutput: { object: unknown; attempts: number } | null = null;
+    // validated object + retry count so it lands in the normalized Turn output.
+    let structuredOutput: { object: unknown; retryCount: number } | null = null;
 
     for await (const event of this.agentService.stream(
       message,
@@ -904,7 +904,7 @@ export class AgentTaskService {
       if (event.type === "structured_output") {
         structuredOutput = {
           object: event.object,
-          attempts: event.attempts,
+          retryCount: event.retryCount,
         };
       }
 
@@ -927,7 +927,7 @@ export class AgentTaskService {
         // deltas that may overlap). Safer to always sum and rely on the
         // finish event being the primary carrier — Vercel AI SDK only
         // emits `meta` in the `finish` chunk + once per structured-output
-        // attempt, not per step.
+        // retry, not per step.
         totalCacheCreationTokens += usage.cacheCreationInputTokens || 0;
         totalCacheReadTokens += usage.cacheReadInputTokens || 0;
         // PRELAUNCH-A1-3 — reasoning tokens.
@@ -1084,7 +1084,7 @@ export class AgentTaskService {
       })),
       latencyMs: Date.now() - turnStartMs,
       structuredOutput: structuredOutput
-        ? { object: structuredOutput.object, attempts: structuredOutput.attempts }
+        ? { object: structuredOutput.object, retryCount: structuredOutput.retryCount }
         : undefined,
     });
     turnFinalized = true;
@@ -1344,7 +1344,7 @@ export class AgentTaskService {
     //    picks it up automatically.
     //
     //    Was a fire-and-forget Promise that didn't survive an agent
-    //    restart and could pile up under load. Now triggers the durable
+        //    restart and could pile up under load. Now starts the durable
     //    `platos.compaction` task with an idempotency key derived from
     //    (threadId + latestMessageId) so a duplicate fire is a no-op.
     //    Falls back to the original in-process behavior when trigger.dev

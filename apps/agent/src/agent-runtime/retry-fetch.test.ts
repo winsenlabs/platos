@@ -38,7 +38,7 @@ describe("makeRetryFetch", () => {
       new Response("ok", { status: 200 }),
     ]);
     const rules: RetryRule[] = [
-      { trigger: "rate-limit", action: "retry", retryCount: 1, backoffMs: 1 },
+      { cause: "rate-limit", action: "retry", retryCount: 1, backoffMs: 1 },
     ];
     const res = await makeRetryFetch(rules, inner)("https://x");
     expect(res.status).toBe(200);
@@ -51,7 +51,7 @@ describe("makeRetryFetch", () => {
       new Response("ok", { status: 200 }),
     ]);
     const rules: RetryRule[] = [
-      { trigger: "rate-limit", action: "retry", retryCount: 1, backoffMs: 99_999, waitForRetryAfter: true },
+      { cause: "rate-limit", action: "retry", retryCount: 1, backoffMs: 99_999, waitForRetryAfter: true },
     ];
     const start = Date.now();
     const res = await makeRetryFetch(rules, inner)("https://x");
@@ -65,7 +65,7 @@ describe("makeRetryFetch", () => {
   it("fails fast on auth errors when rule.action=fail", async () => {
     const inner = scriptFetch([new Response("nope", { status: 401 })]);
     const rules: RetryRule[] = [
-      { trigger: "auth-error", action: "fail" },
+      { cause: "auth-error", action: "fail" },
     ];
     const res = await makeRetryFetch(rules, inner)("https://x");
     expect(res.status).toBe(401);
@@ -78,7 +78,7 @@ describe("makeRetryFetch", () => {
       new TypeError("ECONNRESET"),
     ]);
     const rules: RetryRule[] = [
-      { trigger: "network-error", action: "retry", retryCount: 1, backoffMs: 1 },
+      { cause: "network-error", action: "retry", retryCount: 1, backoffMs: 1 },
     ];
     await expect(makeRetryFetch(rules, inner)("https://x")).rejects.toThrow("ECONNRESET");
     expect((inner as any).calls).toBe(2);
@@ -98,7 +98,7 @@ describe("makeRetryFetch", () => {
       new Response("e", { status: 502 }),
     ]);
     const rules: RetryRule[] = [
-      { trigger: "temporary-error", action: "retry", retryCount: 2, backoffMs: 1 },
+      { cause: "temporary-error", action: "retry", retryCount: 2, backoffMs: 1 },
     ];
     const res = await makeRetryFetch(rules, inner)("https://x");
     expect(res.status).toBe(502);
@@ -108,7 +108,7 @@ describe("makeRetryFetch", () => {
   it("hands fallback-action responses through without retry", async () => {
     const inner = scriptFetch([new Response("rl", { status: 429 })]);
     const rules: RetryRule[] = [
-      { trigger: "rate-limit", action: "fallback", fallbackToRouteLabel: "openai-backup" },
+      { cause: "rate-limit", action: "fallback", fallbackToRouteLabel: "openai-backup" },
     ];
     const res = await makeRetryFetch(rules, inner)("https://x");
     expect(res.status).toBe(429);

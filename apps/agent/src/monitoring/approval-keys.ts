@@ -1,5 +1,5 @@
 /**
- * EOBD.15 — scoped Redis namespace for approval waitpoints.
+ * EOBD.15 — scoped Redis namespace for approval decisions.
  *
  * Approval IDs used to key a global Redis namespace (`approval:${id}`).
  * Any caller with a known approvalId could rpush to that key and wake
@@ -15,7 +15,7 @@ export interface ApprovalScope {
   environmentId: string;
 }
 
-/** Canonical Redis key for an approval waitpoint. */
+/** Canonical Redis key for an approval decision. */
 export function approvalRedisKey(scope: ApprovalScope, approvalId: string): string {
   return `approval:${scope.organizationId}:${scope.projectId}:${scope.environmentId}:${approvalId}`;
 }

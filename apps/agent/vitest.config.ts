@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 /**
  * Pre-launch hardening (LAUNCH-9 follow-up): provide the env vars
  * `apps/agent/src/shared/env.ts` validates eagerly with Zod. Without
- * these, any test path that touches an `env.*` getter triggers a
+ * these, any test path that touches an `env.*` getter causes a
  * Zod validation error before the test logic runs — the failure
  * looks like a logic bug but is purely missing-env. Setup file
  * stamps the minimum-viable values once per worker so unit tests

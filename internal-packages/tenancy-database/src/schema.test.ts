@@ -65,8 +65,17 @@ describe("clean-slate domain schema", () => {
     expect(new Set(domainModelNames).size).toBe(76);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
-    expect(schema).not.toContain("@@map(");
-    expect(schema).not.toContain("@map(");
+    expect(schema.match(/@@map\("[^"]+"\)/g) ?? []).toEqual(['@@map("AlertDeliveryAttempt")']);
+    expect((schema.match(/(?<!@)@map\("[^"]+"\)/g) ?? []).sort()).toEqual([
+      '@map("attempts")',
+      '@map("attempts")',
+      '@map("tokenRefreshAttemptId")',
+      '@map("attemptCount")',
+      '@map("lastAttemptAt")',
+      '@map("attemptNumber")',
+      '@map("triggerType")',
+      '@map("nextAttemptAt")',
+    ].sort());
   });
 
   test("states an onDelete policy for every Prisma-owned foreign key", () => {
@@ -133,7 +142,7 @@ describe("clean-slate domain schema", () => {
       AlertChannelConfiguration: ["channelId", "environmentId", "type", "credentialId"],
       BudgetThresholdEvent: ["environmentId", "budgetId", "windowKey", "threshold"],
       AlertDelivery: ["environmentId", "channelId", "budgetThresholdEventId", "status", "idempotencyKey"],
-      AlertDeliveryAttempt: ["environmentId", "deliveryId", "attemptNumber", "status"],
+      AlertDeliveryRetry: ["environmentId", "deliveryId", "retryNumber", "status"],
       McpToken: ["environmentId", "mintedByUserId", "permissions", "tier"],
       PersonalAccessToken: ["userId", "scopeKind", "organizationId", "projectId", "environmentId"],
       OAuthAuthorizationCode: ["clientId", "userId", "scopeKind", "organizationId", "projectId", "environmentId"],
@@ -406,7 +415,7 @@ describe("clean-slate domain schema", () => {
       "AlertChannelConfiguration",
       "BudgetThresholdEvent",
       "AlertDelivery",
-      "AlertDeliveryAttempt",
+      "AlertDeliveryRetry",
       "Entity",
       "Tool",
       "AdminAudit",

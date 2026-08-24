@@ -1293,7 +1293,7 @@ export class OAuthController {
     // Propagate entity-side errors (user denied, etc.) back to MCP client.
     if (entityError) {
       // We don't have the original redirect_uri without decoding state, so
-      // we attempt to decode and redirect; fall back to a plain JSON error.
+      // we try to decode and redirect; fall back to a plain JSON error.
       if (signedState) {
         const sp = this.verifyAndDecodeState(signedState);
         if (sp) {

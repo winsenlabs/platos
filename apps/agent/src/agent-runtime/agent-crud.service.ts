@@ -262,7 +262,7 @@ export interface CreateAgentDto {
    * means "enabled with defaults" — see MemoryExtractionService.
    */
   extractionPolicy?: ExtractionPolicyInput | null;
-  /** Anonymous embed access is opt-in and Environment deployment specific. */
+  /** Anonymous embed access is opt-in and Environment specific. */
   visibility?: "private" | "public-guest";
 }
 
@@ -299,7 +299,7 @@ export interface UpdateAgentDto {
    * (falls back to defaults); undefined to leave unchanged.
    */
   extractionPolicy?: ExtractionPolicyInput | null;
-  /** Anonymous embed access is opt-in and Environment deployment specific. */
+  /** Anonymous embed access is opt-in and Environment specific. */
   visibility?: "private" | "public-guest";
   /**
    * Theme CTX.1 / CTX.6 — session-context mapping JSON. Extended shape in
@@ -440,7 +440,7 @@ export interface AgentRecord {
   providerKeyId?: string | null;
   /** Per-request model routing table. Null = use legacy single-model config. */
   modelRoutes?: ModelRoute[] | null;
-  /** Environment-owned deployment state projected from AgentBinding. */
+  /** Environment-owned binding state projected from AgentBinding. */
   clusteringId?: string | null;
   /** Compatibility settings carried inside the active AgentVersion. */
   visibility?: string | null;
@@ -1393,7 +1393,7 @@ export class AgentCrudService {
       versionNumber: versionId ? versionNumberById.get(versionId) ?? null : null,
       isCurrent: versionId === binding.activeAgentVersionId,
       isCanary: versionId === binding.canaryAgentVersionId,
-      // Turns attempted against this version, and completed turns among them.
+      // Turns started against this version, and completed turns among them.
       // A version that fails half its turns should not look half as expensive
       // AND half as busy at the same rate.
       turnCount: bucket.turnCount,

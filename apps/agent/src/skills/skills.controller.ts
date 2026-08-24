@@ -81,7 +81,7 @@ export class SkillsController {
     });
     // PIFSP-13 — lazy-seed: if no official skills exist for this org yet
     // (happens on fresh installs where the agent booted before the org was
-    // created), trigger the seeder now and re-list.
+    // created), run the seeder now and re-list.
     if (!result.items.some((s) => s.isOfficial)) {
       await this.seeder.seedForOrg(scope.organizationId).catch(() => {});
       result = await this.registry.listPage(scope, {

@@ -656,7 +656,7 @@ services:
       # not test.platos.dev. Skips Caddy + TLS for the WS hop and is
       # immune to DNS / cert weirdness during local dev.
       # The ?entity= slug is REQUIRED — without it the gateway cannot know
-      # which registered entity is connecting and rejects every attempt, which
+      # which registered entity is connecting and rejects every request, which
       # on test.platos meant a 1s reconnect loop logging ~23 rejections a
       # minute. It must match the entity's externalId in the dashboard.
       PLATOS_URL: "${PLATOS_DOCS_MCP_BRIDGE_PLATOS_URL:-ws://agent:3100/tools/sync?entity=platos-docs-mcp}"

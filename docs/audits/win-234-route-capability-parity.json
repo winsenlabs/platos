@@ -9177,7 +9177,7 @@
       "intent": "Correlate each browser-generated AccessKey attempt with exactly one server response before revealing or discarding private pending material.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "Each pending bearer is keyed by a cryptographically random attempt ID; the browser action and successful persisted Agent response echo that ID, while stale, failed, mismatched, cancelled, and superseded attempts cannot reveal material.",
+      "currentBehavior": "Each pending bearer is keyed by a cryptographically random request ID; the browser action and successful persisted Agent response echo that ID, while stale, failed, mismatched, cancelled, and superseded requests cannot reveal material.",
       "http": [
         {
           "role": "canonical interaction",
@@ -9191,7 +9191,7 @@
             "successStatuses": [
               200
             ],
-            "shape": "Safe AccessKey metadata echoes the matching attempt ID without raw key or keyHash."
+            "shape": "Safe AccessKey metadata echoes the matching request ID without raw key or keyHash."
           },
           "stableErrors": [
             {
@@ -9281,7 +9281,7 @@
       "persistedReadBack": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/credentialSerialization.test.ts proves action success requires the persisted response to echo the submitted attempt ID.",
+          "apps/webapp/test/credentialSerialization.test.ts proves action success requires the persisted response to echo the submitted request ID.",
           "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts proves the Agent echoes requestId only after createOrRotateAccessKey resolves."
         ]
       },
@@ -9310,7 +9310,7 @@
       "concurrency": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/accessKeyLifecycle.test.ts settles overlapping responses out of order and reveals only the latest matching attempt."
+          "apps/webapp/test/accessKeyLifecycle.test.ts settles overlapping responses out of order and reveals only the latest matching request."
         ]
       },
       "recovery": {
@@ -9321,10 +9321,10 @@
       },
       "secretExposure": {
         "status": "verified",
-        "classification": "Private pending material is keyed by cryptographic attempt ID and never serialized.",
+        "classification": "Private pending material is keyed by cryptographic request ID and never serialized.",
         "requirements": [
-          "Keep raw bearer/keyHash/keyPrefix in private pending material keyed by attempt ID.",
-          "Reveal only the pending material whose attempt ID matches the successful persisted response.",
+          "Keep raw bearer/keyHash/keyPrefix in private pending material keyed by request ID.",
+          "Reveal only the pending material whose request ID matches the successful persisted response.",
           "Ignore stale responses and erase superseded, failed, mismatched, or cancelled pending material."
         ]
       },
@@ -9354,7 +9354,7 @@
       ],
       "defect": {
         "status": "verified",
-        "summary": "Cryptographic attempt correlation prevents stale or overlapping responses from revealing the wrong bearer."
+        "summary": "Cryptographic request correlation prevents stale or overlapping responses from revealing the wrong bearer."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",

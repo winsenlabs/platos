@@ -244,7 +244,7 @@ model AuthRateLimitBucket {
   action         AuthRateLimitAction
   identifierHash String
   windowStart    DateTime
-  attempts       Int                 @default(1)
+  requestCount   Int                 @default(1) @map("attempts")
   expiresAt      DateTime
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
@@ -406,7 +406,7 @@ model Environment {
   alertChannels            AlertChannel[]
   budgetThresholdEvents    BudgetThresholdEvent[]
   alertDeliveries          AlertDelivery[]
-  alertDeliveryAttempts    AlertDeliveryAttempt[]
+  alertDeliveryRetries     AlertDeliveryRetry[]
   postmanTemplates        PostmanTemplate[]
   postmanExecutions       PostmanExecution[]
   threads                 Thread[]
@@ -1418,7 +1418,7 @@ model ChannelInstallation {
   lastEventAt            DateTime?
   /// Durable rotating-grant fence: IDLE | REFRESHING | REPAIR_REQUIRED.
   tokenRefreshState      String    @default("IDLE")
-  tokenRefreshAttemptId  String?   @db.Uuid
+  tokenRefreshClaimId    String?   @map("tokenRefreshAttemptId") @db.Uuid
   tokenRefreshStartedAt  DateTime?
   tokenRefreshRepairCode String?
   /// Advances whenever an OAuth/import grant replaces the canonical credential.
@@ -1446,7 +1446,7 @@ model ChannelEventInbox {
   payloadKeyVersion    Int
   encryptedPayload String
   status           String    @default("PENDING")
-  attempts         Int       @default(0)
+  retryCount       Int       @default(0) @map("attempts")
   availableAt      DateTime  @default(now())
   leaseOwner       String?
   leaseExpiresAt   DateTime?
@@ -1768,11 +1768,11 @@ model AlertDelivery {
   kind                   AlertDeliveryKind
   idempotencyKey         String
   status                 AlertDeliveryStatus @default(PENDING)
-  attemptCount           Int                 @default(0)
+  retryCount             Int                 @default(0) @map("attemptCount")
   claimGeneration        Int                 @default(0)
   claimToken             String?             @db.Uuid
   availableAt            DateTime            @default(now())
-  lastAttemptAt          DateTime?
+  lastRetryAt            DateTime?           @map("lastAttemptAt")
   deliveredAt            DateTime?
   lastStatusCode         Int?
   lastErrorCode          String?
@@ -1783,7 +1783,7 @@ model AlertDelivery {
   environment    Environment            @relation(fields: [environmentId], references: [id], onDelete: Restrict)
   channel        AlertChannel           @relation(fields: [channelId, environmentId], references: [id, environmentId], onDelete: Restrict)
   thresholdEvent BudgetThresholdEvent?  @relation(fields: [budgetThresholdEventId, environmentId], references: [id, environmentId], onDelete: Restrict)
-  attempts       AlertDeliveryAttempt[]
+  retries        AlertDeliveryRetry[]
 
   @@unique([id, environmentId])
   @@unique([environmentId, idempotencyKey])
@@ -1792,11 +1792,11 @@ model AlertDelivery {
   @@index([channelId, createdAt])
 }
 
-model AlertDeliveryAttempt {
+model AlertDeliveryRetry {
   id             String              @id @default(uuid()) @db.Uuid
   environmentId  String              @db.Uuid
   deliveryId     String              @db.Uuid
-  attemptNumber  Int
+  retryNumber    Int                 @map("attemptNumber")
   status         AlertDeliveryStatus
   responseStatus Int?
   errorCode      String?
@@ -1807,8 +1807,9 @@ model AlertDeliveryAttempt {
   environment Environment   @relation(fields: [environmentId], references: [id], onDelete: Restrict)
   delivery    AlertDelivery @relation(fields: [deliveryId, environmentId], references: [id, environmentId], onDelete: Restrict)
 
-  @@unique([deliveryId, attemptNumber])
+  @@unique([deliveryId, retryNumber])
   @@index([environmentId, status, startedAt])
+  @@map("AlertDeliveryAttempt")
 }
 
 model SafetyEvent {
@@ -1945,7 +1946,7 @@ model Job {
   externalId       String?
   displayName      String
   description      String?
-  triggerType      String
+  invocationType   String     @map("triggerType")
   scheduleCron     String?
   scheduleTimezone String?
   allowedAgentIds  String[]   @default([])
@@ -2387,8 +2388,8 @@ model ErasureOperation {
   legalHoldPolicyId String?
   retryCount        Int        @default(0)
   /// When the queue should next re-drive the unsettled stores; null once the
-  /// operation is settled, blocked, or has exhausted its automatic attempts.
-  nextAttemptAt     DateTime?
+  /// operation is settled, blocked, or has exhausted its automatic retries.
+  nextRetryAt       DateTime?  @map("nextAttemptAt")
   /// Held for the duration of one destructive pass, so two cannot overlap.
   leaseToken        String?
   leaseExpiresAt    DateTime?
@@ -2401,7 +2402,7 @@ model ErasureOperation {
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, subjectKeyHash, requestedAt])
-  @@index([organizationId, nextAttemptAt])
+  @@index([organizationId, nextRetryAt])
 }
 
 /// Erased-subject register: one row per ALIAS an erased subject could be

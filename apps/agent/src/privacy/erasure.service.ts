@@ -22,13 +22,13 @@ import { eraseClickhouseSubject } from "./clickhouse-erasure";
 import { erasureHashSalt, sealErasedSubject } from "./erasure-register";
 import {
   appendNote, buildResumePlan, leaseUntil, objectMapLost, resumePlanFrom,
-  scheduleAfterAttempt, subjectFromResumePlan,
+  scheduleAfterRetry, subjectFromResumePlan,
   type ErasureResumePlan, type ResumeCoverage,
 } from "./erasure-queue";
 import {
   assertAuditContentFree, auditEnvironments, finishedAudit, inventoriedAudit,
   refusedAudit, requestedAudit,
-  type ErasureAuditActor, type ErasureAuditEntry, type ErasureTrigger,
+  type ErasureAuditActor, type ErasureAuditEntry, type ErasureCause,
 } from "./erasure-audit";
 import { AdminAuditService } from "../monitoring/admin-audit.service";
 
@@ -818,7 +818,7 @@ export class ErasureService {
 
     // Leased and scheduled from birth. If this process dies between the create
     // and the receipt, the row does not sit at PENDING forever: the lease
-    // expires and `nextAttemptAt` has already made it due.
+    // expires and `nextRetryAt` has already made it due.
     const leaseToken = randomUUID();
     let row: any;
     try {
@@ -836,7 +836,7 @@ export class ErasureService {
           policyVersion: ERASURE_POLICY_VERSION,
           legalHoldPolicyId: heldBy ?? null,
           retryCount: 0,
-          nextAttemptAt: heldBy ? null : now,
+          nextRetryAt: heldBy ? null : now,
           leaseToken: heldBy ? null : leaseToken,
           leaseExpiresAt: heldBy ? null : leaseUntil(now),
         },
@@ -890,12 +890,12 @@ export class ErasureService {
           operationId: row.id,
           subjectKeyHash: hash,
           policyVersion: ERASURE_POLICY_VERSION,
-          trigger: "request",
+          cause: "request",
           coverage: "full",
           actor,
           inventory,
           stores: [...EXECUTION_ORDER],
-          attempts: 0,
+          retryCount: 0,
         }),
     );
 
@@ -921,7 +921,7 @@ export class ErasureService {
       organizationId: args.organizationId,
       scopes: subject.scopes,
       forbidden: subjectForbidden,
-      trigger: "request",
+      cause: "request",
       coverage: "full",
       leaseToken,
       actor: args.actor,
@@ -1051,7 +1051,7 @@ export class ErasureService {
     return this.runResumePass(row, {
       subject,
       coverage: "full",
-      trigger: "operator-retry",
+      cause: "operator-retry",
       externalUserId,
       plan,
       forbidden: [externalUserId, ...subject.legacyUserIds],
@@ -1081,7 +1081,7 @@ export class ErasureService {
       // against an empty subject; the operator retry route still works.
       await this.prisma.erasureOperation.update({
         where: { id: row.id },
-        data: { nextAttemptAt: null },
+        data: { nextRetryAt: null },
       });
       this.logger.warn(`[erasure] ${row.id} has no resume plan; leaving it for an operator`);
       return this.toReceipt(row);
@@ -1089,7 +1089,7 @@ export class ErasureService {
     return this.runResumePass(row, {
       subject: subjectFromResumePlan(plan),
       coverage: "locators_only",
-      trigger: "queue-resume",
+      cause: "queue-resume",
       plan,
       // Nothing to forbid: an id-free resume never learns the identifier, so
       // there is no needle to scan the receipt for. The guard still runs.
@@ -1103,7 +1103,7 @@ export class ErasureService {
    * Drain the queue for one organization.
    *
    * Selection is the whole design: due, not held, not settled, and not leased.
-   * Anything exhausted has already had its `nextAttemptAt` cleared, so it drops
+   * Anything exhausted has already had its `nextRetryAt` cleared, so it drops
    * out here without a special case — the row keeps its receipt and its plan
    * and waits for an operator rather than churning.
    */
@@ -1112,20 +1112,20 @@ export class ErasureService {
     limit?: number;
     actor?: ErasureAuditActor;
     now?: Date;
-  }): Promise<Array<{ operationId: string; status: ErasureStatus; attempts: number }>> {
+  }): Promise<Array<{ operationId: string; status: ErasureStatus; retryCount: number }>> {
     const now = args.now ?? new Date();
     const rows: any[] = await this.prisma.erasureOperation.findMany({
       where: {
         organizationId: args.organizationId,
         legalHoldPolicyId: null,
         status: { in: ["PENDING", "ACTIVE", "FAILED"] },
-        nextAttemptAt: { lte: now },
+        nextRetryAt: { lte: now },
         OR: [{ leaseExpiresAt: null }, { leaseExpiresAt: { lte: now } }],
       },
-      orderBy: { nextAttemptAt: "asc" },
+      orderBy: { nextRetryAt: "asc" },
       take: Math.min(Math.max(1, Math.trunc(args.limit ?? 10)), 50),
     });
-    const resumed: Array<{ operationId: string; status: ErasureStatus; attempts: number }> = [];
+    const resumed: Array<{ operationId: string; status: ErasureStatus; retryCount: number }> = [];
     for (const row of rows) {
       // One failing operation must not stop the drain: they are independent
       // subjects, and the queue exists precisely because things fail.
@@ -1135,7 +1135,7 @@ export class ErasureService {
           resumed.push({
             operationId: receipt.operationId,
             status: receipt.status,
-            attempts: receipt.attempts,
+            retryCount: receipt.retryCount,
           });
         }
       } catch (error: any) {
@@ -1165,7 +1165,7 @@ export class ErasureService {
     args: {
       subject: SubjectKeys;
       coverage: ResumeCoverage;
-      trigger: ErasureTrigger;
+      cause: ErasureCause;
       forbidden: string[];
       plan?: ErasureResumePlan | null;
       externalUserId?: string;
@@ -1214,7 +1214,7 @@ export class ErasureService {
       // blocked status from the hold itself.
       await this.prisma.erasureOperation.update({
         where: { id: row.id },
-        data: { legalHoldPolicyId: hold.heldBy, nextAttemptAt: null },
+        data: { legalHoldPolicyId: hold.heldBy, nextRetryAt: null },
       });
       await this.auditBestEffort(
         // The aliases join the needles for this record: matching one of them is
@@ -1239,7 +1239,7 @@ export class ErasureService {
       // the queue picking the row up again every tick.
       await this.prisma.erasureOperation.update({
         where: { id: row.id },
-        data: { nextAttemptAt: null },
+        data: { nextRetryAt: null },
       });
       return receipt;
     }
@@ -1255,7 +1255,7 @@ export class ErasureService {
 
     // Under the lease, and only now, is what the row says stable. Everything
     // from here is decided on THIS view: the pass that just released the lease
-    // may have settled stores, changed the attempt count and completed the
+    // may have settled stores, changed the pass count and completed the
     // operation between the read at the top and the claim above.
     const claimed = await this.prisma.erasureOperation.findFirst({ where: { id: row.id } });
     const current = claimed ? this.toReceipt(claimed) : receipt;
@@ -1276,11 +1276,11 @@ export class ErasureService {
           operationId: current.operationId,
           subjectKeyHash: current.subjectKeyHash,
           policyVersion: current.policyVersion,
-          trigger: args.trigger,
+          cause: args.cause,
           coverage: args.coverage,
           actor,
           stores: outstanding,
-          attempts: current.attempts,
+          retryCount: current.retryCount,
         }),
       );
 
@@ -1305,7 +1305,7 @@ export class ErasureService {
       // Both of those raise rather than degrade, on purpose, and the lease
       // release lives in `finish` — which this pass will never reach. Left
       // alone the operation keeps a lease nobody holds for the full TTL, and
-      // keeps an attempt count that never advances, so an unhealthy audit sink
+      // keeps a pass count that never advances, so an unhealthy audit sink
       // re-drives it forever instead of parking it for an operator.
       await this.abandonPass(current, leaseToken, args.now);
       throw error;
@@ -1321,7 +1321,7 @@ export class ErasureService {
       organizationId: row.organizationId,
       scopes: current.scopes,
       forbidden: args.forbidden,
-      trigger: args.trigger,
+      cause: args.cause,
       coverage: args.coverage,
       leaseToken,
       actor: args.actor,
@@ -1346,7 +1346,7 @@ export class ErasureService {
       data: {
         leaseToken: null,
         leaseExpiresAt: null,
-        ...(opts.clearSchedule ? { nextAttemptAt: null } : {}),
+        ...(opts.clearSchedule ? { nextRetryAt: null } : {}),
       },
     });
     if (released.count === 0) {
@@ -1357,7 +1357,7 @@ export class ErasureService {
   /**
    * Abandon a pass that claimed the lease and then could not proceed.
    *
-   * The attempt COUNTS. Nothing was destroyed, so counting it is not a
+   * The retry COUNTS. Nothing was destroyed, so counting it is not a
    * statement about the subject's data — it is the only thing that stops a
    * permanently unhealthy dependency re-driving the same operation until
    * somebody notices, and `isExhausted` is what eventually parks it for a human.
@@ -1367,13 +1367,13 @@ export class ErasureService {
     leaseToken: string,
     now: Date,
   ): Promise<void> {
-    const attempts = receipt.attempts + 1;
-    const schedule = scheduleAfterAttempt({ ...receipt, attempts }, now);
+    const retryCount = receipt.retryCount + 1;
+    const schedule = scheduleAfterRetry({ ...receipt, retryCount }, now);
     const released = await this.prisma.erasureOperation.updateMany({
       where: { id: receipt.operationId, leaseToken },
       data: {
-        retryCount: attempts,
-        nextAttemptAt: schedule.nextAttemptAt,
+        retryCount,
+        nextRetryAt: schedule.nextRetryAt,
         leaseToken: null,
         leaseExpiresAt: null,
       },
@@ -1382,7 +1382,7 @@ export class ErasureService {
       this.logger.warn(`[erasure] ${receipt.operationId} lease was taken over mid-pass`);
     }
     this.logger.warn(
-      `[erasure] ${receipt.operationId} pass abandoned before sweeping at attempt ${attempts}; next=${schedule.nextAttemptAt?.toISOString() ?? "none"}`,
+      `[erasure] ${receipt.operationId} pass abandoned before sweeping at pass ${retryCount}; next=${schedule.nextRetryAt?.toISOString() ?? "none"}`,
     );
   }
 
@@ -1417,13 +1417,13 @@ export class ErasureService {
       scopes: (row.scopes ?? []) as any,
       stores,
       policyVersion: row.policyVersion,
-      attempts: row.retryCount ?? 0,
+      retryCount: row.retryCount ?? 0,
       legalHoldPolicyId: row.legalHoldPolicyId ?? undefined,
     };
   }
 
   /**
-   * Close out a pass: persist the receipt, schedule the next attempt, release
+   * Close out a pass: persist the receipt, schedule the next retry, release
    * the lease, record the outcome.
    *
    * The order is not cosmetic. The receipt is written FIRST and
@@ -1438,21 +1438,21 @@ export class ErasureService {
       organizationId: string;
       scopes: SubjectScope[];
       forbidden: string[];
-      trigger: ErasureTrigger;
+      cause: ErasureCause;
       coverage: ResumeCoverage;
       leaseToken: string | null;
       actor?: ErasureAuditActor;
       now: Date;
     },
   ): Promise<ErasureReceipt> {
-    const schedule = scheduleAfterAttempt(r, opts.now);
-    await this.persist(r, opts.forbidden, schedule.nextAttemptAt);
+    const schedule = scheduleAfterRetry(r, opts.now);
+    await this.persist(r, opts.forbidden, schedule.nextRetryAt);
 
     if (opts.leaseToken) await this.releaseLease(r.operationId, opts.leaseToken);
 
     if (schedule.reason === "exhausted") {
       this.logger.warn(
-        `[erasure] ${r.operationId} exhausted automatic attempts at ${r.attempts}; awaiting an operator`,
+        `[erasure] ${r.operationId} exhausted automatic retries at ${r.retryCount}; awaiting an operator`,
       );
     }
 
@@ -1466,10 +1466,10 @@ export class ErasureService {
       (actor) =>
         finishedAudit({
           receipt: r,
-          trigger: opts.trigger,
+          cause: opts.cause,
           coverage: opts.coverage,
           actor,
-          nextAttemptAt: schedule.nextAttemptAt,
+          nextRetryAt: schedule.nextRetryAt,
         }),
     );
     return r;
@@ -1478,7 +1478,7 @@ export class ErasureService {
   private async persist(
     r: ErasureReceipt,
     forbidden: string[],
-    nextAttemptAt: Date | null,
+    nextRetryAt: Date | null,
   ): Promise<ErasureReceipt> {
     // Refuse to write a receipt that would recreate the identifier it documents.
     assertContentFree(r, forbidden);
@@ -1487,15 +1487,15 @@ export class ErasureService {
       data: {
         status: toDatabaseStatus(r.status),
         stores: r.stores as any,
-        retryCount: r.attempts,
+        retryCount: r.retryCount,
         startedAt: r.startedAt ? new Date(r.startedAt) : null,
         completedAt: r.completedAt ? new Date(r.completedAt) : null,
         legalHoldPolicyId: r.legalHoldPolicyId ?? null,
-        nextAttemptAt,
+        nextRetryAt,
       },
     });
     this.logger.log(
-      `[erasure] ${r.operationId} status=${r.status} attempts=${r.attempts} next=${nextAttemptAt?.toISOString() ?? "none"}`,
+      `[erasure] ${r.operationId} status=${r.status} retryCount=${r.retryCount} next=${nextRetryAt?.toISOString() ?? "none"}`,
     );
     return r;
   }

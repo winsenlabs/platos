@@ -154,15 +154,15 @@ describe("structured-output: buildRetryCorrectionMessage", () => {
 });
 
 describe("structured-output: StructuredOutputError", () => {
-  it("carries code, attempts, and errors", () => {
+  it("carries code, retryCount, and errors", () => {
     const err = new StructuredOutputError("failed", {
-      attempts: 2,
+      retryCount: 1,
       validationErrors: ["root: expected string"],
       rawText: '{"x":1}',
     });
     expect(err.name).toBe("StructuredOutputError");
     expect(err.code).toBe("structured_output_invalid");
-    expect(err.attempts).toBe(2);
+    expect(err.retryCount).toBe(1);
     expect(err.validationErrors).toEqual(["root: expected string"]);
     expect(err.rawText).toBe('{"x":1}');
     expect(err).toBeInstanceOf(Error);

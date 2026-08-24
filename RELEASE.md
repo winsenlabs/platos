@@ -10,7 +10,7 @@ Releases are fully automated via CI:
 4. The [release.yml](./.github/workflows/release.yml) workflow automatically:
    - Publishes all packages to npm
    - Creates a single unified GitHub release (e.g., "trigger.dev v4.3.4")
-   - Tags and triggers Docker image builds
+   - Tags and starts Docker image builds
    - After Docker images are pushed, updates the GitHub release with the exact GHCR tag link
 
 ### What engineers need to do

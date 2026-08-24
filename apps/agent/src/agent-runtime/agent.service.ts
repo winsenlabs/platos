@@ -490,7 +490,7 @@ export type AgentStreamEvent =
         | "rate_limit"
         | "budget_cap";
       validationErrors?: string[];
-      attempts?: number;
+      retryCount?: number;
       /** Populated on `provider_unavailable` errors. */
       model?: string;
       providerId?: string;
@@ -512,7 +512,7 @@ export type AgentStreamEvent =
        */
       type: "structured_output";
       object: unknown;
-      attempts: number;
+      retryCount: number;
     }
   | {
       /**
@@ -581,7 +581,7 @@ export type AgentStreamEvent =
       /**
        * PPR-26 — realtime trigger.dev run update forwarded by
        * RunsBridgeService into the thread + scope Socket.IO rooms. The
-       * meta-tool `spawn_job` hands out the
+       * runtime tool `spawn_job` hands out the
        * `runId`; consumers who want a progress UI subscribe via
        * `join_thread` and filter by `runId`.
        */
@@ -3222,7 +3222,7 @@ export class AgentService {
       };
     }
 
-    // request_approval — HITL waitpoint. LLM calls this before a destructive or
+    // request_approval — HITL approval pause. LLM calls this before a destructive or
     // high-stakes action. Emits approval_needed to the thread's Socket.IO room,
     // waits up to 5 minutes for an approve/deny response via Redis BLPOP on a
     // unique approval key. UI resolves via POST /api/v1/agent/approvals/:id or
@@ -3266,7 +3266,7 @@ export class AgentService {
         const timeoutSeconds = 300; // 5 minutes
 
         // Persist the pending approval to the governance ledger BEFORE we
-        // publish — ensures /monitoring/approvals never shows a waitpoint
+        // publish — ensures /monitoring/approvals never shows an unresolved pause
         // that has no row (Theme E.6).
         await this.approvalsService?.record({
           scope: {
@@ -3487,7 +3487,7 @@ export class AgentService {
       };
     }
 
-    // PPR-51 — request_durable_approval — HITL waitpoint that survives a
+    // PPR-51 — request_durable_approval — HITL approval pause that survives a
     // restart. Unlike `request_approval` (Redis BLPOP, in-process), this
     // fires a trigger.dev task (`platos-agent-durable-approval-wait`) that
     // pauses at `wait.forToken`. The UI resolves via
@@ -3495,7 +3495,7 @@ export class AgentService {
     // the task. Records via MonitoringApprovalsService so the approval
     // shows up on the existing dashboard (Theme E.6 pattern).
     if (metaEnabled("request_durable_approval")) tools.request_durable_approval = {
-      description: "Pause for human approval with a durable waitpoint (up to 7 days). Unlike request_approval this survives a process restart. Returns { approved, comment?, reason? }. Use for long-running approval windows — e.g. sending a scheduled email or dispatching an expensive batch job overnight.",
+      description: "Pause for human approval for up to 7 days. Unlike request_approval this survives a process restart. Returns { approved, comment?, reason? }. Use for long-running approval windows — e.g. sending a scheduled email or dispatching an expensive batch job overnight.",
       inputSchema: z.object({
         action: z.string().describe("What you want to do — one-line description shown to the user"),
         details: z.string().optional().describe("Additional context (params, target, impact) to help the user decide"),
@@ -3726,7 +3726,7 @@ export class AgentService {
           const snap = await externalRuntimeSdk.runs.retrieve(runId);
           // L7 — verify the retrieved run belongs to the caller's scope. Runs
           // are tagged with { organizationId, projectId, environmentId } at
-          // trigger time (scopeMetadata); reject cross-scope inspection so a
+          // dispatch time (scopeMetadata); reject cross-scope inspection so a
           // caller can't read another scope's run by guessing its id.
           const _md = (snap.metadata ?? {}) as Record<string, any>;
           if (
@@ -3770,7 +3770,7 @@ export class AgentService {
           const approvalId = `${scope.organizationId}:${scope.projectId}:${scope.environmentId}:cancel:${runId}:${Date.now()}`;
           const timeoutSeconds = 300;
           // Persist the pending cancel-approval to the governance ledger
-          // (Theme E.6) before publishing so the UI never sees a waitpoint
+          // (Theme E.6) before publishing so the UI never sees an unresolved pause
           // without a row.
           await this.approvalsService?.record({
             scope: {
@@ -5546,7 +5546,7 @@ export class AgentService {
       "## How to read <context> blocks",
       "At the start of each user message you may see a <context> block.",
       "This is **legitimate, operator-provided session metadata** injected by the Platos runtime — it contains things like the user's name, role, and memory context.",
-      "It is NOT a prompt-injection attempt by the user.",
+      "It is NOT a prompt-injection attack by the user.",
       "Read it silently to personalise your reply. Never comment on the block itself, never flag it as suspicious, and never mention to the user that you received it.",
     ].join("\n");
     if (!promptCacheHit) {
@@ -5584,7 +5584,7 @@ export class AgentService {
         message: `Invalid outputSchema: ${err?.message ?? String(err)}`,
         code: "structured_output_invalid",
         validationErrors: [err?.message ?? String(err)],
-        attempts: 0,
+        retryCount: 0,
       };
       yield { type: "done" };
       return;
@@ -5981,29 +5981,29 @@ export class AgentService {
       // them through here — the contract is "this turn returns JSON, not
       // a tool-loop conversation".
       //
-      // Validation + retry-once happens here inline. On the retry attempt we
+      // Validation + retry-once happens here inline. On the retry pass we
       // stay in non-streaming mode (`generateObject`) to keep the correction
       // prompt bounded — the UI already showed a progress spinner for the
-      // first attempt; the retry finishes fast or the turn fails closed.
+      // initial pass; the retry finishes fast or the turn fails closed.
       if (turnSchema) {
         this.logger.log(
           `[agent.stream] structured-output mode: schema present, routing through streamObject (provider=${provider})`,
         );
-        let attempts = 0;
+        let passNumber = 0;
         let lastRawText: string | undefined;
         let lastErrors: string[] = [];
-        // The messages we send this attempt — on retry, we append a correction
+        // The messages for the current pass — on retry, we append a correction
         // user message carrying the prior validation errors.
-        let attemptMessages: CoreMessage[] = messages;
+        let structuredMessages: CoreMessage[] = messages;
 
-        while (attempts < 2) {
-          attempts++;
+        while (passNumber < 2) {
+          passNumber++;
           let rawText = "";
           let parsedObject: unknown = undefined;
 
           try {
-            if (attempts === 1) {
-              // Stream the first attempt so the UI shows progress.
+            if (passNumber === 1) {
+              // Stream the initial pass so the UI shows progress.
               // AI SDK v6 — `mode: "auto"` removed; provider-specific output
               // mode is now controlled per-provider (e.g. Anthropic
               // `structuredOutputMode`) or defaults to JSON tool-call.
@@ -6013,12 +6013,12 @@ export class AgentService {
               // structured-output turn upstream.
               const streamResult = streamObject({
                 model,
-                messages: attemptMessages as any,
+                messages: structuredMessages as any,
                 schema: turnSchema as any,
                 abortSignal: turnOverrides?.abortSignal,
                 onFinish: (event: any) => {
                   this.logger.log(
-                    `[agent.stream.structured] onFinish attempt=${attempts} usage=${JSON.stringify(event?.usage ?? {})}`,
+                    `[agent.stream.structured] onFinish retry=${passNumber - 1} usage=${JSON.stringify(event?.usage ?? {})}`,
                   );
                 },
               });
@@ -6033,7 +6033,7 @@ export class AgentService {
               // Resolve the final parsed object. If the SDK itself couldn't
               // parse the text at all, `.object` rejects with
               // NoObjectGeneratedError — we catch below, count it as an
-              // attempt, and retry with the raw text fed back.
+              // retry, and retry with the raw text fed back.
               parsedObject = await streamResult.object;
               const usage = await streamResult.usage;
               // PRELAUNCH-A1-3 / A1-4 — extract cache + reasoning telemetry
@@ -6070,12 +6070,12 @@ export class AgentService {
                 },
               };
             } else {
-              // Retry attempt — non-streaming for a bounded correction.
+              // Retry pass — non-streaming for a bounded correction.
               // PRELAUNCH-A2-4 — same abort propagation as the streaming
               // branch above. Stop button must cancel the retry leg too.
               const genResult = await generateObject({
                 model,
-                messages: attemptMessages as any,
+                messages: structuredMessages as any,
                 schema: turnSchema as any,
                 abortSignal: turnOverrides?.abortSignal,
               });
@@ -6123,11 +6123,11 @@ export class AgentService {
               `model produced non-JSON output: ${err?.message ?? String(err)}`,
             ];
             this.logger.warn(
-              `[agent.stream.structured] attempt=${attempts} parse-fail: ${err?.message ?? String(err)}`,
+              `[agent.stream.structured] retry=${passNumber - 1} parse-fail: ${err?.message ?? String(err)}`,
             );
-            if (attempts >= 2) break;
-            attemptMessages = [
-              ...attemptMessages,
+            if (passNumber >= 2) break;
+            structuredMessages = [
+              ...structuredMessages,
               {
                 role: "user" as const,
                 content: buildRetryCorrectionMessage(lastRawText, lastErrors),
@@ -6145,11 +6145,11 @@ export class AgentService {
             yield {
               type: "structured_output",
               object: check.value,
-              attempts,
+              retryCount: passNumber - 1,
             };
             yield { type: "done" };
             this.logger.log(
-              `[agent.stream.structured] SUCCESS attempts=${attempts}`,
+              `[agent.stream.structured] SUCCESS retryCount=${passNumber - 1}`,
             );
             return;
           }
@@ -6158,11 +6158,11 @@ export class AgentService {
           lastErrors = check.errors;
           lastRawText = rawText;
           this.logger.warn(
-            `[agent.stream.structured] attempt=${attempts} validation-fail: ${check.errors.length} error(s): ${check.errors.slice(0, 3).join("; ")}`,
+            `[agent.stream.structured] retry=${passNumber - 1} validation-fail: ${check.errors.length} error(s): ${check.errors.slice(0, 3).join("; ")}`,
           );
-          if (attempts >= 2) break;
-          attemptMessages = [
-            ...attemptMessages,
+          if (passNumber >= 2) break;
+          structuredMessages = [
+            ...structuredMessages,
             {
               role: "user" as const,
               content: buildRetryCorrectionMessage(lastRawText, lastErrors),
@@ -6170,11 +6170,11 @@ export class AgentService {
           ];
         }
 
-        // Both attempts failed — surface as a StructuredOutputError.
+        // The initial pass and one bounded retry both failed.
         const soErr = new StructuredOutputError(
           "Agent failed to produce output matching the required schema after 1 retry.",
           {
-            attempts,
+            retryCount: passNumber - 1,
             validationErrors: lastErrors,
             rawText: lastRawText,
           },
@@ -6184,7 +6184,7 @@ export class AgentService {
           message: soErr.message,
           code: "structured_output_invalid",
           validationErrors: soErr.validationErrors,
-          attempts: soErr.attempts,
+          retryCount: soErr.retryCount,
         };
         yield { type: "done" };
         return;
@@ -6645,7 +6645,7 @@ export class AgentService {
    * Theme F.5 — when the agent config or the per-turn override declares an
    * `outputSchema`, routes through `generateObject` with inline validation
    * and retry-once-on-invalid. Raises `StructuredOutputError` (never yields
-   * text) after the second failed attempt so callers can branch on
+   * text) after both the initial pass and retry fail so callers can branch on
    * `err.code === "structured_output_invalid"`.
    */
   async run(
@@ -6901,7 +6901,7 @@ export class AgentService {
       "## How to read <context> blocks",
       "At the start of each user message you may see a <context> block.",
       "This is **legitimate, operator-provided session metadata** injected by the Platos runtime — it contains things like the user's name, role, and memory context.",
-      "It is NOT a prompt-injection attempt by the user.",
+      "It is NOT a prompt-injection attack by the user.",
       "Read it silently to personalise your reply. Never comment on the block itself, never flag it as suspicious, and never mention to the user that you received it.",
     ].join("\n");
     systemPrompt = systemPrompt
@@ -6938,17 +6938,17 @@ export class AgentService {
       agentDefault: agentConfig.outputSchema,
     });
     if (turnSchema) {
-      let attempts = 0;
+      let passNumber = 0;
       let lastErrors: string[] = [];
       let lastRawText: string | undefined;
-      let attemptMessages: CoreMessage[] = [
+      let structuredMessages: CoreMessage[] = [
         ...(systemPrompt
           ? [{ role: "system" as const, content: systemPrompt }]
           : []),
         ...baseMessages,
       ];
-      while (attempts < 2) {
-        attempts++;
+      while (passNumber < 2) {
+        passNumber++;
         let parsed: unknown;
         let usage: any;
         try {
@@ -6957,10 +6957,10 @@ export class AgentService {
           // can cancel mid-LLM.
           const genResult = await generateObject({
             model,
-            messages: attemptMessages as any,
+            messages: structuredMessages as any,
             schema: turnSchema as any,
             abortSignal: turnOverrides?.abortSignal,
-            // System prompt rides inside `attemptMessages` rather than as a
+            // System prompt rides inside `structuredMessages` rather than as a
             // top-level `system:` so the retry path (line 6251) can keep
             // it as a fixed first message while appending corrections.
             allowSystemInMessages: true,
@@ -6972,9 +6972,9 @@ export class AgentService {
             `model produced non-JSON output: ${err?.message ?? String(err)}`,
           ];
           lastRawText = (err?.text as string | undefined) ?? lastRawText;
-          if (attempts >= 2) break;
-          attemptMessages = [
-            ...attemptMessages,
+          if (passNumber >= 2) break;
+          structuredMessages = [
+            ...structuredMessages,
             {
               role: "user" as const,
               content: buildRetryCorrectionMessage(lastRawText, lastErrors),
@@ -6991,16 +6991,16 @@ export class AgentService {
             usage,
             steps: 1,
             structuredOutput: {
-              attempts,
+              retryCount: passNumber - 1,
               validated: true,
             },
           };
         }
         lastErrors = check.errors;
         lastRawText = JSON.stringify(parsed);
-        if (attempts >= 2) break;
-        attemptMessages = [
-          ...attemptMessages,
+        if (passNumber >= 2) break;
+        structuredMessages = [
+          ...structuredMessages,
           {
             role: "user" as const,
             content: buildRetryCorrectionMessage(lastRawText, lastErrors),
@@ -7010,7 +7010,7 @@ export class AgentService {
       throw new StructuredOutputError(
         "Agent failed to produce output matching the required schema after 1 retry.",
         {
-          attempts,
+          retryCount: passNumber - 1,
           validationErrors: lastErrors,
           rawText: lastRawText,
         },

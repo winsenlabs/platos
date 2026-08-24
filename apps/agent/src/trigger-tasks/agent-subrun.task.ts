@@ -384,7 +384,7 @@ export const agentSubrun = task({
       totalCostCents,
       finalStatus,
       reportDelivered,
-      attempt: ctx?.attempt?.number ?? 1,
+      retryCount: Math.max(0, (ctx?.attempt?.number ?? 1) - 1),
     });
 
     return {

@@ -30,7 +30,7 @@ const receipt = (over: Partial<ErasureReceipt> = {}): ErasureReceipt => ({
     store({ store: "postgres", status: "done", verificationStatus: "passed", anonymized: 3 }),
   ],
   policyVersion: "2026-08-11.1",
-  attempts: 1,
+  retryCount: 1,
   ...over,
 });
 
@@ -40,19 +40,19 @@ describe("every erasure action names who did it", () => {
       operationId: "op_1",
       subjectKeyHash: "a".repeat(64),
       policyVersion: "v1",
-      trigger: "request",
+      cause: "request",
       coverage: "full",
       actor,
       inventory: { resolved: 1, threads: 4 },
       stores: ["minio", "redis", "clickhouse", "postgres"],
-      attempts: 0,
+      retryCount: 0,
     });
 
     expect(entry.action).toBe("privacy.erasure.requested");
     expect(entry.subjectType).toBe(ERASURE_AUDIT_SUBJECT_TYPE);
     expect(entry.payload).toMatchObject({
       actor: { credentialId: "credential_1", userId: "operator_7" },
-      attempt: 1,
+      pass: 1,
       coverage: "full",
       targetStores: ["minio", "redis", "clickhouse", "postgres"],
     });
@@ -61,10 +61,10 @@ describe("every erasure action names who did it", () => {
   it("records the outcome per store, including what was kept and why", () => {
     const entry = finishedAudit({
       receipt: receipt(),
-      trigger: "request",
+      cause: "request",
       coverage: "full",
       actor,
-      nextAttemptAt: null,
+      nextRetryAt: null,
     });
 
     expect(entry.payload.status).toBe("completed");
@@ -110,20 +110,20 @@ describe("every erasure action names who did it", () => {
     expect(entry.payload.inventory).toEqual({ resolved: 1, threads: 4 });
   });
 
-  it("carries the queue's next attempt so churn is visible in the log", () => {
+  it("carries the queue's next retry so churn is visible in the log", () => {
     const entry = finishedAudit({
-      receipt: receipt({ status: "partial_failure", attempts: 2 }),
-      trigger: "queue-resume",
+      receipt: receipt({ status: "partial_failure", retryCount: 2 }),
+      cause: "queue-resume",
       coverage: "locators_only",
       actor,
-      nextAttemptAt: new Date("2026-08-20T00:02:00.000Z"),
+      nextRetryAt: new Date("2026-08-20T00:02:00.000Z"),
     });
 
     expect(entry.payload).toMatchObject({
-      trigger: "queue-resume",
+      cause: "queue-resume",
       coverage: "locators_only",
-      attempt: 2,
-      nextAttemptAt: "2026-08-20T00:02:00.000Z",
+      pass: 2,
+      nextRetryAt: "2026-08-20T00:02:00.000Z",
     });
   });
 });
@@ -139,10 +139,10 @@ describe("the audit trail must not recreate the data it documents", () => {
           }),
         ],
       }),
-      trigger: "request",
+      cause: "request",
       coverage: "full",
       actor,
-      nextAttemptAt: null,
+      nextRetryAt: null,
     });
 
     expect(() => assertAuditContentFree(leaky, ["walle-77"]))
@@ -182,11 +182,11 @@ describe("the audit trail must not recreate the data it documents", () => {
       operationId: "op_1",
       subjectKeyHash: "a".repeat(64),
       policyVersion: "v1",
-      trigger: "request",
+      cause: "request",
       coverage: "full",
       actor,
       stores: ["postgres"],
-      attempts: 0,
+      retryCount: 0,
     });
     expect(entry.subjectId).toBe("a".repeat(64));
     expect(() => assertAuditContentFree(entry, ["walle-77", "alice@example.com"])).not.toThrow();

@@ -448,12 +448,12 @@ describe("domain schema integration", () => {
     })).resolves.toBe(1);
   });
 
-  test("serializes channel refresh claims and durably fences interrupted attempts", async () => {
+  test("serializes channel refresh claims and durably fences interrupted refreshes", async () => {
     await control.channelInstallation.update({
       where: { id: seeded.installation.id },
       data: {
         tokenRefreshState: "IDLE",
-        tokenRefreshAttemptId: null,
+        tokenRefreshClaimId: null,
         tokenRefreshStartedAt: null,
         tokenGeneration: 5,
       },
@@ -469,7 +469,7 @@ describe("domain schema integration", () => {
           },
           data: {
             tokenRefreshState: "REFRESHING",
-            tokenRefreshAttemptId: `00000000-0000-0000-0000-${String(index + 20).padStart(12, "0")}`,
+            tokenRefreshClaimId: `00000000-0000-0000-0000-${String(index + 20).padStart(12, "0")}`,
             tokenRefreshStartedAt: new Date(),
           },
         })
@@ -481,14 +481,14 @@ describe("domain schema integration", () => {
 
     const claimed = await control.channelInstallation.findUniqueOrThrow({
       where: { id: seeded.installation.id },
-      select: { tokenRefreshAttemptId: true },
+      select: { tokenRefreshClaimId: true },
     });
     await control.channelInstallation.update({
       where: { id: seeded.installation.id },
       data: {
         tokenGeneration: { increment: 1 },
         tokenRefreshState: "IDLE",
-        tokenRefreshAttemptId: null,
+        tokenRefreshClaimId: null,
         tokenRefreshRepairCode: null,
       },
     });
@@ -497,7 +497,7 @@ describe("domain schema integration", () => {
         id: seeded.installation.id,
         tokenGeneration: 5,
         tokenRefreshState: "REFRESHING",
-        tokenRefreshAttemptId: claimed.tokenRefreshAttemptId,
+        tokenRefreshClaimId: claimed.tokenRefreshClaimId,
       },
       data: { tokenRefreshState: "REPAIR_REQUIRED", tokenRefreshRepairCode: "STALE" },
     })).resolves.toMatchObject({ count: 0 });
@@ -740,13 +740,13 @@ describe("domain schema integration", () => {
   });
 
   test("acquires and advances the durable compaction cursor atomically", async () => {
-    const attempts = await Promise.all(
+    const requests = await Promise.all(
       Array.from({ length: 8 }, () => control.thread.updateMany({
         where: { id: seeded.thread.id, compactionState: ThreadCompactionState.IDLE },
         data: { compactionState: ThreadCompactionState.IN_PROGRESS },
       }))
     );
-    expect(attempts.reduce((total, attempt) => total + attempt.count, 0)).toBe(1);
+    expect(requests.reduce((total, request) => total + request.count, 0)).toBe(1);
 
     const compactedAt = new Date();
     await control.$transaction(async (tx) => {
@@ -1725,15 +1725,15 @@ async function seedEveryModel(control: PrismaClient) {
       kind: "BUDGET",
       idempotencyKey: `budget:${thresholdEvent.id}:${alertChannel.id}`,
       status: "SUCCEEDED",
-      attemptCount: 1,
+      retryCount: 1,
       deliveredAt: new Date(),
     },
   }));
-  track("AlertDeliveryAttempt", await control.alertDeliveryAttempt.create({
+  track("AlertDeliveryRetry", await control.alertDeliveryRetry.create({
     data: {
       environmentId: environment.id,
       deliveryId: delivery.id,
-      attemptNumber: 1,
+      retryNumber: 1,
       status: "SUCCEEDED",
       finishedAt: new Date(),
     },
@@ -1800,7 +1800,7 @@ async function seedEveryModel(control: PrismaClient) {
       environmentId: environment.id,
       externalId: "job",
       displayName: "Background work",
-      triggerType: "manual",
+      invocationType: "manual",
       payloadSchema: { type: "object" },
       handler: "background",
       createdBy: user.id,

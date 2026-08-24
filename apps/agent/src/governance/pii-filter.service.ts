@@ -4,7 +4,7 @@
  * Scans text against the configured per-agent governance policy and returns:
  *   - action: "allow" | "block" | "redact" | "warn"
  *   - filteredText: original or redacted version
- *   - hits: every match that triggered a filter
+ *   - hits: every match selected by a filter
  *
  * Design:
  *   - Regex-first (fast, deterministic)

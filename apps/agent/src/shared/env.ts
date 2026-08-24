@@ -602,7 +602,7 @@ export function validateAgentEnv(
 }
 
 // Lazy typed accessor. Evaluates on first use — safe to import at the
-// top of a file without triggering validation before main.ts runs.
+  // top of a file without starting validation before main.ts runs.
 let _env: AgentEnv | undefined;
 export const env: AgentEnv = new Proxy({} as AgentEnv, {
   get(_target, prop) {

@@ -175,14 +175,14 @@ describe("AgentController executable Postman mode", () => {
         message: "hello",
         idempotencyKey,
       });
-      const triggerScope = buildSessionScope(dispatchOptions.scope);
-      expect(triggerScope).toMatchObject({
+    const dispatchScope = buildSessionScope(dispatchOptions.scope);
+    expect(dispatchScope).toMatchObject({
         userId: "customer-external-42",
         operatorUserId: ids.operator,
         sessionContextHandle: dispatchOptions.scope.sessionContextHandle,
       });
-      expect(triggerScope).not.toHaveProperty("sessionContext");
-      expect(JSON.stringify(triggerScope)).not.toContain("OVERRIDE_SECRET_SENTINEL");
+    expect(dispatchScope).not.toHaveProperty("sessionContext");
+    expect(JSON.stringify(dispatchScope)).not.toContain("OVERRIDE_SECRET_SENTINEL");
 
       const handle = dispatchOptions.scope.sessionContextHandle;
       const stored = JSON.parse(h.redisValues.get(postmanContextRedisKey(handle))!);

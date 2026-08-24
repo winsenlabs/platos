@@ -502,7 +502,7 @@
       },
       {
         "name": "alert_channels.test",
-        "description": "Send a synthetic test and persist a visible success/failure attempt. Channel credentials are resolved only at dispatch.",
+        "description": "Send a synthetic test and persist a visible delivery result. Channel credentials are resolved only at dispatch.",
         "inputSchema": {
           "type": "object",
           "required": [

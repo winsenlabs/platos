@@ -652,7 +652,7 @@ export class ChannelPersistenceService {
             revokedAt: null,
             tokenGeneration: { increment: 1 },
             tokenRefreshState: "IDLE",
-            tokenRefreshAttemptId: null,
+            tokenRefreshClaimId: null,
             tokenRefreshStartedAt: null,
             tokenRefreshRepairCode: null,
             ...(grant.defaultAgentId !== undefined ? { defaultAgentId: grant.defaultAgentId } : {}),
@@ -770,7 +770,7 @@ export class ChannelPersistenceService {
   async beginInstallationRefresh(
     installationId: string,
     appId: string,
-    attemptId: string,
+    claimId: string,
     expected: InstallationRefreshExpectation,
   ): Promise<any | null> {
     try {
@@ -786,7 +786,7 @@ export class ChannelPersistenceService {
           },
           data: {
             tokenRefreshState: "REFRESHING",
-            tokenRefreshAttemptId: attemptId,
+            tokenRefreshClaimId: claimId,
             tokenRefreshStartedAt: new Date(),
             tokenRefreshRepairCode: null,
           },
@@ -795,7 +795,7 @@ export class ChannelPersistenceService {
         const canonical = await this.loadInstallationWith(tx, installationId, appId);
         if (
           !canonical ||
-          canonical.tokenRefreshAttemptId !== attemptId ||
+          canonical.tokenRefreshClaimId !== claimId ||
           canonical.credentialId !== expected.credentialId ||
           canonical.credentialRevision !== expected.credentialRevision ||
           Number(canonical.tokenGeneration) !== expected.tokenGeneration
@@ -820,7 +820,7 @@ export class ChannelPersistenceService {
       !current?.credentialId ||
       current.credentialId !== expected.credentialId ||
       current.credentialRevision !== expected.credentialRevision ||
-      current.tokenRefreshAttemptId !== null ||
+      current.tokenRefreshClaimId !== null ||
       current.tokenRefreshState !== refreshState ||
       Number(current.tokenGeneration) !== nextGeneration
     ) {
@@ -837,13 +837,13 @@ export class ChannelPersistenceService {
   }
 
   /**
-   * Commit the returned rotating grant and clear its durable attempt in one
+   * Commit the returned rotating grant and clear its durable refresh claim in one
    * transaction. Until this commits, callers must not use the returned token.
    */
   async finalizeInstallationRefresh(
     installationId: string,
     appId: string,
-    attemptId: string,
+    claimId: string,
     expected: InstallationRefreshExpectation,
     updates: { botToken: string; refreshToken: string; tokenExpiresAt?: Date | null }
   ): Promise<any | null> {
@@ -858,12 +858,12 @@ export class ChannelPersistenceService {
             credentialId: expected.credentialId,
             tokenGeneration: expected.tokenGeneration,
             tokenRefreshState: "REFRESHING",
-            tokenRefreshAttemptId: attemptId,
+            tokenRefreshClaimId: claimId,
           },
           data: {
             tokenGeneration: { increment: 1 },
             tokenRefreshState: "IDLE",
-            tokenRefreshAttemptId: null,
+            tokenRefreshClaimId: null,
             tokenRefreshStartedAt: null,
             tokenRefreshRepairCode: null,
           },
@@ -920,7 +920,7 @@ export class ChannelPersistenceService {
   async preserveInstallationRefreshGrantForRepair(
     installationId: string,
     appId: string,
-    attemptId: string,
+    claimId: string,
     expected: InstallationRefreshExpectation,
     updates: { botToken: string; refreshToken: string; tokenExpiresAt?: Date | null },
     repairCode: string
@@ -934,12 +934,12 @@ export class ChannelPersistenceService {
             credentialId: expected.credentialId,
             tokenGeneration: expected.tokenGeneration,
             tokenRefreshState: "REFRESHING",
-            tokenRefreshAttemptId: attemptId,
+            tokenRefreshClaimId: claimId,
           },
           data: {
             tokenGeneration: { increment: 1 },
             tokenRefreshState: "REPAIR_REQUIRED",
-            tokenRefreshAttemptId: null,
+            tokenRefreshClaimId: null,
             tokenRefreshStartedAt: null,
             tokenRefreshRepairCode: repairCode,
           },
@@ -986,7 +986,7 @@ export class ChannelPersistenceService {
   async markInstallationRefreshRepairRequired(
     installationId: string,
     appId: string,
-    attemptId: string,
+    claimId: string,
     expected: InstallationRefreshExpectation,
     repairCode: string
   ): Promise<boolean> {
@@ -997,7 +997,7 @@ export class ChannelPersistenceService {
         credentialId: expected.credentialId,
         tokenGeneration: expected.tokenGeneration,
         tokenRefreshState: "REFRESHING",
-        tokenRefreshAttemptId: attemptId,
+        tokenRefreshClaimId: claimId,
       },
       data: {
         tokenRefreshState: "REPAIR_REQUIRED",
@@ -1057,7 +1057,7 @@ export class ChannelPersistenceService {
       },
       data: {
         status: "PROCESSING",
-        attempts: { increment: 1 },
+        retryCount: { increment: 1 },
         leaseGeneration: { increment: 1 },
         leaseOwner,
         leaseExpiresAt: new Date(now.getTime() + leaseMs),

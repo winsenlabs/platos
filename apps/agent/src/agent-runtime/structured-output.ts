@@ -26,28 +26,28 @@ import { jsonSchema, type Schema } from "ai";
 /**
  * Error thrown when the LLM fails to produce valid output twice in a row
  * (initial call + one retry with error feedback). Carries the validation
- * errors from the final attempt so the caller can surface them intact.
+ * errors from the final pass so the caller can surface them intact.
  *
  * Keep the name `StructuredOutputError` — the consumer SDK pattern-matches
  * on it (see THEME_F §4 + `@platosdev/client` error surface).
  */
 export class StructuredOutputError extends Error {
   public readonly code = "structured_output_invalid" as const;
-  public readonly attempts: number;
+  public readonly retryCount: number;
   public readonly validationErrors: string[];
   public readonly rawText?: string;
 
   constructor(
     message: string,
     opts: {
-      attempts: number;
+      retryCount: number;
       validationErrors: string[];
       rawText?: string;
     },
   ) {
     super(message);
     this.name = "StructuredOutputError";
-    this.attempts = opts.attempts;
+    this.retryCount = opts.retryCount;
     this.validationErrors = opts.validationErrors;
     this.rawText = opts.rawText;
   }

@@ -26,7 +26,7 @@ async function mount(element: React.ReactNode) {
 }
 
 async function findButton(container: HTMLElement, text: string) {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  for (let retry = 0; retry < 50; retry += 1) {
     const button = [...container.querySelectorAll("button")]
       .find((candidate) => candidate.textContent === text);
     if (button) return button;

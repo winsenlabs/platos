@@ -2,7 +2,7 @@
 <!-- Disable verbose system log tables that grow unbounded and hog CPU/disk.
      trace_log + text_log were consuming 7+ GiB and 40% CPU on a 8GB VPS.
      The Platos application only uses ClickHouse for platos_spans_v1 and
-     task run telemetry — ClickHouse's internal diagnostics are not needed.
+     Job telemetry — ClickHouse's internal diagnostics are not needed.
 
      2026-06-01 incident: even with the max_size_rows cap that used to live here,
      system.metric_log grew to 1,015,777 rows across 193 active parts and drove 5

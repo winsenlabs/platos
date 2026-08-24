@@ -11,7 +11,7 @@ Zero to first agent reply in ~20 minutes. By the end of this guide you will have
 | pnpm | 9+ | `pnpm -v` |
 | An Anthropic API key | Any tier | [console.anthropic.com](https://console.anthropic.com) |
 
-You do **not** need trigger.dev cloud keys. The stack ships with a local run engine. A `TRIGGER_SECRET_KEY` is only needed if you want the durable `spawn_bgo` meta-tool (formerly `spawn_task`; see [BGO_RENAME.md](./BGO_RENAME.md)) to register with a remote engine — otherwise Platos transparently falls back to a Redis-backed stub.
+You do **not** need trigger.dev cloud keys. The stack ships with a local durable engine. A `TRIGGER_SECRET_KEY` is only needed if you want the `spawn_job` runtime tool to register with a remote engine — otherwise Platos transparently falls back to a Redis-backed stub.
 
 ## 1. Clone and configure
 

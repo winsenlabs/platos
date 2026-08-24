@@ -114,8 +114,14 @@ export function validateManifest(manifest) {
     ) {
       errors.push(`${label}.collisionContextSha256 must be a lowercase SHA-256 digest when present`);
     }
-    if (!["vendor", "migration-debt", "technical", "boundary-spec"].includes(exception.classification)) {
-      errors.push(`${label}.classification must identify vendor, migration-debt, technical, or boundary-spec`);
+    if (
+      !["vendor", "migration-debt", "migration-archaeology", "technical", "boundary-spec"].includes(
+        exception.classification
+      )
+    ) {
+      errors.push(
+        `${label}.classification must identify vendor, migration-debt, migration-archaeology, technical, or boundary-spec`
+      );
     }
     if (/[*?\[\]]/u.test(exception.path ?? "")) {
       errors.push(`${label}.path must be exact; wildcard directory/file suppression is forbidden`);
@@ -151,6 +157,12 @@ export function validateManifest(manifest) {
 }
 
 function validateLifecycle(exception, label, errors) {
+  if (
+    exception.classification === "migration-archaeology" &&
+    !/(?:^|\/)prisma\/migrations\/[^/]+\/migration\.sql$/u.test(exception.path ?? "")
+  ) {
+    errors.push(`${label}.migration-archaeology is restricted to immutable Prisma migration.sql files`);
+  }
   if (exception.classification === "migration-debt") {
     if (typeof exception.trackingIssue !== "string" || !/^WIN-\d+$/u.test(exception.trackingIssue)) {
       errors.push(`${label}.trackingIssue must be a WIN issue for migration-debt`);

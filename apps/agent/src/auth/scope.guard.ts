@@ -80,9 +80,9 @@ function parseTraceparent(
 /**
  * Full four-axis scope. Every Platos-agent API call must resolve to one of these.
  *
- * - organizationId — trigger.dev Organization.id
- * - projectId      — trigger.dev Project.id
- * - environmentId  — trigger.dev RuntimeEnvironment.id (DEVELOPMENT|STAGING|PREVIEW|PRODUCTION)
+ * - organizationId — Platos Organization.id
+ * - projectId      — Platos Project.id
+ * - environmentId  — Platos Environment.id
  * - userId         — the acting user
  *
  * Optional hints:

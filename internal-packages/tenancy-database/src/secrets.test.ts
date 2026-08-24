@@ -50,12 +50,12 @@ describe("Platos credential envelope", () => {
     const tamperedTag = Buffer.from(envelope.authTag);
     tamperedTag[0] ^= 1;
 
-    for (const attempt of [
+    for (const check of [
       () => decryptCredentialSecret(randomBytes(32), context, envelope),
       () => decryptCredentialSecret(key, context, { ...envelope, ciphertext: tamperedCiphertext }),
       () => decryptCredentialSecret(key, context, { ...envelope, authTag: tamperedTag }),
     ]) {
-      expect(attempt).toThrowError(new PlatosSecretStoreError("credential_unavailable"));
+      expect(check).toThrowError(new PlatosSecretStoreError("credential_unavailable"));
     }
   });
 

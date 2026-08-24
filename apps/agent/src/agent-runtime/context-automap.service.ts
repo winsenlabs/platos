@@ -11,7 +11,7 @@
  *                              session key. Injected + stripped.
  *   3. Auto-match            — arg-name aliases match a declared session-context
  *                              key (`userId` ⇄ `user_id` ⇄ `user.id` ⇄ `uid`).
- *                              Only triggers when the tool's per-tool block does
+ *                              Runs only when the tool's per-tool block does
  *                              NOT opt out (`_auto: false`). Injected + stripped.
  *   4. LLM fills (default)   — leave the param in the schema. Description passed
  *                              through to `buildLlmHintBlock` for the system

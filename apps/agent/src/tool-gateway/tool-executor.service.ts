@@ -187,7 +187,7 @@ export class ToolExecutorService {
     // PLATOS_TOOL_DISPATCH_PERMISSION_GATE=1 is set in the env.
     @Optional() private readonly permissionGateway?: MCPPermissionGatewayService,
     // Issue #1 (full pause flow) — optional. When both are wired AND
-    // the gate flag is set, `require_approval` triggers a real
+    // the gate flag is set, `require_approval` starts a real
     // persisted approval + Socket.IO event + BLPOP wait.
     @Optional() private readonly approvalsService?: MonitoringApprovalsService,
     @Optional() @Inject(REDIS_TOKEN) private readonly redis?: Redis,
@@ -855,7 +855,7 @@ export class ToolExecutorService {
       // call fell straight through to the error below.
       //
       // Measured on the live deployment before this fix: 13 distinct slugs, 28
-      // failed attempts across Slack, Gmail, Google Calendar, Notion and Tavily,
+      // failed calls across Slack, Gmail, Google Calendar, Notion and Tavily,
       // spanning at least three days. `findDynamicExecutor` still prefers the
       // explicit marker but now also infers the executor from its shape, so a
       // correctly-shaped gateway works on registration.
@@ -1151,7 +1151,7 @@ export class ToolExecutorService {
     // The entity backend validates this token with its own auth system —
     // it knows who the real user is without trusting Platos' claim.
     // Fail-open: a missing/expired token means the entity sees no token
-    // header and must handle that gracefully (e.g. 401 → trigger re-auth).
+        // header and must handle that gracefully (e.g. 401 → require re-auth).
     let entityAccessToken: string | undefined;
     if (origin?.mcpUserId && origin.mcpUserId.startsWith("mcp:oidc:")) {
       try {

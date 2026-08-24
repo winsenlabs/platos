@@ -191,7 +191,7 @@ export class SkillRuntimeService {
             currentCents: cap.currentCents,
           };
           // Still emit a zero-cost usage event with latencyMs=0 so the
-          // observability surface sees blocked attempts alongside successes.
+          // observability surface sees blocked executions alongside successes.
           if (this.costService) {
             try {
               await this.costService.recordSkillUsage(scope, {

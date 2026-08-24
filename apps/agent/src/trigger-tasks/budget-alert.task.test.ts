@@ -52,7 +52,7 @@ describe("budget alert Trigger callback shell", () => {
 
   it("delegates identifiers to the agent and returns the durable delivery summary", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ delivered: 1, failed: 0, skipped: 1, attempts: [] }), {
+      new Response(JSON.stringify({ delivered: 1, failed: 0, skipped: 1, retries: [] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }),

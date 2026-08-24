@@ -653,7 +653,7 @@ describe("a rebuilt rollup describes the same window as the one it replaced", ()
   }
 
   it("rebuilds a lost day with its task count, not with cost and zero tasks", async () => {
-    // The reconcile task runs nightly over the trailing two days, so a rebuilt
+    // Reconciliation runs nightly over the trailing two days, so a rebuilt
     // hash carrying real cost and `tasks = 0` was the NORMAL post-Redis-loss
     // state: the "Tasks completed" card, monitoring.cost.daily/.range and any
     // turns-limit cap all silently stopped counting the repaired window.

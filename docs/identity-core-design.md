@@ -18,7 +18,7 @@ gaps break correctness and isolation:
 - **A — no external-id adoption (go-live blocker).** There is no way for Walle
   to bind "this Slack person = this Walle user id", and no resolver preference
   for such a binding. `{{endUserId}}` can never become the Composio `user_id`.
-- **B — durable drops the identity.** `spawn_bgo`, `agent_batch`, and
+- **B — durable drops the identity.** `spawn_job`, `agent_batch`, and
   `spawn_agent` do not carry the resolved end user, so a durable/child tool
   call has no `{{endUserId}}` and fails closed (or, pre-hardening, would have
   borrowed the wrong one).
@@ -218,9 +218,9 @@ confirm*):**
 it) and passes the id DOWN. Children never re-resolve from scratch (which could
 diverge from the parent's verified-claim person or bypass the C gate).
 
-### B.1 `spawn_bgo` (single durable tool call)
+### B.1 `spawn_job` (single durable tool call)
 
-**Critical seam correction (G2): `spawn_bgo` hits the LEGACY normalizePayload
+**Critical seam correction (G2): `spawn_job` hits the LEGACY normalizePayload
 branch, which reconstructs a fresh payload object and drops any top-level
 `endUserId`.** `_bgoPayload` (`agent.service.ts:2424-2434`) uses the **legacy
 top-level shape** (`taskId`, `instruction`, `tools`, `timeout`,
@@ -230,7 +230,7 @@ So in the task, `normalizePayload` (`agent-tool-block.task.ts:92`) takes the
 **reconstructs a brand-new object** (`:95-110`) with only `tool/params/scope/
 origin`. A naively-added top-level `endUserId` on `_bgoPayload` would be
 **silently dropped** by that reconstruction. The new-shape branch (`:93`,
-`return p`) is NOT the one `spawn_bgo` reaches.
+`return p`) is NOT the one `spawn_job` reaches.
 
 Fix chain (all four touch points required):
 - Handler (`agent.service.ts:2424`, building `_bgoPayload`): resolve
@@ -242,7 +242,7 @@ Fix chain (all four touch points required):
   returned reconstructed object MUST carry `endUserId: p.endUserId` (this is the
   line that today drops it — the whole point of G2). Add it to the returned
   shape. (The new-shape branch at `:93` returns `p` verbatim, so a top-level
-  `endUserId` already survives there — but `spawn_bgo` doesn't use that branch.)
+  `endUserId` already survives there — but `spawn_job` doesn't use that branch.)
 - Task body (`agent-tool-block.task.ts:165-182`): destructure `endUserId` from
   `normalized` (alongside `tool, params, scope, origin` at `:138`) and add
   `endUserId` to the HMAC-covered `body`.
@@ -447,11 +447,11 @@ Each commit is independently reviewable; migrations flagged **[MIGRATION]**.
    id; channel/group-DM thread → `null` → `{{endUserId}}` tool returns "tool
    requires a linked user"; non-Slack channel thread → `null`; residual-scan
    test still green.
-6. **B.1 `spawn_bgo` carries endUserId (G2 — legacy branch)** — handler resolves
+6. **B.1 `spawn_job` carries endUserId (G2 — legacy branch)** — handler resolves
    (gated) + adds top-level `endUserId` to `_bgoPayload`; add `endUserId?` to
    `AgentToolBlockPayload` legacy fields **AND to the object the
    `normalizePayload` LEGACY branch returns (`agent-tool-block.task.ts:95-110`,
-   the branch spawn_bgo actually hits)**; task destructures + adds `endUserId`
+   the branch spawn_job actually hits)**; task destructures + adds `endUserId`
    to the HMAC body (`:165-182`). *Verify:* bgo from a DM thread → durable
    `execute-tool` receives the id and substitutes; from a channel thread →
    `null` → fails closed. Regression-guard: assert the legacy branch preserves

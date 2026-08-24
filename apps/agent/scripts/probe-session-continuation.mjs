@@ -1,5 +1,5 @@
 // Probe the server-side continuation mechanism: after turn 1's run COMPLETES,
-// does the session row reflect it, and does a second append re-trigger a run?
+// does the session row reflect it, and does a second append start another run?
 // Usage: TRIGGER_SECRET_KEY=tr_prod_... node scripts/probe-session-continuation.mjs
 import { AgentChat } from "@trigger.dev/sdk/chat";
 import { sessions, runs } from "@trigger.dev/sdk";

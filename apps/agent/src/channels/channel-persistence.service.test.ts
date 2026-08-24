@@ -81,7 +81,7 @@ function makeRefreshHarness(
     revokedAt: null,
     tokenGeneration: 4,
     tokenRefreshState: "IDLE",
-    tokenRefreshAttemptId: null,
+    tokenRefreshClaimId: null,
     tokenRefreshStartedAt: null,
     tokenRefreshRepairCode: null,
     ...overrides,
@@ -380,7 +380,7 @@ describe("ChannelPersistenceService", () => {
     const claimed = await harness.service.beginInstallationRefresh(
       INSTALLATION,
       APP,
-      "attempt-1",
+      "claim-1",
       harness.expectation,
     );
 
@@ -390,7 +390,7 @@ describe("ChannelPersistenceService", () => {
       credentialRevision: harness.expectation.credentialRevision,
       tokenGeneration: 4,
       tokenRefreshState: "REFRESHING",
-      tokenRefreshAttemptId: "attempt-1",
+      tokenRefreshClaimId: "claim-1",
       botToken: "xoxb-old",
       refreshToken: "xoxe-old",
     });
@@ -401,13 +401,13 @@ describe("ChannelPersistenceService", () => {
     const revisionHarness = makeRefreshHarness();
 
     await expect(
-      generationHarness.service.beginInstallationRefresh(INSTALLATION, APP, "attempt-1", {
+      generationHarness.service.beginInstallationRefresh(INSTALLATION, APP, "claim-1", {
         ...generationHarness.expectation,
         tokenGeneration: 3,
       }),
     ).resolves.toBeNull();
     await expect(
-      revisionHarness.service.beginInstallationRefresh(INSTALLATION, APP, "attempt-2", {
+      revisionHarness.service.beginInstallationRefresh(INSTALLATION, APP, "claim-2", {
         ...revisionHarness.expectation,
         credentialRevision: `${CREDENTIAL}:0`,
       }),
@@ -428,21 +428,21 @@ describe("ChannelPersistenceService", () => {
     const mark = await harness.service.markInstallationRefreshRepairRequired(
       INSTALLATION,
       APP,
-      "attempt-1",
+      "claim-1",
       harness.expectation,
       "refresh_failed",
     );
     const finalized = await harness.service.finalizeInstallationRefresh(
       INSTALLATION,
       APP,
-      "attempt-1",
+      "claim-1",
       harness.expectation,
       { botToken: "xoxb-stale", refreshToken: "xoxe-stale" },
     );
     const preserved = await harness.service.preserveInstallationRefreshGrantForRepair(
       INSTALLATION,
       APP,
-      "attempt-1",
+      "claim-1",
       harness.expectation,
       { botToken: "xoxb-stale", refreshToken: "xoxe-stale" },
       "refresh_commit_failed",

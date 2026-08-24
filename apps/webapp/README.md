@@ -1,4 +1,4 @@
-## Trigger webapp - powered by Remix
+## Platos webapp — powered by Remix
 
 To start, run with `pnpm run dev --filter webapp`
 
@@ -6,5 +6,5 @@ To start, run with `pnpm run dev --filter webapp`
 
 ```sh
 pnpm run docker:build:webapp
-docker run -it triggerdotdev-webapp sh
+docker run -it platos-webapp sh
 ```

@@ -41,7 +41,7 @@ const TERMINAL_RUN_STATUSES = new Set([
  * via ConnectionsGateway. Tears the subscription down automatically on
  * terminal statuses.
  *
- * Usage from AgentService (spawn_job meta-tool):
+ * Usage from AgentService (spawn_job runtime tool):
  *   const unsubscribe = runsBridge.subscribe(runId, scope, threadId);
  *   // events flow: agent_event { type: "run_update", runId, status, metadata, output? }
  *   // call unsubscribe() early to cancel.

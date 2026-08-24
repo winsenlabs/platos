@@ -13,7 +13,7 @@ const allGood = REQUIRED_STORES.map((s) =>
 
 const receipt = (over: Partial<ErasureReceipt> = {}): ErasureReceipt => ({
   operationId: "op1", subjectKeyHash: "abc", requestedAt: "t", status: "running",
-  scopes: [], stores: allGood, policyVersion: "v1", attempts: 1, ...over,
+  scopes: [], stores: allGood, policyVersion: "v1", retryCount: 1, ...over,
 });
 
 describe("unknown is never success", () => {

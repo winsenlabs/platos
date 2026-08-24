@@ -36,12 +36,12 @@ afterEach(() => {
 
 describe("durable budget alert delivery", () => {
   it("rejects a stale worker finalization after a newer fenced claim wins", async () => {
-    const attempts: unknown[] = [];
+    const retries: unknown[] = [];
     const state = {
       status: "PROCESSING",
       claimToken: "new-token",
       claimGeneration: 2,
-      attemptCount: 2,
+      retryCount: 2,
       lastErrorCode: null as string | null,
     };
     const prisma = {
@@ -52,17 +52,17 @@ describe("durable budget alert delivery", () => {
               state.status !== where.status ||
               state.claimToken !== where.claimToken ||
               state.claimGeneration !== where.claimGeneration ||
-              state.attemptCount !== where.attemptCount
+              state.retryCount !== where.retryCount
             ) return { count: 0 };
             Object.assign(state, data);
             return { count: 1 };
           }),
         },
-        alertDeliveryAttempt: { create: vi.fn(async ({ data }: any) => attempts.push(data)) },
+        alertDeliveryRetry: { create: vi.fn(async ({ data }: any) => retries.push(data)) },
       })),
     };
     const service = new BudgetService(prisma as any, {} as any);
-    await expect((service as any).finishDeliveryAttempt(
+    await expect((service as any).finishDeliveryRetry(
       "delivery-a",
       "env-a",
       "stale-token",
@@ -74,10 +74,10 @@ describe("durable budget alert delivery", () => {
       status: "PROCESSING",
       claimToken: "new-token",
       claimGeneration: 2,
-      attemptCount: 2,
+      retryCount: 2,
       lastErrorCode: null,
     });
-    expect(attempts).toEqual([]);
+    expect(retries).toEqual([]);
   });
 
   it("creates one durable event and one delivery per eligible channel", async () => {
@@ -144,7 +144,7 @@ describe("durable budget alert delivery", () => {
         email: "alerts@example.test",
       }),
     ];
-    const attempts: Array<Record<string, unknown>> = [];
+    const retries: Array<Record<string, unknown>> = [];
     const prisma = {
       environment: {
         findUnique: vi.fn().mockResolvedValue({
@@ -164,17 +164,17 @@ describe("durable budget alert delivery", () => {
         findFirstOrThrow: vi.fn(async ({ where }: any) => {
           const row = rows.find((candidate) => candidate.id === where.id)!;
           if (row.claimToken !== where.claimToken) throw new Error("claim unavailable");
-          return { attemptCount: row.attemptCount, claimGeneration: row.claimGeneration };
+          return { retryCount: row.retryCount, claimGeneration: row.claimGeneration };
         }),
         updateMany: vi.fn(async ({ where, data }: any) => {
           const row = rows.find((candidate) => candidate.id === where.id)!;
           if (row.status === "SUCCEEDED" || row.availableAt.getTime() > Date.now()) return { count: 0 };
           row.status = data.status;
           row.availableAt = data.availableAt;
-          row.lastAttemptAt = data.lastAttemptAt;
+          row.lastRetryAt = data.lastRetryAt;
           row.claimToken = data.claimToken;
           row.claimGeneration += 1;
-          row.attemptCount += 1;
+          row.retryCount += 1;
           return { count: 1 };
         }),
       },
@@ -186,15 +186,15 @@ describe("durable budget alert delivery", () => {
               row.status !== where.status ||
               row.claimToken !== where.claimToken ||
               row.claimGeneration !== where.claimGeneration ||
-              row.attemptCount !== where.attemptCount
+              row.retryCount !== where.retryCount
             ) return { count: 0 };
             Object.assign(row, data);
             return { count: 1 };
           }),
         },
-        alertDeliveryAttempt: {
+        alertDeliveryRetry: {
           create: vi.fn(async ({ data }: any) => {
-            attempts.push(data);
+            retries.push(data);
             return data;
           }),
         },
@@ -231,10 +231,10 @@ describe("durable budget alert delivery", () => {
     expect(firstFailure).toBeInstanceOf(BudgetAlertDeliveryError);
     expect(firstFailure?.summary).toMatchObject({ delivered: 1, failed: 1, skipped: 0 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(rows[0]).toMatchObject({ status: "SUCCEEDED", attemptCount: 1 });
+    expect(rows[0]).toMatchObject({ status: "SUCCEEDED", retryCount: 1 });
     expect(rows[1]).toMatchObject({
       status: "FAILED",
-      attemptCount: 1,
+      retryCount: 1,
       lastErrorCode: "email_api_error",
     });
     expect(JSON.stringify(rows)).not.toContain("sentinel-slack-token");
@@ -244,9 +244,9 @@ describe("durable budget alert delivery", () => {
       summary: { delivered: 0, failed: 1, skipped: 1 },
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(rows[0].attemptCount).toBe(1);
-    expect(rows[1].attemptCount).toBe(2);
-    expect(attempts.map((attempt) => attempt.deliveryId)).toEqual([
+    expect(rows[0].retryCount).toBe(1);
+    expect(rows[1].retryCount).toBe(2);
+    expect(retries.map((retry) => retry.deliveryId)).toEqual([
       "delivery-slack",
       "delivery-email",
       "delivery-email",
@@ -266,11 +266,11 @@ function deliveryRow(
     channelId,
     budgetThresholdEventId: "event-a",
     status: "PENDING",
-    attemptCount: 0,
+    retryCount: 0,
     claimGeneration: 0,
     claimToken: null as string | null,
     availableAt: new Date(0),
-    lastAttemptAt: null as Date | null,
+    lastRetryAt: null as Date | null,
     deliveredAt: null as Date | null,
     lastStatusCode: null as number | null,
     lastErrorCode: null as string | null,

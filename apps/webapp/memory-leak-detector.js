@@ -450,7 +450,7 @@ class MemoryLeakDetector {
       const endpoint = this.options.postApiEndpoints[i % this.options.postApiEndpoints.length];
 
       try {
-        // Send a LARGE body to try and trigger a memory leak
+        // Send a LARGE body to try to cause a memory leak
         const response = await this.makeRequest(endpoint, {
           method: "POST",
           body: JSON.stringify(

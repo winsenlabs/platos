@@ -45,7 +45,7 @@ import { assertsIdentity, stripAssertedIdentity } from "./session-context-overri
 function resolveGatewayCors(): { origin: string | string[] | boolean; credentials: boolean } {
   // TODO(env.ts) consider migration — this runs at @WebSocketGateway decorator
   // time, BEFORE main.ts's validateAgentEnv() runs, so going through the lazy
-  // `env` proxy here would trigger strict parse before the bootstrap handler
+// `env` proxy here would cause strict parse before the bootstrap handler
   // can surface structured errors. Keep process.env direct for now.
   const raw = (process.env.PLATOS_CORS_ORIGIN || "").trim();
   if (process.env.NODE_ENV === "production") {

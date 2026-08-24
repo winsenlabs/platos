@@ -126,7 +126,7 @@ export class OfficialSkillHandlers {
   // sender) via ScopedEnvService so per-scope keys override the container
   // env. Failure modes (unverified sender, malformed payload, Resend
   // rate-limit) bubble up as structured `{ ok: false, error }` so the LLM
-  // can surface the reason to the user instead of triggering retry loops.
+  // can surface the reason to the user instead of causing retry loops.
   // ──────────────────────────────────────────────────────────────────────────
 
   private async sendEmail(scope: ScopeTuple, input: Record<string, unknown>) {

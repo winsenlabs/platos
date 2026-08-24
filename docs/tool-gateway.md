@@ -262,7 +262,7 @@ Or on error:
 { "error": { "code": "NOT_FOUND", "message": "Repository not found" } }
 ```
 
-4xx responses (with JSON `error` body) are reported back to the LLM verbatim as a tool_result with `is_error=true`. 5xx triggers Platos's retry policy (3 attempts, exponential backoff) before surfacing as `is_error`.
+4xx responses (with JSON `error` body) are reported back to the LLM verbatim as a tool_result with `is_error=true`. 5xx starts Platos's retry policy (3 retries, exponential backoff) before surfacing as `is_error`.
 
 ## Three execution modes (recap)
 
@@ -313,7 +313,7 @@ On each agent, `enabledTools` is an array of `ToolDefinition.id` that the agent 
 }
 ```
 
-- `requiresApproval: true` — every invocation triggers `request_approval` automatically. User sees the tool call in the UI with **Approve** / **Deny** buttons before it fires.
+- `requiresApproval: true` — every invocation starts `request_approval` automatically. User sees the tool call in the UI with **Approve** / **Deny** buttons before it fires.
 - `destructive: true` — flagged in the UI, logged specially for audit, and (optionally) requires a second approval.
 
 Combine with the agent's `autoApproveTools` list to whitelist trusted tools while leaving approval required globally.
@@ -326,10 +326,10 @@ Combine with the agent's `autoApproveTools` list to whitelist trusted tools whil
 
 ## Debugging
 
-Every tool invocation is a span in the run trace. Open **Runs → [run_id] → tool_use(...)** to see:
+Every tool invocation is a span in the Turn trace. Open **Turns → [turn_id] → tool_use(...)** to see:
 
 - Full request payload (body, headers, signature)
-- Response (payload, latency, retry attempts)
+- Response (payload, latency, retries)
 - Error chain if it failed
 
 Plus the WebSocket connection log at `platos:tools:gateway:{entityId}:{environmentId}` shows every register/unregister/ping event.

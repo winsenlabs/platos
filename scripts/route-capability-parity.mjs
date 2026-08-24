@@ -293,7 +293,7 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
     statuses: { "persistedReadBack.status": "required-not-verified", "automatedEvidence.status": "verified" },
   },
   "access-key-browser-request-correlation": {
-    fragments: { currentBehavior: ["cryptographically random attempt ID", "stale", "superseded"], secretExposure: ["private pending material", "attempt ID", "mismatched", "cancelled"], concurrency: ["overlapping responses", "latest matching attempt"] },
+    fragments: { currentBehavior: ["cryptographically random request ID", "stale", "superseded"], secretExposure: ["private pending material", "request ID", "mismatched", "cancelled"], concurrency: ["overlapping responses", "latest matching request"] },
     statuses: { "defect.status": "verified", "persistedReadBack.status": "verified", "concurrency.status": "verified", "recovery.status": "verified", "secretExposure.status": "verified", "automatedEvidence.status": "verified" },
   },
   "agent-tools-loader-action-mismatch": {

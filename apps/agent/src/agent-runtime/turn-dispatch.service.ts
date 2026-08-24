@@ -824,7 +824,7 @@ export class TurnDispatchService {
     //
     // And on the non-clean paths we must DELETE the key, not merely skip the
     // write: a stale stamp from an earlier turn would be even older and would
-    // trigger the skip on its own. Deleting forces the next turn through the
+      // activate the skip on its own. Deleting forces the next turn through the
     // full guard (fail safe).
     const drainCompletedCleanly = !timedOut && !drainErrored && committedCursor !== undefined;
     await (drainCompletedCleanly

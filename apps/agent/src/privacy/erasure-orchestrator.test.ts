@@ -13,7 +13,7 @@ const ok = (store: StoreName, deleted = 1): StoreOutcome =>
 
 const receipt = (over: Partial<ErasureReceipt> = {}): ErasureReceipt => ({
   operationId: "op1", subjectKeyHash: "h", requestedAt: "t0", status: "pending",
-  scopes: [], stores: [], policyVersion: "v1", attempts: 0, ...over,
+  scopes: [], stores: [], policyVersion: "v1", retryCount: 0, ...over,
 });
 
 const allOk = (): StoreExecutors => Object.fromEntries(
@@ -131,14 +131,14 @@ describe("retry", () => {
   });
 
   it("is a no-op when everything already settled", async () => {
-    const done = receipt({ status: "completed", stores: EXECUTION_ORDER.map((s) => ok(s)), attempts: 1 });
+    const done = receipt({ status: "completed", stores: EXECUTION_ORDER.map((s) => ok(s)), retryCount: 1 });
     const r = await retryErasure(done, subject, allOk());
-    expect(r.attempts).toBe(1);
+    expect(r.retryCount).toBe(1);
   });
 
-  it("increments attempts so operators can see churn", async () => {
-    const r = await runErasure(receipt({ attempts: 2 }), subject, allOk());
-    expect(r.attempts).toBe(3);
+  it("increments retryCount so operators can see churn", async () => {
+    const r = await runErasure(receipt({ retryCount: 2 }), subject, allOk());
+    expect(r.retryCount).toBe(3);
   });
 });
 

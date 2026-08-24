@@ -324,7 +324,7 @@ export const agentBatch = task({
       successCount,
       failureCount,
       totalCostCents,
-      attempt: ctx?.attempt?.number ?? 1,
+      retryCount: Math.max(0, (ctx?.attempt?.number ?? 1) - 1),
     });
 
     return {

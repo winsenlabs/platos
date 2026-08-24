@@ -24,7 +24,7 @@ export interface BudgetAlertDeliverySummary {
   delivered: number;
   failed: number;
   skipped: number;
-  attempts: Array<{
+  retries: Array<{
     deliveryId: string;
     channelId: string;
     type: string;

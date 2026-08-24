@@ -78,7 +78,7 @@ export interface ErasureReceipt {
   scopes: Array<{ organizationId: string; projectId: string; environmentId: string }>;
   stores: StoreOutcome[];
   policyVersion: string;
-  attempts: number;
+  retryCount: number;
   /** Set only when status is blocked_legal_hold. Identifier, never content. */
   legalHoldPolicyId?: string;
 }
@@ -164,7 +164,7 @@ export function storesNeedingRetry(r: ErasureReceipt): StoreName[] {
   });
 }
 
-/** An outcome for a store that has not been attempted yet. */
+/** An outcome for a store that has not been processed yet. */
 export function pendingStore(store: StoreName): StoreOutcome {
   return {
     store,

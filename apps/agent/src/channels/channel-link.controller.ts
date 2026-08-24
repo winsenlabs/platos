@@ -643,7 +643,7 @@ export class ChannelLinkController {
         res,
         429,
         "Too many requests",
-        "Too many attempts from your network. Please try again in a few minutes.",
+        "Too many requests from your network. Please try again in a few minutes.",
       );
       return;
     }
@@ -736,7 +736,7 @@ export class ChannelLinkController {
         res,
         429,
         "Too many requests",
-        "Too many attempts from your network. Please try again in a few minutes.",
+        "Too many requests from your network. Please try again in a few minutes.",
       );
       return;
     }

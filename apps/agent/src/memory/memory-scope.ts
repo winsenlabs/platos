@@ -64,7 +64,7 @@ export async function resolveEndUser(
 
   // EndUser.id is UUID-backed, while verified external identity subjects are
   // intentionally opaque and may be arbitrary strings. Do not pass an
-  // external subject to the UUID column before attempting identity lookup.
+  // external subject to the UUID column before resolving identity.
   if (UUID_OR_URN_UUID.test(userId)) {
     const direct = await prisma.endUser.findFirst({
       where: { id: userId, organizationId: scope.organizationId, disabledAt: null },

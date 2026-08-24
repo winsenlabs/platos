@@ -42,7 +42,7 @@ type InstallRow = {
   lastEventAt: Date | null;
   tokenGeneration: number;
   tokenRefreshState: string;
-  tokenRefreshAttemptId: string | null;
+  tokenRefreshClaimId: string | null;
   tokenRefreshStartedAt: Date | null;
   tokenRefreshRepairCode: string | null;
   createdAt: Date;
@@ -231,7 +231,7 @@ function makePrisma(seed: { agents?: AgentRow[] } = {}) {
             lastEventAt: null,
             tokenGeneration: 1,
             tokenRefreshState: "IDLE",
-            tokenRefreshAttemptId: null,
+            tokenRefreshClaimId: null,
             tokenRefreshStartedAt: null,
             tokenRefreshRepairCode: null,
             createdAt: new Date(Date.now() + sequence),
@@ -255,7 +255,7 @@ function makePrisma(seed: { agents?: AgentRow[] } = {}) {
           lastEventAt: null,
           tokenGeneration: 1,
           tokenRefreshState: "IDLE",
-          tokenRefreshAttemptId: null,
+          tokenRefreshClaimId: null,
           tokenRefreshStartedAt: null,
           tokenRefreshRepairCode: null,
           createdAt: new Date(Date.now() + sequence),

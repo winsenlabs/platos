@@ -1,5 +1,5 @@
 {
-  "name": "triggerdotdev",
+  "name": "platos",
   "private": true,
   "workspaces": [
     "apps/*",

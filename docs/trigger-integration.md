@@ -1,15 +1,18 @@
 # Trigger Integration
 
-Platos is built on top of trigger.dev. The agent layer uses trigger's run engine for every durable primitive it exposes: `spawn_bgo` (formerly `spawn_task` — kept as a deprecated alias; see [BGO_RENAME.md](./BGO_RENAME.md)), schedules, batches, realtime subscriptions, wait-for-token HITL. This doc explains how the integration is wired so you can reach for the underlying primitives when you need to.
+Platos uses an external Trigger service for optional durable execution. The
+agent layer adapts `spawn_job`, schedules, batches, realtime subscriptions, and
+approval pauses to that vendor boundary. This document explains the adapter so
+operators can configure those external primitives deliberately.
 
-If you're new to trigger.dev: it's a durable task platform for TypeScript. You define tasks in a `trigger/` directory, deploy them, and invoke them with `tasks.trigger()`. The engine handles retries, checkpoints, queues, observability. Platos inherits all of this.
+If you're new to trigger.dev: it's a durable task platform for TypeScript. You define tasks in a `trigger/` directory, deploy them, and invoke them with `tasks.trigger()`. Its engine handles retries, checkpoints, queues, and observability; the Platos adapter uses those vendor capabilities when configured.
 
 ## The bridge
 
 `apps/agent/src/trigger-bridge/` is the only place the agent service talks to trigger.dev. It wraps the `@trigger.dev/sdk` (re-exported as `@platos/sdk`) with:
 
 - A graceful fallback when `TRIGGER_SECRET_KEY` is not set (local dev)
-- An internal privileged client for realtime subscriptions (uses `TRIGGER_INTERNAL_SECRET`)
+- An explicitly configured vendor client for realtime subscriptions (uses `PLATOS_TRIGGER_API_KEY`)
 - Correlation: every task triggered from an agent turn is tagged with `agentId`, `threadId`, `messageId`, `runId` so the runs view groups cleanly
 
 ```ts
@@ -40,12 +43,12 @@ export class TriggerService {
 
 The stub does enough to make development round-trip (writes the "run" to Redis, returns a handle, emits fake events), but it's not durable. Set `TRIGGER_SECRET_KEY` to get actual durability.
 
-## `spawn_bgo` — the meta-tool (alias: `spawn_task`)
+## `spawn_job` — the runtime tool
 
-When an agent has `spawn_bgo` in its tool list (or the deprecated alias `spawn_task`, kept for one release — see [BGO_RENAME.md](./BGO_RENAME.md)), it can trigger arbitrary tasks that you've defined in your `trigger/` directory. The tool signature:
+When an agent has `spawn_job` in its tool list, it can trigger arbitrary tasks that you've defined in your `trigger/` directory. The tool signature:
 
 ```ts
-spawn_bgo({
+spawn_job({
   taskId: string,         // e.g. "fetch_and_summarize"
   payload: unknown,       // JSON-serializable
   queue?: string,
@@ -86,17 +89,17 @@ export const fetchAndSummarize = task({
 });
 ```
 
-Register by running `pnpm exec trigger.dev@latest dev` in your project (or `deploy` for production). The task shows up in the webapp and becomes callable via `spawn_bgo` (or the deprecated `spawn_task` alias).
+Register by running `pnpm exec trigger.dev@latest dev` in your project (or `deploy` for production). The task shows up in the webapp and becomes callable via `spawn_job`.
 
 ### Task handle resolution
 
 Agents that spawn a task usually want to wait for the result. Two patterns:
 
-**Pattern A: `wait_for_runs` meta-tool** (blocking)
+**Pattern A: `wait_for_runs` runtime tool** (blocking)
 
 ```
-spawn_bgo → { runId }
-spawn_bgo → { runId }
+spawn_job → { runId }
+spawn_job → { runId }
 wait_for_runs([run1, run2]) → blocks until both complete, returns outputs
 ```
 
@@ -182,7 +185,7 @@ Sometimes the agent itself (not just the UI) wants to observe a run — e.g., to
 
 ```
 User:   Transcribe this 3-hour podcast.
-Agent:  spawn_bgo("transcribe_audio", { url: "..." }) → run_abc
+Agent:  spawn_job("transcribe_audio", { url: "..." }) → run_abc
         subscribe_to_run("run_abc", "progress_events_only")
         
         [stream event] { progress: 0.1, eta: "27m" }
@@ -191,7 +194,9 @@ Agent:  spawn_bgo("transcribe_audio", { url: "..." }) → run_abc
         Transcription complete. 48,213 words. Here's the summary: ...
 ```
 
-Under the hood, the agent uses `runs.subscribeToRun()` with `TRIGGER_INTERNAL_SECRET` and forwards filtered events back to the user over the main Socket.IO stream.
+Under the hood, the agent uses `runs.subscribeToRun()` with the scoped external
+Trigger client and forwards filtered events back to the user over the main
+Socket.IO stream.
 
 ## HITL via `wait.forToken`
 
@@ -228,7 +233,7 @@ export const deployToProduction = task({
 });
 ```
 
-The agent invokes this via `spawn_bgo("deploy_to_production", { prUrl })`. Token resolution happens out-of-band (a human clicks a link). The run stays durable for up to 24h.
+The agent invokes this via `spawn_job("deploy_to_production", { prUrl })`. Token resolution happens out-of-band (a human clicks a link). The run stays durable for up to 24h.
 
 ## Metadata and tags for observability
 
@@ -276,7 +281,7 @@ When you're ready for production:
 pnpm exec trigger.dev@latest deploy
 ```
 
-Your tasks are bundled, uploaded, and registered. Platos agents can immediately call them via `spawn_bgo` (or the deprecated `spawn_task` alias).
+Your tasks are bundled, uploaded, and registered. Platos agents can immediately call them via `spawn_job`.
 
 ## Upgrade notes
 
@@ -284,6 +289,6 @@ Platos tracks upstream trigger.dev. When trigger ships a new SDK version, we bum
 
 ## Further reading
 
-- `spawn_bgo` (alias: `spawn_task`) in practice: [writing-agents.md](./writing-agents.md#example-2)
+- `spawn_job` in practice: [writing-agents.md](./writing-agents.md#example-2)
 - Run engine internals (upstream): [trigger.dev/docs/how-it-works](https://trigger.dev/docs/how-it-works)
 - HITL approvals (both flavors): [architecture.md](./architecture.md) § Message lifecycle

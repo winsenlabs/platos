@@ -111,7 +111,8 @@ services:
       PLATOS_MESSAGE_ENCRYPTION_KEY: ${PLATOS_MESSAGE_ENCRYPTION_KEY}
       SESSION_SECRET: ${SESSION_SECRET}
       PLATOS_MAX_CONCURRENT_STREAMS: "100"
-      TRIGGER_INTERNAL_SECRET: ${TRIGGER_INTERNAL_SECRET}
+      PLATOS_INTERNAL_AUTH_TOKEN: ${PLATOS_INTERNAL_AUTH_TOKEN}
+      PLATOS_COMPONENT_AUTH_SECRET: ${PLATOS_COMPONENT_AUTH_SECRET}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: platos-agent
@@ -141,7 +142,8 @@ MAGIC_LINK_SECRET=...        # openssl rand -base64 24 | tr -d '\n'
 ENCRYPTION_KEY=...           # openssl rand -hex 32
 PLATOS_ENCRYPTION_KEY=...    # openssl rand -hex 32, distinct value
 PLATOS_MESSAGE_ENCRYPTION_KEY=... # openssl rand -hex 32, distinct value
-TRIGGER_INTERNAL_SECRET=...  # any strong random string
+PLATOS_INTERNAL_AUTH_TOKEN=...      # openssl rand -hex 32
+PLATOS_COMPONENT_AUTH_SECRET=...    # openssl rand -hex 32, distinct value
 
 # DB
 POSTGRES_USER=platos
@@ -188,7 +190,8 @@ Compose refuses to boot if any of these are missing or empty. Generate locally w
 | `PLATOS_ENCRYPTION_KEY` | **64 hex chars** (32 bytes) | `openssl rand -hex 32` |
 | `PLATOS_MESSAGE_ENCRYPTION_KEY` | **64 hex chars** (32 bytes) | `openssl rand -hex 32` |
 | `MANAGED_WORKER_SECRET` | non-empty | `openssl rand -hex 32` |
-| `TRIGGER_INTERNAL_SECRET` | non-empty | `openssl rand -hex 32` |
+| `PLATOS_INTERNAL_AUTH_TOKEN` | non-empty | `openssl rand -hex 32` |
+| `PLATOS_COMPONENT_AUTH_SECRET` | non-empty and distinct | `openssl rand -hex 32` |
 | `POSTGRES_PASSWORD` | non-empty | `openssl rand -hex 16` |
 | `CLICKHOUSE_PASSWORD` | non-empty | `openssl rand -hex 16` |
 | `MINIO_ROOT_PASSWORD` | non-empty | `openssl rand -hex 16` |
@@ -625,7 +628,7 @@ A prebuilt Grafana dashboard (Prometheus datasource) lives at `hosting/grafana-d
 
 Rotate: generate new, set as `SESSION_SECRET`, old sessions invalidated. All users forced to re-log. No data loss. Safe to rotate on any cadence.
 
-### `ENCRYPTION_KEY` (webapp column encryption — trigger secrets)
+### `ENCRYPTION_KEY` (webapp legacy encrypted secret columns)
 
 Rows in this domain do not all carry a key version. Back up Postgres, run a maintenance re-encryption pass with the old and new keys, verify reads, then cut every consumer over together. Do not replace the environment value before re-encryption.
 
@@ -637,9 +640,11 @@ Use the same controlled backup → maintenance re-encryption → verification �
 
 Message envelopes are versioned. Keep the old key as `PLATOS_MESSAGE_ENCRYPTION_KEY_V<N>`, place the replacement in the unsuffixed input, increment `PLATOS_MESSAGE_ENCRYPTION_KEY_V`, then re-encrypt historical envelopes before removing the old read key. See [Credential inventory](../content/docs/credential-inventory.md).
 
-### `TRIGGER_INTERNAL_SECRET`
+### `PLATOS_INTERNAL_AUTH_TOKEN` and `PLATOS_COMPONENT_AUTH_SECRET`
 
-Must match between webapp and agent. Rotate simultaneously.
+The bearer token must match between callback callers and the agent. The component
+secret must match between the external durable-task adapter and the agent HMAC
+verifier. Rotate each value across all of its consumers in one coordinated cutover.
 
 ### Per-tool HMAC secrets
 
@@ -699,7 +704,7 @@ Since `docker-compose.platos.yml` ships a `clickhouse-ttl-apply` sidecar that ru
   init container. No manual host-side `pnpm run db:migrate` needed.
   **ClickHouse** uses a separate goose-based migration step — see the
   "ClickHouse migrations" section below.
-- Do a staging deploy first. Smoke test: log in, create agent, chat, trigger a task.
+- Do a staging deploy first. Smoke test: log in, create an Agent, chat, and start a Job.
 - Roll forward. No blue/green needed unless a major version bump calls it out.
 
 ### ClickHouse migrations

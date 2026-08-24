@@ -1015,7 +1015,7 @@ export class AgentController {
         respondedAt: new Date().toISOString(),
       });
     } catch (err: any) {
-      return { resolved: false, error: err?.message || "Failed to complete waitpoint" };
+      return { resolved: false, error: err?.message || "Failed to complete approval pause" };
     }
     // Mirror the approvals ledger so the dashboard transitions immediately —
     // the task's own `approvalsService.resolve` call is idempotent so this
@@ -1082,7 +1082,7 @@ export class AgentController {
       });
     }
     // Idempotency boundary: an approval that already has a persisted outcome
-    // must never wake the runtime waitpoint a second time. Return the canonical
+    // must never wake the runtime approval pause a second time. Return the canonical
     // decision instead of replaying Redis side effects.
     if ((found as any).status !== "pending") {
       return {
@@ -1117,7 +1117,7 @@ export class AgentController {
       respondedBy: scope.userId,
       respondedAt: new Date().toISOString(),
       // Wave 2 — surface the edited-args presence on the Redis wake
-      // payload so any future runtime branch (e.g. waitpoint flow that
+      // payload so any future runtime branch (e.g. approval-pause flow that
       // wants to react to edits) can see the marker without re-reading
       // the DB row.
       ...(validatedEditedArgs ? { editedArgsApplied: true } : {}),
@@ -4471,7 +4471,7 @@ Write the summary now:`;
   /**
    * HITL approval queue. Theme E.6.
    *
-   * Lists every `request_approval` / `cancel_run` waitpoint the agent
+   * Lists every `request_approval` / vendor `cancel_run` approval pause the agent
    * runtime opened in the current (org, project, env) scope — including
    * pending, approved, rejected, timed_out. Each row carries its SLA
    * clock (`secondsRemaining`, `expired`, `deadlineAt`) computed
@@ -4831,7 +4831,7 @@ Write the summary now:`;
   /**
    * REFACTOR — AI-employee run callback. Invoked by the
    * `platos.agent.employee-run` trigger task. Multi-step autonomous
-   * orchestration (sub-turns, tools, waitpoints) is a follow-up; this initial
+   * orchestration (sub-turns, tools, approval pauses) is a follow-up; this initial
    * implementation runs a single durable turn seeded with the goal — a
    * correct (if degenerate) employee run that unblocks the task path.
    * Admin-token gated.

@@ -15,7 +15,7 @@ import type { RequestScope } from "../auth/scope.guard";
  *
  * States:
  *   auto_allow       → handler runs, audit written, result streamed.
- *   require_approval → fire `PlatosAgentApproval`, block turn on waitpoint.
+ *   require_approval → fire `PlatosAgentApproval`, pause the Turn for a decision.
  *   block            → immediate error, no approval, no retry.
  */
 

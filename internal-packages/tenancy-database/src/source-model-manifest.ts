@@ -97,7 +97,7 @@ export const supportDomainModels = [
   "AlertChannel",
   "AlertChannelConfiguration",
   "AlertDelivery",
-  "AlertDeliveryAttempt",
+  "AlertDeliveryRetry",
   "BudgetThresholdEvent",
   "ChannelEventInbox",
   "Credential",
