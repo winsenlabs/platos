@@ -94,8 +94,8 @@ describe("Task Runs V2", () => {
     expect(insertResult?.summary?.written_rows).toEqual("1");
 
     const query = client.query({
-      name: "query-task-runs",
-      query: "SELECT * FROM trigger_dev.task_runs_v2",
+      name: "query-runtime-runs",
+      query: "SELECT * FROM platos_telemetry.task_runs_v2",
       schema: z.object({
         environment_id: z.string(),
         run_id: z.string(),
@@ -134,8 +134,8 @@ describe("Task Runs V2", () => {
     expect(insertPayloadsResult?.summary?.written_rows).toEqual("1");
 
     const queryPayloads = client.query({
-      name: "query-raw-task-run-payloads",
-      query: "SELECT * FROM trigger_dev.raw_task_runs_payload_v1",
+      name: "query-external-runtime-payloads",
+      query: "SELECT * FROM platos_telemetry.raw_task_runs_payload_v1",
       schema: z.object({
         run_id: z.string(),
         created_at: z.coerce.date(),
@@ -278,8 +278,8 @@ describe("Task Runs V2", () => {
     expect(insertResult).toEqual(expect.objectContaining({ executed: true }));
 
     const query = client.query({
-      name: "query-task-runs",
-      query: "SELECT * FROM trigger_dev.task_runs_v2 FINAL",
+      name: "query-runtime-runs",
+      query: "SELECT * FROM platos_telemetry.task_runs_v2 FINAL",
       schema: z.object({
         environment_id: z.string(),
         run_id: z.string(),
@@ -446,8 +446,8 @@ describe("Task Runs V2", () => {
       expect(insertPayloadsResult?.summary?.written_rows).toEqual("1");
 
       const queryPayloads = client.query({
-        name: "query-raw-task-run-payloads",
-        query: "SELECT * FROM trigger_dev.raw_task_runs_payload_v1",
+        name: "query-external-runtime-payloads",
+        query: "SELECT * FROM platos_telemetry.raw_task_runs_payload_v1",
         schema: z.object({
           run_id: z.string(),
           created_at: z.coerce.date(),

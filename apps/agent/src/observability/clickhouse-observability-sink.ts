@@ -1,8 +1,8 @@
 /**
  * The ClickHouse implementation of ObservabilitySink.
  *
- * WHY THIS IS NOT `@internal/clickhouse`. That package is Trigger's: every one
- * of its 28 consumers is task runs, task events or run replication, and its
+ * WHY THIS IS NOT `@internal/clickhouse`. That package is the private external
+ * runtime adapter: its consumers handle runtime runs, events or replication, and its
  * client is constructed once from `CLICKHOUSE_URL` in the webapp process. This
  * sink lives in the agent, resolves its endpoint per call so credentials can
  * rotate, and writes a database that package has never heard of. Importing it
@@ -283,7 +283,7 @@ export function healthLogLevel(
   switch (status) {
     case "ready":
       return "log";
-    // A deployment that has chosen not to run an analytical store is not in a
+    // An installation that has chosen not to run an analytical store is not in a
     // degraded state, and warning about it every boot trains operators to
     // ignore this log line — which is the state that hid WIN-150.
     case "disabled":

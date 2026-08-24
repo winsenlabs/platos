@@ -73,10 +73,10 @@ The receipt carries its own negative verification: after deleting, each executor
 
 ### If you are scrubbing ClickHouse by hand
 
-The API handles this when ClickHouse is provisioned. If you are working on an older deployment, note that spans live in `trigger_dev.platos_spans_v1` and the identity columns are `user_id` (SHA256-hashed, the canonical join key), plus `user_display_name` and `user_email`, which hold plaintext when an entity signed a `userMeta` claim into the session token.
+The API handles this when ClickHouse is provisioned. Spans live in `platos_telemetry.platos_spans_v1` and the identity columns are `user_id` (SHA256-hashed, the canonical join key), plus `user_display_name` and `user_email`, which hold plaintext when an entity signed a `userMeta` claim into the session token.
 
 ```sql
-ALTER TABLE trigger_dev.platos_spans_v1
+ALTER TABLE platos_telemetry.platos_spans_v1
   UPDATE user_display_name = '', user_email = ''
   WHERE user_id = '{hashedUserId}';
 ```

@@ -117,6 +117,7 @@ services:
     environment:
       GOOSE_DRIVER: clickhouse
       GOOSE_DBSTRING: tcp://default:persisted-state-gate@clickhouse:9000
+      CLICKHOUSE_HTTP_URL: http://default:persisted-state-gate@clickhouse:8123
     command: ["clickhouse"]
     restart: "no"
 
@@ -136,6 +137,7 @@ services:
       DATABASE_URL: postgresql://postgres:persisted-state-gate@postgres:5432/platos_control?schema=public
       REDIS_URL: redis://redis:6379
       PLATOS_AGENT_PORT: "3100"
+      PLATOS_TELEMETRY_DATABASE: platos_telemetry
       PLATOS_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       ENCRYPTION_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
       PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "1"
@@ -187,6 +189,7 @@ services:
       RATE_LIMIT_REDIS_PORT: "6379"
       RATE_LIMIT_REDIS_TLS_DISABLED: "true"
       CLICKHOUSE_URL: http://default:persisted-state-gate@clickhouse:8123?secure=false
+      CLICKHOUSE_DATABASE: platos_telemetry
       SESSION_SECRET: win235-session-secret-with-at-least-thirty-two-characters
       MAGIC_LINK_SECRET: win235-magic-link-secret-with-at-least-thirty-two-characters
       ENCRYPTION_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb

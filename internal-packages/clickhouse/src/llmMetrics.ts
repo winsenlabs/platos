@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ClickhouseWriter } from "./client/types.js";
+import { TELEMETRY_DATABASE } from "./telemetryNamespace.js";
 
 export const LlmMetricsV1Input = z.object({
   organization_id: z.string(),
@@ -50,6 +51,6 @@ export type LlmMetricsV1Input = z.input<typeof LlmMetricsV1Input>;
 export function insertLlmMetrics(ch: ClickhouseWriter) {
   return ch.insertUnsafe<LlmMetricsV1Input>({
     name: "insertLlmMetrics",
-    table: "trigger_dev.llm_metrics_v1",
+    table: `${TELEMETRY_DATABASE}.llm_metrics_v1`,
   });
 }

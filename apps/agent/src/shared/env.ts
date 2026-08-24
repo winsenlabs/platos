@@ -365,6 +365,12 @@ export const AgentEnvSchema = z
       max: 1,
     }),
     PLATOS_OTEL_CLICKHOUSE_URL: z.string().url().optional(),
+    PLATOS_TELEMETRY_DATABASE: z
+      .string()
+      .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, {
+        message: "PLATOS_TELEMETRY_DATABASE must be a valid unquoted ClickHouse identifier",
+      })
+      .default("platos_telemetry"),
     PLATOS_OTEL_SAMPLE_RATE: floatString("PLATOS_OTEL_SAMPLE_RATE", {
       min: 0,
       max: 1,
@@ -384,7 +390,7 @@ export const AgentEnvSchema = z
     PLATOS_OBSERVABILITY_REQUIRE_SINK: boolLike,
     PLATOS_OBSERVABILITY_BATCH_SIZE: optTrimmedString,
     PLATOS_OBSERVABILITY_DRAIN_BATCH_SIZE: optTrimmedString,
-    PLATOS_OBSERVABILITY_MAX_ATTEMPTS: optTrimmedString,
+    PLATOS_OBSERVABILITY_MAX_RETRIES: optTrimmedString,
 
     // Misc
     PLATOS_ALLOW_HTTP_WEBHOOKS: boolLike,

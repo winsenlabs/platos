@@ -821,7 +821,7 @@ async function assertStoresAreIsolatedAndEmpty() {
   if (redisSize !== "0") throw new Error(`WIN-235 requires empty Redis; DBSIZE was ${redisSize}`);
 
   const clickhouseCount = await clickHouseQuery(
-    "SELECT count() FROM trigger_dev.metrics_v1 FORMAT TabSeparated"
+    "SELECT count() FROM platos_telemetry.metrics_v1 FORMAT TabSeparated"
   );
   if (clickhouseCount !== "0") {
     throw new Error(`WIN-235 requires empty ClickHouse metrics_v1; count was ${clickhouseCount}`);
@@ -835,7 +835,7 @@ async function seedClickHouse(
 ) {
   const base = new URL(clickhouseUrl!);
   const headers = clickHouseHeaders();
-  base.searchParams.set("query", "INSERT INTO trigger_dev.metrics_v1 FORMAT JSONEachRow");
+  base.searchParams.set("query", "INSERT INTO platos_telemetry.metrics_v1 FORMAT JSONEachRow");
   const rows = scopes.map((scope, index) =>
     JSON.stringify({
       organization_id: scope.organizationId,
@@ -856,7 +856,7 @@ async function seedClickHouse(
   const verify = new URL(clickhouseUrl!);
   verify.searchParams.set(
     "query",
-    "SELECT count() FROM trigger_dev.metrics_v1 WHERE metric_name = 'win235.persisted_fixture' FORMAT TabSeparated"
+    "SELECT count() FROM platos_telemetry.metrics_v1 WHERE metric_name = 'win235.persisted_fixture' FORMAT TabSeparated"
   );
   const response = await fetch(verify, { headers });
   if (!response.ok) throw new Error(`ClickHouse fixture read-back failed: ${response.status}`);

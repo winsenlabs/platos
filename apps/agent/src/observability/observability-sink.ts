@@ -20,7 +20,7 @@ import type {
  * What the sink is doing, in the words an operator needs.
  *
  * `disabled` and `schema_missing` are deliberately different words. The first
- * is a choice; the second is a deployment that believes it has an analytical
+ * is a choice; the second is an installation that believes it has an analytical
  * store and does not. Reporting the second as the first is how the current
  * span pipeline stayed broken without anyone being told (WIN-150).
  */
@@ -58,7 +58,7 @@ export interface ObservabilitySink {
 }
 
 /**
- * The sink for a deployment that has no analytical store.
+ * The sink for an installation that has no analytical store.
  *
  * It REFUSES writes rather than accepting them. Nothing should reach it — the
  * runtime does not enqueue when no sink is configured — so a call arriving here

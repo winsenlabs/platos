@@ -106,7 +106,7 @@ export interface ColumnSchema {
    * instead of the default renderer based on ClickHouseType.
    *
    * Common custom render types:
-   * - "runStatus" - Task run status badges
+   * - "runStatus" - Runtime run status badges
    * - "cost" - Cost formatting (cents to dollars)
    * - "duration" - Duration formatting (ms to human-readable)
    *
@@ -141,7 +141,7 @@ export interface ColumnSchema {
    * Whether this is a core column that should be included in default queries.
    *
    * Core columns represent the essential information for a table and are suggested
-   * as alternatives when users attempt to use SELECT * (which has poor performance
+   * as alternatives when users try to use SELECT * (which has poor performance
    * in columnar databases like ClickHouse).
    *
    * @example
@@ -363,7 +363,7 @@ export interface RequiredFilter {
 export interface TableSchema {
   /** The name of the table as exposed to TSQL queries */
   name: string;
-  /** The fully qualified ClickHouse table name (e.g., "trigger_dev.task_runs_v2") */
+  /** The fully qualified ClickHouse table name (e.g., "platos_telemetry.runtime_runs_v2") */
   clickhouseName: string;
   /** Column definitions for this table */
   columns: Record<string, ColumnSchema>;
@@ -833,8 +833,8 @@ export function getCoreColumns(table: TableSchema): string[] {
  * with their user-facing TSQL equivalents and removing internal implementation details.
  *
  * This function handles:
- * - Fully qualified table names (e.g., `trigger_dev.task_runs_v2` → `runs`)
- * - Column names with table prefix (e.g., `trigger_dev.task_runs_v2.friendly_id` → `runs.run_id`)
+ * - Fully qualified table names (e.g., `platos_telemetry.runtime_runs_v2` → `runs`)
+ * - Column names with table prefix (e.g., `platos_telemetry.runtime_runs_v2.friendly_id` → `runs.run_id`)
  * - Standalone column names (e.g., `friendly_id` → `run_id`)
  * - Removes tenant isolation filters (organization_id, project_id, environment_id)
  * - Removes required filters (e.g., engine = 'V2')
@@ -847,7 +847,7 @@ export function getCoreColumns(table: TableSchema): string[] {
  * @example
  * ```typescript
  * const sanitized = sanitizeErrorMessage(
- *   "Missing column trigger_dev.task_runs_v2.friendly_id",
+ *   "Missing column platos_telemetry.runtime_runs_v2.friendly_id",
  *   [runsSchema]
  * );
  * // Returns: "Missing column runs.run_id"
@@ -944,7 +944,7 @@ export function sanitizeErrorMessage(message: string, schemas: TableSchema[]): s
   result = result.replace(/\s{2,}/g, " ");
 
   // Step 3: Replace fully qualified column references first (table.column)
-  // This handles patterns like: trigger_dev.task_runs_v2.friendly_id
+  // This handles patterns like: platos_telemetry.runtime_runs_v2.friendly_id
   for (const table of schemas) {
     for (const col of Object.values(table.columns)) {
       const clickhouseColName = col.clickhouseName ?? col.name;

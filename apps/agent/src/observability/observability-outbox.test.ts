@@ -22,7 +22,7 @@ function row(overrides: Partial<OutboxRow> = {}): OutboxRow {
     payloadVersion: OBSERVABILITY_PAYLOAD_VERSION,
     payload: {},
     status: "PENDING",
-    attempts: 0,
+    retryCount: 0,
     ...overrides,
   };
 }
@@ -39,7 +39,7 @@ describe("retry scheduling", () => {
     expect(retryDelayMs(1_000)).toBe(3_600_000);
   });
 
-  test("treats a nonsense attempt count as the first attempt", () => {
+  test("treats a nonsense retry count as the first retry", () => {
     expect(retryDelayMs(0)).toBe(30_000);
     expect(retryDelayMs(-5)).toBe(30_000);
   });
@@ -51,17 +51,17 @@ describe("delivery outcomes", () => {
     // deliveredAt, so "delivered" cannot be a label a bug applies for free.
     expect(deliverySucceeded(row(), NOW)).toEqual({
       status: "DELIVERED",
-      attempts: 1,
+      retryCount: 1,
       availableAt: null,
       deliveredAt: NOW,
       lastErrorCode: null,
     });
   });
 
-  test("a failure below the attempt ceiling is rescheduled, not dropped", () => {
-    const outcome = deliveryFailed(row({ attempts: 2 }), NOW, 10, "ObservabilityWriteError 503");
+  test("a failure below the retry ceiling is rescheduled, not dropped", () => {
+    const outcome = deliveryFailed(row({ retryCount: 2 }), NOW, 10, "ObservabilityWriteError 503");
     expect(outcome.status).toBe("PENDING");
-    expect(outcome.attempts).toBe(3);
+    expect(outcome.retryCount).toBe(3);
     expect(outcome.availableAt).toEqual(new Date(NOW.getTime() + retryDelayMs(3)));
     expect(outcome.deliveredAt).toBeNull();
     expect(outcome.lastErrorCode).toBe("ObservabilityWriteError 503");
@@ -70,14 +70,14 @@ describe("delivery outcomes", () => {
   test("an exhausted row is PARKED as FAILED, never deleted", () => {
     // Parking is the loud version of giving up. Giving up quietly is the
     // failure mode the outbox replaced.
-    const outcome = deliveryFailed(row({ attempts: 9 }), NOW, 10, "ObservabilityWriteError 400/62");
+    const outcome = deliveryFailed(row({ retryCount: 9 }), NOW, 10, "ObservabilityWriteError 400/62");
     expect(outcome.status).toBe("FAILED");
-    expect(outcome.attempts).toBe(10);
+    expect(outcome.retryCount).toBe(10);
     expect(outcome.availableAt).toBeNull();
   });
 
   test("an undeliverable payload is parked immediately rather than retried", () => {
-    // A shape mismatch does not heal with time, and burning ten attempts on it
+    // A shape mismatch does not heal with time, and burning ten retries on it
     // delays every well-formed row behind it.
     const outcome = deliveryUndeliverable(row(), "payload is not the expected row shape");
     expect(outcome.status).toBe("FAILED");
@@ -94,7 +94,7 @@ describe("delivery outcomes", () => {
     const outcomes = [
       deliverySucceeded(row(), NOW),
       deliveryFailed(row(), NOW, 10, "e"),
-      deliveryFailed(row({ attempts: 99 }), NOW, 10, "e"),
+      deliveryFailed(row({ retryCount: 99 }), NOW, 10, "e"),
       deliveryUndeliverable(row(), "e"),
     ];
     for (const outcome of outcomes) {

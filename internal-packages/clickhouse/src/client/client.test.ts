@@ -12,7 +12,7 @@ describe("ClickHouse Client", () => {
 
     const insertSmokeTest = client.insert({
       name: "insert-smoke-test",
-      table: "trigger_dev.smoke_test",
+      table: "platos_telemetry.smoke_test",
       schema: z.object({
         message: z.string(),
         number: z.number(),
@@ -21,7 +21,7 @@ describe("ClickHouse Client", () => {
 
     const querySmokeTest = client.query({
       name: "query-smoke-test",
-      query: "SELECT * FROM trigger_dev.smoke_test",
+      query: "SELECT * FROM platos_telemetry.smoke_test",
       schema: z.object({
         message: z.string(),
         number: z.number(),
@@ -67,7 +67,7 @@ describe("ClickHouse Client", () => {
 
     const insertSmokeTestAsyncWaiting = client.insert({
       name: "insert-smoke-test-async-waiting",
-      table: "trigger_dev.smoke_test",
+      table: "platos_telemetry.smoke_test",
       schema: z.object({
         message: z.string(),
         number: z.number(),
@@ -100,7 +100,7 @@ describe("ClickHouse Client", () => {
 
     const insertSmokeTestAsyncDontWait = client.insert({
       name: "insert-smoke-test-async-dont-wait",
-      table: "trigger_dev.smoke_test",
+      table: "platos_telemetry.smoke_test",
       schema: z.object({
         message: z.string(),
         number: z.number(),

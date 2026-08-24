@@ -1,6 +1,7 @@
 import { ClickHouseSettings } from "@clickhouse/client";
 import { z } from "zod";
 import { ClickhouseReader, ClickhouseWriter } from "./client/types.js";
+import { TELEMETRY_DATABASE } from "./telemetryNamespace.js";
 
 export const TaskEventV1Input = z.object({
   environment_id: z.string(),
@@ -26,8 +27,8 @@ export type TaskEventV1Input = z.input<typeof TaskEventV1Input>;
 
 export function insertTaskEvents(ch: ClickhouseWriter, settings?: ClickHouseSettings) {
   return ch.insertUnsafe<TaskEventV1Input>({
-    name: "insertTaskEvents",
-    table: "trigger_dev.task_events_v1",
+    name: "insertRuntimeEvents",
+    table: `${TELEMETRY_DATABASE}.task_events_v1`,
     settings: {
       enable_json_type: 1,
       type_json_skip_duplicated_paths: 1,
@@ -55,7 +56,7 @@ export type TaskEventSummaryV1Result = z.output<typeof TaskEventSummaryV1Result>
 export function getTraceSummaryQueryBuilder(ch: ClickhouseReader, settings?: ClickHouseSettings) {
   return ch.queryBuilderFast<TaskEventSummaryV1Result>({
     name: "getTraceEvents",
-    table: "trigger_dev.task_events_v1",
+    table: `${TELEMETRY_DATABASE}.task_events_v1`,
     columns: [
       "span_id",
       "parent_span_id",
@@ -91,8 +92,8 @@ export function getTraceDetailedSummaryQueryBuilder(
   settings?: ClickHouseSettings
 ) {
   return ch.queryBuilderFast<TaskEventDetailedSummaryV1Result>({
-    name: "getTaskEventDetailedSummary",
-    table: "trigger_dev.task_events_v1",
+    name: "getRuntimeEventDetailedSummary",
+    table: `${TELEMETRY_DATABASE}.task_events_v1`,
     columns: [
       "span_id",
       "parent_span_id",
@@ -127,7 +128,7 @@ export function getSpanDetailsQueryBuilder(ch: ClickhouseReader, settings?: Clic
   return ch.queryBuilder({
     name: "getSpanDetails",
     baseQuery:
-      "SELECT span_id, parent_span_id, start_time, duration, status, kind, metadata, message, attributes_text FROM trigger_dev.task_events_v1",
+      `SELECT span_id, parent_span_id, start_time, duration, status, kind, metadata, message, attributes_text FROM ${TELEMETRY_DATABASE}.task_events_v1`,
     schema: TaskEventDetailsV1Result,
     settings,
   });
@@ -163,8 +164,8 @@ export type TaskEventV2Input = z.input<typeof TaskEventV2Input>;
 
 export function insertTaskEventsV2(ch: ClickhouseWriter, settings?: ClickHouseSettings) {
   return ch.insertUnsafe<TaskEventV2Input>({
-    name: "insertTaskEventsV2",
-    table: "trigger_dev.task_events_v2",
+    name: "insertRuntimeEventsV2",
+    table: `${TELEMETRY_DATABASE}.task_events_v2`,
     settings: {
       enable_json_type: 1,
       type_json_skip_duplicated_paths: 1,
@@ -181,7 +182,7 @@ export function getTraceSummaryQueryBuilderV2(
 ) {
   return ch.queryBuilderFast<TaskEventSummaryV1Result>({
     name: "getTraceEventsV2",
-    table: "trigger_dev.task_events_v2",
+    table: `${TELEMETRY_DATABASE}.task_events_v2`,
     columns: [
       "span_id",
       "parent_span_id",
@@ -202,8 +203,8 @@ export function getTraceDetailedSummaryQueryBuilderV2(
   settings?: ClickHouseSettings
 ) {
   return ch.queryBuilderFast<TaskEventDetailedSummaryV1Result>({
-    name: "getTaskEventDetailedSummaryV2",
-    table: "trigger_dev.task_events_v2",
+    name: "getRuntimeEventDetailedSummaryV2",
+    table: `${TELEMETRY_DATABASE}.task_events_v2`,
     columns: [
       "span_id",
       "parent_span_id",
@@ -227,7 +228,7 @@ export function getSpanDetailsQueryBuilderV2(
   return ch.queryBuilder({
     name: "getSpanDetailsV2",
     baseQuery:
-      "SELECT span_id, parent_span_id, start_time, duration, status, kind, metadata, message, attributes_text FROM trigger_dev.task_events_v2",
+      `SELECT span_id, parent_span_id, start_time, duration, status, kind, metadata, message, attributes_text FROM ${TELEMETRY_DATABASE}.task_events_v2`,
     schema: TaskEventDetailsV1Result,
     settings,
   });
@@ -261,7 +262,7 @@ export type LogsSearchListResult = z.output<typeof LogsSearchListResult>;
 export function getLogsSearchListQueryBuilder(ch: ClickhouseReader) {
   return ch.queryBuilderFast<LogsSearchListResult>({
     name: "getLogsSearchList",
-    table: "trigger_dev.task_events_search_v1",
+    table: `${TELEMETRY_DATABASE}.task_events_search_v1`,
     columns: [
       "environment_id",
       "organization_id",
@@ -308,7 +309,7 @@ export type LogDetailV2Result = z.output<typeof LogDetailV2Result>;
 export function getLogDetailQueryBuilderV2(ch: ClickhouseReader) {
   return ch.queryBuilderFast<LogDetailV2Result>({
     name: "getLogDetail",
-    table: "trigger_dev.task_events_v2",
+    table: `${TELEMETRY_DATABASE}.task_events_v2`,
     columns: [
       "environment_id",
       "organization_id",

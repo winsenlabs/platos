@@ -10,8 +10,13 @@ case "${1:-}" in
     : "${GOOSE_DBSTRING:?GOOSE_DBSTRING is required for ClickHouse migrations}"
     exec goose -dir /migrations/clickhouse up
     ;;
+  clickhouse-namespace-rehearsal)
+    : "${GOOSE_DRIVER:?GOOSE_DRIVER is required for ClickHouse migrations}"
+    : "${GOOSE_DBSTRING:?GOOSE_DBSTRING is required for ClickHouse migrations}"
+    exec node /migrations/rehearse-clickhouse-namespace.mjs
+    ;;
   *)
-    echo "usage: $0 {postgres|clickhouse}" >&2
+    echo "usage: $0 {postgres|clickhouse|clickhouse-namespace-rehearsal}" >&2
     exit 64
     ;;
 esac

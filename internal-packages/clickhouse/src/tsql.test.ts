@@ -6,11 +6,11 @@ import { insertTaskRuns } from "./taskRuns.js";
 import { column } from "@internal/tsql";
 
 /**
- * Schema definition for task_runs table used in TSQL tests
+ * Schema definition for runtime_runs table used in TSQL tests
  */
 const taskRunsSchema: TableSchema = {
-  name: "task_runs",
-  clickhouseName: "trigger_dev.task_runs_v2",
+  name: "runtime_runs",
+  clickhouseName: "platos_telemetry.task_runs_v2",
   columns: {
     run_id: { name: "run_id", ...column("String") },
     friendly_id: { name: "friendly_id", ...column("String") },
@@ -104,7 +104,7 @@ describe("TSQL Integration Tests", () => {
     // Execute TSQL query
     const [error, result] = await executeTSQL(client, {
       name: "test-simple-select",
-      query: "SELECT run_id, status FROM task_runs",
+      query: "SELECT run_id, status FROM runtime_runs",
       schema: z.object({ run_id: z.string(), status: z.string() }),
       enforcedWhereClause: {
         organization_id: { op: "eq", value: "org_tenant1" },
@@ -145,7 +145,7 @@ describe("TSQL Integration Tests", () => {
 
     const [error, result] = await executeTSQL(client, {
       name: "test-where-clause",
-      query: "SELECT run_id, status FROM task_runs WHERE status = 'COMPLETED_SUCCESSFULLY'",
+      query: "SELECT run_id, status FROM runtime_runs WHERE status = 'COMPLETED_SUCCESSFULLY'",
       schema: z.object({ run_id: z.string(), status: z.string() }),
       enforcedWhereClause: {
         organization_id: { op: "eq", value: "org_tenant1" },
@@ -199,7 +199,7 @@ describe("TSQL Integration Tests", () => {
     // Query as tenant1 - should only see tenant1's data
     const [error1, result1] = await executeTSQL(client, {
       name: "test-tenant-isolation-1",
-      query: "SELECT run_id FROM task_runs",
+      query: "SELECT run_id FROM runtime_runs",
       schema: z.object({ run_id: z.string() }),
       enforcedWhereClause: {
         organization_id: { op: "eq", value: "org_tenant1" },
@@ -216,7 +216,7 @@ describe("TSQL Integration Tests", () => {
     // Query as tenant2 - should only see tenant2's data
     const [error2, result2] = await executeTSQL(client, {
       name: "test-tenant-isolation-2",
-      query: "SELECT run_id FROM task_runs",
+      query: "SELECT run_id FROM runtime_runs",
       schema: z.object({ run_id: z.string() }),
       enforcedWhereClause: {
         organization_id: { op: "eq", value: "org_tenant2" },
@@ -260,7 +260,7 @@ describe("TSQL Integration Tests", () => {
       // Attacker tries to access victim's data with OR 1=1
       const [error, result] = await executeTSQL(client, {
         name: "test-cross-tenant-attack",
-        query: "SELECT run_id, status FROM task_runs WHERE status = 'COMPLETED' OR 1=1",
+        query: "SELECT run_id, status FROM runtime_runs WHERE status = 'COMPLETED' OR 1=1",
         schema: z.object({ run_id: z.string(), status: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_attacker" },
@@ -296,7 +296,7 @@ describe("TSQL Integration Tests", () => {
     const [error, result] = await executeTSQL(client, {
       name: "test-aggregation",
       query:
-        "SELECT status, count(*) as cnt FROM task_runs GROUP BY status ORDER BY cnt DESC, status ASC",
+        "SELECT status, count(*) as cnt FROM runtime_runs GROUP BY status ORDER BY cnt DESC, status ASC",
       schema: z.object({ status: z.string(), cnt: z.coerce.number() }),
       enforcedWhereClause: {
         organization_id: { op: "eq", value: "org_tenant1" },
@@ -335,7 +335,7 @@ describe("TSQL Integration Tests", () => {
 
     const [error, result] = await executeTSQL(client, {
       name: "test-order-limit",
-      query: "SELECT run_id FROM task_runs ORDER BY created_at DESC LIMIT 2",
+      query: "SELECT run_id FROM runtime_runs ORDER BY created_at DESC LIMIT 2",
       schema: z.object({ run_id: z.string() }),
       enforcedWhereClause: {
         organization_id: { op: "eq", value: "org_tenant1" },
@@ -392,7 +392,7 @@ describe("TSQL Integration Tests", () => {
 
     const [error, result] = await tsql.execute({
       name: "test-executor",
-      query: "SELECT run_id, status FROM task_runs WHERE status = 'PENDING'",
+      query: "SELECT run_id, status FROM runtime_runs WHERE status = 'PENDING'",
       schema: z.object({ run_id: z.string(), status: z.string() }),
       enforcedWhereClause: {
         organization_id: { op: "eq", value: "org_tenant1" },
@@ -416,13 +416,13 @@ describe("TSQL Integration Tests", () => {
 
     await insert([
       createTaskRun({ run_id: "run_inject1", status: "NORMAL" }),
-      createTaskRun({ run_id: "run_inject2", status: "DROP TABLE task_runs" }),
+      createTaskRun({ run_id: "run_inject2", status: "DROP TABLE runtime_runs" }),
     ]);
 
     // Query with a "malicious" value that looks like SQL
     const [error, result] = await executeTSQL(client, {
       name: "test-injection",
-      query: "SELECT run_id, status FROM task_runs WHERE status = 'DROP TABLE task_runs'",
+      query: "SELECT run_id, status FROM runtime_runs WHERE status = 'DROP TABLE runtime_runs'",
       schema: z.object({ run_id: z.string(), status: z.string() }),
       enforcedWhereClause: {
         organization_id: { op: "eq", value: "org_tenant1" },
@@ -435,7 +435,7 @@ describe("TSQL Integration Tests", () => {
     expect(error).toBeNull();
     // Should find the row with the literal string value, not execute SQL
     expect(result?.rows).toHaveLength(1);
-    expect(result?.rows?.[0].status).toBe("DROP TABLE task_runs");
+    expect(result?.rows?.[0].status).toBe("DROP TABLE runtime_runs");
   });
 
   clickhouseTest("should handle IN queries", async ({ clickhouseContainer }) => {
@@ -456,7 +456,7 @@ describe("TSQL Integration Tests", () => {
     const [error, result] = await executeTSQL(client, {
       name: "test-in-query",
       query:
-        "SELECT run_id, status FROM task_runs WHERE status IN ('COMPLETED_SUCCESSFULLY', 'FAILED')",
+        "SELECT run_id, status FROM runtime_runs WHERE status IN ('COMPLETED_SUCCESSFULLY', 'FAILED')",
       schema: z.object({ run_id: z.string(), status: z.string() }),
       enforcedWhereClause: {
         organization_id: { op: "eq", value: "org_tenant1" },
@@ -487,7 +487,7 @@ describe("TSQL Integration Tests", () => {
 
     const [error, result] = await executeTSQL(client, {
       name: "test-like-query",
-      query: "SELECT run_id, task_identifier FROM task_runs WHERE task_identifier LIKE 'email%'",
+      query: "SELECT run_id, task_identifier FROM runtime_runs WHERE task_identifier LIKE 'email%'",
       schema: z.object({ run_id: z.string(), task_identifier: z.string() }),
       enforcedWhereClause: {
         organization_id: { op: "eq", value: "org_tenant1" },
@@ -552,7 +552,7 @@ describe("TSQL Optional Tenant Filter Tests", () => {
       // Query across all projects (omit projectId and environmentId)
       const [error, result] = await executeTSQL(client, {
         name: "test-cross-project-query",
-        query: "SELECT run_id FROM task_runs",
+        query: "SELECT run_id FROM runtime_runs",
         schema: z.object({ run_id: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_multi" },
@@ -614,7 +614,7 @@ describe("TSQL Optional Tenant Filter Tests", () => {
       // Query across all environments (omit environmentId only)
       const [error, result] = await executeTSQL(client, {
         name: "test-cross-env-query",
-        query: "SELECT run_id FROM task_runs",
+        query: "SELECT run_id FROM runtime_runs",
         schema: z.object({ run_id: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_envtest" },
@@ -675,7 +675,7 @@ describe("TSQL Optional Tenant Filter Tests", () => {
       // Query org1 across all projects - should NOT see org2's data
       const [error1, result1] = await executeTSQL(client, {
         name: "test-org-isolation-1",
-        query: "SELECT run_id FROM task_runs",
+        query: "SELECT run_id FROM runtime_runs",
         schema: z.object({ run_id: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_isolation_1" },
@@ -691,7 +691,7 @@ describe("TSQL Optional Tenant Filter Tests", () => {
       // Query org2 across all projects - should NOT see org1's data
       const [error2, result2] = await executeTSQL(client, {
         name: "test-org-isolation-2",
-        query: "SELECT run_id FROM task_runs",
+        query: "SELECT run_id FROM runtime_runs",
         schema: z.object({ run_id: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_isolation_2" },
@@ -736,7 +736,7 @@ describe("TSQL Optional Tenant Filter Tests", () => {
       // Attacker tries to use OR 1=1 to bypass org filter
       const [error, result] = await executeTSQL(client, {
         name: "test-or-bypass-attempt",
-        query: "SELECT run_id, status FROM task_runs WHERE status = 'COMPLETED' OR 1=1",
+        query: "SELECT run_id, status FROM runtime_runs WHERE status = 'COMPLETED' OR 1=1",
         schema: z.object({ run_id: z.string(), status: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_attacker" },
@@ -783,7 +783,7 @@ describe("TSQL Optional Tenant Filter Tests", () => {
       // Use executor with org-only filter
       const [error, result] = await tsql.execute({
         name: "test-executor-optional",
-        query: "SELECT run_id FROM task_runs",
+        query: "SELECT run_id FROM runtime_runs",
         schema: z.object({ run_id: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_executor_test" },
@@ -803,8 +803,8 @@ describe("TSQL Virtual Column Tests", () => {
    * Schema with virtual (computed) columns
    */
   const virtualColumnSchema: TableSchema = {
-    name: "task_runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    name: "runtime_runs",
+    clickhouseName: "platos_telemetry.task_runs_v2",
     columns: {
       run_id: { name: "run_id", ...column("String") },
       friendly_id: { name: "friendly_id", ...column("String") },
@@ -869,7 +869,7 @@ describe("TSQL Virtual Column Tests", () => {
 
       const [error, result] = await executeTSQL(client, {
         name: "test-virtual-column-select",
-        query: "SELECT run_id, execution_duration, usage_duration_seconds FROM task_runs",
+        query: "SELECT run_id, execution_duration, usage_duration_seconds FROM runtime_runs",
         schema: z.object({
           run_id: z.string(),
           execution_duration: z.number().nullable(),
@@ -925,7 +925,7 @@ describe("TSQL Virtual Column Tests", () => {
       // Query runs with execution_duration > 5000ms (5 seconds)
       const [error, result] = await executeTSQL(client, {
         name: "test-virtual-column-where",
-        query: "SELECT run_id FROM task_runs WHERE execution_duration > 5000",
+        query: "SELECT run_id FROM runtime_runs WHERE execution_duration > 5000",
         schema: z.object({ run_id: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
@@ -970,7 +970,7 @@ describe("TSQL Virtual Column Tests", () => {
     const [error, result] = await executeTSQL(client, {
       name: "test-virtual-column-order",
       query:
-        "SELECT run_id, usage_duration_seconds FROM task_runs ORDER BY usage_duration_seconds DESC",
+        "SELECT run_id, usage_duration_seconds FROM runtime_runs ORDER BY usage_duration_seconds DESC",
       schema: z.object({
         run_id: z.string(),
         usage_duration_seconds: z.number(),
@@ -1014,7 +1014,7 @@ describe("TSQL Virtual Column Tests", () => {
       // Use virtual column with custom alias
       const [error, result] = await executeTSQL(client, {
         name: "test-virtual-column-alias",
-        query: "SELECT run_id, usage_duration_seconds AS dur_sec FROM task_runs",
+        query: "SELECT run_id, usage_duration_seconds AS dur_sec FROM runtime_runs",
         schema: z.object({
           run_id: z.string(),
           dur_sec: z.number(),
@@ -1052,7 +1052,7 @@ describe("TSQL Virtual Column Tests", () => {
 
       const [error, result] = await executeTSQL(client, {
         name: "test-virtual-column-null",
-        query: "SELECT run_id, execution_duration FROM task_runs",
+        query: "SELECT run_id, execution_duration FROM runtime_runs",
         schema: z.object({
           run_id: z.string(),
           execution_duration: z.number().nullable(),
@@ -1077,8 +1077,8 @@ describe("TSQL Virtual Column Tests", () => {
    * This mimics the real runsSchema where invocation_cost = base_cost_in_cents / 100.0
    */
   const costExpressionSchema: TableSchema = {
-    name: "task_runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    name: "runtime_runs",
+    clickhouseName: "platos_telemetry.task_runs_v2",
     columns: {
       run_id: { name: "run_id", ...column("String") },
       friendly_id: { name: "friendly_id", ...column("String") },
@@ -1154,7 +1154,7 @@ describe("TSQL Virtual Column Tests", () => {
       // Should return run_medium (2.0) and run_expensive (5.0)
       const [error, result] = await executeTSQL(client, {
         name: "test-expression-division-where",
-        query: "SELECT run_id, invocation_cost FROM task_runs WHERE invocation_cost > 1.0",
+        query: "SELECT run_id, invocation_cost FROM runtime_runs WHERE invocation_cost > 1.0",
         schema: z.object({ run_id: z.string(), invocation_cost: z.number() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
@@ -1199,7 +1199,7 @@ describe("TSQL Virtual Column Tests", () => {
       // Should return run_1 (1.0) and run_2 (2.0)
       const [error, result] = await executeTSQL(client, {
         name: "test-expression-gte-where",
-        query: "SELECT run_id, invocation_cost FROM task_runs WHERE invocation_cost >= 1.0",
+        query: "SELECT run_id, invocation_cost FROM runtime_runs WHERE invocation_cost >= 1.0",
         schema: z.object({ run_id: z.string(), invocation_cost: z.number() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
@@ -1240,7 +1240,7 @@ describe("TSQL Virtual Column Tests", () => {
       // Should return only run_small (0.5)
       const [error, result] = await executeTSQL(client, {
         name: "test-expression-lt-where",
-        query: "SELECT run_id, invocation_cost FROM task_runs WHERE invocation_cost < 1.0",
+        query: "SELECT run_id, invocation_cost FROM runtime_runs WHERE invocation_cost < 1.0",
         schema: z.object({ run_id: z.string(), invocation_cost: z.number() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
@@ -1286,7 +1286,7 @@ describe("TSQL Virtual Column Tests", () => {
       const [error, result] = await executeTSQL(client, {
         name: "test-expression-between-where",
         query:
-          "SELECT run_id, invocation_cost FROM task_runs WHERE invocation_cost BETWEEN 1.0 AND 2.0",
+          "SELECT run_id, invocation_cost FROM runtime_runs WHERE invocation_cost BETWEEN 1.0 AND 2.0",
         schema: z.object({ run_id: z.string(), invocation_cost: z.number() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
@@ -1334,7 +1334,7 @@ describe("TSQL Virtual Column Tests", () => {
       const [error, result] = await executeTSQL(client, {
         name: "test-expression-complex-where",
         query:
-          "SELECT run_id FROM task_runs WHERE status = 'COMPLETED_SUCCESSFULLY' AND invocation_cost > 2.0",
+          "SELECT run_id FROM runtime_runs WHERE status = 'COMPLETED_SUCCESSFULLY' AND invocation_cost > 2.0",
         schema: z.object({ run_id: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
@@ -1382,7 +1382,7 @@ describe("TSQL Virtual Column Tests", () => {
       // Should only return run_large_cost (150.0)
       const [error, result] = await executeTSQL(client, {
         name: "test-expression-large-integer-where",
-        query: "SELECT run_id, invocation_cost FROM task_runs WHERE invocation_cost > 100",
+        query: "SELECT run_id, invocation_cost FROM runtime_runs WHERE invocation_cost > 100",
         schema: z.object({ run_id: z.string(), invocation_cost: z.number() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
@@ -1405,8 +1405,8 @@ describe("Field Mapping Tests", () => {
    * Schema with a field mapping column (project_ref → project_id)
    */
   const fieldMappingSchema: TableSchema = {
-    name: "task_runs",
-    clickhouseName: "trigger_dev.task_runs_v2",
+    name: "runtime_runs",
+    clickhouseName: "platos_telemetry.task_runs_v2",
     columns: {
       run_id: { name: "run_id", ...column("String") },
       status: { name: "status", ...column("String") },
@@ -1449,7 +1449,7 @@ describe("Field Mapping Tests", () => {
       // Execute TSQL query with field mappings
       const [error, result] = await executeTSQL(client, {
         name: "test-field-mapping-select",
-        query: "SELECT run_id, project_ref FROM task_runs",
+        query: "SELECT run_id, project_ref FROM runtime_runs",
         schema: z.object({ run_id: z.string(), project_ref: z.string().nullable() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
@@ -1492,7 +1492,7 @@ describe("Field Mapping Tests", () => {
       // Execute with an empty mapping (no project_id mapped)
       const [error, result] = await executeTSQL(client, {
         name: "test-field-mapping-unmapped",
-        query: "SELECT run_id, project_ref FROM task_runs WHERE run_id = 'run_fm_unmapped'",
+        query: "SELECT run_id, project_ref FROM runtime_runs WHERE run_id = 'run_fm_unmapped'",
         schema: z.object({ run_id: z.string(), project_ref: z.string().nullable() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
@@ -1541,7 +1541,7 @@ describe("Field Mapping Tests", () => {
       // Query using external project_ref value in WHERE clause
       const [error, result] = await executeTSQL(client, {
         name: "test-field-mapping-where",
-        query: "SELECT run_id FROM task_runs WHERE project_ref = 'my-project-ref'",
+        query: "SELECT run_id FROM runtime_runs WHERE project_ref = 'my-project-ref'",
         schema: z.object({ run_id: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
@@ -1592,7 +1592,7 @@ describe("Field Mapping Tests", () => {
       const [error, result] = await executeTSQL(client, {
         name: "test-field-mapping-in",
         query:
-          "SELECT run_id FROM task_runs WHERE project_ref IN ('my-project-ref', 'other-project')",
+          "SELECT run_id FROM runtime_runs WHERE project_ref IN ('my-project-ref', 'other-project')",
         schema: z.object({ run_id: z.string() }),
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },

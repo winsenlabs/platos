@@ -227,6 +227,7 @@ services:
     environment:
       GOOSE_DRIVER: clickhouse
       GOOSE_DBSTRING: "tcp://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:9000"
+      CLICKHOUSE_HTTP_URL: "http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123"
     command: ["clickhouse"]
     restart: "no"
 
@@ -426,13 +427,15 @@ services:
       # EOBD.42 — Sentry optional.
       PLATOS_SENTRY_DSN: "${PLATOS_SENTRY_DSN:-}"
       PLATOS_SENTRY_TRACES_SAMPLE_RATE: "${PLATOS_SENTRY_TRACES_SAMPLE_RATE:-0.1}"
-      # PPR-15 — span dual-write to ClickHouse `trigger_dev.platos_spans_v1`.
+      # PPR-15 — span dual-write to ClickHouse `platos_telemetry.platos_spans_v1`.
       # When unset, spans stay Redis-only (short retention). When set, every
       # sampled span ALSO lands in ClickHouse for long-retention analytics
       # queries (cost rollups, per-user trace lookup, etc.). Default points
       # at the in-cluster ClickHouse so an OSS `up -d` gets dual-write for
       # free; override to "" to disable.
       PLATOS_OTEL_CLICKHOUSE_URL: "${PLATOS_OTEL_CLICKHOUSE_URL:-http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123}"
+      PLATOS_TELEMETRY_DATABASE: "${PLATOS_TELEMETRY_DATABASE:-platos_telemetry}"
+      PLATOS_OBSERVABILITY_MAX_RETRIES: "${PLATOS_OBSERVABILITY_MAX_RETRIES:-10}"
       PLATOS_OTEL_SAMPLE_RATE: "${PLATOS_OTEL_SAMPLE_RATE:-1}"
       PLATOS_OTEL_STDOUT: "${PLATOS_OTEL_STDOUT:-false}"
       # MCP approval-UI — opt-in. When `true`, mutating Platform-MCP
@@ -513,6 +516,7 @@ services:
       RATE_LIMIT_REDIS_PASSWORD: "${RATE_LIMIT_REDIS_PASSWORD:-}"
       RATE_LIMIT_REDIS_CLUSTER_MODE_ENABLED: "${RATE_LIMIT_REDIS_CLUSTER_MODE_ENABLED:-0}"
       CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123?secure=false"
+      CLICKHOUSE_DATABASE: "${CLICKHOUSE_DATABASE:-platos_telemetry}"
       RUN_REPLICATION_ENABLED: "1"
       RUN_REPLICATION_CLICKHOUSE_URL: "http://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:8123"
       RUN_REPLICATION_LOG_LEVEL: info

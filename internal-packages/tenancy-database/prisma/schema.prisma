@@ -1240,7 +1240,7 @@ model ObservabilityOutbox {
   /// Object root containing the redacted turn-shaped projection; validated by jsonShapeRegistry.
   payload        Json
   status         String    @default("PENDING")
-  attempts       Int       @default(0)
+  retryCount     Int       @default(0)
   availableAt    DateTime  @default(now())
   /// Error CLASS only. ClickHouse quotes the failing statement in its bodies.
   lastErrorCode  String?

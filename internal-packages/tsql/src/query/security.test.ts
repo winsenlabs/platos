@@ -12,9 +12,9 @@ import { column, type TableSchema } from "./schema.js";
 /**
  * Test schemas
  */
-const taskRunsSchema: TableSchema = {
-  name: "task_runs",
-  clickhouseName: "trigger_dev.task_runs_v2",
+const runtimeRunsSchema: TableSchema = {
+  name: "runtime_runs",
+  clickhouseName: "platos_telemetry.runtime_runs_v2",
   columns: {
     id: { name: "id", ...column("String") },
     status: { name: "status", ...column("String") },
@@ -35,7 +35,7 @@ const taskRunsSchema: TableSchema = {
 
 const taskEventsSchema: TableSchema = {
   name: "task_events",
-  clickhouseName: "trigger_dev.task_events_v2",
+  clickhouseName: "platos_telemetry.task_events_v2",
   columns: {
     id: { name: "id", ...column("String") },
     run_id: { name: "run_id", ...column("String") },
@@ -53,7 +53,7 @@ const taskEventsSchema: TableSchema = {
 };
 
 const defaultOptions: CompileTSQLOptions = {
-  tableSchema: [taskRunsSchema, taskEventsSchema],
+  tableSchema: [runtimeRunsSchema, taskEventsSchema],
   enforcedWhereClause: {
     organization_id: { op: "eq", value: "org_tenant1" },
     project_id: { op: "eq", value: "proj_tenant1" },
@@ -68,7 +68,7 @@ function compile(query: string, options: Partial<CompileTSQLOptions> = {}) {
 describe("Cross-Tenant Security", () => {
   describe("Tenant guards are always injected", () => {
     it("should inject tenant guards on simple SELECT", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs");
+      const { sql, params } = compile("SELECT * FROM runtime_runs");
 
       // Must contain all three tenant columns
       expect(sql).toContain("organization_id");
@@ -82,7 +82,7 @@ describe("Cross-Tenant Security", () => {
     });
 
     it("should inject tenant guards even with user WHERE clause", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs WHERE status = 'completed'");
+      const { sql, params } = compile("SELECT * FROM runtime_runs WHERE status = 'completed'");
 
       // Must still have tenant guards
       expect(sql).toContain("organization_id");
@@ -93,8 +93,8 @@ describe("Cross-Tenant Security", () => {
 
     it("should inject tenant guards on all tables in JOIN", () => {
       const { sql } = compile(`
-        SELECT r.id, e.event_type 
-        FROM task_runs r 
+        SELECT r.id, e.event_type
+        FROM runtime_runs r
         JOIN task_events e ON r.id = e.run_id
       `);
 
@@ -106,7 +106,7 @@ describe("Cross-Tenant Security", () => {
 
     it("should inject tenant guards in subqueries", () => {
       const { sql } = compile(`
-        SELECT * FROM task_runs 
+        SELECT * FROM runtime_runs
         WHERE id IN (SELECT run_id FROM task_events WHERE event_type = 'completed')
       `);
 
@@ -117,9 +117,9 @@ describe("Cross-Tenant Security", () => {
 
     it("should inject tenant guards on UNION queries", () => {
       const { sql } = compile(`
-        SELECT id, status FROM task_runs WHERE status = 'completed'
+        SELECT id, status FROM runtime_runs WHERE status = 'completed'
         UNION ALL
-        SELECT id, status FROM task_runs WHERE status = 'failed'
+        SELECT id, status FROM runtime_runs WHERE status = 'failed'
       `);
 
       // Both sides of UNION should have tenant guards
@@ -130,7 +130,7 @@ describe("Cross-Tenant Security", () => {
 
   describe("Cannot bypass tenant guards", () => {
     it("should not allow OR clause to bypass tenant guard", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs WHERE status = 'completed' OR 1=1");
+      const { sql, params } = compile("SELECT * FROM runtime_runs WHERE status = 'completed' OR 1=1");
 
       // The tenant guards should be ANDed with the entire WHERE clause
       // So even with OR 1=1, the tenant guard still applies
@@ -155,7 +155,7 @@ describe("Cross-Tenant Security", () => {
 
     it("should not allow accessing other tenant's data via explicit condition", () => {
       const { sql, params } = compile(
-        "SELECT * FROM task_runs WHERE organization_id = 'org_other_tenant'"
+        "SELECT * FROM runtime_runs WHERE organization_id = 'org_other_tenant'"
       );
 
       // Even if user specifies a different org_id, our tenant guard should override
@@ -166,9 +166,9 @@ describe("Cross-Tenant Security", () => {
     it("should not allow UNION with unguarded query", () => {
       // This should be rejected or the second part should still be guarded
       const { sql } = compile(`
-        SELECT id FROM task_runs
+        SELECT id FROM runtime_runs
         UNION ALL
-        SELECT id FROM task_runs
+        SELECT id FROM runtime_runs
       `);
 
       // Both parts must have tenant guards
@@ -178,7 +178,7 @@ describe("Cross-Tenant Security", () => {
 
     it("should not allow subquery to access other tenants", () => {
       const { sql, params } = compile(`
-        SELECT * FROM task_runs 
+        SELECT * FROM runtime_runs
         WHERE id IN (
           SELECT run_id FROM task_events
         )
@@ -206,7 +206,7 @@ describe("Cross-Tenant Security", () => {
 
     it("should reject queries trying to use database prefix", () => {
       expect(() => {
-        compile("SELECT * FROM other_database.task_runs");
+        compile("SELECT * FROM other_database.runtime_runs");
       }).toThrow();
     });
   });
@@ -217,41 +217,41 @@ describe("SQL Injection Prevention", () => {
     it("should reject queries with stacked statements in strings", () => {
       // The parser correctly rejects this at parse time
       expect(() => {
-        compile("SELECT * FROM task_runs WHERE status = 'completed'; DROP TABLE task_runs; --'");
+        compile("SELECT * FROM runtime_runs WHERE status = 'completed'; DROP TABLE runtime_runs; --'");
       }).toThrow();
     });
 
     it("should parameterize malicious-looking string values", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs WHERE status = 'DROP TABLE users'");
+      const { sql, params } = compile("SELECT * FROM runtime_runs WHERE status = 'DROP TABLE users'");
 
       // The malicious payload should be in params, not in SQL
       expect(sql).not.toContain("DROP TABLE");
       expect(Object.values(params)).toContain("DROP TABLE users");
     });
 
-    it("should handle quote escape attempts", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs WHERE status = 'test''injection'");
+    it("should handle quote escape cases", () => {
+      const { sql, params } = compile("SELECT * FROM runtime_runs WHERE status = 'test''injection'");
 
       // Should be safely parameterized
       expect(Object.values(params).some((v) => typeof v === "string")).toBe(true);
     });
 
-    it("should handle backslash escape attempts", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs WHERE status = 'test\\'injection'");
+    it("should handle backslash escape cases", () => {
+      const { sql, params } = compile("SELECT * FROM runtime_runs WHERE status = 'test\\'injection'");
 
       // Should be safely parameterized
       expect(sql).not.toContain("injection'");
     });
 
     it("should handle unicode characters in strings", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs WHERE status = 'test™injection'");
+      const { sql, params } = compile("SELECT * FROM runtime_runs WHERE status = 'test™injection'");
 
       // Should be safely parameterized
       expect(Object.values(params).some((v) => typeof v === "string")).toBe(true);
     });
 
     it("should handle null byte injection", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs WHERE status = 'test\\0injection'");
+      const { sql, params } = compile("SELECT * FROM runtime_runs WHERE status = 'test\\0injection'");
 
       expect(Object.values(params).some((v) => typeof v === "string")).toBe(true);
     });
@@ -260,14 +260,14 @@ describe("SQL Injection Prevention", () => {
   describe("Comment injection", () => {
     it("should not allow -- comments to truncate query", () => {
       // The parser should either reject this or handle it safely
-      const result = compile("SELECT * FROM task_runs WHERE status = 'completed'");
+      const result = compile("SELECT * FROM runtime_runs WHERE status = 'completed'");
 
       // Tenant guards must still be present
       expect(result.sql).toContain("organization_id");
     });
 
     it("should not allow /* */ comments for injection", () => {
-      const result = compile("SELECT * FROM task_runs WHERE status = 'completed'");
+      const result = compile("SELECT * FROM runtime_runs WHERE status = 'completed'");
 
       // Tenant guards must still be present
       expect(result.sql).toContain("organization_id");
@@ -277,14 +277,14 @@ describe("SQL Injection Prevention", () => {
   describe("Identifier injection", () => {
     it("should reject identifiers with backtick injection", () => {
       expect(() => {
-        compile("SELECT * FROM task_runs WHERE `status`; DROP TABLE users; --` = 'test'");
+        compile("SELECT * FROM runtime_runs WHERE `status`; DROP TABLE users; --` = 'test'");
       }).toThrow();
     });
 
     it("should not expose column names that could be used for injection", () => {
       // Column names in the output are validated identifiers from the schema
       // Malicious column names would need to be in the schema first
-      const { sql } = compile("SELECT id, status FROM task_runs");
+      const { sql } = compile("SELECT id, status FROM runtime_runs");
 
       // Column names should be simple identifiers without injection
       expect(sql).toContain("id");
@@ -294,14 +294,14 @@ describe("SQL Injection Prevention", () => {
 
     it("should reject table names with special characters", () => {
       expect(() => {
-        compile("SELECT * FROM `task_runs; DROP TABLE users`");
+        compile("SELECT * FROM `runtime_runs; DROP TABLE users`");
       }).toThrow();
     });
   });
 
   describe("Numeric injection", () => {
     it("should handle numeric values safely", () => {
-      const { sql } = compile("SELECT * FROM task_runs WHERE duration_ms > 1000");
+      const { sql } = compile("SELECT * FROM runtime_runs WHERE duration_ms > 1000");
 
       // Numbers should be safely inlined or parameterized
       expect(sql).toContain("1000");
@@ -309,13 +309,13 @@ describe("SQL Injection Prevention", () => {
     });
 
     it("should handle negative numbers safely", () => {
-      const { sql } = compile("SELECT * FROM task_runs WHERE duration_ms > -1");
+      const { sql } = compile("SELECT * FROM runtime_runs WHERE duration_ms > -1");
 
       expect(sql).not.toContain(";");
     });
 
     it("should handle floating point safely", () => {
-      const { sql } = compile("SELECT * FROM task_runs WHERE duration_ms > 1.5");
+      const { sql } = compile("SELECT * FROM runtime_runs WHERE duration_ms > 1.5");
 
       expect(sql).toContain("1.5");
     });
@@ -325,18 +325,18 @@ describe("SQL Injection Prevention", () => {
     it("should only allow known safe functions", () => {
       // Unknown functions should be rejected
       expect(() => {
-        compile("SELECT file('/etc/passwd') FROM task_runs");
+        compile("SELECT file('/etc/passwd') FROM runtime_runs");
       }).toThrow();
     });
 
     it("should reject system functions", () => {
       expect(() => {
-        compile("SELECT system.tables() FROM task_runs");
+        compile("SELECT system.tables() FROM runtime_runs");
       }).toThrow();
     });
 
     it("should allow known aggregate functions", () => {
-      const { sql } = compile("SELECT count(*), sum(duration_ms) FROM task_runs");
+      const { sql } = compile("SELECT count(*), sum(duration_ms) FROM runtime_runs");
 
       expect(sql).toContain("count(*)");
       expect(sql).toContain("sum(duration_ms)");
@@ -346,13 +346,13 @@ describe("SQL Injection Prevention", () => {
   describe("Stacked query prevention", () => {
     it("should not allow semicolon to start new statement", () => {
       expect(() => {
-        compile("SELECT * FROM task_runs; DELETE FROM task_runs");
+        compile("SELECT * FROM runtime_runs; DELETE FROM runtime_runs");
       }).toThrow();
     });
 
     it("should not allow multiple statements", () => {
       expect(() => {
-        compile("SELECT * FROM task_runs; SELECT * FROM task_events");
+        compile("SELECT * FROM runtime_runs; SELECT * FROM task_events");
       }).toThrow();
     });
   });
@@ -360,9 +360,9 @@ describe("SQL Injection Prevention", () => {
   describe("UNION-based injection", () => {
     it("should apply tenant guards to all UNION parts", () => {
       const { sql, params } = compile(`
-        SELECT id, status FROM task_runs WHERE status = 'a'
+        SELECT id, status FROM runtime_runs WHERE status = 'a'
         UNION ALL
-        SELECT id, status FROM task_runs WHERE status = 'b'
+        SELECT id, status FROM runtime_runs WHERE status = 'b'
       `);
 
       // Both parts should have tenant guards
@@ -375,7 +375,7 @@ describe("SQL Injection Prevention", () => {
 
 describe("Parameter Safety", () => {
   it("should use typed parameters", () => {
-    const { sql } = compile("SELECT * FROM task_runs WHERE status = 'test'");
+    const { sql } = compile("SELECT * FROM runtime_runs WHERE status = 'test'");
 
     // Parameters should have type annotations like {param: String}
     expect(sql).toMatch(/\{tsql_\w+: \w+\}/);
@@ -383,7 +383,7 @@ describe("Parameter Safety", () => {
 
   it("should generate unique parameter names", () => {
     const { params } = compile(`
-      SELECT * FROM task_runs 
+      SELECT * FROM runtime_runs
       WHERE status = 'a' AND task_identifier = 'b' AND payload = 'c'
     `);
 
@@ -393,7 +393,7 @@ describe("Parameter Safety", () => {
   });
 
   it("should not include raw values in SQL for strings", () => {
-    const { sql } = compile("SELECT * FROM task_runs WHERE status = 'user_provided_value'");
+    const { sql } = compile("SELECT * FROM runtime_runs WHERE status = 'user_provided_value'");
 
     // The literal string should not appear in SQL
     expect(sql).not.toContain("user_provided_value");
@@ -413,7 +413,7 @@ describe("Optional Tenant Filters", () => {
 
   describe("Organization ID is always required", () => {
     it("should always inject organization guard even with optional project/env", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs", {
+      const { sql, params } = compile("SELECT * FROM runtime_runs", {
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
           // project_id and environment_id omitted
@@ -434,7 +434,7 @@ describe("Optional Tenant Filters", () => {
 
   describe("Project ID is optional", () => {
     it("should inject org and project guards when project is provided", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs", {
+      const { sql, params } = compile("SELECT * FROM runtime_runs", {
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
           project_id: { op: "eq", value: "proj_tenant1" },
@@ -455,7 +455,7 @@ describe("Optional Tenant Filters", () => {
     });
 
     it("should allow querying across all projects when projectId is omitted", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs", {
+      const { sql, params } = compile("SELECT * FROM runtime_runs", {
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
           // project_id and environment_id omitted
@@ -473,7 +473,7 @@ describe("Optional Tenant Filters", () => {
 
   describe("Environment ID is optional", () => {
     it("should inject org, project, and env guards when all provided", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs");
+      const { sql, params } = compile("SELECT * FROM runtime_runs");
 
       const whereClause = getWhereClause(sql);
 
@@ -487,7 +487,7 @@ describe("Optional Tenant Filters", () => {
     });
 
     it("should allow querying across all environments when environmentId is omitted", () => {
-      const { sql, params } = compile("SELECT * FROM task_runs", {
+      const { sql, params } = compile("SELECT * FROM runtime_runs", {
         enforcedWhereClause: {
           organization_id: { op: "eq", value: "org_tenant1" },
           project_id: { op: "eq", value: "proj_tenant1" },
@@ -511,7 +511,7 @@ describe("Optional Tenant Filters", () => {
   describe("Cross-tenant security with optional filters", () => {
     it("should still prevent cross-org access with org-only filter", () => {
       const { sql, params } = compile(
-        "SELECT * FROM task_runs WHERE organization_id = 'org_other'",
+        "SELECT * FROM runtime_runs WHERE organization_id = 'org_other'",
         {
           enforcedWhereClause: {
             organization_id: { op: "eq", value: "org_tenant1" },
@@ -527,8 +527,8 @@ describe("Optional Tenant Filters", () => {
     it("should apply org guard to all tables in JOIN when using org-only filter", () => {
       const { sql } = compile(
         `
-        SELECT r.id, e.event_type 
-        FROM task_runs r 
+        SELECT r.id, e.event_type
+        FROM runtime_runs r
         JOIN task_events e ON r.id = e.run_id
       `,
         {
@@ -551,9 +551,9 @@ describe("Optional Tenant Filters", () => {
     it("should apply org guard to UNION queries when using org-only filter", () => {
       const { sql } = compile(
         `
-        SELECT id, status FROM task_runs WHERE status = 'completed'
+        SELECT id, status FROM runtime_runs WHERE status = 'completed'
         UNION ALL
-        SELECT id, status FROM task_runs WHERE status = 'failed'
+        SELECT id, status FROM runtime_runs WHERE status = 'failed'
       `,
         {
           enforcedWhereClause: {
@@ -571,7 +571,7 @@ describe("Optional Tenant Filters", () => {
     it("should apply org guard to subqueries when using org-only filter", () => {
       const { sql, params } = compile(
         `
-        SELECT * FROM task_runs 
+        SELECT * FROM runtime_runs
         WHERE id IN (SELECT run_id FROM task_events)
       `,
         {
@@ -606,19 +606,19 @@ describe("Multi-join Tenant Guard Qualification", () => {
    */
   it("should qualify tenant guards with table alias in JOIN queries", () => {
     const { sql } = compile(`
-      SELECT r.id, e.event_type 
-      FROM task_runs r 
+      SELECT r.id, e.event_type
+      FROM runtime_runs r
       JOIN task_events e ON r.id = e.run_id
     `);
 
     // The guards should be table-qualified to prevent binding to the wrong table
     // Look for pattern like: r.organization_id and e.organization_id (with table alias prefix)
     // The exact format in ClickHouse SQL is just "alias.column" after resolution
-    
+
     // Count qualified organization_id references (should have table prefixes)
     // In the WHERE clause, we should see both r.organization_id and e.organization_id
     const whereClause = sql.substring(sql.indexOf("WHERE"));
-    
+
     // Both tables should have their own qualified tenant guards
     // The pattern should be: table_alias.organization_id for each table
     expect(whereClause).toMatch(/\br\b[^,]*organization_id/);
@@ -627,13 +627,13 @@ describe("Multi-join Tenant Guard Qualification", () => {
 
   it("should qualify tenant guards with table alias in LEFT JOIN queries", () => {
     const { sql } = compile(`
-      SELECT r.id, e.event_type 
-      FROM task_runs r 
+      SELECT r.id, e.event_type
+      FROM runtime_runs r
       LEFT JOIN task_events e ON r.id = e.run_id
     `);
 
     const whereClause = sql.substring(sql.indexOf("WHERE"));
-    
+
     // Both tables should have qualified guards
     expect(whereClause).toMatch(/\br\b[^,]*organization_id/);
     expect(whereClause).toMatch(/\be\b[^,]*organization_id/);
@@ -642,13 +642,13 @@ describe("Multi-join Tenant Guard Qualification", () => {
   it("should qualify tenant guards in multi-way JOIN queries", () => {
     const { sql } = compile(`
       SELECT r.id, e1.event_type, e2.event_type
-      FROM task_runs r 
+      FROM runtime_runs r
       JOIN task_events e1 ON r.id = e1.run_id
       JOIN task_events e2 ON r.id = e2.run_id
     `);
 
     const whereClause = sql.substring(sql.indexOf("WHERE"));
-    
+
     // All three table aliases should have qualified guards
     expect(whereClause).toMatch(/\br\b[^,]*organization_id/);
     expect(whereClause).toMatch(/\be1\b[^,]*organization_id/);
@@ -657,8 +657,8 @@ describe("Multi-join Tenant Guard Qualification", () => {
 
   it("should ensure guards cannot bind to wrong table by verifying separate qualifications", () => {
     const { sql, params } = compile(`
-      SELECT r.id, e.event_type 
-      FROM task_runs r 
+      SELECT r.id, e.event_type
+      FROM runtime_runs r
       JOIN task_events e ON r.id = e.run_id
       WHERE r.status = 'completed'
     `);
@@ -668,12 +668,12 @@ describe("Multi-join Tenant Guard Qualification", () => {
     const orgIdPattern = /(\w+)\.organization_id/g;
     const matches = [...sql.matchAll(orgIdPattern)];
     const tableAliases = matches.map(m => m[1]);
-    
+
     // Should have at least 2 different table aliases for organization_id
-    // (one for task_runs alias 'r' and one for task_events alias 'e')
+    // (one for runtime_runs alias 'r' and one for task_events alias 'e')
     expect(tableAliases).toContain("r");
     expect(tableAliases).toContain("e");
-    
+
     // Both should use the same tenant value (parameterized)
     expect(Object.values(params)).toContain("org_tenant1");
   });
@@ -681,27 +681,27 @@ describe("Multi-join Tenant Guard Qualification", () => {
 
 describe("Edge Cases", () => {
   it("should handle empty string values", () => {
-    const { params } = compile("SELECT * FROM task_runs WHERE status = ''");
+    const { params } = compile("SELECT * FROM runtime_runs WHERE status = ''");
 
     expect(Object.values(params)).toContain("");
   });
 
   it("should handle very long strings", () => {
     const longString = "a".repeat(10000);
-    const { params } = compile(`SELECT * FROM task_runs WHERE status = '${longString}'`);
+    const { params } = compile(`SELECT * FROM runtime_runs WHERE status = '${longString}'`);
 
     expect(Object.values(params)).toContain(longString);
   });
 
   it("should handle strings with newlines", () => {
-    const { params } = compile("SELECT * FROM task_runs WHERE status = 'line1\nline2'");
+    const { params } = compile("SELECT * FROM runtime_runs WHERE status = 'line1\nline2'");
 
     // Should handle newlines safely
     expect(Object.values(params).some((v) => typeof v === "string" && v.includes("\n"))).toBe(true);
   });
 
   it("should handle special SQL keywords in strings", () => {
-    const { sql, params } = compile("SELECT * FROM task_runs WHERE status = 'SELECT * FROM users'");
+    const { sql, params } = compile("SELECT * FROM runtime_runs WHERE status = 'SELECT * FROM users'");
 
     // The SQL keywords should be in params, not interpreted
     expect(sql).not.toMatch(/SELECT \* FROM users/);

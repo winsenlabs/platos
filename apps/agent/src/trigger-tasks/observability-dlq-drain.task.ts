@@ -23,7 +23,7 @@ const env = process.env;
  *
  * Delivery throughput is (rows per call) × (calls per hour), and it has to
  * exceed the rate turns are produced or the queue only ever grows. Hourly at 500
- * rows was 500 projections an hour: a deployment completing more than about
+ * rows was 500 projections an hour: a installation completing more than about
  * eight turns a minute accumulated a PENDING backlog it could never work off,
  * with a healthy ClickHouse, and `prune` only deletes DELIVERED rows so the
  * table grew without bound. The drain now loops internally until the queue is
@@ -95,7 +95,7 @@ export const observabilityDlqDrain = schedules.task({
       // A drain that THREW is not a state the runtime is designed for. It used
       // to arrive in the same `skipped` field as "no sink configured" and got
       // the same warn, so a pass failing every hour looked exactly like a
-      // deployment that has no ClickHouse.
+      // installation that has no ClickHouse.
       if (observability?.failure) {
         metadata.set("status", "failed");
         logger.error("observability-dlq-drain: outbox drain failed", {
@@ -117,7 +117,7 @@ export const observabilityDlqDrain = schedules.task({
         logger.error("observability-dlq-drain: outbox rows parked undelivered", {
           parked,
           parkedThisPass: observability?.parked ?? 0,
-          hint: "SELECT id, turnId, attempts, lastErrorCode FROM \"ObservabilityOutbox\" WHERE status = 'FAILED'",
+          hint: "SELECT id, turnId, retryCount, lastErrorCode FROM \"ObservabilityOutbox\" WHERE status = 'FAILED'",
         });
       }
       // A backlog the drain could not finish means delivery is losing to turn

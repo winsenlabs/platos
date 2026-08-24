@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ClickhouseQueryBuilder } from "./client/queryBuilder.js";
 import type { ClickhouseReader } from "./client/types.js";
+import { TELEMETRY_DATABASE } from "./telemetryNamespace.js";
 
 // --- Schemas ---
 
@@ -76,7 +77,7 @@ export function getGlobalModelMetrics(reader: ClickhouseReader) {
       dur_arr[2] AS duration_p90,
       dur_arr[3] AS duration_p95,
       dur_arr[4] AS duration_p99
-    FROM trigger_dev.llm_model_aggregates_v1
+    FROM ${TELEMETRY_DATABASE}.llm_model_aggregates_v1
     WHERE response_model = {responseModel: String}
       AND minute >= {startTime: DateTime}
       AND minute <= {endTime: DateTime}
@@ -104,7 +105,7 @@ export function getGlobalModelComparison(reader: ClickhouseReader) {
       quantilesMerge(0.5, 0.9)(tps_quantiles) AS tps_arr,
       tps_arr[1] AS tps_p50,
       tps_arr[2] AS tps_p90
-    FROM trigger_dev.llm_model_aggregates_v1
+    FROM ${TELEMETRY_DATABASE}.llm_model_aggregates_v1
     WHERE response_model IN {responseModels: Array(String)}
       AND minute >= {startTime: DateTime}
       AND minute <= {endTime: DateTime}
@@ -126,7 +127,7 @@ export function getPopularModels(reader: ClickhouseReader) {
       sum(total_cost) AS total_cost,
       quantilesMerge(0.5)(ttfc_quantiles) AS ttfc_arr,
       ttfc_arr[1] AS ttfc_p50
-    FROM trigger_dev.llm_model_aggregates_v1
+    FROM ${TELEMETRY_DATABASE}.llm_model_aggregates_v1
     WHERE minute >= {startTime: DateTime}
       AND minute <= {endTime: DateTime}
     GROUP BY response_model, gen_ai_system

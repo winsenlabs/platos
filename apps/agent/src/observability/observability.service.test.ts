@@ -32,7 +32,7 @@ interface StoredRow {
   payloadVersion: number;
   payload: unknown;
   status: string;
-  attempts: number;
+  retryCount: number;
   availableAt: Date;
   lastErrorCode: string | null;
   deliveredAt: Date | null;
@@ -76,7 +76,7 @@ class OutboxStore {
         payloadVersion: created.payloadVersion ?? 1,
         payload: created.payload,
         status: created.status ?? "PENDING",
-        attempts: created.attempts ?? 0,
+        retryCount: created.retryCount ?? 0,
         availableAt: created.availableAt ?? new Date(),
         lastErrorCode: created.lastErrorCode ?? null,
         deliveredAt: created.deliveredAt ?? null,
@@ -277,10 +277,10 @@ describe("enqueue", () => {
     const svc = service(store, new RecordingSink());
     await svc.enqueueTurn(store.asTransaction(), projection());
     const [row] = [...store.rows.values()];
-    Object.assign(row, { status: "FAILED", attempts: 10, lastErrorCode: "old" });
+    Object.assign(row, { status: "FAILED", retryCount: 10, lastErrorCode: "old" });
 
     await svc.enqueueTurn(store.asTransaction(), projection());
-    expect(row).toMatchObject({ status: "PENDING", attempts: 0, lastErrorCode: null });
+    expect(row).toMatchObject({ status: "PENDING", retryCount: 0, lastErrorCode: null });
   });
 
   test("a failing enqueue never propagates into the caller's transaction", async () => {
@@ -343,16 +343,16 @@ describe("drain", () => {
     expect(summary).toMatchObject({ claimed: 1, delivered: 0, retried: 1, parked: 0 });
     const [row] = [...store.rows.values()];
     expect(row.status).toBe("PENDING");
-    expect(row.attempts).toBe(1);
+    expect(row.retryCount).toBe(1);
     expect(row.availableAt.getTime()).toBeGreaterThan(Date.now() + retryDelayMs(1) - 5_000);
     expect(row.lastErrorCode).toBe("Error");
   });
 
-  test("parks a row that exhausts its attempts, and never deletes it", async () => {
+  test("parks a row that exhausts its retries, and never deletes it", async () => {
     const store = new OutboxStore();
     const sink = new RecordingSink();
     sink.failures = 1;
-    const svc = service(store, sink, { maxAttempts: 1 });
+    const svc = service(store, sink, { maxRetries: 1 });
     await svc.enqueueTurn(store.asTransaction(), projection());
 
     const summary = await svc.drain();
@@ -362,7 +362,7 @@ describe("drain", () => {
     expect(store.rows.size).toBe(1);
   });
 
-  test("parks a payload it cannot interpret rather than burning ten attempts", async () => {
+  test("parks a payload it cannot interpret rather than burning ten retries", async () => {
     const store = new OutboxStore();
     const sink = new RecordingSink();
     const svc = service(store, sink);
@@ -407,7 +407,7 @@ describe("drain", () => {
       payloadVersion: OBSERVABILITY_PAYLOAD_VERSION,
       payload: emptyRows(),
       status: "DELIVERED",
-      attempts: 1,
+      retryCount: 1,
       availableAt: old,
       lastErrorCode: null,
       deliveredAt: old,
@@ -419,7 +419,7 @@ describe("drain", () => {
       payloadVersion: OBSERVABILITY_PAYLOAD_VERSION,
       payload: emptyRows(),
       status: "FAILED",
-      attempts: 10,
+      retryCount: 10,
       availableAt: old,
       lastErrorCode: "gone",
       deliveredAt: null,
@@ -447,7 +447,7 @@ describe("throughput", () => {
 
   test("keeps reading until the queue is empty, rather than one batch per run", async () => {
     // Delivery throughput used to be capped at drainBatchSize per scheduled
-    // run: a single findMany and a return. Any deployment producing turns
+    // run: a single findMany and a return. Any installation producing turns
     // faster than that accumulated a PENDING backlog it could never work off
     // with a perfectly healthy sink, and prune() only deletes DELIVERED rows.
     const store = new OutboxStore();
@@ -482,7 +482,7 @@ describe("throughput", () => {
     const store = new OutboxStore();
     const sink = new RecordingSink();
     sink.failures = 1;
-    const svc = service(store, sink, { maxAttempts: 1 });
+    const svc = service(store, sink, { maxRetries: 1 });
     await svc.enqueueTurn(store.asTransaction(), projection());
 
     const first = await svc.drain();

@@ -51,7 +51,7 @@ describe("observability endpoint resolution", () => {
 
   test("rejects a non-http protocol as unusable rather than absent", () => {
     // Configured-but-unusable must stay distinguishable from unconfigured: the
-    // deployment HAS a store and someone mistyped where it is.
+    // The installation HAS a store and someone mistyped where it is.
     const config = resolveObservabilityConfig({
       PLATOS_OBSERVABILITY_CLICKHOUSE_URL: "clickhouse://host:9000",
     });
@@ -69,18 +69,18 @@ describe("observability endpoint resolution", () => {
     const defaults = resolveObservabilityConfig({});
     expect(defaults.batchSize).toBe(1_000);
     expect(defaults.drainBatchSize).toBe(500);
-    expect(defaults.maxAttempts).toBe(10);
+    expect(defaults.maxRetries).toBe(10);
     expect(defaults.requireSink).toBe(false);
 
     const tuned = resolveObservabilityConfig({
       PLATOS_OBSERVABILITY_BATCH_SIZE: "0",
       PLATOS_OBSERVABILITY_DRAIN_BATCH_SIZE: "999999",
-      PLATOS_OBSERVABILITY_MAX_ATTEMPTS: "not-a-number",
+      PLATOS_OBSERVABILITY_MAX_RETRIES: "not-a-number",
       PLATOS_OBSERVABILITY_REQUIRE_SINK: "true",
     });
     expect(tuned.batchSize).toBe(1_000);
     expect(tuned.drainBatchSize).toBe(5_000);
-    expect(tuned.maxAttempts).toBe(10);
+    expect(tuned.maxRetries).toBe(10);
     expect(tuned.requireSink).toBe(true);
   });
 

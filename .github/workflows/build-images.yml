@@ -210,6 +210,13 @@ jobs:
             test "$exit_code" = "0"
           done
 
+      - name: Rehearse ClickHouse namespace rollback and conservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose run --rm --no-deps clickhouse-migrate clickhouse-namespace-rehearsal \
+            2>&1 | tee artifacts/win235/clickhouse-namespace-rehearsal.log
+
       - name: Seed only the isolated, empty gate stores
         shell: bash
         env:
@@ -279,7 +286,7 @@ jobs:
             > artifacts/win235/redis-readback.json 2>&1
           docker compose exec -T clickhouse clickhouse-client \
             --user default --password persisted-state-gate \
-            --query "SELECT organization_id, project_id, environment_id, metric_name, value FROM trigger_dev.metrics_v1 WHERE metric_name = 'win235.persisted_fixture' ORDER BY organization_id FORMAT TSVWithNames" \
+            --query "SELECT organization_id, project_id, environment_id, metric_name, value FROM platos_telemetry.metrics_v1 WHERE metric_name = 'win235.persisted_fixture' ORDER BY organization_id FORMAT TSVWithNames" \
             > artifacts/win235/clickhouse-readback.tsv 2>&1
           docker compose exec -T postgres psql -U postgres -d platos_control -P pager=off \
             -c 'SELECT (SELECT count(*) FROM "Organization") AS organizations, (SELECT count(*) FROM "Agent") AS agents, (SELECT count(*) FROM "Turn") AS turns, (SELECT count(*) FROM "Tool") AS tools, (SELECT count(*) FROM "Memory") AS memories, (SELECT count(*) FROM "MemoryEntity") AS graph_entities;' \
