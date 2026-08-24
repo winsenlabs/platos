@@ -40,7 +40,7 @@ export const sourceModelManifest = [
   { source: "PlatosEndUser", targets: ["EndUser"], owner: "organization", surface: "subject", decision: "re-home" },
   { source: "PlatosEndUserIdentity", targets: ["EndUserIdentity"], owner: "organization", surface: "subject", decision: "re-home" },
   { source: "PlatosAccessKey", targets: ["AccessKey"], owner: "environment", surface: "operator", decision: "re-home" },
-  { source: "PlatosPostmanTemplate", targets: ["PostmanTemplate"], owner: "environment", surface: "operator", decision: "rename" },
+  { source: "PlatosPostmanTemplate", targets: ["PostmanTemplate", "PostmanExecution"], owner: "environment", surface: "operator", decision: "split" },
   { source: "PlatosAgentThread", targets: ["Thread"], owner: "environment", surface: "subject", decision: "rename" },
   { source: "PlatosAgentMessage", targets: ["Turn", "Step", "ToolCall"], owner: "thread", surface: "subject", decision: "split" },
   { source: "PlatosAgentArtifact", targets: ["Artifact"], owner: "environment", surface: "subject", decision: "rename" },

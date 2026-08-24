@@ -1,4 +1,6 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
@@ -78,6 +80,7 @@ describe("Postman dashboard execution", () => {
       intent: "execute",
       templateId,
       message: "Check the account",
+      requestId: "88888888-8888-4888-8888-888888888888",
       sessionContextOverride: '{"account":"OVERRIDE_SECRET_SENTINEL"}',
     }));
 
@@ -90,7 +93,7 @@ describe("Postman dashboard execution", () => {
         body: {
           message: "Check the account",
           sessionContextOverride: { account: "OVERRIDE_SECRET_SENTINEL" },
-          requestId: expect.stringMatching(/^[0-9a-f-]{36}$/),
+          requestId: "88888888-8888-4888-8888-888888888888",
         },
         signal: expect.any(AbortSignal),
       },
@@ -121,6 +124,7 @@ describe("Postman dashboard execution", () => {
       intent: "execute",
       templateId,
       message: "Check the account",
+      requestId: "88888888-8888-4888-8888-888888888888",
       sessionContextOverride: '{"account":"OVERRIDE_SECRET_SENTINEL"}',
     }));
 
@@ -136,11 +140,37 @@ describe("Postman dashboard execution", () => {
     expect(JSON.stringify(payload)).not.toContain("OVERRIDE_SECRET_SENTINEL");
   });
 
+  it("preserves retryable backend status without echoing the submitted override", async () => {
+    mocks.agentRequest.mockRejectedValue(new mocks.PlatosAgentApiError(
+      503,
+      "POSTMAN_EXECUTION_IN_PROGRESS",
+      "backend detail",
+    ));
+
+    const response = await action(args({
+      intent: "execute",
+      templateId,
+      message: "Check the account",
+      requestId: "88888888-8888-4888-8888-888888888888",
+      sessionContextOverride: '{"account":"OVERRIDE_SECRET_SENTINEL"}',
+    }));
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: {
+        code: "POSTMAN_EXECUTION_IN_PROGRESS",
+        message: "Postman template mutation failed (POSTMAN_EXECUTION_IN_PROGRESS)",
+      },
+    });
+  });
+
   it("rejects a malformed override before calling the Agent API", async () => {
     const response = await action(args({
       intent: "execute",
       templateId,
       message: "Check the account",
+      requestId: "88888888-8888-4888-8888-888888888888",
       sessionContextOverride: "[]",
     }));
 
@@ -150,5 +180,23 @@ describe("Postman dashboard execution", () => {
       error: { code: "INVALID_REQUEST", message: "sessionContextOverride must be a JSON object" },
     });
     expect(mocks.agentRequest).not.toHaveBeenCalled();
+  });
+
+  it("keeps only a durable per-template request UUID in browser storage", () => {
+    const surface = readFileSync(
+      join(process.cwd(), "app/components/platos/surfaces/RegistrySurfaces.tsx"),
+      "utf8",
+    );
+    const route = readFileSync(
+      join(process.cwd(), "app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx"),
+      "utf8",
+    );
+
+    expect(surface).toContain("platos:postman:request:${id}");
+    expect(surface).toContain("window.sessionStorage.getItem(storageKey)");
+    expect(surface).toContain("asString(execution.requestId) !== requestId");
+    expect(surface).toContain('name="requestId" value={requestId}');
+    expect(route).toContain('requiredText(form, "requestId", "Request ID")');
+    expect(route).not.toContain('from "node:crypto"');
   });
 });

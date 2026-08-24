@@ -60,9 +60,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(91);
-    expect(domainModelNames).toHaveLength(75);
-    expect(new Set(domainModelNames).size).toBe(75);
+    expect(models).toHaveLength(92);
+    expect(domainModelNames).toHaveLength(76);
+    expect(new Set(domainModelNames).size).toBe(76);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema).not.toContain("@@map(");
@@ -95,7 +95,7 @@ describe("clean-slate domain schema", () => {
       expect(entry.targets.length).toBeGreaterThan(0);
       for (const target of entry.targets) expect(controlModels.has(target)).toBe(true);
     }
-    expect(new Set(sourceModelManifest.flatMap((entry) => entry.targets)).size).toBe(59);
+    expect(new Set(sourceModelManifest.flatMap((entry) => entry.targets)).size).toBe(60);
     expect(legacyTenancyRelationCounts).toEqual({
       RuntimeEnvironment: 30,
       Organization: 6,
@@ -144,6 +144,7 @@ describe("clean-slate domain schema", () => {
       Thread: ["parentThreadId", "forkedUpToTurnId", "forkedTurnIds", "compactedUpToTurnId", "compactionState", "compactedAt"],
       MessageAttachment: ["environmentId", "endUserId", "agentId", "threadId", "turnId"],
       Turn: ["agentVersionId", "versionBucket", "costCents", "latencyMs"],
+      PostmanExecution: ["requestId", "requestFingerprint", "actorUserId", "contextHandle", "turnId"],
       Model: ["key", "provider", "name", "sourceUpdatedAt"],
       ModelPrice: [
         "modelId",
@@ -226,6 +227,14 @@ describe("clean-slate domain schema", () => {
       kind: "object",
       type: "Memory",
     });
+    expect(field("PostmanExecution", "actor")).toMatchObject({
+      kind: "object",
+      type: "User",
+    });
+    expect(field("PostmanExecution", "turn")).toMatchObject({
+      kind: "object",
+      type: "Turn",
+    });
 
     for (const expected of [
       'CREATE EXTENSION IF NOT EXISTS "vector"',
@@ -239,6 +248,10 @@ describe("clean-slate domain schema", () => {
       'CREATE TRIGGER "Step_price_snapshot"',
       'CREATE TRIGGER "Turn_ancestry"',
       'CREATE TRIGGER "MemoryRelationship_owner_immutable"',
+      'CREATE TRIGGER "PostmanExecution_ancestry"',
+      'CREATE TRIGGER "PostmanExecution_attribution_immutable"',
+      'CONSTRAINT "PostmanExecution_requestFingerprint_check"',
+      'CONSTRAINT "PostmanExecution_contextHandle_check"',
     ]) {
       expect(migration).toContain(expected);
     }

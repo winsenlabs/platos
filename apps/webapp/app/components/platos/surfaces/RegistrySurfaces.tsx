@@ -1,4 +1,5 @@
 import { Form, Link, useSearchParams } from "@remix-run/react";
+import { useEffect, useState } from "react";
 import { asArray, asBoolean, asNumber, asRecord, asString, compactNumber, firstArray, stableJson } from "../safe";
 import {
   Alert,
@@ -75,4 +76,74 @@ export function McpConfigSurface({ data, secondary, supporting }: SurfaceProps) 
 
 export function SkillsSurface({ data, title }: SurfaceProps) { const root = asRecord(data); const skills = firstArray(root, "skills", "items"); const install = title.toLowerCase().includes("install"); const total = asNumber(asRecord(root.pagination).total, skills.length); const [searchParams] = useSearchParams(); if (install) return <Form method="post"><Panel><SectionHeader title="Import a custom Skill package" description="The Agent fetches and validates the manifest, then stores effective scoped configuration." /><label className="block text-xs">Skill URL<input required name="url" type="url" placeholder="https://example.com/SKILL.md" className={fieldClass} /></label><Button type="submit" tone="primary" className="mt-3">Import and validate</Button></Panel></Form>; return <div className="space-y-4"><div className="flex justify-end"><Link to="new"><Button type="button" tone="primary">Import Skill</Button></Link></div><Toolbar><CollectionSearch label="Search Skills" placeholder="Search all Skills" /></Toolbar>{skills.length ? <DataTable headers={["Skill", "Origin", "Environment", "Tools", "Configuration"]} rowKeys={skills.map((value, index) => asString(asRecord(value).id, `skill-${index}`))} rows={skills.map((value) => { const skill = asRecord(value); return [asString(skill.name, asString(skill.id)), asBoolean(skill.isOfficial) ? "Embedded official" : asString(skill.origin, "custom"), <Status value={asBoolean(skill.envReady) ? "ready" : "missing environment references"} />, asArray(skill.tools).length, <details><summary className="cursor-pointer text-xs text-[var(--accent)]">Inspect effective config</summary><CodeBlock className="mt-2">{stableJson(skill.effectiveConfig ?? skill.manifest ?? skill)}</CodeBlock></details>]; })} /> : <EmptyState title={total > 0 ? "No Skills on this page" : searchParams.get("search") ? "No matching Skills" : "No Skills installed"} description={total > 0 ? "This page is past the end of the Skill registry. Use Previous to return to available results." : searchParams.get("search") ? "No Skills match the current server-side search." : "Install an official or custom Skill package to expose effective configuration."} />}<PaginationRange data={root} label="Skill pagination" /></div>; }
 
-export function PostmanSurface({ data, mutation }: SurfaceProps) { const root = asRecord(data); const templates = firstArray(root, "templates", "items"); const total = asNumber(asRecord(root.pagination).total, templates.length); const execution = asRecord(asRecord(mutation?.result).execution); const [searchParams] = useSearchParams(); const form = (template?: Record<string, unknown>) => { const id = asString(template?.id, ""); return <Form method="post"><Panel><input type="hidden" name="intent" value={id ? "update" : "create"} />{id && <input type="hidden" name="templateId" value={id} />}<SectionHeader title={id ? `Edit ${asString(template?.name, id)}` : "Create debug identity template"} description="Templates select a real scoped EndUser by canonical UUID; they do not mint or bridge dashboard identities." /><div className="grid gap-3 md:grid-cols-2"><label className="text-xs">Name<input required name="name" defaultValue={asString(template?.name, "")} className={fieldClass} /></label><label className="text-xs">Canonical EndUser ID<input required name="simulateUserId" defaultValue={asString(template?.simulateUserId, "")} className={fieldClass} /></label></div><label className="mt-3 block text-xs">Session Context — JSON object<textarea name="sessionContext" defaultValue={stableJson(asRecord(template?.sessionContext))} className={`${fieldClass} min-h-24 font-mono text-xs`} /></label><label className="mt-3 flex items-center gap-2 text-xs"><input type="checkbox" name="isDefault" defaultChecked={asBoolean(template?.isDefault)} /> Default for this Agent</label><div className="mt-3 flex gap-3"><Button type="submit" tone="primary">{id ? "Update template" : "Create template"}</Button>{id && <Button type="submit" name="intent" value="delete" tone="danger">Delete</Button>}</div></Panel></Form>; }; const executeForm = (template: Record<string, unknown>) => { const id = asString(template.id); return <Form method="post" className="mt-3"><Panel><input type="hidden" name="intent" value="execute" /><input type="hidden" name="templateId" value={id} /><SectionHeader title={`Execute ${asString(template.name, id)}`} description="Organization OWNER/ADMIN only. Runs one fresh persisted Turn as the scoped EndUser; this override applies to that Turn only." /><label className="block text-xs">Message<textarea required name="message" className={`${fieldClass} min-h-24`} /></label><label className="mt-3 block text-xs">Session Context override — one Turn only<textarea name="sessionContextOverride" defaultValue="{}" className={`${fieldClass} min-h-24 font-mono text-xs`} /></label><Button type="submit" tone="primary" className="mt-3">Execute one Turn</Button></Panel></Form>; }; return <div className="space-y-4">{Object.keys(execution).length > 0 && <Panel><SectionHeader title="Latest persisted execution" description="Read back from the canonical Thread and its single Turn after dispatch." /><div className="grid gap-3 text-xs md:grid-cols-2"><div>Thread <code>{asString(execution.threadId)}</code></div><div>Turn <code>{asString(execution.turnId)}</code></div><div>EndUser <code>{asString(execution.simulatedEndUserId)}</code></div><div>Status <Status value={execution.status} /></div></div><CodeBlock className="mt-3">{asString(execution.outputText, "No output text persisted")}</CodeBlock><Link className="mt-3 inline-block text-xs text-[var(--accent)]" to={`../chat?threadId=${encodeURIComponent(asString(execution.threadId))}`}>Open persisted thread</Link></Panel>}<Toolbar><CollectionSearch label="Search Postman templates" placeholder="Search all Postman templates" /></Toolbar>{templates.length ? <div className="grid gap-4 xl:grid-cols-2">{templates.map((value) => { const template = asRecord(value); return <div key={asString(template.id)}>{form(template)}{executeForm(template)}</div>; })}</div> : <EmptyState title={total > 0 ? "No Postman templates on this page" : searchParams.get("search") ? "No matching Postman templates" : "No Postman templates"} description={total > 0 ? "This page is past the end of the template list. Use Previous to return to available results." : searchParams.get("search") ? "No templates match the current server-side search." : "Create the first scoped debug identity template below."} />}<PaginationRange data={root} label="Postman template pagination" />{form()}</div>; }
+function PostmanExecuteForm({
+  template,
+  execution,
+}: {
+  template: Record<string, unknown>;
+  execution: Record<string, unknown>;
+}) {
+  const id = asString(template.id);
+  const storageKey = `platos:postman:request:${id}`;
+  const [requestId, setRequestId] = useState("");
+
+  useEffect(() => {
+    try {
+      const stored = window.sessionStorage.getItem(storageKey);
+      const durableRequestId = stored || window.crypto.randomUUID();
+      if (!stored) window.sessionStorage.setItem(storageKey, durableRequestId);
+      setRequestId(durableRequestId);
+    } catch {
+      setRequestId(window.crypto.randomUUID());
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (
+      !requestId ||
+      asString(execution.templateId) !== id ||
+      asString(execution.requestId) !== requestId
+    ) {
+      return;
+    }
+    const nextRequestId = window.crypto.randomUUID();
+    try {
+      window.sessionStorage.setItem(storageKey, nextRequestId);
+    } catch {
+      // Browser storage can be unavailable; component state remains durable
+      // for retries until this successful execution rotates the identifier.
+    }
+    setRequestId(nextRequestId);
+  }, [execution.requestId, execution.templateId, id, requestId, storageKey]);
+
+  return <Form method="post" className="mt-3">
+    <Panel>
+      <input type="hidden" name="intent" value="execute" />
+      <input type="hidden" name="templateId" value={id} />
+      <input type="hidden" name="requestId" value={requestId} />
+      <SectionHeader title={`Execute ${asString(template.name, id)}`} description="Organization OWNER/ADMIN only. Runs one fresh persisted Turn as the scoped EndUser; ambiguous retries reuse the same request ID until persisted success is read back." />
+      <label className="block text-xs">Message<textarea required name="message" className={`${fieldClass} min-h-24`} /></label>
+      <label className="mt-3 block text-xs">Session Context override — one Turn only<textarea name="sessionContextOverride" defaultValue="{}" className={`${fieldClass} min-h-24 font-mono text-xs`} /></label>
+      <Button type="submit" tone="primary" className="mt-3" disabled={!requestId}>Execute one Turn</Button>
+    </Panel>
+  </Form>;
+}
+
+export function PostmanSurface({ data, mutation }: SurfaceProps) {
+  const root = asRecord(data);
+  const templates = firstArray(root, "templates", "items");
+  const total = asNumber(asRecord(root.pagination).total, templates.length);
+  const execution = asRecord(asRecord(mutation?.result).execution);
+  const [searchParams] = useSearchParams();
+  const form = (template?: Record<string, unknown>) => {
+    const id = asString(template?.id, "");
+    return <Form method="post"><Panel><input type="hidden" name="intent" value={id ? "update" : "create"} />{id && <input type="hidden" name="templateId" value={id} />}<SectionHeader title={id ? `Edit ${asString(template?.name, id)}` : "Create debug identity template"} description="Templates select a real scoped EndUser by canonical UUID; they do not mint or bridge dashboard identities." /><div className="grid gap-3 md:grid-cols-2"><label className="text-xs">Name<input required name="name" defaultValue={asString(template?.name, "")} className={fieldClass} /></label><label className="text-xs">Canonical EndUser ID<input required name="simulateUserId" defaultValue={asString(template?.simulateUserId, "")} className={fieldClass} /></label></div><label className="mt-3 block text-xs">Session Context — JSON object<textarea name="sessionContext" defaultValue={stableJson(asRecord(template?.sessionContext))} className={`${fieldClass} min-h-24 font-mono text-xs`} /></label><label className="mt-3 flex items-center gap-2 text-xs"><input type="checkbox" name="isDefault" defaultChecked={asBoolean(template?.isDefault)} /> Default for this Agent</label><div className="mt-3 flex gap-3"><Button type="submit" tone="primary">{id ? "Update template" : "Create template"}</Button>{id && <Button type="submit" name="intent" value="delete" tone="danger">Delete</Button>}</div></Panel></Form>;
+  };
+  return <div className="space-y-4">
+    {Object.keys(execution).length > 0 && <Panel><SectionHeader title="Latest persisted execution" description="Read back from the canonical Thread and its single Turn after dispatch." /><div className="grid gap-3 text-xs md:grid-cols-2"><div>Thread <code>{asString(execution.threadId)}</code></div><div>Turn <code>{asString(execution.turnId)}</code></div><div>EndUser <code>{asString(execution.simulatedEndUserId)}</code></div><div>Status <Status value={execution.status} /></div></div><CodeBlock className="mt-3">{asString(execution.outputText, "No output text persisted")}</CodeBlock><Link className="mt-3 inline-block text-xs text-[var(--accent)]" to={`../chat?threadId=${encodeURIComponent(asString(execution.threadId))}`}>Open persisted thread</Link></Panel>}
+    <Toolbar><CollectionSearch label="Search Postman templates" placeholder="Search all Postman templates" /></Toolbar>
+    {templates.length ? <div className="grid gap-4 xl:grid-cols-2">{templates.map((value) => { const template = asRecord(value); return <div key={asString(template.id)}>{form(template)}<PostmanExecuteForm template={template} execution={execution} /></div>; })}</div> : <EmptyState title={total > 0 ? "No Postman templates on this page" : searchParams.get("search") ? "No matching Postman templates" : "No Postman templates"} description={total > 0 ? "This page is past the end of the template list. Use Previous to return to available results." : searchParams.get("search") ? "No templates match the current server-side search." : "Create the first scoped debug identity template below."} />}
+    <PaginationRange data={root} label="Postman template pagination" />
+    {form()}
+  </div>;
+}

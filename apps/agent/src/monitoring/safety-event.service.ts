@@ -9,7 +9,10 @@ import type { RequestScope } from "../auth/scope.guard";
 import { MessageCryptoService } from "./message-crypto.service";
 import { isUuid } from "../shared/pagination";
 
-type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
+type ScopeTuple = Pick<
+  RequestScope,
+  "organizationId" | "projectId" | "environmentId"
+> & Pick<RequestScope, "operatorUserId">;
 
 // PRELAUNCH-A3-4 — added "rate_limit" + "budget" so enforcement-layer
 // denials get their own detector ledger entries instead of being aliased
@@ -37,6 +40,7 @@ export interface SafetyEventRow {
   threadId: string | null;
   messageId: string | null;
   userId: string | null;
+  actorUserId: string | null;
   detector: DetectorKind;
   action: DetectorAction;
   severity: "low" | "medium" | "high";
@@ -92,7 +96,11 @@ export class SafetyEventService {
           action: data.action,
           severity: data.severity,
           detail: encDetail,
-          metadata: this.storeMetadata(data.userId ?? null, encMeta),
+          metadata: this.storeMetadata(
+            data.userId ?? null,
+            scope.operatorUserId ?? null,
+            encMeta,
+          ),
           agentId: data.agentId ?? null,
           threadId: data.threadId ?? null,
           turnId: data.messageId ?? null,
@@ -237,6 +245,7 @@ export class SafetyEventService {
       threadId: row.threadId,
       messageId: row.turnId,
       userId: storedMetadata.userId ?? row.endUserId,
+      actorUserId: storedMetadata.actorUserId,
       detector: row.detector as DetectorKind,
       action: row.action as DetectorAction,
       severity: row.severity as SafetyEventRow["severity"],
@@ -252,16 +261,18 @@ export class SafetyEventService {
 
   private storeMetadata(
     userId: string | null,
+    actorUserId: string | null,
     value: unknown,
   ): Prisma.InputJsonObject {
     return {
-      __platosSafety: { userId },
+      __platosSafety: { userId, actorUserId },
       value: value as Prisma.InputJsonValue,
     };
   }
 
   private readMetadata(value: Prisma.JsonValue | null): {
     userId: string | null;
+    actorUserId: string | null;
     value: Prisma.JsonValue | null;
   } {
     if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -269,12 +280,14 @@ export class SafetyEventService {
       const adapter = stored.__platosSafety;
       if (adapter && typeof adapter === "object" && !Array.isArray(adapter)) {
         const userId = (adapter as Record<string, Prisma.JsonValue>).userId;
+        const actorUserId = (adapter as Record<string, Prisma.JsonValue>).actorUserId;
         return {
           userId: typeof userId === "string" ? userId : null,
+          actorUserId: typeof actorUserId === "string" ? actorUserId : null,
           value: stored.value ?? null,
         };
       }
     }
-    return { userId: null, value };
+    return { userId: null, actorUserId: null, value };
   }
 }

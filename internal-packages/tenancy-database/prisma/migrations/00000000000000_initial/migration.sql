@@ -575,6 +575,28 @@ CREATE TABLE "public"."PostmanTemplate" (
 );
 
 -- CreateTable
+CREATE TABLE "public"."PostmanExecution" (
+    "id" UUID NOT NULL,
+    "environmentId" UUID NOT NULL,
+    "agentId" UUID NOT NULL,
+    "templateId" UUID,
+    "requestId" UUID NOT NULL,
+    "requestFingerprint" TEXT NOT NULL,
+    "actorUserId" UUID NOT NULL,
+    "simulatedEndUserId" UUID,
+    "contextHandle" TEXT NOT NULL,
+    "contextExpiresAt" TIMESTAMP(3) NOT NULL,
+    "status" "public"."WorkStatus" NOT NULL DEFAULT 'PENDING',
+    "threadId" UUID,
+    "turnId" UUID,
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PostmanExecution_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "public"."Thread" (
     "id" UUID NOT NULL,
     "environmentId" UUID NOT NULL,
@@ -1805,6 +1827,24 @@ CREATE INDEX "PostmanTemplate_agentId_idx" ON "public"."PostmanTemplate"("agentI
 CREATE UNIQUE INDEX "PostmanTemplate_environmentId_agentId_name_key" ON "public"."PostmanTemplate"("environmentId", "agentId", "name");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "PostmanExecution_contextHandle_key" ON "public"."PostmanExecution"("contextHandle");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PostmanExecution_turnId_key" ON "public"."PostmanExecution"("turnId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PostmanExecution_templateId_requestId_key" ON "public"."PostmanExecution"("templateId", "requestId");
+
+-- CreateIndex
+CREATE INDEX "PostmanExecution_environmentId_createdAt_idx" ON "public"."PostmanExecution"("environmentId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PostmanExecution_actorUserId_createdAt_idx" ON "public"."PostmanExecution"("actorUserId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PostmanExecution_threadId_idx" ON "public"."PostmanExecution"("threadId");
+
+-- CreateIndex
 CREATE INDEX "Thread_environmentId_endUserId_updatedAt_idx" ON "public"."Thread"("environmentId", "endUserId", "updatedAt");
 
 -- CreateIndex
@@ -2330,6 +2370,27 @@ ALTER TABLE "public"."PostmanTemplate" ADD CONSTRAINT "PostmanTemplate_environme
 ALTER TABLE "public"."PostmanTemplate" ADD CONSTRAINT "PostmanTemplate_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "public"."Agent"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_templateId_fkey" FOREIGN KEY ("templateId") REFERENCES "public"."PostmanTemplate"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_actorUserId_fkey" FOREIGN KEY ("actorUserId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_simulatedEndUserId_fkey" FOREIGN KEY ("simulatedEndUserId") REFERENCES "public"."EndUser"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_threadId_fkey" FOREIGN KEY ("threadId") REFERENCES "public"."Thread"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_turnId_fkey" FOREIGN KEY ("turnId") REFERENCES "public"."Turn"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_environmentId_fkey" FOREIGN KEY ("environmentId") REFERENCES "public"."Environment"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2835,6 +2896,8 @@ ALTER TABLE "public"."AgentVersion" ADD CONSTRAINT "AgentVersion_modelRoutes_jso
 ALTER TABLE "public"."AgentVersion" ADD CONSTRAINT "AgentVersion_memoryConfig_json_root" CHECK (jsonb_typeof("memoryConfig") = 'object');
 ALTER TABLE "public"."AgentVersion" ADD CONSTRAINT "AgentVersion_outputSchema_json_root" CHECK ("outputSchema" IS NULL OR jsonb_typeof("outputSchema") = 'object');
 ALTER TABLE "public"."PostmanTemplate" ADD CONSTRAINT "PostmanTemplate_sessionContext_json_root" CHECK ("sessionContext" IS NULL OR jsonb_typeof("sessionContext") = 'object');
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_requestFingerprint_check" CHECK ("requestFingerprint" ~ '^[0-9a-f]{64}$');
+ALTER TABLE "public"."PostmanExecution" ADD CONSTRAINT "PostmanExecution_contextHandle_check" CHECK ("contextHandle" ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
 ALTER TABLE "public"."Thread" ADD CONSTRAINT "Thread_sessionContext_json_root" CHECK ("sessionContext" IS NULL OR jsonb_typeof("sessionContext") = 'object');
 ALTER TABLE "public"."Turn" ADD CONSTRAINT "Turn_input_json_root" CHECK ("input" IS NULL OR jsonb_typeof("input") = 'object');
 ALTER TABLE "public"."Turn" ADD CONSTRAINT "Turn_output_json_root" CHECK ("output" IS NULL OR jsonb_typeof("output") = 'object');
@@ -2888,6 +2951,23 @@ BEGIN
         USING ERRCODE = '23514';
     END IF;
   END LOOP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE FUNCTION "public"."prevent_postman_execution_attribution_mutation"()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW."environmentId" IS DISTINCT FROM OLD."environmentId"
+     OR NEW."agentId" IS DISTINCT FROM OLD."agentId"
+     OR NEW."requestId" IS DISTINCT FROM OLD."requestId"
+     OR NEW."requestFingerprint" IS DISTINCT FROM OLD."requestFingerprint"
+     OR NEW."actorUserId" IS DISTINCT FROM OLD."actorUserId"
+     OR NEW."contextHandle" IS DISTINCT FROM OLD."contextHandle"
+     OR NEW."createdAt" IS DISTINCT FROM OLD."createdAt" THEN
+    RAISE EXCEPTION 'PostmanExecution forensic attribution is immutable'
+      USING ERRCODE = '55000';
+  END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -3044,6 +3124,26 @@ BEGIN
       ) INTO valid;
     WHEN 'PostmanTemplate' THEN
       SELECT EXISTS (SELECT 1 FROM "Environment" e JOIN "Agent" a ON a."projectId" = e."projectId" WHERE e.id = NEW."environmentId" AND a.id = NEW."agentId") INTO valid;
+    WHEN 'PostmanExecution' THEN
+      SELECT EXISTS (
+        SELECT 1 FROM "Environment" e
+        JOIN "Project" p ON p.id = e."projectId"
+        JOIN "Agent" a ON a.id = NEW."agentId" AND a."projectId" = p.id
+        JOIN "User" actor ON actor.id = NEW."actorUserId"
+        LEFT JOIN "PostmanTemplate" template ON template.id = NEW."templateId"
+          AND template."environmentId" = e.id AND template."agentId" = a.id
+        LEFT JOIN "EndUser" simulated ON simulated.id = NEW."simulatedEndUserId"
+          AND simulated."organizationId" = p."organizationId"
+        LEFT JOIN "Thread" thread ON thread.id = NEW."threadId"
+          AND thread."environmentId" = e.id AND thread."agentId" = a.id
+          AND (NEW."simulatedEndUserId" IS NULL OR thread."endUserId" = NEW."simulatedEndUserId")
+        LEFT JOIN "Turn" turn ON turn.id = NEW."turnId" AND turn."threadId" = thread.id
+        WHERE e.id = NEW."environmentId"
+          AND (NEW."templateId" IS NULL OR template.id IS NOT NULL)
+          AND (NEW."simulatedEndUserId" IS NULL OR simulated.id IS NOT NULL)
+          AND (NEW."threadId" IS NULL OR thread.id IS NOT NULL)
+          AND (NEW."turnId" IS NULL OR turn.id IS NOT NULL)
+      ) INTO valid;
     WHEN 'Thread' THEN
       SELECT EXISTS (
         SELECT 1 FROM "Environment" e
@@ -3395,6 +3495,8 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER "EndUserSession_ancestry" BEFORE INSERT OR UPDATE ON "public"."EndUserSession" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "AgentBinding_ancestry" BEFORE INSERT OR UPDATE ON "public"."AgentBinding" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "PostmanTemplate_ancestry" BEFORE INSERT OR UPDATE ON "public"."PostmanTemplate" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
+CREATE TRIGGER "PostmanExecution_ancestry" BEFORE INSERT OR UPDATE ON "public"."PostmanExecution" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
+CREATE TRIGGER "PostmanExecution_attribution_immutable" BEFORE UPDATE ON "public"."PostmanExecution" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_postman_execution_attribution_mutation"();
 CREATE TRIGGER "Thread_ancestry" BEFORE INSERT OR UPDATE ON "public"."Thread" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "Turn_ancestry" BEFORE INSERT OR UPDATE ON "public"."Turn" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();
 CREATE TRIGGER "Artifact_ancestry" BEFORE INSERT OR UPDATE ON "public"."Artifact" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_domain_ancestry"();

@@ -24,6 +24,10 @@ import { ProviderRuntimeError } from "../providers/provider-runtime.error";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
 import { freshInputTokens } from "../monitoring/usage-ledger";
 import { randomUUID } from "node:crypto";
+import {
+  resolvePostmanContext,
+  traceSessionContext,
+} from "./postman-context-handle";
 
 /** The one stream event AgentTaskService consumes rather than forwards. */
 type SubAgentUsageEvent = Extract<AgentStreamEvent, { type: "sub_agent_usage" }>;
@@ -229,6 +233,18 @@ export class AgentTaskService {
       replyToMessageId?: string | null;
     } = {},
   ): AsyncGenerator<AgentStreamEvent> {
+    if (scope.sessionContextHandle) {
+      scope = {
+        ...scope,
+        sessionContext: await resolvePostmanContext(
+          this.redis,
+          scope.sessionContextHandle,
+          scope,
+          options.idempotencyKey,
+        ),
+      };
+    }
+
     // Resolve the agentId. Priority:
     //   1. caller-supplied options.agentId — used when an integrator explicitly
     //      switches an agent mid-thread, or for one-off turns without a thread.
@@ -422,6 +438,7 @@ export class AgentTaskService {
       organizationId: scope.organizationId,
       projectId: scope.projectId,
       environmentId: scope.environmentId,
+      operatorUserId: scope.operatorUserId,
     };
 
     // 1c. Theme H.8 — per-user message rate limit. Fail-closed on exceed;
@@ -1194,10 +1211,7 @@ export class AgentTaskService {
           agentId,
           threadId: thread.id,
           userId: scope.userId,
-          sessionContext: scope.sessionContext as
-            | { user?: { name?: string; email?: string } }
-            | null
-            | undefined,
+          sessionContext: traceSessionContext(scope),
         },
         {
           traceId,
@@ -1238,10 +1252,7 @@ export class AgentTaskService {
           agentId,
           threadId: thread.id,
           userId: scope.userId,
-          sessionContext: scope.sessionContext as
-            | { user?: { name?: string; email?: string } }
-            | null
-            | undefined,
+          sessionContext: traceSessionContext(scope),
         },
         {
           traceId,
@@ -1472,7 +1483,7 @@ export class AgentTaskService {
       // Backfill displayName/email on the clean EndUser from resolved sessionContext.
       // scope.sessionContext is mutated by agentService.stream() so by this point
       // it contains the merged user.* fields (name, email). Fire-and-forget.
-      if (scope.userId && scope.sessionContext) {
+      if (!scope.sessionContextHandle && scope.userId && scope.sessionContext) {
         const ctx = scope.sessionContext as Record<string, unknown>;
         const user = ctx.user as Record<string, unknown> | null;
         const displayName = (user?.name ?? user?.["user.name"]) as string | undefined;

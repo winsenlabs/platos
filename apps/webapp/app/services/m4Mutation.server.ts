@@ -33,7 +33,7 @@ export async function m4Mutation(
     // them into mutation JSON creates false 400s and can bypass login redirects.
     if (error instanceof Response) throw error;
     const code = error instanceof PlatosAgentApiError ? error.code : "INVALID_REQUEST";
-    const status = error instanceof PlatosAgentApiError && error.status >= 400 && error.status < 500
+    const status = error instanceof PlatosAgentApiError && error.status >= 400 && error.status < 600
       ? error.status
       : 400;
     return json(

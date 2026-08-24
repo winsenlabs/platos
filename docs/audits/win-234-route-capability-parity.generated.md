@@ -159,7 +159,7 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 | link behavior | 105 | Verify link and deep-link behavior or record an approved redirect/not-applicable status. |
 | destructive confirmation | 12 | Verify destructive confirmation or record an approved not-applicable/justified-exclusion status. |
 | idempotency | 19 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
-| concurrency | 19 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
+| concurrency | 18 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
 | recovery | 101 | Verify failure, retry, and unavailable-backend recovery or record an approved not-applicable/justified-exclusion status. |
 | secret exposure | 102 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |
 | persisted-state evidence | 9 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |

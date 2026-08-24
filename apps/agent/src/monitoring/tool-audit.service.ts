@@ -27,6 +27,7 @@ export interface ToolAuditRecord {
   agentId: string | null;
   threadId: string | null;
   userId: string | null;
+  actorUserId: string | null;
   traceId: string | null;
   spanId: string | null;
   parentSpanId: string | null;
@@ -70,6 +71,7 @@ export interface RecordToolAuditInput {
   agentId?: string | null;
   threadId?: string | null;
   userId?: string | null;
+  actorUserId?: string | null;
   traceId?: string | null;
   spanId?: string | null;
   parentSpanId?: string | null;
@@ -138,6 +140,7 @@ export class ToolAuditService {
         entityId: input.entityId ?? null,
         entityPk: input.entityPk ?? null,
         userId: input.userId ?? null,
+        actorUserId: input.actorUserId ?? null,
         spanId: input.spanId ?? null,
         parentSpanId: input.parentSpanId ?? null,
         source: input.source ?? null,
@@ -285,6 +288,7 @@ export class ToolAuditService {
       agentId: r.agentId ?? null,
       threadId: r.threadId ?? null,
       userId: (metadata.userId as string | null | undefined) ?? null,
+      actorUserId: (metadata.actorUserId as string | null | undefined) ?? null,
       traceId: r.traceId ?? null,
       spanId: (metadata.spanId as string | null | undefined) ?? null,
       parentSpanId:

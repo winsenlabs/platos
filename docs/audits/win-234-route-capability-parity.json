@@ -6570,7 +6570,7 @@
       "intent": "Execute Agent Postman mode while simulating a scoped EndUser and applying a one-turn sessionContextOverride only after Organization OWNER/ADMIN validation.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "The retained Postman route now executes one canonical REST turn from a persisted template, resolves an Environment-present EndUser by canonical UUID, applies a request-only sessionContextOverride, and reads the single persisted Turn back before returning safe evidence.",
+      "currentBehavior": "The retained Postman route now reserves a durable template-qualified requestId before dispatch, reuses that reservation across ambiguous retries, carries arbitrary one-turn context through an opaque request-bound Redis handle, persists the real operator on PostmanExecution, and reads the single persisted Turn back before returning safe evidence.",
       "http": [
         {
           "role": "canonical contract",
@@ -6584,12 +6584,12 @@
             "successStatuses": [
               200
             ],
-            "shape": "Safe persisted execution evidence: requestId, templateId, agentId, simulatedEndUserId, threadId, turnId, turnCount=1, status, input/output text, timestamps, and recovered; no session context is returned."
+            "shape": "Safe persisted execution evidence: executionId, requestId, templateId, agentId, simulatedEndUserId, threadId, turnId, turnCount=1, status, input/output text, timestamps, and recovered; no session context is returned."
           },
           "stableErrors": [
             {
               "status": 400,
-              "codeOrMessage": "POSTMAN_EXECUTION_INVALID_REQUEST"
+              "codeOrMessage": "POSTMAN_EXECUTION_INVALID_REQUEST or POSTMAN_EXECUTION_REQUEST_MISMATCH"
             },
             {
               "status": 403,
@@ -6601,7 +6601,7 @@
             },
             {
               "status": 503,
-              "codeOrMessage": "POSTMAN_EXECUTION_UNAVAILABLE or POSTMAN_EXECUTION_EVIDENCE_UNAVAILABLE"
+              "codeOrMessage": "POSTMAN_EXECUTION_IN_PROGRESS, POSTMAN_EXECUTION_UNAVAILABLE, or POSTMAN_EXECUTION_EVIDENCE_UNAVAILABLE"
             }
           ]
         }
@@ -6669,7 +6669,7 @@
       },
       "permission": {
         "status": "verified",
-        "requirement": "Authenticated operator with an active Organization OWNER or ADMIN membership; authorization runs before target lookup."
+        "requirement": "Authenticated operator with an active Organization OWNER or ADMIN membership; authorization runs before target lookup. The real PostgreSQL gate covers an allowed OWNER, a rejected MEMBER, and an out-of-Environment target."
       },
       "loaderState": {
         "status": "implemented",
@@ -6690,8 +6690,8 @@
       "persistedReadBack": {
         "status": "verified",
         "references": [
-          "apps/agent/src/agent-runtime/agent.controller.postman.test.ts proves the scoped Thread contains exactly one sequence-1 Turn with the matching template-qualified idempotency key.",
-          "apps/webapp/test/postmanExecution.test.ts proves the complete safe execution evidence reaches the route action without echoing sessionContextOverride."
+          "The PostgreSQL read-back gate in apps/agent/src/agent-runtime/postman-execution-postgres.integration.test.ts passes against a clean isolated schema and reads the single persisted Turn back through PostmanExecution.",
+          "Focused controller and dashboard tests provide supporting stable-contract coverage."
         ]
       },
       "pagination": {
@@ -6713,36 +6713,38 @@
       "idempotency": {
         "status": "verified",
         "references": [
-          "A template-qualified requestId is persisted as Turn.idempotencyKey; retries read the original scoped Turn back and do not dispatch again."
+          "The passing real PostgreSQL gate proves a durable PostmanExecution reservation and template-qualified requestId recover the original Turn without a second dispatch."
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Concurrent first submissions with the same requestId still require persisted integration evidence."
+          "The passing real PostgreSQL gate proves two concurrent first submissions create one reservation, one dispatch, and one Turn while the losing caller receives POSTMAN_EXECUTION_IN_PROGRESS."
         ]
       },
       "recovery": {
         "status": "verified",
         "references": [
-          "Ambiguous timeout recovery with the same requestId returns recovered=true from persisted evidence; incomplete/multi-Turn read-back fails closed without a second dispatch."
+          "The passing real PostgreSQL gate proves a same-request retry recovers the persisted Turn and does not dispatch again."
         ]
       },
       "secretExposure": {
         "status": "verified",
-        "classification": "The execution response projects explicit safe Turn evidence and omits template context, sessionContextOverride, provider errors, and runtime exception detail.",
+        "classification": "Postman dispatch serializes only an opaque context handle across Trigger and suppresses handled context from trace identity and inspector output; whole-payload real integration evidence passes against PostgreSQL.",
         "requirements": [
-          "Backend whole-response tests assert the override sentinel and sessionContext key are absent.",
-          "Frontend whole-action payload and stable-error tests assert the submitted override sentinel is absent."
+          "The passing real PostgreSQL leakage gate proves the override sentinel is absent from Trigger clientData scope, PostmanExecution, trace projection, ToolCallAudit metadata, SafetyEvent metadata, and the execution response.",
+          "Browser storage contains only the retry UUID, never context or secret material."
         ]
       },
       "automatedEvidence": {
         "status": "verified",
         "references": [
           "apps/agent/src/agent-runtime/agent.controller.postman.test.ts",
+          "apps/agent/src/monitoring/postman-operator-attribution.test.ts",
+          "apps/agent/src/agent-runtime/postman-execution-postgres.integration.test.ts (passing real PostgreSQL gate)",
           "apps/webapp/test/postmanExecution.test.ts",
-          "apps/webapp/test/m4Dashboard.test.tsx",
-          "apps/agent/src/connections/session-context-override.test.ts"
+          "apps/webapp/test/m4Mutation.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -6767,7 +6769,7 @@
       ],
       "defect": {
         "status": "verified",
-        "summary": "The retained route now exposes source-backed executable Postman mode with scoped EndUser simulation, one-Turn override semantics, Organization role gating, idempotent recovery, and persisted read-back."
+        "summary": "Durable reservation, opaque context transport, retryable HTTP status preservation, and separate forensic actor propagation are implemented and pass the real PostgreSQL concurrency, recovery, permission, and leakage gate."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -6799,6 +6801,10 @@
           {
             "symbol": "model Turn",
             "source": "internal-packages/tenancy-database/prisma/schema.prisma"
+          },
+          {
+            "symbol": "model PostmanExecution",
+            "source": "internal-packages/tenancy-database/prisma/schema.prisma"
           }
         ],
         "sourceEvidence": [
@@ -6807,7 +6813,9 @@
             "fragments": [
               "executePostmanTemplate",
               "POSTMAN_EXECUTION_FORBIDDEN",
-              "POSTMAN_EXECUTION_EVIDENCE_UNAVAILABLE"
+              "POSTMAN_EXECUTION_EVIDENCE_UNAVAILABLE",
+              "POSTMAN_EXECUTION_IN_PROGRESS",
+              "POSTMAN_EXECUTION_REQUEST_MISMATCH"
             ]
           },
           {
@@ -6823,6 +6831,14 @@
               "model EndUser",
               "model Thread",
               "model Turn"
+            ]
+          },
+          {
+            "source": "apps/agent/src/agent-runtime/postman-context-handle.ts",
+            "fragments": [
+              "storePostmanContext",
+              "resolvePostmanContext",
+              "traceSessionContext"
             ]
           }
         ]

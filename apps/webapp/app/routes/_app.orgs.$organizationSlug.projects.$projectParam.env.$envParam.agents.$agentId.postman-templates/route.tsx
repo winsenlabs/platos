@@ -1,5 +1,4 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
-import { randomUUID } from "node:crypto";
 import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import {
@@ -24,7 +23,7 @@ export async function action(args: ActionFunctionArgs) {
         body: {
           message: requiredText(form, "message", "Message"),
           sessionContextOverride: jsonObject(form, "sessionContextOverride"),
-          requestId: randomUUID(),
+          requestId: requiredText(form, "requestId", "Request ID"),
         },
         signal: AbortSignal.timeout(120_000),
       });

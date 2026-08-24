@@ -32,6 +32,11 @@ import {
 } from "../memory/conversation.service";
 import { AgentTaskService } from "./agent-task.service";
 import { TurnDispatchService } from "./turn-dispatch.service";
+import {
+  POSTMAN_CONTEXT_TTL_SECONDS,
+  postmanContextRedisKey,
+  storePostmanContext,
+} from "./postman-context-handle";
 import { withHeartbeat } from "../shared/async-heartbeat";
 import { AgentService } from "./agent.service";
 import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
@@ -128,6 +133,26 @@ function currentEnvironmentEndUserPresence(environmentId: string) {
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function canonicalJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (!isJsonObject(value)) return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, canonicalJson(value[key])]),
+  );
+}
+
+function postmanRequestFingerprint(
+  message: string,
+  override: Record<string, unknown>,
+): string {
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify({ message, sessionContextOverride: canonicalJson(override) }))
+    .digest("hex");
 }
 
 /**
@@ -6535,7 +6560,10 @@ Write the summary now:`;
         select: { role: true },
       }))?.role;
     } catch {
-      role = undefined;
+      throw new ServiceUnavailableException({
+        code: "POSTMAN_EXECUTION_UNAVAILABLE",
+        message: "Postman execution authorization is temporarily unavailable",
+      });
     }
     if (role !== "OWNER" && role !== "ADMIN") {
       throw new ForbiddenException({
@@ -6560,12 +6588,7 @@ Write the summary now:`;
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const requestId = typeof body.requestId === "string" ? body.requestId.trim() : "";
     const override = body.sessionContextOverride;
-    if (
-      !message ||
-      message.length > 20_000 ||
-      !isUuid(requestId) ||
-      !isJsonObject(override)
-    ) {
+    if (!message || message.length > 20_000 || !isUuid(requestId) || !isJsonObject(override)) {
       throw new BadRequestException({
         code: "POSTMAN_EXECUTION_INVALID_REQUEST",
         message: "message, requestId, and a JSON object sessionContextOverride are required",
@@ -6593,9 +6616,6 @@ Write the summary now:`;
         });
       }
 
-      // simulateUserId is the canonical EndUser UUID. Resolve runtime material
-      // only from an active, Environment-present source row; never accept a free
-      // form external subject from the execution request.
       const simulatedEndUser = await prisma.endUser.findFirst({
         where: {
           id: template.simulateUserId,
@@ -6625,7 +6645,8 @@ Write the summary now:`;
       }
 
       const idempotencyKey = `postman:${template.id}:${requestId}`;
-      const readEvidence = async (threadId: string, recovered: boolean) => {
+      const requestFingerprint = postmanRequestFingerprint(message, override);
+      const readEvidence = async (execution: any, threadId: string, recovered: boolean) => {
         const thread = await prisma.thread.findFirst({
           where: {
             id: threadId,
@@ -6669,8 +6690,18 @@ Write the summary now:`;
             message: "Persisted Postman execution evidence is unavailable",
           });
         }
+        await prisma.postmanExecution.update({
+          where: { id: execution.id },
+          data: {
+            threadId: thread.id,
+            turnId: turn.id,
+            status: turn.status,
+            completedAt: turn.completedAt,
+          },
+        });
         return {
           execution: {
+            executionId: execution.id,
             requestId,
             templateId: template.id,
             agentId: template.agentId,
@@ -6688,29 +6719,111 @@ Write the summary now:`;
         };
       };
 
-      // A retry after an ambiguous timeout reads the original persisted Turn
-      // back instead of dispatching another one. The template UUID is embedded
-      // in the persisted key so a request ID cannot recover another template.
-      const existing = await prisma.turn.findFirst({
-        where: {
-          idempotencyKey,
-          thread: {
-            environmentId: scope.environmentId,
-            agentId: template.agentId,
-            endUserId: simulatedEndUser.id,
-            environment: {
-              projectId: scope.projectId,
-              project: { organizationId: scope.organizationId },
+      const recover = async (execution: any) => {
+        if (
+          execution.requestFingerprint !== requestFingerprint ||
+          execution.actorUserId !== actorUserId ||
+          execution.agentId !== template.agentId ||
+          execution.simulatedEndUserId !== simulatedEndUser.id
+        ) {
+          throw new BadRequestException({
+            code: "POSTMAN_EXECUTION_REQUEST_MISMATCH",
+            message: "requestId is already reserved for a different Postman execution",
+          });
+        }
+        if (execution.threadId && execution.turnId) {
+          return readEvidence(execution, execution.threadId, true);
+        }
+        const persisted = await prisma.turn.findMany({
+          where: {
+            idempotencyKey,
+            thread: {
+              environmentId: scope.environmentId,
+              agentId: template.agentId,
+              endUserId: simulatedEndUser.id,
+              environment: {
+                projectId: scope.projectId,
+                project: { organizationId: scope.organizationId },
+              },
             },
           },
-        },
-        select: { threadId: true },
-      });
-      if (existing) return readEvidence(existing.threadId, true);
+          orderBy: { createdAt: "asc" },
+          take: 2,
+          select: { threadId: true },
+        });
+        if (persisted.length === 1) {
+          return readEvidence(execution, persisted[0]!.threadId, true);
+        }
+        if (persisted.length > 1) {
+          throw new ServiceUnavailableException({
+            code: "POSTMAN_EXECUTION_EVIDENCE_UNAVAILABLE",
+            message: "Persisted Postman execution evidence is unavailable",
+          });
+        }
+        throw new ServiceUnavailableException({
+          code: "POSTMAN_EXECUTION_IN_PROGRESS",
+          message: "Postman execution is reserved or still running; retry with the same requestId",
+        });
+      };
 
-      const templateContext = isJsonObject(template.sessionContext)
-        ? template.sessionContext
-        : {};
+      const existing = await prisma.postmanExecution.findFirst({
+        where: {
+          environmentId: scope.environmentId,
+          templateId: template.id,
+          requestId,
+          environment: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
+        },
+      });
+      if (existing) return recover(existing);
+
+      const templateContext = isJsonObject(template.sessionContext) ? template.sessionContext : {};
+      const contextHandle = crypto.randomUUID();
+      const contextExpiresAt = new Date(Date.now() + POSTMAN_CONTEXT_TTL_SECONDS * 1000);
+      await storePostmanContext(this.redis, {
+        handle: contextHandle,
+        organizationId: scope.organizationId,
+        projectId: scope.projectId,
+        environmentId: scope.environmentId,
+        userId: externalSubject,
+        actorUserId,
+        idempotencyKey,
+        context: { ...templateContext, ...override },
+      });
+
+      let execution: any;
+      try {
+        execution = await prisma.postmanExecution.create({
+          data: {
+            environmentId: scope.environmentId,
+            agentId: template.agentId,
+            templateId: template.id,
+            requestId,
+            requestFingerprint,
+            actorUserId,
+            simulatedEndUserId: simulatedEndUser.id,
+            contextHandle,
+            contextExpiresAt,
+            status: "ACTIVE",
+          },
+        });
+      } catch (error: any) {
+        await this.redis.del(postmanContextRedisKey(contextHandle)).catch(() => undefined);
+        if (error?.code === "P2002") {
+          const raced = await prisma.postmanExecution.findFirst({
+            where: {
+              environmentId: scope.environmentId,
+              templateId: template.id,
+              requestId,
+            },
+          });
+          if (raced) return recover(raced);
+        }
+        throw error;
+      }
+
       try {
         const result = await this.dispatch.collectTurn(template.agentId, {
           scope: {
@@ -6720,20 +6833,19 @@ Write the summary now:`;
             userIdentities: undefined,
             signedUserMeta: undefined,
             operatorUserId: actorUserId,
-            // This request-local scope is the only carrier of the override. It
-            // is not written onto the new Thread, so it cannot affect a later
-            // Turn.
-            sessionContext: { ...templateContext, ...override },
+            sessionContext: undefined,
+            sessionContextHandle: contextHandle,
           },
           message,
           idempotencyKey,
         });
         if (!result.threadId) throw new Error("missing persisted thread");
-        return readEvidence(result.threadId, false);
+        return readEvidence(execution, result.threadId, false);
       } catch (error) {
         if (error instanceof HttpException) throw error;
-        // Do not include provider/runtime error text: it can contain request
-        // context, credential metadata, or upstream response material.
+        // The durable reservation remains ACTIVE because the dispatch boundary
+        // may already have committed. A retry with this same requestId can only
+        // recover the matching persisted Turn; it can never dispatch again.
         throw new ServiceUnavailableException({
           code: "POSTMAN_EXECUTION_UNAVAILABLE",
           message: "Postman execution is unavailable; retry with the same requestId",

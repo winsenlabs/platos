@@ -18,6 +18,8 @@
  *                      operator's durable turn lost operator surfaces.
  *   - `operatorUserId` dropped → Postman impersonation lost the real actor on
  *                      the durable arm only.
+ *   - arbitrary Postman context used to cross in plaintext; durable Postman
+ *                      turns now carry only `sessionContextHandle`.
  *
  * Rather than keep patching field-by-field, `buildSessionScope` is the ONE
  * place that decides what crosses. Add a field here (and to `SessionScope`)
@@ -61,6 +63,8 @@ export interface SessionScope {
   principal?: "operator" | "end-user";
   /** Real operator actor while `userId` is a simulated EndUser subject. */
   operatorUserId?: string;
+  /** Opaque, short-lived request-bound handle resolved only inside the Agent. */
+  sessionContextHandle?: string;
   /** Channel identity claims for cross-channel end-user linking (non-guest only). */
   userIdentities?: SessionIdentityClaim[];
   /** Per-turn context (user_timezone, user.* identity, sessionContextOverride). */
@@ -85,6 +89,7 @@ export interface SessionScopeInput {
   entityId?: string;
   principal?: "operator" | "end-user";
   operatorUserId?: string;
+  sessionContextHandle?: string;
   userIdentities?: SessionIdentityClaim[];
   sessionContext?: Record<string, unknown> | null;
   signedUserMeta?: { name?: string; email?: string };
@@ -107,10 +112,13 @@ export function buildSessionScope(scope: SessionScopeInput): SessionScope {
     ...(scope.entityId ? { entityId: scope.entityId } : {}),
     ...(scope.principal ? { principal: scope.principal } : {}),
     ...(scope.operatorUserId ? { operatorUserId: scope.operatorUserId } : {}),
+    ...(scope.sessionContextHandle ? { sessionContextHandle: scope.sessionContextHandle } : {}),
     ...(scope.userIdentities && scope.userIdentities.length > 0
       ? { userIdentities: scope.userIdentities }
       : {}),
-    ...(scope.sessionContext ? { sessionContext: scope.sessionContext } : {}),
+    ...(!scope.sessionContextHandle && scope.sessionContext
+      ? { sessionContext: scope.sessionContext }
+      : {}),
     ...(scope.signedUserMeta && (scope.signedUserMeta.name || scope.signedUserMeta.email)
       ? { signedUserMeta: scope.signedUserMeta }
       : {}),

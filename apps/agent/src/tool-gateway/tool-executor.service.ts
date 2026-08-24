@@ -13,6 +13,7 @@ import { SpansService } from "../monitoring/spans.service";
 import { ToolAuditService } from "../monitoring/tool-audit.service";
 import { SafetyService } from "../monitoring/safety.service";
 import { SafetyEventService } from "../monitoring/safety-event.service";
+import { traceSessionContext } from "../agent-runtime/postman-context-handle";
 import { RateLimitService } from "../monitoring/rate-limit.service";
 // Issue #1 — per-tool approval policy gate. The MCP path already
 // consults the 4-tier resolver before forwarding; the agent-runtime
@@ -291,6 +292,7 @@ export class ToolExecutorService {
         organizationId: scope.organizationId,
         projectId: scope.projectId,
         environmentId: scope.environmentId,
+        operatorUserId: scope.operatorUserId,
       },
       {
         detector: "dispatcher_permission_gate",
@@ -589,6 +591,7 @@ export class ToolExecutorService {
             organizationId: scope.organizationId,
             projectId: scope.projectId,
             environmentId: scope.environmentId,
+            operatorUserId: scope.operatorUserId,
           },
           {
             detector: "tool_param",
@@ -616,6 +619,7 @@ export class ToolExecutorService {
             organizationId: scope.organizationId,
             projectId: scope.projectId,
             environmentId: scope.environmentId,
+            operatorUserId: scope.operatorUserId,
           },
           {
             detector: "tool_param",
@@ -654,6 +658,7 @@ export class ToolExecutorService {
               organizationId: scope.organizationId,
               projectId: scope.projectId,
               environmentId: scope.environmentId,
+              operatorUserId: scope.operatorUserId,
             },
             {
               detector: "rate_limit",
@@ -715,10 +720,7 @@ export class ToolExecutorService {
           agentId: scope.agentId,
           threadId: scope.sessionId,
           userId: scope.userId,
-          sessionContext: (scope as any).sessionContext as
-            | { user?: { name?: string; email?: string } }
-            | null
-            | undefined,
+          sessionContext: traceSessionContext(scope),
         },
         {
           traceId: scope.traceId,
@@ -759,6 +761,7 @@ export class ToolExecutorService {
         agentId: scope.agentId ?? null,
         threadId: scope.sessionId ?? null,
         userId: scope.userId ?? null,
+        actorUserId: scope.operatorUserId ?? null,
         traceId: scope.traceId ?? null,
         spanId: spanId ?? null,
         parentSpanId: scope.parentSpanId ?? null,

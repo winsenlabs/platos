@@ -9,6 +9,7 @@ const { requireEnvironmentScope } = vi.hoisted(() => ({
 vi.mock("../app/services/auth.server", () => ({ requireEnvironmentScope }));
 
 import { m4Mutation } from "../app/services/m4Mutation.server";
+import { PlatosAgentApiError } from "../app/services/platosAgent.server";
 
 function args(): ActionFunctionArgs {
   return {
@@ -58,6 +59,21 @@ describe("m4Mutation response semantics", () => {
     await expect(response.json()).resolves.toEqual({
       ok: false,
       error: { code: "INVALID_REQUEST", message: "Name is required" },
+    });
+  });
+
+  it("preserves retryable Agent API status codes", async () => {
+    const response = await m4Mutation(args(), "Save", async () => {
+      throw new PlatosAgentApiError(503, "POSTMAN_EXECUTION_IN_PROGRESS", "retry");
+    });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "POSTMAN_EXECUTION_IN_PROGRESS",
+        message: "Save failed (POSTMAN_EXECUTION_IN_PROGRESS)",
+      },
     });
   });
 });

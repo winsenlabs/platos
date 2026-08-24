@@ -32,6 +32,7 @@ import { hardenToolResults } from "./tool-result-sanitizer";
 import { z } from "zod";
 import * as crypto from "crypto";
 import type { RequestScope } from "../auth/scope.guard";
+import { traceSessionContext } from "./postman-context-handle";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { PRISMA_TOKEN, environmentScopeWhere } from "../shared/database.provider";
@@ -4816,10 +4817,7 @@ export class AgentService {
             agentId: parentAgentId,
             threadId,
             userId: args.scope.userId,
-            sessionContext: (args.scope as any).sessionContext as
-              | { user?: { name?: string; email?: string } }
-              | null
-              | undefined,
+            sessionContext: traceSessionContext(args.scope),
           },
           {
             traceId: args.scope.traceId,
@@ -6075,7 +6073,11 @@ export class AgentService {
         historyMessageCount: conversationHistory.length,
         toolNames: Object.keys(tools),
         toolCount: Object.keys(tools).length,
-        sessionContext: sessionContext ?? undefined,
+        // Postman overrides are resolved inside this process for prompt/tool
+        // assembly but never emitted on the inspector stream.
+        sessionContext: scope.sessionContextHandle
+          ? undefined
+          : sessionContext ?? undefined,
         timestamp: new Date().toISOString(),
       } as any;
 

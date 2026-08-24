@@ -174,6 +174,8 @@ export interface RequestScope {
    * list can show it back to them.
    */
   operatorUserId?: string;
+  /** Opaque Redis-bound handle for one Postman turn's untrusted context. */
+  sessionContextHandle?: string;
   /**
    * WIN-133 — plaintext identity an ENTITY SIGNED FOR, and the only provenance
    * allowed to reach `turns_v1.user_display_name` / `.user_email`.

@@ -64,7 +64,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(91);
+    expect(modelNames).toHaveLength(92);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -1420,7 +1420,7 @@ async function seedEveryModel(control: PrismaClient) {
       permissions: ["admin"],
     },
   }));
-  track("PostmanTemplate", await control.postmanTemplate.create({
+  const postmanTemplate = track("PostmanTemplate", await control.postmanTemplate.create({
     data: {
       environmentId: environment.id,
       agentId: agent.id,
@@ -1479,6 +1479,23 @@ async function seedEveryModel(control: PrismaClient) {
       output: { text: "hi" },
       costCents: 0.25,
       latencyMs: 120,
+    },
+  }));
+  track("PostmanExecution", await control.postmanExecution.create({
+    data: {
+      environmentId: environment.id,
+      agentId: agent.id,
+      templateId: postmanTemplate.id,
+      requestId: "88888888-8888-4888-8888-888888888888",
+      requestFingerprint: "ab".repeat(32),
+      actorUserId: user.id,
+      simulatedEndUserId: endUser.id,
+      contextHandle: "99999999-9999-4999-8999-999999999999",
+      contextExpiresAt: new Date("2026-08-20T00:15:00.000Z"),
+      status: WorkStatus.SUCCEEDED,
+      threadId: thread.id,
+      turnId: turn.id,
+      completedAt: new Date("2026-08-20T00:00:01.000Z"),
     },
   }));
   const step = track("Step", await control.step.create({

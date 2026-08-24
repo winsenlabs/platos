@@ -224,11 +224,11 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
   },
   "postman-executable-mode": {
     fragments: {
-      currentBehavior: ["canonical REST turn", "Environment-present EndUser", "sessionContextOverride"],
+      currentBehavior: ["durable template-qualified requestId", "opaque request-bound Redis handle", "real operator"],
       identifiers: ["templateId", "simulateEndUserId", "requestId", "threadId", "turnId"],
       permission: ["Organization OWNER or ADMIN"],
-      persistedReadBack: ["exactly one sequence-1 Turn"],
-      secretExposure: ["omits template context", "provider errors"],
+      persistedReadBack: ["PostgreSQL read-back gate"],
+      secretExposure: ["opaque context handle", "whole-payload real integration evidence"],
     },
     statuses: {
       "permission.status": "verified",
@@ -237,6 +237,7 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
       "linkState.status": "implemented",
       "persistedReadBack.status": "verified",
       "idempotency.status": "verified",
+      "concurrency.status": "verified",
       "recovery.status": "verified",
       "secretExposure.status": "verified",
       "automatedEvidence.status": "verified",

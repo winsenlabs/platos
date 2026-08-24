@@ -155,6 +155,7 @@ model User {
   oauthAccessTokens       OAuthAccessToken[]
   oauthRefreshTokens      OAuthRefreshToken[]
   mcpBearerTokensCreated  McpBearerToken[]
+  postmanExecutions       PostmanExecution[]
 }
 
 model OperatorSession {
@@ -407,6 +408,7 @@ model Environment {
   alertDeliveries          AlertDelivery[]
   alertDeliveryAttempts    AlertDeliveryAttempt[]
   postmanTemplates        PostmanTemplate[]
+  postmanExecutions       PostmanExecution[]
   threads                 Thread[]
   artifacts               Artifact[]
   messageAttachments      MessageAttachment[]
@@ -485,6 +487,7 @@ model EndUser {
   memoryEntities      MemoryEntity[]
   memoryRelationships MemoryRelationship[]
   messageAttachments  MessageAttachment[]
+  postmanExecutions   PostmanExecution[]
 
   @@unique([id, organizationId])
   @@index([organizationId, disabledAt])
@@ -547,6 +550,7 @@ model Agent {
   versions             AgentVersion[]
   bindings             AgentBinding[]
   postmanTemplates     PostmanTemplate[]
+  postmanExecutions    PostmanExecution[]
   threads              Thread[]
   approvals            AgentApproval[]
   budgets              Budget[]
@@ -948,6 +952,7 @@ model PostmanTemplate {
 
   environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
   agent       Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  executions  PostmanExecution[]
 
   @@unique([environmentId, agentId, name])
   @@index([agentId])
@@ -995,6 +1000,7 @@ model Thread {
   safetyEvents      SafetyEvent[]
   agentEvals        AgentEval[]
   toolCallAudits    ToolCallAudit[]
+  postmanExecutions PostmanExecution[]
 
   @@index([environmentId, endUserId, updatedAt])
   @@index([agentId, status])
@@ -1099,12 +1105,48 @@ model Turn {
   agentEvals                 AgentEval[]
   channelEventInbox          ChannelEventInbox?
   observabilityOutbox        ObservabilityOutbox?
+  postmanExecution           PostmanExecution?
 
   @@unique([threadId, sequence])
   @@unique([threadId, idempotencyKey])
   @@index([parentTurnId])
   @@index([agentVersionId, versionBucket])
   @@index([threadId, status])
+}
+
+/// Durable admission and forensic attribution for one executable Postman turn.
+/// Request context is never stored here; contextHandle points at a short-lived,
+/// request-bound Redis envelope and is opaque outside the Agent process.
+model PostmanExecution {
+  id                 String     @id @default(uuid()) @db.Uuid
+  environmentId      String     @db.Uuid
+  agentId            String     @db.Uuid
+  templateId         String?    @db.Uuid
+  requestId          String     @db.Uuid
+  requestFingerprint String
+  actorUserId        String     @db.Uuid
+  simulatedEndUserId String?    @db.Uuid
+  contextHandle      String     @unique
+  contextExpiresAt   DateTime
+  status             WorkStatus @default(PENDING)
+  threadId           String?    @db.Uuid
+  turnId             String?    @unique @db.Uuid
+  completedAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  environment      Environment      @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  agent            Agent            @relation(fields: [agentId], references: [id], onDelete: Restrict)
+  template         PostmanTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  actor            User             @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  simulatedEndUser EndUser?         @relation(fields: [simulatedEndUserId], references: [id], onDelete: SetNull)
+  thread           Thread?          @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  turn             Turn?            @relation(fields: [turnId], references: [id], onDelete: SetNull)
+
+  @@unique([templateId, requestId])
+  @@index([environmentId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([threadId])
 }
 
 model Step {
