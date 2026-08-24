@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platos.dev/schemas/win235-budgets.schema.json",
+  "title": "WIN-235 release-gate budgets",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "measurementStatus",
+    "performance",
+    "queries",
+    "bundles",
+    "browser"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "measurementStatus": { "enum": ["unmeasured", "measured", "enforced"] },
+    "performance": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/budget" }
+    },
+    "queries": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "#/$defs/budget" },
+          {
+            "type": "object",
+            "required": ["queryCount", "fullDatasetHydration"],
+            "properties": {
+              "queryCount": { "type": ["integer", "null"], "minimum": 0 },
+              "fullDatasetHydration": { "type": ["boolean", "null"] }
+            }
+          }
+        ]
+      }
+    },
+    "bundles": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/budget" }
+    },
+    "browser": {
+      "type": "object",
+      "required": [
+        "viewports",
+        "themes",
+        "keyboard",
+        "overflow",
+        "deepLinkRefresh",
+        "failureStates"
+      ],
+      "properties": {
+        "viewports": { "type": "array", "contains": { "const": "desktop" }, "minItems": 2 },
+        "themes": { "type": "array", "contains": { "const": "light" }, "minItems": 2 },
+        "keyboard": { "type": ["boolean", "null"] },
+        "overflow": { "type": ["boolean", "null"] },
+        "deepLinkRefresh": { "type": ["boolean", "null"] },
+        "failureStates": { "type": "array", "minItems": 4 }
+      }
+    }
+  },
+  "$defs": {
+    "budget": {
+      "type": "object",
+      "required": ["id", "unit", "baseline", "threshold", "measurementArtifact"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "unit": { "type": "string", "minLength": 1 },
+        "baseline": { "type": ["number", "null"] },
+        "threshold": { "type": ["number", "null"] },
+        "measurementArtifact": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

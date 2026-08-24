@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.check.json",
+  "include": [],
+  "files": ["./test/persistedStateGate.integration.test.ts"]
+}

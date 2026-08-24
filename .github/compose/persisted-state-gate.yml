@@ -1,0 +1,213 @@
+name: platos-persisted-state-gate
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: persisted-state-gate
+      POSTGRES_DB: platos_control
+    command: ["-c", "wal_level=logical"]
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d platos_control"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+    ports:
+      - "127.0.0.1:56379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    tmpfs:
+      - /data
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3-alpine@sha256:a4e8cf46e526a06f4f52d22f7fa8d07472b55d3c896d7ca3f159e249be38ae62
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: persisted-state-gate
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      - "127.0.0.1:58123:8123"
+      - "127.0.0.1:59000:9000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 45
+    tmpfs:
+      - /var/lib/clickhouse
+
+  minio:
+    image: minio/minio:RELEASE.2025-02-03T21-03-04Z@sha256:a62e44a7db506b8ed114a44e67b4996c4f1ecca981d9c6e40aa2581334999313
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: persisted-state-gate
+      MINIO_ROOT_PASSWORD: persisted-state-gate-password
+    ports:
+      - "127.0.0.1:59001:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null"]
+      interval: 2s
+      timeout: 5s
+      retries: 45
+    tmpfs:
+      - /data
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-01-17T23-25-50Z@sha256:b55b1283c0b81b8bb473c94133d4e00a552518c4796a954ddb04bb7b6e05927d
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mc alias set gate http://minio:9000 persisted-state-gate persisted-state-gate-password
+        mc mb --ignore-existing gate/platos-media
+        mc anonymous set none gate/platos-media
+        mc stat gate/platos-media
+    restart: "no"
+
+  minio-fixture:
+    image: minio/mc:RELEASE.2025-01-17T23-25-50Z@sha256:b55b1283c0b81b8bb473c94133d4e00a552518c4796a954ddb04bb7b6e05927d
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    volumes:
+      - ../../artifacts/win235:/artifacts:ro
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        test -s /artifacts/fixture-manifest.json
+        mc alias set gate http://minio:9000 persisted-state-gate persisted-state-gate-password
+        test -z "$(mc ls --recursive gate/platos-media)"
+        mc cp /artifacts/fixture-manifest.json gate/platos-media/win235/fixture-manifest.json
+        mc stat --json gate/platos-media/win235/fixture-manifest.json
+        mc cat gate/platos-media/win235/fixture-manifest.json | cmp - /artifacts/fixture-manifest.json
+        echo "WIN-235 MinIO fixture read-back matches"
+    restart: "no"
+
+  postgres-migrate:
+    image: ${WIN235_MIGRATIONS_RUNTIME_IMAGE:?WIN235_MIGRATIONS_RUNTIME_IMAGE must be the loaded tested candidate}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:persisted-state-gate@postgres:5432/platos_control?schema=public
+    command: ["postgres"]
+    restart: "no"
+
+  clickhouse-migrate:
+    image: ${WIN235_MIGRATIONS_RUNTIME_IMAGE:?WIN235_MIGRATIONS_RUNTIME_IMAGE must be the loaded tested candidate}
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      GOOSE_DRIVER: clickhouse
+      GOOSE_DBSTRING: tcp://default:persisted-state-gate@clickhouse:9000
+    command: ["clickhouse"]
+    restart: "no"
+
+  agent:
+    image: ${WIN235_AGENT_RUNTIME_IMAGE:?WIN235_AGENT_RUNTIME_IMAGE must be the loaded tested candidate}
+    depends_on:
+      postgres-migrate:
+        condition: service_completed_successfully
+      clickhouse-migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:persisted-state-gate@postgres:5432/platos_control?schema=public
+      REDIS_URL: redis://redis:6379
+      PLATOS_AGENT_PORT: "3100"
+      PLATOS_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      ENCRYPTION_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "1"
+      PLATOS_CREDENTIAL_ROOT_KEYS: '{"1":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}'
+      PLATOS_MESSAGE_ENCRYPTION_KEY: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V: "1"
+      SESSION_SECRET: win235-session-secret-with-at-least-thirty-two-characters
+      PLATOS_INTERNAL_AUTH_TOKEN: win235-internal-auth-token
+      PLATOS_TEST_MODE: "false"
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: persisted-state-gate
+      MINIO_SECRET_KEY: persisted-state-gate-password
+      MINIO_BUCKET: platos-media
+      MINIO_REGION: us-east-1
+    ports:
+      - "127.0.0.1:3100:3100"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e 'fetch("http://127.0.0.1:3100/api/health").then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))'
+      interval: 3s
+      timeout: 5s
+      retries: 60
+
+  webapp:
+    image: ${WIN235_WEBAPP_RUNTIME_IMAGE:?WIN235_WEBAPP_RUNTIME_IMAGE must be the loaded tested candidate}
+    depends_on:
+      agent:
+        condition: service_healthy
+      postgres-migrate:
+        condition: service_completed_successfully
+      clickhouse-migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      APP_ORIGIN: http://127.0.0.1:3030
+      LOGIN_ORIGIN: http://127.0.0.1:3030
+      API_ORIGIN: http://127.0.0.1:3030
+      DATABASE_URL: postgresql://postgres:persisted-state-gate@postgres:5432/platos_control?schema=public
+      DIRECT_URL: postgresql://postgres:persisted-state-gate@postgres:5432/platos_control?schema=public
+      DATABASE_HOST: postgres:5432
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_TLS_DISABLED: "true"
+      RATE_LIMIT_REDIS_HOST: redis
+      RATE_LIMIT_REDIS_PORT: "6379"
+      RATE_LIMIT_REDIS_TLS_DISABLED: "true"
+      CLICKHOUSE_URL: http://default:persisted-state-gate@clickhouse:8123?secure=false
+      SESSION_SECRET: win235-session-secret-with-at-least-thirty-two-characters
+      MAGIC_LINK_SECRET: win235-magic-link-secret-with-at-least-thirty-two-characters
+      ENCRYPTION_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "1"
+      PLATOS_CREDENTIAL_ROOT_KEYS: '{"1":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}'
+      MANAGED_WORKER_SECRET: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+      SKIP_POSTGRES_MIGRATIONS: "1"
+      SKIP_CLICKHOUSE_MIGRATIONS: "1"
+      PLATOS_AGENT_API_URL: http://agent:3100
+      PLATOS_INTERNAL_AUTH_TOKEN: win235-internal-auth-token
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: http://127.0.0.1:59001
+      MINIO_ACCESS_KEY: persisted-state-gate
+      MINIO_SECRET_KEY: persisted-state-gate-password
+      MINIO_BUCKET: platos-media
+      MINIO_REGION: us-east-1
+    ports:
+      - "127.0.0.1:3030:3000"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e 'fetch("http://127.0.0.1:3000/healthcheck").then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))'
+      interval: 3s
+      timeout: 5s
+      retries: 60
