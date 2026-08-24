@@ -8643,7 +8643,7 @@
             "controller": "JobsController",
             "handler": "list",
             "source": "apps/agent/src/agent-runtime/jobs.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -8662,7 +8662,7 @@
             "controller": "JobsController",
             "handler": "create",
             "source": "apps/agent/src/agent-runtime/jobs.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -8681,7 +8681,7 @@
             "controller": "JobsController",
             "handler": "remove",
             "source": "apps/agent/src/agent-runtime/jobs.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -8700,7 +8700,7 @@
             "controller": "JobsController",
             "handler": "getOne",
             "source": "apps/agent/src/agent-runtime/jobs.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -8719,7 +8719,7 @@
             "controller": "JobsController",
             "handler": "update",
             "source": "apps/agent/src/agent-runtime/jobs.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },
@@ -8738,7 +8738,7 @@
             "controller": "JobsController",
             "handler": "dispatch",
             "source": "apps/agent/src/agent-runtime/jobs.controller.ts",
-            "requiresOperator": false
+            "requiresOperator": true
           }
         ]
       },

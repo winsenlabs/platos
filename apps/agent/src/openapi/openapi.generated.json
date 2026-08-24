@@ -3420,7 +3420,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "jobs.list"
@@ -3446,7 +3446,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "jobs.create"
@@ -3484,7 +3484,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "jobs.delete"
@@ -3520,7 +3520,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "jobs.get"
@@ -3556,7 +3556,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "jobs.update"
@@ -3594,7 +3594,7 @@
           }
         ],
         "x-platos-classification": "MAPPED",
-        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-rest-to-mcp",
         "x-platos-mcp-tools": [
           "jobs.dispatch"

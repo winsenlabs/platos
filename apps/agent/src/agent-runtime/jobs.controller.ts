@@ -14,7 +14,8 @@ import {
 } from "@nestjs/common";
 import type { Job, Prisma } from "@platos/tenancy-database";
 import { type Request } from "express";
-import type { RequestScope } from "../auth/scope.guard";
+import { AuthService } from "../auth/auth.service";
+import { requireOperator, type RequestScope } from "../auth/scope.guard";
 import {
   type ControlDatabaseClient,
   environmentScopeWhere,
@@ -32,6 +33,7 @@ import {
 export class JobsController {
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+    private readonly authService: AuthService,
   ) {}
 
   private getScope(req: Request): RequestScope {
@@ -40,6 +42,20 @@ export class JobsController {
       projectId: "unknown",
       environmentId: "unknown",
       userId: "unknown",
+    };
+  }
+
+  private async canonicalOperatorScope(
+    scope: RequestScope,
+    access: "metadata" | "secret:mutate",
+  ): Promise<RequestScope> {
+    const authorization = await this.authService.authorizeEnvironmentOperatorScope(scope, access);
+    return {
+      organizationId: authorization.organizationId,
+      projectId: authorization.projectId,
+      environmentId: authorization.environmentId,
+      userId: authorization.effectiveUserId,
+      principal: "operator",
     };
   }
 
@@ -62,7 +78,9 @@ export class JobsController {
     @Query("search") searchRaw?: string,
     @Query("status") statusRaw?: string,
   ) {
-    const scope = this.getScope(req);
+    const requestedScope = this.getScope(req);
+    requireOperator(requestedScope);
+    const scope = await this.canonicalOperatorScope(requestedScope, "metadata");
     const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
     const status = parseEnumFilter(statusRaw?.trim().toUpperCase(), "status", [
       "PENDING",
@@ -109,7 +127,9 @@ export class JobsController {
 
   @Get(":id")
   async getOne(@Req() req: Request, @Param("id") id: string) {
-    const scope = this.getScope(req);
+    const requestedScope = this.getScope(req);
+    requireOperator(requestedScope);
+    const scope = await this.canonicalOperatorScope(requestedScope, "metadata");
     const job = await this.prisma.job.findFirst({
       where: { id, ...environmentScopeWhere(scope) },
     });
@@ -135,7 +155,9 @@ export class JobsController {
       maxRetries?: number;
     },
   ) {
-    const scope = this.getScope(req);
+    const requestedScope = this.getScope(req);
+    requireOperator(requestedScope);
+    const scope = await this.canonicalOperatorScope(requestedScope, "secret:mutate");
     if (!body.jobId || !/^[a-z0-9-]{1,64}$/.test(body.jobId)) {
       throw new HttpException(
         "jobId must be 1-64 lowercase alphanumeric + hyphens",
@@ -212,7 +234,9 @@ export class JobsController {
       isActive?: boolean;
     },
   ) {
-    const scope = this.getScope(req);
+    const requestedScope = this.getScope(req);
+    requireOperator(requestedScope);
+    const scope = await this.canonicalOperatorScope(requestedScope, "secret:mutate");
     const existing = await this.prisma.job.findFirst({
       where: { id, ...environmentScopeWhere(scope) },
       select: { id: true, handler: true },
@@ -258,7 +282,9 @@ export class JobsController {
 
   @Delete(":id")
   async remove(@Req() req: Request, @Param("id") id: string) {
-    const scope = this.getScope(req);
+    const requestedScope = this.getScope(req);
+    requireOperator(requestedScope);
+    const scope = await this.canonicalOperatorScope(requestedScope, "secret:mutate");
     const result = await this.prisma.job.deleteMany({
       where: { id, ...environmentScopeWhere(scope) },
     });
@@ -274,7 +300,9 @@ export class JobsController {
     @Param("id") id: string,
     @Body() body: { payload?: Record<string, unknown> },
   ) {
-    const scope = this.getScope(req);
+    const requestedScope = this.getScope(req);
+    requireOperator(requestedScope);
+    const scope = await this.canonicalOperatorScope(requestedScope, "secret:mutate");
     const job = await this.prisma.job.findFirst({
       where: {
         id,
