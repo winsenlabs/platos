@@ -7,13 +7,12 @@
 #
 # Stage 2 (runtime): thin node image that just copies the deployed bundle and
 # build output.
-
-ARG NODE_IMAGE=node:22-slim
+# External base index audited and pinned 2026-08-24.
 
 # ───────────────────────────────────────────────────────────
 # Builder
 # ───────────────────────────────────────────────────────────
-FROM ${NODE_IMAGE} AS builder
+FROM node:22-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436 AS builder
 
 # openssl/ca-certificates for Prisma + TLS; python3/make/g++ so node-gyp can
 # compile native modules pulled in transitively at install time (e.g.
@@ -49,7 +48,7 @@ RUN pnpm --filter platos-agent deploy --prod --legacy /deploy
 # ───────────────────────────────────────────────────────────
 # Runtime
 # ───────────────────────────────────────────────────────────
-FROM ${NODE_IMAGE} AS runtime
+FROM node:22-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436 AS runtime
 
 RUN apt-get update && apt-get install -y openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*

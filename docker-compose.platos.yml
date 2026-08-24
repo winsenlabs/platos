@@ -55,7 +55,7 @@ services:
     # binaries pre-installed. The Theme L migration issues
     # `CREATE EXTENSION IF NOT EXISTS vector` so the extension is
     # available to subsequent migrations that declare vector columns.
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
     restart: unless-stopped
     logging: *default-logging
     # 2026-05-19 incident: 512m default OOMed under storm-driven UPSERT load + autovacuum.
@@ -82,7 +82,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7
+    image: redis:7@sha256:91d0f7e8c748ec7a4c2b4fb2c4f84edab794dd91d01e095e38dc906db9d684ab
     restart: unless-stopped
     logging: *default-logging
     mem_limit: ${REDIS_MEM_LIMIT:-256m}
@@ -98,7 +98,7 @@ services:
       retries: 10
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25.3-alpine
+    image: clickhouse/clickhouse-server:25.3-alpine@sha256:a4e8cf46e526a06f4f52d22f7fa8d07472b55d3c896d7ca3f159e249be38ae62
     restart: unless-stopped
     logging: *default-logging
     # 2026-05-19 incident: 1200m default caused 523 OOM-restarts in 12 days
@@ -153,7 +153,7 @@ services:
   # NODE_ENV=production.
   # ─────────────────────────────────────────────────────────────
   minio:
-    image: minio/minio:RELEASE.2025-02-03T21-03-04Z
+    image: minio/minio:RELEASE.2025-02-03T21-03-04Z@sha256:a62e44a7db506b8ed114a44e67b4996c4f1ecca981d9c6e40aa2581334999313
     restart: unless-stopped
     logging: *default-logging
     mem_limit: ${MINIO_MEM_LIMIT:-256m}
@@ -181,11 +181,7 @@ services:
     healthcheck:
       # MinIO ships a built-in `/minio/health/live` endpoint. Use 127.0.0.1 to
       # mirror the ClickHouse IPv4-only pattern (host may have IPv6 disabled).
-      test:
-        [
-          "CMD-SHELL",
-          "curl -f http://127.0.0.1:9000/minio/health/live || exit 1",
-        ]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9000/minio/health/live || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -194,7 +190,7 @@ services:
   # One-shot: create the platos-media bucket on first boot.
   # Idempotent — re-running is a no-op if the bucket already exists.
   minio-init:
-    image: minio/mc:RELEASE.2025-01-17T23-25-50Z
+    image: minio/mc:RELEASE.2025-01-17T23-25-50Z@sha256:b55b1283c0b81b8bb473c94133d4e00a552518c4796a954ddb04bb7b6e05927d
     logging: *default-logging
     depends_on:
       minio:
@@ -213,23 +209,17 @@ services:
     restart: on-failure
 
   # ─────────────────────────────────────────────────────────────
-  # EOBD.63 — ClickHouse migrations one-shot. Runs goose against the
-  # bind-mounted schema directory so a fresh `docker compose up`
-  # produces a ClickHouse instance with all migrations applied — no
-  # manual host-side step.
+  # EOBD.63 — ClickHouse migrations one-shot. The same migration image as
+  # Postgres contains pinned Goose and the reviewed ClickHouse schema, so a
+  # fresh `docker compose up` applies exact image-bundled migrations.
   #
   # Exits 0 when all migrations are up. Webapp depends on this via
   # service_completed_successfully.
   # ─────────────────────────────────────────────────────────────
   clickhouse-migrate:
-    # `ghcr.io/pressly/goose` no longer resolves — it answers `unauthorized`
-    # for every tag, anonymously and authenticated alike. Because the webapp
-    # waits on this service completing, an unpullable image meant `compose up`
-    # aborted before anything started, and the ClickHouse schema silently never
-    # migrated. `gomicro/goose` publishes the same CLI on Docker Hub; it needs
-    # an explicit entrypoint because its default is not the goose binary.
-    image: gomicro/goose:latest
-    entrypoint: ["goose"]
+    build:
+      context: .
+      dockerfile: internal-packages/tenancy-database/Dockerfile.migrations
     logging: *default-logging
     depends_on:
       clickhouse:
@@ -237,9 +227,7 @@ services:
     environment:
       GOOSE_DRIVER: clickhouse
       GOOSE_DBSTRING: "tcp://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD}@clickhouse:9000"
-    volumes:
-      - ./internal-packages/clickhouse/schema:/migrations:ro
-    command: ["-dir", "/migrations", "up"]
+    command: ["clickhouse"]
     restart: "no"
 
   # ─────────────────────────────────────────────────────────────
@@ -256,7 +244,7 @@ services:
   # Idempotent: ALTER ... MODIFY TTL is a no-op when already set.
   # ─────────────────────────────────────────────────────────────
   clickhouse-ttl-apply:
-    image: clickhouse/clickhouse-server:25.3-alpine
+    image: clickhouse/clickhouse-server:25.3-alpine@sha256:a4e8cf46e526a06f4f52d22f7fa8d07472b55d3c896d7ca3f159e249be38ae62
     logging: *default-logging
     depends_on:
       clickhouse:
@@ -275,9 +263,9 @@ services:
   # ─────────────────────────────────────────────────────────────
   # EOBD.55 — migrations-init. One-shot that runs
   # `prisma migrate deploy` against the fresh Postgres before the
-  # webapp + agent start. The prod webapp image doesn't carry the
-  # Prisma CLI, so this uses a dedicated node + prisma image with
-  # the schema bind-mounted.
+  # webapp + agent start. Prisma and its engine are installed from the
+  # dedicated project's frozen pnpm lockfile while this image is built;
+  # the serving host never performs a runtime package install.
   #
   # Exits 0 on success (migrations applied / already in sync); the
   # webapp `depends_on` uses service_completed_successfully so it
@@ -286,36 +274,18 @@ services:
   # Deploys the clean tenancy schema the agent runtime reads. This is the
   # canonical database: Agent, Thread, Turn, Step, ToolCall, Memory.
   migrations-init:
-    image: node:22-alpine
+    build:
+      context: .
+      dockerfile: internal-packages/tenancy-database/Dockerfile.migrations
     logging: *default-logging
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      PGPASSWORD: "${POSTGRES_PASSWORD}"
       DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
       DIRECT_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
-    volumes:
-      - ./internal-packages/tenancy-database:/work
-    working_dir: /work
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        set -e
-        echo '[migrations-init] ensuring the clean control database exists...'
-        apk add --no-cache postgresql-client > /dev/null
-        psql -h postgres -U "${POSTGRES_USER:-postgres}" -d postgres -tAc \
-          "SELECT 1 FROM pg_database WHERE datname='${POSTGRES_DB:-platos_control}'" \
-          | grep -q 1 || psql -h postgres -U "${POSTGRES_USER:-postgres}" -d postgres \
-          -c "CREATE DATABASE \"${POSTGRES_DB:-platos_control}\""
-        echo '[migrations-init] installing prisma...'
-        npm install --no-audit --no-fund --silent prisma@6.14.0 @prisma/client@6.14.0
-        echo '[migrations-init] deploying the clean tenancy schema...'
-        npx prisma migrate deploy
-        echo '[migrations-init] done'
+    command: ["postgres"]
     restart: "no"
-
 
   agent:
     build:

@@ -30,14 +30,17 @@ export class UnsafeCredentialResponseError extends Error {
 
 type RequestOptions = { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown; signal?: AbortSignal };
 
+export type AgentRequestResult<T> = { status: number; payload: T };
+
 function assertAgentPath(path: string) {
   if (!path.startsWith("/api/v1/agent/") && path !== "/api/v1/agent" && !path.startsWith("/api/v1/memory")) {
     throw new Error("Dashboard API calls must target the canonical agent API");
   }
 }
 
-export async function agentRequest<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<T> {
+export async function agentRequestResult<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<AgentRequestResult<T>> {
   const response = await agentResponse(path, scope, options);
+  const status = response.status;
   const text = await response.text();
   let payload: unknown = null;
   if (text) {
@@ -72,7 +75,11 @@ export async function agentRequest<T = unknown>(path: string, scope: AgentScope,
       );
     }
   }
-  return payload as T;
+  return { status, payload: payload as T };
+}
+
+export async function agentRequest<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<T> {
+  return (await agentRequestResult<T>(path, scope, options)).payload;
 }
 
 export function agentResponse(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<Response> {
@@ -274,10 +281,17 @@ function projectKnownCredentialEndpoint(path: string, method: string, payload: u
   return payload;
 }
 
-export async function credentialRequest<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<T> {
-  const payload = await agentRequest<unknown>(path, scope, options);
+export async function credentialRequestResult<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<AgentRequestResult<T>> {
+  const { status, payload } = await agentRequestResult<unknown>(path, scope, options);
   assertCredentialSafePayload(payload);
-  return projectKnownCredentialEndpoint(path, options.method ?? "GET", payload) as T;
+  return {
+    status,
+    payload: projectKnownCredentialEndpoint(path, options.method ?? "GET", payload) as T,
+  };
+}
+
+export async function credentialRequest<T = unknown>(path: string, scope: AgentScope, options: RequestOptions = {}): Promise<T> {
+  return (await credentialRequestResult<T>(path, scope, options)).payload;
 }
 
 export async function credentialPanel<T = unknown>(path: string, scope: AgentScope): Promise<{ ok: true; data: T } | { ok: false; error: { code: string; message: string } }> {

@@ -7,19 +7,43 @@
 # load past 40 and degraded the live service — the same throttle class as the
 # May 2026 outage. Pull-only deploys keep the box responsive throughout.
 #
-# Usage (run ON the VPS, from the repo root, e.g. /opt/platos):
-#   scripts/deploy-platos.sh                 # deploy :latest
-#   scripts/deploy-platos.sh sha-<commit>    # deploy a pinned, immutable tag
+# Usage (run ON the protected runner/VPS from the repo root, e.g. /opt/platos):
+#   PLATOS_AGENT_IMAGE=ghcr.io/...@sha256:... \
+#   PLATOS_WEBAPP_IMAGE=ghcr.io/...@sha256:... \
+#   PLATOS_MIGRATIONS_IMAGE=ghcr.io/...@sha256:... \
+#   PLATOS_RELEASE_COMMIT_SHA=<40-hex-reviewed-commit> \
+#   PLATOS_MIGRATION_COMPATIBILITY_PROVEN=1 \
+#   PLATOS_RECOVERY_POINT_ID=... \
+#   PLATOS_RECOVERY_RESTORE_TEST_ID=... scripts/deploy-platos.sh
 #
+# Image refs come from `published-images.json` and must exactly match the
+# passing `candidate-images.json` gate artifact. Recovery and compatibility
+# attestations are captured before this script is invoked.
 # Env:
-#   PLATOS_IMAGE_NAMESPACE  GHCR owner (default: winsenlabs)
 #   COMPOSE_FILES           override the -f chain if your layout differs
 #   DEPLOY_MIN_IDLE_PCT     min real-CPU idle to allow deploy (default: 20)
 set -euo pipefail
 
-TAG="${1:-latest}"
-export PLATOS_IMAGE_TAG="$TAG"
-export PLATOS_IMAGE_NAMESPACE="${PLATOS_IMAGE_NAMESPACE:-winsenlabs}"
+: "${PLATOS_AGENT_IMAGE:?set the tested Agent digest reference}"
+: "${PLATOS_WEBAPP_IMAGE:?set the tested webapp digest reference}"
+: "${PLATOS_MIGRATIONS_IMAGE:?set the tested migration digest reference}"
+: "${PLATOS_RELEASE_COMMIT_SHA:?set the reviewed 40-character release commit}"
+: "${PLATOS_RECOVERY_POINT_ID:?capture the pre-migration database recovery point}"
+: "${PLATOS_RECOVERY_RESTORE_TEST_ID:?restore-test the recovery point before migration}"
+[[ "$PLATOS_RELEASE_COMMIT_SHA" =~ ^[a-f0-9]{40}$ ]] || {
+  echo "ABORT: PLATOS_RELEASE_COMMIT_SHA must be a full lowercase commit SHA" >&2
+  exit 1
+}
+test "${PLATOS_MIGRATION_COMPATIBILITY_PROVEN:-}" = "1" || {
+  echo "ABORT: expand/contract compatibility has not been proven for old and candidate images" >&2
+  exit 1
+}
+for image in "$PLATOS_AGENT_IMAGE" "$PLATOS_WEBAPP_IMAGE" "$PLATOS_MIGRATIONS_IMAGE"; do
+  [[ "$image" =~ ^ghcr\.io/.+@sha256:[a-f0-9]{64}$ ]] || {
+    echo "ABORT: every image must be an immutable GHCR digest reference" >&2
+    exit 1
+  }
+done
 
 COMPOSE_FILES="${COMPOSE_FILES:--f docker-compose.platos.yml -f docker-compose.deploy.yml}"
 SERVICES="agent webapp worker"
@@ -67,19 +91,29 @@ if [ "$IDLE" -lt "$MIN_IDLE" ]; then
   exit 1
 fi
 
-say "Sync code (compose files + migrations only; images come from GHCR)"
-git fetch origin main
-git checkout main
-git pull --ff-only origin main
-
-say "Pull pre-built images: tag=$TAG namespace=$PLATOS_IMAGE_NAMESPACE"
-docker compose $COMPOSE_FILES pull $SERVICES
-
-say "Run DB migrations (one-shot, completes before app restart)"
-docker compose $COMPOSE_FILES run --rm migrations-init || {
-  echo "WARN: migrations-init returned non-zero. Inspect before continuing."
-  echo "If migrations already applied, this is expected; re-run up manually."
+say "Verify the reviewed release checkout; never fast-forward to arbitrary main"
+test "$(git rev-parse HEAD)" = "$PLATOS_RELEASE_COMMIT_SHA" || {
+  echo "ABORT: checkout HEAD does not match PLATOS_RELEASE_COMMIT_SHA" >&2
+  exit 1
 }
+git diff --quiet && git diff --cached --quiet || {
+  echo "ABORT: tracked release files differ from the reviewed commit" >&2
+  exit 1
+}
+
+say "Pull exact tested application and migration digests"
+docker compose $COMPOSE_FILES pull $SERVICES migrations-init clickhouse-migrate
+for image in "$PLATOS_AGENT_IMAGE" "$PLATOS_WEBAPP_IMAGE" "$PLATOS_MIGRATIONS_IMAGE"; do
+  revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$image")"
+  test "$revision" = "$PLATOS_RELEASE_COMMIT_SHA" || {
+    echo "ABORT: $image was not built from PLATOS_RELEASE_COMMIT_SHA" >&2
+    exit 1
+  }
+done
+
+say "Run exact image-bundled Postgres and ClickHouse migrations"
+docker compose $COMPOSE_FILES run --rm migrations-init
+docker compose $COMPOSE_FILES run --rm clickhouse-migrate
 
 say "Recreate app services from the pulled images"
 docker compose $COMPOSE_FILES up -d --no-deps $SERVICES
