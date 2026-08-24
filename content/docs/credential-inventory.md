@@ -1,11 +1,9 @@
 ---
 slug: credential-inventory
 title: Credential and secret inventory
-description: Canonical inventory of Platos credentials, deployment secrets, expiry, audit, and rotation procedures.
+description: Canonical inventory of Platos credentials, installation secrets, expiry, audit, and rotation procedures.
 category: operations
 order: 21
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Which Platos credentials and secrets exist?"
   - "How long does each token live?"
@@ -15,19 +13,11 @@ related:
   - auth-modes
   - mcp-tokens-and-pat
   - encryption-and-secrets
-source_files_referenced:
-  - internal-packages/tenancy-database/prisma/schema.prisma
-  - internal-packages/tenancy-database/src/secrets.ts
-  - apps/agent/src/shared/env.ts
-  - apps/webapp/app/env.server.ts
-  - apps/agent/src/mcp-platform/token.service.ts
-  - apps/agent/src/mcp-platform/mcp-bearer-token.service.ts
-  - apps/webapp/app/services/patService.server.ts
 ---
 
 # Credential and secret inventory
 
-This page is the canonical inventory for Platos-owned authentication, signing, encryption, and service-boundary secrets. Dashboard BYOK provider and MCP credentials are Environment-owned Platos credentials. Object-store, Postgres, Redis, and ClickHouse passwords remain deployment dependencies; rotate those with their provider and update every consuming container.
+This page is the canonical inventory for Platos-owned authentication, signing, encryption, and service-boundary secrets. Dashboard BYOK provider and MCP credentials are Environment-owned Platos credentials. Object-store, Postgres, Redis, and ClickHouse passwords remain installation dependencies; rotate those with their provider and update every consuming container.
 
 Never log raw bearer tokens, token hashes, signing secrets, or encryption keys.
 
@@ -47,7 +37,7 @@ All three store only SHA-256 token hashes. Verification checks the prefix before
 2. Update the client without exposing either bearer in logs.
 3. Confirm a successful-use audit row for the replacement.
 4. Revoke the prior credential and confirm one revoke audit row.
-5. Investigate any later use attempts for the revoked credential.
+5. Investigate any later use retries for the revoked credential.
 
 `pmt_` and `tr_pat_` are retired. There is no compatibility window or alias.
 
@@ -60,17 +50,17 @@ All three store only SHA-256 token hashes. Verification checks the prefix before
 | Magic link                                 | Login link signed with `MAGIC_LINK_SECRET`                               | 15 minutes                                              | Single-use/expiry rules apply. Rotate the secret to invalidate every outstanding link.                   |
 | Entity `serviceSecret`                     | One connected entity's HMAC and WebSocket bootstrap                      | No automatic expiry                                     | Generate a replacement, update the entity backend, reconnect, then remove the old value.                 |
 | OAuth client secret and authorization code | One OAuth client / one short-lived exchange                              | Defined by the OAuth client and authorization-code flow | Rotate the client secret through OAuth client management; authorization codes are single-use and expire. |
-| `BACKDOOR_PLATOS_DEV`                      | Development-only operator bypass                                         | Deployment lifetime                                     | Never enable in production. Disable first, then rotate/remove the value.                                 |
+| `BACKDOOR_PLATOS_DEV`                      | Development-only operator bypass                                         | installation lifetime                                     | Never enable in production. Disable first, then rotate/remove the value.                                 |
 
 Platos has one platform session-signing input: `SESSION_SECRET`. The retired `PLATOS_SESSION_SECRET` must not be configured. `MAGIC_LINK_SECRET` remains separate because a leaked login-link signer and a leaked session signer have different blast radii.
 
 ### Rotating `SESSION_SECRET`
 
-Deploy the new value to webapp, agent, and any worker that mints or verifies platform session JWTs in one coordinated restart. Existing sessions and in-flight bridge tokens become invalid; plan a forced sign-in. Do not run mixed old/new signers longer than the deployment rollout.
+Deploy the new value to webapp, agent, and any worker that mints or verifies platform session JWTs in one coordinated restart. Existing sessions and in-flight bridge tokens become invalid; plan a forced sign-in. Do not run mixed old/new signers longer than the installation rollout.
 
 ## Encryption domains
 
-Generate new AES-256-GCM deployment keys as exactly **64 hexadecimal characters (32 bytes)**, independently:
+Generate new AES-256-GCM installation keys as exactly **64 hexadecimal characters (32 bytes)**, independently:
 
 ```bash
 openssl rand -hex 32
@@ -128,25 +118,25 @@ For version 1 to version 2:
 | Input                           | Boundary                                               | Authentication shape                                                     | Rotation                                                                                                                                                   |
 | ------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `PLATOS_INTERNAL_AUTH_TOKEN`    | Dedicated webapp/agent scheduled and durable callbacks | `X-Platos-Internal-Auth` with length check plus constant-time comparison | Mint a random replacement, update caller and receiver together, restart, verify one callback, then remove the old value. It never authorizes hard erasure. |
-| `PLATOS_DOCS_MCP_BRIDGE_SECRET` | Agent to docs MCP bridge                               | Bridge-specific secret                                                   | Rotate both bridge endpoints in a coordinated deployment and verify a docs lookup.                                                                         |
-| `TRIGGER_INTERNAL_SECRET`       | Trigger durable-execution internal API                 | Trigger-specific internal signature/secret                               | Follow the Trigger deployment rotation sequence and update every Trigger caller/receiver together.                                                         |
-| `MANAGED_WORKER_SECRET`         | Mode-C managed worker handshake                        | Worker-specific bearer/handshake                                         | Unchanged by WIN-122. Preserve until the run-engine work in WIN-132 owns removal or replacement.                                                           |
+| `PLATOS_DOCS_MCP_BRIDGE_SECRET` | Agent to docs MCP bridge                               | Bridge-specific secret                                                   | Rotate both bridge endpoints in a coordinated installation and verify a docs lookup.                                                                         |
+| `PLATOS_WORKER_AUTH_SECRET`       | start durable-execution internal API                 | start-specific internal signature/secret                               | Follow the start installation rotation sequence and update every start caller/receiver together.                                                         |
+| `MANAGED_WORKER_SECRET`         | Mode-C managed worker handshake                        | Worker-specific bearer/handshake                                         | Unchanged by WIN-122. Preserve until the execution-engine work in WIN-132 owns removal or replacement.                                                           |
 
 `PLATOS_ADMIN_TOKEN` is retired. Operator-facing irreversible erasure uses an organization-bound, admin-tier `plt_mcp_` credential. Static service secrets must not impersonate an operator credential.
 
 ## Audit review
 
-`CredentialAudit` is the native credential ledger. It records Environment, credential ID, action (`CREATE`, `READ`, `ROTATE`, `REWRAP`, or `REVOKE`), actor metadata, secret revision, and root transition only. It never records plaintext or envelope material. Reads, rotations, and rewraps write audit in the same transaction; audit insertion failure aborts the operation, and database triggers reject UPDATE, DELETE, and TRUNCATE.
+`CredentialAudit` is the native credential ledger. It records Environment, credential ID, action (`CREATE`, `READ`, `ROTATE`, `REWRAP`, or `REVOKE`), actor metadata, secret revision, and root transition only. It never records plaintext or envelope material. Reads, rotations, and rewraps write audit in the same transaction; audit insertion failure aborts the operation, and database starts reject UPDATE, DELETE, and TRUNCATE.
 
 Provider and MCP metadata stores references only: `ProviderKey.credentialId` and the bare same-Environment `credsSecretKey` name. Scoped credential resolution is dashboard-only and never falls back to a matching provider name in `process.env`.
 
 The clean-slate initial migration is the only native credential schema path. There is no inherited SecretStore dual-write or fallback.
 
-For database-backed bearer credentials, `PlatosCredentialAudit` records only:
+For database-backed bearer credentials, `CredentialAudit` records only:
 
 - family and credential row ID;
 - action (`mint`, `use`, or `revoke`);
 - applicable organization, project, environment, and actor user IDs;
 - timestamp.
 
-It never records raw credentials or hashes. Alert on use after intended revocation, repeated failed cross-organization attempts, unexpected admin-tier minting, and long-lived `plt_pat_` credentials created with `ttlSeconds: 0`.
+It never records raw credentials or hashes. Alert on use after intended revocation, repeated failed cross-organization retries, unexpected admin-tier minting, and long-lived `plt_pat_` credentials created with `ttlSeconds: 0`.

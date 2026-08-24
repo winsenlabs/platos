@@ -4,8 +4,6 @@ title: Audit log
 description: Append-only audit trail of admin actions and tool calls, scoped per environment.
 category: observability
 order: 50
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What admin actions are audited?"
   - "How is the tool-call audit different from the trace?"
@@ -16,9 +14,6 @@ related:
   - safety-and-pii
   - traces
   - encryption-and-secrets
-source_files_referenced:
-  - apps/agent/src/monitoring/admin-audit.service.ts
-  - apps/agent/src/monitoring/tool-audit.service.ts
 ---
 
 # Audit log
@@ -29,10 +24,10 @@ Two append-only logs sit alongside conversations and traces: admin audit (who di
 
 Two services, two tables:
 
-- **Admin audit** (`AdminAuditService` -> `PlatosAdminAudit`): every admin-scope action. Creating an agent, rotating a provider key, overriding a budget cap, deleting a user's memory, exporting safety events. Carries `(scope, actorUserId, action, target, before, after, ts)`.
-- **Tool audit** (`ToolAuditService` -> `PlatosToolCallAudit`): every tool call dispatched by an agent. Carries `(scope, agentId, threadId, toolCallId, tool, args, result, status, durationMs, ts)`. Args and result are encrypted at rest with the message-encryption key.
+- **Admin audit** (`AdminAuditService` -> `AdminAudit`): operator actions such as creating an Agent, rotating a provider key, overriding a Budget, or requesting hard erasure.
+- **Tool audit** (`ToolAuditService` -> `ToolCallAudit`): every Tool Call dispatched by an Agent. Carries scoped identity, status, timing, and policy-redacted arguments or results.
 
-Audit entries are append-only; updates are not allowed and the table has no `updatedAt`. Replays (re-running a tool call from an audit row) write a new audit row; the original is preserved.
+Audit entries are append-only; updates are not allowed and the table has no `updatedAt`. Replays (re-active a tool call from an audit row) write a new audit row; the original is preserved.
 
 ## Why it matters
 
@@ -52,18 +47,17 @@ The trace view's tool span has a "View audit" link. The audit page shows the ful
 
 ### Replay a tool call
 
-`POST /agent/v1/monitoring/tool-audit/:callId/replay` re-dispatches the tool call with the same args, scoped to the original agent and user. The replay writes a new audit row. Useful for "did the entity backend really return 500?" investigations.
+`POST /api/v1/agent/monitoring/tool-audit/:callId/replay` re-dispatches the tool call with the same args, scoped to the original agent and user. The replay writes a new audit row. Useful for "did the entity backend really return 500?" investigations.
 
 ### Export
 
-`GET /agent/v1/monitoring/admin-audit?from=...&to=...&format=csv` for admin audit export.
-`GET /agent/v1/monitoring/tool-audit?agent=...&format=csv` for tool audit export.
+`GET /api/v1/agent/monitoring/tool-audit?agent=...&format=csv` for tool audit export.
 
 Both decrypt on the fly. The export honours the requesting user's scope; cross-scope export requires admin.
 
 ### Retention
 
-Default retention is 1 year for admin audits and 90 days for tool audits. Configure via `PLATOS_ADMIN_AUDIT_RETENTION_DAYS` and `PLATOS_TOOL_AUDIT_RETENTION_DAYS`. The retention sweep runs on the trigger.dev queue.
+Default retention is 1 year for admin audits and 90 days for tool audits. Configure via `PLATOS_ADMIN_AUDIT_RETENTION_DAYS` and `PLATOS_TOOL_AUDIT_RETENTION_DAYS`. The retention sweep runs on the internal scheduler.
 
 ## Common pitfalls
 

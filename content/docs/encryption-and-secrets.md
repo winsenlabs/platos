@@ -4,8 +4,6 @@ title: Encryption and secrets
 description: Deliberate encryption domains, the credential root-key ring, fail-closed behavior, and rotation.
 category: governance
 order: 50
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Where are provider keys and skill secrets stored?"
   - "How are conversations encrypted at rest?"
@@ -17,12 +15,6 @@ related:
   - providers
   - connected-entities
   - self-hosting
-source_files_referenced:
-  - internal-packages/tenancy-database/src/secrets.ts
-  - apps/webapp/app/utils/encryptionKey.server.ts
-  - apps/agent/src/monitoring/message-crypto.service.ts
-  - apps/agent/src/auth/secrets.service.ts
-  - apps/agent/src/shared/env.ts
 ---
 
 # Encryption and secrets

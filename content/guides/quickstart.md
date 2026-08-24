@@ -1,13 +1,11 @@
 ---
 slug: quickstart
-title: "Quickstart: your first agent in 10 minutes"
+title: Quickstart: your first agent in 10 minutes
 description: Run docker compose, link a provider key, create an agent, send a chat turn.
 category: getting-started
 order: 10
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
-  - "How do I get Platos running locally?"
+  - "How do I get Platos active locally?"
   - "What is the fastest path from zero to a chatting agent?"
   - "Which provider key do I need to start?"
   - "How do I send my first message to an agent?"
@@ -15,10 +13,6 @@ related:
   - install-self-host
   - add-provider-key
   - create-first-agent
-source_files_referenced:
-  - docker-compose.platos.yml
-  - .env.example
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.new/route.tsx
 ---
 
 # Quickstart: your first agent in 10 minutes
@@ -27,14 +21,14 @@ This guide takes you from a fresh checkout to chatting with your first agent. Fi
 
 ## The goal
 
-A running Platos instance, a linked provider key, an agent named "Hello", and a successful chat turn. After this, you have everything you need to explore the rest of the docs.
+An executionning Platos instance, a linked provider key, an agent named "Hello", and a successful chat turn. After this, you have everything you need to explore the rest of the docs.
 
 ## Steps
 
 1. **Clone and configure.**
 
    ```bash
-   git clone https://github.com/platos-labs/platos.git
+   git clone https://github.com/winsenlabs/platos.git
    cd platos
    cp .env.example .env
    ```
@@ -68,7 +62,7 @@ A running Platos instance, a linked provider key, an agent named "Hello", and a 
    echo "OPENAI_API_KEY=sk-..." >> .env
    ```
 
-   Restart the stack so the new env propagates into the running containers:
+   Restart the stack so the new env propagates into the executionning containers:
 
    ```bash
    docker compose -f docker-compose.platos.yml up -d
@@ -90,12 +84,12 @@ A running Platos instance, a linked provider key, an agent named "Hello", and a 
 
 - The chat panel streams tokens. The first token arrives in under a second.
 - The agent's monitoring tab shows one turn and a non-zero cost.
-- The `runs` tab in the sidebar lists no runs (a chat turn is not a BGO).
+- The Threads page shows the new Turn in its owning Thread; no Job is created for ordinary chat.
 
 ## Next steps
 
 - [Add a provider key](/guides/add-provider-key) for a deeper walk through provider config.
 - [Create your first agent](/guides/create-first-agent) for the wizard's full feature set.
 - [Connect an entity (TypeScript)](/guides/connect-entity-platools-ts) to give your agent tools.
-- [Self-host with docker compose](/guides/install-self-host) for production deployment.
+- [Self-host with docker compose](/guides/install-self-host) for production installation.
 - The reference entity backend lives at `references/entity-hello-world/` (drift D-010 noted: install with its own `package.json`, not from the workspace root).

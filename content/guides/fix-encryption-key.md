@@ -4,8 +4,6 @@ title: Fix an ENCRYPTION_KEY format error
 description: Generate canonical 64-hex-character Platos encryption keys while preserving historical ciphertext.
 category: troubleshooting
 order: 40
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Why does the webapp say ENCRYPTION_KEY must be 64 hex chars?"
   - "How do I generate a valid AES-256-GCM key?"
@@ -14,9 +12,6 @@ related:
   - install-self-host
   - backup-and-restore
   - encryption-and-secrets
-source_files_referenced:
-  - apps/webapp/app/utils/encryptionKey.server.ts
-  - apps/agent/src/shared/env.ts
 ---
 
 # Fix an ENCRYPTION_KEY format error
@@ -36,7 +31,7 @@ Run each command separately. Do not reuse one value across variables; the agent 
 Restart webapp, agent, and workers after updating the secret manager or `.env`:
 
 ```bash
-docker compose -f docker-compose.platos.yml restart webapp agent trigger-worker
+docker compose -f docker-compose.platos.yml restart webapp agent start-worker
 ```
 
 ## Verify

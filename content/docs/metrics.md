@@ -4,8 +4,6 @@ title: Metrics
 description: Prometheus-style metrics endpoint and the custom dashboards that consume them.
 category: observability
 order: 40
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I scrape Platos metrics with Prometheus?"
   - "Which metrics are exposed by default?"
@@ -16,12 +14,6 @@ related:
   - traces
   - monitoring
   - costs
-source_files_referenced:
-  - apps/agent/src/monitoring/metrics.service.ts
-  - apps/agent/src/monitoring/metrics.controller.ts
-  - apps/agent/src/monitoring/utilization.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.dashboards.$dashboardKey/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.dashboards.custom.$dashboardId/route.tsx
 ---
 
 # Metrics
@@ -85,7 +77,7 @@ Skill-emitted metrics inherit the standard label set (agent, scope) plus your cu
 
 ### Utilization
 
-`platos_utilization` is a gauge between 0 and 1. A sustained value near 1 means the agent is at concurrency cap; combine with [Queues](/docs/queues) depth to know whether to scale up the agent service.
+`platos_utilization` is a gauge between 0 and 1. A sustained value near 1 means the Agent service is at its concurrency cap; combine it with pending Turn and Job counts before scaling.
 
 ## Common pitfalls
 

@@ -4,8 +4,6 @@ title: Embed a public agent on a website
 description: Drop the Platos web component on a page and let visitors chat with a guest token.
 category: integrations
 order: 50
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What HTML do I add to embed a public agent?"
   - "How do I rate-limit anonymous users?"
@@ -14,9 +12,6 @@ questions:
 related:
   - consume-platos-mcp
   - webhook-on-conversation-events
-source_files_referenced:
-  - apps/agent/src/auth/public-guest-token.controller.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx
 ---
 
 # Embed a public agent on a website

@@ -4,8 +4,6 @@ title: Self-host with docker compose
 description: Stand up the full Platos stack with one compose file. Includes Postgres, Redis, ClickHouse, MinIO, agent, webapp.
 category: getting-started
 order: 20
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What does the docker-compose.platos.yml file contain?"
   - "How much RAM/CPU does the stack need?"
@@ -16,10 +14,6 @@ related:
   - quickstart
   - fix-encryption-key
   - backup-and-restore
-source_files_referenced:
-  - docker-compose.platos.yml
-  - .env.example
-  - docs/SELF_HOSTING.md
 ---
 
 # Self-host with docker compose
@@ -39,7 +33,7 @@ A self-hosted Platos at your own domain (e.g. `platos.example.com`), backed by P
 2. **Clone and configure.**
 
    ```bash
-   git clone https://github.com/platos-labs/platos.git /opt/platos
+   git clone https://github.com/winsenlabs/platos.git /opt/platos
    cd /opt/platos
    cp .env.example .env
    ```

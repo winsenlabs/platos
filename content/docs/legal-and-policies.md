@@ -4,8 +4,6 @@ title: Terms, privacy, security policy
 description: Where to find Platos's legal documents, security disclosure process, and what each covers.
 category: dx
 order: 999
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Where are Platos's terms of service?"
   - "Where is the privacy policy?"
@@ -61,4 +59,4 @@ Self-hosted: end-to-end you. Your Postgres holds the conversation rows (encrypte
 
 Visitor identity in spans: when an entity signs a `userMeta: { name, email }` claim into the session token (see [Auth modes](/docs/auth-modes)), those values land in the trace's `user_display_name` / `user_email` ClickHouse columns in plaintext, alongside the always-hashed `user_id`. The split lets a deletion request null the PII columns without breaking the canonical id; sign nothing into `userMeta` you wouldn't be willing to keep at rest.
 
-Winsen Labs no longer operates a public hosted instance of Platos. Every deployment is self-hosted, which means the data-processing relationship is yours with your own providers — model vendors, object storage, ClickHouse — and not with Winsen Labs. The policies below apply to the `platos.dev` marketing site and documentation only.
+Winsen Labs no longer operates a public hosted instance of Platos. Every installation is self-hosted, which means the data-processing relationship is yours with your own providers — model vendors, object storage, ClickHouse — and not with Winsen Labs. The policies below apply to the `platos.dev` marketing site and documentation only.

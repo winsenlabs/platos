@@ -4,8 +4,6 @@ title: Self-hosting
 description: Run Platos on your own infra with a single docker compose up. Postgres, Redis, ClickHouse, MinIO, agent, webapp.
 category: dx
 order: 90
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What does it take to self-host Platos?"
   - "Which services run in the compose file?"
@@ -18,15 +16,11 @@ related:
   - encryption-and-secrets
   - environments
   - providers
-source_files_referenced:
-  - docker-compose.platos.yml
-  - docs/SELF_HOSTING.md
-  - .env.example
 ---
 
 # Self-hosting
 
-Self-host with one `docker compose up`. The compose file ships everything Platos needs to run end-to-end: Postgres for the relational store, Redis for queues and rate limits, ClickHouse for traces and cost rollups, MinIO for attachments and artifacts, plus the agent service and the webapp.
+Self-host with one `docker compose up`. The compose file ships everything Platos needs to run end-to-end: Postgres for the relational store, Redis for scheduler state and rate limits, ClickHouse for traces and cost rollups, MinIO for attachments and artifacts, plus the agent service and the webapp.
 
 ## What it is
 
@@ -35,7 +29,7 @@ Self-host with one `docker compose up`. The compose file ships everything Platos
 | Service | Image | Purpose |
 |---|---|---|
 | postgres | postgres:16 | Relational data (agents, threads, memory, audits) |
-| redis | redis:7 | Queues, rate limit counters, ephemeral state |
+| redis | redis:7 | Scheduling, rate limit counters, ephemeral state |
 | clickhouse | clickhouse/clickhouse-server | Spans + cost rollups |
 | minio | minio/minio | Attachments + artifact binaries |
 | agent | platos-agent | NestJS agent runtime, port 3100 |
@@ -43,11 +37,11 @@ Self-host with one `docker compose up`. The compose file ships everything Platos
 
 A single `.env` file feeds the compose. The example file ships every required and optional variable with comments.
 
-Migrations: Postgres uses Prisma migrations; ClickHouse uses goose. The compose's webapp runs Postgres migrations at boot; ClickHouse migrations land via a one-shot goose container or by running `pnpm run db:migrate` from the host.
+Migrations: Postgres uses Prisma migrations; ClickHouse uses goose. The compose webapp applies Postgres migrations at boot; apply ClickHouse migrations through the one-shot goose container or by executing `pnpm run db:migrate` from the host.
 
 ## Why it matters
 
-A self-hosted deployment is the OSS pitch. You own the data, the infra, the cost curve, the upgrade cadence. The single-compose approach takes a customer from "I want to try it" to "I have a running instance" in under fifteen minutes. The migration paths into Kubernetes (helm chart, K.12) are post-launch; for now, compose plus a TLS terminator gets you to production.
+A self-hosted installation is the OSS pitch. You own the data, the infra, the cost curve, the upgrade cadence. The single-compose approach takes a customer from "I want to try it" to "I have an executionning instance" in under fifteen minutes. The migration paths into Kubernetes (helm chart, K.12) are post-launch; for now, compose plus a TLS terminator gets you to production.
 
 ## How to use it
 
@@ -69,7 +63,7 @@ Open `http://localhost:3030` and sign in. See the [Quickstart](/guides/quickstar
 pnpm run db:migrate
 ```
 
-Migrations are idempotent; re-running is safe.
+Migrations are idempotent; re-active is safe.
 
 ### Required env vars
 
@@ -81,7 +75,7 @@ Migrations are idempotent; re-running is safe.
 - `SESSION_SECRET`: one shared platform/session JWT secret for webapp and agent.
 - `MAGIC_LINK_SECRET`: a distinct login-link signing secret.
 - `MANAGED_WORKER_SECRET`: 64 hex chars (`openssl rand -hex 32`).
-- `TRIGGER_INTERNAL_SECRET`: 64 hex chars.
+- `PLATOS_WORKER_AUTH_SECRET`: 64 hex chars.
 - `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`: MinIO admin credentials.
 - `POSTGRES_PASSWORD`, `CLICKHOUSE_PASSWORD`: db credentials.
 

@@ -4,8 +4,6 @@ title: Models
 description: Pick a model per agent, compare two models head to head, and see which providers must be linked.
 category: platform
 order: 140
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How is the model picker scoped to my linked providers?"
   - "How do I compare two models on the same prompt?"
@@ -17,11 +15,6 @@ related:
   - providers
   - agents
   - costs
-source_files_referenced:
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.models._index/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.models.$modelId/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.models.compare/route.tsx
-  - apps/webapp/app/routes/admin.llm-models._index.tsx
 ---
 
 # Models
@@ -45,7 +38,7 @@ The picker filter is in `loadActiveProviders(scope)`: it lists every model whose
 
 ## Why it matters
 
-The flip-side of BYOK is that a self-hosted Platos has no idea which providers a given customer can spend against. Showing every model in every picker drives bad config: a user picks `gpt-4o`, the agent boots, the runtime fails on the first turn because the OpenAI key was never linked. Filtering at the picker turns a runtime error into "this model is not available; link the OpenAI key in Providers".
+The flip-side of BYOK is that a self-hosted Platos has no idea which providers a given customer can spend against. Showing every model in every picker drives bad config: a user picks `gpt-4o`, the agent boots, the runtime fails on the first turn because the OpenAI key was never linked. Filtering at the picker turns an runtime error into "this model is not available; link the OpenAI key in Providers".
 
 The compare page is the cheapest way to test "should we move from gpt-4o to claude-opus on this prompt". It runs both models on the same prompt with identical input, prints token counts, latency, and a side-by-side response, and lets you copy the model string into the agent.
 

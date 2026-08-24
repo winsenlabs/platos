@@ -4,8 +4,6 @@ title: Hard erasure
 description: The service-authenticated API that destroys everything Platos holds about one person and returns a receipt saying what it proved.
 category: platform
 order: 95
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I delete everything Platos knows about a user?"
   - "How do I prove to a regulator that a deletion happened?"
@@ -18,13 +16,6 @@ related:
   - legal-and-policies
   - memory
   - scope-and-multi-tenancy
-source_files_referenced:
-  - apps/agent/src/privacy/erasure.service.ts
-  - apps/agent/src/privacy/erasure-orchestrator.ts
-  - apps/agent/src/privacy/erasure-receipt.ts
-  - apps/agent/src/privacy/subject-graph.ts
-  - apps/agent/src/privacy/legal-hold.ts
-  - apps/agent/src/privacy/redis-keys.ts
 ---
 
 # Hard erasure
@@ -39,19 +30,21 @@ Four routes under `/api/v1/agent/admin/privacy`:
 
 | Route | Purpose |
 | --- | --- |
-| `GET /subjects/:externalUserId/inventory` | What a request would target, without deleting |
-| `POST /erasures` | Request an erasure |
-| `GET /erasures/:operationId` | Fetch the receipt |
-| `POST /erasures/:operationId/retry` | Re-run the stores that did not settle |
+| `GET /api/v1/agent/admin/privacy/subjects/{externalUserId}/inventory` | What a request would target, without deleting |
+| `POST /api/v1/agent/admin/privacy/erasures` | Request an erasure |
+| `GET /api/v1/agent/admin/privacy/erasures/{operationId}` | Fetch the receipt |
+| `POST /api/v1/agent/admin/privacy/erasures/{operationId}/retry` | Re-evaluate the stores that did not settle |
 
-Authenticated with `Authorization: Bearer plt_mcp_...`. The control-plane credential must have `admin` tier and must be bound to the requested organization. **Ordinary Platos session tokens, scope-tier credentials, credentials from another organization, and static internal-callback secrets cannot reach these routes** — erasure is an operator capability, not something an end user's token can trigger.
+Authenticated with `Authorization: Bearer plt_mcp_...`. The control-plane credential must have `admin` tier and must be bound to the requested organization. **Ordinary Platos session tokens, scope-tier credentials, credentials from another organization, and static internal-callback secrets cannot reach these routes** — erasure is an operator capability, not something an end user's token can start.
 
-```json
+```http
 POST /api/v1/agent/admin/privacy/erasures
+Content-Type: application/json
+
 { "externalUserId": "user@example.com", "organizationId": "org_…", "idempotencyKey": "…" }
 ```
 
-`idempotencyKey` is required. Replaying a request returns the original receipt rather than running a second destructive pass — which matters because the natural response to an ambiguous erasure result is to fire it again.
+`idempotencyKey` is required. Replaying a request returns the original receipt rather than starting a second destructive pass.
 
 ## Why it matters
 
@@ -69,7 +62,7 @@ Each store reports independently, and the operation's status is derived from the
 
 - `deleted` — swept, and verified gone. Settled.
 - `nothing_to_delete` — the subject had nothing here. Settled.
-- `not_provisioned` — this store is not wired in this deployment. **Settles the operation but is not evidence of deletion.** If you run ClickHouse or object storage, wire them before the receipt means anything.
+- `not_provisioned` — this store is not wired in this installation. **Settles the operation but is not evidence of deletion.** If you run ClickHouse or object storage, wire them before the receipt means anything.
 - `failed` — the sweep errored. Retryable.
 - `unknown` — the executor crashed mid-pass and the true state was never established. Retryable, and deliberately *not* reported as failed: the distinction between "we know it didn't work" and "we don't know what happened" is the one a regulator will ask about.
 - `blocked_legal_hold` — see below. Nothing was destroyed.
@@ -86,8 +79,8 @@ Matching runs across **every alias the subject resolves to**, not just the reque
 
 - **Treating `not_provisioned` as success.** It means "not wired here", not "nothing to delete". Check it against the stores you actually run.
 - **Erasure is org-scoped by design.** A request cannot reach across organizations. Someone present in several needs one request per org.
-- **ClickHouse is not swept automatically yet.** The executor detects the deployment but does not submit a mutation. Scrub by hand and record it alongside the receipt — see [GDPR + data deletion](https://github.com/winsenlabs/platos/blob/main/docs/gdpr.md).
-- **Late writes can resurrect a subject.** An in-flight write landing after the sweep reintroduces rows. Quiesce, or re-run, for anyone active at the moment of erasure.
+- **ClickHouse is not swept automatically yet.** The executor detects the installation but does not submit a mutation. Scrub by hand and record it alongside the receipt — see [GDPR + data deletion](https://github.com/winsenlabs/platos/blob/main/docs/gdpr.md).
+- **Late writes can resurrect a subject.** An in-flight write landing after the sweep reintroduces rows. Quiesce, or re-evaluate, for anyone active at the moment of erasure.
 - **Audit rows survive on purpose.** Tool-call and admin audit records retain identifiers for forensics. Document that window in your privacy notice; it is the one thing that outlives the request.
 
 ## Related

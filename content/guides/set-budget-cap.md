@@ -4,8 +4,6 @@ title: Set a per-agent budget cap
 description: Cap daily or monthly spend per agent and decide what happens when the cap hits.
 category: recipes
 order: 80
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I set a daily cap on an agent?"
   - "What happens when the cap is reached?"
@@ -13,9 +11,6 @@ questions:
   - "How do I get an alert when an agent gets close to its cap?"
 related:
   - debug-cost-spike
-source_files_referenced:
-  - apps/agent/src/monitoring/budget.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-budgets._index/route.tsx
 ---
 
 # Set a per-agent budget cap

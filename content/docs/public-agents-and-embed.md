@@ -4,8 +4,6 @@ title: Public agents and embed
 description: Share an agent publicly via a guest-token route, or drop in a web-component embed.
 category: dx
 order: 80
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I make an agent publicly chattable?"
   - "What is a guest token and how is it minted?"
@@ -17,10 +15,6 @@ related:
   - auth-modes
   - rate-limits
   - sdks
-source_files_referenced:
-  - apps/agent/src/auth/public-guest-token.controller.ts
-  - apps/agent/src/agent-runtime/agent.controller.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx
 ---
 
 # Public agents and embed
@@ -62,7 +56,7 @@ The component fetches a guest token, opens the chat, and renders inline. Style w
 ### Mint a guest token from your own UI
 
 ```bash
-curl -X POST https://platos.example.com/agent/v1/public-guest-token \
+curl -X POST https://platos.example.com/api/v1/public/guest-token \
   -H "Content-Type: application/json" \
   -d '{"shareId":"agent-share-abc123"}'
 ```

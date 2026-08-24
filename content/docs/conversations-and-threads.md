@@ -4,46 +4,37 @@ title: Conversations and threads
 description: How a conversation is stored, encrypted, branched, forked, and threaded.
 category: platform
 order: 100
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is the difference between a conversation and a thread?"
   - "How do I reply in a sub-thread vs the main conversation?"
   - "How do I fork a conversation?"
   - "What is auto-naming and when does it run?"
   - "How are conversations encrypted at rest?"
-  - "How do I edit a message and re-run from that point?"
+  - "How do I edit a message and re-evaluate from that point?"
   - "What does a soft-deleted conversation look like?"
 related:
   - chat-and-postman
   - memory
   - encryption-and-secrets
   - traces
-source_files_referenced:
-  - apps/agent/src/memory/conversation.service.ts
-  - apps/agent/src/agent-runtime/agent.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations._index/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations.$threadId/route.tsx
-  - docs/themes/THEME_F.md
-  - docs/pra/PRA_SPEC_THREADED_CONVERSATIONS.md
 ---
 
 # Conversations and threads
 
-In Platos, every chat is a thread of messages. A thread can branch (Slack-style sub-threads under a single message), fork (clone the prefix and run a different continuation), and rewind (edit a past message and re-run the agent from that point). Messages are encrypted at rest, attributed to an `authorAgentId`, and tagged so the dashboard can filter, archive, pin, and rename without losing audit history.
+In Platos, every chat is a thread of messages. A thread can branch (Slack-style sub-threads under a single message), fork (clone the prefix and run a different continuation), and rewind (edit a past message and re-evaluate the agent from that point). Messages are encrypted at rest, attributed to an `authorAgentId`, and tagged so the dashboard can filter, archive, pin, and rename without losing audit history.
 
 ## What it is
 
 Two tables, one model:
 
-- `PlatosThread`: the parent of a conversation. Owns `name`, `tags`, `pinned`, `archived`, scope, plus pointers to the agent (or cluster) running the thread.
-- `PlatosMessage`: the individual messages. Carries `role` (user, assistant, tool, system), `content` (encrypted), `authorAgentId` (for cluster attribution), `threadReplyToId` (for sub-threads), `attachments`, `cost`, and timing.
+- `Thread`: the durable conversation container. It owns title, tags, pin and archive state, tenancy ancestry, and Agent or AgentCluster ownership.
+- `Turn`: one accepted input and completed Agent response, with AgentVersion, status, content, cost, timing, revisions, Steps, Tool Calls, attachments, and Artifacts.
 
 Threads can be:
 
 - **Sub-threaded** via `threadReplyToId`. A reply with `threadReplyToId: <messageId>` lives in a side panel. The PRA-TC spec defines the semantics; messages can also be cross-posted into the parent stream when the agent decides so.
-- **Forked**. `POST /agent/v1/threads/:threadId/fork` clones the message prefix into a new thread; both threads share the same conversation summary but evolve independently.
-- **Edited**. `POST /agent/v1/threads/:threadId/messages/:messageId/edit-and-rerun` mutates the message and replays the agent from that point. The original suffix is dropped.
+- **Forked**. `POST /api/v1/agent/threads/:threadId/fork` clones the message prefix into a new thread; both threads share the same conversation summary but evolve independently.
+- **Edited**. `POST /api/v1/agent/threads/:threadId/messages/:messageId/edit-and-rerun` mutates the message and replays the agent from that point. The original suffix is dropped.
 
 Auto-naming runs after the first user turn. The `auto-name` background job calls a cheap model with the first three messages and writes a 3-6 word name. You can rename at any time; auto-naming respects manual renames.
 
@@ -94,7 +85,7 @@ The runtime re-encrypts the edited message, drops the suffix, and dispatches a f
 
 ### Soft-delete and archive
 
-`DELETE /agent/v1/threads/:threadId` flips `archived: true` plus `deletedAt`. Hard delete (admin-scope) cascades to messages, ratings, and any extracted memory rows. Use it for GDPR; otherwise prefer soft-delete.
+`DELETE /api/v1/agent/threads/:threadId` flips `archived: true` plus `deletedAt`. Hard delete (admin-scope) cascades to messages, ratings, and any extracted memory rows. Use it for GDPR; otherwise prefer soft-delete.
 
 ## Common pitfalls
 

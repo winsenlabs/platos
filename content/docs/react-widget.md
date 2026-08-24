@@ -4,8 +4,6 @@ title: React widget
 description: Drop-in React FAB chat widget — three identity flows (anonymous form, OTP-verified, backend-authenticated), every per-turn agent option exposed, fully themable.
 category: dx
 order: 35
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I add a Platos chat to my Next.js app?"
   - "How do I collect a visitor's name and email?"
@@ -18,10 +16,6 @@ related:
   - public-agents-and-embed
   - auth-modes
   - official-skills
-source_files_referenced:
-  - packages/platos-react-widget/src/PlatosFab.tsx
-  - packages/platos-react-widget/src/usePlatosChat.ts
-  - packages/platos-react-widget/src/IdentityForm.tsx
 ---
 
 # React widget
@@ -108,17 +102,19 @@ Skip the form entirely. Two paths:
 
 ```tsx
 // Path A — pass identity, widget still uses tokenUrl
-<PlatosFab
-  baseUrl="..." agentId="..." tokenUrl="/api/platos-session"
-  identityMode="preset"
-  identity={{ name: session.user.name, email: session.user.email }}
-/>
-
-// Path B — pass a token your server already minted
-<PlatosFab
-  baseUrl="..." agentId="..."
-  sessionToken={mySessionToken}
-/>
+const examples = (
+  <>
+    <PlatosFab
+      baseUrl="https://platos.example.com" agentId="agt_example" tokenUrl="/api/platos-session"
+      identityMode="preset"
+      identity={{ name: session.user.name, email: session.user.email }}
+    />
+    <PlatosFab
+      baseUrl="https://platos.example.com" agentId="agt_example"
+      sessionToken={mySessionToken}
+    />
+  </>
+);
 ```
 
 Path A is preferred for long sessions (the widget auto-refreshes on 401 via `tokenUrl`). Path B is fine for short-lived embeds.
@@ -129,7 +125,9 @@ Every variable the agent's Socket.IO turn endpoint accepts is exposed via the `p
 
 ```tsx
 <PlatosFab
-  ...
+  baseUrl="https://platos.example.com"
+  agentId="agt_example"
+  tokenUrl="/api/platos-session"
   perTurn={{
     dynamicBlocks: { product_context: "User is on the pricing page." },
     modelLabel: "fast",
@@ -205,7 +203,7 @@ toggles — calling it again with the same direction clears the vote. It returns
 ## Common pitfalls
 
 - **No backend for `tokenUrl`**: the widget can't talk directly to Platos with raw entity credentials — the browser must never hold a `serviceSecret`. The token-mint MUST live on your server. Use `@platosdev/token-mint` for the JWT signing primitive.
-- **Cross-origin**: when running the widget on a domain different from your Platos deployment, either add the origin to your connected entity's `allowedOrigins`, OR set `PLATOS_CORS_UNIVERSAL=true` on the agent for hosted-demo flexibility.
+- **Cross-origin**: when active the widget on a domain different from your Platos installation, either add the origin to your connected entity's `allowedOrigins`, OR set `PLATOS_CORS_UNIVERSAL=true` on the agent for hosted-demo flexibility.
 - **`agentId` must be public-guest enabled** for `identityMode="anonymous"` to work without a token. For all other identity modes, the agent's visibility doesn't matter — your token-mint backend authorises the call.
 - **Avatar images**: `avatar` accepts a URL string OR a React node. URL strings render as `<img>` and need to be on a CORS-friendly host or same-origin.
 - **Markdown rendering**: v0.1 renders assistant bubbles as plain text. Wrap with `classNames.assistantBubble` and your own markdown lib (e.g. `react-markdown`) if you need rich formatting; v0.2 will ship it built-in.

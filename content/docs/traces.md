@@ -4,8 +4,6 @@ title: Traces
 description: OpenTelemetry-style trace view of a single turn, with prompt + tool spans + cost samples.
 category: observability
 order: 20
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I view the trace for a specific turn?"
   - "Where are spans stored?"
@@ -17,11 +15,6 @@ related:
   - monitoring
   - costs
   - metrics
-source_files_referenced:
-  - apps/agent/src/monitoring/trace.service.ts
-  - apps/agent/src/monitoring/spans.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.trace.$threadId/route.tsx
-  - docs/themes/THEME_E.md
 ---
 
 # Traces
@@ -84,7 +77,7 @@ The span auto-attaches to the current parent span and shows up in the trace view
 Inside a span, emit timeline events for points-in-time without their own span:
 
 ```ts
-trace.event("retry-attempt", { attempt: 2 });
+trace.event("retry-retry", { retry: 2 });
 ```
 
 Renders as a vertical pip on the span row. See the span-timeline-events skill for the full event catalogue.
@@ -96,7 +89,7 @@ Each `model.call` span carries `costCents`. Sum across the turn for the per-turn
 ## Common pitfalls
 
 - ClickHouse retention defaults to 30 days. Long-tail forensic traces fall off after that. For longer retention, raise `PLATOS_OTEL_CH_TTL_DAYS` or use the export endpoint to archive.
-- The Redis fallback caps at 1000 spans per trace. Very long-running BGOs can exceed and lose tail spans on Redis-only deploys.
+- The Redis fallback caps at 1000 spans per trace. Very long-running Jobs can exceed and lose tail spans on Redis-only deploys.
 - Spans without a parent (orphan turns) render under a synthetic root. If many turns show up as orphans, your custom code is starting spans without inheriting the request context.
 - Trace cost can drift from billed cost when a turn is cancelled mid-stream. The cancel emits a synthetic `cost-finalize` event; the trace shows the partial; the cost row shows the actual charge.
 

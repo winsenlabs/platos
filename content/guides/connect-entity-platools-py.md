@@ -4,8 +4,6 @@ title: Connect an entity (Python)
 description: Same as the TypeScript guide, but using the platools Python package.
 category: integrations
 order: 20
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I install platools in Python?"
   - "How do I declare a tool with type hints?"
@@ -14,8 +12,6 @@ questions:
 related:
   - connect-entity-platools-ts
   - consume-platos-mcp
-source_files_referenced:
-  - packages/platools-py
 ---
 
 # Connect an entity (Python)
@@ -96,7 +92,7 @@ The Python SDK signs `{ts}.{nonce}.{body}` with the service secret and keeps an 
 
 ## Asyncio integration
 
-The SDK is asyncio-native. To run alongside an existing event loop (FastAPI, aiohttp), `await conn.start()` inside a long-lived task; do not block the loop.
+The SDK is asyncio-native. To run alongside an existing event loop (FastAPI, aiohttp), `await conn.start()` inside a long-lived Job; do not block the loop.
 
 ## Next steps
 

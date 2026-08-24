@@ -4,8 +4,6 @@ title: Scope tuple and multi-tenancy
 description: The (organizationId, projectId, environmentId) tuple that gates every scoped row in Platos.
 category: dx
 order: 10
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is the scope tuple?"
   - "How does Platos prevent cross-tenant leaks?"
@@ -17,11 +15,6 @@ related:
   - environments
   - auth-modes
   - encryption-and-secrets
-source_files_referenced:
-  - apps/agent/src/auth/scope.guard.ts
-  - apps/agent/src/auth/scope.guard.test.ts
-  - apps/agent/src/auth/cross-scope-isolation.test.ts
-  - docs/PLATOS_SPEC.md
 ---
 
 # Scope tuple and multi-tenancy
@@ -43,16 +36,15 @@ The scope tuple is the architectural invariant that every Platos table either:
 
 The default failure mode for multi-tenant systems is "we forgot one query". One missing `WHERE organizationId = ?` and customer A reads customer B's chat. The scope guard plus the test bar make every code path that touches scoped data an explicit decision: either the developer threaded the scope through, or the IDOR test fails.
 
-The three-level tuple (org, project, env) gives you flexibility without exploding deployment complexity. You can scope keys per environment, separate prod from dev within the same project, and run multiple projects under one org for a team.
+The three-level tuple (org, project, env) gives you flexibility without exploding installation complexity. You can scope keys per environment, separate prod from dev within the same project, and run multiple projects under one org for a team.
 
 ## How to use it
 
 ### Read scope in a controller
 
 ```ts
-@Get("agents")
-async list(@RequestScopeParam() scope: RequestScope) {
-  return this.agentCrud.list(scope);
+async function listAgents(scope: RequestScope) {
+  return agentCrud.list(scope);
 }
 ```
 
@@ -92,7 +84,7 @@ Entity backends connect via WebSocket with the service secret. Scope is fixed by
 - A query that omits even one of the three columns is a leak waiting to happen. The cross-scope IDOR test catches the obvious cases; review every new controller method against the test bar.
 - Project-scope and org-scope are different. A user with org-admin can list every project; a project member can only see their own. The guard exposes both via `scope.organizationId` and a separate "is admin" check.
 - Environments share an org and project; their data is isolated. A `dev` agent does not see `prod` memory, even though both belong to the same project.
-- The scope tuple is on the `PlatosConnectedEntity` row but the entity's WebSocket is gateway-keyed. A misconfigured entity that talks to the wrong scope is rejected at the gateway, not at the row read.
+- The Environment is persisted on the `Entity` record. A connection presenting authority for another Environment is rejected at the gateway.
 
 ## Related
 

@@ -4,8 +4,6 @@ title: Connect an entity (TypeScript)
 description: Stand up an entity backend with @platosdev/platools-sdk, declare your tools, and wire it to Platos.
 category: integrations
 order: 10
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I install @platosdev/platools-sdk?"
   - "How do I declare a tool in TypeScript?"
@@ -16,10 +14,6 @@ related:
   - connect-entity-platools-py
   - consume-platos-mcp
   - chat-stream-disconnects
-source_files_referenced:
-  - packages/platools-ts
-  - references/entity-hello-world
-  - apps/agent/src/tool-gateway/tool-sync-ws.service.ts
 ---
 
 # Connect an entity (TypeScript)

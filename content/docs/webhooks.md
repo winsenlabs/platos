@@ -1,11 +1,9 @@
 ---
 slug: webhooks
 title: Webhooks
-description: Outbound HTTP webhooks for conversation lifecycle events, run state transitions, and safety hits.
+description: Outbound HTTP webhooks for conversation lifecycle events, Turn state transitions, and safety hits.
 category: dx
 order: 70
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I subscribe to conversation events?"
   - "Which event types fire a webhook?"
@@ -17,8 +15,6 @@ related:
   - openapi-and-rest
   - safety-and-pii
   - audit-log
-source_files_referenced:
-  - apps/webapp/app/routes/api.v3.webhooks.ts
 ---
 
 # Webhooks
@@ -37,7 +33,7 @@ A `PlatosWebhook` row keyed on `(scope, url, secret)` with a list of subscribed 
 - `agent.created`, `agent.version.created`, `agent.canary.promoted`.
 - `bgo.completed`, `bgo.failed`.
 
-Each delivery is signed with HMAC-SHA256 over `{ts}.{nonce}.{body}` using the webhook secret. The receiver verifies; the LRU nonce check prevents replay. Retries: 3 attempts with exponential backoff (1s, 5s, 30s), then dead-letter to the delivery log.
+Each delivery is signed with HMAC-SHA256 over `{ts}.{nonce}.{body}` using the webhook secret. The receiver verifies; the LRU nonce check prevents replay. Retries: 3 retries with exponential backoff (1s, 5s, 30s), then dead-letter to the delivery log.
 
 The delivery history page shows last 100 deliveries per webhook with status, response, and a "redeliver" action.
 
@@ -93,4 +89,4 @@ A webhook can subscribe to many topics; the body's `event` field tells you which
 
 - [OpenAPI and REST](/docs/openapi-and-rest): the inbound surface; webhooks are the outbound complement.
 - [Safety and PII](/docs/safety-and-pii): the source of `safety.event`.
-- [Audit log](/docs/audit-log): stores delivery attempts alongside admin actions.
+- [Audit log](/docs/audit-log): stores delivery retries alongside admin actions.

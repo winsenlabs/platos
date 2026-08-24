@@ -4,8 +4,6 @@ title: Version, canary, and roll back an agent
 description: Promote a canary version, watch its evals, and roll back if it regresses.
 category: recipes
 order: 10
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I create a canary version of my agent?"
   - "What percentage of traffic does the canary get?"
@@ -13,10 +11,7 @@ questions:
   - "How do I gate canary promotion on an A/B eval?"
 related:
   - create-first-agent
-  - run-an-eval-suite
-source_files_referenced:
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.versions/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.canary/route.tsx
+  - evaluate-agent-versions
 ---
 
 # Version, canary, and roll back an agent
@@ -62,9 +57,9 @@ A change that flows through canary at a small percentage, gets watched on metric
 
 ## Gate on an A/B eval
 
-Configure the canary policy to require an A/B eval pass before promote. The button stays disabled until the eval clears the threshold. See [Run an A/B eval suite](/guides/run-an-eval-suite).
+Configure the canary policy to require an A/B eval pass before promote. The button stays disabled until the eval clears the threshold. See [Evaluate Agent Versions](/guides/evaluate-agent-versions).
 
 ## Next steps
 
-- [Run an A/B eval suite](/guides/run-an-eval-suite) for structured comparison before promote.
+- [Evaluate Agent Versions](/guides/evaluate-agent-versions) for structured comparison before promote.
 - [Set a per-agent budget cap](/guides/set-budget-cap) if the canary unexpectedly increases cost.

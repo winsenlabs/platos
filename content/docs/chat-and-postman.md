@@ -4,8 +4,6 @@ title: Chat and Postman mode
 description: The agent chat playground and the Postman-style request console for inspecting tool pipelines.
 category: platform
 order: 110
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is Postman mode in the chat panel?"
   - "How do I see which entities a turn touched?"
@@ -17,9 +15,6 @@ related:
   - conversations-and-threads
   - tools
   - traces
-source_files_referenced:
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx
 ---
 
 # Chat and Postman mode
@@ -65,7 +60,7 @@ The thread overflow menu has "Export". JSON export includes messages (decrypted)
 
 ## Common pitfalls
 
-- The stop button only cancels turns that have wired an `AbortController`. The runtime exposes one per turn now (post EOBD-26/27/28), but a third-party tool that does not check the abort signal will keep running. The canonical pattern is to wrap the long call inside `if (signal.aborted) throw new AbortedError()` checks; entity-side tools must respect the cancellation hint.
+- The stop button only cancels turns that have wired an `AbortController`. The runtime exposes one per turn now (post EOBD-26/27/28), but a third-party tool that does not check the abort signal will keep active. The canonical pattern is to wrap the long call inside `if (signal.aborted) throw new AbortedError()` checks; entity-side tools must respect the cancellation hint.
 - Postman mode does not redact secrets. If a tool call carries a token in its arguments, it shows up in the pipeline view. Use the safety panel to filter PII before exporting.
 - Templates pin the agent version at save time. If you rebase the agent's prompt later, replays use the pinned snapshot, not the latest. Edit the template to track latest if you need it.
 - The chat stream uses the streaming endpoint described in [Streaming](/docs/streaming). Disconnects auto-resume, but the UI shows a "reconnecting" banner; do not assume a flaky connection means the turn died.

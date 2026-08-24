@@ -4,8 +4,6 @@ title: Configure a PII filter
 description: Block or redact specific PII categories per agent and log every hit.
 category: recipes
 order: 90
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Which PII categories does Platos detect?"
   - "How do I block emails on a specific agent?"
@@ -13,9 +11,6 @@ questions:
   - "Where do I see PII filter hits?"
 related:
   - approve-tool-call
-source_files_referenced:
-  - apps/agent/src/monitoring/safety.service.ts
-  - apps/agent/src/monitoring/safety-event.service.ts
 ---
 
 # Configure a PII filter
@@ -53,7 +48,7 @@ An agent that automatically redacts (or blocks) sensitive content before it reac
 
 ## Verify
 
-- A turn with a matched pattern triggers a `safety.event` webhook.
+- A turn with a matched pattern starts a `safety.event` webhook.
 - The governance page (`/agent-governance`) lists the event with category, policy, and decrypted match.
 - Audit shows the redacted-match log row.
 

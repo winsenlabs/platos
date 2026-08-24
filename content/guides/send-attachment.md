@@ -1,90 +1,42 @@
 ---
 slug: send-attachment
 title: Send an image or PDF attachment
-description: Upload a file via presigned URL and let the agent see it as a multimodal input.
+description: Attach a file to a Thread and include it with the next Turn input.
 category: recipes
-order: 40
-trigger_dev_primitive: false
-trigger_dev_link: ""
+order: 4
 questions:
-  - "How do I upload an image to a chat?"
-  - "How big can an attachment be?"
-  - "How does the agent receive the image?"
-  - "What if my model doesn't support vision?"
+  - "How do I attach an image to a Thread?"
+  - "How does an Agent receive a PDF?"
 related:
-  - create-first-agent
-source_files_referenced:
-  - apps/agent/src/agent-runtime/attachments.service.ts
-  - apps/agent/src/agent-runtime/multimodal-adapter.ts
-  - apps/webapp/app/routes/api.v1.agent.attachments.presigned.ts
+  - attachments-and-files
+  - streaming
+  - safety-and-pii
 ---
 
 # Send an image or PDF attachment
 
-Upload a file directly to MinIO via a presigned URL, then reference it in a chat message.
-
-## The goal
-
-A user message that includes an image or PDF; the agent processes it as a multimodal input on a vision-capable model, or text-falls-back on a non-vision model.
+Use the authenticated chat surface for upload negotiation. It binds the resulting object reference to the current Organization, Project, Environment, Thread, and end user before the Agent can read it.
 
 ## Steps
 
-1. **Get a presigned URL.**
-
-   ```ts
-   const presigned = await platos.attachments.presigned({
-     filename: "invoice.pdf",
-     mimeType: "application/pdf",
-     conversationId,
-   });
-   ```
-
-2. **Upload directly to MinIO.**
-
-   ```ts
-   await fetch(presigned.url, {
-     method: "PUT",
-     body: fileBlob,
-     headers: { "Content-Type": "application/pdf" },
-   });
-   ```
-
-   Bytes never touch the agent runtime.
-
-3. **Send the message.**
-
-   ```ts
-   await platos.threads.update({
-     threadId,
-     messages: [{
-       role: "user",
-       content: "Summarise this invoice",
-       attachments: [presigned.attachmentId],
-     }],
-   });
-   ```
-
-4. **Stream the response.**
-
-   The agent receives the attachment in its turn assembly; the multimodal adapter routes it to the model.
+1. Open the target Thread in the authenticated chat surface.
+2. Select or drop an allowed file.
+3. Wait for the direct object-store upload to complete.
+4. Send the next Turn input with the returned attachment reference.
+5. Follow the Turn stream for adaptation, Tool Call, Artifact, and completion events.
 
 ## Verify
 
-- Postman mode shows the attachment id in the assembled message.
-- The trace shows a `multimodal.adapt` span with `mimeType: application/pdf`.
-- The reply references the attachment's content.
+Operators can list the Thread's attachment metadata through the generated contract:
 
-## Vision routing
+```http
+GET /api/v1/agent/files/threads/{threadId}/attachments
+```
 
-When the agent's model has `vision: true`, image bytes (or signed URLs) are inlined. PDFs are converted to page images plus extracted text. Non-vision models receive a text fallback ("the user attached an image: <filename>") plus a tool call to `platos-code-runner` if image processing is needed.
+The response is metadata-only. Object bytes remain protected by scoped object-store access.
 
-## Limits
+## Model handling
 
-- Default per-file cap: 50 MB.
-- Default mime types: `image/png`, `image/jpeg`, `image/webp`, `image/gif`, `application/pdf`, `text/csv`, `text/plain`, `application/json`.
-- Retention: project default (configurable, see [Attachments and files](/docs/attachments-and-files)).
+Vision-capable models receive supported image content. PDF handling may combine extracted text and page images. A model without the required capability receives safe metadata or an explicit unsupported-input error instead of silently dropping the file.
 
-## Next steps
-
-- [Filter PII](/guides/filter-pii) before the attachment text reaches the model.
-- See `platos-code-runner` for sandboxed PDF extraction.
+Apply file-size, MIME-type, malware, PII, and retention policy before accepting the attachment. Use hard erasure when deletion requires a verified cross-store receipt.

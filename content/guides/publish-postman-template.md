@@ -4,8 +4,6 @@ title: Publish a Postman conversation template
 description: Save a chat turn as a reusable template that teammates can replay.
 category: recipes
 order: 100
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I save a turn as a template?"
   - "Who can see published templates?"
@@ -13,8 +11,6 @@ questions:
   - "Can I run a template programmatically?"
 related:
   - create-first-agent
-source_files_referenced:
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx
 ---
 
 # Publish a Postman conversation template
@@ -59,7 +55,7 @@ A named template scoped to the project that teammates open and replay against th
 ```ts
 const thread = await platos.platos_call("postman_templates.run", {
   templateId,
-  // Override per-run:
+  // Override per-Turn:
   sessionContext: { entity_ids: ["acme"] },
 });
 ```
@@ -72,5 +68,5 @@ Use `${variable}` placeholders in template messages. The replay UI prompts for v
 
 ## Next steps
 
-- [Run an A/B eval suite](/guides/run-an-eval-suite) using template-derived golden sets.
+- [Evaluate Agent Versions](/guides/evaluate-agent-versions) using template-derived golden sets.
 - Templates pair well with [Chat and Postman mode](/docs/chat-and-postman) walkthroughs.

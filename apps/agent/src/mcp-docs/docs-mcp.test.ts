@@ -117,7 +117,7 @@ describe("DocsMcpService", () => {
     // Both corpora are discovered by walking the filesystem, so an exact count
     // goes stale every time a page is added and fails a build that broke nothing.
     // Assert the floor and the shape instead.
-    expect(resources.length).toBeGreaterThanOrEqual(75);
+    expect(resources.length).toBeGreaterThanOrEqual(81);
     const uris = resources.map((r) => r.uri);
     expect(uris.some((u) => u.startsWith("docs://platos/"))).toBe(true);
     expect(uris.some((u) => u.startsWith("guides://platos/"))).toBe(true);

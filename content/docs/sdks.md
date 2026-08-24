@@ -4,8 +4,6 @@ title: SDKs (TypeScript and Python)
 description: First-party client libraries for Platos, including the consumer @platosdev/client and the entity-side platools SDKs.
 category: dx
 order: 30
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Which SDK do I install for which use case?"
   - "What is the difference between @platosdev/client and @platosdev/platools-sdk?"
@@ -17,10 +15,6 @@ related:
   - openapi-and-rest
   - mcp-gateway
   - connected-entities
-source_files_referenced:
-  - packages/platos-client
-  - packages/platools-py
-  - packages/platools-ts
 ---
 
 # SDKs (TypeScript and Python)

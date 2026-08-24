@@ -4,8 +4,6 @@ title: Rate limits
 description: Per-IP, per-token, per-agent, and per-environment rate limits enforced at the agent runtime.
 category: governance
 order: 40
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What rate limits does Platos enforce out of the box?"
   - "How do I tighten or loosen the limit for a specific agent?"
@@ -16,9 +14,6 @@ related:
   - budgets
   - safety-and-pii
   - auth-modes
-source_files_referenced:
-  - apps/agent/src/monitoring/rate-limit.service.ts
-  - apps/agent/src/auth/rate-limit.guard.ts
 ---
 
 # Rate limits
@@ -74,9 +69,9 @@ A 429 from Platos is the runtime's. A 429 from the underlying provider (OpenAI, 
 
 ## Common pitfalls
 
-- A long-running BGO does not consume agent rate (it is one tool call per turn). Heavy BGO fan-out hits the engine layer's rate limits, not the agent's. See [Queues](/docs/queues).
+- A long-running Job does not consume Turn request rate after acceptance. Apply separate Job admission and provider limits to heavy fan-out.
 - Public agents should have stricter caps than internal ones; the default is intentionally tight.
-- Sliding-window counters are per-replica until the cluster syncs. For multi-replica deployments, configure `RATE_LIMIT_CLUSTER_SYNC=true` so caps are global, not per-replica.
+- Sliding-window counters are per-replica until the cluster syncs. For multi-replica installations, configure `RATE_LIMIT_CLUSTER_SYNC=true` so caps are global, not per-replica.
 - Rate limit hits are sampled in the audit log. If you need every hit, raise `RATE_LIMIT_LOG_SAMPLE` to 1.0; expect log volume to grow.
 
 ## Related

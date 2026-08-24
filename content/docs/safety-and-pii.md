@@ -4,8 +4,6 @@ title: Safety, PII, governance
 description: Per-agent PII filters, safety event logging, and the governance dashboard that rolls them up.
 category: governance
 order: 30
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is a safety event?"
   - "How do I configure a PII filter on an agent?"
@@ -18,12 +16,6 @@ related:
   - approvals-and-hitl
   - audit-log
   - encryption-and-secrets
-source_files_referenced:
-  - apps/agent/src/monitoring/safety.service.ts
-  - apps/agent/src/monitoring/safety-event.service.ts
-  - apps/agent/src/monitoring/governance.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-governance._index/route.tsx
-  - docs/themes/THEME_H.md
 ---
 
 # Safety, PII, governance
@@ -35,7 +27,7 @@ The safety layer runs on every turn and on every memory write. PII filters detec
 Three services tied together:
 
 - `SafetyService`: runs the rule engine over messages and memory writes. Configurable per agent (PIFSP-18 added per-agent filter sets).
-- `SafetyEventService`: persists each rule hit as a `PlatosSafetyEvent` row, encrypted at rest like messages.
+- `SafetyEventService`: persists each rule hit as a `SafetyEvent` record, encrypted at rest like Turn content.
 - `GovernanceService`: rolls up events by category, agent, and user; exposes the data to the governance dashboard.
 
 Default categories: `email`, `phone`, `credit_card`, `ssn`, `api_key`, `iban`. Custom categories: a regex catalog stored on the agent's safety config; each entry has a name, pattern, and policy (`redact`, `block`, `flag`).

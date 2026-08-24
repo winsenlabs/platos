@@ -1,32 +1,27 @@
 ---
 slug: build-agent-cluster
 title: Build an agent cluster
-description: Group a chat agent and a BGO agent so they share user identity, memory, and threads.
+description: Group a chat agent and a Job agent so they share user identity, memory, and threads.
 category: recipes
 order: 110
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Why would I cluster two agents instead of using one?"
   - "How do I add an agent to a cluster?"
   - "How does shared memory differ from per-agent memory?"
-  - "Can a BGO post into the chat agent's thread?"
+  - "Can a Job post into the chat agent's thread?"
   - "How is cross-cluster IDOR prevented?"
 related:
   - extract-memory
-  - spawn-bgo
-source_files_referenced:
-  - apps/agent/src/agent-runtime/agent-cluster.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters._index/route.tsx
+  - spawn-job
 ---
 
 # Build an agent cluster
 
-Group two or more agents so they share user identity, memory, and threads. The classic case: a chat agent plus a BGO agent that "feel like one" from the user's perspective.
+Group two or more agents so they share user identity, memory, and threads. The classic case: a chat agent plus a Job agent that "feel like one" from the user's perspective.
 
 ## The goal
 
-A cluster of agents whose memory writes are visible to every member, whose threads are shared, and whose messages carry attribution (`authorAgentId`) so the UI can show "Wally Chat said X, Wally BGO said Y" within one conversation.
+A cluster of agents whose memory writes are visible to every member, whose threads are shared, and whose messages carry attribution (`authorAgentId`) so the UI can show "Wally Chat said X, Wally Job said Y" within one conversation.
 
 ## Steps
 
@@ -48,7 +43,7 @@ A cluster of agents whose memory writes are visible to every member, whose threa
 
 4. **Use the cluster from chat.**
 
-   In a chat with `wally-chat`, prompt: "Render the slides into a PDF and reply when ready." The chat agent calls `spawn_bgo` targeting the `wally-bgo` member; the BGO runs; its eventual message lands in the same thread, attributed to `wally-bgo`.
+   In a chat with `wally-chat`, prompt: "Render the slides into a PDF and reply when ready." The chat agent calls `spawn_job` targeting the `wally-bgo` member; the Job runs; its eventual message lands in the same thread, attributed to `wally-bgo`.
 
 ## Verify
 
@@ -63,4 +58,4 @@ Memory written before a cluster was formed stays scoped to the original agent. C
 ## Next steps
 
 - [Extract long-term memory](/guides/extract-memory) using the cluster scope.
-- [Spawn a BGO](/guides/spawn-bgo) for the cross-member dispatch flow.
+- [Spawn a Job](/guides/spawn-job) for the cross-member dispatch flow.

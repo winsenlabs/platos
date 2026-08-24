@@ -4,8 +4,6 @@ title: Subscribe to conversation events
 description: Receive a signed POST every time a conversation starts, ends, or hits a safety event.
 category: integrations
 order: 60
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "How do I subscribe to conversation events?"
   - "How do I verify the webhook signature?"
@@ -13,8 +11,6 @@ questions:
   - "How are retries handled when my endpoint is down?"
 related:
   - embed-public-agent
-source_files_referenced:
-  - apps/webapp/app/routes/api.v3.webhooks.ts
 ---
 
 # Subscribe to conversation events
@@ -75,7 +71,7 @@ A webhook endpoint on your server that receives Platos events and processes them
 
 ## Verify
 
-- Real activity in Platos triggers deliveries; the delivery log shows status 200.
+- Real activity in Platos starts deliveries; the delivery log shows status 200.
 - A simulated outage on your endpoint produces 3 retries (1s, 5s, 30s) before dead-letter; visible on the delivery log.
 - Replays through the "Redeliver" button work.
 

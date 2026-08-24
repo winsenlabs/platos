@@ -4,8 +4,6 @@ title: Chat stream keeps disconnecting
 description: Diagnose dropped WebSocket streams from the chat UI or your own SDK consumer.
 category: troubleshooting
 order: 50
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "Why does my chat stream drop every 60 seconds?"
   - "How do I keep the WebSocket alive through a proxy?"
@@ -14,9 +12,6 @@ questions:
 related:
   - trace-a-turn
   - connect-entity-platools-ts
-source_files_referenced:
-  - apps/agent/src/tool-gateway/tool-sync-ws.service.ts
-  - apps/agent/src/connections/connections.gateway.ts
 ---
 
 # Chat stream keeps disconnecting

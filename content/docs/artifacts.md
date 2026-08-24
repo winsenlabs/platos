@@ -4,8 +4,6 @@ title: Artifacts
 description: Platos-generated structured outputs (markdown, code, html-sandboxed, json, csv, svg, image) that render consistently in any client.
 category: platform
 order: 180
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is an artifact and how is it different from a tool result?"
   - "Which artifact types are canonical?"
@@ -17,11 +15,6 @@ related:
   - attachments-and-files
   - chat-and-postman
   - sdks
-source_files_referenced:
-  - apps/agent/src/agent-runtime/artifact-meta.ts
-  - apps/agent/src/agent-runtime/artifact-meta.test.ts
-  - apps/webapp/app/routes/api.v1.artifacts.ts
-  - docs/themes/THEME_F.md
 ---
 
 # Artifacts
@@ -70,7 +63,7 @@ import { PlatosArtifact } from "@platosdev/client/react";
 <PlatosArtifact id={artifact.id} />;
 ```
 
-The component fetches the artifact (`GET /api/v1/artifacts/:id`), picks a renderer by type, and applies the sandbox. Override per-type renderers via the `renderers` prop if you have a custom UI.
+Load Thread artifacts with `GET /api/v1/agent/threads/{threadId}/artifacts`, select the returned artifact by ID, and pass it to the renderer. Override per-type renderers when your UI needs a custom presentation.
 
 ### Sandbox details
 

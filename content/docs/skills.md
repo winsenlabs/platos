@@ -4,8 +4,6 @@ title: Skills
 description: Reusable agent behaviors with manifests, required env vars, and Claude-skills compatibility.
 category: platform
 order: 40
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is a skill and how does it differ from a tool?"
   - "How do I import a Claude skill from a URL?"
@@ -19,15 +17,6 @@ related:
   - tools
   - providers
   - encryption-and-secrets
-source_files_referenced:
-  - apps/agent/src/skills/skill-registry.service.ts
-  - apps/agent/src/skills/skill-runtime.service.ts
-  - apps/agent/src/skills/skill-importer.service.ts
-  - apps/agent/src/skills/skill-manifest.parser.ts
-  - apps/agent/src/skills/skill-manifest.types.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.skills._index/route.tsx
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.skills.new/route.tsx
-  - docs/themes/THEME_S.md
 ---
 
 # Skills
@@ -36,7 +25,7 @@ A skill is a reusable agent behaviour packaged as a manifest plus a tool impleme
 
 ## What it is
 
-A `PlatosSkill` row plus a manifest. The manifest fields:
+A `Skill` row plus a manifest. The manifest fields:
 
 - `slug` and `name`: human-readable identifiers, unique per scope.
 - `tools`: an array of tool definitions (name, description, JSON Schema). Each becomes a tool exposed to agents that enable the skill.

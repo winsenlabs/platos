@@ -4,8 +4,6 @@ title: Memory
 description: Long-term, scoped, ratable memory that powers personalization without leaking across tenants.
 category: platform
 order: 80
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What kinds of memory does Platos have (working, conversation, profile, knowledge)?"
   - "How is memory extracted from a conversation?"
@@ -19,31 +17,19 @@ related:
   - conversations-and-threads
   - agent-clusters
   - safety-and-pii
-source_files_referenced:
-  - apps/agent/src/memory/memory.service.ts
-  - apps/agent/src/memory/memory.controller.ts
-  - apps/agent/src/memory/memory-extraction.service.ts
-  - apps/agent/src/memory/memory-feedback.service.ts
-  - apps/agent/src/memory/memory-scheduler.service.ts
-  - apps/agent/src/memory/working-memory.service.ts
-  - apps/agent/src/memory/profile-cache.service.ts
-  - apps/agent/src/memory/embedding.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route.tsx
-  - docs/themes/THEME_L.md
-  - docs/themes/THEME_O.md
 ---
 
 # Memory
 
-Memory in Platos is scoped, ratable, and tiered. Every fact the agent learns is stored as a `PlatosMemory` row keyed by user and agent (or cluster), embedded for vector recall, surfaced through `recall` and `list_memories` meta-tools, and updated through a feedback loop. Cross-tenant access is rejected at the auth layer; you cannot recall a memory you did not write.
+Memory in Platos is scoped, ratable, and tiered. Every retained fact is stored as a `Memory` record keyed by end user and Agent or AgentCluster, embedded for vector recall, surfaced through runtime tools such as `recall`, and updated through a feedback loop. Cross-tenant access is rejected before recall.
 
 ## What it is
 
 Four classes of memory, all in one table:
 
-- **Working memory**: short-lived state for the current turn or run. Owned by `WorkingMemoryService`. Lives in Redis with a TTL.
+- **Working memory**: short-lived state for the current Turn. Owned by `WorkingMemoryService`. Lives in Redis with a TTL.
 - **Conversation memory**: messages and summaries on the active thread. Backed by `ConversationService` and (optionally) compaction — see [Compaction](#compaction) below.
-- **Profile memory**: long-term facts about the user (preferences, identifiers, prior context). Owned by `ProfileCacheService` over a `PlatosMemory` row tagged `kind: "profile"`.
+- **Profile memory**: long-term facts about the user, stored as typed `Memory` records with profile keys.
 - **Knowledge memory**: agent-scoped facts and references. Same table, tagged `kind: "knowledge"`. The [Memory graph](/docs/memory-graph) layers entity nodes and edges over this set.
 
 Each row carries `(scope, userId, agentId | clusterId, kind, content, embedding, rating, createdAt, updatedAt)`. The embedding column is pgvector; recall is HNSW cosine. Ratings flow through `MemoryFeedbackService` and reweight retrieval ranking.
@@ -115,7 +101,7 @@ Set per agent:
 
 ### GDPR delete
 
-`DELETE /agent/v1/memory?userId=...` runs the cascade: working memory, profile, knowledge, and any embedded copies. Returns the count of rows deleted. Per-user delete is also exposed through `messages.rate` with a delete intent and via the dashboard's user detail page.
+Use the hard-erasure API for a subject-wide cascade across working memory, profile, knowledge, embeddings, and every other configured store. Delete one Memory with the generated `/api/v1/memory/{id}` contract.
 
 ## Compaction
 
@@ -134,9 +120,9 @@ Compaction is summarisation, not reasoning, and it runs on your longest contexts
 ## Common pitfalls
 
 - Recall first overfetches candidates through the pgvector HNSW cosine index, then ranks them by `0.8 × cosine + 0.2 × confidence` (null confidence is neutral at `0.5`), with memory ID as the stable tie-break. Search hits keep `score` as cosine similarity (and `minScore` filters that cosine value) for backwards compatibility; `rankingScore` exposes the blended value used for ordering. Current source-turn ratings are aggregated deterministically: any negative quarantines the memory, while confidence is its pre-feedback baseline plus `0.1 × (ups - downs)`, clamped to `0..1`.
-- Historical `metadata.flaggedByRating` rows remain decrypt-filtered until the operator backfill has scanned that Environment and written its completion marker. During this transition, recall uses bounded exact `(cosine distance, memory ID)` keyset pages when the first HNSW window does not contain enough decrypt-approved candidates; it continues until the approved overfetch window is full or the scoped SQL set is exhausted. After deploying the structural quarantine column, an Organization OWNER/ADMIN or Project ADMIN calls `POST /api/v1/agent/admin/memory-feedback/backfill` with the normal authenticated Environment operator scope and an optional `{ "limit": 100 }` body. The limit is bounded to `1..500`; repeat until the response reports `completed: true`. The response contains only `scanned`, `quarantined`, `alreadyQuarantined`, `decryptUnavailable`, and `completed`—never IDs, content, comments, metadata, or ciphertext. An undecryptable envelope blocks both recall and cursor advancement; restore the configured message-encryption key and retry. Deploy-time automatic completion is intentionally disabled.
+- Historical feedback quarantine is an operator migration concern, not a public Memory API. Recall remains fail-closed for undecryptable or quarantined records.
 - The initial migration performs a content-free legacy rating preflight before its memory-feedback DDL. Platos product history defines only `1` (thumbs-up), `-1` (thumbs-down), and deletion (no feedback); it does not authorize a star-scale meaning for accidentally admitted values `2..5`. If preflight reports counts for unsupported source values, audit and deliberately correct or delete those rows, then recreate the disposable target database from the initial migration. The DDL never silently guesses their meaning.
-- The scheduler runs in the same trigger.dev queue as extraction. A flood of post-turn extractions can backlog the queue. Consider `batched` mode for high-volume agents.
+- The scheduler runs in the same internal scheduler as extraction. A flood of post-turn extractions can backlog the scheduler. Consider `batched` mode for high-volume agents.
 - Cluster scope is opt-in. Two agents created independently and later linked into a cluster do not retroactively share their existing memories. New writes flow to the cluster scope; old writes stay agent-scoped.
 - `embedding.service.ts` calls the configured embedding model. If the provider key for that model is unlinked, extraction silently no-ops (logged at warn level). Watch the [Monitoring](/docs/monitoring) memory-extraction-health card.
 

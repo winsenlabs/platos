@@ -1,61 +1,37 @@
 ---
 slug: faq
-title: FAQ
-description: Common questions about Platos — what it is, how it compares, where to deploy, how to use it.
+title: Frequently asked questions
+description: Concise answers about Platos ownership, hosting, execution, and integrations.
 category: dx
-order: 1
-trigger_dev_primitive: false
-trigger_dev_link: ""
+order: 99
 questions:
   - "What is Platos?"
-  - "How is Platos different from Trigger.dev?"
-  - "How is Platos different from LangChain or AutoGPT?"
-  - "Is Platos free?"
-  - "Can I use my own LLM provider?"
-  - "Does Platos support OpenAI / Anthropic / Google?"
-  - "Where do I run Platos in production?"
-  - "Can I self-host Platos?"
-  - "Does Platos store my conversations?"
-  - "Are conversations encrypted?"
+  - "Is Platos hosted?"
+  - "How does durable background work execute?"
 related:
-  - play-platos-dev
+  - domain-vocabulary
   - self-hosting
-  - architecture
-  - providers
+  - play-platos-dev
 ---
+
+# Frequently asked questions
 
 ## What is Platos?
 
-Platos is an open-source agent runtime — Apache 2.0, self-hostable in one `docker compose up`. Streaming chat, tool-calling, memory, skills, durable background tasks, observability, and a multi-tenant scope model in one runtime. Build internal agents, customer-facing chatbots, or research workflows on infrastructure you own.
+Platos is an open-source, self-hosted Agent platform with Threads, Turns, Tools, Skills, Memory, Jobs, Agent Versions, evaluations, observability, and multi-tenant isolation.
 
-## How is Platos different from Trigger.dev?
+## Is there a hosted public demo?
 
-Platos is **built on top of** [trigger.dev](https://trigger.dev) — the durable run engine underneath every long-running tool call, scheduled job, or batch operation in Platos is trigger.dev's run engine. Where trigger.dev is a job runner, Platos is a complete agent stack: chat runtime, prompt caching, memory, MCP gateway, skills, evals, all wired together.
+No. `play.platos.dev` is a clean-slate installation target, not a public playground or signup surface. Follow the self-hosting guide for an installation you control.
 
-If you only need durable background jobs (no LLM, no agent loop), trigger.dev is the right tool. If you're building agents, Platos gives you trigger.dev's durability **plus** everything else.
+## How does background work execute?
 
-## How is Platos different from LangChain / AutoGPT / etc?
+Platos records asynchronous work as Jobs. Trigger can be configured as an external durable-runtime vendor integration, but its resource model does not become the Platos public API.
 
-LangChain and AutoGPT are libraries — you assemble the pieces yourself: a tool layer, a memory store, an evals harness, a session/thread model, a multi-tenant scope, deployment/scaling. Platos is a runtime — those pieces are already assembled and battle-tested. You configure agents in the dashboard or via SDK and ship.
+## How do I change Agent behavior safely?
 
-## Is Platos free?
+Every executable configuration change creates an immutable Agent Version. Compare or canary the candidate, then promote the binding. Environment names do not define this lifecycle.
 
-Yes. Apache 2.0, no vendor seat license, no telemetry-based billing. You pay for your own infra and your own LLM API costs. Winsen Labs takes a small number of paid consulting engagements per year; that funds Platos development.
+## Where is the API contract?
 
-## Can I use my own LLM provider?
-
-Yes — BYOK ("bring your own keys") is the default. Anthropic, OpenAI, Google, Vertex AI, OpenRouter. Keys are encrypted at rest in your database and never leave it. See [providers](/docs/providers).
-
-## Where do I run Platos in production?
-
-Self-host. Clone [the repo](https://github.com/winsenlabs/platos), bring up the compose stack, and point it at your own Postgres, Redis, and object storage — [self-hosting](/docs/self-hosting) walks through it. There is no hosted Platos to sign up for; the runtime is the product and you run it.
-
-## Does Platos store my conversations? Are they encrypted?
-
-Conversations are stored in Postgres. Message contents are encrypted at rest with AES-256 envelopes (`PLATOS_MESSAGE_ENCRYPTION_KEY`). Provider API keys are encrypted with `ENCRYPTION_KEY`. Service secrets for connected entities are encrypted in the same column. See [encryption-and-secrets](/docs/encryption-and-secrets).
-
-## More questions?
-
-- Open a [GitHub Discussion](https://github.com/winsenlabs/platos/discussions)
-- Join the [Discord](https://discord.gg/7zxegt73zr)
-- Email [hello@winsenlabs.com](mailto:hello@winsenlabs.com)
+Use the generated OpenAPI document exposed by your Agent service and the platform MCP catalogue. See [OpenAPI and REST](/docs/openapi-and-rest).

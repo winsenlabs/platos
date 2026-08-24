@@ -4,8 +4,6 @@ title: Memory graph
 description: Knowledge-graph view over memory, with entity nodes and relations extracted from conversations.
 category: platform
 order: 90
-trigger_dev_primitive: false
-trigger_dev_link: ""
 questions:
   - "What is the memory graph?"
   - "How are nodes and edges extracted?"
@@ -16,15 +14,11 @@ questions:
 related:
   - memory
   - conversations-and-threads
-source_files_referenced:
-  - apps/agent/src/memory/knowledge-graph.service.ts
-  - apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.graph/route.tsx
-  - docs/themes/THEME_L.md
 ---
 
 # Memory graph
 
-The memory graph is an entities-and-relations view layered over knowledge memory. Where vector memory answers "what facts look like this?", the graph answers "what is connected to what?". Both views read from the same `PlatosMemory` table; the graph adds typed nodes and labelled edges through the `KnowledgeGraphService`.
+The Memory graph is an entities-and-relations view layered over knowledge Memory. Where vector recall answers "what facts look like this?", the graph answers "what is connected to what?". Both views read canonical `Memory` records; the graph adds typed nodes and labelled edges through the `KnowledgeGraphService`.
 
 ## What it is
 
