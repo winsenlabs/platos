@@ -19,6 +19,7 @@ function harness() {
   };
   const authService = {
     getEntity: vi.fn().mockResolvedValue({ id: "entity_pk", entityId: "support-core" }),
+    listEntities: vi.fn(),
     registerEntity: vi.fn(),
   };
   const controller: any = Object.create(AgentController.prototype);
@@ -27,6 +28,7 @@ function harness() {
   controller.entityMcpDiscovery = undefined;
   controller.toolSync = {
     isEntityConnected: vi.fn().mockReturnValue(false),
+    getConnectedEntitiesInEnv: vi.fn().mockReturnValue([]),
     getConnectedSources: vi.fn().mockReturnValue([]),
   };
   return { controller, prisma, authService, req: { scope } as any };
@@ -58,6 +60,22 @@ describe("AgentController clean Entity transport routes", () => {
       scope
     );
     expect(result.plaintextSecret).toBe("shown-once");
+  });
+
+  it("filters MCP navigation data without exposing Entity secrets", async () => {
+    const h = harness();
+    h.authService.listEntities.mockResolvedValue([
+      { id: "mcp-1", entityId: "mcp-source", connectionKind: "mcp", serviceSecret: "sentinel" },
+      { id: "wire-1", entityId: "wire-source", connectionKind: "wire", serviceSecretHash: "sentinel-hash" },
+    ]);
+
+    const result = await h.controller.listEntities(h.req, "mcp");
+
+    expect(result.entities).toEqual([
+      expect.objectContaining({ id: "mcp-1", entityId: "mcp-source", connectionKind: "mcp" }),
+    ]);
+    expect(JSON.stringify(result)).not.toContain("sentinel");
+    expect(h.authService.listEntities).toHaveBeenCalledWith(scope.organizationId, scope.projectId);
   });
 
   it("returns clean MCP config defaults and counts active bearer rows", async () => {

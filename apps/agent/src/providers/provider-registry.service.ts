@@ -18,6 +18,8 @@ export interface ProviderState {
   enabled: boolean;
   linked: boolean;
   linkedAt: string | null;
+  /** Manifest-owned, non-secret model used by the explicit live health check. */
+  probeModel: string;
   models: string[];
 }
 
@@ -154,6 +156,7 @@ export class ProviderRegistryService {
       enabled: row?.enabled ?? false,
       linked: !!row,
       linkedAt: row?.linkedAt.toISOString() ?? null,
+      probeModel: manifest.healthCheck.probeModel,
       models,
     };
   }

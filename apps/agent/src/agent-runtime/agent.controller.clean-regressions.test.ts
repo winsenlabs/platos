@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { AgentController } from "./agent.controller";
 
@@ -19,6 +19,10 @@ function controllerHarness() {
     },
   };
   controller.toolRegistry = { getScopedTools: vi.fn().mockReturnValue([]) };
+  controller.conversationService = {
+    getThread: vi.fn(),
+    setThreadTags: vi.fn(),
+  };
   return { controller, req: { scope } as any };
 }
 
@@ -32,6 +36,20 @@ describe("AgentController clean scope regressions", () => {
     expect(error).toBeInstanceOf(NotFoundException);
     expect((error as NotFoundException).getStatus()).toBe(404);
     expect(controller.agentCrud.findById).toHaveBeenCalledWith("foreign-agent", scope);
+  });
+
+  it("throws real HTTP errors for absent Threads and invalid metadata", async () => {
+    const { controller, req } = controllerHarness();
+    controller.conversationService.getThread.mockResolvedValue(null);
+
+    const missing = await controller.getThread(req, "missing-thread", "true").catch((value: unknown) => value);
+    const invalid = await controller.setTags(req, "thread-a", { tags: "not-an-array" }).catch((value: unknown) => value);
+
+    expect(missing).toBeInstanceOf(NotFoundException);
+    expect((missing as NotFoundException).getStatus()).toBe(404);
+    expect(invalid).toBeInstanceOf(BadRequestException);
+    expect((invalid as BadRequestException).getStatus()).toBe(400);
+    expect(controller.conversationService.setThreadTags).not.toHaveBeenCalled();
   });
 
   it("joins the tool matrix through clean ToolHealth.entityExternalId and emits defaults", async () => {

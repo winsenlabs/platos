@@ -56,7 +56,7 @@ export class FilesController {
         MAX(att."createdAt") AS "lastAt"
       FROM "Agent" a
       JOIN "AgentBinding" binding ON binding."agentId" = a.id
-        AND binding."environmentId" = ${scope.environmentId}
+        AND binding."environmentId" = CAST(${scope.environmentId} AS uuid)
       JOIN "Thread" t ON t."agentId" = a.id
         AND t."environmentId" = binding."environmentId"
       JOIN "Turn" turn ON turn."threadId" = t.id
@@ -65,9 +65,9 @@ export class FilesController {
         AND att."endUserId" = t."endUserId"
       JOIN "Environment" environment ON environment.id = t."environmentId"
       JOIN "Project" project ON project.id = environment."projectId"
-      WHERE environment.id = ${scope.environmentId}
-        AND project.id = ${scope.projectId}
-        AND project."organizationId" = ${scope.organizationId}
+      WHERE environment.id = CAST(${scope.environmentId} AS uuid)
+        AND project.id = CAST(${scope.projectId} AS uuid)
+        AND project."organizationId" = CAST(${scope.organizationId} AS uuid)
         AND a."projectId" = project.id
       GROUP BY a.id
       ORDER BY "lastAt" DESC
@@ -136,10 +136,10 @@ export class FilesController {
       JOIN "Project" project ON project.id = environment."projectId"
       JOIN "AgentBinding" binding ON binding."agentId" = t."agentId"
         AND binding."environmentId" = t."environmentId"
-      WHERE t."agentId" = ${agentId}
-        AND t."environmentId" = ${scope.environmentId}
-        AND project.id = ${scope.projectId}
-        AND project."organizationId" = ${scope.organizationId}
+      WHERE t."agentId" = CAST(${agentId} AS uuid)
+        AND t."environmentId" = CAST(${scope.environmentId} AS uuid)
+        AND project.id = CAST(${scope.projectId} AS uuid)
+        AND project."organizationId" = CAST(${scope.organizationId} AS uuid)
       GROUP BY t."endUserId"
       ORDER BY "lastAt" DESC
       LIMIT ${limit}
@@ -193,11 +193,11 @@ export class FilesController {
       JOIN "Project" project ON project.id = environment."projectId"
       JOIN "AgentBinding" binding ON binding."agentId" = t."agentId"
         AND binding."environmentId" = t."environmentId"
-      WHERE t."agentId" = ${agentId}
-        AND t."endUserId" = ${userId}
-        AND t."environmentId" = ${scope.environmentId}
-        AND project.id = ${scope.projectId}
-        AND project."organizationId" = ${scope.organizationId}
+      WHERE t."agentId" = CAST(${agentId} AS uuid)
+        AND t."endUserId" = CAST(${userId} AS uuid)
+        AND t."environmentId" = CAST(${scope.environmentId} AS uuid)
+        AND project.id = CAST(${scope.projectId} AS uuid)
+        AND project."organizationId" = CAST(${scope.organizationId} AS uuid)
       GROUP BY t.id, t.title
       ORDER BY "lastAt" DESC
       LIMIT ${limit}

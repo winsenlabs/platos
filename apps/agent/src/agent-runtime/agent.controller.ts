@@ -416,7 +416,7 @@ export class AgentController {
       // non-operators fall back to their own-thread ownership check.
       allUsers: (allUsers === "true" || allUsers === "1") && scope.principal === "operator",
     });
-    if (!thread) return { error: "Thread not found", status: 404 };
+    if (!thread) throw new NotFoundException("Thread not found");
     return thread;
   }
 
@@ -499,7 +499,7 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     if (!body || !Array.isArray(body.tags)) {
-      return { error: "tags must be an array of strings", status: 400 };
+      throw new BadRequestException("tags must be an array of strings");
     }
     try {
       const thread = await this.conversationService.setThreadTags(
@@ -509,7 +509,7 @@ export class AgentController {
       );
       return thread;
     } catch (err: any) {
-      return { error: err?.message || "Failed to set tags", status: 400 };
+      throw new BadRequestException(err?.message || "Failed to set tags");
     }
   }
 
@@ -532,7 +532,7 @@ export class AgentController {
       );
       return thread;
     } catch (err: any) {
-      return { error: err?.message || "Failed to toggle pin", status: 400 };
+      throw new BadRequestException(err?.message || "Failed to toggle pin");
     }
   }
 
@@ -557,7 +557,7 @@ export class AgentController {
       });
       return thread;
     } catch (err: any) {
-      return { error: err?.message || "Failed to archive thread", status: 400 };
+      throw new BadRequestException(err?.message || "Failed to archive thread");
     }
   }
 
@@ -578,7 +578,7 @@ export class AgentController {
       });
       return thread;
     } catch (err: any) {
-      return { error: err?.message || "Failed to unarchive thread", status: 400 };
+      throw new BadRequestException(err?.message || "Failed to unarchive thread");
     }
   }
 
@@ -674,7 +674,7 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     if (!body?.upToMessageId) {
-      return { error: "upToMessageId required", status: 400 };
+      throw new BadRequestException("upToMessageId required");
     }
     try {
       const fork = await this.conversationService.forkThread(threadId, scope, {
@@ -683,7 +683,7 @@ export class AgentController {
       });
       return fork;
     } catch (err: any) {
-      return { error: err?.message || "Fork failed", status: 400 };
+      throw new BadRequestException(err?.message || "Fork failed");
     }
   }
 
@@ -702,7 +702,7 @@ export class AgentController {
   ) {
     const scope = this.getScope(req);
     if (typeof body?.content !== "string" || body.content.length === 0) {
-      return { error: "content required (non-empty string)", status: 400 };
+      throw new BadRequestException("content required (non-empty string)");
     }
     try {
       const updated = await this.conversationService.editAndRerun(
@@ -716,7 +716,7 @@ export class AgentController {
       if (err instanceof ConversationRevisionNotSupportedError) {
         throw new HttpException(CONVERSATION_REVISION_NOT_SUPPORTED, HttpStatus.CONFLICT);
       }
-      return { error: err?.message || "Edit failed", status: 400 };
+      throw new BadRequestException(err?.message || "Edit failed");
     }
   }
 
@@ -744,7 +744,7 @@ export class AgentController {
       if (err instanceof ConversationRevisionNotSupportedError) {
         throw new HttpException(CONVERSATION_REVISION_NOT_SUPPORTED, HttpStatus.CONFLICT);
       }
-      return { error: err?.message || "Retry failed", status: 400 };
+      throw new BadRequestException(err?.message || "Retry failed");
     }
   }
 
@@ -775,7 +775,7 @@ export class AgentController {
       );
       return { artifacts };
     } catch (err: any) {
-      return { error: err?.message || "Failed to list artifacts", status: 404 };
+      throw new NotFoundException(err?.message || "Failed to list artifacts");
     }
   }
 
@@ -1439,7 +1439,7 @@ export class AgentController {
         pageSize: result.versions.length,
       };
     } catch (err: any) {
-      return { error: err?.message || "List versions failed", status: 404 };
+      throw new NotFoundException(err?.message || "List versions failed");
     }
   }
 
@@ -1454,7 +1454,7 @@ export class AgentController {
     // SECURITY (audit authz-2026-07-22 F2) — version config read; operator-only.
     requireOperator(scope);
     const version = await this.agentCrud.getVersion(agentId, versionId, scope);
-    if (!version) return { error: "Version not found", status: 404 };
+    if (!version) throw new NotFoundException("Version not found");
     return version;
   }
 
@@ -1472,7 +1472,7 @@ export class AgentController {
       const agent = await this.agentCrud.rollbackToVersion(agentId, versionId, scope);
       return { agent };
     } catch (err: any) {
-      return { error: err?.message || "Rollback failed", status: 400 };
+      throw new BadRequestException(err?.message || "Rollback failed");
     }
   }
 
@@ -1496,7 +1496,7 @@ export class AgentController {
       });
       return { agent };
     } catch (err: any) {
-      return { error: err?.message || "Canary update failed", status: 400 };
+      throw new BadRequestException(err?.message || "Canary update failed");
     }
   }
 
@@ -1522,7 +1522,7 @@ export class AgentController {
         hours: isNaN(hours as number) ? undefined : hours,
       });
     } catch (err: any) {
-      return { error: err?.message || "Canary metrics failed", status: 400 };
+      throw new BadRequestException(err?.message || "Canary metrics failed");
     }
   }
 
@@ -1546,14 +1546,13 @@ export class AgentController {
     } catch (err: any) {
       // EOBD.104 — surface unknown-key errors as a structured 400.
       if (err?.code === "unknown_feature_flag") {
-        return {
+        throw new BadRequestException({
           error: err.message,
           code: err.code,
           unknownKeys: err.unknownKeys,
-          status: 400,
-        };
+        });
       }
-      return { error: err?.message || "Feature flags update failed", status: 400 };
+      throw new BadRequestException(err?.message || "Feature flags update failed");
     }
   }
 
@@ -1584,23 +1583,13 @@ export class AgentController {
       const agent = await this.agentCrud.promoteCanary(agentId, scope);
       return { agent };
     } catch (err: any) {
-      return { error: err?.message || "Canary promotion failed", status: 400 };
+      throw new BadRequestException(err?.message || "Canary promotion failed");
     }
   }
 
   // ═══════════════════════════════════════════════════════
   // Providers — env-var linking (Theme B.7)
   // ═══════════════════════════════════════════════════════
-
-  /** List all known LLM providers with current-scope link + env-ready state. */
-  @Get("providers")
-  async listProviders(@Req() req: Request) {
-    const scope = this.getScope(req);
-    requireOperator(scope);
-    const authorization = await this.authService.authorizeEnvironmentOperatorScope(scope, "metadata");
-    const providers = await this.providerRegistry.list(authorization);
-    return { providers };
-  }
 
   /** Models the model picker should show — providers that are enabled + envReady. */
   @Get("providers/models")
@@ -1822,7 +1811,7 @@ export class AgentController {
       !!body.enabled,
     );
     if (!updated) {
-      return { error: "Tool mapping not found for this scope", status: 404 };
+      throw new NotFoundException("Tool mapping not found for this scope");
     }
     return { ok: true, entityId, toolName, enabled: !!body.enabled };
   }
@@ -1845,7 +1834,7 @@ export class AgentController {
     // non-operator tool invocation must go through the agent loop (isVisibleToAgent).
     requireOperator(scope);
     if (!body?.tool) {
-      return { error: "tool name required", status: 400 };
+      throw new BadRequestException("tool name required");
     }
     const result = await this.toolExecutor.execute(
       {
@@ -2337,7 +2326,7 @@ export class AgentController {
     const externalId = (entity as { entityId: string }).entityId;
     const toolName = (body?.toolName || "ping").trim();
     if (!toolName) {
-      return { error: "toolName is required", status: 400 };
+      throw new BadRequestException("toolName is required");
     }
     const startedAt = Date.now();
     const outboundBody = JSON.stringify({
@@ -2419,14 +2408,17 @@ export class AgentController {
   }
 
   @Get("entities")
-  async listEntities(@Req() req: Request) {
+  async listEntities(@Req() req: Request, @Query("connectionKind") connectionKind?: string) {
     const scope = this.getScope(req);
     const entities = await this.authService.listEntities(scope.organizationId, scope.projectId);
     const connectedIds = new Set(this.toolSync.getConnectedEntitiesInEnv(scope.environmentId));
+    const filteredEntities = connectionKind === "mcp"
+      ? entities.filter((entity: any) => entity.connectionKind === "mcp")
+      : entities;
     return {
       // BUG-2: defense-in-depth — strip serviceSecret/serviceSecretHash even
       // though authService.listEntities now selects safe columns.
-      entities: entities.map((e: any) => {
+      entities: filteredEntities.map((e: any) => {
         const { serviceSecret, serviceSecretHash, ...safe } = e;
         return { ...safe, liveConnected: connectedIds.has(e.entityId) };
       }),
@@ -2800,7 +2792,7 @@ export class AgentController {
     const scope = this.getScope(req);
     const thread = await this.conversationService.getThread(threadId, scope as any);
     if (!thread) {
-      return { error: "Thread not found", status: 404 };
+      throw new NotFoundException("Thread not found");
     }
     return this.costService.getThreadCost(threadId);
   }
@@ -2823,11 +2815,11 @@ export class AgentController {
       allUsers: scope.principal === "operator",
     });
     if (!thread) {
-      return { error: "Thread not found", status: 404 };
+      throw new NotFoundException("Thread not found");
     }
     const trace = await this.traceService.buildThreadTrace(this.scopeTuple(scope), threadId);
     if (!trace) {
-      return { error: "Thread not found", status: 404 };
+      throw new NotFoundException("Thread not found");
     }
     return trace;
   }
@@ -3557,7 +3549,7 @@ export class AgentController {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const prisma = this.prisma;
-    if (!prisma) return { error: "service unavailable", status: 503 };
+    if (!prisma) throw new ServiceUnavailableException("Monitoring service unavailable");
 
     const cost7dSince = new Date(Date.now() - 7 * 86_400_000);
     const cost30dSince = new Date(Date.now() - 30 * 86_400_000);
@@ -3797,7 +3789,7 @@ export class AgentController {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const prisma = this.prisma;
-    if (!prisma) return { error: "service unavailable" };
+    if (!prisma) throw new ServiceUnavailableException("Monitoring service unavailable");
 
     const endUser = await prisma.endUser.findFirst({
       where: {
@@ -3969,7 +3961,7 @@ Write the summary now:`;
       return { summary: generated.text.trim(), generatedAt: new Date().toISOString() };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "unknown error";
-      return { error: `Summary generation failed: ${msg}` };
+      throw new ServiceUnavailableException(`Summary generation failed: ${msg}`);
     }
   }
 
@@ -4124,7 +4116,7 @@ Write the summary now:`;
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const row = await this.toolAuditService.getById(this.scopeTuple(scope), callId);
-    if (!row) return { error: "Tool call not found", status: 404 };
+    if (!row) throw new NotFoundException("Tool call not found");
     return row;
   }
 
@@ -4161,16 +4153,15 @@ Write the summary now:`;
     }
     if (current > REPLAY_BUDGET) {
       const ttl = await this.redis.ttl(rateLimitKey);
-      return {
+      throw new HttpException({
         error: "rate_limited",
         message: `Replay budget exceeded: ${REPLAY_BUDGET} per ${REPLAY_WINDOW_SECONDS}s. Retry in ${Math.max(ttl, 1)}s.`,
         retryAfterSeconds: Math.max(ttl, 1),
-        status: 429,
-      };
+      }, HttpStatus.TOO_MANY_REQUESTS);
     }
 
     const original = await this.toolAuditService.getById(this.scopeTuple(scope), callId);
-    if (!original) return { error: "Tool call not found", status: 404 };
+    if (!original) throw new NotFoundException("Tool call not found");
 
     // Replay uses the SAME scope from the current request — not the original
     // row's scope. Because getById already proved the original row belongs
@@ -4265,7 +4256,7 @@ Write the summary now:`;
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H1) — operator-only dashboard
     const row = await this.approvalsService.getById(this.scopeTuple(scope), approvalId);
-    if (!row) return { error: "Approval not found", status: 404 };
+    if (!row) throw new NotFoundException("Approval not found");
     return row;
   }
 
@@ -5358,6 +5349,8 @@ Write the summary now:`;
   @Get("budgets")
   async listBudgets(@Req() req: Request) {
     const scope = this.getScope(req);
+    // SECURITY (audit H16 — budget data is operator-only financial metadata).
+    requireOperator(scope);
     const caps = await this.budgetService.list(this.scopeTuple(scope));
     return { caps };
   }
@@ -5374,6 +5367,8 @@ Write the summary now:`;
     @Query("userId") userId?: string,
   ) {
     const scope = this.getScope(req);
+    // SECURITY (audit H16 — budget status is operator-only financial metadata).
+    requireOperator(scope);
     return this.budgetService.evaluate(this.scopeTuple(scope), {
       agentId: agentId || undefined,
       userId: userId || scope.userId,
@@ -5626,7 +5621,7 @@ Write the summary now:`;
   ) {
     const scope = this.getScope(req);
     if (body?.rating !== 1 && body?.rating !== -1) {
-      return { error: "rating must be 1 or -1", status: 400 };
+      throw new BadRequestException("rating must be 1 or -1");
     }
     try {
       const row = await this.ratingService.upsert(scope, {
@@ -5636,7 +5631,7 @@ Write the summary now:`;
       });
       return { rating: row };
     } catch (err: any) {
-      return { error: err?.message || "Rating failed", status: 400 };
+      throw new BadRequestException(err?.message || "Rating failed");
     }
   }
 
@@ -5686,7 +5681,7 @@ Write the summary now:`;
       const row = await this.criterionService.create(scope, body);
       return { criterion: row };
     } catch (err: any) {
-      return { error: err?.message || "Create criterion failed", status: 400 };
+      throw new BadRequestException(err?.message || "Create criterion failed");
     }
   }
 
@@ -5711,7 +5706,7 @@ Write the summary now:`;
   ) {
     const scope = this.getScope(req);
     const row = await this.criterionService.findById(this.scopeTuple(scope), criterionId);
-    if (!row) return { error: "Criterion not found", status: 404 };
+    if (!row) throw new NotFoundException("Criterion not found");
     return { criterion: row };
   }
 
@@ -5726,7 +5721,7 @@ Write the summary now:`;
       const row = await this.criterionService.update(scope, criterionId, body);
       return { criterion: row };
     } catch (err: any) {
-      return { error: err?.message || "Update criterion failed", status: 400 };
+      throw new BadRequestException(err?.message || "Update criterion failed");
     }
   }
 
@@ -5769,9 +5764,9 @@ Write the summary now:`;
       return { eval: row };
     } catch (err: any) {
       if (err instanceof SelfEvaluationError) {
-        return { error: err.message, status: 409 };
+        throw new HttpException(err.message, HttpStatus.CONFLICT);
       }
-      return { error: err?.message || "Eval run failed", status: 400 };
+      throw new BadRequestException(err?.message || "Eval run failed");
     }
   }
 
@@ -5811,7 +5806,7 @@ Write the summary now:`;
   async getEval(@Req() req: Request, @Param("evalId") evalId: string) {
     const scope = this.getScope(req);
     const row = await this.evalService.getById(this.scopeTuple(scope), evalId);
-    if (!row) return { error: "Eval not found", status: 404 };
+    if (!row) throw new NotFoundException("Eval not found");
     return { eval: row };
   }
 
@@ -5850,7 +5845,7 @@ Write the summary now:`;
       const row = await this.goldenSetService.create(scope, body);
       return { goldenSet: row };
     } catch (err: any) {
-      return { error: err?.message || "Create golden set failed", status: 400 };
+      throw new BadRequestException(err?.message || "Create golden set failed");
     }
   }
 
@@ -5876,7 +5871,7 @@ Write the summary now:`;
       this.scopeTuple(scope),
       goldenSetId,
     );
-    if (!row) return { error: "Golden set not found", status: 404 };
+    if (!row) throw new NotFoundException("Golden set not found");
     return { goldenSet: row };
   }
 
@@ -5895,7 +5890,7 @@ Write the summary now:`;
       );
       return { goldenSet: row };
     } catch (err: any) {
-      return { error: err?.message || "Update golden set failed", status: 400 };
+      throw new BadRequestException(err?.message || "Update golden set failed");
     }
   }
 
@@ -5929,7 +5924,7 @@ Write the summary now:`;
       });
       return result;
     } catch (err: any) {
-      return { error: err?.message || "Golden set run failed", status: 400 };
+      throw new BadRequestException(err?.message || "Golden set run failed");
     }
   }
 
@@ -6019,7 +6014,7 @@ Write the summary now:`;
   ) {
     const scope = this.getScope(req);
     const prisma = this.prisma;
-    if (!prisma) return { error: "unavailable" };
+    if (!prisma) throw new ServiceUnavailableException("Postman templates unavailable");
     const binding = await prisma.agentBinding.findFirst({
       where: {
         environmentId: scope.environmentId,
@@ -6063,7 +6058,7 @@ Write the summary now:`;
   ) {
     const scope = this.getScope(req);
     const prisma = this.prisma;
-    if (!prisma) return { error: "unavailable" };
+    if (!prisma) throw new ServiceUnavailableException("Postman templates unavailable");
     const existing = await prisma.postmanTemplate.findFirst({
       where: { id, ...environmentScopeWhere(scope) },
     });
@@ -6097,7 +6092,7 @@ Write the summary now:`;
   async deletePostmanTemplate(@Req() req: Request, @Param("id") id: string) {
     const scope = this.getScope(req);
     const prisma = this.prisma;
-    if (!prisma) return { error: "unavailable" };
+    if (!prisma) throw new ServiceUnavailableException("Postman templates unavailable");
     await prisma.postmanTemplate.deleteMany({
       where: { id, ...environmentScopeWhere(scope) },
     });
@@ -6115,7 +6110,7 @@ Write the summary now:`;
       const cluster = await this.clusterService.create(scope, body);
       return { cluster };
     } catch (err: any) {
-      return { error: err?.message || "create failed", status: 400 };
+      throw new BadRequestException(err?.message || "create failed");
     }
   }
 
@@ -6129,7 +6124,7 @@ Write the summary now:`;
   async getCluster(@Req() req: Request, @Param("clusterId") clusterId: string) {
     const scope = this.getScope(req);
     const cluster = await this.clusterService.get(clusterId, scope);
-    if (!cluster) return { error: "not found", status: 404 };
+    if (!cluster) throw new NotFoundException("Cluster not found");
     return { cluster };
   }
 
@@ -6140,7 +6135,7 @@ Write the summary now:`;
       const cluster = await this.clusterService.update(clusterId, scope, body);
       return { cluster };
     } catch (err: any) {
-      return { error: err?.message || "update failed", status: 400 };
+      throw new BadRequestException(err?.message || "update failed");
     }
   }
 
@@ -6151,7 +6146,7 @@ Write the summary now:`;
       await this.clusterService.delete(clusterId, scope);
       return { ok: true };
     } catch (err: any) {
-      return { error: err?.message || "delete failed", status: 400 };
+      throw new BadRequestException(err?.message || "delete failed");
     }
   }
 
@@ -6162,7 +6157,7 @@ Write the summary now:`;
       await this.clusterService.addAgent(clusterId, body.agentId, scope, body.role);
       return { ok: true };
     } catch (err: any) {
-      return { error: err?.message || "add failed", status: 400 };
+      throw new BadRequestException(err?.message || "add failed");
     }
   }
 
@@ -6173,7 +6168,7 @@ Write the summary now:`;
       await this.clusterService.removeAgent(clusterId, agentId, scope);
       return { ok: true };
     } catch (err: any) {
-      return { error: err?.message || "remove failed", status: 400 };
+      throw new BadRequestException(err?.message || "remove failed");
     }
   }
 }

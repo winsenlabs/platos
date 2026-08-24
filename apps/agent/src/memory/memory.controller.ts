@@ -20,6 +20,13 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type RedisType from "ioredis";
 import { env } from "../shared/env";
+import {
+  environmentScopeWhere,
+  MemoryEndUserContextError,
+  resolveEndUser,
+  resolveOperatorSelectedEndUser,
+  type ResolvedEndUser,
+} from "./memory-scope";
 
 /**
  * Theme L.5 – L.8 REST surface. Every handler:
@@ -55,11 +62,22 @@ export class MemoryController {
   /**
    * SECURITY (audit H7) — an end-user / entity / guest token must NOT read or
    * write another user's memories by supplying ?userId= or body.userId.
-   * Operators (the dashboard, via the internal path or a platform token) may
-   * target any user; every other principal is FORCED to its own userId.
+   * Operators may select an active canonical EndUser id in the current
+   * Organization; every other principal is FORCED to its verified scope.userId.
    */
-  private effectiveUserId(scope: RequestScope, requested?: string | null): string {
-    return scope.principal === "operator" ? (requested || scope.userId) : scope.userId;
+  private async effectiveEndUser(
+    scope: RequestScope,
+    requested?: string | null,
+  ): Promise<ResolvedEndUser> {
+    const memoryScope = this.scopeTuple(scope);
+    if (scope.principal === "operator") {
+      return resolveOperatorSelectedEndUser(this.prisma, memoryScope, requested?.trim() ?? "");
+    }
+    return resolveEndUser(this.prisma, memoryScope, scope.userId);
+  }
+
+  private async effectiveUserId(scope: RequestScope, requested?: string | null): Promise<string> {
+    return (await this.effectiveEndUser(scope, requested)).externalId;
   }
 
   private scopeTuple(scope: RequestScope) {
@@ -69,6 +87,14 @@ export class MemoryController {
       environmentId: scope.environmentId,
       agentId: scope.agentId ?? null,
     };
+  }
+
+  private requiresOperatorEndUserContext(
+    scope: RequestScope,
+    requestedUserId: string | undefined,
+    error: unknown,
+  ): error is MemoryEndUserContextError {
+    return scope.principal === "operator" && !requestedUserId && error instanceof MemoryEndUserContextError;
   }
 
   // ─── Memories ────────────────────────────────────────────────
@@ -94,7 +120,7 @@ export class MemoryController {
     const scope = this.getScope(req);
     try {
       const row = await this.memoryService.add(this.scopeTuple(scope), {
-        userId: this.effectiveUserId(scope, body.userId),
+        userId: await this.effectiveUserId(scope, body.userId),
         content: body.content,
         kind: body.kind,
         agentId: body.agentId ?? null,
@@ -136,11 +162,24 @@ export class MemoryController {
         maxPerSession?: number;
         minMessagesBeforeRun?: number;
       };
+      userId?: string;
     },
   ) {
     const scope = this.getScope(req);
     if (!body?.threadId) return { error: "`threadId` is required", status: 400 };
     try {
+      const endUser = await this.effectiveEndUser(scope, body.userId);
+      const thread = await this.prisma.thread.findFirst({
+        where: {
+          id: body.threadId,
+          ...environmentScopeWhere(this.scopeTuple(scope)),
+          endUserId: endUser.id,
+        },
+        select: { id: true },
+      });
+      if (!thread) {
+        return { memoriesCreated: 0, entitiesCreated: 0, relationshipsCreated: 0, skipped: 0, reason: "thread-not-found" };
+      }
       const out = await this.extraction.extractFromThread(this.scopeTuple(scope), {
         threadId: body.threadId,
         policyOverride: body.policyOverride,
@@ -163,8 +202,8 @@ export class MemoryController {
     @Query("userId") userId?: string,
   ) {
     const scope = this.getScope(req);
-    const uid = this.effectiveUserId(scope, userId);
     try {
+      const uid = await this.effectiveUserId(scope, userId);
       const scopeTuple = this.scopeTuple(scope);
       // MCPF-W2 — DSAR must include archived rows. Soft-deleted memories
       // are still the user's data; excluding them would silently violate
@@ -246,11 +285,9 @@ export class MemoryController {
   }
 
   /**
-   * Theme O.9 — import a previously-exported bundle. The importer ALWAYS
-   * uses the current request's scope + userId (from the scope header).
-   * The `userId` in the bundle body is deliberately ignored so a bundle
-   * from user A can't be restored into user B's scope — preserves the
-   * (org, project, env, userId) invariant.
+   * Theme O.9 — import a previously-exported bundle. The importer uses the
+   * separately validated operator selection, or the verified scope.userId for
+   * non-operators. Any identity inside the untrusted bundle remains ignored.
    *
    * `mode: "replace"` deletes prior memories for the userId before import.
    * `mode: "merge"` (default) appends alongside existing rows.
@@ -266,12 +303,11 @@ export class MemoryController {
         relationships?: Array<Record<string, unknown>>;
       };
       mode?: "merge" | "replace";
+      userId?: string;
     },
   ) {
     const scope = this.getScope(req);
     const scopeTuple = this.scopeTuple(scope);
-    const userId = scope.userId;
-    if (!userId) return { error: "request scope is missing userId", status: 400 };
     const bundle = body?.bundle;
     if (!bundle || typeof bundle !== "object") {
       return { error: "`bundle` is required", status: 400 };
@@ -280,6 +316,7 @@ export class MemoryController {
 
     const counts = { memoriesDeleted: 0, memoriesImported: 0, entitiesImported: 0, relationshipsImported: 0, skipped: 0 };
     try {
+      const userId = await this.effectiveUserId(scope, body.userId);
       if (mode === "replace") {
         counts.memoriesDeleted = await this.memoryService.deleteAllForUser(scopeTuple, userId);
       }
@@ -525,58 +562,6 @@ export class MemoryController {
     return stats;
   }
 
-  /**
-   * Theme O.7 — patch/update memory. POST rather than PATCH so browser
-   * HTML forms can call this directly without a custom method override.
-   *
-   * Declared AFTER the literal POST routes above so Express matches
-   * those specific paths first ("extract", "import", "relate") and only
-   * falls through to this one when the id slot carries something else.
-   */
-  @Post(":id")
-  async updateMemory(
-    @Req() req: Request,
-    @Param("id") id: string,
-    @Body() body: {
-      content?: string;
-      kind?: MemoryKind;
-      metadata?: unknown;
-      agentVisible?: boolean;
-      visibility?: MemoryVisibility;
-    },
-  ) {
-    const scope = this.getScope(req);
-    // Defense-in-depth — even if route-order regressed, the literal path
-    // segments can never be a valid cuid id so reject them here.
-    if (
-      id === "extract" ||
-      id === "import" ||
-      id === "relate" ||
-      id === "search" ||
-      id === "export" ||
-      id === "admin"
-    ) {
-      return { error: `'${id}' is a reserved path segment`, status: 400 };
-    }
-    try {
-      const row = await this.memoryService.update(this.scopeTuple(scope), id, {
-        content: body.content,
-        kind: body.kind,
-        metadata: body.metadata,
-        agentVisible: body.agentVisible,
-        visibility: body.visibility,
-      }, this.effectiveUserId(scope));
-      if (!row) return { error: "memory not found", status: 404 };
-      return { memory: row };
-    } catch (err: any) {
-      return {
-        error: err?.message || "update memory failed",
-        status: (err as any)?.status ?? 400,
-        validationErrors: (err as any)?.validationErrors,
-      };
-    }
-  }
-
   @Get()
   async listMemories(
     @Req() req: Request,
@@ -589,7 +574,7 @@ export class MemoryController {
     const scope = this.getScope(req);
     try {
       const rows = await this.memoryService.list(this.scopeTuple(scope), {
-        userId: this.effectiveUserId(scope, userId),
+        userId: await this.effectiveUserId(scope, userId),
         kind: kind || undefined,
         agentId: agentId || undefined,
         limit: limit ? Number.parseInt(limit, 10) : undefined,
@@ -597,6 +582,9 @@ export class MemoryController {
       });
       return { memories: rows, total: rows.length };
     } catch (err: any) {
+      if (this.requiresOperatorEndUserContext(scope, userId, err)) {
+        return { memories: [], total: 0, requiresEndUserContext: true, code: err.code };
+      }
       return { error: err?.message || "list memories failed", status: 400 };
     }
   }
@@ -616,7 +604,7 @@ export class MemoryController {
     try {
       const hits = await this.memoryService.semanticSearch(this.scopeTuple(scope), {
         query: q,
-        userId: this.effectiveUserId(scope, userId),
+        userId: await this.effectiveUserId(scope, userId),
         kind: kind || undefined,
         agentId: agentId || undefined,
         limit: limit ? Number.parseInt(limit, 10) : undefined,
@@ -624,15 +612,26 @@ export class MemoryController {
       });
       return { hits };
     } catch (err: any) {
+      if (this.requiresOperatorEndUserContext(scope, userId, err)) {
+        return { hits: [], requiresEndUserContext: true, code: err.code };
+      }
       return { error: err?.message || "search failed", status: 400 };
     }
   }
 
   @Delete(":id")
-  async deleteMemory(@Req() req: Request, @Param("id") id: string) {
+  async deleteMemory(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Query("userId") userId?: string,
+  ) {
     const scope = this.getScope(req);
     try {
-      const deleted = await this.memoryService.delete(this.scopeTuple(scope), id, this.effectiveUserId(scope));
+      const deleted = await this.memoryService.delete(
+        this.scopeTuple(scope),
+        id,
+        await this.effectiveUserId(scope, userId),
+      );
       return { deleted };
     } catch (err: any) {
       return { error: err?.message || "delete failed", status: 400 };
@@ -652,24 +651,35 @@ export class MemoryController {
     const scope = this.getScope(req);
     try {
       const rows = await this.graph.getEntities(this.scopeTuple(scope), {
-        userId: this.effectiveUserId(scope, userId),
+        userId: await this.effectiveUserId(scope, userId),
         entityType: entityType || undefined,
         limit: limit ? Number.parseInt(limit, 10) : undefined,
         offset: offset ? Number.parseInt(offset, 10) : undefined,
       });
       return { entities: rows, total: rows.length };
     } catch (err: any) {
+      if (this.requiresOperatorEndUserContext(scope, userId, err)) {
+        return { entities: [], total: 0, requiresEndUserContext: true, code: err.code };
+      }
       return { error: err?.message || "list entities failed", status: 400 };
     }
   }
 
   @Get("graph/entities/:id/relationships")
-  async getRelationships(@Req() req: Request, @Param("id") id: string) {
+  async getRelationships(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Query("userId") userId?: string,
+  ) {
     const scope = this.getScope(req);
     try {
-      // SECURITY (audit H9) — force the caller's own userId so a session token
-      // can't walk another user's KG neighborhood by entity id.
-      const res = await this.graph.getRelationships(this.scopeTuple(scope), { entityId: id }, this.effectiveUserId(scope));
+      // SECURITY (audit H9) — non-operators stay forced to scope.userId;
+      // operators must provide a separately validated canonical EndUser id.
+      const res = await this.graph.getRelationships(
+        this.scopeTuple(scope),
+        { entityId: id },
+        await this.effectiveUserId(scope, userId),
+      );
       if (!res) return { error: "entity not found", status: 404 };
       return res;
     } catch (err: any) {
@@ -693,7 +703,7 @@ export class MemoryController {
       const path = await this.graph.shortestPath(this.scopeTuple(scope), {
         fromEntityId: from,
         toEntityId: to,
-        userId: this.effectiveUserId(scope, userId),
+        userId: await this.effectiveUserId(scope, userId),
         maxHops: maxHops ? Number.parseInt(maxHops, 10) : undefined,
       });
       return { path };
@@ -726,9 +736,9 @@ export class MemoryController {
         status: 400,
       };
     }
-    const scopeTuple = this.scopeTuple(scope);
-    const userId = this.effectiveUserId(scope, body.userId);
     try {
+      const scopeTuple = this.scopeTuple(scope);
+      const userId = await this.effectiveUserId(scope, body.userId);
       const [from, to] = await Promise.all([
         this.graph.upsertEntity(scopeTuple, {
           userId,
@@ -762,6 +772,59 @@ export class MemoryController {
       };
     } catch (err: any) {
       return { error: err?.message || "relate failed", status: 400 };
+    }
+  }
+
+  /**
+   * Theme O.7 — patch/update memory. POST rather than PATCH so browser
+   * HTML forms can call this directly without a custom method override.
+   *
+   * This parameterized route must be declared after the literal POST routes
+   * above. Express registers controller methods in declaration order; placing
+   * it first makes `/memory/relate` dispatch here instead of to `relate`.
+   */
+  @Post(":id")
+  async updateMemory(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: {
+      content?: string;
+      kind?: MemoryKind;
+      metadata?: unknown;
+      agentVisible?: boolean;
+      visibility?: MemoryVisibility;
+      userId?: string;
+    },
+  ) {
+    const scope = this.getScope(req);
+    // Defense-in-depth — even if route-order regressed, the literal path
+    // segments can never be a valid UUID memory id so reject them here.
+    if (
+      id === "extract" ||
+      id === "import" ||
+      id === "relate" ||
+      id === "search" ||
+      id === "export" ||
+      id === "admin"
+    ) {
+      return { error: `'${id}' is a reserved path segment`, status: 400 };
+    }
+    try {
+      const row = await this.memoryService.update(this.scopeTuple(scope), id, {
+        content: body.content,
+        kind: body.kind,
+        metadata: body.metadata,
+        agentVisible: body.agentVisible,
+        visibility: body.visibility,
+      }, await this.effectiveUserId(scope, body.userId));
+      if (!row) return { error: "memory not found", status: 404 };
+      return { memory: row };
+    } catch (err: any) {
+      return {
+        error: err?.message || "update memory failed",
+        status: (err as any)?.status ?? 400,
+        validationErrors: (err as any)?.validationErrors,
+      };
     }
   }
 }

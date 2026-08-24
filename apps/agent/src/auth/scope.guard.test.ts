@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UnauthorizedException } from "@nestjs/common";
 import { ScopeGuard } from "./scope.guard";
 import { AuthService } from "./auth.service";
+import { AgentController } from "../agent-runtime/agent.controller";
 import type { ExecutionContext } from "@nestjs/common";
 
 type HeaderMap = Record<string, string | undefined>;
@@ -61,6 +62,7 @@ function makeAuthHarness() {
       project: { id: scope.projectId, organizationId: scope.organizationId },
     },
     accessKey: null as null | { id: string; keyHash: string; allowedOrigins: string[] },
+    agentBinding: { id: "binding_A", agentId: "agent_A" } as null | { id: string; agentId: string },
   };
   const prisma = {
     mcpBearerToken: {
@@ -79,6 +81,18 @@ function makeAuthHarness() {
     accessKey: {
       findMany: vi.fn(async () => (state.accessKey ? [state.accessKey] : [])),
       updateMany: vi.fn(async () => ({ count: 1 })),
+    },
+    agentBinding: {
+      findFirst: vi.fn(async ({ where }: any) => {
+        const binding = state.agentBinding;
+        if (!binding) return null;
+        return binding.agentId === where.agentId &&
+          where.environmentId === scope.environmentId &&
+          where.environment.projectId === scope.projectId &&
+          where.environment.project.organizationId === scope.organizationId
+          ? { id: binding.id }
+          : null;
+      }),
     },
   };
   const auth = new AuthService(prisma as any, {} as any);
@@ -296,6 +310,75 @@ describe("ScopeGuard — Path 2 direct headers", () => {
       else process.env.PLATOS_INTERNAL_AUTH_TOKEN = previous;
     }
   });
+
+  it("preserves a canonically validated Agent pin on the operator control-plane scope", async () => {
+    const previous = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "dashboard-control-plane-token-32chars";
+    try {
+      const h = makeAuthHarness();
+      const ctx = mockExecutionContext({
+        "x-platos-organization-id": h.scope.organizationId,
+        "x-platos-project-id": h.scope.projectId,
+        "x-platos-environment-id": h.scope.environmentId,
+        "x-platos-user-id": h.scope.userId,
+        "x-platos-agent-id": "agent_A",
+        "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
+      }, "/api/v1/memory");
+
+      await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
+      expect((ctx.switchToHttp().getRequest() as any).scope).toMatchObject({
+        principal: "operator",
+        agentId: "agent_A",
+      });
+      expect(h.prisma.agentBinding.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ agentId: "agent_A", environmentId: h.scope.environmentId }),
+      }));
+    } finally {
+      if (previous === undefined) delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+      else process.env.PLATOS_INTERNAL_AUTH_TOKEN = previous;
+    }
+  });
+
+  it("rejects an Agent pin outside canonical scope and never trusts it as an arbitrary header", async () => {
+    const previous = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+    process.env.PLATOS_INTERNAL_AUTH_TOKEN = "dashboard-control-plane-token-32chars";
+    try {
+      const h = makeAuthHarness();
+      const ctx = mockExecutionContext({
+        "x-platos-organization-id": h.scope.organizationId,
+        "x-platos-project-id": h.scope.projectId,
+        "x-platos-environment-id": h.scope.environmentId,
+        "x-platos-user-id": h.scope.userId,
+        "x-platos-agent-id": "agent_foreign",
+        "x-platos-internal-auth": "dashboard-control-plane-token-32chars",
+      }, "/api/v1/memory");
+
+      await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(false);
+      const response = ctx.switchToHttp().getResponse() as any;
+      expect(response.status).toHaveBeenCalledWith(403);
+      expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ error: "INVALID_AGENT_SCOPE" }));
+      expect((ctx.switchToHttp().getRequest() as any).scope).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+      else process.env.PLATOS_INTERNAL_AUTH_TOKEN = previous;
+    }
+  });
+
+  it("rejects an otherwise valid Agent pin without server control-plane authentication", async () => {
+    const h = makeAuthHarness();
+    const ctx = mockExecutionContext({
+      "x-platos-organization-id": h.scope.organizationId,
+      "x-platos-project-id": h.scope.projectId,
+      "x-platos-environment-id": h.scope.environmentId,
+      "x-platos-user-id": h.scope.userId,
+      "x-platos-agent-id": "agent_A",
+    }, "/api/v1/memory");
+
+    await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(false);
+    expect(h.prisma.agentBinding.findFirst).not.toHaveBeenCalled();
+    const response = ctx.switchToHttp().getResponse() as any;
+    expect(response.status).toHaveBeenCalledWith(403);
+  });
 });
 
 describe("ScopeGuard — Path 1 session token", () => {
@@ -348,6 +431,64 @@ describe("ScopeGuard — Path 1 session token", () => {
     const ctx = mockExecutionContext({ "x-platos-session-token": token! });
     await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
     expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("end-user");
+  });
+
+  it("rejects a real public guest principal before every budget service read or mutation", async () => {
+    const h = makeAuthHarness();
+    const token = await h.auth.createPlatformSessionToken({
+      organizationId: h.scope.organizationId,
+      projectId: h.scope.projectId,
+      environmentId: h.scope.environmentId,
+      userId: h.scope.userId,
+      extraClaims: { isGuest: true },
+    });
+    const ctx = mockExecutionContext(
+      { "x-platos-session-token": token! },
+      "/api/v1/agent/budgets",
+    );
+
+    await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
+    const req = ctx.switchToHttp().getRequest() as any;
+    expect(req.scope.principal).toBe("end-user");
+
+    const budgetService = {
+      list: vi.fn(),
+      evaluate: vi.fn(),
+      upsert: vi.fn(),
+      delete: vi.fn(),
+      override: vi.fn(),
+    };
+    const controller: any = Object.create(AgentController.prototype);
+    controller.budgetService = budgetService;
+
+    const calls = [
+      () => controller.listBudgets(req),
+      () => controller.budgetStatus(req),
+      () => controller.upsertBudget(req, {
+        scopeType: "environment",
+        period: "monthly",
+        limitCents: 10_000,
+      }),
+      () => controller.deleteBudget(req, "cap-1"),
+      () => controller.overrideBudget(req, "cap-1", { minutes: 60 }),
+    ];
+
+    for (const call of calls) {
+      await expect(call()).rejects.toMatchObject({
+        status: 403,
+        response: {
+          error: "OPERATOR_ONLY",
+          message:
+            "This endpoint requires an operator (control-plane) credential. End-user / entity / guest tokens are not permitted.",
+        },
+      });
+    }
+
+    expect(budgetService.list).not.toHaveBeenCalled();
+    expect(budgetService.evaluate).not.toHaveBeenCalled();
+    expect(budgetService.upsert).not.toHaveBeenCalled();
+    expect(budgetService.delete).not.toHaveBeenCalled();
+    expect(budgetService.override).not.toHaveBeenCalled();
   });
 
   it.each(["revoked", "expired", "forged ancestry"])(

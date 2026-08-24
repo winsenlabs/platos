@@ -7,8 +7,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **206** across **35** namespaces (24 admin-tier).
-- REST operations: **290** unique method/path pairs from **291** route bindings.
-- Ambiguous duplicate REST method/path pairs: **1**.
+- REST operations: **290** unique method/path pairs from **290** route bindings.
+- Ambiguous duplicate REST method/path pairs: **0**.
 - MCP classifications: MAPPED=83, MCP_ONLY=123.
 - REST classifications: DEPRECATED=13, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=137.
 
@@ -170,7 +170,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/prompt/assemble` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#assemblePrompt` |
 | `GET /api/v1/agent/prompt/defaults` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getDefaultBlocks` |
 | `POST /api/v1/agent/prompt/preview` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#previewPrompt` |
-| `GET /api/v1/agent/providers` | MAPPED | `providers.list` | Reviewed behavioral equivalence: the REST adapter and providers.list invoke the same authorized provider registry/key operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#listProviders`<br>`apps/agent/src/providers/providers.controller.ts#listProviders` |
+| `GET /api/v1/agent/providers` | MAPPED | `providers.list` | Reviewed behavioral equivalence: the REST adapter and providers.list invoke the same authorized provider registry/key operation; only transport parameters/envelopes differ. | `apps/agent/src/providers/providers.controller.ts#listProviders` |
 | `PATCH /api/v1/agent/providers/:provider` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#toggleProvider` |
 | `GET /api/v1/agent/providers/:provider/health` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#testProvider` |
 | `DELETE /api/v1/agent/providers/:provider/link` | MAPPED | `providers.unlink` | Reviewed behavioral equivalence: the REST adapter and providers.unlink invoke the same authorized provider registry/key operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#unlinkProvider` |

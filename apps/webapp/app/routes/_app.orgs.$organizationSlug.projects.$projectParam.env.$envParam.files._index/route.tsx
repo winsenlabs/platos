@@ -2,6 +2,6 @@ import type { LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
-const config = { surface: "files", title: "Files and artifacts", description: "Canonical Agent attachment and artifact inventory.", endpoint: "/api/v1/agent/files/agents", secondaryEndpoint: undefined, provenance: "Canonical clean database ancestry and platos-agent API" };
+const config = { surface: "files" as const, title: "Files and artifacts", description: "Canonical Agent attachment and artifact inventory.", endpoint: "/api/v1/agent/files/agents", secondaryEndpoint: undefined, provenance: "Canonical clean database ancestry and platos-agent API" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export default function Route() { return <M4Surface data={useLoaderData<typeof loader>()} />; }

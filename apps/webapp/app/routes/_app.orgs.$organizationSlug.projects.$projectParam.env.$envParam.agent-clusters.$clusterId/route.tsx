@@ -3,7 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
 import { agentRequest, m4Mutation, optionalText, requiredText } from "~/services/m4Mutation.server";
-const config = { surface: "clusters", title: "Cluster memory scope", description: "Explicit membership and the resulting widened runtime recall boundary.", endpoint: "/api/v1/agent/clusters/:clusterId", secondaryEndpoint: "/api/v1/agent/agents", provenance: "Canonical clean database ancestry and platos-agent API" };
+const config = { surface: "clusters" as const, title: "Cluster memory scope", description: "Explicit membership and the resulting widened runtime recall boundary.", endpoint: "/api/v1/agent/clusters/:clusterId", secondaryEndpoint: "/api/v1/agent/agents", provenance: "Canonical clean database ancestry and platos-agent API" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   return m4Mutation(args, "Cluster mutation", async ({ scope, form }) => {

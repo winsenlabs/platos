@@ -90,6 +90,11 @@ export async function requireEnvironmentScope(params: {
           id: true,
           slug: true,
           name: true,
+          environments: {
+            where: { archivedAt: null },
+            orderBy: { createdAt: "asc" },
+            select: { id: true, slug: true, name: true },
+          },
           organization: { select: { id: true, slug: true, name: true } },
         },
       },
@@ -115,6 +120,7 @@ export async function requireEnvironmentScope(params: {
       organization: environment.project.organization,
       project: { id: environment.project.id, slug: environment.project.slug, name: environment.project.name },
       environment: { id: environment.id, slug: environment.slug, name: environment.name, type: environment.slug },
+      environments: environment.project.environments,
       operator: { id: operator.userId, email: operator.email },
     },
   };

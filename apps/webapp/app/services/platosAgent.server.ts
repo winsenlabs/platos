@@ -5,6 +5,7 @@ export type AgentScope = {
   projectId: string;
   environmentId: string;
   userId: string;
+  agentId?: string;
 };
 
 export class PlatosAgentApiError extends Error {
@@ -47,9 +48,29 @@ export async function agentRequest<T = unknown>(path: string, scope: AgentScope,
     throw new PlatosAgentApiError(
       response.status,
       typeof record.code === "string" ? record.code : "AGENT_API_ERROR",
-      typeof record.message === "string" ? record.message : `Agent API request failed (${response.status})`,
+      typeof record.message === "string"
+        ? record.message
+        : typeof record.error === "string"
+          ? record.error
+          : `Agent API request failed (${response.status})`,
       record.details
     );
+  }
+  // Defensive compatibility while older Agent deployments are draining:
+  // historical handlers returned `{ error, status }` with HTTP 200. Treat the
+  // explicit numeric error status as transport failure rather than rendering
+  // it as successful product data.
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const record = payload as Record<string, unknown>;
+    const embeddedStatus = typeof record.status === "number" ? record.status : null;
+    if (embeddedStatus && embeddedStatus >= 400 && embeddedStatus <= 599 && (record.error !== undefined || record.message !== undefined)) {
+      throw new PlatosAgentApiError(
+        embeddedStatus,
+        typeof record.code === "string" ? record.code : "AGENT_API_ERROR",
+        typeof record.message === "string" ? record.message : typeof record.error === "string" ? record.error : `Agent API request failed (${embeddedStatus})`,
+        record.details,
+      );
+    }
   }
   return payload as T;
 }
@@ -64,6 +85,7 @@ export function agentResponse(path: string, scope: AgentScope, options: RequestO
       "X-Platos-Project-Id": scope.projectId,
       "X-Platos-Environment-Id": scope.environmentId,
       "X-Platos-User-Id": scope.userId,
+      ...(scope.agentId ? { "X-Platos-Agent-Id": scope.agentId } : {}),
       // The dashboard must not retain a browser-generated AccessKey merely to
       // render its own control-plane routes. This server-only credential
       // distinguishes trusted webapp-to-agent traffic from runtime callers.
@@ -150,6 +172,7 @@ const PROVIDER_STATE_SHAPE = {
   enabled: true,
   linked: true,
   linkedAt: true,
+  probeModel: true,
   models: [true],
 } as const satisfies CredentialMetadataShape;
 

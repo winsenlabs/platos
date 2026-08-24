@@ -16,6 +16,17 @@ export interface ResolvedAgentBinding {
   clusterId: string | null;
 }
 
+const UUID_OR_URN_UUID = /^(?:urn:uuid:)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export class MemoryEndUserContextError extends Error {
+  readonly code = "MEMORY_END_USER_CONTEXT_REQUIRED";
+
+  constructor() {
+    super("Memory end user not found or access denied");
+    this.name = "MemoryEndUserContextError";
+  }
+}
+
 export function environmentScopeWhere(scope: MemoryScope) {
   return {
     environmentId: scope.environmentId,
@@ -51,25 +62,30 @@ export async function resolveEndUser(
 ): Promise<ResolvedEndUser> {
   if (!userId) throw new Error("Memory end user is required");
 
-  const direct = await prisma.endUser.findFirst({
-    where: { id: userId, organizationId: scope.organizationId, disabledAt: null },
-    select: {
-      id: true,
-      identities: {
-        where: {
-          issuer: "platos:external",
-          channel: "external",
-          disabledAt: null,
-          verifiedAt: { not: null },
+  // EndUser.id is UUID-backed, while verified external identity subjects are
+  // intentionally opaque and may be arbitrary strings. Do not pass an
+  // external subject to the UUID column before attempting identity lookup.
+  if (UUID_OR_URN_UUID.test(userId)) {
+    const direct = await prisma.endUser.findFirst({
+      where: { id: userId, organizationId: scope.organizationId, disabledAt: null },
+      select: {
+        id: true,
+        identities: {
+          where: {
+            issuer: "platos:external",
+            channel: "external",
+            disabledAt: null,
+            verifiedAt: { not: null },
+          },
+          orderBy: { createdAt: "asc" },
+          take: 1,
+          select: { subject: true },
         },
-        orderBy: { createdAt: "asc" },
-        take: 1,
-        select: { subject: true },
       },
-    },
-  });
-  if (direct) {
-    return { id: direct.id, externalId: direct.identities[0]?.subject ?? direct.id };
+    });
+    if (direct) {
+      return { id: direct.id, externalId: direct.identities[0]?.subject ?? direct.id };
+    }
   }
 
   const externalIdentity = await prisma.endUserIdentity.findFirst({
@@ -98,8 +114,41 @@ export async function resolveEndUser(
     orderBy: { createdAt: "asc" },
     select: { endUserId: true, subject: true },
   });
-  if (!identity) throw new Error("Memory end user not found or access denied");
+  if (!identity) throw new MemoryEndUserContextError();
   return { id: identity.endUserId, externalId: identity.subject };
+}
+
+export async function resolveOperatorSelectedEndUser(
+  prisma: ControlDatabaseClient,
+  scope: MemoryScope,
+  endUserId: string,
+): Promise<ResolvedEndUser> {
+  if (!endUserId) throw new MemoryEndUserContextError();
+  await assertEnvironmentScope(prisma, scope);
+
+  const endUser = await prisma.endUser.findFirst({
+    where: {
+      id: endUserId,
+      organizationId: scope.organizationId,
+      disabledAt: null,
+    },
+    select: {
+      id: true,
+      identities: {
+        where: {
+          issuer: "platos:external",
+          channel: "external",
+          disabledAt: null,
+          verifiedAt: { not: null },
+        },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+        select: { subject: true },
+      },
+    },
+  });
+  if (!endUser) throw new MemoryEndUserContextError();
+  return { id: endUser.id, externalId: endUser.identities[0]?.subject ?? endUser.id };
 }
 
 export async function resolveAgentBinding(

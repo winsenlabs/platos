@@ -164,7 +164,7 @@ export class MemoryService {
     );
     const source = input.source || "manual";
     const visibility = normalizeVisibility(input.visibility, input.agentVisible);
-    const agentVisible = visibility !== "private";
+    const agentVisible = visibility === "agent_visible";
     const sourceTurnIds = Array.from(new Set(input.sourceTurnIds ?? []));
     if (sourceTurnIds.length && !input.sourceThreadId) {
       throw new Error("Memory sourceTurnIds require a sourceThreadId");
@@ -304,7 +304,7 @@ export class MemoryService {
       validated.kind,
       this.encryptContent(validated.content),
       storedMetadata === null ? null : JSON.stringify(storedMetadata),
-      visibility !== "private",
+      visibility === "agent_visible",
       visibility,
       vector ? vectorToLiteral(vector) : null,
       newHash,
@@ -662,7 +662,7 @@ export class MemoryService {
       kind: row.kind,
       content: this.decryptContent(row.content),
       metadata: this.decryptMetadata(row.metadata),
-      agentVisible: visibility !== "private" && row.agentVisible !== false,
+      agentVisible: visibility === "agent_visible" && row.agentVisible !== false,
       visibility,
       source: row.source,
       sourceThreadId: row.sourceThreadId ?? null,

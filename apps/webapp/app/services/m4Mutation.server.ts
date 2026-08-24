@@ -29,6 +29,9 @@ export async function m4Mutation(
     const result = await request(await m4MutationContext(args));
     return json({ ok: true as const, result });
   } catch (error) {
+    // Remix redirect/not-found/auth Responses carry routing semantics. Turning
+    // them into mutation JSON creates false 400s and can bypass login redirects.
+    if (error instanceof Response) throw error;
     const code = error instanceof PlatosAgentApiError ? error.code : "INVALID_REQUEST";
     const status = error instanceof PlatosAgentApiError && error.status >= 400 && error.status < 500
       ? error.status

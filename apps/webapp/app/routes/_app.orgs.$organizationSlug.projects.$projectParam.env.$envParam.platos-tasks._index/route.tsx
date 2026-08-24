@@ -3,7 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
 import { agentRequest, jsonObject, m4Mutation, optionalText, requiredText } from "~/services/m4Mutation.server";
-const config = { surface: "jobs", title: "Platos background work", description: "Job-backed Platos work is distinct from external infrastructure tasks.", endpoint: "/api/v1/agent/platos-tasks", secondaryEndpoint: undefined, provenance: "Canonical clean database ancestry and platos-agent API" };
+const config = { surface: "jobs" as const, title: "Platos background work", description: "Job-backed Platos work is distinct from external infrastructure tasks.", endpoint: "/api/v1/agent/platos-tasks", secondaryEndpoint: undefined, provenance: "Canonical clean database ancestry and platos-agent API" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   return m4Mutation(args, "Job mutation", async ({ scope, form }) => {

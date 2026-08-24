@@ -92,7 +92,7 @@ export default function Team() {
                 <select
                   name="role"
                   defaultValue={membership.role}
-                  className="rounded border border-grid-bright bg-charcoal-900 px-2 py-1 text-sm"
+                  className="rounded border border-grid-bright bg-[var(--bg)] text-text-bright px-2 py-1 text-sm"
                 >
                   {Object.values(OrganizationRole).map((role) => (
                     <option key={role}>{role}</option>

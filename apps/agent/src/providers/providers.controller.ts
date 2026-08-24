@@ -41,7 +41,8 @@ export class ProvidersController {
 
   @Get()
   async listProviders(@Req() req: Request) {
-    const scope = this.operatorScope(req);
+    const scope = this.getScope(req);
+    requireOperator(scope);
     const canonicalScope = await this.providerKeys.canonicalScope(scope, "metadata");
     const providers = await this.registry.list(canonicalScope);
     return { providers };

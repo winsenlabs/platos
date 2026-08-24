@@ -480,6 +480,32 @@ export class AuthService {
   }
 
   /**
+   * Validate an Agent pin supplied by the authenticated dashboard control
+   * plane. The pin is never trusted as a free-form scope header: it must name
+   * a canonical AgentBinding in the exact Organization/Project/Environment
+   * ancestry before ScopeGuard places it on an operator RequestScope.
+   */
+  async validateOperatorAgentPin(
+    scope: Pick<SessionPayload, "organizationId" | "projectId" | "environmentId">,
+    agentId: string,
+  ): Promise<boolean> {
+    if (!agentId) return false;
+    const binding = await this.prisma.agentBinding.findFirst({
+      where: {
+        agentId,
+        environmentId: scope.environmentId,
+        environment: {
+          projectId: scope.projectId,
+          project: { organizationId: scope.organizationId },
+        },
+        agent: { projectId: scope.projectId },
+      },
+      select: { id: true },
+    });
+    return Boolean(binding);
+  }
+
+  /**
    * Mint an entity end-user token authorized by a persisted McpBearerToken.
    * The authorization ID is signed into the JWT and revalidated on every HTTP
    * request and WebSocket connection.

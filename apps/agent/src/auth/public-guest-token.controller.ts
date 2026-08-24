@@ -58,21 +58,23 @@ export class PublicGuestTokenController {
   ) {}
 
   @Post("guest-token")
-  async mint(@Req() req: Request, @Body() body: { agentId: string; environmentId?: string }) {
+  async mint(@Req() req: Request, @Body() body: { agentId: string; environmentId: string }) {
     if (!body?.agentId || typeof body.agentId !== "string") {
       throw new HttpException("agentId is required", HttpStatus.BAD_REQUEST);
+    }
+    if (!body.environmentId || typeof body.environmentId !== "string") {
+      throw new HttpException("environmentId is required", HttpStatus.BAD_REQUEST);
     }
 
     // Agent is project-owned and may be deployed into more than one
     // Environment. Resolve the binding first, then derive Project and
-    // Organization through the database relation graph. An omitted
-    // environmentId is accepted only when exactly one public deployment exists.
+    // Organization through the database relation graph. Environment is required
+    // because one project-owned Agent may have different visibility and active
+    // versions in multiple deployments.
     const bindings = await this.prisma.agentBinding.findMany({
       where: {
         agentId: body.agentId,
-        ...(typeof body.environmentId === "string" && body.environmentId
-          ? { environmentId: body.environmentId }
-          : {}),
+        environmentId: body.environmentId,
       },
       include: {
         agent: true,
@@ -162,6 +164,7 @@ export class PublicGuestTokenController {
       guestId,
       expiresAt: iat + ttlSeconds,
       agentId: agent.id,
+      environmentId: binding.environmentId,
     };
   }
 }

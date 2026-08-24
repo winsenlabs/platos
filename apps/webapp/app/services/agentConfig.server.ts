@@ -98,6 +98,7 @@ export async function mutateAgentConfig(args: ActionFunctionArgs, mode: "create"
       historyMode: enumValue(form, "historyMode", ["rolling", "compact"] as const),
       compactThreshold: integer(form, "compactThreshold", 1, 2000),
       executionMode: enumValue(form, "executionMode", ["direct", "durable"] as const),
+      visibility: enumValue(form, "visibility", ["private", "public-guest"] as const),
       toolsBlockConfig: {
         mode: enumValue(form, "toolMode", ["direct", "sub-agent", "execute-tool"] as const),
         toolExposure: enumValue(form, "toolExposure", ["direct", "meta"] as const),
