@@ -1268,8 +1268,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-budgets._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-budgets._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-010."
       },
       "linkState": {
         "status": "implemented",
@@ -1453,8 +1453,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-012."
       },
       "linkState": {
         "status": "implemented",
@@ -1646,8 +1646,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters.$clusterId/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-clusters.$clusterId/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-011."
       },
       "linkState": {
         "status": "implemented",
@@ -1796,11 +1796,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -1822,8 +1822,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedMutationEvidence.test.ts proves unauthenticated rejection before transport and executes the authenticated operator mutation boundary for route-014."
       },
       "loaderState": {
         "status": "not-applicable",
@@ -1834,12 +1834,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect.channels.ts exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect.channels.ts requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-014."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect.channels.ts."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts constructs and executes the authenticated canonical action deep link for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect.channels.ts."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -1876,28 +1876,22 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect.channels.ts."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts executes the action with a 503 Agent response and asserts the stable AGENT_UNAVAILABLE mutation contract."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect.channels.ts.",
+        "status": "verified",
+        "classification": "Authenticated mutation serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect.channels.ts.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect.channels.ts must omit secret material."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts serializes complete success and failure responses and proves server-only operator credentials and upstream error details are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/embedProxy.test.ts",
-          "apps/webapp/test/formSubmission.test.tsx",
-          "apps/webapp/test/m4Dashboard.test.tsx",
-          "apps/webapp/test/m4Mutation.test.ts",
-          "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts",
-          "apps/webapp/test/secondaryRouteContracts.test.ts"
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -1986,11 +1980,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -2012,8 +2006,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedMutationEvidence.test.ts proves unauthenticated rejection before transport and executes the authenticated operator mutation boundary for route-013."
       },
       "loaderState": {
         "status": "implemented",
@@ -2024,12 +2018,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-013."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect/route.tsx."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts constructs and executes the authenticated canonical action deep link for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect/route.tsx."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -2066,28 +2060,22 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect/route.tsx."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts executes the action with a 503 Agent response and asserts the stable AGENT_UNAVAILABLE mutation contract."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect/route.tsx.",
+        "status": "verified",
+        "classification": "Authenticated mutation serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-connect/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts serializes complete success and failure responses and proves server-only operator credentials and upstream error details are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/embedProxy.test.ts",
-          "apps/webapp/test/formSubmission.test.tsx",
-          "apps/webapp/test/m4Dashboard.test.tsx",
-          "apps/webapp/test/m4Mutation.test.ts",
-          "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts",
-          "apps/webapp/test/secondaryRouteContracts.test.ts"
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -2408,8 +2396,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId.initial-secret/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId.initial-secret/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-016."
       },
       "linkState": {
         "status": "implemented",
@@ -2601,8 +2589,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId.wire-test/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId.wire-test/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-017."
       },
       "linkState": {
         "status": "implemented",
@@ -2794,8 +2782,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.$entityId/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-015."
       },
       "linkState": {
         "status": "implemented",
@@ -3215,8 +3203,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.new/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities.new/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-019."
       },
       "linkState": {
         "status": "implemented",
@@ -3403,8 +3391,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-evals._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-evals._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-020."
       },
       "linkState": {
         "status": "implemented",
@@ -4706,8 +4694,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-027."
       },
       "linkState": {
         "status": "implemented",
@@ -6980,8 +6968,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedMutationEvidence.test.ts proves unauthenticated and mixed-tenant rejection before Postman mutation transport."
       },
       "loaderState": {
         "status": "implemented",
@@ -6992,12 +6980,12 @@
         "detail": "Route-defined result; persisted mutation/read-back, non-200 error mapping, idempotency, and concurrency require focused proof."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "Action-bearing route may use FormData, JSON, or a non-form control; exact rendered controls and field/enum agreement require focused source/runtime proof."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts submits the canonical create form through POST /api/v1/agent/postman-templates."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts constructs and executes the authenticated canonical Postman deep link."
       },
       "persistedReadBack": {
         "status": "required-not-verified",
@@ -7006,14 +6994,14 @@
         ]
       },
       "pagination": {
-        "status": "required-not-verified",
-        "strategy": "Template list is scoped by agentId; dense-data paging behavior is not verified.",
-        "limit": "No exact limit/cursor contract is recorded by the current route.",
-        "totalStatus": "No complete total is proven."
+        "status": "implemented",
+        "strategy": "Agent-scoped template list uses bounded page/pageSize controls translated to limit/offset with server-side search.",
+        "limit": "Default 25, maximum 100; executable evidence covers page 2 at pageSize 10 and offset 10.",
+        "totalStatus": "Complete filtered total and page metadata are preserved from the canonical Agent response."
       },
       "totals": {
-        "status": "required-not-verified",
-        "semantics": "PostmanTemplate total must be explicit if the backend bounds results."
+        "status": "verified",
+        "semantics": "apps/webapp/test/authenticatedMutationEvidence.test.ts proves total=42, totalPages=5, hasMore, and bounded limit/offset survive the authenticated loader serialization."
       },
       "destructiveConfirmation": {
         "status": "required-not-verified",
@@ -7034,27 +7022,22 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts proves Agent failures retain the stable AGENT_UNAVAILABLE code without upstream details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
+        "status": "verified",
+        "classification": "Postman template loader/action serialization boundary.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts serializes complete success and failure responses and proves server-only credentials and upstream error details are absent."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/formSubmission.test.tsx",
-          "apps/webapp/test/m4Dashboard.test.tsx",
-          "apps/webapp/test/m4Mutation.test.ts",
-          "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/playgroundVisual.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -7217,8 +7200,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-034."
       },
       "linkState": {
         "status": "implemented",
@@ -7372,11 +7355,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -7398,8 +7381,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedMutationEvidence.test.ts proves unauthenticated rejection before transport and executes the authenticated operator mutation boundary for route-035."
       },
       "loaderState": {
         "status": "implemented",
@@ -7410,12 +7393,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-035."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts constructs and executes the authenticated canonical action deep link for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -7452,28 +7435,22 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts executes the action with a 503 Agent response and asserts the stable AGENT_UNAVAILABLE mutation contract."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx.",
+        "status": "verified",
+        "classification": "Authenticated mutation serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts serializes complete success and failure responses and proves server-only operator credentials and upstream error details are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/embedProxy.test.ts",
-          "apps/webapp/test/formSubmission.test.tsx",
-          "apps/webapp/test/m4Dashboard.test.tsx",
-          "apps/webapp/test/m4Mutation.test.ts",
-          "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts",
-          "apps/webapp/test/secondaryRouteContracts.test.ts"
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -8482,8 +8459,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.versions/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.versions/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-039."
       },
       "linkState": {
         "status": "implemented",
@@ -8858,8 +8835,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.new/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.new/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-041."
       },
       "linkState": {
         "status": "implemented",
@@ -10578,8 +10555,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals.$approvalId/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals.$approvalId/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-043."
       },
       "linkState": {
         "status": "implemented",
@@ -11527,8 +11504,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.eval-criteria._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.eval-criteria._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-049."
       },
       "linkState": {
         "status": "implemented",
@@ -13150,8 +13127,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx does not export action."
       },
       "formState": {
-        "status": "not-applicable",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx has no action export in this route-shell contract."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-055."
       },
       "linkState": {
         "status": "implemented",
@@ -14809,8 +14786,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-054."
       },
       "linkState": {
         "status": "implemented",
@@ -14997,8 +14974,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-056."
       },
       "linkState": {
         "status": "implemented",
@@ -15021,9 +14998,9 @@
         "semantics": "Route-shell capability route-056 claims no total."
       },
       "destructiveConfirmation": {
-        "status": "not-applicable",
+        "status": "verified",
         "references": [
-          "Route-shell capability route-056 claims no destructive control."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts proves replace-mode Memory import rejects before transport unless confirmReplace is explicit."
         ]
       },
       "idempotency": {
@@ -15373,8 +15350,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.graph/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.graph/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-058."
       },
       "linkState": {
         "status": "implemented",
@@ -15561,8 +15538,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-060."
       },
       "linkState": {
         "status": "implemented",
@@ -15752,8 +15729,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.$jobId/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-059."
       },
       "linkState": {
         "status": "implemented",
@@ -15938,8 +15915,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.jobs.new/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-061."
       },
       "linkState": {
         "status": "implemented",
@@ -17086,8 +17063,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.skills.new/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.skills.new/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-067."
       },
       "linkState": {
         "status": "implemented",
@@ -17847,11 +17824,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam",
-          "envParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -17873,8 +17850,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedMutationEvidence.test.ts proves unauthenticated rejection before transport and executes the authenticated operator mutation boundary for route-068."
       },
       "loaderState": {
         "status": "implemented",
@@ -17885,17 +17862,17 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route.tsx does not export action."
       },
       "formState": {
-        "status": "not-applicable",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route.tsx has no action export in this route-shell contract."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts executes a valid authenticated action form, validates its generated operation path and scoped transport, and exercises stable failure behavior for route-068."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route.tsx."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedMutationEvidence.test.ts constructs and executes the authenticated canonical action deep link for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route.tsx."
       },
       "persistedReadBack": {
-        "status": "not-applicable",
+        "status": "verified",
         "references": [
-          "Route-shell capability route-068 claims no mutation; interaction rows own persisted read-back."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts proves Thread fork reads the child through GET /api/v1/agent/threads/:threadId and validates parentThreadId before redirecting."
         ]
       },
       "pagination": {
@@ -17927,25 +17904,22 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route.tsx."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts executes the action with a 503 Agent response and asserts the stable AGENT_UNAVAILABLE mutation contract."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route.tsx.",
+        "status": "verified",
+        "classification": "Authenticated mutation serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts serializes complete success and failure responses and proves server-only operator credentials and upstream error details are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/m4Dashboard.test.tsx",
-          "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/playgroundVisual.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -18304,8 +18278,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedMutationEvidence.test.ts proves unauthenticated and mixed-tenant rejection before Thread fork transport."
       },
       "loaderState": {
         "status": "implemented",
@@ -18328,7 +18302,8 @@
         "references": [
           "apps/agent/src/memory/conversation-fork-artifact.test.ts",
           "internal-packages/tenancy-database/src/integration.test.ts",
-          "apps/webapp/test/m4Route.test.ts"
+          "apps/webapp/test/m4Route.test.ts",
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts"
         ]
       },
       "pagination": {
@@ -18360,16 +18335,16 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Failure, retry, and unavailable-backend recovery require a focused test."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts proves stable AGENT_UNAVAILABLE failure serialization and the existing read-back failure contract."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
+        "status": "verified",
+        "classification": "Thread fork action and persisted child read-back serialization boundary.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts proves server-only credentials and upstream error details are absent from complete action failures."
         ]
       },
       "automatedEvidence": {

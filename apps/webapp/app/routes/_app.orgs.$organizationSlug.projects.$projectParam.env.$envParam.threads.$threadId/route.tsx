@@ -105,7 +105,7 @@ export async function action(args: ActionFunctionArgs) {
     return redirect(`${current.pathname}${current.search}`);
   } catch (error) {
     if (error instanceof PlatosAgentApiError) {
-      return json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+      return json({ ok: false, error: `Thread fork failed (${error.code})`, code: error.code }, { status: error.status });
     }
     return json({ ok: false, error: "Thread fork is unavailable" }, { status: 503 });
   }

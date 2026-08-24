@@ -7,7 +7,7 @@ const config = { surface: "evals" as const, title: "Evaluations", description: "
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   return m4Mutation(args, "Evaluation run", async ({ scope, form }) => agentRequest(
-    "/api/v1/agent/evals/run",
+    "/api/v1/agent/evals/dispatch",
     scope,
     {
       method: "POST",

@@ -305,6 +305,58 @@ test("authenticated loadSurface route evidence cannot regress to static claims",
   }
 });
 
+test("authenticated mutation route evidence cannot regress to static claims", () => {
+  const matrix = readMatrix();
+  const rows = matrix.capabilities.filter((row) => {
+    if (!/^route-\d+$/.test(row.capabilityId)) return false;
+    const source = readFileSync(row.currentRoute, "utf8");
+    return source.includes("m4Mutation(") || source.includes("mutateAgentConfig(") || row.capabilityId === "route-068";
+  });
+  const evidence = "apps/webapp/test/authenticatedMutationEvidence.test.ts";
+
+  assert.equal(rows.length, 26);
+  for (const row of rows) {
+    assert.equal(row.formState.status, "implemented", row.capabilityId);
+    assert.match(row.formState.detail, /authenticatedMutationEvidence\.test\.ts/, row.capabilityId);
+  }
+  for (const capabilityId of ["route-013", "route-014", "route-035", "route-068"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "verified", capabilityId);
+    assert.equal(row.tenantScope.status, "enforced", capabilityId);
+    assert.deepEqual(row.tenantScope.keys, ["organizationId", "projectId", "environmentId"], capabilityId);
+    assert.equal(row.linkState.status, "implemented", capabilityId);
+    assert.equal(row.recovery.status, "verified", capabilityId);
+    assert.equal(row.secretExposure.status, "verified", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+
+  const memory = capability(matrix, "route-056");
+  assert.equal(memory.destructiveConfirmation.status, "verified");
+  assert.match(memory.destructiveConfirmation.references.join(" "), /confirmReplace/);
+  const routeFork = capability(matrix, "route-068");
+  assert.equal(routeFork.persistedReadBack.status, "verified");
+  assert.match(routeFork.persistedReadBack.references.join(" "), /parentThreadId/);
+
+  const postman = capability(matrix, "postman-template-crud");
+  assert.equal(postman.permission.status, "verified");
+  assert.equal(postman.formState.status, "implemented");
+  assert.equal(postman.linkState.status, "implemented");
+  assert.equal(postman.recovery.status, "verified");
+  assert.equal(postman.secretExposure.status, "verified");
+  assert.equal(postman.automatedEvidence.status, "verified");
+  assert.equal(postman.pagination.status, "implemented");
+  assert.equal(postman.totals.status, "verified");
+  assert.match(postman.pagination.limit, /Default 25, maximum 100/);
+  assert.match(postman.totals.semantics, /total=42/);
+
+  const fork = capability(matrix, "thread-fork");
+  assert.equal(fork.permission.status, "verified");
+  assert.equal(fork.recovery.status, "verified");
+  assert.equal(fork.secretExposure.status, "verified");
+  assert.ok(fork.persistedReadBack.references.includes(evidence));
+});
+
 test("reviewed v0 dispositions cannot regress", async (t) => {
   const cases = [
     ["agent-connect.mint-token.ts", "intentional-removal"],
