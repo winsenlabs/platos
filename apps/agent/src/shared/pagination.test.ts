@@ -27,7 +27,7 @@ describe("pagination contract", () => {
 
   it("accepts the API maximum and rejects malformed or oversized pagination", () => {
     expect(parsePageRequest({ limit: "200" }).pageSize).toBe(200);
-    for (const raw of [{ page: "0" }, { page: "1.5" }, { limit: "201" }, { offset: "-1" }]) {
+    for (const raw of [{ page: "0" }, { page: "1.5" }, { page: "9007199254740991", limit: "200" }, { limit: "201" }, { offset: "-1" }]) {
       try {
         parsePageRequest(raw);
         throw new Error("expected parsePageRequest to reject");

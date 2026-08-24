@@ -5055,21 +5055,21 @@
       "intent": "Presign and upload a scoped chat attachment, then submit only attachmentIds to collect/stream operations.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "v0 had a presigned upload route and the current Agent runtime resolves attachmentIds, but the current chat surface has no canonical presign/upload control or controller endpoint.",
+      "currentBehavior": "Chat creates or reuses a scoped Thread, requests a bounded presigned PUT, uploads the File directly, discards the presigned URL, and retains only attachmentIds.",
       "http": [
         {
           "role": "canonical contract",
           "method": "POST",
           "endpoint": "/api/v1/agent/attachments/presigned",
           "requestDto": {
-            "status": "static-contract-only",
-            "shape": "Scoped file metadata required to mint a bounded presigned PUT URL."
+            "status": "verified",
+            "shape": "{ agentId; threadId; filename; mimeType; bytes } scoped to Organization, Project, Environment, EndUser, Agent, and Thread."
           },
           "response": {
             "successStatuses": [
               200
             ],
-            "shape": "Attachment id, object key, and bounded presigned upload URL; never object-store credentials."
+            "shape": "Attachment id, bounded presigned PUT URL, required Content-Type header, expiry, and safe metadata; never storageKey or object-store credentials."
           },
           "stableErrors": [
             {
@@ -5145,21 +5145,23 @@
         "detail": "Route-defined payload/redirect; full success, unavailable, malformed, and error serialization requires focused contract proof."
       },
       "actionState": {
-        "status": "confirmed-defect",
-        "detail": "Chat accepts attachmentIds but has no current action/control that obtains an id through canonical presign/upload."
+        "status": "implemented",
+        "detail": "The chat action creates and reads back a Thread when needed, then calls the canonical presign endpoint."
       },
       "formState": {
-        "status": "confirmed-defect",
-        "detail": "Attachment picker and upload progress/retry are absent."
+        "status": "implemented",
+        "detail": "The chat inspector includes a File picker, explicit upload control, safe uploaded metadata, and advanced attachmentIds fallback."
       },
       "linkState": {
         "status": "required-not-verified",
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "confirmed-defect",
+        "status": "verified",
         "references": [
-          "Loaded state and mutated state are not the same canonical record."
+          "apps/agent/src/agent-runtime/attachment-presign.service.test.ts",
+          "apps/agent/src/agent-runtime/attachment-upload.controller.test.ts",
+          "apps/webapp/test/threadChatLifecycle.test.ts"
         ]
       },
       "pagination": {
@@ -5206,10 +5208,11 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/agent/src/agent-runtime/attachments.test.ts",
-          "apps/agent/src/agent-runtime/attachments.service.ts"
+          "apps/agent/src/agent-runtime/attachment-presign.service.test.ts",
+          "apps/agent/src/agent-runtime/attachment-upload.controller.test.ts",
+          "apps/webapp/test/threadChatLifecycle.test.ts"
         ]
       },
       "browserEvidence": {
@@ -5233,15 +5236,15 @@
         "WIN-138"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Retained attachment presign/upload interaction is absent while chat still accepts attachmentIds."
+        "status": "verified",
+        "summary": "Repaired: scoped presign, direct browser PUT, safe serialization, persisted row read-back, and attachmentId-only retention are implemented."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
         "controllers": [
           {
-            "symbol": "AgentController",
-            "source": "apps/agent/src/agent-runtime/agent.controller.ts"
+            "symbol": "AttachmentUploadController",
+            "source": "apps/agent/src/agent-runtime/attachment-upload.controller.ts"
           }
         ],
         "services": [
@@ -5258,9 +5261,9 @@
         ],
         "sourceEvidence": [
           {
-            "source": "apps/agent/src/agent-runtime/agent.controller.ts",
+            "source": "apps/agent/src/agent-runtime/attachment-upload.controller.ts",
             "fragments": [
-              "AgentController"
+              "AttachmentUploadController"
             ]
           },
           {
@@ -5284,7 +5287,7 @@
       "intent": "Read, create/update, and remove a rating for one scoped Message.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "Chat action implements POST with rating 1 or -1; canonical backend also exposes GET and DELETE, which are not represented by current controls.",
+      "currentBehavior": "Chat reads the persisted rating, POSTs create/update, DELETEs removal, and performs canonical GET read-back after each mutation.",
       "http": [
         {
           "role": "canonical contract",
@@ -5447,17 +5450,18 @@
         "detail": "Route-defined result; persisted mutation/read-back, non-200 error mapping, idempotency, and concurrency require focused proof."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "Action-bearing route may use FormData, JSON, or a non-form control; exact rendered controls and field/enum agreement require focused source/runtime proof."
+        "status": "implemented",
+        "detail": "Useful, Not useful, and explicit Remove rating controls represent the complete lifecycle."
       },
       "linkState": {
         "status": "required-not-verified",
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Create/update/delete must be reloaded from the canonical clean-schema owner."
+          "apps/agent/src/evals/rating-memory-feedback.test.ts",
+          "apps/webapp/test/threadChatLifecycle.test.ts"
         ]
       },
       "pagination": {
@@ -5471,9 +5475,9 @@
         "semantics": "Capability message-rating-lifecycle does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Removing an existing rating must be an explicit lifecycle state rather than an accidental toggle."
+          "apps/webapp/test/threadChatLifecycle.test.ts: explicit rating-delete intent and Remove rating control"
         ]
       },
       "idempotency": {
@@ -5502,14 +5506,10 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/formSubmission.test.tsx",
-          "apps/webapp/test/m4Dashboard.test.tsx",
-          "apps/webapp/test/m4Mutation.test.ts",
-          "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/playgroundVisual.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/agent/src/evals/rating-memory-feedback.test.ts",
+          "apps/webapp/test/threadChatLifecycle.test.ts"
         ]
       },
       "browserEvidence": {
@@ -5533,8 +5533,8 @@
         "WIN-138"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Current UI supports only POST create/update and does not expose/read back the canonical GET/DELETE rating lifecycle."
+        "status": "verified",
+        "summary": "Repaired: GET/POST/DELETE lifecycle, stable MESSAGE_NOT_FOUND, explicit removal, and canonical read-back are implemented."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -5546,8 +5546,8 @@
         ],
         "services": [
           {
-            "symbol": "ConversationService",
-            "source": "apps/agent/src/memory/conversation.service.ts"
+            "symbol": "RatingService",
+            "source": "apps/agent/src/evals/rating.service.ts"
           }
         ],
         "models": [
@@ -5564,9 +5564,9 @@
             ]
           },
           {
-            "source": "apps/agent/src/memory/conversation.service.ts",
+            "source": "apps/agent/src/evals/rating.service.ts",
             "fragments": [
-              "ConversationService"
+              "RatingService"
             ]
           },
           {
@@ -17655,21 +17655,21 @@
       "intent": "Page through the complete scoped Message history with a trustworthy total.",
       "disposition": "improve",
       "v0Behavior": "No path-identical v0 module; semantic archaeology is required where a legacy capability maps here.",
-      "currentBehavior": "Current thread detail requests limit=100&allUsers=true once; messages after the first 100 are silently absent and no total is displayed.",
+      "currentBehavior": "Thread detail parses page/pageSize, requests bounded limit/offset without hard-coded allUsers, and renders exact server pagination metadata.",
       "http": [
         {
           "role": "canonical contract",
           "method": "GET",
           "endpoint": "/api/v1/agent/threads/:threadId/messages",
           "requestDto": {
-            "status": "static-contract-only",
-            "shape": "Query { limit; offset; allUsers } with allUsers honored only for operator principal."
+            "status": "verified",
+            "shape": "Query { page; limit; offset } with malformed values rejected and operator Environment-wide access selected by authenticated principal."
           },
           "response": {
             "successStatuses": [
               200
             ],
-            "shape": "Bounded Message page for the scoped Thread."
+            "shape": "Bounded Message page plus stable total and pagination { from; to; hasPrevious; hasNext; totalPages }."
           },
           "stableErrors": [
             {
@@ -17757,20 +17757,22 @@
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "confirmed-defect",
+        "status": "verified",
         "references": [
-          "Mutations cannot prove complete chronological read-back when only the first 100 messages are loaded."
+          "apps/agent/src/memory/conversation-pagination.test.ts",
+          "apps/webapp/test/m4Route.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "pagination": {
-        "status": "confirmed-defect",
-        "strategy": "Current UI performs one offset page request.",
-        "limit": "Hard-coded limit=100 and no subsequent offset request.",
-        "totalStatus": "No total in route data; page length is not a complete total."
+        "status": "implemented",
+        "strategy": "Standard page/pageSize controls derive bounded limit/offset and PaginationRange renders Previous/Next.",
+        "limit": "Default 25; caller-selectable pageSize up to 100; malformed values fail with 400.",
+        "totalStatus": "ConversationService computes total before slicing projected Message sides and the controller returns stable page metadata."
       },
       "totals": {
-        "status": "confirmed-defect",
-        "semantics": "The UI cannot distinguish exactly 100 messages from a truncated history."
+        "status": "verified",
+        "semantics": "First, middle, final partial, empty, and past-end pages use the complete projected Message total; page length is never presented as total."
       },
       "destructiveConfirmation": {
         "status": "not-applicable",
@@ -17804,12 +17806,11 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/m4Dashboard.test.tsx",
+          "apps/agent/src/memory/conversation-pagination.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/playgroundVisual.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -17833,8 +17834,8 @@
         "WIN-138"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Message history is silently truncated at 100 without pagination controls or complete totals."
+        "status": "verified",
+        "summary": "Repaired: no hard-coded limit=100/allUsers, complete totals and stable page controls now reach Thread detail."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -18079,7 +18080,7 @@
       "intent": "List canonical artifacts generated for one scoped Thread.",
       "disposition": "improve",
       "v0Behavior": "No path-identical v0 module; semantic archaeology is required where a legacy capability maps here.",
-      "currentBehavior": "AgentController exposes GET /threads/:threadId/artifacts, but the current thread route loader does not call it and no artifact loader payload reaches the UI.",
+      "currentBehavior": "Thread loader calls the canonical artifacts endpoint, isolates subordinate failures, and renders latest revision content plus stable total.",
       "http": [
         {
           "role": "canonical contract",
@@ -18160,8 +18161,8 @@
         "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
       },
       "loaderState": {
-        "status": "confirmed-defect",
-        "detail": "Current thread route loader omits GET /api/v1/agent/threads/:threadId/artifacts."
+        "status": "implemented",
+        "detail": "Thread loader calls GET /api/v1/agent/threads/:threadId/artifacts and carries safe data or a subordinate error."
       },
       "actionState": {
         "status": "not-applicable",
@@ -18176,20 +18177,21 @@
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "confirmed-defect",
+        "status": "verified",
         "references": [
-          "No current loader reads back persisted Artifact rows for the thread UI."
+          "apps/webapp/test/m4Route.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "pagination": {
-        "status": "confirmed-defect",
-        "strategy": "Backend supports a limit query, but the retained thread loader does not call the endpoint.",
-        "limit": "No loader limit or pagination control exists.",
-        "totalStatus": "No artifact total reaches the current UI."
+        "status": "implemented",
+        "strategy": "The endpoint returns the latest revision per artifactKey in a bounded page.",
+        "limit": "Thread detail requests at most 100 latest artifact keys.",
+        "totalStatus": "Backend computes the complete distinct artifactKey total before applying the bound."
       },
       "totals": {
-        "status": "confirmed-defect",
-        "semantics": "Artifact total cannot be inferred from a bounded page because the current loader omits the backend list."
+        "status": "verified",
+        "semantics": "Artifact total is the complete number of distinct artifact keys, not bounded page length."
       },
       "destructiveConfirmation": {
         "status": "not-applicable",
@@ -18223,12 +18225,10 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/playgroundVisual.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -18252,8 +18252,8 @@
         "WIN-138"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Thread artifact backend exists, but the retained thread loader and UI do not load artifacts."
+        "status": "verified",
+        "summary": "Repaired: scoped Artifact rows, latest revisions, stable total, empty state, and subordinate failure now reach the UI."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -18308,7 +18308,7 @@
       "intent": "Fork one scoped Thread from a selected message and navigate to the persisted child Thread.",
       "disposition": "improve",
       "v0Behavior": "No path-identical v0 module; semantic archaeology is required where a legacy capability maps here.",
-      "currentBehavior": "Canonical POST endpoint exists; current thread detail has no proven fork control/read-back/navigation.",
+      "currentBehavior": "Thread detail exposes a selected persisted Message boundary and optional title, POSTs the scoped fork, GETs the child for persisted read-back, and redirects to it.",
       "http": [
         {
           "role": "canonical contract",
@@ -18398,21 +18398,22 @@
         "detail": "Route-defined payload/redirect; full success, unavailable, malformed, and error serialization requires focused contract proof."
       },
       "actionState": {
-        "status": "not-applicable",
-        "detail": "Not applicable."
+        "status": "implemented",
+        "detail": "Route action validates the boundary and title, then POSTs the canonical fork endpoint."
       },
       "formState": {
-        "status": "not-applicable",
-        "detail": "No action-backed form/control contract observed."
+        "status": "implemented",
+        "detail": "Thread UI renders a deduplicated persisted Message boundary selector, title input, and disabled empty-page state."
       },
       "linkState": {
-        "status": "confirmed-defect",
-        "detail": "Successful fork must navigate to the canonical child Thread; no current control is proven."
+        "status": "implemented",
+        "detail": "Successful persisted child read-back redirects to the canonical child Thread route."
       },
       "persistedReadBack": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Create/update/delete must be reloaded from the canonical clean-schema owner."
+          "apps/webapp/test/m4Route.test.ts",
+          "apps/agent/src/memory/conversation-pagination.test.ts"
         ]
       },
       "pagination": {
@@ -18457,12 +18458,10 @@
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/playgroundVisual.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/m4Dashboard.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -18486,8 +18485,8 @@
         "WIN-138"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Retained backend fork operation is not exposed and read back by current thread UI."
+        "status": "verified",
+        "summary": "Repaired: scoped fork control, stable errors, canonical child read-back, and child navigation are implemented."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",

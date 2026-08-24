@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { RatingService } from "./rating.service";
+import { RatingService, RatingTargetNotFoundError } from "./rating.service";
 
 const ids = {
   rating: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -11,6 +11,42 @@ const ids = {
 };
 
 describe("RatingService memory feedback ordering", () => {
+  it("returns an empty persisted lifecycle state for an existing scoped Message", async () => {
+    const prisma = {
+      turn: { findFirst: vi.fn(async () => ({ id: ids.turn, threadId: ids.thread, thread: { endUserId: ids.endUser } })) },
+      messageRating: {
+        findMany: vi.fn(async () => []),
+        count: vi.fn()
+          .mockResolvedValueOnce(0)
+          .mockResolvedValueOnce(0),
+      },
+    };
+    const service = new RatingService(prisma as any);
+
+    await expect(service.getForMessage({
+      organizationId: "organization",
+      projectId: "project",
+      environmentId: "environment",
+      userId: ids.endUser,
+      agentId: ids.agent,
+    } as any, ids.turn)).resolves.toEqual({ userRating: null, aggregate: { ups: 0, downs: 0 } });
+    expect(prisma.turn.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        thread: expect.objectContaining({ agentId: ids.agent }),
+      }),
+    }));
+  });
+
+  it("uses one stable not-found error for missing and cross-scope Messages", async () => {
+    const service = new RatingService({ turn: { findFirst: vi.fn(async () => null) } } as any);
+    await expect(service.getForMessage({
+      organizationId: "organization",
+      projectId: "project",
+      environmentId: "environment",
+      userId: ids.endUser,
+    } as any, ids.turn)).rejects.toBeInstanceOf(RatingTargetNotFoundError);
+  });
+
   it("increments the persisted revision and schedules reconciliation by row identity", async () => {
     const reconcilePersistedRating = vi.fn(async () => ({ status: "applied", updated: 1 }));
     const prisma = {

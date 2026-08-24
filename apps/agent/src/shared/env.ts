@@ -203,6 +203,7 @@ export const AgentEnvSchema = z
 
     // MinIO / attachments (THEME D). All 5 are all-or-nothing.
     MINIO_ENDPOINT: optTrimmedString,
+    MINIO_PUBLIC_ENDPOINT: z.string().url().optional(),
     MINIO_ACCESS_KEY: optTrimmedString,
     MINIO_SECRET_KEY: optTrimmedString,
     MINIO_BUCKET: optTrimmedString,
@@ -255,6 +256,16 @@ export const AgentEnvSchema = z
 
     // Attachments / sizes / limits
     PLATOS_ATTACHMENT_TTL_DAYS: intString("PLATOS_ATTACHMENT_TTL_DAYS", {
+      min: 1,
+    }),
+    PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS: intString("PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS", {
+      min: 60,
+      max: 3600,
+    }),
+    PLATOS_ATTACHMENT_GRACE_DAYS: intString("PLATOS_ATTACHMENT_GRACE_DAYS", {
+      min: 1,
+    }),
+    PLATOS_ATTACHMENT_ORG_QUOTA_BYTES: intString("PLATOS_ATTACHMENT_ORG_QUOTA_BYTES", {
       min: 1,
     }),
     PLATOS_MAX_ATTACHMENT_BYTES: intString("PLATOS_MAX_ATTACHMENT_BYTES", {

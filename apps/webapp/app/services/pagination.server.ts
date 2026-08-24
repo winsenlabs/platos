@@ -39,7 +39,9 @@ export function parseCollectionQuery(url: URL, config: CollectionConfig): Collec
     const value = url.searchParams.get(name)?.trim();
     return value ? [[name, value]] : [];
   }));
-  return { page, pageSize, offset: (page - 1) * pageSize, search, filters };
+  const offset = (page - 1) * pageSize;
+  if (!Number.isSafeInteger(offset)) throw new Response(`${pageParam} is out of range`, { status: 400, statusText: "Malformed pagination" });
+  return { page, pageSize, offset, search, filters };
 }
 
 export function withCollectionQuery(path: string, query: CollectionQuery, config: CollectionConfig) {

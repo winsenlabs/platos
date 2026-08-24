@@ -118,7 +118,14 @@ export function parsePageRequest(
   }
   const page = integer(raw.page, "page", 1);
   const requestedOffset = integer(raw.offset, "offset", 0);
-  const offset = page !== undefined ? (page - 1) * requestedPageSize : requestedOffset ?? 0;
+  const pageOffset = page !== undefined ? (page - 1) * requestedPageSize : undefined;
+  if (pageOffset !== undefined && !Number.isSafeInteger(pageOffset)) {
+    throw new BadRequestException({
+      code: "INVALID_PAGINATION",
+      message: "page is out of range",
+    });
+  }
+  const offset = pageOffset ?? requestedOffset ?? 0;
   const search = raw.search?.trim() || null;
   if (search && search.length > (options.maxSearchLength ?? 200)) {
     throw new BadRequestException({

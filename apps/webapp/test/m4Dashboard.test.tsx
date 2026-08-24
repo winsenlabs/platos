@@ -65,6 +65,7 @@ describe("M4 dashboard rebuild", () => {
         ok: true,
         data: {
           total: 12,
+          pagination: { page: 1, pageSize: 25, total: 12, totalPages: 1, from: 1, to: 12, hasPrevious: false, hasNext: false },
           threads: [{
             id: "thread-1",
             title: "Refund request",
@@ -77,7 +78,7 @@ describe("M4 dashboard rebuild", () => {
     });
     expect(html).toContain("Refund request");
     expect(html).toContain("user-1");
-    expect(html).toContain("Rows 1–1 of 12");
+    expect(html).toContain("1–12 of 12");
   });
 
   it("renders the monitoring-user payload and bounded cursor navigation", () => {
@@ -112,7 +113,7 @@ describe("M4 dashboard rebuild", () => {
     expect(html).toContain("cursor=page_3");
   });
 
-  it("renders bounded previous and next conversation pages", () => {
+  it("renders truthful previous and next conversation pages", () => {
     const html = render({
       surface: "conversations",
       title: "Threads",
@@ -121,19 +122,69 @@ describe("M4 dashboard rebuild", () => {
         ok: true,
         data: {
           total: 40,
+          pagination: { page: 2, pageSize: 10, total: 40, totalPages: 4, from: 11, to: 20, hasPrevious: true, hasNext: true },
           threads: Array.from({ length: 10 }, (_, index) => ({
             id: `thread-${index + 1}`,
             title: `Thread ${index + 1}`,
           })),
         },
       },
-    }, "/?limit=10&offset=10");
+    }, "/?page=2&pageSize=10");
 
-    expect(html).toContain("Rows 11–20 of 40");
-    expect(html).toContain("Previous page");
-    expect(html).toContain("Next page");
-    expect(html).toContain("offset=0");
-    expect(html).toContain("offset=20");
+    expect(html).toContain("11–20 of 40");
+    expect(html).toContain("Previous");
+    expect(html).toContain("Next");
+    expect(html).toContain("page=1");
+    expect(html).toContain("page=3");
+  });
+
+  it("renders paginated Thread messages, artifacts, and a scoped fork control", () => {
+    const html = render({
+      surface: "thread",
+      title: "Thread",
+      description: "Diagnostic",
+      panel: {
+        ok: true,
+        data: {
+          thread: { id: "thread-1", title: "Persisted Thread", turns: [{ sequence: 2 }] },
+          messages: {
+            messages: [{ id: "turn-2", role: "assistant", content: "Persisted answer" }],
+            total: 31,
+            pagination: { page: 2, pageSize: 25, total: 31, totalPages: 2, from: 26, to: 31, hasPrevious: true, hasNext: false },
+          },
+          artifacts: {
+            total: 1,
+            artifacts: [{ id: "artifact-1", artifactKey: "report", title: "Final report", kind: "document", revision: 2, revisionCount: 2, mimeType: "text/markdown", producedByTurnId: "turn-2", content: "# Canonical report" }],
+          },
+        },
+      },
+    }, "/?page=2&pageSize=25");
+
+    expect(html).toContain("26–31 of 31");
+    expect(html).toContain("Final report");
+    expect(html).toContain("Revision 2 of 2");
+    expect(html).toContain("Fork and open child");
+    expect(html).toContain('name="upToMessageId"');
+  });
+
+  it("keeps first, middle, final partial, and empty Thread message pages truthful", () => {
+    const page = (pagination: Record<string, unknown>, messages: unknown[]) => render({
+      surface: "thread",
+      title: "Thread",
+      description: "History",
+      panel: { ok: true, data: { thread: { id: "thread-1", turns: [] }, messages: { messages, total: pagination.total, pagination }, artifacts: { artifacts: [], total: 0 } } },
+    }, `/?page=${pagination.page}&pageSize=25`);
+
+    const first = page({ page: 1, pageSize: 25, total: 60, totalPages: 3, from: 1, to: 25, hasPrevious: false, hasNext: true }, [{ id: "turn-1", role: "user", content: "First" }]);
+    const middle = page({ page: 2, pageSize: 25, total: 60, totalPages: 3, from: 26, to: 50, hasPrevious: true, hasNext: true }, [{ id: "turn-26", role: "user", content: "Middle" }]);
+    const last = page({ page: 3, pageSize: 25, total: 60, totalPages: 3, from: 51, to: 60, hasPrevious: true, hasNext: false }, [{ id: "turn-51", role: "assistant", content: "Final" }]);
+    const empty = page({ page: 1, pageSize: 25, total: 0, totalPages: 0, from: 0, to: 0, hasPrevious: false, hasNext: false }, []);
+
+    expect(first).toContain("1–25 of 60");
+    expect(middle).toContain("26–50 of 60");
+    expect(last).toContain("51–60 of 60");
+    expect(empty).toContain("No results");
+    expect(empty).toContain("Nothing here yet");
   });
 
   it("renders top-level trace messages, spans, and spanTree content", () => {

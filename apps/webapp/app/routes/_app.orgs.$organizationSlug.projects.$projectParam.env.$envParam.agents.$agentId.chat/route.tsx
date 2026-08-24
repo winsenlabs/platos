@@ -2,7 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import type { FormEvent } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Page } from "~/components/platos/DashboardShell";
 import {
   Alert,
@@ -19,7 +19,7 @@ import {
 } from "~/components/platos/ProductPrimitives";
 import { asArray, asNumber, asRecord, asString, stableJson } from "~/components/platos/safe";
 import { requireEnvironmentScope } from "~/services/auth.server";
-import { agentPanel, agentRequest, agentResponse } from "~/services/platosAgent.server";
+import { agentPanel, agentRequest, agentResponse, PlatosAgentApiError } from "~/services/platosAgent.server";
 
 async function scoped(args: LoaderFunctionArgs | ActionFunctionArgs) {
   const organizationSlug = args.params.organizationSlug;
@@ -55,17 +55,68 @@ export async function action(args: ActionFunctionArgs) {
   const { scope } = await scoped(args);
   const agentId = args.params.agentId;
   if (!agentId) throw new Response("Agent not found", { status: 404 });
-  const body = bodyRecord(await args.request.json());
+  const agentScope = { ...scope, agentId };
+  let body: Record<string, unknown>;
+  try {
+    body = bodyRecord(await args.request.json());
+  } catch {
+    return json({ ok: false, error: "Invalid request" }, { status: 400 });
+  }
   const intent = typeof body.intent === "string" ? body.intent : "stream";
 
-  if (intent === "rate") {
-    const rating = body.rating === 1 ? 1 : body.rating === -1 ? -1 : null;
-    if (rating === null) return json({ ok: false, error: "Rating must be +1 or -1" }, { status: 400 });
-    const result = await agentRequest(`/api/v1/agent/messages/${encodeURIComponent(safeMessageId(body.messageId))}/rating`, scope, {
-      method: "POST",
-      body: { rating },
-    });
-    return json({ ok: true, result });
+  if (["rating-get", "rate", "rating-delete"].includes(intent)) {
+    const path = `/api/v1/agent/messages/${encodeURIComponent(safeMessageId(body.messageId))}/rating`;
+    try {
+      if (intent === "rate") {
+        const rating = body.rating === 1 ? 1 : body.rating === -1 ? -1 : null;
+        if (rating === null) return json({ ok: false, error: "Rating must be +1 or -1" }, { status: 400 });
+        await agentRequest(path, agentScope, { method: "POST", body: { rating } });
+      } else if (intent === "rating-delete") {
+        await agentRequest(path, agentScope, { method: "DELETE" });
+      }
+      const ratingState = await agentRequest(path, agentScope);
+      return json({ ok: true, ratingState });
+    } catch (error) {
+      if (error instanceof PlatosAgentApiError) {
+        return json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+      }
+      return json({ ok: false, error: "Rating service is unavailable" }, { status: 503 });
+    }
+  }
+
+  if (intent === "attachment-presign") {
+    const filename = typeof body.filename === "string" ? body.filename.trim() : "";
+    const mimeType = typeof body.mimeType === "string" ? body.mimeType.trim() : "";
+    const bytes = typeof body.bytes === "number" ? body.bytes : Number.NaN;
+    const suppliedThreadId = typeof body.threadId === "string" ? body.threadId.trim() : "";
+    if (!filename || filename.length > 256 || !mimeType || mimeType.length > 128 || !Number.isSafeInteger(bytes) || bytes <= 0) {
+      return json({ ok: false, error: "Attachment metadata is invalid" }, { status: 400 });
+    }
+    try {
+      let scopedThreadId = suppliedThreadId;
+      if (!scopedThreadId) {
+        const created = await agentRequest<Record<string, unknown>>("/api/v1/agent/threads", scope, {
+          method: "POST",
+          body: { agentId },
+        });
+        scopedThreadId = typeof created.id === "string" ? created.id : "";
+        if (!scopedThreadId) throw new PlatosAgentApiError(502, "THREAD_READ_BACK_FAILED", "Thread could not be read back");
+        const persisted = await agentRequest<Record<string, unknown>>(`/api/v1/agent/threads/${encodeURIComponent(scopedThreadId)}`, scope);
+        if (persisted.id !== scopedThreadId || persisted.agentId !== agentId) {
+          throw new PlatosAgentApiError(502, "THREAD_READ_BACK_FAILED", "Thread could not be read back");
+        }
+      }
+      const presign = await agentRequest<Record<string, unknown>>("/api/v1/agent/attachments/presigned", scope, {
+        method: "POST",
+        body: { agentId, threadId: scopedThreadId, filename, mimeType, bytes },
+      });
+      return json({ ok: true, threadId: scopedThreadId, presign });
+    } catch (error) {
+      if (error instanceof PlatosAgentApiError) {
+        return json({ ok: false, error: error.message, code: error.code }, { status: error.status });
+      }
+      return json({ ok: false, error: "Attachment upload is unavailable" }, { status: 503 });
+    }
   }
 
   const message = typeof body.message === "string" ? body.message.trim() : "";
@@ -89,7 +140,7 @@ export async function action(args: ActionFunctionArgs) {
   if (attachmentIds?.length) search.set("attachmentIds", attachmentIds.join(","));
   const upstream = await agentResponse(`/api/v1/agent/agents/${encodeURIComponent(agentId)}/chat/stream?${search}`, scope, { signal: args.request.signal });
   if (!upstream.ok || !upstream.body) {
-    return json({ ok: false, error: await upstream.text().catch(() => "Streaming failed") }, { status: upstream.status || 502 });
+    return json({ ok: false, error: "Streaming failed" }, { status: upstream.status || 502 });
   }
   return new Response(upstream.body, {
     status: upstream.status,
@@ -276,11 +327,15 @@ export default function ChatRoute() {
   const [submittedMessage, setSubmittedMessage] = useState("");
   const [threadId, setThreadId] = useState("");
   const [attachments, setAttachments] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedAttachments, setUploadedAttachments] = useState<Array<{ id: string; name: string; mimeType: string; bytes: number }>>([]);
+  const [uploading, setUploading] = useState(false);
   const [transport, setTransport] = useState<"stream" | "collect">("stream");
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [answer, setAnswer] = useState("");
   const [messageId, setMessageId] = useState<string | null>(null);
   const [rating, setRating] = useState<1 | -1 | null>(null);
+  const [ratingAggregate, setRatingAggregate] = useState({ ups: 0, downs: 0 });
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("assembly");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -293,6 +348,28 @@ export default function ChatRoute() {
   const persistedData = persisted ? eventData(persisted) : {};
   const streamError = [...events].reverse().find((event) => event.type === "error");
 
+  useEffect(() => {
+    if (!messageId) return;
+    let cancelled = false;
+    void fetch(window.location.pathname, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intent: "rating-get", messageId }),
+    }).then(async (response) => {
+      if (!response.ok) throw new Error(await response.text());
+      const payload = asRecord(await response.json());
+      const state = asRecord(payload.ratingState);
+      if (!cancelled) {
+        setRating(state.userRating === 1 ? 1 : state.userRating === -1 ? -1 : null);
+        const aggregate = asRecord(state.aggregate);
+        setRatingAggregate({ ups: asNumber(aggregate.ups), downs: asNumber(aggregate.downs) });
+      }
+    }).catch((caught) => {
+      if (!cancelled) setError(caught instanceof Error ? caught.message : "Rating read-back failed");
+    });
+    return () => { cancelled = true; };
+  }, [messageId]);
+
   async function send(event: FormEvent) {
     event.preventDefault();
     const userMessage = message.trim();
@@ -303,6 +380,7 @@ export default function ChatRoute() {
     setAnswer("");
     setMessageId(null);
     setRating(null);
+    setRatingAggregate({ ups: 0, downs: 0 });
     setSubmittedMessage(userMessage);
     const controller = new AbortController();
     abortRef.current = controller;
@@ -371,15 +449,68 @@ export default function ChatRoute() {
     }
   }
 
-  async function rate(nextRating: 1 | -1) {
+  async function rate(nextRating: 1 | -1 | null) {
     if (!messageId) return;
     const response = await fetch(window.location.pathname, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: "rate", messageId, rating: nextRating }),
+      body: JSON.stringify({ intent: nextRating === null ? "rating-delete" : "rate", messageId, rating: nextRating }),
     });
-    if (!response.ok) setError(await response.text());
-    else setRating(nextRating);
+    if (!response.ok) {
+      setError(await response.text());
+      return;
+    }
+    const payload = asRecord(await response.json());
+    const state = asRecord(payload.ratingState);
+    setRating(state.userRating === 1 ? 1 : state.userRating === -1 ? -1 : null);
+    const aggregate = asRecord(state.aggregate);
+    setRatingAggregate({ ups: asNumber(aggregate.ups), downs: asNumber(aggregate.downs) });
+  }
+
+  async function uploadAttachment() {
+    if (!selectedFile || uploading) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const response = await fetch(window.location.pathname, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intent: "attachment-presign",
+          threadId: threadId || undefined,
+          filename: selectedFile.name,
+          mimeType: selectedFile.type || "application/octet-stream",
+          bytes: selectedFile.size,
+        }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const payload = asRecord(await response.json());
+      const presign = asRecord(payload.presign);
+      const attachmentId = asString(presign.attachmentId);
+      const uploadUrl = asString(presign.uploadUrl);
+      const headers = asRecord(presign.headers);
+      if (!attachmentId || !uploadUrl) throw new Error("Attachment presign response is incomplete");
+      const upload = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": asString(headers["Content-Type"], selectedFile.type || "application/octet-stream") },
+        body: selectedFile,
+      });
+      if (!upload.ok) throw new Error("Attachment upload failed");
+      const attachment = asRecord(presign.attachment);
+      setThreadId(asString(payload.threadId, threadId));
+      setAttachments((current) => [...current.split(",").map((id) => id.trim()).filter(Boolean), attachmentId].join(","));
+      setUploadedAttachments((current) => [...current, {
+        id: attachmentId,
+        name: asString(attachment.originalName, selectedFile.name),
+        mimeType: asString(attachment.mimeType, selectedFile.type || "application/octet-stream"),
+        bytes: asNumber(attachment.bytes, selectedFile.size),
+      }]);
+      setSelectedFile(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Attachment upload failed");
+    } finally {
+      setUploading(false);
+    }
   }
 
   function resetThread() {
@@ -388,10 +519,13 @@ export default function ChatRoute() {
     setSubmittedMessage("");
     setThreadId("");
     setAttachments("");
+    setSelectedFile(null);
+    setUploadedAttachments([]);
     setEvents([]);
     setAnswer("");
     setMessageId(null);
     setRating(null);
+    setRatingAggregate({ ups: 0, downs: 0 });
     setError(null);
   }
 
@@ -456,6 +590,8 @@ export default function ChatRoute() {
                   {asNumber(persistedData.totalTokens) > 0 && <span>{asNumber(persistedData.totalTokens).toLocaleString()} tokens</span>}
                   <button type="button" onClick={() => rate(1)} className={`rounded border px-2 py-1 ${rating === 1 ? "border-[var(--good)] text-[var(--good)]" : "border-grid-bright"}`}>Useful</button>
                   <button type="button" onClick={() => rate(-1)} className={`rounded border px-2 py-1 ${rating === -1 ? "border-[var(--danger)] text-[var(--danger)]" : "border-grid-bright"}`}>Not useful</button>
+                  {rating !== null && <button type="button" onClick={() => rate(null)} className="rounded border border-grid-bright px-2 py-1">Remove rating</button>}
+                  <span>{ratingAggregate.ups} useful · {ratingAggregate.downs} not useful</span>
                 </div>
               )}
             </>}
@@ -510,13 +646,21 @@ export default function ChatRoute() {
             </div>
           </Panel>
           <Panel>
-            <SectionHeader title="Thread and attachments" description="Optional canonical IDs are forwarded unchanged after validation." />
+            <SectionHeader title="Thread and attachments" description="Files upload directly through a short-lived scoped PUT URL; only the persisted attachment ID is retained." />
             <label className="block text-xs text-text-dimmed">
               Existing Thread ID
               <input value={threadId} onChange={(event) => setThreadId(event.target.value)} className="mt-1 w-full rounded-md border border-grid-bright bg-background-bright px-3 py-2 font-mono text-xs text-text-bright" />
             </label>
             <label className="mt-3 block text-xs text-text-dimmed">
-              Attachment IDs, comma-separated
+              Upload attachment
+              <input type="file" onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} className="mt-1 block w-full text-xs text-text-bright" />
+            </label>
+            <Button type="button" onClick={uploadAttachment} disabled={!selectedFile || uploading} className="mt-2 w-full">
+              {uploading ? "Uploading…" : "Upload selected file"}
+            </Button>
+            {uploadedAttachments.length > 0 && <ul className="mt-3 space-y-2 text-xs text-text-dimmed">{uploadedAttachments.map((attachment) => <li key={attachment.id} className="rounded border border-grid-bright p-2"><span className="block text-text-bright">{attachment.name}</span><span>{attachment.mimeType} · {attachment.bytes.toLocaleString()} bytes</span><code className="mt-1 block break-all">{attachment.id}</code></li>)}</ul>}
+            <label className="mt-3 block text-xs text-text-dimmed">
+              Attachment IDs, comma-separated (advanced)
               <input value={attachments} onChange={(event) => setAttachments(event.target.value)} className="mt-1 w-full rounded-md border border-grid-bright bg-background-bright px-3 py-2 font-mono text-xs text-text-bright" />
             </label>
           </Panel>

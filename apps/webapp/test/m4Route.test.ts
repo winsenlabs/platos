@@ -1,18 +1,22 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireEnvironmentScope, agentPanel } = vi.hoisted(() => ({
+const { requireEnvironmentScope, agentPanel, agentRequest, PlatosAgentApiError } = vi.hoisted(() => ({
   requireEnvironmentScope: vi.fn(),
   agentPanel: vi.fn(),
+  agentRequest: vi.fn(),
+  PlatosAgentApiError: class extends Error {
+    constructor(public status: number, public code: string, message: string) { super(message); }
+  },
 }));
 
 vi.mock("../app/services/auth.server", () => ({ requireEnvironmentScope }));
-vi.mock("../app/services/platosAgent.server", () => ({ agentPanel }));
+vi.mock("../app/services/platosAgent.server", () => ({ agentPanel, agentRequest, PlatosAgentApiError }));
 
 import { loadSurface } from "../app/services/m4Route.server";
 import { loader as loadMonitoringUsers } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-monitoring.users._index/route";
 import { loader as loadConversations } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.conversations._index/route";
-import { loader as loadThread } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route";
+import { action as forkThread, loader as loadThread } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId/route";
 import { loader as loadTrace } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads.$threadId.trace/route";
 import { loader as loadMemories } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route";
 import { loader as loadMemoryGraph } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.graph/route";
@@ -118,26 +122,19 @@ describe("M4 route HTTP contracts", () => {
     );
   });
 
-  it("bounds conversation limit and offset before calling the Agent", async () => {
+  it("derives truthful conversation limit and offset from page controls", async () => {
     agentPanel.mockResolvedValue({ ok: true, data: { threads: [] } });
 
-    await loadConversations(args("https://dashboard.example/threads?limit=1000&offset=-30"));
+    await loadConversations(args("https://dashboard.example/threads?page=2&pageSize=100"));
 
     expect(agentPanel).toHaveBeenCalledWith(
-      "/api/v1/agent/threads?agentId=agent-1&allUsers=true&limit=100&offset=0",
+      "/api/v1/agent/threads?agentId=agent-1&limit=100&offset=100",
       expect.anything(),
     );
 
-    vi.clearAllMocks();
-    requireEnvironmentScope.mockResolvedValue({ scope: {} });
-    agentPanel.mockResolvedValue({ ok: true, data: { threads: [] } });
-
-    await loadConversations(args("https://dashboard.example/threads?limit=5&offset=999999"));
-
-    expect(agentPanel).toHaveBeenCalledWith(
-      "/api/v1/agent/threads?agentId=agent-1&allUsers=true&limit=10&offset=100000",
-      expect.anything(),
-    );
+    await expect(loadConversations(args("https://dashboard.example/threads?page=bad"))).rejects.toMatchObject({ status: 400 });
+    await expect(loadConversations(args("https://dashboard.example/threads?pageSize=101"))).rejects.toMatchObject({ status: 400 });
+    await expect(loadConversations(args("https://dashboard.example/threads?page=9007199254740991&pageSize=100"))).rejects.toMatchObject({ status: 400 });
   });
 
   it("preserves a canonical Thread 404 without fetching subordinate panels", async () => {
@@ -150,13 +147,13 @@ describe("M4 route HTTP contracts", () => {
 
     expect(agentPanel).toHaveBeenCalledTimes(1);
     expect(agentPanel).toHaveBeenCalledWith(
-      "/api/v1/agent/threads/thread-1?allUsers=true",
+      "/api/v1/agent/threads/thread-1",
       expect.anything(),
     );
   });
 
-  it("keeps Thread message, trace, and audit failures subordinate", async () => {
-    agentPanel.mockImplementation(async (path: string) => path.includes("?allUsers=true") && !path.includes("/messages")
+  it("keeps Thread message, artifact, trace, and audit failures subordinate", async () => {
+    agentPanel.mockImplementation(async (path: string) => path === "/api/v1/agent/threads/thread-1"
       ? { ok: true, data: { id: "thread-1", turns: [] } }
       : { ok: false, error: { status: 503, code: "AGENT_UNAVAILABLE", message: path } });
 
@@ -166,7 +163,40 @@ describe("M4 route HTTP contracts", () => {
     expect(response.status).toBe(200);
     expect(payload.panel.ok).toBe(true);
     expect(payload.panel.data.thread).toEqual({ id: "thread-1", turns: [] });
-    expect(payload.panel.data.unavailable).toHaveLength(3);
+    expect(payload.panel.data.unavailable).toHaveLength(4);
+  });
+
+  it("pages Thread messages without allUsers and loads canonical artifacts", async () => {
+    agentPanel.mockResolvedValue({ ok: true, data: { id: "thread-1" } });
+
+    await loadThread(args("https://dashboard.example/threads/thread-1?page=3&pageSize=10"));
+
+    expect(agentPanel).toHaveBeenNthCalledWith(1, "/api/v1/agent/threads/thread-1", expect.anything());
+    expect(agentPanel).toHaveBeenNthCalledWith(2, "/api/v1/agent/threads/thread-1/messages?limit=10&offset=20", expect.anything());
+    expect(agentPanel).toHaveBeenNthCalledWith(3, "/api/v1/agent/threads/thread-1/artifacts?limit=100", expect.anything());
+    expect(agentPanel.mock.calls.flat().join(" ")).not.toContain("allUsers=true");
+  });
+
+  it("reads back a persisted fork and redirects to the canonical child Thread", async () => {
+    agentRequest
+      .mockResolvedValueOnce({ id: "thread-child", parentThreadId: "thread-1" })
+      .mockResolvedValueOnce({ id: "thread-child", parentThreadId: "thread-1" });
+    const requestArgs = args("https://dashboard.example/threads/thread-1");
+    requestArgs.request = new Request(requestArgs.request.url, {
+      method: "POST",
+      body: new URLSearchParams({ intent: "fork", upToMessageId: "turn-2", title: "Child" }),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+
+    const response = await forkThread(requestArgs as any);
+
+    expect(agentRequest).toHaveBeenNthCalledWith(1, "/api/v1/agent/threads/thread-1/fork", expect.anything(), {
+      method: "POST",
+      body: { upToMessageId: "turn-2", title: "Child" },
+    });
+    expect(agentRequest).toHaveBeenNthCalledWith(2, "/api/v1/agent/threads/thread-child", expect.anything());
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe("/threads/thread-child");
   });
 
   it("preserves a canonical Trace 404 before fetching tool audit", async () => {

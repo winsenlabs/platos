@@ -72,6 +72,30 @@ export class ConversationRevisionNotSupportedError extends Error {
   }
 }
 
+export class ThreadNotFoundError extends Error {
+  readonly code = "THREAD_NOT_FOUND";
+  constructor() {
+    super("Thread not found");
+    this.name = "ThreadNotFoundError";
+  }
+}
+
+export class ThreadMessageNotFoundError extends Error {
+  readonly code = "MESSAGE_NOT_FOUND";
+  constructor() {
+    super("Message not found");
+    this.name = "ThreadMessageNotFoundError";
+  }
+}
+
+export class ThreadForkLimitError extends Error {
+  readonly code = "THREAD_FORK_LIMIT";
+  constructor() {
+    super("This Thread already has the maximum number of active forks");
+    this.name = "ThreadForkLimitError";
+  }
+}
+
 export function normalizeTags(input: unknown): string[] {
   if (!Array.isArray(input) || input.some((value) => typeof value !== "string")) {
     throw new Error("tags must be an array of strings");
@@ -453,7 +477,7 @@ export class ConversationService {
       this.prisma.thread.findMany({
         where,
         include: this.threadInclude(),
-        orderBy: [{ pinnedAt: { sort: "desc", nulls: "last" } }, { updatedAt: "desc" }],
+        orderBy: [{ pinnedAt: { sort: "desc", nulls: "last" } }, { updatedAt: "desc" }, { id: "desc" }],
         take: options.limit ?? 20,
         skip: options.offset ?? 0,
       }),
@@ -489,9 +513,9 @@ export class ConversationService {
     return { threadId, title, updatedAt: row.updatedAt.toISOString() };
   }
 
-  private async findScopedThread(threadId: string, scope: RequestScope): Promise<Thread> {
-    const thread = await this.getThread(threadId, scope);
-    if (!thread) throw new Error("Thread not found or access denied");
+  private async findScopedThread(threadId: string, scope: RequestScope, options: { allUsers?: boolean } = {}): Promise<Thread> {
+    const thread = await this.getThread(threadId, scope, options);
+    if (!thread) throw new ThreadNotFoundError();
     return thread;
   }
 
@@ -1049,7 +1073,7 @@ export class ConversationService {
 
   async getMessages(threadId: string, scope: RequestScope, options: { limit?: number; offset?: number; allUsers?: boolean } = {}) {
     const thread = await this.getThread(threadId, scope, { allUsers: options.allUsers });
-    if (!thread) return { messages: [], total: 0 };
+    if (!thread) throw new ThreadNotFoundError();
     const sides = (await this.prisma.turn.findMany({
       where: { threadId },
       select: { id: true, status: true },
@@ -1136,12 +1160,12 @@ export class ConversationService {
     return this.createThread(scope, agentId, undefined, opts);
   }
 
-  async forkThread(threadId: string, scope: RequestScope, options: { upToMessageId: string; title?: string }): Promise<Thread> {
-    const parent = await this.findScopedThread(threadId, scope);
+  async forkThread(threadId: string, scope: RequestScope, options: { upToMessageId: string; title?: string; allUsers?: boolean }): Promise<Thread> {
+    const parent = await this.findScopedThread(threadId, scope, { allUsers: options.allUsers });
     const upTo = await this.prisma.turn.findFirst({ where: { id: options.upToMessageId, threadId }, select: { sequence: true } });
-    if (!upTo) throw new Error(`Turn ${options.upToMessageId} not found in thread ${threadId}`);
+    if (!upTo) throw new ThreadMessageNotFoundError();
     const forkCount = await this.prisma.thread.count({ where: { parentThreadId: threadId, archivedAt: null, ...this.environmentWhere(scope) } });
-    if (forkCount >= 10) throw new Error(`Thread ${threadId} already has ${forkCount} forks (max 10). Archive an existing fork first.`);
+    if (forkCount >= 10) throw new ThreadForkLimitError();
     const history = await this.prisma.turn.findMany({ where: { threadId, sequence: { lte: upTo.sequence } }, include: { steps: { include: { toolCalls: true } } }, orderBy: { sequence: "asc" } });
     const row = await this.prisma.$transaction(async (tx) => {
       const created = await tx.thread.create({ data: {
@@ -1203,16 +1227,39 @@ export class ConversationService {
     throw new ConversationRevisionNotSupportedError();
   }
 
-  async listThreadArtifacts(threadId: string, scope: RequestScope, options?: { limit?: number }) {
-    await this.findScopedThread(threadId, scope);
-    const rows = await this.prisma.artifact.findMany({ where: { threadId, environmentId: scope.environmentId }, orderBy: [{ artifactKey: "asc" }, { revision: "desc" }] });
+  async listThreadArtifactsPage(threadId: string, scope: RequestScope, options?: { limit?: number; allUsers?: boolean }) {
+    await this.findScopedThread(threadId, scope, { allUsers: options?.allUsers });
+    const rows = await this.prisma.artifact.findMany({
+      where: { threadId, ...this.environmentWhere(scope) },
+      select: {
+        id: true,
+        artifactKey: true,
+        revision: true,
+        kind: true,
+        title: true,
+        mimeType: true,
+        content: true,
+        metadata: true,
+        producedByTurnId: true,
+        createdAt: true,
+      },
+      orderBy: [{ artifactKey: "asc" }, { revision: "desc" }],
+    });
     const byKey = new Map<string, any>();
     for (const row of rows) {
       const current = byKey.get(row.artifactKey);
       if (current) current.revisionCount += 1;
       else byKey.set(row.artifactKey, { ...row, language: objectValue(row.metadata).language ?? null, revisionCount: 1 });
     }
-    return Array.from(byKey.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, Math.max(1, Math.min(options?.limit ?? 100, 500)));
+    const total = byKey.size;
+    const artifacts = Array.from(byKey.values())
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id))
+      .slice(0, Math.max(1, Math.min(options?.limit ?? 100, 500)));
+    return { artifacts, total };
+  }
+
+  async listThreadArtifacts(threadId: string, scope: RequestScope, options?: { limit?: number; allUsers?: boolean }) {
+    return (await this.listThreadArtifactsPage(threadId, scope, options)).artifacts;
   }
 
   async reapChatSessions(): Promise<{ scanned: number; closed: number; skippedActive: number; errors: number }> {

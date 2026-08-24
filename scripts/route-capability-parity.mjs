@@ -244,24 +244,24 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
     statuses: { "destructiveConfirmation.status": "verified", "tenantScope.status": "enforced", "actionState.status": "implemented", "defect.status": "verified" },
   },
   "attachment-presign-upload": {
-    fragments: { currentBehavior: ["resolves attachmentIds", "no canonical presign/upload control"], secretExposure: ["presigned", "object-store"] },
-    statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "defect.status": "confirmed-defect" },
+    fragments: { currentBehavior: ["scoped Thread", "discards the presigned URL", "attachmentIds"], secretExposure: ["presigned", "object-store"] },
+    statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "actionState.status": "implemented", "formState.status": "implemented", "persistedReadBack.status": "verified", "defect.status": "verified" },
   },
   "thread-artifacts": {
-    fragments: { identifiers: ["threadId"], totals: ["bounded page"] },
-    statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "loaderState.status": "confirmed-defect", "defect.status": "confirmed-defect" },
+    fragments: { identifiers: ["threadId"], totals: ["distinct artifact keys"] },
+    statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "loaderState.status": "implemented", "persistedReadBack.status": "verified", "totals.status": "verified", "defect.status": "verified" },
   },
   "message-rating-lifecycle": {
-    fragments: { http: ["rating: 1 | -1", "Rating must be +1 or -1", "Invalid message id"] },
-    statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "defect.status": "confirmed-defect" },
+    fragments: { http: ["rating: 1 | -1", "Rating must be +1 or -1", "Invalid message id"], currentBehavior: ["GET read-back", "DELETE"] },
+    statuses: { "endUserScope.status": "enforced", "agentScope.status": "enforced", "formState.status": "implemented", "persistedReadBack.status": "verified", "defect.status": "verified" },
   },
   "thread-fork": {
     fragments: { identifiers: ["threadId", "messageId"], linkState: ["child Thread"] },
-    statuses: { "persistedReadBack.status": "required-not-verified", "defect.status": "confirmed-defect" },
+    statuses: { "actionState.status": "implemented", "formState.status": "implemented", "linkState.status": "implemented", "persistedReadBack.status": "verified", "defect.status": "verified" },
   },
   "message-pagination": {
-    fragments: { currentBehavior: ["limit=100&allUsers=true"], pagination: ["Hard-coded limit=100", "No total"] },
-    statuses: { "pagination.status": "confirmed-defect", "totals.status": "confirmed-defect", "persistedReadBack.status": "confirmed-defect" },
+    fragments: { currentBehavior: ["page/pageSize", "without hard-coded allUsers"], pagination: ["Default 25", "up to 100", "malformed values fail"], totals: ["complete projected Message total"] },
+    statuses: { "pagination.status": "implemented", "totals.status": "verified", "persistedReadBack.status": "verified", "defect.status": "verified" },
   },
   "access-key-one-time-reveal": {
     fragments: { http: ["attemptId", "keyHash", "keyPrefix", "Raw key material is not accepted"], secretExposure: ["private pending material", "persistence success", "mismatch", "cancellation"] },

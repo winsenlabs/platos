@@ -27,6 +27,14 @@ export interface SatisfactionRow {
   score: number; // 0..1
 }
 
+export class RatingTargetNotFoundError extends Error {
+  readonly code = "MESSAGE_NOT_FOUND";
+  constructor() {
+    super("Message not found");
+    this.name = "RatingTargetNotFoundError";
+  }
+}
+
 /**
  * Theme J.1 + J.2 — message rating persistence + aggregated satisfaction.
  *
@@ -55,6 +63,60 @@ export class RatingService {
     this.prisma = prisma;
   }
 
+  private threadScopeWhere(scope: RequestScope) {
+    const verifiedClaims = Array.isArray(scope.userIdentities)
+      ? scope.userIdentities
+          .filter((claim) => claim?.verified === true && typeof claim.channel === "string" && typeof claim.handle === "string")
+          .slice(0, 8)
+          .map((claim) => ({
+            organizationId: scope.organizationId,
+            issuer: `channel:${claim.channel.trim().toLowerCase()}`,
+            channel: claim.channel.trim().toLowerCase(),
+            subject: claim.handle.trim().slice(0, 256),
+            disabledAt: null,
+            verifiedAt: { not: null as Date | null },
+          }))
+      : [];
+    return {
+      environmentId: scope.environmentId,
+      environment: {
+        project: {
+          id: scope.projectId,
+          organizationId: scope.organizationId,
+        },
+      },
+      ...(scope.agentId ? { agentId: scope.agentId } : {}),
+      ...(scope.principal === "operator"
+        ? {}
+        : {
+            endUser: {
+              identities: {
+                some: {
+                  OR: [
+                    {
+                      organizationId: scope.organizationId,
+                      issuer: "platos:external",
+                      channel: "external",
+                      subject: scope.userId,
+                      disabledAt: null,
+                      verifiedAt: { not: null as Date | null },
+                    },
+                    {
+                      organizationId: scope.organizationId,
+                      issuer: "platos",
+                      channel: "session",
+                      subject: scope.userId,
+                      disabledAt: null,
+                    },
+                    ...verifiedClaims,
+                  ],
+                },
+              },
+            },
+          }),
+    };
+  }
+
   /**
    * Upsert a thumbs vote for (messageId, userId).
    *
@@ -76,15 +138,7 @@ export class RatingService {
     const turn = await this.prisma.turn.findFirst({
       where: {
         id: input.messageId,
-        thread: {
-          environmentId: scope.environmentId,
-          environment: {
-            project: {
-              id: scope.projectId,
-              organizationId: scope.organizationId,
-            },
-          },
-        },
+        thread: this.threadScopeWhere(scope),
       },
       select: {
         id: true,
@@ -106,7 +160,7 @@ export class RatingService {
         },
       },
     });
-    if (!turn) throw new Error("Turn not found");
+    if (!turn) throw new RatingTargetNotFoundError();
 
     const agentVersionId = turn.thread.agent.bindings[0]?.activeAgentVersionId ?? null;
 
@@ -174,19 +228,11 @@ export class RatingService {
         const turn = await tx.turn.findFirst({
           where: {
             id: messageId,
-            thread: {
-              environmentId: scope.environmentId,
-              environment: {
-                project: {
-                  id: scope.projectId,
-                  organizationId: scope.organizationId,
-                },
-              },
-            },
+            thread: this.threadScopeWhere(scope),
           },
           select: { id: true, thread: { select: { endUserId: true } } },
         });
-        if (!turn) return false;
+        if (!turn) throw new RatingTargetNotFoundError();
 
         const result = await tx.messageRating.deleteMany({
           where: {
@@ -223,15 +269,7 @@ export class RatingService {
     const turn = await this.prisma.turn.findFirst({
       where: {
         id: messageId,
-        thread: {
-          environmentId: scope.environmentId,
-          environment: {
-            project: {
-              id: scope.projectId,
-              organizationId: scope.organizationId,
-            },
-          },
-        },
+        thread: this.threadScopeWhere(scope),
       },
       select: {
         id: true,
@@ -239,7 +277,7 @@ export class RatingService {
         thread: { select: { endUserId: true } },
       },
     });
-    if (!turn) return { userRating: null, aggregate: { ups: 0, downs: 0 } };
+    if (!turn) throw new RatingTargetNotFoundError();
 
     const where: Record<string, unknown> = {
       turnId: messageId,

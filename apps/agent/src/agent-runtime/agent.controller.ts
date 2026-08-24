@@ -26,6 +26,9 @@ import {
   CONVERSATION_REVISION_NOT_SUPPORTED,
   ConversationRevisionNotSupportedError,
   ConversationService,
+  ThreadForkLimitError,
+  ThreadMessageNotFoundError,
+  ThreadNotFoundError,
 } from "../memory/conversation.service";
 import { AgentTaskService } from "./agent-task.service";
 import { TurnDispatchService } from "./turn-dispatch.service";
@@ -77,7 +80,7 @@ import { SafetyEventService } from "../monitoring/safety-event.service";
 import { GovernanceService } from "../monitoring/governance.service";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
-import { RatingService } from "../evals/rating.service";
+import { RatingService, RatingTargetNotFoundError } from "../evals/rating.service";
 import {
   CriterionService,
   type CreateCriterionDto,
@@ -391,27 +394,38 @@ export class AgentController {
     @Query("archived") archived?: string,
     // Operator view: skip userId filter, return all threads in scope.
     @Query("allUsers") allUsers?: string,
+    @Query("page") page?: string,
   ) {
     const scope = this.getScope(req);
+    const request = parsePageRequest({ page, limit, offset }, { defaultPageSize: 25, maxPageSize: 100 });
     const pinnedFlag = pinned === "true" || pinned === "1" ? true : undefined;
     let archivedFlag: boolean | "only" | undefined;
     if (archived === "only") archivedFlag = "only";
     else if (archived === "true" || archived === "1") archivedFlag = true;
     else archivedFlag = undefined; // default — hide archived
-    return this.conversationService.listThreads(scope, {
+    const result = await this.conversationService.listThreads(scope, {
       agentId,
       status,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      limit: request.pageSize,
+      offset: request.offset,
       tag,
       pinned: pinnedFlag,
       archived: archivedFlag,
-      // SECURITY (audit authz-2026-07-22 F1/F6) — `allUsers` drops the per-user
-      // ownership filter; it is an operator-only capability. Honor the flag ONLY
-      // for operator principals (mirror connections.gateway.ts:1073). A
-      // non-operator passing allUsers is scoped to their own userId, not 403'd.
-      allUsers: (allUsers === "true" || allUsers === "1") && scope.principal === "operator",
+      // Operators see the Environment-wide ledger by default and may opt back
+      // into their own EndUser projection with allUsers=false. End users can
+      // never bypass canonical ownership.
+      allUsers: scope.principal === "operator" && allUsers !== "false" && allUsers !== "0",
     });
+    const pagination = pageMetadata(result.total, request);
+    return {
+      ...result,
+      items: result.threads,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      filters: { agentId: agentId ?? null, status: status ?? null, tag: tag ?? null, pinned: pinnedFlag ?? null, archived: archivedFlag ?? null },
+    };
   }
 
   @Get("threads/:threadId")
@@ -426,7 +440,7 @@ export class AgentController {
     const thread = await this.conversationService.getThread(threadId, scope, {
       // SECURITY (audit authz-2026-07-22 F1/F6) — operator-only cross-user view;
       // non-operators fall back to their own-thread ownership check.
-      allUsers: (allUsers === "true" || allUsers === "1") && scope.principal === "operator",
+      allUsers: scope.principal === "operator" && allUsers !== "false" && allUsers !== "0",
     });
     if (!thread) throw new NotFoundException("Thread not found");
     return thread;
@@ -628,15 +642,34 @@ export class AgentController {
     @Query("offset") offset?: string,
     // Operator view: read messages of any in-scope thread (see getThread).
     @Query("allUsers") allUsers?: string,
+    @Query("page") page?: string,
   ) {
     const scope = this.getScope(req);
-    return this.conversationService.getMessages(threadId, scope, {
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
-      // SECURITY (audit authz-2026-07-22 F1/F6) — operator-only cross-user view;
-      // non-operators fall back to their own-thread ownership check.
-      allUsers: (allUsers === "true" || allUsers === "1") && scope.principal === "operator",
-    });
+    const request = parsePageRequest({ page, limit, offset }, { defaultPageSize: 25, maxPageSize: 100 });
+    try {
+      const result = await this.conversationService.getMessages(threadId, scope, {
+        limit: request.pageSize,
+        offset: request.offset,
+        // Operators see all in-scope EndUsers by default. Non-operators always
+        // retain the canonical EndUser ownership predicate.
+        allUsers: scope.principal === "operator" && allUsers !== "false" && allUsers !== "0",
+      });
+      const pagination = pageMetadata(result.total, request);
+      return {
+        ...result,
+        items: result.messages,
+        limit: request.pageSize,
+        offset: request.offset,
+        hasMore: pagination.hasNext,
+        pagination,
+        filters: {},
+      };
+    } catch (error) {
+      if (error instanceof ThreadNotFoundError) {
+        throw new NotFoundException({ code: error.code, message: error.message });
+      }
+      throw error;
+    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -692,10 +725,17 @@ export class AgentController {
       const fork = await this.conversationService.forkThread(threadId, scope, {
         upToMessageId: body.upToMessageId,
         title: body.title,
+        allUsers: scope.principal === "operator",
       });
       return fork;
     } catch (err: any) {
-      throw new BadRequestException(err?.message || "Fork failed");
+      if (err instanceof ThreadNotFoundError || err instanceof ThreadMessageNotFoundError) {
+        throw new NotFoundException({ code: err.code, message: err.message });
+      }
+      if (err instanceof ThreadForkLimitError) {
+        throw new HttpException({ code: err.code, message: err.message }, HttpStatus.CONFLICT);
+      }
+      throw new ServiceUnavailableException({ code: "THREAD_FORK_UNAVAILABLE", message: "Thread fork is unavailable" });
     }
   }
 
@@ -779,15 +819,19 @@ export class AgentController {
     @Query("limit") limit?: string,
   ) {
     const scope = this.getScope(req);
+    const artifactLimit = parsePositiveIntegerFilter(limit, "limit", { defaultValue: 100, maximum: 500 });
     try {
-      const artifacts = await this.conversationService.listThreadArtifacts(
+      const result = await this.conversationService.listThreadArtifactsPage(
         threadId,
         scope,
-        { limit: limit ? parseInt(limit, 10) : undefined },
+        { limit: artifactLimit, allUsers: scope.principal === "operator" },
       );
-      return { artifacts };
+      return result;
     } catch (err: any) {
-      throw new NotFoundException(err?.message || "Failed to list artifacts");
+      if (err instanceof ThreadNotFoundError) {
+        throw new NotFoundException({ code: err.code, message: err.message });
+      }
+      throw new ServiceUnavailableException({ code: "ARTIFACTS_UNAVAILABLE", message: "Thread artifacts are unavailable" });
     }
   }
 
@@ -5886,6 +5930,9 @@ Write the summary now:`;
       });
       return { rating: row };
     } catch (err: any) {
+      if (err instanceof RatingTargetNotFoundError) {
+        throw new NotFoundException({ code: err.code, message: err.message });
+      }
       throw new BadRequestException(err?.message || "Rating failed");
     }
   }
@@ -5894,8 +5941,15 @@ Write the summary now:`;
   @Delete("messages/:messageId/rating")
   async unrateMessage(@Req() req: Request, @Param("messageId") messageId: string) {
     const scope = this.getScope(req);
-    const removed = await this.ratingService.remove(scope, messageId);
-    return { removed };
+    try {
+      const removed = await this.ratingService.remove(scope, messageId);
+      return { removed };
+    } catch (error) {
+      if (error instanceof RatingTargetNotFoundError) {
+        throw new NotFoundException({ code: error.code, message: error.message });
+      }
+      throw error;
+    }
   }
 
   /** Theme J.1 — fetch the current user's vote + aggregate counts. */
@@ -5905,7 +5959,14 @@ Write the summary now:`;
     @Param("messageId") messageId: string,
   ) {
     const scope = this.getScope(req);
-    return this.ratingService.getForMessage(scope, messageId);
+    try {
+      return await this.ratingService.getForMessage(scope, messageId);
+    } catch (error) {
+      if (error instanceof RatingTargetNotFoundError) {
+        throw new NotFoundException({ code: error.code, message: error.message });
+      }
+      throw error;
+    }
   }
 
   /**

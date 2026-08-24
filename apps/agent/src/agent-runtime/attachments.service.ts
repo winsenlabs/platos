@@ -1,6 +1,7 @@
 import { Injectable, Inject, Logger } from "@nestjs/common";
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { randomUUID } from "node:crypto";
 import type { FilePart, ImagePart } from "ai";
 import {
   type ControlDatabaseClient,
@@ -26,6 +27,39 @@ export interface ResolvedAttachment {
   data: Uint8Array;
   originalName: string | null;
 }
+
+export type AttachmentKind = "image" | "audio" | "video" | "document";
+
+export class AttachmentUploadError extends Error {
+  constructor(
+    readonly code:
+      | "ATTACHMENT_INVALID"
+      | "ATTACHMENT_TOO_LARGE"
+      | "ATTACHMENT_QUOTA_EXCEEDED"
+      | "ATTACHMENT_STORAGE_UNAVAILABLE",
+    message: string,
+  ) {
+    super(message);
+    this.name = "AttachmentUploadError";
+  }
+}
+
+export type PresignedAttachmentUpload = {
+  attachmentId: string;
+  uploadUrl: string;
+  method: "PUT";
+  headers: { "Content-Type": string };
+  expiresAt: string;
+  maxBytes: number;
+  attachment: {
+    id: string;
+    kind: AttachmentKind;
+    mimeType: string;
+    bytes: number;
+    originalName: string | null;
+    createdAt: string;
+  };
+};
 
 type AttachmentAccessScope = Pick<
   RequestScope,
@@ -82,6 +116,7 @@ export class AttachmentSizeExceeded extends Error {
 export class AttachmentsService {
   private readonly logger = new Logger(AttachmentsService.name);
   private readonly client: S3Client;
+  private readonly publicClient: S3Client | null;
   private readonly bucket: string;
   private readonly ttlDays: number;
   // EOBD.37 — defaults: 20MB per-attachment / 80MB per-turn total.
@@ -135,11 +170,147 @@ export class AttachmentsService {
       responseChecksumValidation: "WHEN_REQUIRED",
       credentials: { accessKeyId, secretAccessKey },
     });
+    this.publicClient = env.MINIO_PUBLIC_ENDPOINT
+      ? new S3Client({
+          endpoint: env.MINIO_PUBLIC_ENDPOINT,
+          region,
+          forcePathStyle: true,
+          requestChecksumCalculation: "WHEN_REQUIRED",
+          responseChecksumValidation: "WHEN_REQUIRED",
+          credentials: { accessKeyId, secretAccessKey },
+        })
+      : null;
     // PIFSP-15: boot-time log so operators can confirm internal vs public endpoint.
     // If MINIO_ENDPOINT is accidentally set to the https public URL the agent's
     // S3Client will fail on every attachment fetch with a TLS/path error.
     // Expected value: "http://minio:9000" (internal docker network).
     this.logger.log(`[attachments] S3 endpoint=${endpoint} bucket=${this.bucket}`);
+  }
+
+  async createPresignedUpload(input: {
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
+    endUserId: string;
+    filename?: string;
+    mimeType: string;
+    bytes: number;
+    kind?: AttachmentKind;
+  }): Promise<PresignedAttachmentUpload> {
+    const mimeType = input.mimeType.trim().toLowerCase();
+    const originalName = input.filename?.trim() || null;
+    const maxBytes = env.PLATOS_MAX_ATTACHMENT_BYTES ?? 20 * 1024 * 1024;
+    if (
+      !/^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/i.test(mimeType)
+      || mimeType.length > 128
+      || (originalName?.length ?? 0) > 256
+      || !Number.isSafeInteger(input.bytes)
+      || input.bytes <= 0
+    ) {
+      throw new AttachmentUploadError("ATTACHMENT_INVALID", "Attachment metadata is invalid");
+    }
+    if (input.bytes > maxBytes) {
+      throw new AttachmentUploadError("ATTACHMENT_TOO_LARGE", `Attachment must be at most ${maxBytes} bytes`);
+    }
+    if (!this.publicClient) {
+      throw new AttachmentUploadError("ATTACHMENT_STORAGE_UNAVAILABLE", "Attachment upload is unavailable");
+    }
+
+    const kind = input.kind ?? this.classifyMimeType(mimeType);
+    const quotaBytes = env.PLATOS_ATTACHMENT_ORG_QUOTA_BYTES ?? 10 * 1024 * 1024 * 1024;
+    const usage = await this.prisma.messageAttachment.aggregate({
+      where: {
+        environment: {
+          project: {
+            organizationId: input.scope.organizationId,
+          },
+        },
+      },
+      _sum: { bytes: true },
+    });
+    if ((usage._sum.bytes ?? 0) + input.bytes > quotaBytes) {
+      throw new AttachmentUploadError("ATTACHMENT_QUOTA_EXCEEDED", "Organization attachment quota exceeded");
+    }
+
+    const id = randomUUID();
+    const filename = this.sanitizeFilename(originalName ?? undefined);
+    const storageKey = `${input.scope.organizationId}/${input.scope.projectId}/${input.scope.environmentId}/${id}/${filename}`;
+    const expiresAt = new Date(Date.now() + (env.PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS ?? 900) * 1000);
+    const row = await this.prisma.messageAttachment.create({
+      data: {
+        id,
+        environmentId: input.scope.environmentId,
+        endUserId: input.endUserId,
+        kind,
+        mimeType,
+        bytes: input.bytes,
+        storageKey,
+        originalName,
+        expiresAt: new Date(Date.now() + (env.PLATOS_ATTACHMENT_GRACE_DAYS ?? 7) * 86_400_000),
+      },
+      select: {
+        id: true,
+        kind: true,
+        mimeType: true,
+        bytes: true,
+        originalName: true,
+        createdAt: true,
+      },
+    });
+
+    try {
+      const uploadUrl = await getSignedUrl(
+        this.publicClient,
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: storageKey,
+          ContentType: mimeType,
+          ContentLength: input.bytes,
+        }),
+        { expiresIn: env.PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS ?? 900 },
+      );
+      const readBack = await this.prisma.messageAttachment.findFirst({
+        where: {
+          id: row.id,
+          endUserId: input.endUserId,
+          environmentId: input.scope.environmentId,
+          environment: { project: { id: input.scope.projectId, organizationId: input.scope.organizationId } },
+        },
+        select: { id: true },
+      });
+      if (!readBack) throw new Error("attachment read-back failed");
+      return {
+        attachmentId: row.id,
+        uploadUrl,
+        method: "PUT",
+        headers: { "Content-Type": mimeType },
+        expiresAt: expiresAt.toISOString(),
+        maxBytes,
+        attachment: {
+          id: row.id,
+          kind: row.kind as AttachmentKind,
+          mimeType: row.mimeType,
+          bytes: row.bytes,
+          originalName: row.originalName,
+          createdAt: row.createdAt.toISOString(),
+        },
+      };
+    } catch {
+      await this.prisma.messageAttachment.deleteMany({
+        where: { id: row.id, environmentId: input.scope.environmentId, endUserId: input.endUserId },
+      });
+      throw new AttachmentUploadError("ATTACHMENT_STORAGE_UNAVAILABLE", "Attachment upload is unavailable");
+    }
+  }
+
+  private classifyMimeType(mimeType: string): AttachmentKind {
+    if (mimeType.startsWith("image/")) return "image";
+    if (mimeType.startsWith("audio/")) return "audio";
+    if (mimeType.startsWith("video/")) return "video";
+    return "document";
+  }
+
+  private sanitizeFilename(value: string | undefined): string {
+    const normalized = value?.trim().replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120);
+    return normalized || "file";
   }
 
   /**

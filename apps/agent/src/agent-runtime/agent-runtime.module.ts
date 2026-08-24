@@ -12,6 +12,7 @@ import { AgentCrudService } from "./agent-crud.service";
 import { AgentClusterService } from "./agent-cluster.service";
 import { PromptBuilderService } from "./prompt-builder.service";
 import { AttachmentsService } from "./attachments.service";
+import { AttachmentUploadController } from "./attachment-upload.controller";
 import { ToolGatewayModule } from "../tool-gateway/tool-gateway.module";
 import { MemoryModule } from "../memory/memory.module";
 import { MonitoringModule } from "../monitoring/monitoring.module";
@@ -49,7 +50,7 @@ import { PromptCacheService } from "./prompt-cache.service";
     // forwardRef on module scan. No need to import TriggerBridgeModule
     // here.
   ],
-  controllers: [AgentController, PlatosTasksController, PlatosTaskExecutionController, ChannelsController, ChannelAppsController],
+  controllers: [AgentController, AttachmentUploadController, PlatosTasksController, PlatosTaskExecutionController, ChannelsController, ChannelAppsController],
   // TurnDispatchService — the durable-vs-direct chokepoint. Exported so the WS
   // gateway (ConnectionsModule), the SSE/REST controller (this module), and the
   // Slack channel (ChannelsModule) all route dispatch through the ONE service

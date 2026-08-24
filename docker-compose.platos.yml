@@ -407,11 +407,15 @@ services:
       # internal (docker network) endpoint; browsers go via the public
       # endpoint minted in presigned URLs by the webapp.
       MINIO_ENDPOINT: "${MINIO_ENDPOINT:-http://minio:9000}"
+      MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-http://localhost:9001}"
       MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-platos-minio-admin}"
       MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-platos-minio-password}"
       MINIO_BUCKET: "${MINIO_BUCKET:-platos-media}"
       MINIO_REGION: "${MINIO_REGION:-us-east-1}"
       PLATOS_ATTACHMENT_TTL_DAYS: "${PLATOS_ATTACHMENT_TTL_DAYS:-30}"
+      PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS: "${PLATOS_ATTACHMENT_PRESIGN_TTL_SECONDS:-900}"
+      PLATOS_ATTACHMENT_GRACE_DAYS: "${PLATOS_ATTACHMENT_GRACE_DAYS:-7}"
+      PLATOS_ATTACHMENT_ORG_QUOTA_BYTES: "${PLATOS_ATTACHMENT_ORG_QUOTA_BYTES:-10737418240}"
       # Admin token — shared with the webapp so the scheduled retention
       # task can POST /api/v1/agent/attachments/retention.
       PLATOS_INTERNAL_AUTH_TOKEN: "${PLATOS_INTERNAL_AUTH_TOKEN:-}"
