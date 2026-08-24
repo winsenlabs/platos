@@ -84,7 +84,7 @@ services:
       minio-init:
         condition: service_completed_successfully
     volumes:
-      - ../../artifacts/win235:/artifacts:ro
+      - ../../artifacts/win235:/artifacts
     entrypoint:
       - /bin/sh
       - -ec
@@ -94,8 +94,9 @@ services:
         test -z "$(mc ls --recursive gate/platos-media)"
         mc cp /artifacts/fixture-manifest.json gate/platos-media/win235/fixture-manifest.json
         mc stat --json gate/platos-media/win235/fixture-manifest.json
-        mc cat gate/platos-media/win235/fixture-manifest.json | cmp - /artifacts/fixture-manifest.json
-        echo "WIN-235 MinIO fixture read-back matches"
+        mc cp gate/platos-media/win235/fixture-manifest.json /artifacts/fixture-manifest.readback.json
+        test -s /artifacts/fixture-manifest.readback.json
+        echo "WIN-235 MinIO fixture read-back captured"
     restart: "no"
 
   postgres-migrate:

@@ -225,6 +225,10 @@ jobs:
           set -euo pipefail
           docker compose run --rm --no-deps minio-fixture \
             2>&1 | tee artifacts/win235/minio-readback.log
+          cmp artifacts/win235/fixture-manifest.json \
+            artifacts/win235/fixture-manifest.readback.json
+          echo "WIN-235 MinIO fixture read-back matches" \
+            | tee -a artifacts/win235/minio-readback.log
 
       - name: Start the exact Agent and webapp candidate pair
         shell: bash
