@@ -43,16 +43,31 @@ export async function generatePendingAccessKey(): Promise<PendingAccessKey> {
   };
 }
 
+export async function beginGeneratedAccessKey(
+  lifecycle: AccessKeyRevealLifecycle,
+  generate: () => Promise<PendingAccessKey> = generatePendingAccessKey,
+): Promise<AccessKeySubmission | null> {
+  const pending = await generate();
+  if (lifecycle.disposed) return null;
+  return lifecycle.begin(pending);
+}
+
 /** Keeps raw bearer material private until the matching persisted response. */
 export class AccessKeyRevealLifecycle {
   #pending = new Map<string, PendingAccessKey>();
   #currentAttemptId: string | null = null;
+  #disposed = false;
 
   get hasPending(): boolean {
     return this.#currentAttemptId !== null;
   }
 
+  get disposed(): boolean {
+    return this.#disposed;
+  }
+
   begin(pending: PendingAccessKey): AccessKeySubmission {
+    if (this.#disposed) throw new Error("access_key_lifecycle_disposed");
     if (
       !isAccessKeyAttemptId(pending.attemptId) ||
       !ACCESS_KEY_HASH_PATTERN.test(pending.keyHash) ||
@@ -86,7 +101,20 @@ export class AccessKeyRevealLifecycle {
 
     const pending = this.#pending.get(attemptId);
     this.cancel(attemptId);
-    if (!pending || record.ok !== true) return { status: "discarded" };
+    const result = record.result !== null && typeof record.result === "object" && !Array.isArray(record.result)
+      ? record.result as Record<string, unknown>
+      : {};
+    const key = result.key !== null && typeof result.key === "object" && !Array.isArray(result.key)
+      ? result.key as Record<string, unknown>
+      : {};
+    if (
+      !pending ||
+      record.ok !== true ||
+      result.attemptId !== attemptId ||
+      typeof key.id !== "string" ||
+      key.id.trim() === "" ||
+      key.keyPrefix !== pending.keyPrefix
+    ) return { status: "discarded" };
     return { status: "revealed", rawKey: pending.rawKey };
   }
 
@@ -97,6 +125,11 @@ export class AccessKeyRevealLifecycle {
     }
     this.#pending.clear();
     this.#currentAttemptId = null;
+  }
+
+  dispose(): void {
+    this.cancel();
+    this.#disposed = true;
   }
 
   toJSON(): string {

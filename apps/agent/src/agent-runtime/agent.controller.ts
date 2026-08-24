@@ -6211,6 +6211,15 @@ Write the summary now:`;
       scope,
       { keyHash, keyPrefix },
     );
+    if (
+      !result?.key ||
+      typeof result.key.id !== "string" ||
+      result.key.id.trim() === "" ||
+      result.key.keyPrefix !== keyPrefix ||
+      result.key.environmentId !== scope.environmentId
+    ) {
+      throw new ServiceUnavailableException("access_key_persistence_mismatch");
+    }
     return { attemptId, ...result };
   }
 

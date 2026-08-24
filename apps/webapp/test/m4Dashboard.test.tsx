@@ -651,9 +651,10 @@ describe("M4 dashboard rebuild", () => {
     expect(routeSource).toContain("body: { attemptId, keyHash, keyPrefix }");
     expect(routeSource).toContain('["intent", "attemptId", "keyHash", "keyPrefix"]');
     expect(routeSource).toContain("lifecycle.settle(fetcher.data)");
-    expect(routeSource).toContain("lifecycle.begin(await generatePendingAccessKey())");
+    expect(routeSource).toContain("await beginGeneratedAccessKey(lifecycle)");
+    expect(routeSource).toContain("if (!submission) return");
     expect(routeSource).toContain("setRevealedKey(settlement.rawKey)");
-    expect(routeSource).toContain("useEffect(() => () => lifecycle.cancel()");
+    expect(routeSource).toContain("useEffect(() => () => lifecycle.dispose()");
     expect(routeSource).toContain("asRecord(accessKeys.key)");
     expect(routeSource).toContain("asRecord(accessKeys.retiringKey)");
     expect(routeSource).not.toContain("setRevealedKey(generated.rawKey)");

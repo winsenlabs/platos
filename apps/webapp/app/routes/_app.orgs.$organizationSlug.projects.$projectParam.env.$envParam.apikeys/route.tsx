@@ -4,7 +4,7 @@ import { useFetcher, useLoaderData } from "@remix-run/react";
 import { useEffect, useRef, useState } from "react";
 import {
   AccessKeyRevealLifecycle,
-  generatePendingAccessKey,
+  beginGeneratedAccessKey,
   isAccessKeyAttemptId,
 } from "~/components/platos/accessKeyLifecycle";
 import { Page } from "~/components/platos/DashboardShell";
@@ -55,7 +55,14 @@ export async function action(args: ActionFunctionArgs) {
         method: "POST",
         body: { attemptId, keyHash, keyPrefix },
       });
-      if (asString(asRecord(result).attemptId) !== attemptId) {
+      const resultRecord = asRecord(result);
+      const persistedKey = asRecord(resultRecord.key);
+      if (
+        asString(resultRecord.attemptId) !== attemptId ||
+        asString(persistedKey.id, "").trim() === "" ||
+        asString(persistedKey.keyPrefix) !== keyPrefix ||
+        asString(persistedKey.environmentId) !== scope.environmentId
+      ) {
         return json(
           { ok: false, attemptId, error: "Access key response did not match request" },
           { status: 409 },
@@ -109,7 +116,7 @@ export default function ApiKeysRoute() {
   const active = typeof metadata.id === "string";
   const busy = fetcher.state !== "idle" || generating;
 
-  useEffect(() => () => lifecycle.cancel(), [lifecycle]);
+  useEffect(() => () => lifecycle.dispose(), [lifecycle]);
 
   useEffect(() => {
     if (fetcher.data === undefined) return;
@@ -124,15 +131,17 @@ export default function ApiKeysRoute() {
     setLocalError(null);
     setRevealedKey(null);
     try {
-      const submission = lifecycle.begin(await generatePendingAccessKey());
+      const submission = await beginGeneratedAccessKey(lifecycle);
+      if (!submission) return;
       setPendingAttemptId(submission.attemptId);
       fetcher.submit({ intent: "rotate", ...submission }, { method: "post" });
     } catch {
+      if (lifecycle.disposed) return;
       lifecycle.cancel();
       setPendingAttemptId(null);
       setLocalError("Unable to generate the API key");
     } finally {
-      setGenerating(false);
+      if (!lifecycle.disposed) setGenerating(false);
     }
   }
 

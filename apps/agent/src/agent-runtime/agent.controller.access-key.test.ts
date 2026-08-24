@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ServiceUnavailableException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import { AgentController } from "./agent.controller";
 
@@ -98,5 +98,28 @@ describe("AgentController AccessKey boundary", () => {
 
     log.mockRestore();
     errorLog.mockRestore();
+  });
+
+  it.each([
+    ["missing persisted result", undefined],
+    ["missing persisted key", { retiringKey: null }],
+    ["null persisted key", { key: null, retiringKey: null }],
+    ["missing persisted ID", { key: { environmentId: scope.environmentId, keyPrefix: KEY_PREFIX }, retiringKey: null }],
+    ["mismatched persisted prefix", { key: { id: "key_1", environmentId: scope.environmentId, keyPrefix: "platos_live_wrong" }, retiringKey: null }],
+    ["mismatched persisted Environment", { key: { id: "key_1", environmentId: "other-env", keyPrefix: KEY_PREFIX }, retiringKey: null }],
+  ])("does not echo attempt correlation for %s", async (_name, persistedResult) => {
+    const { controller, authService, req } = harness();
+    authService.createOrRotateAccessKey.mockResolvedValueOnce(persistedResult as any);
+
+    const rejection = await controller.createOrRotateAccessKey(req, {
+      attemptId: ATTEMPT_ID,
+      keyHash: KEY_HASH,
+      keyPrefix: KEY_PREFIX,
+    }).catch((value: unknown) => value);
+
+    expect(rejection).toBeInstanceOf(ServiceUnavailableException);
+    expect((rejection as ServiceUnavailableException).message).toBe("access_key_persistence_mismatch");
+    expect(JSON.stringify(rejection)).not.toContain(ATTEMPT_ID);
+    expect(JSON.stringify(rejection)).not.toContain(KEY_HASH);
   });
 });

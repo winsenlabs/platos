@@ -24,6 +24,7 @@ import { assertCredentialSafePayload, credentialRequest } from "../app/services/
 const params = { organizationSlug: "acme", projectParam: "support", envParam: "production" };
 const sentinel = "SENTINEL_PROVIDER_OR_ACCESS_KEY_MATERIAL";
 const attemptId = "11111111-1111-4111-8111-111111111111";
+const environmentId = "33333333-3333-4333-8333-333333333333";
 
 function response(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
@@ -85,7 +86,7 @@ describe("credential route serialization boundaries", () => {
       attemptId,
       key: {
         id: "key-2",
-        environmentId: "env-1",
+        environmentId,
         keyPrefix: "platos_live_abcdefghijkl",
         allowedOrigins: [],
         lastUsedAt: null,
@@ -114,6 +115,35 @@ describe("credential route serialization boundaries", () => {
       ok: true,
       attemptId,
       result: { attemptId, key: { id: "key-2" } },
+    });
+  });
+
+  it.each([
+    ["attempt only", { attemptId }],
+    ["null persisted key", { attemptId, key: null, retiringKey: null }],
+    ["missing persisted ID", { attemptId, key: { environmentId, keyPrefix: "platos_live_abcdefghijkl" }, retiringKey: null }],
+    ["mismatched submitted prefix", { attemptId, key: { id: "key-2", environmentId, keyPrefix: "platos_live_wrong" }, retiringKey: null }],
+    ["mismatched Environment", { attemptId, key: { id: "key-2", environmentId: "other-env", keyPrefix: "platos_live_abcdefghijkl" }, retiringKey: null }],
+  ])("rejects correlated success with %s", async (_name, payload) => {
+    vi.mocked(fetch).mockResolvedValue(response(payload));
+    const form = new URLSearchParams({
+      intent: "rotate",
+      attemptId,
+      keyHash: "a".repeat(64),
+      keyPrefix: "platos_live_abcdefghijkl",
+    });
+
+    const result = await accessKeyAction({
+      request: new Request("http://dashboard/apikeys", { method: "POST", body: form }),
+      params,
+      context: {},
+    });
+
+    expect(result.status).toBe(409);
+    expect(await result.json()).toEqual({
+      ok: false,
+      attemptId,
+      error: "Access key response did not match request",
     });
   });
 
