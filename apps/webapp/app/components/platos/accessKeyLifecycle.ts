@@ -1,10 +1,10 @@
 const ACCESS_KEY_PREFIX_PATTERN = /^platos_live_[A-Za-z0-9_-]{1,12}$/;
 const ACCESS_KEY_HASH_PATTERN = /^[a-f0-9]{64}$/;
-const ATTEMPT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const INSPECT = Symbol.for("nodejs.util.inspect.custom");
 
 export type PendingAccessKey = {
-  attemptId: string;
+  requestId: string;
   rawKey: string;
   keyHash: string;
   keyPrefix: string;
@@ -17,8 +17,8 @@ export type AccessKeySettlement =
   | { status: "discarded" }
   | { status: "ignored" };
 
-export function isAccessKeyAttemptId(value: string): boolean {
-  return ATTEMPT_ID_PATTERN.test(value);
+export function isAccessKeyRequestId(value: string): boolean {
+  return REQUEST_ID_PATTERN.test(value);
 }
 
 function base64Url(bytes: Uint8Array): string {
@@ -36,7 +36,7 @@ export async function generatePendingAccessKey(): Promise<PendingAccessKey> {
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
   return {
-    attemptId: crypto.randomUUID(),
+    requestId: crypto.randomUUID(),
     rawKey,
     keyHash,
     keyPrefix: rawKey.slice(0, 24),
@@ -55,11 +55,11 @@ export async function beginGeneratedAccessKey(
 /** Keeps raw bearer material private until the matching persisted response. */
 export class AccessKeyRevealLifecycle {
   #pending = new Map<string, PendingAccessKey>();
-  #currentAttemptId: string | null = null;
+  #currentRequestId: string | null = null;
   #disposed = false;
 
   get hasPending(): boolean {
-    return this.#currentAttemptId !== null;
+    return this.#currentRequestId !== null;
   }
 
   get disposed(): boolean {
@@ -69,7 +69,7 @@ export class AccessKeyRevealLifecycle {
   begin(pending: PendingAccessKey): AccessKeySubmission {
     if (this.#disposed) throw new Error("access_key_lifecycle_disposed");
     if (
-      !isAccessKeyAttemptId(pending.attemptId) ||
+      !isAccessKeyRequestId(pending.requestId) ||
       !ACCESS_KEY_HASH_PATTERN.test(pending.keyHash) ||
       !ACCESS_KEY_PREFIX_PATTERN.test(pending.keyPrefix) ||
       !pending.rawKey.startsWith(`${pending.keyPrefix}`)
@@ -78,10 +78,10 @@ export class AccessKeyRevealLifecycle {
     }
 
     this.cancel();
-    this.#pending.set(pending.attemptId, { ...pending });
-    this.#currentAttemptId = pending.attemptId;
+    this.#pending.set(pending.requestId, { ...pending });
+    this.#currentRequestId = pending.requestId;
     return {
-      attemptId: pending.attemptId,
+      requestId: pending.requestId,
       keyHash: pending.keyHash,
       keyPrefix: pending.keyPrefix,
     };
@@ -93,14 +93,14 @@ export class AccessKeyRevealLifecycle {
       return { status: "discarded" };
     }
     const record = response as Record<string, unknown>;
-    const attemptId = typeof record.attemptId === "string" ? record.attemptId : null;
-    if (!attemptId || attemptId !== this.#currentAttemptId) {
-      if (attemptId) this.#pending.delete(attemptId);
+    const requestId = typeof record.requestId === "string" ? record.requestId : null;
+    if (!requestId || requestId !== this.#currentRequestId) {
+      if (requestId) this.#pending.delete(requestId);
       return { status: "ignored" };
     }
 
-    const pending = this.#pending.get(attemptId);
-    this.cancel(attemptId);
+    const pending = this.#pending.get(requestId);
+    this.cancel(requestId);
     const result = record.result !== null && typeof record.result === "object" && !Array.isArray(record.result)
       ? record.result as Record<string, unknown>
       : {};
@@ -110,7 +110,7 @@ export class AccessKeyRevealLifecycle {
     if (
       !pending ||
       record.ok !== true ||
-      result.attemptId !== attemptId ||
+      result.requestId !== requestId ||
       typeof key.id !== "string" ||
       key.id.trim() === "" ||
       key.keyPrefix !== pending.keyPrefix
@@ -118,13 +118,13 @@ export class AccessKeyRevealLifecycle {
     return { status: "revealed", rawKey: pending.rawKey };
   }
 
-  cancel(attemptId?: string): void {
-    if (attemptId !== undefined && attemptId !== this.#currentAttemptId) {
-      this.#pending.delete(attemptId);
+  cancel(requestId?: string): void {
+    if (requestId !== undefined && requestId !== this.#currentRequestId) {
+      this.#pending.delete(requestId);
       return;
     }
     this.#pending.clear();
-    this.#currentAttemptId = null;
+    this.#currentRequestId = null;
   }
 
   dispose(): void {

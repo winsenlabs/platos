@@ -323,7 +323,7 @@ function projectKnownCredentialEndpoint(path: string, method: string, payload: u
     }
     if (method === "POST") {
       return projectCredentialMetadata(payload, {
-        attemptId: true,
+        requestId: true,
         key: ACCESS_KEY_METADATA_SHAPE,
         retiringKey: ACCESS_KEY_METADATA_SHAPE,
       });

@@ -23,7 +23,7 @@ import { assertCredentialSafePayload, credentialRequest } from "../app/services/
 
 const params = { organizationSlug: "acme", projectParam: "support", envParam: "production" };
 const sentinel = "SENTINEL_PROVIDER_OR_ACCESS_KEY_MATERIAL";
-const attemptId = "11111111-1111-4111-8111-111111111111";
+const requestId = "11111111-1111-4111-8111-111111111111";
 const environmentId = "33333333-3333-4333-8333-333333333333";
 
 function response(value: unknown, status = 200) {
@@ -58,10 +58,10 @@ describe("credential route serialization boundaries", () => {
   });
 
   it("submits only hash metadata and refuses to serialize a malicious rotation response", async () => {
-    vi.mocked(fetch).mockResolvedValue(response({ attemptId, key: { id: "key-2", keyHash: sentinel }, retiringKey: null }));
+    vi.mocked(fetch).mockResolvedValue(response({ requestId, key: { id: "key-2", keyHash: sentinel }, retiringKey: null }));
     const form = new URLSearchParams({
       intent: "rotate",
-      attemptId,
+      requestId,
       keyHash: "a".repeat(64),
       keyPrefix: "platos_live_abcdefghijkl",
     });
@@ -73,7 +73,7 @@ describe("credential route serialization boundaries", () => {
     const body = await serialized(result);
     const request = vi.mocked(fetch).mock.calls[0];
     expect(JSON.parse(String(request?.[1]?.body))).toEqual({
-      attemptId,
+      requestId,
       keyHash: "a".repeat(64),
       keyPrefix: "platos_live_abcdefghijkl",
     });
@@ -81,9 +81,9 @@ describe("credential route serialization boundaries", () => {
     expect(body).not.toContain(sentinel);
   });
 
-  it("returns success only when the persisted response echoes the submitted attempt ID", async () => {
+  it("returns success only when the persisted response echoes the submitted request ID", async () => {
     vi.mocked(fetch).mockResolvedValue(response({
-      attemptId,
+      requestId,
       key: {
         id: "key-2",
         environmentId,
@@ -100,7 +100,7 @@ describe("credential route serialization boundaries", () => {
     }));
     const form = new URLSearchParams({
       intent: "rotate",
-      attemptId,
+      requestId,
       keyHash: "a".repeat(64),
       keyPrefix: "platos_live_abcdefghijkl",
     });
@@ -113,22 +113,22 @@ describe("credential route serialization boundaries", () => {
 
     expect(await result.json()).toMatchObject({
       ok: true,
-      attemptId,
-      result: { attemptId, key: { id: "key-2" } },
+      requestId,
+      result: { requestId, key: { id: "key-2" } },
     });
   });
 
   it.each([
-    ["attempt only", { attemptId }],
-    ["null persisted key", { attemptId, key: null, retiringKey: null }],
-    ["missing persisted ID", { attemptId, key: { environmentId, keyPrefix: "platos_live_abcdefghijkl" }, retiringKey: null }],
-    ["mismatched submitted prefix", { attemptId, key: { id: "key-2", environmentId, keyPrefix: "platos_live_wrong" }, retiringKey: null }],
-    ["mismatched Environment", { attemptId, key: { id: "key-2", environmentId: "other-env", keyPrefix: "platos_live_abcdefghijkl" }, retiringKey: null }],
+    ["request only", { requestId }],
+    ["null persisted key", { requestId, key: null, retiringKey: null }],
+    ["missing persisted ID", { requestId, key: { environmentId, keyPrefix: "platos_live_abcdefghijkl" }, retiringKey: null }],
+    ["mismatched submitted prefix", { requestId, key: { id: "key-2", environmentId, keyPrefix: "platos_live_wrong" }, retiringKey: null }],
+    ["mismatched Environment", { requestId, key: { id: "key-2", environmentId: "other-env", keyPrefix: "platos_live_abcdefghijkl" }, retiringKey: null }],
   ])("rejects correlated success with %s", async (_name, payload) => {
     vi.mocked(fetch).mockResolvedValue(response(payload));
     const form = new URLSearchParams({
       intent: "rotate",
-      attemptId,
+      requestId,
       keyHash: "a".repeat(64),
       keyPrefix: "platos_live_abcdefghijkl",
     });
@@ -142,20 +142,20 @@ describe("credential route serialization boundaries", () => {
     expect(result.status).toBe(409);
     expect(await result.json()).toEqual({
       ok: false,
-      attemptId,
+      requestId,
       error: "Access key response did not match request",
     });
   });
 
   it("fails closed and returns the submitted correlation when the persisted response mismatches", async () => {
     vi.mocked(fetch).mockResolvedValue(response({
-      attemptId: "22222222-2222-4222-8222-222222222222",
+      requestId: "22222222-2222-4222-8222-222222222222",
       key: null,
       retiringKey: null,
     }));
     const form = new URLSearchParams({
       intent: "rotate",
-      attemptId,
+      requestId,
       keyHash: "a".repeat(64),
       keyPrefix: "platos_live_abcdefghijkl",
     });
@@ -169,7 +169,7 @@ describe("credential route serialization boundaries", () => {
     expect(result.status).toBe(409);
     expect(await result.json()).toEqual({
       ok: false,
-      attemptId,
+      requestId,
       error: "Access key response did not match request",
     });
   });
@@ -294,7 +294,7 @@ describe("credential route serialization boundaries", () => {
       updatedAt: "2026-08-20T00:00:00.000Z",
     };
     vi.mocked(fetch)
-      .mockResolvedValueOnce(response({ attemptId, key: persisted, retiringKey: null }))
+      .mockResolvedValueOnce(response({ requestId, key: persisted, retiringKey: null }))
       .mockResolvedValueOnce(response({ key: persisted, retiringKey: null }));
     const scope = {
       organizationId: "org-1",
@@ -305,11 +305,11 @@ describe("credential route serialization boundaries", () => {
 
     const rotated = await credentialRequest("/api/v1/agent/access-key", scope, {
       method: "POST",
-      body: { attemptId, keyHash: "a".repeat(64), keyPrefix: persisted.keyPrefix },
+      body: { requestId, keyHash: "a".repeat(64), keyPrefix: persisted.keyPrefix },
     });
     const readBack = await credentialRequest("/api/v1/agent/access-key", scope);
 
-    expect(rotated).toMatchObject({ attemptId, key: { id: persisted.id, keyPrefix: persisted.keyPrefix } });
+    expect(rotated).toMatchObject({ requestId, key: { id: persisted.id, keyPrefix: persisted.keyPrefix } });
     expect(readBack).toMatchObject({ key: { id: persisted.id, keyPrefix: persisted.keyPrefix } });
     expect(JSON.stringify({ rotated, readBack })).not.toContain("keyHash");
   });
@@ -397,7 +397,7 @@ describe("credential route serialization boundaries", () => {
     expect(body).not.toContain(byokSentinel);
   });
 
-  it("fails closed if a BYOK endpoint attempts to echo submitted plaintext", async () => {
+  it("fails closed if a BYOK endpoint requests to echo submitted plaintext", async () => {
     const byokSentinel = "SENTINEL_ECHOED_PROVIDER_SECRET";
     vi.mocked(fetch).mockResolvedValue(response({
       key: { id: "provider-key", plaintext: byokSentinel },

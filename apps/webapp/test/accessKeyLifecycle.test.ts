@@ -7,13 +7,13 @@ import {
   type PendingAccessKey,
 } from "../app/components/platos/accessKeyLifecycle";
 
-const FIRST_ATTEMPT = "11111111-1111-4111-8111-111111111111";
-const SECOND_ATTEMPT = "22222222-2222-4222-8222-222222222222";
+const FIRST_REQUEST = "11111111-1111-4111-8111-111111111111";
+const SECOND_REQUEST = "22222222-2222-4222-8222-222222222222";
 
-function pending(attemptId: string, marker: string): PendingAccessKey {
+function pending(requestId: string, marker: string): PendingAccessKey {
   const rawKey = `platos_live_${marker.padEnd(43, "x")}`;
   return {
-    attemptId,
+    requestId,
     rawKey,
     keyHash: marker.charCodeAt(0).toString(16).padStart(2, "0").repeat(32),
     keyPrefix: rawKey.slice(0, 24),
@@ -23,10 +23,10 @@ function pending(attemptId: string, marker: string): PendingAccessKey {
 function persistedSuccess(material: PendingAccessKey) {
   return {
     ok: true,
-    attemptId: material.attemptId,
+    requestId: material.requestId,
     result: {
-      attemptId: material.attemptId,
-      key: { id: `key-${material.attemptId}`, keyPrefix: material.keyPrefix },
+      requestId: material.requestId,
+      key: { id: `key-${material.requestId}`, keyPrefix: material.keyPrefix },
     },
   };
 }
@@ -41,12 +41,12 @@ describe("AccessKeyRevealLifecycle", () => {
     const second = await generatePendingAccessKey();
     const lifecycle = new AccessKeyRevealLifecycle();
 
-    expect(first.attemptId).not.toBe(second.attemptId);
-    expect(first.attemptId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(first.requestId).not.toBe(second.requestId);
+    expect(first.requestId).toMatch(/^[0-9a-f-]{36}$/);
     expect(first.rawKey).toMatch(/^platos_live_[A-Za-z0-9_-]{43}$/);
     expect(first.keyHash).toMatch(/^[a-f0-9]{64}$/);
     expect(lifecycle.begin(first)).toEqual({
-      attemptId: first.attemptId,
+      requestId: first.requestId,
       keyHash: first.keyHash,
       keyPrefix: first.keyPrefix,
     });
@@ -54,7 +54,7 @@ describe("AccessKeyRevealLifecycle", () => {
 
   it("reveals only after the matching successful persisted response", () => {
     const lifecycle = new AccessKeyRevealLifecycle();
-    const material = pending(FIRST_ATTEMPT, "a");
+    const material = pending(FIRST_REQUEST, "a");
 
     lifecycle.begin(material);
     expect(lifecycle.hasPending).toBe(true);
@@ -67,14 +67,14 @@ describe("AccessKeyRevealLifecycle", () => {
   });
 
   it.each([
-    ["missing persisted result", { ok: true, attemptId: FIRST_ATTEMPT }],
-    ["missing persisted key", { ok: true, attemptId: FIRST_ATTEMPT, result: { attemptId: FIRST_ATTEMPT } }],
-    ["null persisted key", { ok: true, attemptId: FIRST_ATTEMPT, result: { attemptId: FIRST_ATTEMPT, key: null } }],
-    ["missing persisted ID", { ok: true, attemptId: FIRST_ATTEMPT, result: { attemptId: FIRST_ATTEMPT, key: { keyPrefix: pending(FIRST_ATTEMPT, "a").keyPrefix } } }],
-    ["mismatched persisted prefix", { ok: true, attemptId: FIRST_ATTEMPT, result: { attemptId: FIRST_ATTEMPT, key: { id: "key-1", keyPrefix: "platos_live_wrong" } } }],
+    ["missing persisted result", { ok: true, requestId: FIRST_REQUEST }],
+    ["missing persisted key", { ok: true, requestId: FIRST_REQUEST, result: { requestId: FIRST_REQUEST } }],
+    ["null persisted key", { ok: true, requestId: FIRST_REQUEST, result: { requestId: FIRST_REQUEST, key: null } }],
+    ["missing persisted ID", { ok: true, requestId: FIRST_REQUEST, result: { requestId: FIRST_REQUEST, key: { keyPrefix: pending(FIRST_REQUEST, "a").keyPrefix } } }],
+    ["mismatched persisted prefix", { ok: true, requestId: FIRST_REQUEST, result: { requestId: FIRST_REQUEST, key: { id: "key-1", keyPrefix: "platos_live_wrong" } } }],
   ])("discards matching success with %s", (_name, response) => {
     const lifecycle = new AccessKeyRevealLifecycle();
-    lifecycle.begin(pending(FIRST_ATTEMPT, "a"));
+    lifecycle.begin(pending(FIRST_REQUEST, "a"));
 
     expect(lifecycle.settle(response)).toEqual({ status: "discarded" });
     expect(lifecycle.hasPending).toBe(false);
@@ -82,15 +82,15 @@ describe("AccessKeyRevealLifecycle", () => {
 
   it("discards matching private material on failure or upstream correlation mismatch", () => {
     const failure = new AccessKeyRevealLifecycle();
-    failure.begin(pending(FIRST_ATTEMPT, "a"));
-    expect(failure.settle({ ok: false, attemptId: FIRST_ATTEMPT, error: "persistence failed" })).toEqual({
+    failure.begin(pending(FIRST_REQUEST, "a"));
+    expect(failure.settle({ ok: false, requestId: FIRST_REQUEST, error: "persistence failed" })).toEqual({
       status: "discarded",
     });
     expect(failure.hasPending).toBe(false);
 
     const mismatch = new AccessKeyRevealLifecycle();
-    mismatch.begin(pending(SECOND_ATTEMPT, "b"));
-    expect(mismatch.settle({ ok: false, attemptId: SECOND_ATTEMPT, error: "response did not match request" })).toEqual({
+    mismatch.begin(pending(SECOND_REQUEST, "b"));
+    expect(mismatch.settle({ ok: false, requestId: SECOND_REQUEST, error: "response did not match request" })).toEqual({
       status: "discarded",
     });
     expect(mismatch.hasPending).toBe(false);
@@ -98,8 +98,8 @@ describe("AccessKeyRevealLifecycle", () => {
 
   it("cannot reveal a superseded key when overlapping responses arrive out of order", () => {
     const lifecycle = new AccessKeyRevealLifecycle();
-    const first = pending(FIRST_ATTEMPT, "a");
-    const second = pending(SECOND_ATTEMPT, "b");
+    const first = pending(FIRST_REQUEST, "a");
+    const second = pending(SECOND_REQUEST, "b");
 
     lifecycle.begin(first);
     lifecycle.begin(second);
@@ -115,7 +115,7 @@ describe("AccessKeyRevealLifecycle", () => {
 
   it("discards pending private material when cancellation or disposal wins the race", () => {
     const lifecycle = new AccessKeyRevealLifecycle();
-    const material = pending(FIRST_ATTEMPT, "a");
+    const material = pending(FIRST_REQUEST, "a");
 
     lifecycle.begin(material);
     lifecycle.cancel();
@@ -126,7 +126,7 @@ describe("AccessKeyRevealLifecycle", () => {
 
   it("cannot begin or submit generated material after permanent disposal wins the digest race", async () => {
     const lifecycle = new AccessKeyRevealLifecycle();
-    const material = pending(FIRST_ATTEMPT, "a");
+    const material = pending(FIRST_REQUEST, "a");
     let resolveGeneration!: (value: PendingAccessKey) => void;
     const generation = new Promise<PendingAccessKey>((resolve) => {
       resolveGeneration = resolve;
@@ -149,7 +149,7 @@ describe("AccessKeyRevealLifecycle", () => {
 
   it("redacts pending raw, hash, and prefix material from logs and snapshots", () => {
     const lifecycle = new AccessKeyRevealLifecycle();
-    const material = pending(FIRST_ATTEMPT, "a");
+    const material = pending(FIRST_REQUEST, "a");
     lifecycle.begin(material);
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
 

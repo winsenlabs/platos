@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   AccessKeyRevealLifecycle,
   beginGeneratedAccessKey,
-  isAccessKeyAttemptId,
+  isAccessKeyRequestId,
 } from "~/components/platos/accessKeyLifecycle";
 import { Page } from "~/components/platos/DashboardShell";
 import { asArray, asRecord, asString } from "~/components/platos/safe";
@@ -38,37 +38,37 @@ export async function action(args: ActionFunctionArgs) {
   const form = await args.request.formData();
   const intent = String(form.get("intent") ?? "");
   const submittedFields = [...form.keys()];
-  const submittedAttemptId = String(form.get("attemptId") ?? "");
-  const attemptId = isAccessKeyAttemptId(submittedAttemptId) ? submittedAttemptId : null;
+  const submittedRequestId = String(form.get("requestId") ?? "");
+  const requestId = isAccessKeyRequestId(submittedRequestId) ? submittedRequestId : null;
 
   try {
     if (intent === "rotate") {
-      if (submittedFields.some((field) => !["intent", "attemptId", "keyHash", "keyPrefix"].includes(field))) {
+      if (submittedFields.some((field) => !["intent", "requestId", "keyHash", "keyPrefix"].includes(field))) {
         return json({ ok: false, error: "Raw key material is not accepted" }, { status: 400 });
       }
       const keyHash = String(form.get("keyHash") ?? "");
       const keyPrefix = String(form.get("keyPrefix") ?? "");
-      if (!attemptId || !/^[a-f0-9]{64}$/.test(keyHash) || !/^platos_live_[A-Za-z0-9_-]{1,12}$/.test(keyPrefix)) {
+      if (!requestId || !/^[a-f0-9]{64}$/.test(keyHash) || !/^platos_live_[A-Za-z0-9_-]{1,12}$/.test(keyPrefix)) {
         return json({ ok: false, error: "Invalid generated key metadata" }, { status: 400 });
       }
       const result = await credentialRequest("/api/v1/agent/access-key", scope, {
         method: "POST",
-        body: { attemptId, keyHash, keyPrefix },
+        body: { requestId, keyHash, keyPrefix },
       });
       const resultRecord = asRecord(result);
       const persistedKey = asRecord(resultRecord.key);
       if (
-        asString(resultRecord.attemptId) !== attemptId ||
+        asString(resultRecord.requestId) !== requestId ||
         asString(persistedKey.id, "").trim() === "" ||
         asString(persistedKey.keyPrefix) !== keyPrefix ||
         asString(persistedKey.environmentId) !== scope.environmentId
       ) {
         return json(
-          { ok: false, attemptId, error: "Access key response did not match request" },
+          { ok: false, requestId, error: "Access key response did not match request" },
           { status: 409 },
         );
       }
-      return json({ ok: true, attemptId, result });
+      return json({ ok: true, requestId, result });
     }
 
     if (intent === "origins") {
@@ -93,7 +93,7 @@ export async function action(args: ActionFunctionArgs) {
     return json(
       {
         ok: false,
-        ...(attemptId ? { attemptId } : {}),
+        ...(requestId ? { requestId } : {}),
         error: credentialErrorMessage(error, "API key operation"),
       },
       { status: 400 },
@@ -106,7 +106,7 @@ export default function ApiKeysRoute() {
   const fetcher = useFetcher<typeof action>();
   const lifecycle = useRef(new AccessKeyRevealLifecycle()).current;
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
-  const [pendingAttemptId, setPendingAttemptId] = useState<string | null>(null);
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const accessKeys = panel.ok ? asRecord(panel.data) : {};
@@ -122,7 +122,7 @@ export default function ApiKeysRoute() {
     if (fetcher.data === undefined) return;
     const settlement = lifecycle.settle(fetcher.data);
     if (settlement.status === "ignored") return;
-    setPendingAttemptId(null);
+    setPendingRequestId(null);
     if (settlement.status === "revealed") setRevealedKey(settlement.rawKey);
   }, [fetcher.data, lifecycle]);
 
@@ -133,12 +133,12 @@ export default function ApiKeysRoute() {
     try {
       const submission = await beginGeneratedAccessKey(lifecycle);
       if (!submission) return;
-      setPendingAttemptId(submission.attemptId);
+      setPendingRequestId(submission.requestId);
       fetcher.submit({ intent: "rotate", ...submission }, { method: "post" });
     } catch {
       if (lifecycle.disposed) return;
       lifecycle.cancel();
-      setPendingAttemptId(null);
+      setPendingRequestId(null);
       setLocalError("Unable to generate the API key");
     } finally {
       if (!lifecycle.disposed) setGenerating(false);
@@ -147,7 +147,7 @@ export default function ApiKeysRoute() {
 
   function cancelPendingReveal() {
     lifecycle.cancel();
-    setPendingAttemptId(null);
+    setPendingRequestId(null);
     setRevealedKey(null);
   }
 
@@ -206,13 +206,13 @@ export default function ApiKeysRoute() {
                   <button disabled={busy} className="rounded border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-2 text-sm text-[var(--danger)] disabled:opacity-50">Revoke</button>
                 </fetcher.Form>
               )}
-              {pendingAttemptId && (
+              {pendingRequestId && (
                 <button type="button" onClick={cancelPendingReveal} className="rounded border border-grid-bright px-4 py-2 text-sm">
                   Cancel reveal
                 </button>
               )}
             </div>
-            {pendingAttemptId && <p className="mt-3 text-xs text-text-dimmed">Waiting for persisted key confirmation…</p>}
+            {pendingRequestId && <p className="mt-3 text-xs text-text-dimmed">Waiting for persisted key confirmation…</p>}
             {localError && <p className="mt-3 text-sm text-[var(--danger)]">{localError}</p>}
             {fetcher.data && fetcher.data.ok === false && <p className="mt-3 text-sm text-[var(--danger)]">{asString(asRecord(fetcher.data).error, "API key operation failed")}</p>}
           </section>

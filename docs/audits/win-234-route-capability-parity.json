@@ -9265,7 +9265,7 @@
           "endpoint": "/api/v1/agent/access-key",
           "requestDto": {
             "status": "static-contract-only",
-            "shape": "{ attemptId; keyHash; keyPrefix } where attemptId is non-secret browser request correlation."
+            "shape": "{ requestId; keyHash; keyPrefix } where requestId is non-secret browser request correlation."
           },
           "response": {
             "successStatuses": [
@@ -9301,7 +9301,7 @@
         "status": "static-contract-only",
         "values": [
           {
-            "name": "attemptId",
+            "name": "requestId",
             "type": "non-secret browser request correlation UUID",
             "source": "private pending rotation state and response"
           },
@@ -9362,7 +9362,7 @@
         "status": "verified",
         "references": [
           "apps/webapp/test/credentialSerialization.test.ts proves action success requires the persisted response to echo the submitted attempt ID.",
-          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts proves the Agent echoes attemptId only after createOrRotateAccessKey resolves."
+          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts proves the Agent echoes requestId only after createOrRotateAccessKey resolves."
         ]
       },
       "pagination": {
@@ -9492,13 +9492,13 @@
           "endpoint": "/api/v1/agent/access-key",
           "requestDto": {
             "status": "static-contract-only",
-            "shape": "{ attemptId: cryptographically random UUID; keyHash: 64 lowercase hex characters; keyPrefix: /^platos_live_[A-Za-z0-9_-]{1,12}$/ }; all other fields rejected."
+            "shape": "{ requestId: cryptographically random UUID; keyHash: 64 lowercase hex characters; keyPrefix: /^platos_live_[A-Za-z0-9_-]{1,12}$/ }; all other fields rejected."
           },
           "response": {
             "successStatuses": [
               200
             ],
-            "shape": "Safe AccessKey metadata echoes matching attemptId only after persistence; no raw key or keyHash."
+            "shape": "Safe AccessKey metadata echoes matching requestId only after persistence; no raw key or keyHash."
           },
           "stableErrors": [
             {
@@ -9524,7 +9524,7 @@
         "status": "static-contract-only",
         "values": [
           {
-            "name": "attemptId",
+            "name": "requestId",
             "type": "non-secret browser request correlation UUID",
             "source": "private pending lifecycle and persisted response"
           },
@@ -9590,7 +9590,7 @@
         "status": "verified",
         "references": [
           "apps/webapp/test/credentialSerialization.test.ts covers matching success, mismatch failure, and hash-only POST-to-GET read-back.",
-          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts proves attemptId is returned only after persisted rotation resolves."
+          "apps/agent/src/agent-runtime/agent.controller.access-key.test.ts proves requestId is returned only after persisted rotation resolves."
         ]
       },
       "pagination": {
@@ -9975,13 +9975,13 @@
           "endpoint": "/api/v1/agent/access-key",
           "requestDto": {
             "status": "static-contract-only",
-            "shape": "{ attemptId; keyHash; keyPrefix } generated in browser."
+            "shape": "{ requestId; keyHash; keyPrefix } generated in browser."
           },
           "response": {
             "successStatuses": [
               200
             ],
-            "shape": "Safe replacement metadata echoes attemptId and correlates the replacement to the retiring key."
+            "shape": "Safe replacement metadata echoes requestId and correlates the replacement to the retiring key."
           },
           "stableErrors": [
             {

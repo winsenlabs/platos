@@ -106,7 +106,6 @@ import {
 import {
   isUuid,
   pageMetadata,
-  isUuid,
   parseBooleanFilter,
   parseEnumFilter,
   parsePageRequest,
@@ -2147,7 +2146,7 @@ export class AgentController {
     }
 
     // Optionally scope-narrow by sourceEntityId (caller validates they mean
-    // this entity — cross-scope attempt returns 404 same as above).
+    // this entity — cross-scope request returns 404 same as above).
     if (
       body.sourceEntityId &&
       toolEntry.sourceEntityId !== body.sourceEntityId
@@ -5105,9 +5104,9 @@ Write the summary now:`;
   /**
    * EOBD.100 — DLQ drain endpoint. Scheduled
    * `platos.observability.dlq_drain` task POSTs here every 2 min. We
-   * pop up to `maxBatch` entries off the Redis list, attempt re-insert,
+   * pop up to `maxBatch` entries off the Redis list, request re-insert,
    * and count per-DLQ successes + permanent failures. Permanent
-   * failures (after N internal attempts) move to a `:dead` list for
+   * failures (after N internal requests) move to a `:dead` list for
    * manual operator review.
    *
    * WIN-133 — this endpoint now also drains the durable observability outbox.
@@ -6339,17 +6338,17 @@ Write the summary now:`;
       body === null ||
       Array.isArray(body) ||
       Object.keys(body).length !== 3 ||
-      !Object.hasOwn(body, "attemptId") ||
+      !Object.hasOwn(body, "requestId") ||
       !Object.hasOwn(body, "keyHash") ||
       !Object.hasOwn(body, "keyPrefix")
     ) {
       throw new BadRequestException("invalid_access_key_material");
     }
 
-    const { attemptId, keyHash, keyPrefix } = body as Record<string, unknown>;
+    const { requestId, keyHash, keyPrefix } = body as Record<string, unknown>;
     if (
-      typeof attemptId !== "string" ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(attemptId) ||
+      typeof requestId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId) ||
       typeof keyHash !== "string" ||
       !/^[a-f0-9]{64}$/.test(keyHash) ||
       typeof keyPrefix !== "string" ||
@@ -6371,7 +6370,7 @@ Write the summary now:`;
     ) {
       throw new ServiceUnavailableException("access_key_persistence_mismatch");
     }
-    return { attemptId, ...result };
+    return { requestId, ...result };
   }
 
   @Post("access-key/origins")

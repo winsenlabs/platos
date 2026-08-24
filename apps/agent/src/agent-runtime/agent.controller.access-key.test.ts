@@ -12,7 +12,7 @@ const scope = {
 const KEY_HASH = "a".repeat(64);
 const KEY_PREFIX = "platos_live_test";
 const RAW_KEY = "platos_live_RAW_SENTINEL";
-const ATTEMPT_ID = "11111111-1111-4111-8111-111111111111";
+const REQUEST_ID = "11111111-1111-4111-8111-111111111111";
 
 function harness() {
   const authService = {
@@ -44,7 +44,7 @@ describe("AgentController AccessKey boundary", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     const result = await controller.createOrRotateAccessKey(req, {
-      attemptId: ATTEMPT_ID,
+      requestId: REQUEST_ID,
       keyHash: KEY_HASH,
       keyPrefix: KEY_PREFIX,
     });
@@ -53,7 +53,7 @@ describe("AgentController AccessKey boundary", () => {
       keyHash: KEY_HASH,
       keyPrefix: KEY_PREFIX,
     });
-    expect(result.attemptId).toBe(ATTEMPT_ID);
+    expect(result.requestId).toBe(REQUEST_ID);
     const serialized = JSON.stringify(result);
     const serializedLogs = JSON.stringify([...log.mock.calls, ...error.mock.calls]);
     expect(serialized).not.toContain(KEY_HASH);
@@ -66,17 +66,17 @@ describe("AgentController AccessKey boundary", () => {
   });
 
   it.each([
-    ["missing attempt ID", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX }],
-    ["malformed attempt ID", { attemptId: "not-random", keyHash: KEY_HASH, keyPrefix: KEY_PREFIX }],
-    ["accessKey", { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, accessKey: RAW_KEY }],
-    ["rawKey", { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, rawKey: RAW_KEY }],
-    ["key", { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, key: RAW_KEY }],
-    ["allowedOrigins", { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, allowedOrigins: [] }],
+    ["missing request ID", { keyHash: KEY_HASH, keyPrefix: KEY_PREFIX }],
+    ["malformed request ID", { requestId: "not-random", keyHash: KEY_HASH, keyPrefix: KEY_PREFIX }],
+    ["accessKey", { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, accessKey: RAW_KEY }],
+    ["rawKey", { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, rawKey: RAW_KEY }],
+    ["key", { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, key: RAW_KEY }],
+    ["allowedOrigins", { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, allowedOrigins: [] }],
     [
       "nested secret-bearing field",
-      { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, metadata: { accessKey: RAW_KEY } },
+      { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, metadata: { accessKey: RAW_KEY } },
     ],
-    ["unknown field", { attemptId: ATTEMPT_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, unknown: true }],
+    ["unknown field", { requestId: REQUEST_ID, keyHash: KEY_HASH, keyPrefix: KEY_PREFIX, unknown: true }],
   ])("rejects the extra %s field and does not call the service", async (_name, body) => {
     const { controller, authService, req } = harness();
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
@@ -107,19 +107,19 @@ describe("AgentController AccessKey boundary", () => {
     ["missing persisted ID", { key: { environmentId: scope.environmentId, keyPrefix: KEY_PREFIX }, retiringKey: null }],
     ["mismatched persisted prefix", { key: { id: "key_1", environmentId: scope.environmentId, keyPrefix: "platos_live_wrong" }, retiringKey: null }],
     ["mismatched persisted Environment", { key: { id: "key_1", environmentId: "other-env", keyPrefix: KEY_PREFIX }, retiringKey: null }],
-  ])("does not echo attempt correlation for %s", async (_name, persistedResult) => {
+  ])("does not echo request correlation for %s", async (_name, persistedResult) => {
     const { controller, authService, req } = harness();
     authService.createOrRotateAccessKey.mockResolvedValueOnce(persistedResult as any);
 
     const rejection = await controller.createOrRotateAccessKey(req, {
-      attemptId: ATTEMPT_ID,
+      requestId: REQUEST_ID,
       keyHash: KEY_HASH,
       keyPrefix: KEY_PREFIX,
     }).catch((value: unknown) => value);
 
     expect(rejection).toBeInstanceOf(ServiceUnavailableException);
     expect((rejection as ServiceUnavailableException).message).toBe("access_key_persistence_mismatch");
-    expect(JSON.stringify(rejection)).not.toContain(ATTEMPT_ID);
+    expect(JSON.stringify(rejection)).not.toContain(REQUEST_ID);
     expect(JSON.stringify(rejection)).not.toContain(KEY_HASH);
   });
 });

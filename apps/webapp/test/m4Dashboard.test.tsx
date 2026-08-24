@@ -709,8 +709,8 @@ describe("M4 dashboard rebuild", () => {
     expect(lifecycleSource).toContain("crypto.getRandomValues");
     expect(lifecycleSource).toContain("crypto.randomUUID()");
     expect(lifecycleSource).toContain('crypto.subtle.digest("SHA-256"');
-    expect(routeSource).toContain("body: { attemptId, keyHash, keyPrefix }");
-    expect(routeSource).toContain('["intent", "attemptId", "keyHash", "keyPrefix"]');
+    expect(routeSource).toContain("body: { requestId, keyHash, keyPrefix }");
+    expect(routeSource).toContain('["intent", "requestId", "keyHash", "keyPrefix"]');
     expect(routeSource).toContain("lifecycle.settle(fetcher.data)");
     expect(routeSource).toContain("await beginGeneratedAccessKey(lifecycle)");
     expect(routeSource).toContain("if (!submission) return");

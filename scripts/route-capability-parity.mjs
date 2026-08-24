@@ -277,11 +277,11 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
     statuses: { "pagination.status": "implemented", "totals.status": "verified", "persistedReadBack.status": "verified", "defect.status": "verified" },
   },
   "access-key-one-time-reveal": {
-    fragments: { http: ["attemptId", "keyHash", "keyPrefix", "Raw key material is not accepted"], secretExposure: ["private pending material", "persistence success", "mismatch", "cancellation"] },
+    fragments: { http: ["requestId", "keyHash", "keyPrefix", "Raw key material is not accepted"], secretExposure: ["private pending material", "persistence success", "mismatch", "cancellation"] },
     statuses: { "tenantScope.status": "enforced", "defect.status": "verified", "persistedReadBack.status": "verified", "automatedEvidence.status": "verified", "secretExposure.status": "verified" },
   },
   "access-key-rotation-correlation": {
-    fragments: { currentBehavior: ["validUntil", "replacedById"], http: ["attemptId", "keyHash", "keyPrefix"], concurrency: ["Environment row lock", "one-active-per-Environment"], persistedReadBack: ["retiring.replacedById", "active.id", "hash/prefix correlation"] },
+    fragments: { currentBehavior: ["validUntil", "replacedById"], http: ["requestId", "keyHash", "keyPrefix"], concurrency: ["Environment row lock", "one-active-per-Environment"], persistedReadBack: ["retiring.replacedById", "active.id", "hash/prefix correlation"] },
     statuses: { "concurrency.status": "static-contract-only", "persistedReadBack.status": "verified", "automatedEvidence.status": "verified", "secretExposure.status": "verified" },
   },
   "access-key-revoke": {
