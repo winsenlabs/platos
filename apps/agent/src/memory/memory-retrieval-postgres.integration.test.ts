@@ -4,6 +4,8 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import { PrismaClient } from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MemoryService } from "./memory.service";
+import { MessageCryptoService } from "../monitoring/message-crypto.service";
+import { MemoryProfileBackfillService } from "./memory-profile-backfill.service";
 
 vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
@@ -42,6 +44,7 @@ describe("memory PostgreSQL HNSW retrieval", () => {
     prisma = new PrismaClient({
       datasources: { db: { url: `${databaseUrl}?connection_limit=1` } },
     });
+    await new MemoryProfileBackfillService(prisma, new MessageCryptoService()).run();
     memory = new MemoryService(prisma, { embed: async () => queryVector } as any);
     primary = await seedScope(prisma, "primary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
     secondary = await seedScope(prisma, "secondary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
@@ -127,6 +130,7 @@ describe("memory PostgreSQL HNSW retrieval", () => {
          AND "archivedAt" IS NULL
          AND "kind" = $4
          AND "agentId" = ANY($5::uuid[])
+         AND "agentVisible" = TRUE
          AND "visibility" = ANY($6::text[])
        ORDER BY "embedding" <=> $1::vector
        LIMIT 200`,
@@ -135,7 +139,7 @@ describe("memory PostgreSQL HNSW retrieval", () => {
       primary.endUserId,
       KIND,
       [primary.agentId],
-      ["agent_visible", "hidden"]
+      ["agent_visible"]
     );
     expect(plan.map((row) => row["QUERY PLAN"]).join("\n")).toContain(
       "Memory_embedding_hnsw_cosine_idx"
@@ -169,6 +173,129 @@ describe("memory PostgreSQL HNSW retrieval", () => {
       minScore: 0.985,
     });
     expect(cosineThreshold.map(({ id }) => id)).toEqual([closestId]);
+  });
+
+  it("recalls only persisted dual-predicate agent-visible rows while management search is explicit", async () => {
+    const visibleId = "00000000-0000-4000-8000-000000000101";
+    const hiddenId = "00000000-0000-4000-8000-000000000102";
+    const privateId = "00000000-0000-4000-8000-000000000103";
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "Memory" (
+         "id", "environmentId", "endUserId", "agentId", "kind", "content",
+         "agentVisible", "visibility", "source", "confidence", "embedding",
+         "createdAt", "updatedAt"
+       ) VALUES
+         ($1::uuid, $4::uuid, $5::uuid, $6::uuid, 'visibility-hnsw-test', 'visible', true, 'agent_visible', 'manual', 0.5, $7::vector, NOW(), NOW()),
+         ($2::uuid, $4::uuid, $5::uuid, $6::uuid, 'visibility-hnsw-test', 'hidden', false, 'hidden', 'manual', 0.5, $7::vector, NOW(), NOW()),
+         ($3::uuid, $4::uuid, $5::uuid, $6::uuid, 'visibility-hnsw-test', 'private', false, 'private', 'manual', 0.5, $7::vector, NOW(), NOW())`,
+      visibleId,
+      hiddenId,
+      privateId,
+      primary.environmentId,
+      primary.endUserId,
+      primary.agentId,
+      unitVector(1),
+    );
+
+    const runtime = await memory.semanticSearch(searchScope(primary), {
+      query: "query",
+      userId: primary.externalUserId,
+      kind: "visibility-hnsw-test",
+      limit: 10,
+    });
+    expect(runtime.map(({ id }) => id)).toEqual([visibleId]);
+
+    const management = await memory.semanticSearch(searchScope(primary), {
+      query: "query",
+      userId: primary.externalUserId,
+      kind: "visibility-hnsw-test",
+      visibilityIn: ["agent_visible", "hidden", "private"],
+      limit: 10,
+    });
+    expect(new Set(management.map(({ id }) => id))).toEqual(new Set([visibleId, hiddenId, privateId]));
+  });
+
+  it("atomically collapses concurrent normalized profile writes and keeps the latest value", async () => {
+    await Promise.all([
+      memory.add(searchScope(primary), {
+        userId: primary.externalUserId,
+        kind: "profile",
+        content: "Ada first",
+        metadata: { profileKey: " Name " },
+        visibility: "agent_visible",
+        source: "manual",
+      }),
+      memory.add(searchScope(primary), {
+        userId: primary.externalUserId,
+        kind: "profile",
+        content: "Ada concurrent",
+        metadata: { profileKey: "name" },
+        visibility: "agent_visible",
+        source: "manual",
+      }),
+    ]);
+    await memory.add(searchScope(primary), {
+      userId: primary.externalUserId,
+      kind: "profile",
+      content: "Ada latest",
+      metadata: { profileKey: "NAME" },
+      visibility: "agent_visible",
+      source: "manual",
+    });
+
+    const rows = await prisma.memory.findMany({
+      where: {
+        environmentId: primary.environmentId,
+        endUserId: primary.endUserId,
+        agentId: primary.agentId,
+        kind: "profile",
+        profileKey: "name",
+      },
+      select: { content: true, profileKey: true },
+    });
+    expect(rows).toEqual([{ content: "Ada latest", profileKey: "name" }]);
+  });
+
+  it("traverses an exact 384-row scope with truthful totals and deterministic bounded pages", async () => {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "Memory" (
+         "id", "environmentId", "endUserId", "agentId", "kind", "content",
+         "visibility", "source", "createdAt", "updatedAt"
+       )
+       SELECT gen_random_uuid(), $1::uuid, $2::uuid, $3::uuid, 'fact',
+              concat('pagination fixture ', series), 'agent_visible', 'manual',
+              '2026-01-01T00:00:00.000Z'::timestamp,
+              '2026-01-01T00:00:00.000Z'::timestamp
+       FROM generate_series(1, 384) AS series`,
+      primary.environmentId,
+      primary.endUserId,
+      primary.agentId,
+    );
+    const input = {
+      userId: primary.externalUserId,
+      kind: "fact",
+      source: "manual",
+      limit: 100,
+    } as const;
+    const [first, repeated, middle, last, empty] = await Promise.all([
+      memory.listPage(searchScope(primary), { ...input, offset: 0 }),
+      memory.listPage(searchScope(primary), { ...input, offset: 0 }),
+      memory.listPage(searchScope(primary), { ...input, offset: 100 }),
+      memory.listPage(searchScope(primary), { ...input, offset: 300 }),
+      memory.listPage(searchScope(primary), { ...input, offset: 400 }),
+    ]);
+
+    for (const page of [first, repeated, middle, last, empty]) {
+      expect(page.total).toBe(384);
+      expect(page.limit).toBe(100);
+    }
+    expect(first.items).toHaveLength(100);
+    expect(middle.items).toHaveLength(100);
+    expect(last.items).toHaveLength(84);
+    expect(empty.items).toHaveLength(0);
+    expect(last.hasNext).toBe(false);
+    expect(first.items.map(({ id }) => id)).toEqual(repeated.items.map(({ id }) => id));
+    expect(new Set([...first.items, ...middle.items, ...last.items].map(({ id }) => id)).size).toBe(384);
   });
 });
 

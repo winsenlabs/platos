@@ -38,6 +38,7 @@ import type { SkillRegistryService } from "../../skills/skill-registry.service";
 import type { SkillImporterService } from "../../skills/skill-importer.service";
 import type { MemoryService } from "../../memory/memory.service";
 import type { MemoryExtractionService } from "../../memory/memory-extraction.service";
+import type { MemoryImportService } from "../../memory/memory-import.service";
 import type { KnowledgeGraphService } from "../../memory/knowledge-graph.service";
 import type { ProviderRegistryService } from "../../providers/provider-registry.service";
 import type { ProviderKeyService } from "../../providers/provider-key.service";
@@ -117,6 +118,7 @@ export function buildPlatformToolHandlers(deps: {
   skillRegistry: SkillRegistryService;
   skillImporter: SkillImporterService;
   memory: MemoryService;
+  memoryImport: MemoryImportService;
   // MCPF-W2 — memories.extract_now wraps the manual-trigger path.
   memoryExtraction: MemoryExtractionService;
   graph: KnowledgeGraphService;
@@ -838,6 +840,7 @@ export function buildPlatformToolHandlers(deps: {
   handlers.push(
     ...buildPlatosControlToolHandlers({
       memory: deps.memory,
+      memoryImport: deps.memoryImport,
       // MCPF-W2 — memories.extract_now.
       memoryExtraction: deps.memoryExtraction,
       conversation: deps.conversation,
@@ -849,6 +852,7 @@ export function buildPlatformToolHandlers(deps: {
       cost: deps.cost,
       toolAudit: deps.toolAudit,
       safetyEvents: deps.safetyEvents,
+      prisma: deps.prisma,
     }),
   );
 

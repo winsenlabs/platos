@@ -124,11 +124,35 @@ describe("AgentService clean memory transport", () => {
         agentId: "agent-a",
         kind: "profile",
         limit: 100,
+        agentVisibleOnly: true,
+        visibilityIn: ["agent_visible"],
       },
     );
   });
 
-  it("updates an existing profile atom without a legacy delete-and-reinsert", async () => {
+  it("recalls profiles across only persisted members of the acting AgentCluster", async () => {
+    const { service, memoryService } = makeService({
+      clusterId: "cluster-a",
+      members: ["agent-a", "agent-b"],
+      profileRows: [{ id: "memory-1", content: "Ada", metadata: { profileKey: "name" } }],
+    });
+    const tools = (service as any).buildMetaTools(scope, { metaTools: {} });
+
+    await expect(tools.recall_user_profile.execute({})).resolves.toMatchObject({
+      found: true,
+      profile: { name: "Ada" },
+    });
+    expect(memoryService.list).toHaveBeenCalledWith(
+      expect.objectContaining({ agentId: "agent-a" }),
+      expect.objectContaining({
+        agentIds: ["agent-a", "agent-b"],
+        agentVisibleOnly: true,
+        visibilityIn: ["agent_visible"],
+      }),
+    );
+  });
+
+  it("atomically upserts a normalized profile atom without list-then-update", async () => {
     const prior = {
       id: "memory-1",
       content: "old",
@@ -139,16 +163,19 @@ describe("AgentService clean memory transport", () => {
 
     await expect(tools.update_user_profile.execute({ key: "role", value: "engineer" }))
       .resolves.toMatchObject({ saved: true, key: "role", value: "engineer" });
-    expect(memoryService.update).toHaveBeenCalledWith(
+    expect(memoryService.add).toHaveBeenCalledWith(
       expect.objectContaining({ agentId: "agent-a" }),
-      "memory-1",
       expect.objectContaining({
+        userId: "user-a",
+        agentId: "agent-a",
         kind: "profile",
         content: "engineer",
         metadata: expect.objectContaining({ profileKey: "role" }),
+        visibility: "agent_visible",
+        agentVisible: true,
       }),
-      "user-a",
     );
-    expect(memoryService.add).not.toHaveBeenCalled();
+    expect(memoryService.list).not.toHaveBeenCalled();
+    expect(memoryService.update).not.toHaveBeenCalled();
   });
 });

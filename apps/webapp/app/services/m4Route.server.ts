@@ -11,6 +11,7 @@ export type SurfaceConfig = {
   endpoint: string | ((params: Record<string, string | undefined>, url: URL) => string);
   secondaryEndpoint?: string | ((params: Record<string, string | undefined>, url: URL) => string);
   supportingEndpoint?: string | ((params: Record<string, string | undefined>, url: URL) => string);
+  supportingUsesPinnedScope?: boolean;
   provenance?: string;
   notFoundAsResponse?: boolean;
   parameterAliases?: Record<string, string>;
@@ -53,7 +54,10 @@ export async function loadSurface(args: LoaderFunctionArgs, config: SurfaceConfi
     ? await agentPanel(endpoint(config.secondaryEndpoint, args.params, url, config.parameterAliases), environmentScope)
     : undefined;
   const supporting = config.supportingEndpoint
-    ? await agentPanel(endpoint(config.supportingEndpoint, args.params, url, config.parameterAliases), environmentScope)
+    ? await agentPanel(
+        endpoint(config.supportingEndpoint, args.params, url, config.parameterAliases),
+        config.supportingUsesPinnedScope ? scope : environmentScope,
+      )
     : undefined;
-  return json({ ...config, endpoint: undefined, secondaryEndpoint: undefined, supportingEndpoint: undefined, notFoundAsResponse: undefined, parameterAliases: undefined, agentPinQueryParam: undefined, requireAgentPin: undefined, panel, secondary, supporting });
+  return json({ ...config, endpoint: undefined, secondaryEndpoint: undefined, supportingEndpoint: undefined, supportingUsesPinnedScope: undefined, notFoundAsResponse: undefined, parameterAliases: undefined, agentPinQueryParam: undefined, requireAgentPin: undefined, panel, secondary, supporting });
 }

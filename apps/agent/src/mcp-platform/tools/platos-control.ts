@@ -14,6 +14,7 @@
 
 import type { MemoryService } from "../../memory/memory.service";
 import type { MemoryExtractionService } from "../../memory/memory-extraction.service";
+import type { MemoryImportService } from "../../memory/memory-import.service";
 import type { ConversationService } from "../../memory/conversation.service";
 import type { KnowledgeGraphService } from "../../memory/knowledge-graph.service";
 import type { ProviderRegistryService } from "../../providers/provider-registry.service";
@@ -25,19 +26,30 @@ import type { ToolAuditService } from "../../monitoring/tool-audit.service";
 import type { SafetyEventService } from "../../monitoring/safety-event.service";
 import type { McpToolHandler } from "../mcp-router";
 import type { RequestScope } from "../../auth/scope.guard";
+import {
+  MEMORY_ARCHIVE_STATES,
+  MEMORY_KINDS,
+  MEMORY_SOURCES,
+  MEMORY_VISIBILITIES,
+} from "@platos/tenancy-database";
+import { validateMemoryBundle } from "../../memory/memory-bundle";
 
-type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId">;
+type ScopeTuple = Pick<RequestScope, "organizationId" | "projectId" | "environmentId"> & {
+  agentId?: string | null;
+};
 
 function tuple(scope: RequestScope): ScopeTuple {
   return {
     organizationId: scope.organizationId,
     projectId: scope.projectId,
     environmentId: scope.environmentId,
+    agentId: scope.agentId ?? null,
   };
 }
 
 export function buildPlatosControlToolHandlers(deps: {
   memory: MemoryService;
+  memoryImport: MemoryImportService;
   memoryExtraction: MemoryExtractionService;
   conversation: ConversationService;
   graph: KnowledgeGraphService;
@@ -48,9 +60,11 @@ export function buildPlatosControlToolHandlers(deps: {
   cost: CostService;
   toolAudit: ToolAuditService;
   safetyEvents: SafetyEventService;
+  prisma: any;
 }): McpToolHandler[] {
   const {
     memory,
+    memoryImport,
     memoryExtraction,
     conversation,
     graph,
@@ -61,6 +75,7 @@ export function buildPlatosControlToolHandlers(deps: {
     cost,
     toolAudit,
     safetyEvents,
+    prisma,
   } = deps;
 
   // MCPF-W2 — fire-and-forget audit trail for mutating memories.* tools.
@@ -101,24 +116,42 @@ export function buildPlatosControlToolHandlers(deps: {
         required: ["userId"],
         properties: {
           userId: { type: "string" },
-          kind: { type: "string" },
+          kind: { type: "string", enum: [...MEMORY_KINDS] },
+          source: { type: "string", enum: [...MEMORY_SOURCES] },
+          archiveState: { type: "string", enum: [...MEMORY_ARCHIVE_STATES] },
+          visibilityIn: {
+            type: "array",
+            items: { type: "string", enum: [...MEMORY_VISIBILITIES] },
+            uniqueItems: true,
+          },
           agentId: { type: ["string", "null"] },
-          limit: { type: "integer", minimum: 1, maximum: 200 },
-          offset: { type: "integer", minimum: 0, maximum: 10_000 },
+          limit: { type: "integer", minimum: 1, maximum: 100 },
+          offset: { type: "integer", minimum: 0, maximum: 100_000 },
         },
         additionalProperties: false,
       },
       async execute(params, scope) {
-        const rows = await memory.list(tuple(scope), {
+        const page = await memory.listPage(tuple(scope), {
           userId: String(params["userId"]),
           ...(params["kind"] !== undefined ? { kind: params["kind"] as string } : {}),
           ...(params["agentId"] !== undefined
             ? { agentId: params["agentId"] as string | null }
             : {}),
+          ...(params["source"] !== undefined ? { source: params["source"] as any } : {}),
+          ...(params["archiveState"] !== undefined
+            ? { archiveState: params["archiveState"] as any }
+            : {}),
+          visibilityIn: (params["visibilityIn"] as any[] | undefined) ?? [...MEMORY_VISIBILITIES],
           ...(params["limit"] !== undefined ? { limit: params["limit"] as number } : {}),
           ...(params["offset"] !== undefined ? { offset: params["offset"] as number } : {}),
         });
-        return { memories: rows };
+        return {
+          memories: page.items,
+          total: page.total,
+          limit: page.limit,
+          offset: page.offset,
+          hasNext: page.hasNext,
+        };
       },
     },
     {
@@ -131,7 +164,14 @@ export function buildPlatosControlToolHandlers(deps: {
         properties: {
           query: { type: "string" },
           userId: { type: "string" },
-          kind: { type: "string" },
+          kind: { type: "string", enum: [...MEMORY_KINDS] },
+          source: { type: "string", enum: [...MEMORY_SOURCES] },
+          archiveState: { type: "string", enum: [...MEMORY_ARCHIVE_STATES] },
+          visibilityIn: {
+            type: "array",
+            items: { type: "string", enum: [...MEMORY_VISIBILITIES] },
+            uniqueItems: true,
+          },
           agentId: { type: ["string", "null"] },
           limit: { type: "integer", minimum: 1, maximum: 50 },
           minScore: { type: "number" },
@@ -146,12 +186,17 @@ export function buildPlatosControlToolHandlers(deps: {
           ...(params["agentId"] !== undefined
             ? { agentId: params["agentId"] as string | null }
             : {}),
+          ...(params["source"] !== undefined ? { source: params["source"] as any } : {}),
+          ...(params["archiveState"] !== undefined
+            ? { archiveState: params["archiveState"] as any }
+            : {}),
+          visibilityIn: (params["visibilityIn"] as any[] | undefined) ?? [...MEMORY_VISIBILITIES],
           ...(params["limit"] !== undefined ? { limit: params["limit"] as number } : {}),
           ...(params["minScore"] !== undefined
             ? { minScore: params["minScore"] as number }
             : {}),
         });
-        return { hits };
+        return { hits, resultCount: hits.length };
       },
     },
     {
@@ -193,7 +238,6 @@ export function buildPlatosControlToolHandlers(deps: {
             type: "string",
             enum: ["agent_visible", "hidden", "private"],
           },
-          source: { type: "string", enum: ["manual", "extracted", "imported"] },
           sourceThreadId: { type: ["string", "null"] },
         },
         additionalProperties: false,
@@ -238,7 +282,7 @@ export function buildPlatosControlToolHandlers(deps: {
           ...(params["visibility"] !== undefined
             ? { visibility: params["visibility"] as any }
             : {}),
-          ...(params["source"] !== undefined ? { source: params["source"] as any } : {}),
+          source: "manual",
           ...(params["sourceThreadId"] !== undefined
             ? { sourceThreadId: params["sourceThreadId"] as string | null }
             : {}),
@@ -249,7 +293,7 @@ export function buildPlatosControlToolHandlers(deps: {
     {
       name: "memories.delete",
       description:
-        "Delete a memory row by id. Scope-guarded — cross-scope ids silently no-op and return `{ ok: false }`.",
+        "Delete a memory row by id. Scope-guarded — missing and cross-scope ids fail with stable `MEMORY_NOT_FOUND` / 404 semantics.",
       inputSchema: {
         type: "object",
         required: ["memoryId"],
@@ -261,12 +305,20 @@ export function buildPlatosControlToolHandlers(deps: {
         const startedAt = Date.now();
         try {
           const ok = await memory.delete(tuple(scope), id);
+          if (!ok) {
+            const notFound = new Error("memory not found");
+            (notFound as any).code = "MEMORY_NOT_FOUND";
+            (notFound as any).status = 404;
+            (notFound as any).statusCode = 404;
+            throw notFound;
+          }
           const result = { ok, memoryId: id };
           auditMemoryMutation(scope, "memories.delete", params, result, "success", startedAt);
           return result;
         } catch (err: any) {
           const message = err?.message ?? String(err);
           auditMemoryMutation(scope, "memories.delete", params, null, "failed", startedAt, message);
+          if (err?.code === "MEMORY_NOT_FOUND") throw err;
           return { error: "delete_failed", message };
         }
       },
@@ -965,42 +1017,66 @@ export function buildPlatosControlToolHandlers(deps: {
       async execute(params, scope) {
         const userId = String(params["userId"]);
         const scopeTuple = tuple(scope);
-        // MCPF-W2 — DSAR must include archived rows. Soft-deleted memories
-        // are still the user's data; excluding them would silently violate
-        // GDPR's right-of-access guarantee.
-        const memories = await memory.list(scopeTuple, {
-          userId,
-          limit: 10_000,
-          includeArchived: true,
-        });
-        const entities = await graph.getEntities(scopeTuple, { userId, limit: 500 });
-        const entityIds = new Set(entities.map((e) => e.id));
-        const relationships: Array<Record<string, unknown>> = [];
-        for (const e of entities) {
-          const details = await graph.getRelationships(scopeTuple, { entityId: e.id });
-          if (!details) continue;
-          for (const out of details.outbound) {
-            if (!entityIds.has(out.to.id)) continue;
-            relationships.push({
-              fromEntityKey: e.entityKey,
-              toEntityKey: out.to.entityKey,
-              relationshipType: out.relationship.relationshipType,
-              weight: out.relationship.weight,
-              metadata: out.relationship.metadata,
-              sourceMemoryId: out.relationship.sourceMemoryId,
-              createdAt: out.relationship.createdAt,
-            });
-          }
-        }
-        return {
-          version: 1 as const,
-          exportedAt: new Date().toISOString(),
-          scope: scopeTuple,
-          userId,
-          memories,
-          entities,
-          relationships,
-        };
+        // MCP responses are necessarily materialized JSON, but traversal uses
+        // the same immutable keysets and one repeatable snapshot as HTTP
+        // export. This removes the former 10k/500 caps and N+1 edge walk.
+        return prisma.$transaction(async (tx: any) => {
+          const memories = await collectKeysetCollection((cursor) =>
+            memory.listExportKeysetPage(scopeTuple, userId, cursor, 500, tx));
+          const entities = await collectKeysetCollection((cursor) =>
+            graph.getEntitiesExportKeysetPage(scopeTuple, userId, cursor, 500, tx));
+          const relationships = await collectKeysetCollection((cursor) =>
+            graph.getRelationshipsExportKeysetPage(scopeTuple, userId, cursor, 500, tx));
+          return {
+            version: 2 as const,
+            exportedAt: new Date().toISOString(),
+            scope: scopeTuple,
+            userId,
+            memories: memories.map((row) => ({
+              id: row.id,
+              kind: row.kind,
+              content: row.content,
+              metadata: row.metadata,
+              visibility: row.visibility,
+              agentVisible: row.agentVisible,
+              source: row.source,
+              sourceThreadId: row.sourceThreadId,
+              sourceTurnIds: row.sourceTurnIds,
+              extractorVersion: row.extractorVersion,
+              originalSource: row.originalSource,
+              originalSourceThreadId: row.originalSourceThreadId,
+              originalSourceTurnIds: row.originalSourceTurnIds,
+              confidence: row.confidence,
+              createdAt: row.createdAt,
+              updatedAt: row.updatedAt,
+              lastAccessedAt: row.lastAccessedAt,
+              quarantinedAt: row.quarantinedAt,
+              archivedAt: row.archivedAt,
+            })),
+            entities: entities.map((row) => ({
+              id: row.id,
+              entityKey: row.entityKey,
+              entityType: row.entityType,
+              label: row.label,
+              aliases: row.aliases,
+              metadata: row.metadata,
+              createdAt: row.createdAt,
+              updatedAt: row.updatedAt,
+            })),
+            relationships: relationships.map((row) => ({
+              id: row.id,
+              fromEntityId: row.fromEntityId,
+              toEntityId: row.toEntityId,
+              fromEntityKey: row.fromEntityKey,
+              toEntityKey: row.toEntityKey,
+              relationshipType: row.relationshipType,
+              weight: row.weight,
+              metadata: row.metadata,
+              sourceMemoryId: row.sourceMemoryId,
+              createdAt: row.createdAt,
+            })),
+          };
+        }, { isolationLevel: "RepeatableRead", timeout: 120_000 });
       },
     },
     {
@@ -1009,44 +1085,36 @@ export function buildPlatosControlToolHandlers(deps: {
         "Import a previously-exported memory bundle. The caller's scope + userId is authoritative — the bundle's scope fields are advisory. Destructive (replace mode wipes the user's memories first).",
       inputSchema: {
         type: "object",
-        required: ["userId", "memories"],
+        required: ["userId", "bundle"],
         properties: {
           userId: { type: "string" },
           mode: { type: "string", enum: ["merge", "replace"] },
-          memories: {
-            type: "array",
-            items: { type: "object" },
+          confirmReplace: { type: "boolean" },
+          bundle: {
+            type: "object",
+            required: ["version", "memories", "entities", "relationships"],
+            properties: {
+              version: { type: "integer", enum: [1, 2] },
+              exportedAt: { type: ["string", "null"] },
+              memories: { type: "array", items: { type: "object" } },
+              entities: { type: "array", items: { type: "object" } },
+              relationships: { type: "array", items: { type: "object" } },
+            },
+            additionalProperties: true,
           },
         },
-        additionalProperties: true,
+        additionalProperties: false,
       },
       async execute(params, scope) {
         const userId = String(params["userId"]);
         const mode = (params["mode"] as "merge" | "replace" | undefined) ?? "merge";
-        const mems = (params["memories"] as Array<Record<string, unknown>>) ?? [];
-        const scopeTuple = tuple(scope);
-        if (mode === "replace") {
-          await memory.deleteAllForUser(scopeTuple, userId);
+        if (mode === "replace" && params["confirmReplace"] !== true) {
+          const error = new Error("replace mode requires explicit destructive confirmation");
+          (error as any).code = "MEMORY_IMPORT_REPLACE_CONFIRMATION_REQUIRED";
+          throw error;
         }
-        let imported = 0;
-        for (const m of mems) {
-          try {
-            await memory.add(scopeTuple, {
-              userId,
-              content: String(m["content"] ?? ""),
-              ...(m["kind"] !== undefined ? { kind: m["kind"] as any } : {}),
-              ...(m["metadata"] !== undefined ? { metadata: m["metadata"] } : {}),
-              ...(m["visibility"] !== undefined
-                ? { visibility: m["visibility"] as any }
-                : {}),
-              source: "imported",
-            });
-            imported += 1;
-          } catch {
-            /* skip invalid rows — caller sees imported vs. total delta */
-          }
-        }
-        return { ok: true, imported, total: mems.length, mode };
+        const validated = validateMemoryBundle(params["bundle"]);
+        return memoryImport.importBundle(tuple(scope), userId, validated, mode);
       },
     },
     {
@@ -1066,4 +1134,18 @@ export function buildPlatosControlToolHandlers(deps: {
       },
     },
   ];
+}
+
+async function collectKeysetCollection<T>(
+  page: (cursor: string | null) => Promise<{ items: T[]; nextCursor: string | null }>,
+): Promise<T[]> {
+  const items: T[] = [];
+  let cursor: string | null = null;
+  for (;;) {
+    const current = await page(cursor);
+    items.push(...current.items);
+    if (!current.nextCursor || current.items.length === 0) return items;
+    if (current.nextCursor === cursor) throw new Error("export keyset cursor did not advance");
+    cursor = current.nextCursor;
+  }
 }

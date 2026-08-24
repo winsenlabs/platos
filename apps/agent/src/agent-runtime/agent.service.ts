@@ -50,7 +50,10 @@ import { MonitoringApprovalsService } from "../monitoring/approvals.service";
 import { approvalRedisKey } from "../monitoring/approval-keys";
 import { CostService } from "../monitoring/cost.service";
 import { preflightModelPricing } from "../monitoring/model-pricing-preflight";
-import type { CanonicalModelPriceSnapshot } from "@platos/tenancy-database";
+import {
+  normalizeMemoryProfileKey,
+  type CanonicalModelPriceSnapshot,
+} from "@platos/tenancy-database";
 import { turnTokenDetails } from "../monitoring/usage-ledger";
 import { SpansService } from "../monitoring/spans.service";
 // Theme L — pgvector-backed semantic memory + knowledge-graph services.
@@ -2294,17 +2297,22 @@ export class AgentService {
       execute: async ({ kind, limit, offset }) => {
         if (!this.memoryService) return { memories: [], total: 0, error: "memory service unavailable" };
         try {
-          const rows = await this.memoryService.list(scopeTuple, {
+          const page = await this.memoryService.listPage(scopeTuple, {
             userId: memoryUserId,
             kind,
             limit,
             offset,
+            agentVisibleOnly: true,
+            visibilityIn: ["agent_visible"],
             // Own agent, or cluster MEMBERS when clustered (never scope-wide).
             ...(await this.memoryAgentFilter(scope.agentId, scope)),
           });
           return {
-            total: rows.length,
-            memories: rows.map((r) => ({
+            total: page.total,
+            limit: page.limit,
+            offset: page.offset,
+            hasNext: page.hasNext,
+            memories: page.items.map((r) => ({
               id: r.id,
               content: r.content,
               kind: r.kind,
@@ -2455,42 +2463,24 @@ export class AgentService {
             return { saved: false, error: "profile key must be non-empty and not start with '_'" };
           }
           const memoryContent = typeof value === "string" ? value : String(value);
-          const profiles = await this.memoryService.list(scopeTuple, {
+          const profileKey = normalizeMemoryProfileKey(key);
+          const metadata = {
+            profileKey,
+            blobSyncedAt: new Date().toISOString(),
+          };
+          // MemoryService.add is an atomic partial-index upsert on the
+          // normalized persisted profileKey. Avoid list-then-update races
+          // between runtime, extractor, and import writers.
+          await this.memoryService.add(scopeTuple, {
             userId: scope.userId,
             agentId,
             kind: "profile",
-            limit: 100,
+            content: memoryContent,
+            metadata,
+            source: "manual",
+            visibility: "agent_visible",
+            agentVisible: true,
           });
-          const prior = profiles.find((memory) => {
-            const metadata = memory.metadata;
-            return !!metadata && typeof metadata === "object" && !Array.isArray(metadata)
-              && (metadata as Record<string, unknown>).profileKey === key;
-          });
-          const metadata = {
-            profileKey: key,
-            blobSyncedAt: new Date().toISOString(),
-          };
-          if (prior) {
-            const updated = await this.memoryService.update(scopeTuple, prior.id, {
-              kind: "profile",
-              content: memoryContent,
-              metadata,
-              visibility: "private",
-              agentVisible: true,
-            }, scope.userId);
-            if (!updated) throw new Error("Profile memory disappeared during update");
-          } else {
-            await this.memoryService.add(scopeTuple, {
-              userId: scope.userId,
-              agentId,
-              kind: "profile",
-              content: memoryContent,
-              metadata,
-              source: "manual",
-              visibility: "private",
-              agentVisible: true,
-            });
-          }
           // Invalidate the projection cache so the next reader (turn-
           // start injector or recall_user_profile) sees fresh data.
           await this.profileCache?.invalidate(scopeTuple, agentId, scope.userId);
@@ -2519,8 +2509,10 @@ export class AgentService {
         try {
           // Cache hit path — skip Prisma entirely when a fresh
           // projection is already in Redis.
-          let data: Record<string, unknown> | null =
-            (await this.profileCache?.get(scopeTuple, agentId, scope.userId)) ?? null;
+          // Visibility can change independently of profile content. Always
+          // rebuild from persisted rows so a cached formerly-visible profile
+          // can never bypass the dual recall predicate.
+          let data: Record<string, unknown> | null = null;
           if (!data) {
             // Cache miss — rebuild from memory rows. Scope-gated to
             // (org, project, env, agentId, userId) so a forged agentId
@@ -2530,9 +2522,11 @@ export class AgentService {
             }
             const rows = await this.memoryService.list(scopeTuple, {
               userId: scope.userId,
-              agentId,
               kind: "profile",
               limit: 100,
+              agentVisibleOnly: true,
+              visibilityIn: ["agent_visible"],
+              ...(await this.memoryAgentFilter(agentId, scope)),
             });
             data = {};
             for (const row of rows) {
@@ -5129,8 +5123,9 @@ export class AgentService {
                 userId: scope.userId,
                 limit: 8,
                 minScore: 0.35,
-                // Defaults exclude "private"; pass agent-visible + hidden.
-                visibilityIn: ["agent_visible", "hidden"],
+                // FuseInput intentionally does not expose management
+                // visibility overrides. MemoryService semantic recall applies
+                // the dual-predicate agent_visible default.
                 // Agent-scoped injection: own agent, or cluster MEMBERS when
                 // clustered — never scope-wide (the Mark/Ada leak fix). RAG
                 // chunks are excluded inside the fusion so raw document text

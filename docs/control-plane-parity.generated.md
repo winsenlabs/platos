@@ -7,10 +7,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **206** across **35** namespaces (24 admin-tier).
-- REST operations: **290** unique method/path pairs from **290** route bindings.
+- REST operations: **294** unique method/path pairs from **294** route bindings.
 - Ambiguous duplicate REST method/path pairs: **0**.
 - MCP classifications: MAPPED=83, MCP_ONLY=123.
-- REST classifications: DEPRECATED=13, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=137.
+- REST classifications: DEPRECATED=15, INTERNAL=13, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=139.
 
 ## REST inventory
 
@@ -231,6 +231,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/memory` | MAPPED | `memories.upsert` | Reviewed behavioral equivalence: the REST adapter and memories.upsert invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#createMemory` |
 | `DELETE /api/v1/memory/:id` | MAPPED | `memories.delete` | Reviewed behavioral equivalence: the REST adapter and memories.delete invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#deleteMemory` |
 | `POST /api/v1/memory/:id` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#updateMemory` |
+| `POST /api/v1/memory/:id/archive` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#archiveMemory` |
+| `POST /api/v1/memory/:id/restore` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#restoreMemory` |
 | `POST /api/v1/memory/admin/extraction-sweep` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#adminExtractionSweep` |
 | `GET /api/v1/memory/export` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#exportBundle` |
 | `POST /api/v1/memory/extract` | MAPPED | `memories.extract_now` | Reviewed behavioral equivalence: the REST adapter and memories.extract_now invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#manualExtract` |
@@ -244,6 +246,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/platos/memory` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#createMemory` |
 | `DELETE /api/v1/platos/memory/:id` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#deleteMemory` |
 | `POST /api/v1/platos/memory/:id` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#updateMemory` |
+| `POST /api/v1/platos/memory/:id/archive` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#archiveMemory` |
+| `POST /api/v1/platos/memory/:id/restore` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#restoreMemory` |
 | `POST /api/v1/platos/memory/admin/extraction-sweep` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#adminExtractionSweep` |
 | `GET /api/v1/platos/memory/export` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#exportBundle` |
 | `POST /api/v1/platos/memory/extract` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#manualExtract` |

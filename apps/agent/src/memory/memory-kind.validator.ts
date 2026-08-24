@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  MEMORY_KINDS,
+  normalizeMemoryProfileKey,
+  type MemoryKind,
+} from "@platos/tenancy-database";
 
 /**
  * Theme O.4 — memory-kind validator.
@@ -26,6 +31,8 @@ const BASE_CONTENT = z
   .min(1, "content must be non-empty")
   .max(4000, "content exceeds 4000 character cap");
 
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
+
 const factMetadata = z
   .object({
     subject: z.string().optional(),
@@ -51,7 +58,7 @@ const eventMetadata = z
     at: z
       .string()
       .refine(
-        (v) => !Number.isNaN(Date.parse(v)),
+        (v) => ISO_DATETIME.test(v) && !Number.isNaN(Date.parse(v)),
         "`at` must be a valid ISO datetime",
       )
       .optional(),
@@ -83,9 +90,14 @@ const profileMetadata = z
   .object({
     profileKey: z
       .string()
+      .trim()
       .min(1, "metadata.profileKey is required for profile memories"),
   })
-  .catchall(z.unknown());
+  .catchall(z.unknown())
+  .transform((metadata) => ({
+    ...metadata,
+    profileKey: normalizeMemoryProfileKey(metadata.profileKey),
+  }));
 
 const kindSchemas = {
   fact: z.object({
@@ -115,14 +127,7 @@ const kindSchemas = {
   }),
 } as const;
 
-export const MEMORY_KINDS = [
-  "fact",
-  "preference",
-  "event",
-  "relationship",
-  "profile",
-] as const;
-export type MemoryKind = (typeof MEMORY_KINDS)[number];
+export { MEMORY_KINDS, type MemoryKind };
 
 export interface MemoryValidationInput {
   kind?: string;

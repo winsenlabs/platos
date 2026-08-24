@@ -3192,7 +3192,7 @@
           "type": "object",
           "required": [
             "userId",
-            "memories"
+            "bundle"
           ],
           "properties": {
             "userId": {
@@ -3205,14 +3205,54 @@
                 "replace"
               ]
             },
-            "memories": {
-              "type": "array",
-              "items": {
-                "type": "object"
-              }
+            "confirmReplace": {
+              "type": "boolean"
+            },
+            "bundle": {
+              "type": "object",
+              "required": [
+                "version",
+                "memories",
+                "entities",
+                "relationships"
+              ],
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "enum": [
+                    1,
+                    2
+                  ]
+                },
+                "exportedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "memories": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "entities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "relationships": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              },
+              "additionalProperties": true
             }
           },
-          "additionalProperties": true
+          "additionalProperties": false
         },
         "requiresAdminTier": false,
         "category": "platos.platform",
@@ -3866,7 +3906,7 @@
       },
       {
         "name": "memories.delete",
-        "description": "Delete a memory row by id. Scope-guarded — cross-scope ids silently no-op and return `{ ok: false }`.",
+        "description": "Delete a memory row by id. Scope-guarded — missing and cross-scope ids fail with stable `MEMORY_NOT_FOUND` / 404 semantics.",
         "inputSchema": {
           "type": "object",
           "required": [
@@ -3986,7 +4026,43 @@
               "type": "string"
             },
             "kind": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "fact",
+                "preference",
+                "event",
+                "relationship",
+                "profile"
+              ]
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "manual",
+                "extracted",
+                "imported",
+                "rag"
+              ]
+            },
+            "archiveState": {
+              "type": "string",
+              "enum": [
+                "active",
+                "archived",
+                "all"
+              ]
+            },
+            "visibilityIn": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "agent_visible",
+                  "hidden",
+                  "private"
+                ]
+              },
+              "uniqueItems": true
             },
             "agentId": {
               "type": [
@@ -3997,12 +4073,12 @@
             "limit": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 200
+              "maximum": 100
             },
             "offset": {
               "type": "integer",
               "minimum": 0,
-              "maximum": 10000
+              "maximum": 100000
             }
           },
           "additionalProperties": false
@@ -4057,7 +4133,43 @@
               "type": "string"
             },
             "kind": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "fact",
+                "preference",
+                "event",
+                "relationship",
+                "profile"
+              ]
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "manual",
+                "extracted",
+                "imported",
+                "rag"
+              ]
+            },
+            "archiveState": {
+              "type": "string",
+              "enum": [
+                "active",
+                "archived",
+                "all"
+              ]
+            },
+            "visibilityIn": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "agent_visible",
+                  "hidden",
+                  "private"
+                ]
+              },
+              "uniqueItems": true
             },
             "agentId": {
               "type": [
@@ -4129,14 +4241,6 @@
                 "agent_visible",
                 "hidden",
                 "private"
-              ]
-            },
-            "source": {
-              "type": "string",
-              "enum": [
-                "manual",
-                "extracted",
-                "imported"
               ]
             },
             "sourceThreadId": {
@@ -10601,6 +10705,40 @@
         ]
       },
       {
+        "id": "POST /api/v1/memory/:id/archive",
+        "method": "POST",
+        "path": "/api/v1/memory/:id/archive",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "MemoryController",
+            "handler": "archiveMemory",
+            "source": "apps/agent/src/memory/memory.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/memory/:id/restore",
+        "method": "POST",
+        "path": "/api/v1/memory/:id/restore",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "MemoryController",
+            "handler": "restoreMemory",
+            "source": "apps/agent/src/memory/memory.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
         "id": "POST /api/v1/memory/admin/extraction-sweep",
         "method": "POST",
         "path": "/api/v1/memory/admin/extraction-sweep",
@@ -10824,6 +10962,42 @@
           {
             "controller": "MemoryController",
             "handler": "updateMemory",
+            "source": "apps/agent/src/memory/memory.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/platos/memory/:id/archive",
+        "method": "POST",
+        "path": "/api/v1/platos/memory/:id/archive",
+        "classification": "DEPRECATED",
+        "policyRule": "legacy-platos-memory-prefix",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "replacement": "/api/v1/memory",
+        "implementations": [
+          {
+            "controller": "MemoryController",
+            "handler": "archiveMemory",
+            "source": "apps/agent/src/memory/memory.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/platos/memory/:id/restore",
+        "method": "POST",
+        "path": "/api/v1/platos/memory/:id/restore",
+        "classification": "DEPRECATED",
+        "policyRule": "legacy-platos-memory-prefix",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "replacement": "/api/v1/memory",
+        "implementations": [
+          {
+            "controller": "MemoryController",
+            "handler": "restoreMemory",
             "source": "apps/agent/src/memory/memory.controller.ts",
             "requiresOperator": false
           }
@@ -11902,15 +12076,15 @@
       "MAPPED": 83,
       "MCP_ONLY": 123
     },
-    "restOperations": 290,
-    "restRouteBindings": 290,
+    "restOperations": 294,
+    "restRouteBindings": 294,
     "ambiguousRestOperations": 0,
     "restClassifications": {
-      "DEPRECATED": 13,
+      "DEPRECATED": 15,
       "INTERNAL": 13,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 137
+      "REST_ONLY": 139
     }
   }
 }

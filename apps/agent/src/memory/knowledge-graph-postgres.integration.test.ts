@@ -370,6 +370,42 @@ describe("KnowledgeGraphService PostgreSQL clustered upsert", () => {
     ).resolves.toBeNull();
   });
 
+  it("traverses an exact 141-entity graph with truthful totals and deterministic bounded pages", async () => {
+    const createdAt = new Date("2026-01-01T00:00:00.000Z");
+    await prisma.memoryEntity.createMany({
+      data: Array.from({ length: 141 }, (_, index) => ({
+        environmentId: ids.environmentId,
+        endUserId: ids.endUserId,
+        agentId: ids.agentAId,
+        clusterId: ids.clusterId,
+        entityKey: `pagination-entity-${index.toString().padStart(3, "0")}`,
+        entityType: "pagination-fixture",
+        label: `Pagination entity ${index}`,
+        createdAt,
+        updatedAt: createdAt,
+      })),
+    });
+    const siblingScope = scope(ids.environmentId, ids.agentBId);
+    const input = { userId: ids.endUserId, entityType: "pagination-fixture", limit: 50 };
+    const [first, repeated, middle, last, empty] = await Promise.all([
+      service.getEntitiesPage(siblingScope, { ...input, offset: 0 }),
+      service.getEntitiesPage(siblingScope, { ...input, offset: 0 }),
+      service.getEntitiesPage(siblingScope, { ...input, offset: 50 }),
+      service.getEntitiesPage(siblingScope, { ...input, offset: 100 }),
+      service.getEntitiesPage(siblingScope, { ...input, offset: 150 }),
+    ]);
+
+    for (const page of [first, repeated, middle, last, empty]) expect(page.total).toBe(141);
+    expect(first.items).toHaveLength(50);
+    expect(middle.items).toHaveLength(50);
+    expect(last.items).toHaveLength(41);
+    expect(empty.items).toHaveLength(0);
+    expect(first.hasNext).toBe(true);
+    expect(last.hasNext).toBe(false);
+    expect(first.items.map(({ id }) => id)).toEqual(repeated.items.map(({ id }) => id));
+    expect(new Set([...first.items, ...middle.items, ...last.items].map(({ id }) => id)).size).toBe(141);
+  });
+
   it("promotes and reuses an existing standalone entity when its Agent joins a cluster", async () => {
     const standalone = await service.upsertEntity(scope(ids.environmentId, ids.transitionAgentId), {
       userId: ids.endUserId,

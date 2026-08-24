@@ -326,6 +326,7 @@ model Memory {
   agentId          String    @db.Uuid
   clusterId        String?   @db.Uuid
   kind             String
+  profileKey       String?
   content          String
   metadata         Json?
   agentVisible     Boolean   @default(true)
@@ -334,6 +335,9 @@ model Memory {
   sourceThreadId   String?   @db.Uuid
   sourceTurnIds    String[]  @default([]) @db.Uuid
   extractorVersion String?
+  originalSource         String?
+  originalSourceThreadId String?
+  originalSourceTurnIds  String[] @default([])
   contentHash      String?
   confidence       Float?
   feedbackBaselineConfidence Float?

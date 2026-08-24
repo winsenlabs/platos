@@ -1,5 +1,17 @@
 import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import * as crypto from "node:crypto";
+import {
+  MEMORY_OFFSET_MAX,
+  MEMORY_PAGE_DEFAULT,
+  MEMORY_PAGE_MAX,
+  isMemorySource,
+  isMemoryVisibility,
+  normalizeMemoryProfileKey,
+  type MemoryArchiveState,
+  type MemoryKind,
+  type MemorySource,
+  type MemoryVisibility,
+} from "@platos/tenancy-database";
 import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import { EmbeddingService } from "./embedding.service";
 import { requireValidMemoryPayload } from "./memory-kind.validator";
@@ -18,10 +30,8 @@ import {
 
 export type ScopeTuple = MemoryScope;
 
-export type MemoryKind = "fact" | "preference" | "event" | "relationship" | "profile";
-export type MemorySource = "manual" | "extracted" | "imported" | "rag";
+export type { MemoryArchiveState, MemoryKind, MemorySource, MemoryVisibility };
 export const RAG_MEMORY_SOURCE = "rag" as const;
-export type MemoryVisibility = "agent_visible" | "hidden" | "private";
 
 export interface MemoryRow {
   id: string;
@@ -29,8 +39,10 @@ export interface MemoryRow {
   projectId: string;
   environmentId: string;
   agentId: string | null;
+  clusterId: string | null;
   userId: string;
   kind: string;
+  profileKey: string | null;
   content: string;
   metadata: unknown;
   agentVisible: boolean;
@@ -41,6 +53,9 @@ export interface MemoryRow {
   /** @deprecated Read-only API alias. Values are clean Turn IDs. */
   sourceMessageIds: string[];
   extractorVersion: string | null;
+  originalSource: string | null;
+  originalSourceThreadId: string | null;
+  originalSourceTurnIds: string[];
   confidence: number | null;
   createdAt: Date;
   updatedAt: Date;
@@ -79,6 +94,10 @@ export interface UpdateMemoryInput {
   visibility?: MemoryVisibility;
 }
 
+export interface MemoryWriteOptions {
+  trustedSource?: Exclude<MemorySource, "manual">;
+}
+
 export interface SemanticSearchInput {
   query: string;
   userId: string;
@@ -89,6 +108,8 @@ export interface SemanticSearchInput {
   minScore?: number;
   agentVisibleOnly?: boolean;
   visibilityIn?: MemoryVisibility[];
+  source?: MemorySource | string;
+  archiveState?: MemoryArchiveState;
   includeArchived?: boolean;
   excludeRag?: boolean;
 }
@@ -100,7 +121,24 @@ export interface ListMemoriesInput {
   agentIds?: string[];
   limit?: number;
   offset?: number;
+  source?: MemorySource | string;
+  archiveState?: MemoryArchiveState;
   includeArchived?: boolean;
+  agentVisibleOnly?: boolean;
+  visibilityIn?: MemoryVisibility[];
+}
+
+export interface MemoryPage {
+  items: MemoryRow[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasNext: boolean;
+}
+
+export interface ExportKeysetPage<T> {
+  items: T[];
+  nextCursor: string | null;
 }
 
 @Injectable()
@@ -141,7 +179,11 @@ export class MemoryService {
     return resolveEndUser(this.prisma, scope, userId);
   }
 
-  async add(scope: ScopeTuple, input: AddMemoryInput): Promise<MemoryRow> {
+  async add(
+    scope: ScopeTuple,
+    input: AddMemoryInput,
+    options: MemoryWriteOptions = {},
+  ): Promise<MemoryRow> {
     if (!input.userId) throw new Error("MemoryService.add: `userId` is required");
     const validated = requireValidMemoryPayload({
       kind: input.kind,
@@ -162,7 +204,13 @@ export class MemoryService {
       input.agentId,
       input.sourceThreadId,
     );
-    const source = input.source || "manual";
+    const requestedSource = requireMemorySource(input.source ?? "manual");
+    if (requestedSource !== "manual" && options.trustedSource !== requestedSource) {
+      const error = new Error(`source '${requestedSource}' requires a trusted provenance writer`);
+      (error as any).code = "MEMORY_UNTRUSTED_SOURCE";
+      throw error;
+    }
+    const source = options.trustedSource ?? requestedSource;
     const visibility = normalizeVisibility(input.visibility, input.agentVisible);
     const agentVisible = visibility === "agent_visible";
     const sourceTurnIds = Array.from(new Set(input.sourceTurnIds ?? []));
@@ -193,6 +241,9 @@ export class MemoryService {
     const contentHash = input.sourceThreadId
       ? crypto.createHash("sha256").update(validated.content).digest("hex")
       : null;
+    const profileKey = validated.kind === "profile"
+      ? normalizeMemoryProfileKey(String((validated.metadata as Record<string, unknown>).profileKey))
+      : null;
 
     const vector = validated.kind === "profile"
       ? null
@@ -202,35 +253,68 @@ export class MemoryService {
       ?? validated.metadata
       ?? null;
 
-    await this.prisma.$executeRawUnsafe(
+    const conflictClause = validated.kind === "profile"
+      ? binding.clusterId
+        ? `ON CONFLICT ("environmentId", "endUserId", "clusterId", "profileKey")
+             WHERE "kind" = 'profile' AND "clusterId" IS NOT NULL AND "profileKey" IS NOT NULL
+           DO UPDATE SET
+             "content" = EXCLUDED."content",
+             "metadata" = EXCLUDED."metadata",
+             "agentVisible" = EXCLUDED."agentVisible",
+             "visibility" = EXCLUDED."visibility",
+             "source" = EXCLUDED."source",
+             "sourceThreadId" = EXCLUDED."sourceThreadId",
+             "sourceTurnIds" = EXCLUDED."sourceTurnIds",
+             "extractorVersion" = EXCLUDED."extractorVersion",
+             "confidence" = EXCLUDED."confidence",
+             "archivedAt" = NULL,
+             "updatedAt" = NOW()`
+        : `ON CONFLICT ("environmentId", "endUserId", "agentId", "profileKey")
+             WHERE "kind" = 'profile' AND "clusterId" IS NULL AND "profileKey" IS NOT NULL
+           DO UPDATE SET
+             "content" = EXCLUDED."content",
+             "metadata" = EXCLUDED."metadata",
+             "agentVisible" = EXCLUDED."agentVisible",
+             "visibility" = EXCLUDED."visibility",
+             "source" = EXCLUDED."source",
+             "sourceThreadId" = EXCLUDED."sourceThreadId",
+             "sourceTurnIds" = EXCLUDED."sourceTurnIds",
+             "extractorVersion" = EXCLUDED."extractorVersion",
+             "confidence" = EXCLUDED."confidence",
+             "archivedAt" = NULL,
+             "updatedAt" = NOW()`
+      : `ON CONFLICT ("environmentId", "endUserId", "sourceThreadId", "contentHash")
+           DO UPDATE SET
+             "sourceTurnIds" = ARRAY(
+               SELECT DISTINCT unnest("Memory"."sourceTurnIds" || EXCLUDED."sourceTurnIds")
+             ),
+             "extractorVersion" = EXCLUDED."extractorVersion",
+             "confidence" = GREATEST(
+               COALESCE("Memory"."confidence", 0),
+               COALESCE(EXCLUDED."confidence", 0)
+             ),
+             "lastAccessedAt" = NOW(),
+             "updatedAt" = NOW()`;
+    const inserted = await this.prisma.$queryRawUnsafe<Array<{ id: string }>>(
       `INSERT INTO "Memory" (
          "id", "environmentId", "endUserId", "agentId", "clusterId",
-         "kind", "content", "metadata", "agentVisible", "visibility", "source",
+         "kind", "profileKey", "content", "metadata", "agentVisible", "visibility", "source",
          "embedding", "sourceThreadId", "sourceTurnIds", "extractorVersion", "contentHash", "confidence",
          "createdAt", "updatedAt"
        ) VALUES (
          $1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid,
-         $6, $7, $8::jsonb, $9, $10, $11,
-         $12::vector, $13::uuid, $14::uuid[], $15, $16, $17, NOW(), NOW()
+         $6, $7, $8, $9::jsonb, $10, $11, $12,
+         $13::vector, $14::uuid, $15::uuid[], $16, $17, $18, NOW(), NOW()
        )
-       ON CONFLICT ("environmentId", "endUserId", "sourceThreadId", "contentHash")
-       DO UPDATE SET
-         "sourceTurnIds" = ARRAY(
-           SELECT DISTINCT unnest("Memory"."sourceTurnIds" || EXCLUDED."sourceTurnIds")
-         ),
-         "extractorVersion" = EXCLUDED."extractorVersion",
-         "confidence" = GREATEST(
-           COALESCE("Memory"."confidence", 0),
-           COALESCE(EXCLUDED."confidence", 0)
-         ),
-         "lastAccessedAt" = NOW(),
-         "updatedAt" = NOW()`,
+       ${conflictClause}
+       RETURNING "id"`,
       id,
       scope.environmentId,
       endUser.id,
       binding.agentId,
       binding.clusterId,
       validated.kind,
+      profileKey,
       this.encryptContent(validated.content),
       storedMetadata === null ? null : JSON.stringify(storedMetadata),
       agentVisible,
@@ -244,16 +328,7 @@ export class MemoryService {
       input.confidence ?? null,
     );
 
-    const row = contentHash && input.sourceThreadId
-      ? await this.prisma.memory.findFirst({
-          where: {
-            environmentId: scope.environmentId,
-            endUserId: endUser.id,
-            sourceThreadId: input.sourceThreadId,
-            contentHash,
-          },
-        })
-      : await this.prisma.memory.findUnique({ where: { id } });
+    const row = await this.prisma.memory.findUnique({ where: { id: inserted[0]?.id ?? id } });
     if (!row) throw new Error("Memory persistence completed without a readable row");
     return this.toMemoryRow(row, scope, endUser.externalId);
   }
@@ -280,12 +355,17 @@ export class MemoryService {
         ? normalizeVisibility(undefined, patch.agentVisible)
         : existing.visibility;
     const changedContent = patch.content !== undefined && patch.content !== existing.content;
-    const vector = changedContent && validated.kind !== "profile"
+    const clearEmbedding = validated.kind === "profile";
+    const needsEmbedding = !clearEmbedding && (changedContent || existing.kind === "profile");
+    const vector = needsEmbedding
       ? await this.embeddings.embed(validated.content, scope)
       : null;
     const storedMetadata = this.crypto?.encryptJsonField(validated.metadata ?? null)
       ?? validated.metadata
       ?? null;
+    const profileKey = validated.kind === "profile"
+      ? normalizeMemoryProfileKey(String((validated.metadata as Record<string, unknown>).profileKey))
+      : null;
     const newHash = changedContent
       ? crypto.createHash("sha256").update(validated.content).digest("hex")
       : null;
@@ -293,19 +373,26 @@ export class MemoryService {
     const result = await this.prisma.$executeRawUnsafe(
       `UPDATE "Memory"
        SET "kind" = $1,
-           "content" = $2,
-           "metadata" = $3::jsonb,
-           "agentVisible" = $4,
-           "visibility" = $5,
-           "embedding" = CASE WHEN $6::vector IS NULL THEN "embedding" ELSE $6::vector END,
-           "contentHash" = CASE WHEN $7::text IS NULL THEN "contentHash" ELSE $7 END,
+           "profileKey" = $2,
+           "content" = $3,
+           "metadata" = $4::jsonb,
+           "agentVisible" = $5,
+           "visibility" = $6,
+           "embedding" = CASE
+             WHEN $7::boolean THEN NULL
+             WHEN $8::vector IS NULL THEN "embedding"
+             ELSE $8::vector
+           END,
+           "contentHash" = CASE WHEN $9::text IS NULL THEN "contentHash" ELSE $9 END,
            "updatedAt" = NOW()
-       WHERE "id" = $8::uuid AND "environmentId" = $9::uuid`,
+       WHERE "id" = $10::uuid AND "environmentId" = $11::uuid`,
       validated.kind,
+      profileKey,
       this.encryptContent(validated.content),
       storedMetadata === null ? null : JSON.stringify(storedMetadata),
       visibility === "agent_visible",
       visibility,
+      clearEmbedding,
       vector ? vectorToLiteral(vector) : null,
       newHash,
       id,
@@ -359,8 +446,10 @@ export class MemoryService {
   async archive(
     scope: ScopeTuple,
     id: string,
+    userId?: string,
   ): Promise<{ ok: boolean; archivedAt: string | null }> {
     await assertEnvironmentScope(this.prisma, scope);
+    const endUser = userId ? await resolveEndUser(this.prisma, scope, userId) : null;
     const agentIds = await resolveReadAgentIds(this.prisma, scope);
     const now = new Date();
     const result = await this.prisma.memory.updateMany({
@@ -368,6 +457,7 @@ export class MemoryService {
         id,
         ...environmentScopeWhere(scope),
         agentId: { in: agentIds },
+        ...(endUser ? { endUserId: endUser.id } : {}),
         archivedAt: null,
       },
       data: { archivedAt: now },
@@ -378,14 +468,17 @@ export class MemoryService {
   async restore(
     scope: ScopeTuple,
     id: string,
+    userId?: string,
   ): Promise<{ ok: boolean; memory: MemoryRow | null }> {
     await assertEnvironmentScope(this.prisma, scope);
+    const endUser = userId ? await resolveEndUser(this.prisma, scope, userId) : null;
     const agentIds = await resolveReadAgentIds(this.prisma, scope);
     const result = await this.prisma.memory.updateMany({
       where: {
         id,
         ...environmentScopeWhere(scope),
         agentId: { in: agentIds },
+        ...(endUser ? { endUserId: endUser.id } : {}),
         archivedAt: { not: null },
       },
       data: { archivedAt: null },
@@ -410,6 +503,49 @@ export class MemoryService {
   }
 
   async list(scope: ScopeTuple, input: ListMemoriesInput): Promise<MemoryRow[]> {
+    return (await this.listPageInternal(scope, input, 10_000, Number.MAX_SAFE_INTEGER)).items;
+  }
+
+  async listPage(scope: ScopeTuple, input: ListMemoriesInput): Promise<MemoryPage> {
+    return this.listPageInternal(scope, input, MEMORY_PAGE_MAX, MEMORY_OFFSET_MAX);
+  }
+
+  async listExportPage(scope: ScopeTuple, input: ListMemoriesInput): Promise<MemoryPage> {
+    return this.listPageInternal(scope, input, 1_000, Number.MAX_SAFE_INTEGER);
+  }
+
+  async listExportKeysetPage(
+    scope: ScopeTuple,
+    userId: string,
+    afterId: string | null,
+    limit = 500,
+    client: ControlDatabaseClient = this.prisma,
+  ): Promise<ExportKeysetPage<MemoryRow>> {
+    await assertEnvironmentScope(client, scope);
+    const endUser = await resolveEndUser(client, scope, userId);
+    const agentIds = await resolveReadAgentIds(client, scope);
+    const rows = await client.memory.findMany({
+      where: {
+        ...environmentScopeWhere(scope),
+        endUserId: endUser.id,
+        agentId: { in: agentIds },
+        ...(afterId ? { id: { gt: afterId } } : {}),
+      },
+      orderBy: { id: "asc" },
+      take: clampInt(limit, 1, 1_000),
+    });
+    return {
+      items: rows.map((row) => this.toMemoryRow(row, scope, endUser.externalId)),
+      nextCursor: rows.length ? rows[rows.length - 1]!.id : null,
+    };
+  }
+
+  private async listPageInternal(
+    scope: ScopeTuple,
+    input: ListMemoriesInput,
+    maximumLimit: number,
+    maximumOffset: number,
+  ): Promise<MemoryPage> {
     if (!input.userId) throw new Error("MemoryService.list: `userId` is required");
     const endUser = await this.scopeAndUser(scope, input.userId);
     const agentIds = await resolveReadAgentIds(
@@ -418,22 +554,47 @@ export class MemoryService {
       input.agentId,
       input.agentIds,
     );
-    const rows = await this.prisma.memory.findMany({
-      where: {
-        ...environmentScopeWhere(scope),
-        endUserId: endUser.id,
-        ...(input.kind ? { kind: input.kind } : {}),
-        ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
-        ...(input.includeArchived ? {} : { archivedAt: null }),
-      },
-      orderBy: [
-        { lastAccessedAt: { sort: "desc", nulls: "last" } },
-        { createdAt: "desc" },
+    const archiveState = input.archiveState ?? (input.includeArchived ? "all" : "active");
+    const visibilityIn = requireMemoryVisibilities(input.visibilityIn);
+    const where = {
+      ...environmentScopeWhere(scope),
+      endUserId: endUser.id,
+      ...(input.kind ? { kind: input.kind } : {}),
+      ...(input.source ? { source: requireMemorySource(input.source) } : {}),
+      ...(visibilityIn?.length ? { visibility: { in: visibilityIn } } : {}),
+      ...(input.agentVisibleOnly ? { agentVisible: true } : {}),
+      ...(agentIds.length ? { agentId: { in: agentIds } } : {}),
+      ...(archiveState === "active"
+        ? { archivedAt: null }
+        : archiveState === "archived"
+          ? { archivedAt: { not: null } }
+          : {}),
+    };
+    const limit = clampInt(input.limit ?? MEMORY_PAGE_DEFAULT, 1, maximumLimit);
+    const offset = clampInt(input.offset ?? 0, 0, maximumOffset);
+    const [total, rows] = await this.prisma.$transaction(
+      [
+        this.prisma.memory.count({ where }),
+        this.prisma.memory.findMany({
+          where,
+          orderBy: [
+            { lastAccessedAt: { sort: "desc", nulls: "last" } },
+            { createdAt: "desc" },
+            { id: "asc" },
+          ],
+          take: limit,
+          skip: offset,
+        }),
       ],
-      take: clampInt(input.limit ?? 50, 1, 10_000),
-      skip: clampInt(input.offset ?? 0, 0, 10_000),
-    });
-    return rows.map((row) => this.toMemoryRow(row, scope, endUser.externalId));
+      { isolationLevel: "RepeatableRead" },
+    );
+    return {
+      items: rows.map((row) => this.toMemoryRow(row, scope, endUser.externalId)),
+      total,
+      limit,
+      offset,
+      hasNext: offset + rows.length < total,
+    };
   }
 
   async semanticSearch(
@@ -463,13 +624,18 @@ export class MemoryService {
       return `$${params.length}${cast}`;
     };
     clauses.push(`"quarantinedAt" IS NULL`);
-    if (!input.includeArchived) clauses.push(`"archivedAt" IS NULL`);
+    const archiveState = input.archiveState ?? (input.includeArchived ? "all" : "active");
+    if (archiveState === "active") clauses.push(`"archivedAt" IS NULL`);
+    if (archiveState === "archived") clauses.push(`"archivedAt" IS NOT NULL`);
     if (input.kind) clauses.push(`"kind" = ${addParam(input.kind)}`);
+    if (input.source) clauses.push(`"source" = ${addParam(requireMemorySource(input.source))}`);
     if (agentIds.length) clauses.push(`"agentId" = ANY(${addParam(agentIds, "::uuid[]")})`);
-    if (input.agentVisibleOnly) clauses.push(`"agentVisible" = TRUE`);
-    const visibility = input.visibilityIn?.length
-      ? input.visibilityIn
-      : ["agent_visible", "hidden"];
+    const visibilityIn = requireMemoryVisibilities(input.visibilityIn);
+    const runtimeRecall = visibilityIn === undefined;
+    if (input.agentVisibleOnly === true || runtimeRecall) clauses.push(`"agentVisible" = TRUE`);
+    const visibility = visibilityIn?.length
+      ? visibilityIn
+      : ["agent_visible"];
     clauses.push(`"visibility" = ANY(${addParam(visibility, "::text[]")})`);
     if (input.excludeRag) clauses.push(`"source" IS DISTINCT FROM ${addParam(RAG_MEMORY_SOURCE)}`);
 
@@ -658,8 +824,10 @@ export class MemoryService {
       projectId: scope.projectId,
       environmentId: row.environmentId,
       agentId: row.agentId ?? null,
+      clusterId: row.clusterId ?? null,
       userId: externalUserId,
       kind: row.kind,
+      profileKey: row.profileKey ?? null,
       content: this.decryptContent(row.content),
       metadata: this.decryptMetadata(row.metadata),
       agentVisible: visibility === "agent_visible" && row.agentVisible !== false,
@@ -669,6 +837,9 @@ export class MemoryService {
       sourceTurnIds,
       sourceMessageIds: sourceTurnIds,
       extractorVersion: row.extractorVersion ?? null,
+      originalSource: row.originalSource ?? null,
+      originalSourceThreadId: row.originalSourceThreadId ?? null,
+      originalSourceTurnIds: Array.isArray(row.originalSourceTurnIds) ? row.originalSourceTurnIds : [],
       confidence: row.confidence == null ? null : Number(row.confidence),
       createdAt: asDate(row.createdAt),
       updatedAt: asDate(row.updatedAt),
@@ -692,13 +863,37 @@ export class MemoryService {
 }
 
 function normalizeVisibility(
-  explicit: MemoryVisibility | undefined,
+  explicit: unknown,
   legacy: boolean | undefined,
 ): MemoryVisibility {
-  if (explicit === "agent_visible" || explicit === "hidden" || explicit === "private") {
-    return explicit;
+  if (explicit !== undefined && explicit !== null) {
+    if (isMemoryVisibility(explicit)) return explicit;
+    const error = new Error(
+      "visibility must be one of agent_visible, hidden, private",
+    );
+    (error as any).code = "MEMORY_INVALID_VISIBILITY";
+    throw error;
   }
   return legacy === false ? "hidden" : "agent_visible";
+}
+
+function requireMemorySource(value: unknown): MemorySource {
+  if (isMemorySource(value)) return value;
+  const error = new Error("source must be one of manual, extracted, imported, rag");
+  (error as any).code = "MEMORY_INVALID_SOURCE";
+  throw error;
+}
+
+function requireMemoryVisibilities(
+  values: MemoryVisibility[] | undefined,
+): MemoryVisibility[] | undefined {
+  if (values === undefined) return undefined;
+  if (values.length > 0 && values.every(isMemoryVisibility)) {
+    return Array.from(new Set(values));
+  }
+  const error = new Error("visibilityIn must contain one or more canonical visibility values");
+  (error as any).code = "MEMORY_INVALID_VISIBILITY";
+  throw error;
 }
 
 function vectorToLiteral(vector: number[]): string {

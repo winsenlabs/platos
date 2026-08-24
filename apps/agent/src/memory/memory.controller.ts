@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -9,11 +10,31 @@ import {
   Req,
   Res,
   Inject,
+  NotFoundException,
+  HttpException,
 } from "@nestjs/common";
+import {
+  MEMORY_ARCHIVE_STATES,
+  MEMORY_KINDS,
+  MEMORY_SOURCES,
+  MEMORY_VISIBILITIES,
+  isMemoryArchiveState,
+  isMemoryKind,
+  isMemorySource,
+  isMemoryVisibility,
+  type MemoryArchiveState,
+} from "@platos/tenancy-database";
 import * as crypto from "node:crypto";
+import { createReadStream, createWriteStream } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { finished } from "node:stream/promises";
+import type { WriteStream } from "node:fs";
 import type { Request, Response } from "express";
 import { MemoryService, type MemoryVisibility, type MemoryKind } from "./memory.service";
 import { KnowledgeGraphService } from "./knowledge-graph.service";
+import { MemoryImportService } from "./memory-import.service";
+import { validateMemoryBundle } from "./memory-bundle";
 import { MemoryExtractionService } from "./memory-extraction.service";
 import type { RequestScope } from "../auth/scope.guard";
 import { PRISMA_TOKEN } from "../shared/database.provider";
@@ -32,7 +53,7 @@ import {
  * Theme L.5 – L.8 REST surface. Every handler:
  *   - pulls scope from `ScopeGuard` via `req.scope`;
  *   - delegates to the service layer for all DB / embedding work;
- *   - returns JSON shaped like `{ data?, error?, status? }`.
+ *   - lets Nest map domain failures to genuine non-2xx HTTP responses.
  *
  * Routes are mounted under `/api/v1/memory` to match the doc spec —
  * keeping them distinct from `/api/v1/agent` so feature flags at the
@@ -43,6 +64,7 @@ export class MemoryController {
   constructor(
     private readonly memoryService: MemoryService,
     private readonly graph: KnowledgeGraphService,
+    private readonly memoryImport: MemoryImportService,
     private readonly extraction: MemoryExtractionService,
     @Inject(PRISMA_TOKEN) private readonly prisma: any,
     @Inject(REDIS_TOKEN) private readonly redis: RedisType,
@@ -97,6 +119,57 @@ export class MemoryController {
     return scope.principal === "operator" && !requestedUserId && error instanceof MemoryEndUserContextError;
   }
 
+  private badRequest(error: unknown, fallback: string): never {
+    if (error instanceof HttpException) throw error;
+    const source = error as { message?: string; code?: string; validationErrors?: unknown };
+    throw new BadRequestException({
+      code: source?.code || "MEMORY_INVALID_REQUEST",
+      message: source?.message || fallback,
+      ...(source?.validationErrors
+        ? { details: { validationErrors: source.validationErrors } }
+        : {}),
+    });
+  }
+
+  private requireKind(value?: string): MemoryKind | undefined {
+    if (!value) return undefined;
+    if (isMemoryKind(value)) return value;
+    throw new BadRequestException({
+      code: "MEMORY_INVALID_KIND",
+      message: `kind must be one of ${MEMORY_KINDS.join(", ")}`,
+    });
+  }
+
+  private requireSource(value?: string) {
+    if (!value) return undefined;
+    if (isMemorySource(value)) return value;
+    throw new BadRequestException({
+      code: "MEMORY_INVALID_SOURCE",
+      message: `source must be one of ${MEMORY_SOURCES.join(", ")}`,
+    });
+  }
+
+  private requireArchiveState(value?: string): MemoryArchiveState | undefined {
+    if (!value) return undefined;
+    if (isMemoryArchiveState(value)) return value;
+    throw new BadRequestException({
+      code: "MEMORY_INVALID_ARCHIVE_STATE",
+      message: `archiveState must be one of ${MEMORY_ARCHIVE_STATES.join(", ")}`,
+    });
+  }
+
+  private requireVisibilities(value?: string | string[]): MemoryVisibility[] {
+    const values = (Array.isArray(value) ? value : value?.split(",") ?? [])
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    if (!values.length) return [...MEMORY_VISIBILITIES];
+    if (values.every(isMemoryVisibility)) return Array.from(new Set(values));
+    throw new BadRequestException({
+      code: "MEMORY_INVALID_VISIBILITY",
+      message: `visibility must contain only ${MEMORY_VISIBILITIES.join(", ")}`,
+    });
+  }
+
   // ─── Memories ────────────────────────────────────────────────
 
   @Post()
@@ -105,12 +178,12 @@ export class MemoryController {
     @Body() body: {
       content: string;
       userId?: string;
-      kind?: "fact" | "preference" | "event" | "relationship";
+      kind?: MemoryKind;
       agentId?: string | null;
       metadata?: unknown;
       agentVisible?: boolean;
       visibility?: MemoryVisibility;
-      source?: "manual" | "extracted" | "imported";
+      source?: "manual" | "extracted" | "imported" | "rag";
       sourceThreadId?: string | null;
       sourceTurnIds?: string[];
       sourceMessageIds?: string[];
@@ -127,18 +200,14 @@ export class MemoryController {
         metadata: body.metadata,
         agentVisible: body.agentVisible,
         visibility: body.visibility,
-        source: body.source,
+        source: this.requireSource(body.source),
         sourceThreadId: body.sourceThreadId ?? null,
         sourceTurnIds: body.sourceTurnIds ?? body.sourceMessageIds,
         extractorVersion: body.extractorVersion ?? null,
       });
       return { memory: row };
     } catch (err: any) {
-      return {
-        error: err?.message || "create memory failed",
-        status: (err as any)?.status ?? 400,
-        validationErrors: (err as any)?.validationErrors,
-      };
+      this.badRequest(err, "create memory failed");
     }
   }
 
@@ -166,7 +235,12 @@ export class MemoryController {
     },
   ) {
     const scope = this.getScope(req);
-    if (!body?.threadId) return { error: "`threadId` is required", status: 400 };
+    if (!body?.threadId) {
+      throw new BadRequestException({
+        code: "MEMORY_THREAD_REQUIRED",
+        message: "`threadId` is required",
+      });
+    }
     try {
       const endUser = await this.effectiveEndUser(scope, body.userId);
       const thread = await this.prisma.thread.findFirst({
@@ -178,7 +252,10 @@ export class MemoryController {
         select: { id: true },
       });
       if (!thread) {
-        return { memoriesCreated: 0, entitiesCreated: 0, relationshipsCreated: 0, skipped: 0, reason: "thread-not-found" };
+        throw new NotFoundException({
+          code: "MEMORY_SOURCE_THREAD_NOT_FOUND",
+          message: "source thread not found or access denied",
+        });
       }
       const out = await this.extraction.extractFromThread(this.scopeTuple(scope), {
         threadId: body.threadId,
@@ -186,7 +263,7 @@ export class MemoryController {
       });
       return out;
     } catch (err: any) {
-      return { error: err?.message || "extraction failed", status: 400 };
+      this.badRequest(err, "extraction failed");
     }
   }
 
@@ -202,85 +279,134 @@ export class MemoryController {
     @Query("userId") userId?: string,
   ) {
     const scope = this.getScope(req);
+    const abort = new AbortController();
+    const abortExport = () => abort.abort();
+    (req as any).once?.("aborted", abortExport);
+    res.once("close", () => {
+      if (!(res as any).writableEnded) abortExport();
+    });
+    let artifactDirectory: string | null = null;
+    let artifact: WriteStream | null = null;
     try {
       const uid = await this.effectiveUserId(scope, userId);
       const scopeTuple = this.scopeTuple(scope);
-      // MCPF-W2 — DSAR must include archived rows. Soft-deleted memories
-      // are still the user's data; excluding them would silently violate
-      // GDPR's right-of-access guarantee.
-      const memories = await this.memoryService.list(scopeTuple, {
-        userId: uid,
-        limit: 10_000,
-        includeArchived: true,
-      });
-      const entities = await this.graph.getEntities(scopeTuple, {
-        userId: uid,
-        limit: 500,
-      });
-      const entityIds = new Set(entities.map((e) => e.id));
-      const relationships: Array<Record<string, unknown>> = [];
-      // Pull relationships per-entity to stay inside the scope-gated API.
-      for (const e of entities) {
-        const details = await this.graph.getRelationships(scopeTuple, { entityId: e.id }, uid);
-        if (!details) continue;
-        for (const out of details.outbound) {
-          if (!entityIds.has(out.to.id)) continue;
-          relationships.push({
-            fromEntityKey: e.entityKey,
-            toEntityKey: out.to.entityKey,
-            relationshipType: out.relationship.relationshipType,
-            weight: out.relationship.weight,
-            metadata: out.relationship.metadata,
-            sourceMemoryId: out.relationship.sourceMemoryId,
-            createdAt: out.relationship.createdAt,
-          });
-        }
-      }
-      const bundle = {
-        version: 1 as const,
-        exportedAt: new Date().toISOString(),
-        scope: {
-          organizationId: scope.organizationId,
-          projectId: scope.projectId,
-          environmentId: scope.environmentId,
-        },
-        userId: uid,
-        memories: memories.map((m) => ({
-          kind: m.kind,
-          content: m.content,
-          metadata: m.metadata,
-          visibility: m.visibility,
-          agentVisible: m.agentVisible,
-          source: m.source,
-          sourceThreadId: m.sourceThreadId,
-          sourceTurnIds: m.sourceTurnIds,
-          sourceMessageIds: m.sourceTurnIds,
-          extractorVersion: m.extractorVersion,
-          createdAt: m.createdAt,
-          updatedAt: m.updatedAt,
-        })),
-        entities: entities.map((e) => ({
-          entityKey: e.entityKey,
-          entityType: e.entityType,
-          label: e.label,
-          aliases: e.aliases,
-          metadata: e.metadata,
-        })),
-        relationships,
-      };
-      // Stream as chunked JSON so huge exports don't balloon memory on one side.
+      artifactDirectory = await mkdtemp("/var/tmp/platos-memory-export-");
+      const artifactPath = join(artifactDirectory, "bundle.json");
+      const artifactWriter = createWriteStream(artifactPath, { encoding: "utf8" });
+      artifact = artifactWriter;
+      // Materialize incrementally to local storage under one repeatable-read
+      // snapshot. Client backpressure is handled only after this transaction
+      // closes, so a slow download cannot pin a database snapshot.
+      await this.prisma.$transaction(async (tx: any) => {
+        await writeChunk(artifactWriter, JSON.stringify({
+          version: 2,
+          exportedAt: new Date().toISOString(),
+          scope: {
+            organizationId: scope.organizationId,
+            projectId: scope.projectId,
+            environmentId: scope.environmentId,
+          },
+          userId: uid,
+        }).slice(0, -1), abort.signal);
+        await writeChunk(artifactWriter, ',"memories":[', abort.signal);
+        await streamKeysetCollection(artifactWriter, async (cursor) => {
+          const page = await this.memoryService.listExportKeysetPage(
+            scopeTuple,
+            uid,
+            cursor,
+            500,
+            tx,
+          );
+          return {
+            items: page.items.map((memory) => ({
+              id: memory.id,
+              kind: memory.kind,
+              content: memory.content,
+              metadata: memory.metadata,
+              visibility: memory.visibility,
+              agentVisible: memory.agentVisible,
+              source: memory.source,
+              sourceThreadId: memory.sourceThreadId,
+              sourceTurnIds: memory.sourceTurnIds,
+              extractorVersion: memory.extractorVersion,
+              originalSource: memory.originalSource,
+              originalSourceThreadId: memory.originalSourceThreadId,
+              originalSourceTurnIds: memory.originalSourceTurnIds,
+              confidence: memory.confidence,
+              createdAt: memory.createdAt,
+              updatedAt: memory.updatedAt,
+              lastAccessedAt: memory.lastAccessedAt,
+              quarantinedAt: memory.quarantinedAt,
+              archivedAt: memory.archivedAt,
+            })),
+            nextCursor: page.nextCursor,
+          };
+        }, abort.signal);
+        await writeChunk(artifactWriter, '],"entities":[', abort.signal);
+        await streamKeysetCollection(artifactWriter, async (cursor) => {
+          const page = await this.graph.getEntitiesExportKeysetPage(scopeTuple, uid, cursor, 500, tx);
+          return {
+            items: page.items.map((entity) => ({
+              id: entity.id,
+              entityKey: entity.entityKey,
+              entityType: entity.entityType,
+              label: entity.label,
+              aliases: entity.aliases,
+              metadata: entity.metadata,
+              createdAt: entity.createdAt,
+              updatedAt: entity.updatedAt,
+            })),
+            nextCursor: page.nextCursor,
+          };
+        }, abort.signal);
+        await writeChunk(artifactWriter, '],"relationships":[', abort.signal);
+        await streamKeysetCollection(artifactWriter, async (cursor) => {
+          const page = await this.graph.getRelationshipsExportKeysetPage(scopeTuple, uid, cursor, 500, tx);
+          return {
+            items: page.items.map((relationship) => ({
+              id: relationship.id,
+              fromEntityId: relationship.fromEntityId,
+              toEntityId: relationship.toEntityId,
+              fromEntityKey: relationship.fromEntityKey,
+              toEntityKey: relationship.toEntityKey,
+              relationshipType: relationship.relationshipType,
+              weight: relationship.weight,
+              metadata: relationship.metadata,
+              sourceMemoryId: relationship.sourceMemoryId,
+              createdAt: relationship.createdAt,
+            })),
+            nextCursor: page.nextCursor,
+          };
+        }, abort.signal);
+        await writeChunk(artifactWriter, "]}", abort.signal);
+      }, { isolationLevel: "RepeatableRead", timeout: 120_000 });
+      artifactWriter.end();
+      await finished(artifactWriter);
+
       res.setHeader("Content-Type", "application/json");
       res.setHeader("Transfer-Encoding", "chunked");
       res.setHeader(
         "Content-Disposition",
         `attachment; filename="platos-memory-${uid}.json"`,
       );
-      res.write(JSON.stringify(bundle));
+      for await (const chunk of createReadStream(artifactPath)) {
+        await writeChunk(res, chunk, abort.signal);
+      }
       res.end();
       return;
     } catch (err: any) {
+      if (res.headersSent || abort.signal.aborted) {
+        res.destroy(err instanceof Error ? err : new Error("export failed"));
+        return;
+      }
       res.status(400).json({ error: err?.message || "export failed" });
       return;
+    } finally {
+      (req as any).off?.("aborted", abortExport);
+      if (artifact && !artifact.closed) artifact.destroy();
+      if (artifactDirectory) {
+        await rm(artifactDirectory, { recursive: true, force: true });
+      }
     }
   }
 
@@ -303,6 +429,7 @@ export class MemoryController {
         relationships?: Array<Record<string, unknown>>;
       };
       mode?: "merge" | "replace";
+      confirmReplace?: boolean;
       userId?: string;
     },
   ) {
@@ -310,101 +437,27 @@ export class MemoryController {
     const scopeTuple = this.scopeTuple(scope);
     const bundle = body?.bundle;
     if (!bundle || typeof bundle !== "object") {
-      return { error: "`bundle` is required", status: 400 };
+      throw new BadRequestException({
+        code: "MEMORY_IMPORT_BUNDLE_REQUIRED",
+        message: "`bundle` is required",
+      });
     }
     const mode = body?.mode === "replace" ? "replace" : "merge";
+    if (mode === "replace" && body.confirmReplace !== true) {
+      throw new BadRequestException({
+        code: "MEMORY_IMPORT_REPLACE_CONFIRMATION_REQUIRED",
+        message: "replace mode requires explicit destructive confirmation",
+      });
+    }
 
-    const counts = { memoriesDeleted: 0, memoriesImported: 0, entitiesImported: 0, relationshipsImported: 0, skipped: 0 };
     try {
       const userId = await this.effectiveUserId(scope, body.userId);
-      if (mode === "replace") {
-        counts.memoriesDeleted = await this.memoryService.deleteAllForUser(scopeTuple, userId);
-      }
-
-      // Entities first — we need their ids to translate relationship keys to ids.
-      const keyToId = new Map<string, string>();
-      for (const e of bundle.entities ?? []) {
-        const key = String((e as any).entityKey || "").trim();
-        if (!key) {
-          counts.skipped += 1;
-          continue;
-        }
-        const ent = await this.graph.upsertEntity(scopeTuple, {
-          userId,
-          agentId: scope.agentId ?? null,
-          entityKey: key,
-          entityType: String((e as any).entityType || "other"),
-          label: String((e as any).label || key),
-          aliases: Array.isArray((e as any).aliases) ? (e as any).aliases : [],
-          metadata: (e as any).metadata,
-        });
-        keyToId.set(key, ent.id);
-        counts.entitiesImported += 1;
-      }
-
-      for (const m of bundle.memories ?? []) {
-        try {
-          await this.memoryService.add(scopeTuple, {
-            userId,
-            // FIX (audit L5) — stamp the acting agentId instead of writing
-            // agentId=NULL for every imported row (cross-agent visibility
-            // asymmetry vs extractor-written rows). Sourced from the VERIFIED
-            // request scope, never from the untrusted bundle. Null when the
-            // token isn't agent-pinned — unchanged from before for that case.
-            agentId: scope.agentId ?? null,
-            kind: (m as any).kind as MemoryKind,
-            content: String((m as any).content || ""),
-            metadata: (m as any).metadata,
-            visibility: (m as any).visibility as MemoryVisibility | undefined,
-            agentVisible: typeof (m as any).agentVisible === "boolean" ? (m as any).agentVisible : undefined,
-            source: "imported",
-            sourceThreadId: (m as any).sourceThreadId ?? null,
-            sourceTurnIds: Array.isArray((m as any).sourceTurnIds)
-              ? (m as any).sourceTurnIds
-              : Array.isArray((m as any).sourceMessageIds)
-                ? (m as any).sourceMessageIds
-              : [],
-            extractorVersion: (m as any).extractorVersion ?? null,
-          });
-          counts.memoriesImported += 1;
-        } catch {
-          counts.skipped += 1;
-        }
-      }
-
-      for (const r of bundle.relationships ?? []) {
-        const fromKey = String((r as any).fromEntityKey || "").trim();
-        const toKey = String((r as any).toEntityKey || "").trim();
-        const relType = String((r as any).relationshipType || "").trim();
-        if (!fromKey || !toKey || !relType) {
-          counts.skipped += 1;
-          continue;
-        }
-        const fromId = keyToId.get(fromKey);
-        const toId = keyToId.get(toKey);
-        if (!fromId || !toId) {
-          counts.skipped += 1;
-          continue;
-        }
-        try {
-          await this.graph.createRelationship(scopeTuple, {
-            userId,
-            agentId: scope.agentId ?? null,
-            fromEntityId: fromId,
-            toEntityId: toId,
-            relationshipType: relType,
-            weight: typeof (r as any).weight === "number" ? (r as any).weight : null,
-            metadata: (r as any).metadata,
-          });
-          counts.relationshipsImported += 1;
-        } catch {
-          counts.skipped += 1;
-        }
-      }
-
-      return { ok: true, mode, ...counts };
+      // Full structural/canonical validation happens before embeddings are
+      // staged and before the replace transaction can delete a single row.
+      const validated = validateMemoryBundle(bundle);
+      return await this.memoryImport.importBundle(scopeTuple, userId, validated, mode);
     } catch (err: any) {
-      return { error: err?.message || "import failed", status: 400 };
+      this.badRequest(err, "import failed");
     }
   }
 
@@ -567,25 +620,37 @@ export class MemoryController {
     @Req() req: Request,
     @Query("userId") userId?: string,
     @Query("kind") kind?: string,
+    @Query("source") source?: string,
+    @Query("archiveState") archiveState?: string,
+    @Query("visibility") visibility?: string | string[],
     @Query("agentId") agentId?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
   ) {
     const scope = this.getScope(req);
     try {
-      const rows = await this.memoryService.list(this.scopeTuple(scope), {
+      const page = await this.memoryService.listPage(this.scopeTuple(scope), {
         userId: await this.effectiveUserId(scope, userId),
-        kind: kind || undefined,
+        kind: this.requireKind(kind),
+        source: this.requireSource(source),
+        archiveState: this.requireArchiveState(archiveState),
+        visibilityIn: this.requireVisibilities(visibility),
         agentId: agentId || undefined,
         limit: limit ? Number.parseInt(limit, 10) : undefined,
         offset: offset ? Number.parseInt(offset, 10) : undefined,
       });
-      return { memories: rows, total: rows.length };
+      return {
+        memories: page.items,
+        total: page.total,
+        limit: page.limit,
+        offset: page.offset,
+        hasNext: page.hasNext,
+      };
     } catch (err: any) {
       if (this.requiresOperatorEndUserContext(scope, userId, err)) {
         return { memories: [], total: 0, requiresEndUserContext: true, code: err.code };
       }
-      return { error: err?.message || "list memories failed", status: 400 };
+      this.badRequest(err, "list memories failed");
     }
   }
 
@@ -595,27 +660,38 @@ export class MemoryController {
     @Query("q") q: string,
     @Query("userId") userId?: string,
     @Query("kind") kind?: string,
+    @Query("source") source?: string,
+    @Query("archiveState") archiveState?: string,
+    @Query("visibility") visibility?: string | string[],
     @Query("agentId") agentId?: string,
     @Query("limit") limit?: string,
     @Query("minScore") minScore?: string,
   ) {
     const scope = this.getScope(req);
-    if (!q) return { error: "`q` query parameter is required", status: 400 };
+    if (!q) {
+      throw new BadRequestException({
+        code: "MEMORY_SEARCH_QUERY_REQUIRED",
+        message: "`q` query parameter is required",
+      });
+    }
     try {
       const hits = await this.memoryService.semanticSearch(this.scopeTuple(scope), {
         query: q,
         userId: await this.effectiveUserId(scope, userId),
-        kind: kind || undefined,
+        kind: this.requireKind(kind),
+        source: this.requireSource(source),
+        archiveState: this.requireArchiveState(archiveState),
+        visibilityIn: this.requireVisibilities(visibility),
         agentId: agentId || undefined,
         limit: limit ? Number.parseInt(limit, 10) : undefined,
         minScore: minScore ? Number.parseFloat(minScore) : undefined,
       });
-      return { hits };
+      return { hits, resultCount: hits.length };
     } catch (err: any) {
       if (this.requiresOperatorEndUserContext(scope, userId, err)) {
         return { hits: [], requiresEndUserContext: true, code: err.code };
       }
-      return { error: err?.message || "search failed", status: 400 };
+      this.badRequest(err, "search failed");
     }
   }
 
@@ -632,9 +708,12 @@ export class MemoryController {
         id,
         await this.effectiveUserId(scope, userId),
       );
-      return { deleted };
+      if (!deleted) {
+        throw new NotFoundException({ code: "MEMORY_NOT_FOUND", message: "memory not found" });
+      }
+      return { deleted: true };
     } catch (err: any) {
-      return { error: err?.message || "delete failed", status: 400 };
+      this.badRequest(err, "delete failed");
     }
   }
 
@@ -645,23 +724,31 @@ export class MemoryController {
     @Req() req: Request,
     @Query("userId") userId?: string,
     @Query("entityType") entityType?: string,
+    @Query("q") query?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
   ) {
     const scope = this.getScope(req);
     try {
-      const rows = await this.graph.getEntities(this.scopeTuple(scope), {
+      const page = await this.graph.getEntitiesPage(this.scopeTuple(scope), {
         userId: await this.effectiveUserId(scope, userId),
         entityType: entityType || undefined,
+        query: query || undefined,
         limit: limit ? Number.parseInt(limit, 10) : undefined,
         offset: offset ? Number.parseInt(offset, 10) : undefined,
       });
-      return { entities: rows, total: rows.length };
+      return {
+        entities: page.items,
+        total: page.total,
+        limit: page.limit,
+        offset: page.offset,
+        hasNext: page.hasNext,
+      };
     } catch (err: any) {
       if (this.requiresOperatorEndUserContext(scope, userId, err)) {
         return { entities: [], total: 0, requiresEndUserContext: true, code: err.code };
       }
-      return { error: err?.message || "list entities failed", status: 400 };
+      this.badRequest(err, "list entities failed");
     }
   }
 
@@ -675,15 +762,19 @@ export class MemoryController {
     try {
       // SECURITY (audit H9) — non-operators stay forced to scope.userId;
       // operators must provide a separately validated canonical EndUser id.
-      const res = await this.graph.getRelationships(
+      const effectiveUserId = await this.effectiveUserId(scope, userId);
+      const entity = await this.graph.resolveEntityReference(this.scopeTuple(scope), effectiveUserId, id);
+      const res = entity && await this.graph.getRelationships(
         this.scopeTuple(scope),
-        { entityId: id },
-        await this.effectiveUserId(scope, userId),
+        { entityId: entity.id },
+        effectiveUserId,
       );
-      if (!res) return { error: "entity not found", status: 404 };
+      if (!res) {
+        throw new NotFoundException({ code: "MEMORY_ENTITY_NOT_FOUND", message: "entity not found" });
+      }
       return res;
     } catch (err: any) {
-      return { error: err?.message || "relationships failed", status: 400 };
+      this.badRequest(err, "relationships failed");
     }
   }
 
@@ -697,18 +788,29 @@ export class MemoryController {
   ) {
     const scope = this.getScope(req);
     if (!from || !to) {
-      return { error: "`from` and `to` query params are required", status: 400 };
+      throw new BadRequestException({
+        code: "MEMORY_GRAPH_PATH_ENDPOINTS_REQUIRED",
+        message: "`from` and `to` query params are required",
+      });
     }
     try {
+      const effectiveUserId = await this.effectiveUserId(scope, userId);
+      const [fromEntity, toEntity] = await Promise.all([
+        this.graph.resolveEntityReference(this.scopeTuple(scope), effectiveUserId, from),
+        this.graph.resolveEntityReference(this.scopeTuple(scope), effectiveUserId, to),
+      ]);
+      if (!fromEntity || !toEntity) {
+        throw new NotFoundException({ code: "MEMORY_ENTITY_NOT_FOUND", message: "entity not found" });
+      }
       const path = await this.graph.shortestPath(this.scopeTuple(scope), {
-        fromEntityId: from,
-        toEntityId: to,
-        userId: await this.effectiveUserId(scope, userId),
+        fromEntityId: fromEntity.id,
+        toEntityId: toEntity.id,
+        userId: effectiveUserId,
         maxHops: maxHops ? Number.parseInt(maxHops, 10) : undefined,
       });
       return { path };
     } catch (err: any) {
-      return { error: err?.message || "shortest path failed", status: 400 };
+      this.badRequest(err, "shortest path failed");
     }
   }
 
@@ -731,10 +833,10 @@ export class MemoryController {
   ) {
     const scope = this.getScope(req);
     if (!body?.fromEntityKey || !body?.toEntityKey || !body?.relationshipType) {
-      return {
-        error: "`fromEntityKey`, `toEntityKey`, and `relationshipType` are required",
-        status: 400,
-      };
+      throw new BadRequestException({
+        code: "MEMORY_RELATIONSHIP_FIELDS_REQUIRED",
+        message: "`fromEntityKey`, `toEntityKey`, and `relationshipType` are required",
+      });
     }
     try {
       const scopeTuple = this.scopeTuple(scope);
@@ -771,7 +873,51 @@ export class MemoryController {
         toEntityId: to.id,
       };
     } catch (err: any) {
-      return { error: err?.message || "relate failed", status: 400 };
+      this.badRequest(err, "relate failed");
+    }
+  }
+
+  @Post(":id/archive")
+  async archiveMemory(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: { userId?: string },
+  ) {
+    const scope = this.getScope(req);
+    try {
+      const result = await this.memoryService.archive(
+        this.scopeTuple(scope),
+        id,
+        await this.effectiveUserId(scope, body.userId),
+      );
+      if (!result.ok) {
+        throw new NotFoundException({ code: "MEMORY_NOT_FOUND", message: "memory not found" });
+      }
+      return result;
+    } catch (error) {
+      this.badRequest(error, "archive failed");
+    }
+  }
+
+  @Post(":id/restore")
+  async restoreMemory(
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() body: { userId?: string },
+  ) {
+    const scope = this.getScope(req);
+    try {
+      const result = await this.memoryService.restore(
+        this.scopeTuple(scope),
+        id,
+        await this.effectiveUserId(scope, body.userId),
+      );
+      if (!result.ok) {
+        throw new NotFoundException({ code: "MEMORY_NOT_FOUND", message: "memory not found" });
+      }
+      return result;
+    } catch (error) {
+      this.badRequest(error, "restore failed");
     }
   }
 
@@ -807,7 +953,10 @@ export class MemoryController {
       id === "export" ||
       id === "admin"
     ) {
-      return { error: `'${id}' is a reserved path segment`, status: 400 };
+      throw new BadRequestException({
+        code: "MEMORY_RESERVED_PATH",
+        message: `'${id}' is a reserved path segment`,
+      });
     }
     try {
       const row = await this.memoryService.update(this.scopeTuple(scope), id, {
@@ -817,14 +966,64 @@ export class MemoryController {
         agentVisible: body.agentVisible,
         visibility: body.visibility,
       }, await this.effectiveUserId(scope, body.userId));
-      if (!row) return { error: "memory not found", status: 404 };
+      if (!row) {
+        throw new NotFoundException({ code: "MEMORY_NOT_FOUND", message: "memory not found" });
+      }
       return { memory: row };
     } catch (err: any) {
-      return {
-        error: err?.message || "update memory failed",
-        status: (err as any)?.status ?? 400,
-        validationErrors: (err as any)?.validationErrors,
-      };
+      this.badRequest(err, "update memory failed");
     }
+  }
+}
+
+type ChunkWriter = Pick<NodeJS.WritableStream, "write" | "once" | "off">;
+
+async function writeChunk(
+  writer: ChunkWriter,
+  chunk: string | Buffer,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (signal?.aborted) throw new Error("export cancelled");
+  if (writer.write(chunk)) return;
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      writer.off("drain", onDrain);
+      writer.off("error", onError);
+      writer.off("close", onClose);
+      signal?.removeEventListener("abort", onAbort);
+    };
+    const onDrain = () => { cleanup(); resolve(); };
+    const onError = (error: Error) => { cleanup(); reject(error); };
+    const onClose = () => { cleanup(); reject(new Error("export response closed before drain")); };
+    const onAbort = () => { cleanup(); reject(new Error("export cancelled")); };
+    writer.once("drain", onDrain);
+    writer.once("error", onError);
+    writer.once("close", onClose);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function streamKeysetCollection(
+  writer: ChunkWriter,
+  page: (cursor: string | null) => Promise<{
+    items: unknown[];
+    nextCursor: string | null;
+  }>,
+  signal?: AbortSignal,
+): Promise<void> {
+  let cursor: string | null = null;
+  let first = true;
+  for (;;) {
+    if (signal?.aborted) throw new Error("export cancelled");
+    const current = await page(cursor);
+    for (const item of current.items) {
+      await writeChunk(writer, `${first ? "" : ","}${JSON.stringify(item)}`, signal);
+      first = false;
+    }
+    if (!current.nextCursor || current.items.length === 0) return;
+    if (current.nextCursor === cursor) {
+      throw new Error("export keyset cursor did not advance");
+    }
+    cursor = current.nextCursor;
   }
 }

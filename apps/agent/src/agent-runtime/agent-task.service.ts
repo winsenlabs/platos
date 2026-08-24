@@ -12,6 +12,7 @@ import { BudgetService } from "../monitoring/budget.service";
 import { RateLimitService } from "../monitoring/rate-limit.service";
 import { SafetyEventService } from "../monitoring/safety-event.service";
 import { ProfileCacheService } from "../memory/profile-cache.service";
+import { MemoryService } from "../memory/memory.service";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import type { RequestScope } from "../auth/scope.guard";
@@ -153,6 +154,7 @@ export class AgentTaskService {
     // Theme M.3 — Redis projection cache for the turn-start __user_profile
     // block. Optional so the test harness still boots without MemoryModule.
     @Optional() private readonly profileCache?: ProfileCacheService,
+    @Optional() private readonly memoryService?: MemoryService,
   ) {}
 
   /**
@@ -705,25 +707,64 @@ export class AgentTaskService {
       // dropped. Readers pay the Redis projection cache on the hot path,
       // falling back to Prisma only on cache miss.
       try {
-        let profileData: Record<string, unknown> | null =
-          (await this.profileCache?.get(scopeTuple, agentId, scope.userId)) ?? null;
+        // Rebuild from persisted rows on every turn. Visibility transitions
+        // must take effect immediately and cannot be bypassed by stale cache.
+        let profileData: Record<string, unknown> | null = null;
         if (!profileData) {
           // Cache miss — reassemble from memory rows. Scope-gated to
           // (org, project, env, agentId, userId) so a forged agentId
           // can't leak another scope's data.
           const prisma = (this.conversationService as any).prisma;
           if (prisma?.memory) {
-            const rows: Array<{ content: string; metadata: unknown }> =
-              await prisma.memory.findMany({
-                where: {
-                  environmentId: scope.environmentId,
-                  endUserId: thread.endUserId,
-                  agentId,
-                  kind: "profile",
-                  archivedAt: null,
+            const binding = await prisma.agentBinding.findFirst({
+              where: {
+                environmentId: scope.environmentId,
+                agentId,
+                agent: { projectId: scope.projectId },
+                environment: {
+                  project: { id: scope.projectId, organizationId: scope.organizationId },
                 },
-                select: { content: true, metadata: true },
-              });
+              },
+              select: { clusterId: true },
+            });
+            if (!binding) throw new Error("Profile AgentBinding not found or access denied");
+            const agentFilter = binding.clusterId
+              ? {
+                  agentIds: (await prisma.agentBinding.findMany({
+                    where: {
+                      environmentId: scope.environmentId,
+                      clusterId: binding.clusterId,
+                      agent: { projectId: scope.projectId },
+                      environment: {
+                        project: { id: scope.projectId, organizationId: scope.organizationId },
+                      },
+                    },
+                    select: { agentId: true },
+                  })).map((member: { agentId: string }) => member.agentId),
+                }
+              : { agentId };
+            const rows: Array<{ content: string; metadata: unknown }> =
+              this.memoryService
+                ? await this.memoryService.list(scopeTuple, {
+                    userId: scope.userId,
+                    kind: "profile",
+                    limit: 100,
+                    agentVisibleOnly: true,
+                    visibilityIn: ["agent_visible"],
+                    ...agentFilter,
+                  })
+                : await prisma.memory.findMany({
+                    where: {
+                      environmentId: scope.environmentId,
+                      endUserId: thread.endUserId,
+                      ...(binding.clusterId ? { clusterId: binding.clusterId } : { agentId }),
+                      kind: "profile",
+                      visibility: "agent_visible",
+                      agentVisible: true,
+                      archivedAt: null,
+                    },
+                    select: { content: true, metadata: true },
+                  });
             const data: Record<string, unknown> = {};
             for (const row of rows) {
               const meta = row.metadata as any;
