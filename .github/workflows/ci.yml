@@ -61,6 +61,11 @@ jobs:
       - name: Audit Platos build and external-Trigger invariants
         run: pnpm audit:platos-build
 
+      - name: Audit and test WIN-234/WIN-238 route and capability parity contract
+        run: |
+          pnpm audit:route-parity
+          pnpm test:route-parity
+
       - name: External Trigger configuration and direct-dispatch tests
         run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
 
