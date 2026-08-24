@@ -186,6 +186,23 @@ describe("AuthService — clean bearer-backed session tokens", () => {
       organizationId: SCOPE.organizationId,
       projectId: SCOPE.projectId,
       entityId: SCOPE.entityId,
+      signingProvenance: "entity",
+    });
+  });
+
+  it("overwrites caller-supplied signing provenance with the verified authority", async () => {
+    const h = makeSessionHarness();
+    const entitySecret = "entity-service-secret-provenance-test";
+    vi.spyOn(h.auth, "resolveEntityServiceSecret").mockResolvedValue(entitySecret);
+
+    const token = mintSessionToken({
+      serviceSecret: entitySecret,
+      claims: { ...SCOPE, signingProvenance: "platform" },
+      ttlSeconds: 300,
+    });
+
+    await expect(h.auth.validateSessionToken(token)).resolves.toMatchObject({
+      signingProvenance: "entity",
     });
   });
 
@@ -351,6 +368,7 @@ describe("AuthService — clean bearer-backed session tokens", () => {
     await expect(h.auth.validateSessionToken(token!)).resolves.toMatchObject({
       iss: "platos-platform",
       userId: SCOPE.userId,
+      signingProvenance: "platform",
     });
     expect(h.prisma.mcpBearerToken.findUnique).not.toHaveBeenCalled();
   });
@@ -399,6 +417,7 @@ describe("AuthService — platform-signed session tokens", () => {
     const payload = await auth.validateSessionToken(token!);
     expect(payload).not.toBeNull();
     expect(payload!.iss).toBe("platos-platform");
+    expect(payload!.signingProvenance).toBe("platform");
     expect(payload!.entityId).toBeUndefined();
   });
 

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { UnauthorizedException } from "@nestjs/common";
+import { mintSessionToken } from "@platosdev/token-mint";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthService } from "../auth/auth.service";
 import { ScopeGuard } from "../auth/scope.guard";
@@ -20,6 +21,7 @@ function makeHarness() {
     bearer: {
       id: "bearer-ws",
       tokenHash: createHash("sha256").update(RAW_BEARER).digest("hex"),
+      environmentId: SCOPE.environmentId,
       revokedAt: null as Date | null,
       expiresAt: new Date(Date.now() + 120_000) as Date | null,
       entity: {
@@ -58,8 +60,14 @@ function makeHarness() {
     },
   };
   const auth = new AuthService(prisma as any, {} as any);
+  const conversationService = {
+    getThread: vi.fn(async (_threadId: string, _scope: unknown, options: { allUsers: boolean }) =>
+      options.allUsers ? { id: _threadId, userId: "other-user" } : null,
+    ),
+  };
+  const agentTaskService = { conversationService };
   const gateway = new ConnectionsGateway(
-    {} as any,
+    agentTaskService as any,
     {} as any,
     auth,
     {} as any,
@@ -69,6 +77,7 @@ function makeHarness() {
     state,
     auth,
     gateway,
+    conversationService,
     controller: new SessionTokenController(auth, prisma as any),
   };
 }
@@ -191,6 +200,39 @@ describe("bearer-backed HTTP and WebSocket session lifecycle", () => {
       message: "Session token expired.",
     });
     expect(client.disconnect).toHaveBeenCalledOnce();
+    h.gateway.handleDisconnect(client);
+  });
+
+  it("keeps a real entity-minted browser token out of operator rooms and other users' threads", async () => {
+    const h = makeHarness();
+    const entitySecret = "websocket-entity-secret-32-chars";
+    vi.spyOn(h.auth, "resolveEntityServiceSecret").mockResolvedValue(entitySecret);
+    const token = mintSessionToken({
+      serviceSecret: entitySecret,
+      claims: SCOPE,
+      ttlSeconds: 300,
+    });
+    const client = clientFor(token);
+
+    await h.gateway.handleConnection(client);
+
+    expect(client.scope.principal).toBe("end-user");
+    expect(client.join).toHaveBeenCalledWith(
+      `user:${SCOPE.organizationId}:${SCOPE.projectId}:${SCOPE.environmentId}:${SCOPE.userId}`,
+    );
+    expect(client.join).not.toHaveBeenCalledWith(
+      `scope:${SCOPE.organizationId}:${SCOPE.projectId}:${SCOPE.environmentId}`,
+    );
+
+    await h.gateway.handleJoinThread(client, { threadId: "thread-other-user" });
+
+    expect(h.conversationService.getThread).toHaveBeenCalledWith(
+      "thread-other-user",
+      expect.objectContaining({ userId: SCOPE.userId, principal: "end-user" }),
+      { allUsers: false },
+    );
+    expect(client.join).not.toHaveBeenCalledWith("thread:thread-other-user");
+    expect(client.emit).toHaveBeenCalledWith("error", { message: "thread not found" });
     h.gateway.handleDisconnect(client);
   });
 });

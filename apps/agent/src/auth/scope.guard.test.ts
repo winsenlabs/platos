@@ -11,6 +11,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UnauthorizedException } from "@nestjs/common";
+import { mintSessionToken } from "@platosdev/token-mint";
 import { isPublicMcpTransport, ScopeGuard } from "./scope.guard";
 import { AuthService } from "./auth.service";
 import { AgentController } from "../agent-runtime/agent.controller";
@@ -452,6 +453,60 @@ describe("ScopeGuard — Path 1 session token", () => {
     const ctx = mockExecutionContext({ "x-platos-session-token": token! });
     await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
     expect((ctx.switchToHttp().getRequest() as any).scope.principal).toBe("end-user");
+  });
+
+  it("denies a real entity-minted browser token access to operator budget routes", async () => {
+    const h = makeAuthHarness();
+    const entitySecret = "scope-guard-entity-secret-32-chars";
+    vi.spyOn(h.auth, "resolveEntityServiceSecret").mockResolvedValue(entitySecret);
+    const token = mintSessionToken({
+      serviceSecret: entitySecret,
+      claims: h.scope,
+      ttlSeconds: 300,
+    });
+    const ctx = mockExecutionContext(
+      { "x-platos-session-token": token },
+      "/api/v1/agent/budgets",
+    );
+
+    await expect(new ScopeGuard(h.auth).canActivate(ctx)).resolves.toBe(true);
+    const req = ctx.switchToHttp().getRequest() as any;
+    expect(req.scope.principal).toBe("end-user");
+
+    const budgetService = {
+      list: vi.fn(),
+      evaluate: vi.fn(),
+      upsert: vi.fn(),
+      delete: vi.fn(),
+      override: vi.fn(),
+    };
+    const controller: any = Object.create(AgentController.prototype);
+    controller.budgetService = budgetService;
+
+    const calls = [
+      () => controller.listBudgets(req),
+      () => controller.budgetStatus(req),
+      () => controller.upsertBudget(req, {
+        scopeType: "environment",
+        period: "monthly",
+        limitCents: 10_000,
+      }),
+      () => controller.deleteBudget(req, "cap-1"),
+      () => controller.overrideBudget(req, "cap-1", { minutes: 60 }),
+    ];
+
+    for (const call of calls) {
+      await expect(call()).rejects.toMatchObject({
+        status: 403,
+        response: { error: "OPERATOR_ONLY" },
+      });
+    }
+
+    expect(budgetService.list).not.toHaveBeenCalled();
+    expect(budgetService.evaluate).not.toHaveBeenCalled();
+    expect(budgetService.upsert).not.toHaveBeenCalled();
+    expect(budgetService.delete).not.toHaveBeenCalled();
+    expect(budgetService.override).not.toHaveBeenCalled();
   });
 
   it("rejects a real public guest principal before every budget service read or mutation", async () => {

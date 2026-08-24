@@ -69,6 +69,12 @@ export interface SessionPayload {
   exp: number;
 }
 
+export type SessionSigningProvenance = "platform" | "entity";
+
+export type ValidatedSessionPayload = SessionPayload & {
+  signingProvenance: SessionSigningProvenance;
+};
+
 export interface EntityRegistration {
   organizationId: string;
   projectId: string;
@@ -226,7 +232,7 @@ export class AuthService {
     return unwrapEntitySecretMaterial(plaintext);
   }
 
-  async validateSessionToken(token: string): Promise<SessionPayload | null> {
+  async validateSessionToken(token: string): Promise<ValidatedSessionPayload | null> {
     try {
       const parts = token.split(".");
       if (parts.length !== 3) {
@@ -421,7 +427,13 @@ export class AuthService {
         }
       }
 
-      return claims;
+      return {
+        ...claims,
+        // Validation provenance is computed from the signing authority that
+        // actually verified the token. Keep this after the spread so a signed
+        // caller claim cannot promote an entity token to platform provenance.
+        signingProvenance: platformSigned ? "platform" : "entity",
+      };
     } catch (err) {
       this.logger.warn(`validateSessionToken error: ${(err as Error).message}`);
       return null;

@@ -552,11 +552,14 @@ export class ScopeGuard implements CanActivate {
           userId: payload.userId,
           entityId: payload.entityId,
           userToken: payload.userToken,
-          // Operator ONLY when the platform token is neither guest nor backed
-          // by an entity McpBearerToken. `iss` alone cannot distinguish the
-          // control plane now that every scoped token uses platform signing.
+          // Operator ONLY when runtime validation proved platform signing and
+          // the token is neither guest nor backed by an entity McpBearerToken.
+          // Entity-secret-signed browser tokens have no authorizationId, so
+          // claim shape alone must never promote them to the control plane.
           principal:
-            payload.authorizationId === undefined && (payload as any).isGuest !== true
+            payload.signingProvenance === "platform" &&
+            payload.authorizationId === undefined &&
+            (payload as any).isGuest !== true
               ? "operator"
               : "end-user",
           ...(tokenAgentId ? { agentId: tokenAgentId } : {}),
