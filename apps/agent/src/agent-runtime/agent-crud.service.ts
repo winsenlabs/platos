@@ -6,6 +6,7 @@ import type { RequestScope } from "../auth/scope.guard";
 import { AdminAuditService } from "../monitoring/admin-audit.service";
 import { addUsage, EMPTY_USAGE, roundCents, usageFromTurn } from "../monitoring/usage-ledger";
 import { serializePromptBlocksToSystemPrompt } from "./prompt-builder.service";
+import { isUuid } from "../shared/pagination";
 
 export interface PromptBlock {
   id: string;
@@ -830,6 +831,42 @@ export class AgentCrudService {
     return bindings.map((binding: any) => this.projectBinding(binding));
   }
 
+  async listPage(
+    scope: RequestScope,
+    options: { limit: number; offset: number; search?: string | null; status?: "active" | "paused" | null },
+  ): Promise<{ agents: AgentRecord[]; total: number }> {
+    const where = {
+      ...this.scopeWhere(scope),
+      agent: {
+        projectId: scope.projectId,
+        ...(options.status ? { isActive: options.status === "active" } : {}),
+        ...(options.search
+          ? {
+              OR: [
+                { name: { contains: options.search, mode: "insensitive" as const } },
+                { slug: { contains: options.search, mode: "insensitive" as const } },
+                ...(isUuid(options.search) ? [{ id: { equals: options.search } }] : []),
+              ],
+            }
+          : {}),
+      },
+    };
+    const [bindings, total] = await Promise.all([
+      this.prisma.agentBinding.findMany({
+        where,
+        include: this.bindingInclude(scope),
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: options.limit,
+        skip: options.offset,
+      }),
+      this.prisma.agentBinding.count({ where }),
+    ]);
+    return {
+      agents: bindings.map((binding: any) => this.projectBinding(binding)),
+      total,
+    };
+  }
+
   async update(agentId: string, scope: RequestScope, dto: UpdateAgentDto): Promise<AgentRecord> {
     const existingBinding = await this.findBinding(agentId, scope);
     if (!existingBinding) throw new Error("Agent not found");
@@ -916,22 +953,29 @@ export class AgentCrudService {
   async listVersions(
     agentId: string,
     scope: RequestScope,
-    options: { cursor?: string | null; take?: number } = {},
-  ): Promise<{ versions: AgentVersionRecord[]; nextCursor: string | null }> {
+    options: { cursor?: string | null; take?: number; offset?: number } = {},
+  ): Promise<{ versions: AgentVersionRecord[]; nextCursor: string | null; total: number; offset: number; limit: number }> {
     const binding = await this.findBinding(agentId, scope);
     if (!binding) throw new Error("Agent not found");
     const take = Math.max(1, Math.min(200, Math.floor(options.take ?? 50)));
-    const rows = await this.prisma.agentVersion.findMany({
-      where: { agentId },
-      orderBy: { versionNumber: "desc" },
-      take: take + 1,
-      ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
-    });
+    const offset = Math.max(0, Math.floor(options.offset ?? 0));
+    const [rows, total] = await Promise.all([
+      this.prisma.agentVersion.findMany({
+        where: { agentId },
+        orderBy: [{ versionNumber: "desc" }, { id: "desc" }],
+        take: take + 1,
+        ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : { skip: offset }),
+      }),
+      this.prisma.agentVersion.count({ where: { agentId } }),
+    ]);
     const hasMore = rows.length > take;
     const page = hasMore ? rows.slice(0, take) : rows;
     return {
       versions: page.map((row: any) => this.projectVersion(row, binding)),
       nextCursor: hasMore ? page[page.length - 1]?.id ?? null : null,
+      total,
+      offset: options.cursor ? 0 : offset,
+      limit: take,
     };
   }
 

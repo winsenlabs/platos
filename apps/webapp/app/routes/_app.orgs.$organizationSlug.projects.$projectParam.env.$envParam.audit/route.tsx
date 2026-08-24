@@ -19,6 +19,7 @@ const config: SurfaceConfig = {
     }
     return `/api/v1/agent/monitoring/tool-audit?${query}`;
   },
+  collection: { defaultPageSize: 50, maxPageSize: 100, search: true, filters: ["sinceDays", "agentId", "threadId", "entityId", "toolName", "status"] },
   provenance: "Canonical scoped Tool audit rows; newest first",
 };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }

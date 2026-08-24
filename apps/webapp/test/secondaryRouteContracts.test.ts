@@ -23,7 +23,8 @@ describe("WIN-233 secondary route contracts", () => {
       "installation-revoke",
     ]) expect(connect).toContain(`intent === \"${intent}\"`);
     expect(connect).toContain('?? "connection-create"');
-    expect(connect).toContain("/installations/status");
+    expect(connect).not.toContain("/installations/status");
+    expect(connect).toContain('withCollectionQuery("/api/v1/agent/channel-apps"');
     expect(connect).toContain("/rotate-secret");
     expect(connect).toContain("/channels/mint");
     expect(connect).not.toContain('intent === "installation"');
@@ -36,6 +37,8 @@ describe("WIN-233 secondary route contracts", () => {
     expect(memory).toContain('requiredText(form, "userId", "End user")');
     expect(memory).toContain('requiredText(form, "agentId", "Agent")');
     expect(memory).toContain('agentPinQueryParam: "agentId"');
+    expect(memory).toContain('selectionEndpoint: "/api/v1/agent/agents/:selectedAgentId"');
+    expect(memory).toContain('pageParam: "agentPage"');
     expect(memory).toContain("?userId=${encodeURIComponent(userId)}");
     expect(memory).toContain("body: { userId");
     const memoryExport = source("_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories.export");
@@ -49,6 +52,7 @@ describe("WIN-233 secondary route contracts", () => {
     expect(graph).toContain('query.set("userId", userId)');
     expect(graph).toContain('requiredText(form, "userId", "End user")');
     expect(graph).toContain('requiredText(form, "agentId", "Agent")');
+    expect(graph).toContain('selectionEndpoint: "/api/v1/agent/agents/:selectedAgentId"');
   });
 
   it("keeps only explicitly owned auxiliary payload fetches", () => {
@@ -63,8 +67,6 @@ describe("WIN-233 secondary route contracts", () => {
     expect([...configuredSecondarySurfaces].sort()).toEqual([
       "agent-create",
       "budgets",
-      "canary",
-      "clusters",
       "cost",
       "entities",
       "evals",
@@ -82,15 +84,13 @@ describe("WIN-233 secondary route contracts", () => {
     for (const signature of [
       "AgentConfigSurface({ data, secondary, title }",
       "BudgetsSurface({ data, secondary }",
-      "CanarySurface({ data, secondary }",
-      "ClustersSurface({ data, secondary }",
       "CostSurface({ data, secondary, supporting }",
       "EntitiesSurface({ data, secondary }",
       "EvalsSurface({ data, secondary, title }",
       "GovernanceSurface({ data, secondary, title }",
       "MonitoringSurface({ data, secondary }",
-      "MemorySurface({ data, secondary }",
-      "MemoryGraphSurface({ data, secondary }",
+      "MemorySurface({ data, secondary, selection }",
+      "MemoryGraphSurface({ data, secondary, selection }",
       "SettingsSurface({ data, secondary }",
       "TraceSurface({ data, secondary }",
     ]) expect(surfaces).toContain(signature);

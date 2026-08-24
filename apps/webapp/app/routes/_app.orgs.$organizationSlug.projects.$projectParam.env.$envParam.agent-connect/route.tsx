@@ -3,6 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { requireEnvironmentScope } from "~/services/auth.server";
 import { agentPanel } from "~/services/platosAgent.server";
+import { parseCollectionQuery, withCollectionQuery } from "~/services/pagination.server";
 import { agentRequest, booleanField, enumField, jsonArray, jsonObject, m4Mutation, optionalText, requiredText, stringList } from "~/services/m4Mutation.server";
 
 const config = { surface: "channels" as const, title: "Connect and channels", description: "Hosted OAuth ChannelApps and operator-owned ChannelConnections with their complete supported lifecycle.", provenance: "Canonical clean database ancestry and platos-agent API" };
@@ -10,20 +11,13 @@ const config = { surface: "channels" as const, title: "Connect and channels", de
 export async function loader({ request, params }: LoaderFunctionArgs) {
   if (!params.organizationSlug || !params.projectParam || !params.envParam) throw new Response("Invalid scope", { status: 400 });
   const { scope } = await requireEnvironmentScope({ request, organizationSlug: params.organizationSlug, projectSlug: params.projectParam, environmentSlug: params.envParam });
+  const query = parseCollectionQuery(new URL(request.url), { defaultPageSize: 25, maxPageSize: 100, search: true });
   const [panel, apps, channels] = await Promise.all([
     agentPanel("/api/v1/agent/connect", scope),
-    agentPanel("/api/v1/agent/channel-apps", scope),
-    agentPanel("/api/v1/agent/channels", scope),
+    agentPanel(withCollectionQuery("/api/v1/agent/channel-apps", query, { search: true }), scope),
+    agentPanel(withCollectionQuery("/api/v1/agent/channels", query, { search: true }), scope),
   ]);
-  if (apps.ok) {
-    const rows = Array.isArray((apps.data as { apps?: unknown[] })?.apps) ? (apps.data as { apps: Array<{ id?: unknown }> }).apps : [];
-    const statuses = await Promise.all(rows.map(async (app) => {
-      const id = typeof app.id === "string" ? app.id : "";
-      return [id, id ? await agentPanel(`/api/v1/agent/channel-apps/${encodeURIComponent(id)}/installations/status`, scope) : null] as const;
-    }));
-    (apps.data as Record<string, unknown>).installationStatuses = Object.fromEntries(statuses.filter((entry) => entry[0]).map(([id, status]) => [id, status?.ok ? status.data : { installations: [] }]));
-  }
-  return json({ ...config, panel, secondary: apps, supporting: channels });
+  return json({ ...config, panel, secondary: apps, supporting: channels, collection: query });
 }
 
 export async function action(args: ActionFunctionArgs) {

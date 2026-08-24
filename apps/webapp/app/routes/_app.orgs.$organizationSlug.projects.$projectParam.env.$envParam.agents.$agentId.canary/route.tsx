@@ -6,7 +6,7 @@ import { requireEnvironmentScope } from "~/services/auth.server";
 import { loadSurface } from "~/services/m4Route.server";
 import { agentRequest } from "~/services/platosAgent.server";
 
-const config = { surface: "canary" as const, title: "Canary rollout", description: "Metrics join persisted AgentBinding, AgentVersion, Turn and Step cohort columns; promotion changes runtime selection.", endpoint: "/api/v1/agent/agents/:agentId/canary/metrics?hours=24", secondaryEndpoint: "/api/v1/agent/agents/:agentId/versions?take=200", provenance: "Persisted AgentBinding cohorts and usage-ledger projections from canonical Turn and Step columns" };
+const config = { surface: "canary" as const, title: "Canary rollout", description: "Metrics join persisted AgentBinding, AgentVersion, Turn and Step cohort columns; promotion changes runtime selection.", endpoint: "/api/v1/agent/agents/:agentId/canary/metrics?hours=24", provenance: "Persisted AgentBinding cohorts and usage-ledger projections from canonical Turn and Step columns" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 
 export async function action(args: ActionFunctionArgs) {

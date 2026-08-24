@@ -6,7 +6,7 @@ import { requireEnvironmentScope } from "~/services/auth.server";
 import { loadSurface } from "~/services/m4Route.server";
 import { agentRequest } from "~/services/platosAgent.server";
 
-const config = { surface: "agent-tools" as const, title: "Agent Tool exposure", description: "Shows Tools injected this Turn, find-only Tools, always-present runtime Tools, source Entity and live dispatchability.", endpoint: "/api/v1/agent/agents/:agentId/tool-mappings", provenance: "Canonical clean database ancestry and platos-agent API" };
+const config = { surface: "agent-tools" as const, title: "Agent Tool exposure", description: "Shows Tools injected this Turn, find-only Tools, always-present runtime Tools, source Entity and live dispatchability.", endpoint: "/api/v1/agent/agents/:agentId/tool-mappings", collection: { defaultPageSize: 50, maxPageSize: 100, search: true }, provenance: "Canonical clean database ancestry and platos-agent API" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 
 export async function action(args: ActionFunctionArgs) {

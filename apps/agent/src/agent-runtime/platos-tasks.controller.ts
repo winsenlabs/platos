@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
 } from "@nestjs/common";
 import type { Job, Prisma } from "@platos/tenancy-database";
@@ -20,6 +21,7 @@ import {
   PRISMA_TOKEN,
 } from "../shared/database.provider";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
+import { pageMetadata, parseEnumFilter, parsePageRequest } from "../shared/pagination";
 
 @Controller("api/v1/agent/platos-tasks")
 export class PlatosTasksController {
@@ -47,13 +49,57 @@ export class PlatosTasksController {
   }
 
   @Get()
-  async list(@Req() req: Request) {
+  async list(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+    @Query("status") statusRaw?: string,
+  ) {
     const scope = this.getScope(req);
-    const jobs = await this.prisma.job.findMany({
-      where: environmentScopeWhere(scope),
-      orderBy: { createdAt: "desc" },
-    });
-    return { tasks: jobs.map((job) => this.toTask(job)) };
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const status = parseEnumFilter(statusRaw?.trim().toUpperCase(), "status", [
+      "PENDING",
+      "ACTIVE",
+      "SUCCEEDED",
+      "FAILED",
+      "CANCELLED",
+    ] as const);
+    const where: Prisma.JobWhereInput = {
+      ...environmentScopeWhere(scope),
+      ...(status ? { status } : {}),
+      ...(request.search
+        ? {
+            OR: [
+              { displayName: { contains: request.search, mode: "insensitive" } },
+              { externalId: { contains: request.search, mode: "insensitive" } },
+              { description: { contains: request.search, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
+    const [jobs, total] = await Promise.all([
+      this.prisma.job.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: request.pageSize,
+        skip: request.offset,
+      }),
+      this.prisma.job.count({ where }),
+    ]);
+    const tasks = jobs.map((job) => this.toTask(job));
+    const pagination = pageMetadata(total, request);
+    return {
+      tasks,
+      items: tasks,
+      total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: pagination.hasNext,
+      pagination,
+      filters: { search: request.search, status },
+    };
   }
 
   @Get(":id")

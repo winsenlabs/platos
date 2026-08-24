@@ -19,7 +19,7 @@ function harness() {
   };
   const authService = {
     getEntity: vi.fn().mockResolvedValue({ id: "entity_pk", entityId: "support-core" }),
-    listEntities: vi.fn(),
+    listEntitiesPage: vi.fn(),
     registerEntity: vi.fn(),
   };
   const controller: any = Object.create(AgentController.prototype);
@@ -64,10 +64,12 @@ describe("AgentController clean Entity transport routes", () => {
 
   it("filters MCP navigation data without exposing Entity secrets", async () => {
     const h = harness();
-    h.authService.listEntities.mockResolvedValue([
-      { id: "mcp-1", entityId: "mcp-source", connectionKind: "mcp", serviceSecret: "sentinel" },
-      { id: "wire-1", entityId: "wire-source", connectionKind: "wire", serviceSecretHash: "sentinel-hash" },
-    ]);
+    h.authService.listEntitiesPage.mockResolvedValue({
+      entities: [
+        { id: "mcp-1", entityId: "mcp-source", connectionKind: "mcp", serviceSecret: "sentinel" },
+      ],
+      total: 1,
+    });
 
     const result = await h.controller.listEntities(h.req, "mcp");
 
@@ -75,7 +77,11 @@ describe("AgentController clean Entity transport routes", () => {
       expect.objectContaining({ id: "mcp-1", entityId: "mcp-source", connectionKind: "mcp" }),
     ]);
     expect(JSON.stringify(result)).not.toContain("sentinel");
-    expect(h.authService.listEntities).toHaveBeenCalledWith(scope.organizationId, scope.projectId);
+    expect(h.authService.listEntitiesPage).toHaveBeenCalledWith(
+      scope.organizationId,
+      scope.projectId,
+      expect.objectContaining({ connectionKind: "mcp", limit: 25, offset: 0 }),
+    );
   });
 
   it("returns clean MCP config defaults and counts active bearer rows", async () => {

@@ -7,6 +7,7 @@ import {
   Param,
   Body,
   Req,
+  Query,
   HttpException,
   HttpStatus,
   Inject,
@@ -21,6 +22,7 @@ import { ChannelRuntimeService } from "../channels/channel-runtime.service";
 import { ChannelPersistenceService } from "../channels/channel-persistence.service";
 import { requireOperator, type RequestScope } from "../auth/scope.guard";
 import { validateAgentRouting } from "./channel-routing";
+import { pageMetadata, parsePageRequest } from "../shared/pagination";
 
 /**
  * Connect reimagining — dashboard REST for messaging-channel doorways.
@@ -232,11 +234,32 @@ export class ChannelsController {
   }
 
   @Get()
-  async list(@Req() req: Request) {
+  async list(
+    @Req() req: Request,
+    @Query("page") pageRaw?: string,
+    @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("search") searchRaw?: string,
+  ) {
     const scope = this.getScope(req);
     requireOperator(scope); // operator-only — same posture as entity management
-    const rows = await this.persistence.listConnections(scope);
-    return { channels: (rows as any[]).map((r) => this.projectRow(r)) };
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
+    const result = await this.persistence.listConnectionsPage(scope, {
+      limit: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+    });
+    const channels = (result.items as any[]).map((row) => this.projectRow(row));
+    return {
+      channels,
+      items: channels,
+      total: result.total,
+      limit: request.pageSize,
+      offset: request.offset,
+      hasMore: request.offset + channels.length < result.total,
+      pagination: pageMetadata(result.total, request),
+      filters: { search: request.search },
+    };
   }
 
   @Post()

@@ -5,6 +5,8 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
 import { Inject } from "@nestjs/common";
 import type { RequestScope } from "../auth/scope.guard";
 import { requireOperator } from "../auth/scope.guard";
+import { Prisma } from "@platos/tenancy-database";
+import { pageMetadata, parsePageRequest, parseTextFilter } from "../shared/pagination";
 
 /**
  * PIFSP-16 — File System: 4-level hierarchy for browsing attachments.
@@ -38,20 +40,21 @@ export class FilesController {
   async listAgents(
     @Req() req: Request,
     @Query("limit") limitRaw?: string,
-    @Query("cursor") cursor?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("page") pageRaw?: string,
     @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H10) — file browser is operator-only (cross-user presigned URLs)
-    const limit = Math.min(200, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 50 : 50));
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search }, { defaultPageSize: 50 });
+    const searchPredicate = request.search
+      ? Prisma.sql`AND (a.name ILIKE ${`%${request.search}%`} OR CAST(a.id AS text) ILIKE ${`%${request.search}%`})`
+      : Prisma.empty;
 
-    const rows: Array<{
-      agentId: string;
-      _count: number;
-      lastAt: Date;
-    }> = await this.prisma.$queryRaw`
+    const [rows, totalRows] = await Promise.all([this.prisma.$queryRaw(Prisma.sql`
       SELECT
         a.id AS "agentId",
+        a.name,
         COUNT(att.id)::int AS "_count",
         MAX(att."createdAt") AS "lastAt"
       FROM "Agent" a
@@ -69,39 +72,42 @@ export class FilesController {
         AND project.id = CAST(${scope.projectId} AS uuid)
         AND project."organizationId" = CAST(${scope.organizationId} AS uuid)
         AND a."projectId" = project.id
-      GROUP BY a.id
-      ORDER BY "lastAt" DESC
-      LIMIT ${limit}
-    `;
-
-    // Fetch agent names
-    const agentIds = rows.map((r) => r.agentId);
-    const agentRows: Array<{ id: string; name: string }> = agentIds.length
-      ? await this.prisma.agent.findMany({
-          where: {
-            id: { in: agentIds },
-            projectId: scope.projectId,
-            project: { organizationId: scope.organizationId },
-            bindings: { some: { environmentId: scope.environmentId } },
-          },
-          select: { id: true, name: true },
-        })
-      : [];
-    const nameMap = new Map(agentRows.map((a) => [a.id, a.name]));
-
-    let agents = rows.map((r) => ({
+        ${searchPredicate}
+      GROUP BY a.id, a.name
+      ORDER BY "lastAt" DESC, a.id DESC
+      LIMIT ${request.pageSize}
+      OFFSET ${request.offset}
+    `), this.prisma.$queryRaw(Prisma.sql`
+      SELECT COUNT(DISTINCT a.id)::int AS total
+      FROM "Agent" a
+      JOIN "AgentBinding" binding ON binding."agentId" = a.id
+        AND binding."environmentId" = CAST(${scope.environmentId} AS uuid)
+      JOIN "Thread" t ON t."agentId" = a.id AND t."environmentId" = binding."environmentId"
+      JOIN "Turn" turn ON turn."threadId" = t.id
+      JOIN "MessageAttachment" att ON att."turnId" = turn.id
+        AND att."environmentId" = t."environmentId" AND att."endUserId" = t."endUserId"
+      JOIN "Environment" environment ON environment.id = t."environmentId"
+      JOIN "Project" project ON project.id = environment."projectId"
+      WHERE environment.id = CAST(${scope.environmentId} AS uuid)
+        AND project.id = CAST(${scope.projectId} AS uuid)
+        AND project."organizationId" = CAST(${scope.organizationId} AS uuid)
+        AND a."projectId" = project.id
+        ${searchPredicate}
+    `)]) as [Array<{
+      agentId: string;
+      name: string;
+      _count: number;
+      lastAt: Date;
+    }>, Array<{ total: number }>];
+    const total = totalRows[0]?.total ?? 0;
+    const agents = rows.map((r) => ({
       agentId: r.agentId,
-      name: nameMap.get(r.agentId) ?? r.agentId,
+      name: r.name,
       attachmentCount: r._count,
       lastAttachmentAt: r.lastAt?.toISOString() ?? null,
     }));
-
-    if (search) {
-      const q = search.toLowerCase();
-      agents = agents.filter((a) => a.name.toLowerCase().includes(q) || a.agentId.toLowerCase().includes(q));
-    }
-
-    return { agents, fetchedAt: new Date().toISOString() };
+    const pagination = pageMetadata(total, request);
+    return { agents, items: agents, total, limit: request.pageSize, offset: request.offset, hasMore: pagination.hasNext, pagination, filters: { search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /** Level 2 — users for a given agent. */
@@ -110,54 +116,59 @@ export class FilesController {
     @Req() req: Request,
     @Param("agentId") agentId: string,
     @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("page") pageRaw?: string,
     @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H10) — file browser is operator-only (cross-user presigned URLs)
-    const limit = Math.min(200, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 50 : 50));
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search }, { defaultPageSize: 50 });
+    const searchPredicate = request.search
+      ? Prisma.sql`AND CAST(t."endUserId" AS text) ILIKE ${`%${request.search}%`}`
+      : Prisma.empty;
 
-    const rows: Array<{
+    const [rows, totalRows] = await Promise.all([this.prisma.$queryRaw(Prisma.sql`
+      SELECT t."endUserId" AS "userId", COUNT(att.id)::int AS "attachmentCount",
+        COUNT(DISTINCT t.id)::int AS "distinctThreads", MAX(att."createdAt") AS "lastAt"
+      FROM "Thread" t
+      JOIN "Turn" turn ON turn."threadId" = t.id
+      JOIN "MessageAttachment" att ON att."turnId" = turn.id AND att."environmentId" = t."environmentId" AND att."endUserId" = t."endUserId"
+      JOIN "Environment" environment ON environment.id = t."environmentId"
+      JOIN "Project" project ON project.id = environment."projectId"
+      JOIN "AgentBinding" binding ON binding."agentId" = t."agentId" AND binding."environmentId" = t."environmentId"
+      WHERE t."agentId" = CAST(${agentId} AS uuid) AND t."environmentId" = CAST(${scope.environmentId} AS uuid)
+        AND project.id = CAST(${scope.projectId} AS uuid) AND project."organizationId" = CAST(${scope.organizationId} AS uuid)
+        ${searchPredicate}
+      GROUP BY t."endUserId"
+      ORDER BY "lastAt" DESC, t."endUserId" DESC
+      LIMIT ${request.pageSize} OFFSET ${request.offset}
+    `), this.prisma.$queryRaw(Prisma.sql`
+      SELECT COUNT(DISTINCT t."endUserId")::int AS total
+      FROM "Thread" t
+      JOIN "Turn" turn ON turn."threadId" = t.id
+      JOIN "MessageAttachment" att ON att."turnId" = turn.id AND att."environmentId" = t."environmentId" AND att."endUserId" = t."endUserId"
+      JOIN "Environment" environment ON environment.id = t."environmentId"
+      JOIN "Project" project ON project.id = environment."projectId"
+      JOIN "AgentBinding" binding ON binding."agentId" = t."agentId" AND binding."environmentId" = t."environmentId"
+      WHERE t."agentId" = CAST(${agentId} AS uuid) AND t."environmentId" = CAST(${scope.environmentId} AS uuid)
+        AND project.id = CAST(${scope.projectId} AS uuid) AND project."organizationId" = CAST(${scope.organizationId} AS uuid)
+        ${searchPredicate}
+    `)]) as [Array<{
       userId: string;
       attachmentCount: number;
       distinctThreads: number;
       lastAt: Date;
-    }> = await this.prisma.$queryRaw`
-      SELECT
-        t."endUserId" AS "userId",
-        COUNT(att.id)::int AS "attachmentCount",
-        COUNT(DISTINCT t.id)::int AS "distinctThreads",
-        MAX(att."createdAt") AS "lastAt"
-      FROM "Thread" t
-      JOIN "Turn" turn ON turn."threadId" = t.id
-      JOIN "MessageAttachment" att ON att."turnId" = turn.id
-        AND att."environmentId" = t."environmentId"
-        AND att."endUserId" = t."endUserId"
-      JOIN "Environment" environment ON environment.id = t."environmentId"
-      JOIN "Project" project ON project.id = environment."projectId"
-      JOIN "AgentBinding" binding ON binding."agentId" = t."agentId"
-        AND binding."environmentId" = t."environmentId"
-      WHERE t."agentId" = CAST(${agentId} AS uuid)
-        AND t."environmentId" = CAST(${scope.environmentId} AS uuid)
-        AND project.id = CAST(${scope.projectId} AS uuid)
-        AND project."organizationId" = CAST(${scope.organizationId} AS uuid)
-      GROUP BY t."endUserId"
-      ORDER BY "lastAt" DESC
-      LIMIT ${limit}
-    `;
-
-    let users = rows.map((r) => ({
+    }>, Array<{ total: number }>];
+    const total = totalRows[0]?.total ?? 0;
+    const users = rows.map((r) => ({
       userId: r.userId,
       attachmentCount: r.attachmentCount,
       distinctThreads: r.distinctThreads,
       lastAttachmentAt: r.lastAt?.toISOString() ?? null,
     }));
 
-    if (search) {
-      const q = search.toLowerCase();
-      users = users.filter((u) => u.userId.toLowerCase().includes(q));
-    }
-
-    return { agentId, users, fetchedAt: new Date().toISOString() };
+    const pagination = pageMetadata(total, request);
+    return { agentId, users, items: users, total, limit: request.pageSize, offset: request.offset, hasMore: pagination.hasNext, pagination, filters: { search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /** Level 3 — conversations (threads) for a user on an agent. */
@@ -167,57 +178,58 @@ export class FilesController {
     @Param("agentId") agentId: string,
     @Param("userId") userId: string,
     @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("page") pageRaw?: string,
     @Query("search") search?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H10) — file browser is operator-only (cross-user presigned URLs)
-    const limit = Math.min(200, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 50 : 50));
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search }, { defaultPageSize: 50 });
+    const searchPredicate = request.search
+      ? Prisma.sql`AND (COALESCE(t.title, '') ILIKE ${`%${request.search}%`} OR CAST(t.id AS text) ILIKE ${`%${request.search}%`})`
+      : Prisma.empty;
 
-    const rows: Array<{
+    const [rows, totalRows] = await Promise.all([this.prisma.$queryRaw(Prisma.sql`
+      SELECT t.id AS "threadId", t.title, COUNT(att.id)::int AS "attachmentCount", MAX(att."createdAt") AS "lastAt"
+      FROM "Thread" t
+      JOIN "Turn" turn ON turn."threadId" = t.id
+      JOIN "MessageAttachment" att ON att."turnId" = turn.id AND att."environmentId" = t."environmentId" AND att."endUserId" = t."endUserId"
+      JOIN "Environment" environment ON environment.id = t."environmentId"
+      JOIN "Project" project ON project.id = environment."projectId"
+      JOIN "AgentBinding" binding ON binding."agentId" = t."agentId" AND binding."environmentId" = t."environmentId"
+      WHERE t."agentId" = CAST(${agentId} AS uuid) AND t."endUserId" = CAST(${userId} AS uuid)
+        AND t."environmentId" = CAST(${scope.environmentId} AS uuid) AND project.id = CAST(${scope.projectId} AS uuid)
+        AND project."organizationId" = CAST(${scope.organizationId} AS uuid) ${searchPredicate}
+      GROUP BY t.id, t.title
+      ORDER BY "lastAt" DESC, t.id DESC
+      LIMIT ${request.pageSize} OFFSET ${request.offset}
+    `), this.prisma.$queryRaw(Prisma.sql`
+      SELECT COUNT(DISTINCT t.id)::int AS total
+      FROM "Thread" t
+      JOIN "Turn" turn ON turn."threadId" = t.id
+      JOIN "MessageAttachment" att ON att."turnId" = turn.id AND att."environmentId" = t."environmentId" AND att."endUserId" = t."endUserId"
+      JOIN "Environment" environment ON environment.id = t."environmentId"
+      JOIN "Project" project ON project.id = environment."projectId"
+      JOIN "AgentBinding" binding ON binding."agentId" = t."agentId" AND binding."environmentId" = t."environmentId"
+      WHERE t."agentId" = CAST(${agentId} AS uuid) AND t."endUserId" = CAST(${userId} AS uuid)
+        AND t."environmentId" = CAST(${scope.environmentId} AS uuid) AND project.id = CAST(${scope.projectId} AS uuid)
+        AND project."organizationId" = CAST(${scope.organizationId} AS uuid) ${searchPredicate}
+    `)]) as [Array<{
       threadId: string;
       title: string | null;
       attachmentCount: number;
       lastAt: Date;
-    }> = await this.prisma.$queryRaw`
-      SELECT
-        t.id AS "threadId",
-        t.title,
-        COUNT(att.id)::int AS "attachmentCount",
-        MAX(att."createdAt") AS "lastAt"
-      FROM "Thread" t
-      JOIN "Turn" turn ON turn."threadId" = t.id
-      JOIN "MessageAttachment" att ON att."turnId" = turn.id
-        AND att."environmentId" = t."environmentId"
-        AND att."endUserId" = t."endUserId"
-      JOIN "Environment" environment ON environment.id = t."environmentId"
-      JOIN "Project" project ON project.id = environment."projectId"
-      JOIN "AgentBinding" binding ON binding."agentId" = t."agentId"
-        AND binding."environmentId" = t."environmentId"
-      WHERE t."agentId" = CAST(${agentId} AS uuid)
-        AND t."endUserId" = CAST(${userId} AS uuid)
-        AND t."environmentId" = CAST(${scope.environmentId} AS uuid)
-        AND project.id = CAST(${scope.projectId} AS uuid)
-        AND project."organizationId" = CAST(${scope.organizationId} AS uuid)
-      GROUP BY t.id, t.title
-      ORDER BY "lastAt" DESC
-      LIMIT ${limit}
-    `;
-
-    let conversations = rows.map((r) => ({
+    }>, Array<{ total: number }>];
+    const total = totalRows[0]?.total ?? 0;
+    const conversations = rows.map((r) => ({
       threadId: r.threadId,
       title: r.title,
       attachmentCount: r.attachmentCount,
       lastActivityAt: r.lastAt?.toISOString() ?? null,
     }));
 
-    if (search) {
-      const q = search.toLowerCase();
-      conversations = conversations.filter(
-        (c) => (c.title ?? "").toLowerCase().includes(q) || c.threadId.toLowerCase().includes(q),
-      );
-    }
-
-    return { agentId, userId, conversations, fetchedAt: new Date().toISOString() };
+    const pagination = pageMetadata(total, request);
+    return { agentId, userId, conversations, items: conversations, total, limit: request.pageSize, offset: request.offset, hasMore: pagination.hasNext, pagination, filters: { search: request.search }, fetchedAt: new Date().toISOString() };
   }
 
   /** Level 4 — attachments for a thread, with presigned download URLs. */
@@ -226,14 +238,17 @@ export class FilesController {
     @Req() req: Request,
     @Param("threadId") threadId: string,
     @Query("limit") limitRaw?: string,
+    @Query("offset") offsetRaw?: string,
+    @Query("page") pageRaw?: string,
     @Query("search") search?: string,
     @Query("mime") mimeFilter?: string,
   ) {
     const scope = this.getScope(req);
     requireOperator(scope); // SECURITY (audit H10) — file browser is operator-only (cross-user presigned URLs)
-    const limit = Math.min(200, Math.max(1, limitRaw ? parseInt(limitRaw, 10) || 50 : 50));
+    const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search }, { defaultPageSize: 50 });
+    const mime = parseTextFilter(mimeFilter, "mime");
 
-    const whereBase: Record<string, unknown> = {
+    const whereBase: Prisma.MessageAttachmentWhereInput = {
       environmentId: scope.environmentId,
       environment: {
         project: {
@@ -242,18 +257,18 @@ export class FilesController {
         },
       },
       turn: { threadId },
+      ...(request.search
+        ? {
+            OR: [
+              { originalName: { contains: request.search, mode: "insensitive" } },
+              { mimeType: { contains: request.search, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+      ...(mime ? { mimeType: { startsWith: mime, mode: "insensitive" } } : {}),
     };
 
-    const rows: Array<{
-      id: string;
-      originalName: string | null;
-      mimeType: string;
-      bytes: number;
-      createdAt: Date;
-      storageKey: string;
-      turnId: string | null;
-      kind: string;
-    }> = await this.prisma.messageAttachment.findMany({
+    const [rows, total] = await Promise.all([this.prisma.messageAttachment.findMany({
       where: whereBase,
       select: {
         id: true,
@@ -265,25 +280,23 @@ export class FilesController {
         turnId: true,
         kind: true,
       },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    });
-
-    // Apply search/mime filter
-    let filtered = rows;
-    if (search) {
-      const q = search.toLowerCase();
-      filtered = filtered.filter(
-        (r) => (r.originalName ?? "").toLowerCase().includes(q) || r.mimeType.toLowerCase().includes(q),
-      );
-    }
-    if (mimeFilter) {
-      filtered = filtered.filter((r) => r.mimeType.startsWith(mimeFilter));
-    }
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: request.pageSize,
+      skip: request.offset,
+    }), this.prisma.messageAttachment.count({ where: whereBase })]) as [Array<{
+      id: string;
+      originalName: string | null;
+      mimeType: string;
+      bytes: number;
+      createdAt: Date;
+      storageKey: string;
+      turnId: string | null;
+      kind: string;
+    }>, number];
 
     // Generate presigned download URLs
     const attachments = await Promise.all(
-      filtered.map(async (r) => {
+      rows.map(async (r) => {
         let downloadUrl: string | null = null;
         try {
           downloadUrl = await this.attachmentsService.getPresignedDownloadUrl(r.storageKey);
@@ -306,6 +319,7 @@ export class FilesController {
       }),
     );
 
-    return { threadId, attachments, fetchedAt: new Date().toISOString() };
+    const pagination = pageMetadata(total, request);
+    return { threadId, attachments, items: attachments, total, limit: request.pageSize, offset: request.offset, hasMore: pagination.hasNext, pagination, filters: { search: request.search, mime }, fetchedAt: new Date().toISOString() };
   }
 }

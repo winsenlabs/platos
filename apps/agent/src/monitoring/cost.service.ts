@@ -1529,7 +1529,7 @@ export class CostService {
         costCents: roundCents(b.costCents),
         costWithCacheCents: roundCents(b.costWithCacheCents),
       }))
-      .sort((a, b) => b.costCents - a.costCents)
+      .sort((a, b) => b.costCents - a.costCents || a.model.localeCompare(b.model))
       .slice(0, limit);
   }
 
@@ -1710,7 +1710,7 @@ export class CostService {
         tasks: b.tasks,
         threads: b.threads.size,
       }))
-      .sort((a, b) => b.costCents - a.costCents)
+      .sort((a, b) => b.costCents - a.costCents || a.agentId.localeCompare(b.agentId))
       .slice(0, limit);
   }
 

@@ -3,7 +3,7 @@ import { useLoaderData } from "@remix-run/react";
 import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
 import { agentRequest, booleanField, enumField, m4Mutation, numberField, optionalText, requiredText, stringList } from "~/services/m4Mutation.server";
-const config = { surface: "budgets" as const, title: "Budgets", description: "Cache-aware budget status, enforcement and once-only threshold events.", endpoint: "/api/v1/agent/budgets/status", secondaryEndpoint: "/api/v1/agent/budgets", provenance: "Canonical clean database ancestry and platos-agent API" };
+const config = { surface: "budgets" as const, title: "Budgets", description: "Cache-aware budget status, enforcement and once-only threshold events.", endpoint: "/api/v1/agent/budgets/status", secondaryEndpoint: "/api/v1/agent/budgets", collection: { defaultPageSize: 25, maxPageSize: 100 }, secondaryCollection: { defaultPageSize: 25, maxPageSize: 100 }, provenance: "Canonical clean database ancestry and platos-agent API" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   return m4Mutation(args, "Budget mutation", async ({ scope, form }) => {

@@ -20,6 +20,8 @@ const config = {
     return `/api/v1/memory/search?${search}`;
   },
   secondaryEndpoint: "/api/v1/agent/agents",
+  secondaryCollection: { defaultPageSize: 25, maxPageSize: 100, search: true, pageParam: "agentPage", pageSizeParam: "agentPageSize", searchParam: "agentSearch" },
+  selectionEndpoint: "/api/v1/agent/agents/:selectedAgentId",
   agentPinQueryParam: "agentId",
   requireAgentPin: true,
   provenance: "Canonical clean database ancestry and platos-agent API",

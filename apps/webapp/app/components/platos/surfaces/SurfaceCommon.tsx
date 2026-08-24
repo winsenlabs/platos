@@ -31,6 +31,7 @@ export type SurfaceData = {
   panel: PanelResult;
   secondary?: PanelResult;
   supporting?: PanelResult;
+  selection?: PanelResult;
   provenance?: string;
 };
 
@@ -44,6 +45,7 @@ export type SurfaceProps = {
   data: unknown;
   secondary?: unknown;
   supporting?: unknown;
+  selection?: unknown;
   title: string;
 };
 

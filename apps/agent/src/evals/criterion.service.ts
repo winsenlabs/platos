@@ -116,6 +116,45 @@ export class CriterionService {
     return rows.map((row) => this.toRecord(scope, row));
   }
 
+  async listPage(
+    scope: ScopeTuple,
+    options: {
+      agentId?: string | null;
+      activeOnly?: boolean;
+      limit: number;
+      offset: number;
+      search?: string | null;
+    },
+  ): Promise<{ criteria: EvalCriterionRecord[]; total: number }> {
+    const where: Prisma.EvalCriterionWhereInput = {
+      ...environmentScopeWhere(scope),
+      ...(options.activeOnly ? { isActive: true } : {}),
+      ...(options.search
+        ? {
+            OR: [
+              { name: { contains: options.search, mode: "insensitive" } },
+              { description: { contains: options.search, mode: "insensitive" } },
+              { judgeModel: { contains: options.search, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
+    if (options.agentId !== undefined) {
+      if (options.agentId === null) where.agentId = null;
+      else where.AND = [{ OR: [{ agentId: options.agentId }, { agentId: null }] }];
+    }
+    const [rows, total] = await Promise.all([
+      this.prisma.evalCriterion.findMany({
+        where,
+        orderBy: [{ isActive: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+        take: options.limit,
+        skip: options.offset,
+      }),
+      this.prisma.evalCriterion.count({ where }),
+    ]);
+    return { criteria: rows.map((row) => this.toRecord(scope, row)), total };
+  }
+
   async findById(
     scope: ScopeTuple,
     id: string,

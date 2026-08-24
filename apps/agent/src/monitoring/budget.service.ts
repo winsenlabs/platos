@@ -147,9 +147,29 @@ export class BudgetService {
         ...environmentScopeWhere(scope),
         deletedAt: null,
       },
-      orderBy: [{ scope: "asc" }, { period: "asc" }],
+      orderBy: [{ scope: "asc" }, { period: "asc" }, { id: "asc" }],
     });
     return rows.map((row) => this.row(scope, row));
+  }
+
+  async listPage(
+    scope: ScopeTuple,
+    options: { limit: number; offset: number },
+  ): Promise<{ items: BudgetCap[]; total: number }> {
+    const where = {
+      ...environmentScopeWhere(scope),
+      deletedAt: null,
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.budget.findMany({
+        where,
+        orderBy: [{ scope: "asc" }, { period: "asc" }, { id: "asc" }],
+        take: options.limit,
+        skip: options.offset,
+      }),
+      this.prisma.budget.count({ where }),
+    ]);
+    return { items: rows.map((row) => this.row(scope, row)), total };
   }
 
   async getById(scope: ScopeTuple, id: string): Promise<BudgetCap | null> {

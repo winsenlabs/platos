@@ -5,6 +5,7 @@ import { PRISMA_TOKEN } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { ChannelEventCryptoService } from "./channel-event-crypto.service";
 import { assertSubjectNotErased } from "../privacy/erasure-register";
+import { isUuid } from "../shared/pagination";
 
 export interface ChannelOwnerScope {
   organizationId: string;
@@ -62,9 +63,42 @@ export class ChannelPersistenceService {
         credential: true,
         environment: { include: { project: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
     return rows.map((row: any) => this.normalizeApp(row));
+  }
+
+  async listAppsPage(
+    scope: ChannelOwnerScope,
+    options: { limit: number; offset: number; search?: string | null },
+  ): Promise<{ items: any[]; total: number }> {
+    await this.requireEnvironmentScope(scope);
+    const where = {
+      environmentId: scope.environmentId,
+      ...(options.search
+        ? {
+            OR: [
+              { displayName: { contains: options.search, mode: "insensitive" as const } },
+              { provider: { contains: options.search, mode: "insensitive" as const } },
+              { clientId: { contains: options.search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.channelApp.findMany({
+        where,
+        include: {
+          credential: true,
+          environment: { include: { project: true } },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: options.offset,
+        take: options.limit,
+      }),
+      this.prisma.channelApp.count({ where }),
+    ]);
+    return { items: rows.map((row: any) => this.normalizeApp(row)), total };
   }
 
   async loadScopedApp(scope: ChannelOwnerScope, appId: string): Promise<any | null> {
@@ -234,6 +268,28 @@ export class ChannelPersistenceService {
     return rows.map((row: any) => this.normalizeInstallation(row));
   }
 
+  async listInstallationsForApps(scope: ChannelOwnerScope, appIds: string[]): Promise<any[]> {
+    await this.requireEnvironmentScope(scope);
+    if (appIds.length === 0) return [];
+    const rows = await this.prisma.channelInstallation.findMany({
+      where: {
+        appId: { in: appIds },
+        app: { environmentId: scope.environmentId },
+      },
+      include: {
+        credential: true,
+        app: {
+          include: {
+            credential: true,
+            environment: { include: { project: true } },
+          },
+        },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    });
+    return rows.map((row: any) => this.normalizeInstallation(row));
+  }
+
   async updateInstallationBinding(
     scope: ChannelOwnerScope,
     appId: string,
@@ -288,9 +344,43 @@ export class ChannelPersistenceService {
         entity: true,
         environment: { include: { project: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
     return rows.map((row: any) => this.normalizeConnection(row));
+  }
+
+  async listConnectionsPage(
+    scope: ChannelOwnerScope,
+    options: { limit: number; offset: number; search?: string | null },
+  ): Promise<{ items: any[]; total: number }> {
+    await this.requireEnvironmentScope(scope);
+    const where = {
+      environmentId: scope.environmentId,
+      ...(options.search
+        ? {
+            OR: [
+              { displayName: { contains: options.search, mode: "insensitive" as const } },
+              { provider: { contains: options.search, mode: "insensitive" as const } },
+              ...(isUuid(options.search) ? [{ defaultAgentId: options.search }] : []),
+            ],
+          }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.channelConnection.findMany({
+        where,
+        include: {
+          credential: true,
+          entity: true,
+          environment: { include: { project: true } },
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: options.offset,
+        take: options.limit,
+      }),
+      this.prisma.channelConnection.count({ where }),
+    ]);
+    return { items: rows.map((row: any) => this.normalizeConnection(row)), total };
   }
 
   async loadScopedConnection(scope: ChannelOwnerScope, connectionId: string): Promise<any | null> {

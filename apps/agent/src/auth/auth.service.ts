@@ -845,6 +845,37 @@ export class AuthService {
     return entities.map(AuthService.projectEntity);
   }
 
+  async listEntitiesPage(
+    organizationId: string,
+    projectId: string,
+    options: { limit: number; offset: number; search?: string | null; connectionKind?: string },
+  ): Promise<{ entities: any[]; total: number }> {
+    const where = {
+      projectId,
+      project: { organizationId },
+      ...(options.connectionKind ? { connectionKind: options.connectionKind } : {}),
+      ...(options.search
+        ? {
+            OR: [
+              { externalId: { contains: options.search, mode: "insensitive" as const } },
+              { displayName: { contains: options.search, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
+    const [entities, total] = await Promise.all([
+      this.prisma.entity.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: options.limit,
+        skip: options.offset,
+        select: AuthService.ENTITY_SAFE_SELECT,
+      }),
+      this.prisma.entity.count({ where }),
+    ]);
+    return { entities: entities.map(AuthService.projectEntity), total };
+  }
+
   /** Delete an entity, its credentials, and its tool exposure atomically. */
   async deleteEntity(organizationId: string, projectId: string, identifier: string): Promise<boolean> {
     const entity = await this.prisma.entity.findFirst({

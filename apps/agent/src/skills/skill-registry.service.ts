@@ -89,9 +89,39 @@ export class SkillRegistryService {
     if (!canonical) return [];
     const rows = await this.prisma.skill.findMany({
       where: this.visibleWhere(canonical),
-      orderBy: [{ isOfficial: "desc" }, { slug: "asc" }, { version: "desc" }],
+      orderBy: [{ isOfficial: "desc" }, { slug: "asc" }, { version: "desc" }, { id: "asc" }],
     });
-    return Promise.all(rows.map((row: any) => this.hydrate(canonical, row)));
+    return this.hydrateRows(canonical, rows);
+  }
+
+  async listPage(
+    scope: ScopeTuple,
+    options: { limit: number; offset: number; search?: string | null },
+  ): Promise<{ items: SkillRecord[]; total: number }> {
+    const canonical = await this.resolveScope(scope);
+    if (!canonical) return { items: [], total: 0 };
+    const where = {
+      AND: [
+        this.visibleWhere(canonical),
+        ...(options.search
+          ? [{ OR: [
+              { name: { contains: options.search, mode: "insensitive" as const } },
+              { slug: { contains: options.search, mode: "insensitive" as const } },
+              { description: { contains: options.search, mode: "insensitive" as const } },
+            ] }]
+          : []),
+      ],
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.skill.findMany({
+        where,
+        orderBy: [{ isOfficial: "desc" }, { slug: "asc" }, { version: "desc" }, { id: "asc" }],
+        skip: options.offset,
+        take: options.limit,
+      }),
+      this.prisma.skill.count({ where }),
+    ]);
+    return { items: await this.hydrateRows(canonical, rows), total };
   }
 
   async get(scope: ScopeTuple, id: string): Promise<SkillRecord | null> {
@@ -500,10 +530,20 @@ export class SkillRegistryService {
     return { agentCount: agents.length, agents };
   }
 
-  private async hydrate(scope: ScopeTuple | null, row: any): Promise<SkillRecord> {
+  private async hydrateRows(scope: ScopeTuple, rows: any[]): Promise<SkillRecord[]> {
+    const requiredKeys = Array.from(new Set(rows.flatMap((row) => row.requiredEnvironmentKeys ?? []))) as string[];
+    const envSetMap = requiredKeys.length > 0 ? await this.scopedEnv.setMap(scope, requiredKeys) : {};
+    return Promise.all(rows.map((row) => this.hydrate(scope, row, envSetMap)));
+  }
+
+  private async hydrate(
+    scope: ScopeTuple | null,
+    row: any,
+    prefetchedEnvSetMap?: Record<string, boolean>,
+  ): Promise<SkillRecord> {
     const requiredEnv: string[] = row.requiredEnvironmentKeys ?? [];
     const envSetMap =
-      scope && requiredEnv.length > 0 ? await this.scopedEnv.setMap(scope, requiredEnv) : {};
+      prefetchedEnvSetMap ?? (scope && requiredEnv.length > 0 ? await this.scopedEnv.setMap(scope, requiredEnv) : {});
     const envReady = scope
       ? requiredEnv.length === 0 || requiredEnv.every((key) => !!envSetMap[key])
       : null;

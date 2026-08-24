@@ -4,7 +4,7 @@ import { M4Surface } from "~/components/platos/M4Surface";
 import { loadSurface } from "~/services/m4Route.server";
 import { requireEnvironmentScope } from "~/services/auth.server";
 import { agentRequest } from "~/services/platosAgent.server";
-const config = { surface: "tools" as const, title: "Tool registry", description: "Dispatchability, source Entity and health come from the same registry/executor used by runtime Turns.", endpoint: "/api/v1/agent/tools/matrix", provenance: "Canonical clean database ancestry and platos-agent API" };
+const config = { surface: "tools" as const, title: "Tool registry", description: "Dispatchability, source Entity and health come from the same registry/executor used by runtime Turns.", endpoint: "/api/v1/agent/tools/matrix", collection: { defaultPageSize: 50, maxPageSize: 100, search: true, filters: ["category", "status"] }, provenance: "Canonical clean database ancestry and platos-agent API" };
 export async function loader(args: LoaderFunctionArgs) { return loadSurface(args, config); }
 export async function action(args: ActionFunctionArgs) {
   const { organizationSlug, projectParam: projectSlug, envParam: environmentSlug } = args.params;

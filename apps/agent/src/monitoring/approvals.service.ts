@@ -11,6 +11,7 @@ import {
   PRISMA_TOKEN,
 } from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
+import { isUuid } from "../shared/pagination";
 
 type ScopeTuple = Pick<
   RequestScope,
@@ -66,6 +67,7 @@ export interface ApprovalFilters {
   sinceDays?: number;
   limit?: number;
   offset?: number;
+  search?: string;
 }
 
 export interface RecordApprovalInput {
@@ -214,6 +216,13 @@ export class MonitoringApprovalsService {
     if (filters.source) {
       where.AND = [this.metadataWhere("source", filters.source)];
     }
+    if (filters.search) {
+      where.OR = [
+        ...(isUuid(filters.search) ? [{ id: { equals: filters.search } }] : []),
+        { action: { contains: filters.search, mode: "insensitive" } },
+        { details: { contains: filters.search, mode: "insensitive" } },
+      ];
+    }
 
     const pendingWhere: Prisma.AgentApprovalWhereInput = {
       ...environmentScopeWhere(scope),
@@ -224,7 +233,7 @@ export class MonitoringApprovalsService {
       this.prisma.agentApproval.count({ where: pendingWhere }),
       this.prisma.agentApproval.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: limit,
         skip: offset,
       }),
