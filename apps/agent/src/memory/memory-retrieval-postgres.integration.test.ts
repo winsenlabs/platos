@@ -7,7 +7,11 @@ import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { MemoryProfileBackfillService } from "./memory-profile-backfill.service";
 import {
   applicationQueryCount,
+  type CapturedPrismaQuery,
+  explainCapturedQuery,
   postgresUrlWithParams,
+  requireCapturedEndpointQueries,
+  requireCapturedRelationQuery,
   startPostgresIntegrationDatabase,
   type PostgresIntegrationDatabase,
   writeExplainEvidence,
@@ -30,7 +34,7 @@ describe("memory PostgreSQL HNSW retrieval", () => {
   let primary: ScopeFixture;
   let secondary: ScopeFixture;
   let otherAgentId: string;
-  const queries: string[] = [];
+  const queries: CapturedPrismaQuery[] = [];
 
   beforeAll(async () => {
     database = await startPostgresIntegrationDatabase();
@@ -51,7 +55,7 @@ describe("memory PostgreSQL HNSW retrieval", () => {
     );
 
     prisma = createQueryPrismaClient(databaseUrl);
-    prisma.$on("query", (event) => queries.push(event.query));
+    prisma.$on("query", ({ query, params }) => queries.push({ query, params }));
     await new MemoryProfileBackfillService(prisma, new MessageCryptoService()).run();
     memory = new MemoryService(prisma, { embed: async () => queryVector } as any);
     primary = await seedScope(prisma, "primary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
@@ -139,40 +143,10 @@ describe("memory PostgreSQL HNSW retrieval", () => {
     await prisma.$executeRawUnsafe("SET enable_sort = off");
     await prisma.$executeRawUnsafe("SET statement_timeout = '15s'");
 
-    const [planRow] = await prisma.$queryRawUnsafe<Array<{ "QUERY PLAN": unknown }>>(
-      `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
-       SELECT "id"
-       FROM "Memory"
-       WHERE "environmentId" = $2::uuid
-         AND "endUserId" = $3::uuid
-         AND "embedding" IS NOT NULL
-         AND "quarantinedAt" IS NULL
-         AND "archivedAt" IS NULL
-         AND "kind" = $4
-         AND "agentId" = ANY($5::uuid[])
-         AND "agentVisible" = TRUE
-         AND "visibility" = ANY($6::text[])
-       ORDER BY "embedding" <=> $1::vector
-       LIMIT 200`,
-      unitVector(1),
-      primary.environmentId,
-      primary.endUserId,
-      KIND,
-      [primary.agentId],
-      ["agent_visible"]
-    );
-    expect(JSON.stringify(planRow?.["QUERY PLAN"])).toContain("Memory_embedding_hnsw_cosine_idx");
-    writeExplainEvidence({
-      name: "memory-semantic-search.explain.json",
-      endpoint: "MemoryService.semanticSearch",
-      rowLimit: 200,
-      statementTimeoutMs: 15_000,
-      plans: { search: planRow?.["QUERY PLAN"] },
-    });
-
     const queryStart = queries.length;
     const first = await search(memory, primary, 50);
-    const queryCount = applicationQueryCount(queries.slice(queryStart));
+    const capturedQueries = queries.slice(queryStart);
+    const queryCount = applicationQueryCount(capturedQueries);
     expect(queryCount).toBeLessThanOrEqual(12);
     writeQueryCountEvidence({
       name: "memory-semantic-search.query-count.json",
@@ -180,6 +154,18 @@ describe("memory PostgreSQL HNSW retrieval", () => {
       queryCount,
       maximumQueryCount: 12,
       fixtureRows: 1_559,
+    });
+    const searchPlan = await explainCapturedQuery(
+      prisma,
+      requireCapturedRelationQuery(capturedQueries, "Memory")
+    );
+    expect(JSON.stringify(searchPlan.plan)).toContain("Memory_embedding_hnsw_cosine_idx");
+    writeExplainEvidence({
+      name: "memory-semantic-search.explain.json",
+      endpoint: "MemoryService.semanticSearch",
+      rowLimit: 200,
+      statementTimeoutMs: 15_000,
+      plans: { search: searchPlan },
     });
     const second = await search(memory, primary, 50);
 
@@ -346,7 +332,8 @@ describe("memory PostgreSQL HNSW retrieval", () => {
     } as const;
     const queryStart = queries.length;
     const first = await memory.listPage(searchScope(primary), { ...input, offset: 0 });
-    const queryCount = applicationQueryCount(queries.slice(queryStart));
+    const capturedQueries = queries.slice(queryStart);
+    const queryCount = applicationQueryCount(capturedQueries);
     expect(queryCount).toBeLessThanOrEqual(8);
     writeQueryCountEvidence({
       name: "memory-dense-page.query-count.json",
@@ -355,6 +342,7 @@ describe("memory PostgreSQL HNSW retrieval", () => {
       maximumQueryCount: 8,
       fixtureRows: 384,
     });
+    const capturedPageQueries = requireCapturedEndpointQueries(capturedQueries, "Memory");
     const [repeated, middle, later, last, empty, outsideTenant] = await Promise.all([
       memory.listPage(searchScope(primary), { ...input, offset: 0 }),
       memory.listPage(searchScope(primary), { ...input, offset: 100 }),
@@ -388,61 +376,13 @@ describe("memory PostgreSQL HNSW retrieval", () => {
     const explainPlans = await prisma.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '15s'");
-        const [items] = await tx.$queryRawUnsafe<Array<{ "QUERY PLAN": unknown }>>(
-          `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
-         SELECT memory."id"
-         FROM "Memory" AS memory
-         WHERE memory."environmentId" = $1::uuid
-           AND memory."endUserId" = $2::uuid
-           AND memory."agentId" = ANY($3::uuid[])
-           AND memory."kind" = 'fact'
-           AND memory."source" = 'manual'
-           AND memory."archivedAt" IS NULL
-           AND EXISTS (
-             SELECT 1 FROM "Environment" environment
-             JOIN "Project" project ON project."id" = environment."projectId"
-             WHERE environment."id" = memory."environmentId"
-               AND environment."projectId" = $4::uuid
-               AND project."organizationId" = $5::uuid
-           )
-         ORDER BY memory."lastAccessedAt" DESC NULLS LAST,
-                  memory."createdAt" DESC, memory."id" ASC
-         LIMIT 100 OFFSET 100`,
-          primary.environmentId,
-          primary.endUserId,
-          [primary.agentId],
-          primary.projectId,
-          primary.organizationId
-        );
-        const [count] = await tx.$queryRawUnsafe<Array<{ "QUERY PLAN": unknown }>>(
-          `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
-         SELECT count(*)
-         FROM "Memory" AS memory
-         WHERE memory."environmentId" = $1::uuid
-           AND memory."endUserId" = $2::uuid
-           AND memory."agentId" = ANY($3::uuid[])
-           AND memory."kind" = 'fact'
-           AND memory."source" = 'manual'
-           AND memory."archivedAt" IS NULL
-           AND EXISTS (
-             SELECT 1 FROM "Environment" environment
-             JOIN "Project" project ON project."id" = environment."projectId"
-             WHERE environment."id" = memory."environmentId"
-               AND environment."projectId" = $4::uuid
-               AND project."organizationId" = $5::uuid
-           )`,
-          primary.environmentId,
-          primary.endUserId,
-          [primary.agentId],
-          primary.projectId,
-          primary.organizationId
-        );
-        return { items: items?.["QUERY PLAN"], count: count?.["QUERY PLAN"] };
+        return {
+          items: await explainCapturedQuery(tx, capturedPageQueries.items),
+          count: await explainCapturedQuery(tx, capturedPageQueries.count),
+        };
       },
       { timeout: 30_000 }
     );
-    expect(JSON.stringify(explainPlans)).toContain("environmentId");
-    expect(JSON.stringify(explainPlans)).toContain("endUserId");
     writeExplainEvidence({
       name: "memory-dense-page.explain.json",
       endpoint: "MemoryService.listPage",

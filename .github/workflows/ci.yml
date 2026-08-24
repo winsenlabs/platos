@@ -154,18 +154,18 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
         env:
-          POSTGRES_USER: postgres
+          POSTGRES_USER: platos_memory_evidence_ci
           POSTGRES_PASSWORD: postgres-memory-evidence
-          POSTGRES_DB: platos_memory_integration_test
+          POSTGRES_DB: platos_memory_evidence_ci
         ports:
           - 55433:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d platos_memory_integration_test"
+          --health-cmd "pg_isready -U platos_memory_evidence_ci -d platos_memory_evidence_ci"
           --health-interval 2s
           --health-timeout 5s
           --health-retries 30
     env:
-      PLATOS_POSTGRES_INTEGRATION_DATABASE_URL: postgresql://postgres:postgres-memory-evidence@127.0.0.1:55433/platos_memory_integration_test?schema=public
+      PLATOS_POSTGRES_INTEGRATION_DATABASE_URL: postgresql://platos_memory_evidence_ci:postgres-memory-evidence@127.0.0.1:55433/platos_memory_evidence_ci?schema=public
       PLATOS_POSTGRES_INTEGRATION_ALLOW_RESET: "1"
       PLATOS_POSTGRES_EVIDENCE_DIR: artifacts/win236-win237-postgres
       PLATOS_POSTGRES_EVIDENCE_REQUIRED: "1"
@@ -189,6 +189,9 @@ jobs:
 
       - name: Build canonical tenancy client
         run: pnpm --filter @platos/tenancy-database build
+
+      - name: Explicitly provision the server-side disposable reset sentinel
+        run: pnpm provision:postgres-memory:evidence
 
       - name: Prove fail-loud evidence contract mutation sensitivity
         run: pnpm test:postgres-memory:contract

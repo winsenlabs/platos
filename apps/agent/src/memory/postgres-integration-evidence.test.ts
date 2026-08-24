@@ -1,0 +1,59 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+  explainCapturedQuery,
+  normalizeSql,
+  requireCapturedEndpointQueries,
+  sha256,
+  writeExplainEvidence,
+  type CapturedPrismaQuery,
+} from "./postgres-integration-evidence";
+
+describe("PostgreSQL endpoint evidence", () => {
+  it("selects the one emitted item/count pair for the endpoint relation", () => {
+    const items = query('SELECT "public"."Memory"."id" FROM "public"."Memory" ORDER BY 1');
+    const count = query(
+      'SELECT COUNT(*) FROM (SELECT "public"."Memory"."id" FROM "public"."Memory") AS "sub"'
+    );
+    expect(
+      requireCapturedEndpointQueries(
+        [query('SELECT "public"."Environment"."id" FROM "public"."Environment"'), count, items],
+        "Memory"
+      )
+    ).toEqual({ items, count });
+    expect(() => requireCapturedEndpointQueries([items, items, count], "Memory")).toThrow(
+      "exactly one item query and one count query"
+    );
+  });
+
+  it("replays the exact emitted SQL and records its normalized hash", async () => {
+    const captured = query('  SELECT *\n FROM "public"."Memory" WHERE "id" = $1; ', ["memory-id"]);
+    const plan = [{ Plan: { "Actual Rows": 1, "Shared Hit Blocks": 2 } }];
+    const client = { $queryRawUnsafe: vi.fn().mockResolvedValue([{ "QUERY PLAN": plan }]) };
+
+    const evidence = await explainCapturedQuery(client, captured);
+
+    expect(client.$queryRawUnsafe).toHaveBeenCalledWith(
+      `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${captured.query}`,
+      "memory-id"
+    );
+    expect(evidence).toMatchObject({
+      source: "captured-prisma-query",
+      normalizedSql: normalizeSql(captured.query),
+      normalizedSqlSha256: sha256(normalizeSql(captured.query)),
+      plan,
+    });
+    expect(() =>
+      writeExplainEvidence({
+        name: "unit.explain.json",
+        endpoint: "MemoryService.listPage",
+        rowLimit: 1,
+        statementTimeoutMs: 1_000,
+        plans: { items: evidence },
+      })
+    ).not.toThrow();
+  });
+});
+
+function query(sql: string, params: unknown[] = []): CapturedPrismaQuery {
+  return { query: sql, params: JSON.stringify(params) };
+}

@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { SUITE_CONTRACT, verifyEvidenceArtifactDirectory } from "./verify-artifacts.mjs";
+import { guardedPublicSchemaResetSql, validateDisposableDatabaseUrl } from "./reset-guard.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const artifactDirectory = resolve(
@@ -17,17 +18,7 @@ assert.equal(
   "1",
   "PLATOS_POSTGRES_INTEGRATION_ALLOW_RESET=1 is required because the gate resets public schema"
 );
-const parsedDatabaseUrl = new URL(databaseUrl);
-assert.match(
-  parsedDatabaseUrl.protocol,
-  /^postgres(?:ql)?:$/,
-  "integration URL must be PostgreSQL"
-);
-assert.match(
-  parsedDatabaseUrl.pathname.slice(1),
-  /(?:test|integration|gate)/i,
-  "refusing to reset a database whose name is not explicitly test/integration/gate scoped"
-);
+validateDisposableDatabaseUrl(databaseUrl);
 
 rmSync(artifactDirectory, { recursive: true, force: true });
 mkdirSync(resolve(artifactDirectory, "suites"), { recursive: true });
@@ -162,7 +153,7 @@ function resetPublicSchema(url) {
       cwd: repositoryRoot,
       encoding: "utf8",
       env: { ...process.env, DATABASE_URL: url },
-      input: 'DROP SCHEMA IF EXISTS "public" CASCADE; CREATE SCHEMA "public";\n',
+      input: guardedPublicSchemaResetSql(),
       maxBuffer: 8 * 1024 * 1024,
     }
   );

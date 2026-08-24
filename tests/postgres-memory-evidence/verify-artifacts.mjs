@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -26,16 +27,48 @@ export const SUITE_CONTRACT = [
   },
 ];
 
-const QUERY_COUNT_FILES = [
-  "memory-semantic-search.query-count.json",
-  "memory-dense-page.query-count.json",
-  "knowledge-graph-dense-page.query-count.json",
+export const QUERY_COUNT_CONTRACT = [
+  {
+    file: "memory-semantic-search.query-count.json",
+    endpoint: "MemoryService.semanticSearch",
+    fixtureRows: 1_559,
+    maximumQueryCount: 12,
+  },
+  {
+    file: "memory-dense-page.query-count.json",
+    endpoint: "MemoryService.listPage",
+    fixtureRows: 384,
+    maximumQueryCount: 8,
+  },
+  {
+    file: "knowledge-graph-dense-page.query-count.json",
+    endpoint: "KnowledgeGraphService.getEntitiesPage",
+    fixtureRows: 141,
+    maximumQueryCount: 6,
+  },
 ];
-const EXPLAIN_FILES = [
-  "memory-semantic-search.explain.json",
-  "memory-dense-page.explain.json",
-  "knowledge-graph-dense-page.explain.json",
+export const EXPLAIN_CONTRACT = [
+  {
+    file: "memory-semantic-search.explain.json",
+    endpoint: "MemoryService.semanticSearch",
+    rowLimit: 200,
+    plans: ["search"],
+  },
+  {
+    file: "memory-dense-page.explain.json",
+    endpoint: "MemoryService.listPage",
+    rowLimit: 100,
+    plans: ["items", "count"],
+  },
+  {
+    file: "knowledge-graph-dense-page.explain.json",
+    endpoint: "KnowledgeGraphService.getEntitiesPage",
+    rowLimit: 50,
+    plans: ["items", "count"],
+  },
 ];
+
+const EXPLAIN_ARTIFACT_MAX_BYTES = 256 * 1024;
 
 export async function verifyEvidenceArtifactDirectory(directory) {
   const root = resolve(directory);
@@ -71,39 +104,95 @@ export async function verifyEvidenceArtifactDirectory(directory) {
   assert.equal(manifest.totals.tests, totalTests, "manifest test total does not match reports");
   assert.equal(manifest.totals.skipped, 0, "manifest reports skipped assertions");
   assert.equal(manifest.totals.failed, 0, "manifest reports failed assertions");
+  assert.deepEqual(
+    manifest.evidence.queryCounts,
+    QUERY_COUNT_CONTRACT.map(({ file }) => file),
+    "manifest query-count filenames drifted"
+  );
+  assert.deepEqual(
+    manifest.evidence.explains,
+    EXPLAIN_CONTRACT.map(({ file }) => file),
+    "manifest EXPLAIN filenames drifted"
+  );
+  assert.equal(
+    manifest.evidence.runtime,
+    "postgres-runtime.json",
+    "manifest runtime filename drifted"
+  );
 
   const runtime = await readJson(resolve(root, "postgres-runtime.json"));
   assert.equal(runtime.kind, "postgres-runtime", "runtime evidence kind is invalid");
   assert.match(runtime.serverVersion, /^16(?:\.|$)/, "gate did not use PostgreSQL 16");
   assert.match(runtime.pgvectorVersion, /^\d+\.\d+/, "pgvector extension version is absent");
 
-  for (const file of QUERY_COUNT_FILES) {
-    const evidence = await readJson(resolve(root, file));
-    assert.equal(evidence.kind, "query-count", `${file} is not query-count evidence`);
-    assert.ok(
-      Number.isInteger(evidence.queryCount) && evidence.queryCount > 0,
-      `${file} is unmeasured`
+  for (const contract of QUERY_COUNT_CONTRACT) {
+    const evidence = await readJson(resolve(root, contract.file));
+    assert.equal(evidence.kind, "query-count", `${contract.file} is not query-count evidence`);
+    assert.equal(evidence.endpoint, contract.endpoint, `${contract.file} endpoint drifted`);
+    assert.equal(
+      evidence.fixtureRows,
+      contract.fixtureRows,
+      `${contract.file} fixture size drifted`
+    );
+    assert.equal(
+      evidence.maximumQueryCount,
+      contract.maximumQueryCount,
+      `${contract.file} declared maximum drifted`
     );
     assert.ok(
-      evidence.queryCount <= evidence.maximumQueryCount,
-      `${file} exceeds its query-count budget`
+      Number.isInteger(evidence.queryCount) && evidence.queryCount > 0,
+      `${contract.file} is unmeasured`
+    );
+    assert.ok(
+      evidence.queryCount <= contract.maximumQueryCount,
+      `${contract.file} exceeds its query-count budget`
     );
   }
 
-  for (const file of EXPLAIN_FILES) {
-    const path = resolve(root, file);
+  for (const contract of EXPLAIN_CONTRACT) {
+    const path = resolve(root, contract.file);
     const evidence = await readJson(path);
-    assert.equal(evidence.kind, "postgres-explain", `${file} is not EXPLAIN evidence`);
+    assert.equal(evidence.kind, "postgres-explain", `${contract.file} is not EXPLAIN evidence`);
+    assert.equal(evidence.endpoint, contract.endpoint, `${contract.file} endpoint drifted`);
     assert.deepEqual(evidence.options, ["ANALYZE", "BUFFERS", "FORMAT JSON"]);
-    assert.ok(evidence.bounded.statementTimeoutMs > 0, `${file} has no statement timeout`);
-    assert.ok(evidence.bounded.rowLimit > 0, `${file} has no row bound`);
-    const serializedPlans = JSON.stringify(evidence.plans);
-    assert.match(serializedPlans, /"Actual Rows"/, `${file} did not execute ANALYZE`);
-    assert.match(serializedPlans, /"Shared Hit Blocks"/, `${file} did not capture buffers`);
+    assert.equal(evidence.bounded.statementTimeoutMs, 15_000, `${contract.file} timeout drifted`);
+    assert.equal(
+      evidence.bounded.rowLimit,
+      contract.rowLimit,
+      `${contract.file} row bound drifted`
+    );
+    assert.equal(
+      evidence.bounded.maximumArtifactBytes,
+      EXPLAIN_ARTIFACT_MAX_BYTES,
+      `${contract.file} artifact bound drifted`
+    );
+    assert.deepEqual(
+      Object.keys(evidence.plans).sort(),
+      [...contract.plans].sort(),
+      `${contract.file} required plan set drifted`
+    );
+    for (const planName of contract.plans) {
+      const captured = evidence.plans[planName];
+      const label = `${contract.file}.${planName}`;
+      assert.equal(captured.source, "captured-prisma-query", `${label} is not endpoint SQL`);
+      assert.equal(
+        captured.normalizedSql,
+        normalizeSql(captured.normalizedSql),
+        `${label} SQL is not normalized`
+      );
+      assert.equal(
+        captured.normalizedSqlSha256,
+        sha256(captured.normalizedSql),
+        `${label} normalized SQL hash is invalid`
+      );
+      const serializedPlan = JSON.stringify(captured.plan);
+      assert.match(serializedPlan, /"Actual Rows"/, `${label} did not execute ANALYZE`);
+      assert.match(serializedPlan, /"Shared Hit Blocks"/, `${label} did not capture buffers`);
+    }
     const artifactStat = await stat(path);
     assert.ok(
       artifactStat.size <= evidence.bounded.maximumArtifactBytes,
-      `${file} exceeds its declared artifact bound`
+      `${contract.file} exceeds its declared artifact bound`
     );
   }
 
@@ -112,6 +201,14 @@ export async function verifyEvidenceArtifactDirectory(directory) {
 
 async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
+}
+
+function normalizeSql(sql) {
+  return sql.trim().replace(/;$/, "").replace(/\s+/g, " ");
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
