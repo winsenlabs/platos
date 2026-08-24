@@ -1,23 +1,26 @@
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { PrismaClient } from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MemoryImportService } from "./memory-import.service";
 import { validateMemoryBundle } from "./memory-bundle";
 import { MemoryService } from "./memory.service";
+import {
+  startPostgresIntegrationDatabase,
+  type PostgresIntegrationDatabase,
+} from "./postgres-integration-evidence";
 
 type Fixture = Awaited<ReturnType<typeof seedScope>>;
 
 describe("Memory PostgreSQL import/export transactions", () => {
-  let container: StartedPostgreSqlContainer;
+  let database: PostgresIntegrationDatabase;
   let prisma: PrismaClient;
   let mutator: PrismaClient;
   let fixture: Fixture;
 
   beforeAll(async () => {
-    container = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
-    const databaseUrl = container.getConnectionUri();
+    database = await startPostgresIntegrationDatabase();
+    const databaseUrl = database.databaseUrl;
     execFileSync(
       resolve(process.cwd(), "../../node_modules/.bin/prisma"),
       [
@@ -40,7 +43,7 @@ describe("Memory PostgreSQL import/export transactions", () => {
   afterAll(async () => {
     await prisma?.$disconnect();
     await mutator?.$disconnect();
-    await container?.stop();
+    await database?.stop();
   });
 
   it("rolls back replace deletion when a required relationship insert fails", async () => {

@@ -1,11 +1,14 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { PrismaClient } from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { MemoryProfileBackfillService } from "./memory-profile-backfill.service";
+import {
+  startPostgresIntegrationDatabase,
+  type PostgresIntegrationDatabase,
+} from "./postgres-integration-evidence";
 
 const packageRoot = resolve(process.cwd(), "../../internal-packages/tenancy-database");
 const schemaPath = resolve(packageRoot, "prisma/schema.prisma");
@@ -22,14 +25,14 @@ const additiveSql = readFileSync(
 );
 
 describe("Memory encrypted profile and legacy contract upgrade", () => {
-  let container: StartedPostgreSqlContainer;
+  let database: PostgresIntegrationDatabase;
   let prisma: PrismaClient;
   let previousKey: string | undefined;
   let previousKeyVersion: string | undefined;
 
   beforeAll(async () => {
-    container = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
-    const databaseUrl = container.getConnectionUri();
+    database = await startPostgresIntegrationDatabase();
+    const databaseUrl = database.databaseUrl;
     executeSql(initialSql, databaseUrl);
     prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
     previousKey = process.env.PLATOS_MESSAGE_ENCRYPTION_KEY;
@@ -44,7 +47,7 @@ describe("Memory encrypted profile and legacy contract upgrade", () => {
     if (previousKeyVersion === undefined) delete process.env.PLATOS_MESSAGE_ENCRYPTION_KEY_V;
     else process.env.PLATOS_MESSAGE_ENCRYPTION_KEY_V = previousKeyVersion;
     await prisma?.$disconnect();
-    await container?.stop();
+    await database?.stop();
   });
 
   it("expands legacy rows, decrypts profiles, remaps losers, then installs uniqueness", async () => {
@@ -153,7 +156,7 @@ describe("Memory encrypted profile and legacy contract upgrade", () => {
       },
     });
 
-    executeSql(additiveSql, container.getConnectionUri());
+    executeSql(additiveSql, database.databaseUrl);
     await expect(indexNames(prisma)).resolves.toEqual([]);
 
     const normalized = await prisma.$queryRawUnsafe<Array<{

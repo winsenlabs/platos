@@ -1,16 +1,23 @@
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
-import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { PrismaClient } from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { KnowledgeGraphService } from "./knowledge-graph.service";
+import {
+  applicationQueryCount,
+  startPostgresIntegrationDatabase,
+  type PostgresIntegrationDatabase,
+  writeExplainEvidence,
+  writeQueryCountEvidence,
+} from "./postgres-integration-evidence";
 
 vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
 describe("KnowledgeGraphService PostgreSQL clustered upsert", () => {
-  let container: StartedPostgreSqlContainer;
-  let prisma: PrismaClient;
+  let database: PostgresIntegrationDatabase;
+  let prisma: ReturnType<typeof createQueryPrismaClient>;
   let service: KnowledgeGraphService;
+  const queries: string[] = [];
   let ids: {
     organizationId: string;
     projectId: string;
@@ -39,8 +46,8 @@ describe("KnowledgeGraphService PostgreSQL clustered upsert", () => {
     }) as any;
 
   beforeAll(async () => {
-    container = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
-    const databaseUrl = container.getConnectionUri();
+    database = await startPostgresIntegrationDatabase();
+    const databaseUrl = database.databaseUrl;
     execFileSync(
       resolve(process.cwd(), "../../node_modules/.bin/prisma"),
       [
@@ -55,7 +62,8 @@ describe("KnowledgeGraphService PostgreSQL clustered upsert", () => {
         stdio: "pipe",
       }
     );
-    prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+    prisma = createQueryPrismaClient(databaseUrl);
+    prisma.$on("query", (event) => queries.push(event.query));
 
     const organization = await prisma.organization.create({
       data: { slug: "memory-entity-upsert", name: "Memory Entity Upsert" },
@@ -223,7 +231,7 @@ describe("KnowledgeGraphService PostgreSQL clustered upsert", () => {
 
   afterAll(async () => {
     await prisma?.$disconnect();
-    await container?.stop();
+    await database?.stop();
   });
 
   it("shares one entity ID within a cluster and isolates standalone, cross-cluster, and cross-environment writes", async () => {
@@ -385,14 +393,59 @@ describe("KnowledgeGraphService PostgreSQL clustered upsert", () => {
         updatedAt: createdAt,
       })),
     });
+    await prisma.memoryEntity.createMany({
+      data: Array.from({ length: 17 }, (_, index) => ({
+        environmentId: ids.otherEnvironmentId,
+        endUserId: ids.endUserId,
+        agentId: ids.otherEnvironmentAgentId,
+        clusterId: ids.otherEnvironmentClusterId,
+        entityKey: `pagination-entity-${index.toString().padStart(3, "0")}`,
+        entityType: "pagination-fixture",
+        label: `Outside tenant pagination entity ${index}`,
+        createdAt,
+        updatedAt: createdAt,
+      })),
+    });
+    await prisma.memoryEntity.createMany({
+      data: Array.from({ length: 13 }, (_, index) => ({
+        environmentId: ids.environmentId,
+        endUserId: ids.endUserId,
+        agentId: ids.agentAId,
+        clusterId: ids.clusterId,
+        entityKey: `filtered-entity-${index.toString().padStart(3, "0")}`,
+        entityType: "filtered-out-fixture",
+        label: `Filtered entity ${index}`,
+        createdAt,
+        updatedAt: createdAt,
+      })),
+    });
     const siblingScope = scope(ids.environmentId, ids.agentBId);
-    const input = { userId: ids.endUserId, entityType: "pagination-fixture", limit: 50 };
-    const [first, repeated, middle, last, empty] = await Promise.all([
-      service.getEntitiesPage(siblingScope, { ...input, offset: 0 }),
+    const input = {
+      userId: ids.endUserId,
+      entityType: "pagination-fixture",
+      query: "pagination-entity-",
+      limit: 50,
+    };
+    const queryStart = queries.length;
+    const first = await service.getEntitiesPage(siblingScope, { ...input, offset: 0 });
+    const queryCount = applicationQueryCount(queries.slice(queryStart));
+    expect(queryCount).toBeLessThanOrEqual(6);
+    writeQueryCountEvidence({
+      name: "knowledge-graph-dense-page.query-count.json",
+      endpoint: "KnowledgeGraphService.getEntitiesPage",
+      queryCount,
+      maximumQueryCount: 6,
+      fixtureRows: 141,
+    });
+    const [repeated, middle, last, empty, outsideTenant] = await Promise.all([
       service.getEntitiesPage(siblingScope, { ...input, offset: 0 }),
       service.getEntitiesPage(siblingScope, { ...input, offset: 50 }),
       service.getEntitiesPage(siblingScope, { ...input, offset: 100 }),
       service.getEntitiesPage(siblingScope, { ...input, offset: 150 }),
+      service.getEntitiesPage(scope(ids.otherEnvironmentId, ids.otherEnvironmentAgentId), {
+        ...input,
+        offset: 0,
+      }),
     ]);
 
     for (const page of [first, repeated, middle, last, empty]) expect(page.total).toBe(141);
@@ -403,7 +456,76 @@ describe("KnowledgeGraphService PostgreSQL clustered upsert", () => {
     expect(first.hasNext).toBe(true);
     expect(last.hasNext).toBe(false);
     expect(first.items.map(({ id }) => id)).toEqual(repeated.items.map(({ id }) => id));
-    expect(new Set([...first.items, ...middle.items, ...last.items].map(({ id }) => id)).size).toBe(141);
+    const traversedIds = [...first.items, ...middle.items, ...last.items].map(({ id }) => id);
+    expect(traversedIds).toEqual(
+      [...traversedIds].sort((left, right) => left.localeCompare(right))
+    );
+    expect(new Set(traversedIds).size).toBe(141);
+    expect(outsideTenant).toMatchObject({ total: 17, hasNext: false });
+    expect(outsideTenant.items).toHaveLength(17);
+
+    const explainPlans = await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '15s'");
+        const [items] = await tx.$queryRawUnsafe<Array<{ "QUERY PLAN": unknown }>>(
+          `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+         SELECT entity."id"
+         FROM "MemoryEntity" entity
+         WHERE entity."environmentId" = $1::uuid
+           AND entity."endUserId" = $2::uuid
+           AND entity."clusterId" = $3::uuid
+           AND entity."entityType" = 'pagination-fixture'
+           AND entity."entityKey" ILIKE '%pagination-entity-%'
+           AND EXISTS (
+             SELECT 1 FROM "Environment" environment
+             JOIN "Project" project ON project."id" = environment."projectId"
+             WHERE environment."id" = entity."environmentId"
+               AND environment."projectId" = $4::uuid
+               AND project."organizationId" = $5::uuid
+           )
+         ORDER BY entity."createdAt" DESC, entity."id" ASC
+         LIMIT 50 OFFSET 50`,
+          ids.environmentId,
+          ids.endUserId,
+          ids.clusterId,
+          ids.projectId,
+          ids.organizationId
+        );
+        const [count] = await tx.$queryRawUnsafe<Array<{ "QUERY PLAN": unknown }>>(
+          `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+         SELECT count(*)
+         FROM "MemoryEntity" entity
+         WHERE entity."environmentId" = $1::uuid
+           AND entity."endUserId" = $2::uuid
+           AND entity."clusterId" = $3::uuid
+           AND entity."entityType" = 'pagination-fixture'
+           AND entity."entityKey" ILIKE '%pagination-entity-%'
+           AND EXISTS (
+             SELECT 1 FROM "Environment" environment
+             JOIN "Project" project ON project."id" = environment."projectId"
+             WHERE environment."id" = entity."environmentId"
+               AND environment."projectId" = $4::uuid
+               AND project."organizationId" = $5::uuid
+           )`,
+          ids.environmentId,
+          ids.endUserId,
+          ids.clusterId,
+          ids.projectId,
+          ids.organizationId
+        );
+        return { items: items?.["QUERY PLAN"], count: count?.["QUERY PLAN"] };
+      },
+      { timeout: 30_000 }
+    );
+    expect(JSON.stringify(explainPlans)).toContain("environmentId");
+    expect(JSON.stringify(explainPlans)).toContain("endUserId");
+    writeExplainEvidence({
+      name: "knowledge-graph-dense-page.explain.json",
+      endpoint: "KnowledgeGraphService.getEntitiesPage",
+      rowLimit: 50,
+      statementTimeoutMs: 15_000,
+      plans: explainPlans,
+    });
   });
 
   it("promotes and reuses an existing standalone entity when its Agent joins a cluster", async () => {
@@ -551,3 +673,10 @@ describe("KnowledgeGraphService PostgreSQL clustered upsert", () => {
     ]);
   });
 });
+
+function createQueryPrismaClient(databaseUrl: string) {
+  return new PrismaClient({
+    datasources: { db: { url: databaseUrl } },
+    log: [{ emit: "event", level: "query" }],
+  });
+}
