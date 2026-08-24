@@ -7713,7 +7713,7 @@
       "intent": "Enable or disable the exact Agent tool mapping shown by the loader and read back that same mapping.",
       "disposition": "improve",
       "v0Behavior": "Path-identical v0 module exists; semantic and persisted behavior still requires audit.",
-      "currentBehavior": "Loader GETs Agent-specific /agents/:agentId/tool-mappings, while action PATCHes Environment-level /tools/:sourceEntity/:toolName/enabled; they do not identify the same canonical record.",
+      "currentBehavior": "The loader projects AgentToolPolicy state for the scoped Agent active version, and the action PATCHes canonical agentId + toolId to create a replacement AgentVersion for only that Environment AgentBinding; EnvironmentEntityTool.enabled is not mutated.",
       "http": [
         {
           "role": "canonical contract",
@@ -7721,13 +7721,13 @@
           "endpoint": "/api/v1/agent/agents/:agentId/tool-mappings",
           "requestDto": {
             "status": "not-applicable",
-            "shape": "No request body."
+            "shape": "No request body; route agentId is the canonical Agent identity."
           },
           "response": {
             "successStatuses": [
               200
             ],
-            "shape": "Agent-specific tool/parameter mapping rows."
+            "shape": "Agent-specific rows include agentId, active agentVersionId, canonical toolId, Agent policy enabled, separate Environment enabled state, source Entity, dispatchability, and parameter mappings."
           },
           "stableErrors": [
             {
@@ -7744,7 +7744,7 @@
             },
             {
               "status": 404,
-              "codeOrMessage": "not found"
+              "codeOrMessage": "Agent not found"
             },
             {
               "status": 500,
@@ -7755,25 +7755,21 @@
         {
           "role": "canonical contract",
           "method": "PATCH",
-          "endpoint": "/api/v1/agent/tools/:sourceEntity/:toolName/enabled",
+          "endpoint": "/api/v1/agent/agents/:agentId/tool-mappings/:toolId",
           "requestDto": {
-            "status": "static-contract-only",
-            "shape": "{ enabled: boolean }; form identity sourceEntity + toolName + enabled."
+            "status": "verified",
+            "shape": "{ enabled: boolean }; form identity is the loader-provided canonical toolId and route agentId."
           },
           "response": {
             "successStatuses": [
               200
             ],
-            "shape": "Environment-level tool enable result."
+            "shape": "{ ok, agentId, agentVersionId, previousAgentVersionId, toolId, enabled } for the replacement AgentVersion bound only in the scoped Environment."
           },
           "stableErrors": [
             {
               "status": 400,
-              "codeOrMessage": "Tool mapping identity is required"
-            },
-            {
-              "status": 400,
-              "codeOrMessage": "Tool mapping update failed"
+              "codeOrMessage": "invalid_agent_tool_mapping_request"
             },
             {
               "status": 401,
@@ -7785,28 +7781,32 @@
             },
             {
               "status": 404,
-              "codeOrMessage": "tool mapping not found"
+              "codeOrMessage": "agent_tool_mapping_not_found"
+            },
+            {
+              "status": 503,
+              "codeOrMessage": "agent_tool_mapping_unavailable"
             }
           ]
         }
       ],
       "identifiers": {
-        "status": "static-contract-only",
+        "status": "verified",
         "values": [
           {
             "name": "agentId",
-            "type": "Agent UUID/external id",
-            "source": "loader route"
+            "type": "canonical Agent UUID",
+            "source": "loader/action route parameter"
           },
           {
-            "name": "sourceEntity",
-            "type": "Entity identity",
-            "source": "action form"
+            "name": "toolId",
+            "type": "canonical Tool UUID",
+            "source": "loader row and action form"
           },
           {
-            "name": "toolName",
-            "type": "canonical Tool name",
-            "source": "action form"
+            "name": "agentVersionId",
+            "type": "replacement AgentVersion UUID",
+            "source": "persisted mutation response and subsequent loader read-back"
           }
         ]
       },
@@ -7837,29 +7837,30 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Action requires Environment secret:mutate; loader is an Agent config read."
+        "status": "verified",
+        "requirement": "Loader requires operator config-read access; action requires Environment secret:mutate and the Agent API independently requires an operator principal."
       },
       "loaderState": {
         "status": "implemented",
-        "detail": "Route-defined payload/redirect; full success, unavailable, malformed, and error serialization requires focused contract proof."
+        "detail": "The scoped Agent is loaded first; all scoped Environment Tool rows are listed with AgentToolPolicy enabled state derived from the active AgentVersion and canonical toolId returned."
       },
       "actionState": {
-        "status": "confirmed-defect",
-        "detail": "Action mutates a different Environment-level endpoint than the Agent-specific loader reads."
+        "status": "implemented",
+        "detail": "The action sends route agentId plus loader toolId to the Agent-specific PATCH and preserves stable Agent API 4xx status/code responses."
       },
       "formState": {
-        "status": "confirmed-defect",
-        "detail": "sourceEntity/toolName form identity cannot prove it addresses the loaded Agent mapping."
+        "status": "implemented",
+        "detail": "The form submits only canonical toolId and a strict boolean string; legacy sourceEntity/toolName identity is rejected before the API."
       },
       "linkState": {
         "status": "required-not-verified",
         "detail": "source-route-present; authenticated resolution required-not-verified; crawl required-not-verified"
       },
       "persistedReadBack": {
-        "status": "confirmed-defect",
+        "status": "verified",
         "references": [
-          "Loaded state and mutated state are not the same canonical record."
+          "apps/agent/src/agent-runtime/agent-crud-tool-policy.test.ts proves replacement-version persistence, read-back, unchanged EnvironmentEntityTool.enabled, and cross-Agent isolation.",
+          "apps/agent/src/agent-runtime/agent.controller.clean-regressions.test.ts proves the loader projects canonical toolId and Agent policy state and the mutation refreshes policy cache only after persistence."
         ]
       },
       "pagination": {
@@ -7873,9 +7874,9 @@
         "semantics": "Capability agent-tools-loader-action-mismatch does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "The mutation changes Agent Tool exposure by immutable version replacement; it does not delete or revoke a record."
         ]
       },
       "idempotency": {
@@ -7897,17 +7898,20 @@
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "No secret payload is expected from the route-level contract unless a more specific capability row says otherwise.",
+        "status": "verified",
+        "classification": "Agent Tool policy metadata contains no secret material.",
         "requirements": [
-          "Loader, action, errors, logs, browser storage, and snapshots must omit secret material."
+          "Loader, action, errors, logs, browser storage, and snapshots omit secret material; focused payloads contain only scope/policy identifiers and boolean state."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
-          "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.tools/route.tsx",
-          "apps/agent/src/agent-runtime/agent.controller.ts"
+          "apps/agent/src/agent-runtime/agent-crud-tool-policy.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.clean-regressions.test.ts",
+          "apps/webapp/test/agentToolMappingMutation.test.ts",
+          "apps/webapp/test/m4Dashboard.test.tsx",
+          "scripts/route-capability-parity.test.mjs"
         ]
       },
       "browserEvidence": {
@@ -7928,8 +7932,8 @@
         "WIN-137"
       ],
       "defect": {
-        "status": "confirmed-defect",
-        "summary": "Confirmed loader/action ownership mismatch: Agent tool-mappings GET versus Environment Tool enabled PATCH."
+        "status": "verified",
+        "summary": "Repaired: loader and action now address AgentToolPolicy through canonical agentId + toolId; the mutation advances only the scoped Environment AgentBinding and cannot change another Agent or EnvironmentEntityTool.enabled."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -7941,13 +7945,21 @@
         ],
         "services": [
           {
+            "symbol": "AgentCrudService",
+            "source": "apps/agent/src/agent-runtime/agent-crud.service.ts"
+          },
+          {
             "symbol": "ToolRegistryService",
             "source": "apps/agent/src/tool-gateway/tool-registry.service.ts"
           }
         ],
         "models": [
           {
-            "symbol": "model EnvironmentEntityTool",
+            "symbol": "model AgentToolPolicy",
+            "source": "internal-packages/tenancy-database/prisma/schema.prisma"
+          },
+          {
+            "symbol": "model AgentBinding",
             "source": "internal-packages/tenancy-database/prisma/schema.prisma"
           }
         ],
@@ -7955,19 +7967,32 @@
           {
             "source": "apps/agent/src/agent-runtime/agent.controller.ts",
             "fragments": [
-              "AgentController"
+              "setAgentToolEnabled",
+              "agents/:agentId/tool-mappings/:toolId",
+              "environmentEnabled"
+            ]
+          },
+          {
+            "source": "apps/agent/src/agent-runtime/agent-crud.service.ts",
+            "fragments": [
+              "setToolEnabled(",
+              "cloneVersionToolPolicies",
+              "activeAgentVersionId: version.id"
             ]
           },
           {
             "source": "apps/agent/src/tool-gateway/tool-registry.service.ts",
             "fragments": [
-              "ToolRegistryService"
+              "refreshEnvironmentPolicies",
+              "AgentToolPolicy/default-policy mutations"
             ]
           },
           {
             "source": "internal-packages/tenancy-database/prisma/schema.prisma",
             "fragments": [
-              "model EnvironmentEntityTool"
+              "model AgentToolPolicy",
+              "model AgentBinding",
+              "activeAgentVersionId"
             ]
           }
         ]

@@ -77,17 +77,17 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx` | `route-034` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.postman-templates/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx` | `route-035` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.share/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.skills/route.tsx` | `route-036` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.skills/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.tools/route.tsx` | `agent-tools-loader-action-mismatch` | improve | GET /api/v1/agent/agents/:agentId/tool-mappings; PATCH /api/v1/agent/tools/:sourceEntity/:toolName/enabled | confirmed-defect | confirmed-defect | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.tools/route.tsx` | `agent-tools-loader-action-mismatch` | improve | GET /api/v1/agent/agents/:agentId/tool-mappings; PATCH /api/v1/agent/agents/:agentId/tool-mappings/:toolId | verified | verified | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.tools/route.tsx` | `route-037` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.tools/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.trace.$threadId/route.tsx` | `route-038` | redirect | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.trace.$threadId/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.versions/route.tsx` | `route-039` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.versions/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents._index/route.tsx` | `route-040` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents._index/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.new/route.tsx` | `route-041` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.new/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `access-key-allowed-origins` | improve | POST /api/v1/agent/access-key/origins | required-not-verified | required-not-verified | verified | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `access-key-browser-request-correlation` | improve | POST /api/v1/agent/access-key | verified | verified | verified | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `access-key-one-time-reveal` | improve | POST /api/v1/agent/access-key | verified | verified | verified | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `access-key-revoke` | improve | DELETE /api/v1/agent/access-key | required-not-verified | required-not-verified | verified | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `access-key-rotation-correlation` | improve | GET /api/v1/agent/access-key; POST /api/v1/agent/access-key | verified | verified | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `access-key-allowed-origins` | improve | POST /api/v1/agent/access-key/origins | required-not-verified | required-not-verified | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `access-key-browser-request-correlation` | improve | POST /api/v1/agent/access-key | confirmed-defect | confirmed-defect | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `access-key-one-time-reveal` | improve | POST /api/v1/agent/access-key | confirmed-defect | confirmed-defect | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `access-key-revoke` | improve | DELETE /api/v1/agent/access-key | required-not-verified | required-not-verified | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `access-key-rotation-correlation` | improve | GET /api/v1/agent/access-key; POST /api/v1/agent/access-key | required-not-verified | required-not-verified | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx` | `route-042` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.apikeys/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals.$approvalId/route.tsx` | `route-043` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals.$approvalId/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals._index/route.tsx` | `route-044` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.approvals._index/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
@@ -148,8 +148,8 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 
 | Blocker category | Count | Requirement |
 |---|---:|---|
-| confirmed defects | 15 | Repair the source-backed defect and replace the defect status with verified evidence. |
-| permission | 107 | Verify permission behavior or record an approved not-applicable/justified-exclusion status. |
+| confirmed defects | 16 | Repair the source-backed defect and replace the defect status with verified evidence. |
+| permission | 106 | Verify permission behavior or record an approved not-applicable/justified-exclusion status. |
 | organization scope | 84 | Verify Organization isolation or record an approved not-applicable status. |
 | project scope | 84 | Verify Project isolation or record an approved not-applicable status. |
 | environment scope | 84 | Verify Environment isolation or record an approved not-applicable status. |
@@ -157,16 +157,16 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 | Agent scope | 19 | Verify Agent isolation or record an approved not-applicable status. |
 | cluster scope | 1 | Verify cluster isolation or record an approved not-applicable status. |
 | loader behavior | 4 | Verify loader behavior or record an approved redirect/not-applicable status. |
-| action behavior | 9 | Verify action behavior or record an approved redirect/not-applicable status. |
-| form behavior | 59 | Verify form behavior or record an approved redirect/not-applicable status. |
+| action behavior | 8 | Verify action behavior or record an approved redirect/not-applicable status. |
+| form behavior | 58 | Verify form behavior or record an approved redirect/not-applicable status. |
 | link behavior | 107 | Verify link and deep-link behavior or record an approved redirect/not-applicable status. |
-| destructive confirmation | 17 | Verify destructive confirmation or record an approved not-applicable/justified-exclusion status. |
+| destructive confirmation | 16 | Verify destructive confirmation or record an approved not-applicable/justified-exclusion status. |
 | idempotency | 21 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
-| concurrency | 19 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
-| recovery | 102 | Verify failure, retry, and unavailable-backend recovery or record an approved not-applicable/justified-exclusion status. |
-| secret exposure | 104 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |
-| persisted-state evidence | 20 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |
-| automated behavioral evidence | 102 | Replace static or pending references with passing behavioral test evidence. |
+| concurrency | 21 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
+| recovery | 105 | Verify failure, retry, and unavailable-backend recovery or record an approved not-applicable/justified-exclusion status. |
+| secret exposure | 106 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |
+| persisted-state evidence | 22 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |
+| automated behavioral evidence | 106 | Replace static or pending references with passing behavioral test evidence. |
 | browser evidence | 107 | Provide authenticated browser evidence or a source-backed justified exclusion. |
 | pagination and totals | 6 | Prove complete totals and usable pagination/virtualization for dense retained data. |
 

@@ -181,9 +181,8 @@ const REQUIRED_CAPABILITY_CONTRACTS = Object.freeze({
     route: "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.tools/route.tsx",
     methods: [
       ["GET", "/api/v1/agent/agents/:agentId/tool-mappings"],
-      ["PATCH", "/api/v1/agent/tools/:sourceEntity/:toolName/enabled"],
+      ["PATCH", "/api/v1/agent/agents/:agentId/tool-mappings/:toolId"],
     ],
-    defect: true,
   },
 });
 
@@ -285,8 +284,18 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
     statuses: { "defect.status": "verified", "persistedReadBack.status": "verified", "concurrency.status": "verified", "recovery.status": "verified", "secretExposure.status": "verified", "automatedEvidence.status": "verified" },
   },
   "agent-tools-loader-action-mismatch": {
-    fragments: { currentBehavior: ["Agent-specific", "Environment-level"], identifiers: ["agentId", "sourceEntity", "toolName"] },
-    statuses: { "persistedReadBack.status": "confirmed-defect", "defect.status": "confirmed-defect" },
+    fragments: {
+      currentBehavior: ["AgentToolPolicy", "replacement AgentVersion", "EnvironmentEntityTool.enabled"],
+      identifiers: ["agentId", "toolId", "agentVersionId"],
+      persistedReadBack: ["cross-Agent isolation", "agent-crud-tool-policy.test.ts"],
+    },
+    statuses: {
+      "actionState.status": "implemented",
+      "formState.status": "implemented",
+      "persistedReadBack.status": "verified",
+      "automatedEvidence.status": "verified",
+      "defect.status": "verified",
+    },
   },
 });
 

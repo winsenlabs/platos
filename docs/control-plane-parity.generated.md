@@ -44,6 +44,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/agents/:agentId/messages` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#agentMessages` |
 | `GET /api/v1/agent/agents/:agentId/satisfaction` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getAgentSatisfaction` |
 | `GET /api/v1/agent/agents/:agentId/tool-mappings` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getAgentToolMappings` |
+| `PATCH /api/v1/agent/agents/:agentId/tool-mappings/:toolId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#setAgentToolEnabled` |
 | `GET /api/v1/agent/agents/:agentId/versions` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#listAgentVersions` |
 | `GET /api/v1/agent/agents/:agentId/versions/:versionId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getAgentVersion` |
 | `POST /api/v1/agent/agents/:agentId/versions/:versionId/rollback` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#rollbackAgentVersion` |

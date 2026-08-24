@@ -75,6 +75,11 @@ const assignedSkills = [
   },
 ];
 
+const assignedToolPolicies = [
+  { toolId: "tool-a", effect: "ALLOW", priority: 5 },
+  { toolId: "tool-b", effect: "DENY", priority: 0 },
+] as const;
+
 function makeHarness(options: { cloneError?: Error; targetVersion?: ReturnType<typeof version> } = {}) {
   const binding = bindingRow();
   const createdVersion = version("version-new", 4, "updated");
@@ -91,6 +96,10 @@ function makeHarness(options: { cloneError?: Error; targetVersion?: ReturnType<t
       createMany: options.cloneError
         ? vi.fn().mockRejectedValue(options.cloneError)
         : vi.fn().mockResolvedValue({ count: assignedSkills.length }),
+    },
+    agentToolPolicy: {
+      findMany: vi.fn().mockResolvedValue(assignedToolPolicies),
+      createMany: vi.fn().mockResolvedValue({ count: assignedToolPolicies.length }),
     },
     agentBinding: { update: vi.fn().mockResolvedValue({}) },
     adminAudit: { create: vi.fn().mockResolvedValue({}) },
@@ -140,6 +149,15 @@ describe("AgentCrudService AgentSkill version rollover", () => {
     expect(h.tx.agentSkill.createMany.mock.invocationCallOrder[0]).toBeLessThan(
       h.tx.agentBinding.update.mock.invocationCallOrder[0],
     );
+    expect(h.tx.agentToolPolicy.createMany).toHaveBeenCalledWith({
+      data: assignedToolPolicies.map((policy) => ({
+        agentVersionId: "version-new",
+        ...policy,
+      })),
+    });
+    expect(h.tx.agentToolPolicy.createMany.mock.invocationCallOrder[0]).toBeLessThan(
+      h.tx.agentBinding.update.mock.invocationCallOrder[0],
+    );
     // Clean Turn attribution still has distinct, stable current/canary pointers.
     expect(h.binding.canaryAgentVersionId).toBe("version-canary");
     expect(h.binding.canaryPercent).toBe(25);
@@ -165,6 +183,10 @@ describe("AgentCrudService AgentSkill version rollover", () => {
     expect(h.tx.agentSkill.createMany.mock.invocationCallOrder[0]).toBeLessThan(
       h.tx.agentBinding.update.mock.invocationCallOrder[0],
     );
+    expect(h.tx.agentToolPolicy.findMany).toHaveBeenCalledWith({
+      where: { agentVersionId: "version-target" },
+      select: { toolId: true, effect: true, priority: true },
+    });
   });
 
   it("does not advance the binding or invalidate caches when skill cloning fails", async () => {

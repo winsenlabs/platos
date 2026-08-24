@@ -252,12 +252,22 @@ test("confirmed Postman, Entity PAT, and artifact defects cannot be erased while
   assert.match(errors, /entity-mcp-bearer-token-create actionState\.status must be confirmed-defect/);
 });
 
-test("the Agent Tools loader/action mismatch remains a confirmed defect until repaired", () => {
+test("the repaired Agent Tools ownership contract cannot regress to Environment mutation", () => {
   const matrix = clone(readMatrix());
   const row = capability(matrix, "agent-tools-loader-action-mismatch");
-  row.defect.status = "required-not-verified";
-  row.persistedReadBack.status = "verified";
-  assert.match(errorsFor(matrix), /must record the confirmed loader\/action read-back defect/);
+  row.http[1].endpoint = "/api/v1/agent/tools/:sourceEntity/:toolName/enabled";
+  row.identifiers.values[1] = {
+    name: "sourceEntity",
+    type: "Entity identity",
+    source: "action form",
+  };
+  row.persistedReadBack.status = "confirmed-defect";
+  row.defect.status = "confirmed-defect";
+  const errors = errorsFor(matrix);
+  assert.match(errors, /required capability agent-tools-loader-action-mismatch lacks PATCH \/api\/v1\/agent\/agents\/:agentId\/tool-mappings\/:toolId/);
+  assert.match(errors, /identifiers lacks reviewed semantic fragment toolId/);
+  assert.match(errors, /persistedReadBack\.status must be verified/);
+  assert.match(errors, /defect\.status must be verified/);
 });
 
 test("reviewed v0 dispositions cannot regress", async (t) => {

@@ -97,6 +97,7 @@ import {
 } from "../shared/database.provider";
 import {
   pageMetadata,
+  isUuid,
   parseBooleanFilter,
   parseEnumFilter,
   parsePageRequest,
@@ -1289,13 +1290,14 @@ export class AgentController {
 
     // Pull the full matrix + health so the UI can render the same summary
     // row it gets from `/tools/matrix` — saves a second RTT on tab load.
-    // Pass agentId so linkedAgentIds allow-list filter runs — UI and
-    // runtime find_tools now show exactly the same tool set.
+    // Load every Environment mapping, including policies currently denied for
+    // this Agent, so the same AgentToolPolicy row can be enabled again. The
+    // Agent-specific enabled state is projected from allowedAgentIds below;
+    // EnvironmentEntityTool.enabled remains a separate dispatch prerequisite.
     const request = parsePageRequest({ page: pageRaw, limit: limitRaw, offset: offsetRaw, search: searchRaw });
     const tools = this.toolRegistry
       .getScopedTools(this.scopeTuple(scope), {
         enabledOnly: false,
-        agentId,
       })
       .filter((tool) => !request.search || [tool.toolName, tool.description, tool.sourceEntityId, tool.category]
         .some((value) => String(value ?? "").toLowerCase().includes(request.search!.toLowerCase())))
@@ -1337,11 +1339,16 @@ export class AgentController {
       const mapped = resolved.params.filter(
         (p) => p.resolution.source !== "llm",
       ).length;
+      const enabled = t.allowedAgentIds.includes(agentId);
       return {
+        agentId,
+        agentVersionId: (agent as { currentVersionId?: string | null }).currentVersionId ?? null,
+        toolId: t.toolId,
         toolName: t.toolName,
         sourceEntity: t.sourceEntityId,
-        enabled: t.enabled,
-        dispatchable: t.dispatchable,
+        enabled,
+        environmentEnabled: t.enabled,
+        dispatchable: enabled && t.enabled && t.dispatchable,
         health: healthByKey.get(`${t.toolId}:${t.sourceEntityId}`) ?? "unknown",
         params: resolved.params,
         mapped,
@@ -1365,6 +1372,38 @@ export class AgentController {
       filters: { search: request.search },
       fetchedAt: new Date().toISOString(),
     };
+  }
+
+  /** Replace one Agent-owned Tool policy without mutating Environment exposure. */
+  @Patch("agents/:agentId/tool-mappings/:toolId")
+  async setAgentToolEnabled(
+    @Req() req: Request,
+    @Param("agentId") agentId: string,
+    @Param("toolId") toolId: string,
+    @Body() body: { enabled?: unknown },
+  ) {
+    const scope = this.getScope(req);
+    requireOperator(scope);
+    if (!isUuid(agentId) || !isUuid(toolId) || typeof body?.enabled !== "boolean") {
+      throw new BadRequestException({
+        code: "invalid_agent_tool_mapping_request",
+        error: "Agent ID, Tool ID, and boolean enabled are required",
+      });
+    }
+    const updated = await this.agentCrud.setToolEnabled(
+      agentId,
+      toolId,
+      scope,
+      body.enabled,
+    );
+    if (!updated) {
+      throw new NotFoundException({
+        code: "agent_tool_mapping_not_found",
+        error: "Agent tool mapping not found in this scope",
+      });
+    }
+    await this.toolRegistry.refreshEnvironmentPolicies(this.scopeTuple(scope));
+    return { ok: true, ...updated };
   }
 
   /**

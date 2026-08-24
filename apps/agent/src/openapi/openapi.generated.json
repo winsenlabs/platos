@@ -936,6 +936,50 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/api/v1/agent/agents/{agentId}/tool-mappings/{toolId}": {
+      "patch": {
+        "operationId": "patch__api_v1_agent_agents_by_agentId_tool_mappings_by_toolId",
+        "summary": "AgentController.setAgentToolEnabled",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "toolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/api/v1/agent/agents/{agentId}/versions": {
       "get": {
         "operationId": "get__api_v1_agent_agents_by_agentId_versions",

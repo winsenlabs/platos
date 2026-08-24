@@ -7379,6 +7379,23 @@
         ]
       },
       {
+        "id": "PATCH /api/v1/agent/agents/:agentId/tool-mappings/:toolId",
+        "method": "PATCH",
+        "path": "/api/v1/agent/agents/:agentId/tool-mappings/:toolId",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "AgentController",
+            "handler": "setAgentToolEnabled",
+            "source": "apps/agent/src/agent-runtime/agent.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
         "id": "GET /api/v1/agent/agents/:agentId/versions",
         "method": "GET",
         "path": "/api/v1/agent/agents/:agentId/versions",

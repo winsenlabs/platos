@@ -233,12 +233,15 @@ describe("M4 dashboard rebuild", () => {
       surface: "agent-tools",
       title: "Tools",
       description: "Runtime mapping",
-      panel: { ok: true, data: { toolExposure: "meta", tools: [{ toolName: "sheets.query", sourceEntity: "sheets", enabled: true, dispatchable: false, health: "disconnected" }] } },
+      panel: { ok: true, data: { toolExposure: "meta", tools: [{ toolId: "tool-sheets-query", toolName: "sheets.query", sourceEntity: "sheets", enabled: true, dispatchable: false, health: "disconnected" }] } },
     });
     expect(html).toContain("Find-only");
     expect(html).toContain("Runtime Tools");
     expect(html).toContain("Always present");
     expect(html).toContain("Disable mapping");
+    expect(html).toContain('name="toolId" value="tool-sheets-query"');
+    expect(html).not.toContain('name="sourceEntity"');
+    expect(html).not.toContain('name="toolName"');
   });
 
   it("renders canary metrics from persisted cohorts with set and promote controls", () => {

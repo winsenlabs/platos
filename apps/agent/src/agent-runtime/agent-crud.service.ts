@@ -608,7 +608,13 @@ export class AgentCrudService {
     });
   }
 
-  private versionData(snapshot: AgentVersionSnapshot, createdBy: string, versionNumber: number, note?: string | null) {
+  private versionData(
+    snapshot: AgentVersionSnapshot,
+    createdBy: string,
+    versionNumber: number,
+    note?: string | null,
+    toolDefaultPolicy: "NONE" | "ALL" = "ALL",
+  ) {
     const tools = snapshot.toolsBlockConfig && typeof snapshot.toolsBlockConfig === "object"
       ? { ...(snapshot.toolsBlockConfig as unknown as Record<string, unknown>) }
       : {};
@@ -653,7 +659,7 @@ export class AgentCrudService {
       systemPrompt: snapshot.systemPrompt ?? null,
       maxSteps: snapshot.maxSteps ?? 20,
       contextLimit: snapshot.contextLimit ?? 20,
-      toolDefaultPolicy: "ALL",
+      toolDefaultPolicy,
       promptBlocks: coerceBlockList(snapshot.promptBlocks) ?? [],
       dynamicBlocks: coerceBlockList(snapshot.dynamicBlocks) ?? [],
       toolsBlockConfig: tools,
@@ -671,6 +677,7 @@ export class AgentCrudService {
     createdBy: string,
     snapshot: AgentVersionSnapshot,
     note?: string | null,
+    toolDefaultPolicy: "NONE" | "ALL" = "ALL",
   ): Promise<any> {
     const last = await tx.agentVersion.findFirst({
       where: { agentId },
@@ -680,7 +687,13 @@ export class AgentCrudService {
     return tx.agentVersion.create({
       data: {
         agentId,
-        ...this.versionData(snapshot, createdBy, (last?.versionNumber ?? 0) + 1, note),
+        ...this.versionData(
+          snapshot,
+          createdBy,
+          (last?.versionNumber ?? 0) + 1,
+          note,
+          toolDefaultPolicy,
+        ),
       },
     });
   }
@@ -711,6 +724,32 @@ export class AgentCrudService {
         environmentSkillId: skill.environmentSkillId,
         enabled: skill.enabled,
         config: skill.config,
+      })),
+    });
+  }
+
+  /** Copy immutable-version Tool policy state, optionally replacing one Tool. */
+  private async cloneVersionToolPolicies(
+    tx: any,
+    sourceAgentVersionId: string,
+    destinationAgentVersionId: string,
+    replacement?: { toolId: string; effect: "ALLOW" | "DENY" },
+  ): Promise<void> {
+    const policies = await tx.agentToolPolicy.findMany({
+      where: { agentVersionId: sourceAgentVersionId },
+      select: { toolId: true, effect: true, priority: true },
+    });
+    const byToolId = new Map<string, { toolId: string; effect: "ALLOW" | "DENY"; priority: number }>(
+      policies.map((policy: any) => [policy.toolId, policy]),
+    );
+    if (replacement) {
+      byToolId.set(replacement.toolId, { ...replacement, priority: 0 });
+    }
+    if (byToolId.size === 0) return;
+    await tx.agentToolPolicy.createMany({
+      data: [...byToolId.values()].map((policy) => ({
+        agentVersionId: destinationAgentVersionId,
+        ...policy,
       })),
     });
   }
@@ -933,8 +972,20 @@ export class AgentCrudService {
         });
       }
       if (changed) {
-        const version = await this.createVersion(tx, agentId, scope.userId, next, dto.versionNote ?? null);
+        const version = await this.createVersion(
+          tx,
+          agentId,
+          scope.userId,
+          next,
+          dto.versionNote ?? null,
+          existingBinding.activeAgentVersion.toolDefaultPolicy,
+        );
         await this.cloneVersionSkills(
+          tx,
+          existingBinding.activeAgentVersionId,
+          version.id,
+        );
+        await this.cloneVersionToolPolicies(
           tx,
           existingBinding.activeAgentVersionId,
           version.id,
@@ -1039,8 +1090,10 @@ export class AgentCrudService {
         scope.userId,
         this.snapshotFromVersion(target),
         `Rollback to v${target.versionNumber}`,
+        target.toolDefaultPolicy,
       );
       await this.cloneVersionSkills(tx, target.id, version.id);
+      await this.cloneVersionToolPolicies(tx, target.id, version.id);
       await tx.agentBinding.update({
         where: { id: binding.id },
         data: { activeAgentVersionId: version.id },
@@ -1048,6 +1101,85 @@ export class AgentCrudService {
     });
     await this.invalidate(agentId, scope);
     return (await this.findById(agentId, scope))!;
+  }
+
+  /**
+   * Replace one Tool policy on the active AgentVersion for this Environment.
+   * A new immutable version is created and only the scoped AgentBinding moves,
+   * so another Agent or another Environment binding cannot be changed by this
+   * dashboard mutation.
+   */
+  async setToolEnabled(
+    agentId: string,
+    toolId: string,
+    scope: RequestScope,
+    enabled: boolean,
+  ): Promise<{
+    agentId: string;
+    agentVersionId: string;
+    previousAgentVersionId: string;
+    toolId: string;
+    enabled: boolean;
+  } | null> {
+    const result = await this.prisma.$transaction(async (tx: any) => {
+      // Serialize version replacement for this scoped binding. The subsequent
+      // Prisma read derives all ancestry from canonical relations rather than
+      // trusting request-supplied organization/project ownership.
+      await tx.$queryRawUnsafe(
+        'SELECT "id" FROM "AgentBinding" WHERE "environmentId" = $1::uuid AND "agentId" = $2::uuid FOR UPDATE',
+        scope.environmentId,
+        agentId,
+      );
+      const binding = await tx.agentBinding.findFirst({
+        where: { agentId, ...this.scopeWhere(scope) },
+        include: this.bindingInclude(scope),
+      });
+      if (!binding || binding.activeAgentVersion.agentId !== agentId) return null;
+
+      const mapping = await tx.environmentEntityTool.findFirst({
+        where: {
+          environmentId: scope.environmentId,
+          toolId,
+          environment: {
+            project: { id: scope.projectId, organizationId: scope.organizationId },
+          },
+          entity: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
+        },
+        select: { toolId: true },
+      });
+      if (!mapping) return null;
+
+      const previousAgentVersionId = binding.activeAgentVersionId;
+      const version = await this.createVersion(
+        tx,
+        agentId,
+        scope.userId,
+        this.snapshotFromVersion(binding.activeAgentVersion),
+        `${enabled ? "Enable" : "Disable"} Agent Tool ${toolId}`,
+        binding.activeAgentVersion.toolDefaultPolicy,
+      );
+      await this.cloneVersionSkills(tx, previousAgentVersionId, version.id);
+      await this.cloneVersionToolPolicies(tx, previousAgentVersionId, version.id, {
+        toolId,
+        effect: enabled ? "ALLOW" : "DENY",
+      });
+      await tx.agentBinding.update({
+        where: { id: binding.id },
+        data: { activeAgentVersionId: version.id },
+      });
+      return {
+        agentId,
+        agentVersionId: version.id,
+        previousAgentVersionId,
+        toolId,
+        enabled,
+      };
+    });
+    if (result) await this.invalidate(agentId, scope);
+    return result;
   }
 
   async setCanary(
