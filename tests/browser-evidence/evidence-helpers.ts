@@ -703,19 +703,46 @@ export async function performMutation(args: {
         page,
         marker,
         mutate: async () => {
+          const filename = `${marker}.txt`;
           const input = page.locator('input[type="file"]').first();
           await input.setInputFiles({
-            name: `${marker}.txt`,
+            name: filename,
             mimeType: "text/plain",
             buffer: Buffer.from(marker),
           });
           await clickSubmit(page, /upload selected file/i);
+          await expect(
+            page.getByText(filename, { exact: true }).first(),
+            "attachment upload did not reach canonical UI read-back"
+          ).toBeVisible();
           await page
             .locator("select")
             .filter({ has: page.locator('option[value="collect"]') })
             .selectOption("collect");
           await page.getByPlaceholder(/Message /).fill(marker);
+          const actionPathname = new URL(page.url()).pathname;
+          const completionResponsePromise = page.waitForResponse((response) => {
+            const request = response.request();
+            return (
+              request.method() === "POST" && new URL(response.url()).pathname === actionPathname
+            );
+          });
           await clickSubmit(page, /^send$/i);
+          const completionResponse = await completionResponsePromise;
+          expect(completionResponse.status(), "collected attachment Turn did not succeed").toBe(
+            200
+          );
+          const completionPayload = (await completionResponse.json()) as {
+            ok?: boolean;
+            result?: { threadId?: string };
+          };
+          expect(completionPayload.ok, "collected attachment Turn returned a failure payload").toBe(
+            true
+          );
+          expect(
+            completionPayload.result?.threadId,
+            "collected attachment Turn lost its canonical Thread identity"
+          ).toMatch(/^[A-Za-z0-9_-]{1,100}$/);
         },
       });
     }

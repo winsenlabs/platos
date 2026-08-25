@@ -82,6 +82,16 @@ describe("browser capability route identities", () => {
     });
   });
 
+  it("includes the canonical Environment identity in the embed route target", () => {
+    const capability = capabilities.find(({ capabilityId }) => capabilityId === "route-080");
+    const alpha = scope("alpha");
+    expect(capability).toBeDefined();
+    expect(capabilityPath(capability!, alpha)).toBe(
+      `/embed/${alpha.agentIds[0]}?environmentId=${encodeURIComponent(alpha.environmentId)}`
+    );
+    expect(expectedCapabilityPathname(capability!, alpha)).toBe(`/embed/${alpha.agentIds[0]}`);
+  });
+
   it("keeps Alpha and Beta MCP Entity route identities distinct", () => {
     const capability = capabilities.find(
       ({ capabilityId }) => capabilityId === "entity-mcp-bearer-token-create"
