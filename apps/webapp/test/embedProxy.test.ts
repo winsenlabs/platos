@@ -4,11 +4,32 @@ vi.mock("~/env.server", () => ({
   env: { PLATOS_AGENT_API_URL: "http://agent.internal:3100" },
 }));
 
-import { action } from "../app/routes/api.v1.public.agents.$agentId.chat.stream";
+import {
+  action,
+  action as ratingAction,
+  loader as ratingLoader,
+} from "../app/routes/api.v1.public.agents.$agentId.chat.stream";
 import { action as guestTokenAction } from "../app/routes/api.v1.public.guest-token";
 import { loader as embedLoader } from "../app/routes/embed.$agentId";
+import { serializePublicGuestSession } from "../app/services/publicGuestSession.server";
 
 const environmentId = "11111111-1111-4111-8111-111111111111";
+
+async function guestCookie() {
+  return (await serializePublicGuestSession(
+    "platform-session-token",
+    "agent-1",
+    environmentId,
+    Math.floor(Date.now() / 1_000) + 1_800,
+  )).split(";", 1)[0];
+}
+
+function publicStreamUrl(messageId?: string) {
+  const url = new URL("https://dashboard.example/api/v1/public/agents/agent-1/chat/stream");
+  url.searchParams.set("environmentId", environmentId);
+  if (messageId) url.searchParams.set("messageId", messageId);
+  return url.toString();
+}
 
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn());
@@ -20,16 +41,18 @@ afterEach(() => {
 });
 
 describe("public embed streaming proxy", () => {
-  it("keeps the browser on a same-origin URL and forwards the session token internally", async () => {
+  it("keeps the browser on a same-origin URL and forwards only the HttpOnly guest session internally", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response("event: token\ndata: hello\n\n", {
       status: 200,
       headers: { "Content-Type": "text/event-stream" },
     }));
-    const request = new Request("https://dashboard.example/api/v1/public/agents/agent-1/chat/stream", {
+    const cookie = await guestCookie();
+    const request = new Request(publicStreamUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Platos-Session-Token": "platform-session-token",
+        Cookie: cookie,
+        Origin: "https://dashboard.example",
       },
       body: JSON.stringify({ message: "Hello" }),
     });
@@ -53,9 +76,9 @@ describe("public embed streaming proxy", () => {
 
   it("rejects a missing guest session before contacting the agent", async () => {
     const response = await action({
-      request: new Request("https://dashboard.example/api/v1/public/agents/agent-1/chat/stream", {
+      request: new Request(publicStreamUrl(), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Origin: "https://dashboard.example" },
         body: JSON.stringify({ message: "Hello" }),
       }),
       params: { agentId: "agent-1" },
@@ -68,11 +91,12 @@ describe("public embed streaming proxy", () => {
 
   it("rejects a malformed Agent identity before contacting the agent", async () => {
     const response = await action({
-      request: new Request("https://dashboard.example/api/v1/public/agents/bad%20agent/chat/stream", {
+      request: new Request(`https://dashboard.example/api/v1/public/agents/bad%20agent/chat/stream?environmentId=${environmentId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Platos-Session-Token": "platform-session-token",
+          Cookie: await guestCookie(),
+          Origin: "https://dashboard.example",
         },
         body: JSON.stringify({ message: "Hello" }),
       }),
@@ -87,11 +111,12 @@ describe("public embed streaming proxy", () => {
   it("returns a stable stream failure without reflecting upstream token details", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response("SENTINEL_UPSTREAM_SESSION_CREDENTIAL", { status: 503 }));
     const response = await action({
-      request: new Request("https://dashboard.example/api/v1/public/agents/agent-1/chat/stream", {
+      request: new Request(publicStreamUrl(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Platos-Session-Token": "platform-session-token",
+          Cookie: await guestCookie(),
+          Origin: "https://dashboard.example",
         },
         body: JSON.stringify({ message: "Hello" }),
       }),
@@ -109,11 +134,12 @@ describe("public embed streaming proxy", () => {
   it("returns a stable stream failure when transport is unavailable", async () => {
     vi.mocked(fetch).mockRejectedValue(new Error("SENTINEL_TRANSPORT_DETAILS"));
     const response = await action({
-      request: new Request("https://dashboard.example/api/v1/public/agents/agent-1/chat/stream", {
+      request: new Request(publicStreamUrl(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Platos-Session-Token": "platform-session-token",
+          Cookie: await guestCookie(),
+          Origin: "https://dashboard.example",
         },
         body: JSON.stringify({ message: "Hello" }),
       }),
@@ -138,7 +164,12 @@ describe("public embed streaming proxy", () => {
       context: {},
     });
 
-    await expect(response.json()).resolves.toEqual({ agentId: "agent-1", environmentId });
+    await expect(response.json()).resolves.toEqual({
+      agentId: "agent-1",
+      environmentId,
+      messageId: "",
+      threadId: "",
+    });
   });
 
   it("rejects a malformed embed Agent identity", async () => {
@@ -177,8 +208,147 @@ describe("public embed streaming proxy", () => {
     );
     expect(response.status).toBe(200);
     const serialized = JSON.stringify(await response.json());
-    expect(serialized).toContain("guest-token");
+    expect(serialized).not.toContain("guest-token");
+    expect(serialized).not.toContain("guest-1");
     expect(serialized).not.toContain("SENTINEL_UNEXPECTED_TOKEN_HASH");
+    expect(response.headers.get("Set-Cookie")).toContain("__Secure-platos_public_guest_");
+    expect(response.headers.get("Set-Cookie")).toContain("HttpOnly");
+    expect(response.headers.get("Set-Cookie")).toContain("Secure");
+    expect(response.headers.get("Set-Cookie")).toContain("SameSite=None");
+    expect(response.headers.get("Set-Cookie")).toContain("Partitioned");
+  });
+
+  it("forwards only bounded guest rating GET, POST, and DELETE operations through the HttpOnly session cookie", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ userRating: null, aggregate: { ups: 0, downs: 0 } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ rating: { messageId: "message-1", rating: 1 } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ removed: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }));
+    const cookie = await guestCookie();
+    const params = { agentId: "agent-1" };
+
+    const getResponse = await ratingLoader({
+      request: new Request(publicStreamUrl("message-1"), {
+        headers: { Cookie: cookie },
+      }),
+      params,
+      context: {},
+    });
+    const postResponse = await ratingAction({
+      request: new Request(publicStreamUrl("message-1"), {
+        method: "POST",
+        headers: { Cookie: cookie, "Content-Type": "application/json", Origin: "https://dashboard.example" },
+        body: JSON.stringify({ rating: 1 }),
+      }),
+      params,
+      context: {},
+    });
+    const deleteResponse = await ratingAction({
+      request: new Request(publicStreamUrl("message-1"), {
+        method: "DELETE",
+        headers: { Cookie: cookie, "Content-Type": "application/json", Origin: "https://dashboard.example" },
+      }),
+      params,
+      context: {},
+    });
+
+    expect(getResponse.status).toBe(200);
+    expect(postResponse.status).toBe(200);
+    expect(deleteResponse.status).toBe(200);
+    expect(fetch).toHaveBeenNthCalledWith(1,
+      "http://agent.internal:3100/api/v1/agent/messages/message-1/rating",
+      expect.objectContaining({
+        method: "GET",
+        headers: { "X-Platos-Session-Token": "platform-session-token" },
+      }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(2,
+      "http://agent.internal:3100/api/v1/agent/messages/message-1/rating",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Platos-Session-Token": "platform-session-token",
+        },
+        body: JSON.stringify({ rating: 1 }),
+      }),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(3,
+      "http://agent.internal:3100/api/v1/agent/messages/message-1/rating",
+      expect.objectContaining({
+        method: "DELETE",
+        headers: { "X-Platos-Session-Token": "platform-session-token" },
+      }),
+    );
+  });
+
+  it("rejects missing guest rating sessions and malformed rating payloads before proxying", async () => {
+    const params = { agentId: "agent-1" };
+    const missing = await ratingLoader({
+      request: new Request(publicStreamUrl("message-1")),
+      params,
+      context: {},
+    });
+    const cookie = await guestCookie();
+    const malformed = await ratingAction({
+      request: new Request(publicStreamUrl("message-1"), {
+        method: "POST",
+        headers: {
+          Cookie: cookie,
+          "Content-Type": "application/json",
+          Origin: "https://dashboard.example",
+        },
+        body: JSON.stringify({ rating: 0 }),
+      }),
+      params,
+      context: {},
+    });
+
+    expect(missing.status).toBe(401);
+    expect(malformed.status).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects cross-origin and non-JSON cookie-authenticated mutations", async () => {
+    const cookie = await guestCookie();
+    const crossOrigin = await ratingAction({
+      request: new Request(publicStreamUrl("message-1"), {
+        method: "POST",
+        headers: {
+          Cookie: cookie,
+          "Content-Type": "application/json",
+          Origin: "https://attacker.example",
+        },
+        body: JSON.stringify({ rating: 1 }),
+      }),
+      params: { agentId: "agent-1" },
+      context: {},
+    });
+    const nonJson = await action({
+      request: new Request(publicStreamUrl(), {
+        method: "POST",
+        headers: {
+          Cookie: cookie,
+          "Content-Type": "text/plain",
+          Origin: "https://dashboard.example",
+        },
+        body: JSON.stringify({ message: "Hello" }),
+      }),
+      params: { agentId: "agent-1" },
+      context: {},
+    });
+
+    expect(crossOrigin.status).toBe(403);
+    expect(nonJson.status).toBe(403);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("rejects malformed guest-token Environment identity before proxying", async () => {

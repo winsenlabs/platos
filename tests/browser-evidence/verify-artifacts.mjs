@@ -534,6 +534,46 @@ export async function verifyBrowserEvidenceDirectory(directory, options = {}) {
         cell.mutation.witness.postReloadPayloadSha256,
         `${label} did not read back the same canonical UI payload after hard reload`
       );
+      if (cell.capabilityId === "message-rating-lifecycle") {
+        const lifecycle = cell.mutation.witness.lifecycle;
+        for (const key of [
+          "preDeleteFieldSha256",
+          "postDeleteFieldSha256",
+          "postDeleteReloadFieldSha256",
+          "preDeletePayloadSha256",
+          "postDeletePayloadSha256",
+          "postDeleteReloadPayloadSha256",
+        ]) {
+          assert.match(lifecycle?.[key], /^[a-f0-9]{64}$/, `${label} lacks lifecycle ${key}`);
+        }
+        assert.equal(
+          lifecycle.preDeleteFieldSha256,
+          cell.mutation.witness.postReloadFieldSha256,
+          `${label} rating DELETE did not start from the persisted POST state`
+        );
+        assert.notEqual(
+          lifecycle.preDeleteFieldSha256,
+          lifecycle.postDeleteFieldSha256,
+          `${label} rating DELETE was a successful no-op`
+        );
+        assert.notEqual(
+          lifecycle.preDeletePayloadSha256,
+          lifecycle.postDeletePayloadSha256,
+          `${label} rating DELETE did not change canonical UI payload`
+        );
+        assert.equal(
+          lifecycle.postDeleteFieldSha256,
+          lifecycle.postDeleteReloadFieldSha256,
+          `${label} rating DELETE field did not survive hard reload`
+        );
+        assert.equal(
+          lifecycle.postDeletePayloadSha256,
+          lifecycle.postDeleteReloadPayloadSha256,
+          `${label} rating DELETE payload did not survive hard reload`
+        );
+        assert.equal(lifecycle.operatorPostDenied, true, `${label} lacks operator POST denial`);
+        assert.equal(lifecycle.operatorDeleteDenied, true, `${label} lacks operator DELETE denial`);
+      }
     } else if (mutation) {
       assert.equal(
         cell.mutation.delegatedMode,

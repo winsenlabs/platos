@@ -1,5 +1,6 @@
 import { json, type ActionFunctionArgs } from "@remix-run/node";
 import { publicAgentResponse } from "~/services/platosAgent.server";
+import { serializePublicGuestSession } from "~/services/publicGuestSession.server";
 
 const ENVIRONMENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -32,13 +33,23 @@ export async function action({ request }: ActionFunctionArgs) {
     ) {
       return json({ error: "Guest session unavailable" }, { status: 502 });
     }
-    return json({
-      token: record.token,
-      guestId: record.guestId,
-      expiresAt: record.expiresAt,
-      agentId: record.agentId,
-      environmentId: record.environmentId,
-    });
+    return json(
+      {
+        expiresAt: record.expiresAt,
+        agentId: record.agentId,
+        environmentId: record.environmentId,
+      },
+      {
+        headers: {
+          "Set-Cookie": await serializePublicGuestSession(
+            record.token,
+            record.agentId,
+            record.environmentId,
+            record.expiresAt,
+          ),
+        },
+      },
+    );
   } catch {
     return json({ error: "Guest session unavailable" }, { status: 503 });
   }

@@ -35,6 +35,7 @@ export type ManifestScope = {
   clusterId: string;
   threadId: string;
   agentIds: string[];
+  publicGuestAgentId: string;
   approvalId?: string;
   jobId: string;
 };

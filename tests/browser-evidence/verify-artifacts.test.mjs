@@ -113,6 +113,25 @@ test("verifier rejects a mutation whose observed payload changes after hard relo
   });
 });
 
+test("verifier rejects incomplete message rating DELETE and operator-denial evidence", async () => {
+  await withFixture(async ({ evidence, persisted }) => {
+    const cellPath = path.join(
+      evidence,
+      "cells",
+      "message-rating-lifecycle--desktop-light.json"
+    );
+    const cell = await readJson(cellPath);
+    delete cell.mutation.witness.lifecycle.operatorDeleteDenied;
+    await writeJson(cellPath, cell);
+    await assert.rejects(verify(evidence, persisted), /lacks operator DELETE denial/);
+
+    cell.mutation.witness.lifecycle.operatorDeleteDenied = true;
+    cell.mutation.witness.lifecycle.postDeleteReloadFieldSha256 = "f".repeat(64);
+    await writeJson(cellPath, cell);
+    await assert.rejects(verify(evidence, persisted), /DELETE field did not survive hard reload/);
+  });
+});
+
 for (const regression of [
   { capabilityId: "message-rating-lifecycle", hash: "field" },
   { capabilityId: "agent-tools-loader-action-mismatch", hash: "field" },
@@ -441,6 +460,20 @@ async function fixtureDirectory(root) {
                   preActionPayloadSha256: "e".repeat(64),
                   postActionPayloadSha256: "f".repeat(64),
                   postReloadPayloadSha256: "f".repeat(64),
+                  ...(capabilityId === "message-rating-lifecycle"
+                    ? {
+                        lifecycle: {
+                          preDeleteFieldSha256: "d".repeat(64),
+                          postDeleteFieldSha256: "c".repeat(64),
+                          postDeleteReloadFieldSha256: "c".repeat(64),
+                          preDeletePayloadSha256: "f".repeat(64),
+                          postDeletePayloadSha256: "e".repeat(64),
+                          postDeleteReloadPayloadSha256: "e".repeat(64),
+                          operatorPostDenied: true,
+                          operatorDeleteDenied: true,
+                        },
+                      }
+                    : {}),
                 },
               }
             : {}),

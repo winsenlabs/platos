@@ -196,13 +196,17 @@ export function publicAgentResponse(path: "/api/v1/public/guest-token", options:
 export function sessionAgentResponse(
   path: string,
   sessionToken: string,
-  signal?: AbortSignal,
+  options: RequestOptions = {},
 ): Promise<Response> {
   assertAgentPath(path);
   return fetch(`${env.PLATOS_AGENT_API_URL}${path}`, {
-    method: "GET",
-    headers: { "X-Platos-Session-Token": sessionToken },
-    signal: signal ?? AbortSignal.timeout(10_000),
+    method: options.method ?? "GET",
+    headers: {
+      "X-Platos-Session-Token": sessionToken,
+      ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: options.signal ?? AbortSignal.timeout(10_000),
   });
 }
 

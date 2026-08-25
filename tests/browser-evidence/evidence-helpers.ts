@@ -75,6 +75,16 @@ export type CellEvidence = {
       preActionPayloadSha256: string;
       postActionPayloadSha256: string;
       postReloadPayloadSha256: string;
+      lifecycle?: {
+        preDeleteFieldSha256: string;
+        postDeleteFieldSha256: string;
+        postDeleteReloadFieldSha256: string;
+        preDeletePayloadSha256: string;
+        postDeletePayloadSha256: string;
+        postDeleteReloadPayloadSha256: string;
+        operatorPostDenied: true;
+        operatorDeleteDenied: true;
+      };
     };
   };
   artifacts: { screenshot: string; trace: string };
@@ -755,29 +765,149 @@ export async function performMutation(args: {
       });
     }
     case "message-rating": {
-      const button = page.getByRole("button", { name: /useful|thumbs up/i }).first();
-      await expect(button).toBeEnabled();
-      const article = button.locator("xpath=ancestor::article[1]");
-      const identity = {
-        kind: "id" as const,
-        locator: article.locator("code").first(),
-        source: "text" as const,
-      };
-      return persistedUiWitness({
-        page,
-        identity,
-        field: {
-          locator: button,
+      const guestPage = await page.context().newPage();
+      let messageId = "";
+      let threadId = "";
+      let witness: CellEvidence["mutation"]["witness"];
+      try {
+        const embed = new URL(
+          `/embed/${encodeURIComponent(scope.publicGuestAgentId)}`,
+          page.url(),
+        );
+        embed.searchParams.set("environmentId", scope.environmentId);
+        const response = await guestPage.goto(embed.toString(), { waitUntil: "networkidle" });
+        expect(response?.status(), "public guest rating surface did not load").toBe(200);
+        await guestPage.getByPlaceholder(/Ask the agent/i).fill(marker);
+        await guestPage.getByRole("button", { name: /^send$/i }).click();
+
+        const button = guestPage.getByRole("button", { name: /^useful$/i }).first();
+        await expect(button, "guest Turn did not expose a persisted rating target").toBeEnabled({
+          timeout: 30_000,
+        });
+        await expect(button).toHaveAttribute("aria-pressed", "false");
+        const article = button.locator("xpath=ancestor::article[1]");
+        const identity = {
+          kind: "id" as const,
+          locator: article.locator("code").first(),
+          source: "text" as const,
+        };
+        messageId = ((await identity.locator.textContent()) ?? "").trim();
+        expect(messageId, "guest stream lost its canonical persisted message identity").toMatch(
+          /^[A-Za-z0-9_-]{1,100}$/,
+        );
+        threadId = new URL(guestPage.url()).searchParams.get("threadId") ?? "";
+        expect(threadId, "guest stream lost its canonical persisted Thread identity").toMatch(
+          /^[A-Za-z0-9_-]{1,100}$/,
+        );
+
+        witness = await persistedUiWitness({
+          page: guestPage,
+          identity,
+          field: {
+            locator: button,
+            selector: 'button:has-text("Useful")',
+            source: "attribute",
+            attribute: "aria-pressed",
+            canonicalName: "message-rating",
+          },
+          mutate: async () => {
+            await button.click();
+            await expect(button).toHaveAttribute("aria-pressed", "true");
+          },
+        });
+
+        const reloadedUseful = guestPage.getByRole("button", { name: /^useful$/i }).first();
+        const reloadedArticle = reloadedUseful.locator("xpath=ancestor::article[1]");
+        const preDeleteFieldSha256 = hashObservedPayload(await fieldValue({
+          locator: reloadedUseful,
           selector: 'button:has-text("Useful")',
           source: "attribute",
           attribute: "aria-pressed",
-          canonicalName: "message-rating",
-        },
-        mutate: async () => {
-          await button.click();
-          await page.waitForLoadState("networkidle");
-        },
-      });
+          canonicalName: "message-rating-delete",
+        }));
+        const preDeletePayloadSha256 = hashObservedPayload(await uiPayload(reloadedArticle));
+        await reloadedUseful.click();
+        await expect(reloadedUseful, "guest rating DELETE did not read back the null state")
+          .toHaveAttribute("aria-pressed", "false");
+        const postDeleteFieldSha256 = hashObservedPayload(await fieldValue({
+          locator: reloadedUseful,
+          selector: 'button:has-text("Useful")',
+          source: "attribute",
+          attribute: "aria-pressed",
+          canonicalName: "message-rating-delete",
+        }));
+        const postDeletePayloadSha256 = hashObservedPayload(await uiPayload(reloadedArticle));
+        expect(postDeleteFieldSha256, "guest rating DELETE was a successful no-op")
+          .not.toBe(preDeleteFieldSha256);
+        expect(postDeletePayloadSha256, "guest rating DELETE did not change canonical UI payload")
+          .not.toBe(preDeletePayloadSha256);
+        await guestPage.reload({ waitUntil: "networkidle" });
+        const deletedUseful = guestPage.getByRole("button", { name: /^useful$/i }).first();
+        await expect(
+          deletedUseful,
+          "guest rating deletion did not survive hard reload",
+        ).toHaveAttribute("aria-pressed", "false");
+        const deletedArticle = deletedUseful.locator("xpath=ancestor::article[1]");
+        const postDeleteReloadFieldSha256 = hashObservedPayload(await fieldValue({
+          locator: deletedUseful,
+          selector: 'button:has-text("Useful")',
+          source: "attribute",
+          attribute: "aria-pressed",
+          canonicalName: "message-rating-delete",
+        }));
+        const postDeleteReloadPayloadSha256 = hashObservedPayload(await uiPayload(deletedArticle));
+        expect(postDeleteReloadFieldSha256, "hard reload changed the deleted rating field")
+          .toBe(postDeleteFieldSha256);
+        expect(postDeleteReloadPayloadSha256, "hard reload changed the deleted rating payload")
+          .toBe(postDeletePayloadSha256);
+        witness = {
+          ...witness,
+          lifecycle: {
+            preDeleteFieldSha256,
+            postDeleteFieldSha256,
+            postDeleteReloadFieldSha256,
+            preDeletePayloadSha256,
+            postDeletePayloadSha256,
+            postDeleteReloadPayloadSha256,
+            operatorPostDenied: true,
+            operatorDeleteDenied: true,
+          },
+        };
+      } finally {
+        await guestPage.close();
+      }
+
+      const operatorTarget = new URL(page.url());
+      operatorTarget.searchParams.set("threadId", threadId);
+      await page.goto(operatorTarget.toString(), { waitUntil: "networkidle" });
+      const operatorCode = page.getByText(messageId, { exact: true }).first();
+      await expect(operatorCode, "operator read-back lost the guest-created persisted message").toBeVisible();
+      const operatorRatingRow = operatorCode.locator("xpath=ancestor::div[contains(@class,'border-t')][1]");
+      await expect(operatorRatingRow.getByText("Useful", { exact: true })).toBeVisible();
+      await expect(operatorRatingRow.getByText("Not useful", { exact: true })).toBeVisible();
+      await expect(operatorRatingRow.getByText("EndUser rating · operator read-only", { exact: true })).toBeVisible();
+      expect(
+        await operatorRatingRow.getByRole("button", { name: /useful/i }).count(),
+        "operator Playground exposed an EndUser rating mutation button",
+      ).toBe(0);
+
+      for (const intent of ["rate", "rating-delete"] as const) {
+        const denial = await page.evaluate(async ({ intent, messageId }) => {
+          const response = await fetch(window.location.href, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ intent, messageId, rating: 1 }),
+          });
+          return { status: response.status, payload: await response.json() };
+        }, { intent, messageId });
+        expect(denial.status, `operator ${intent} did not fail closed`).toBe(403);
+        expect(denial.payload).toMatchObject({
+          ok: false,
+          code: "RATING_ACTOR_FORBIDDEN",
+          error: "Operator principals cannot mutate EndUser ratings",
+        });
+      }
+      return witness!;
     }
     case "postman-create":
       return createdUiWitness({

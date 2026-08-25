@@ -93,6 +93,14 @@ export default async function globalSetup() {
   if (fixture.fixture !== "win235-canonical-dense-v1" || fixture.scopes.length !== 2) {
     throw new Error("Browser evidence did not receive the canonical Alpha/Beta dense fixture");
   }
+  for (const scope of fixture.scopes) {
+    if (
+      !/^[A-Za-z0-9_-]{1,100}$/.test(scope.publicGuestAgentId) ||
+      !scope.agentIds.includes(scope.publicGuestAgentId)
+    ) {
+      throw new Error(`Browser evidence ${scope.key} scope lacks its explicit public guest Agent`);
+    }
+  }
   await createBrowserCredential(fixture.scopes[0]);
 
   await rm(output, { recursive: true, force: true });
@@ -123,6 +131,7 @@ export default async function globalSetup() {
               environmentId,
               environmentSlug,
               threadId,
+              publicGuestAgentId,
             }) => ({
               key,
               operatorId,
@@ -133,6 +142,7 @@ export default async function globalSetup() {
               environmentId,
               environmentSlug,
               threadId,
+              publicGuestAgentId,
             })
           ),
         },
