@@ -113,7 +113,9 @@ jobs:
   persisted-state:
     name: persisted-state-completion
     needs: build-candidates
-    runs-on: ubuntu-latest
+    # Playwright 1.50's pinned Linux dependency manifest targets Ubuntu 22.04;
+    # ubuntu-latest is Noble, where libasound2 was replaced by libasound2t64.
+    runs-on: ubuntu-22.04
     timeout-minutes: 150
     permissions:
       contents: read
