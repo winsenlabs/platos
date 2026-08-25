@@ -5,7 +5,7 @@ services:
     image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: persisted-state-gate
+      POSTGRES_PASSWORD: win235-postgres-evidence-password
       POSTGRES_DB: platos_control
     command: ["-c", "wal_level=logical"]
     ports:
@@ -34,7 +34,7 @@ services:
     image: clickhouse/clickhouse-server:25.3-alpine@sha256:a4e8cf46e526a06f4f52d22f7fa8d07472b55d3c896d7ca3f159e249be38ae62
     environment:
       CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: persisted-state-gate
+      CLICKHOUSE_PASSWORD: win235-clickhouse-evidence-password
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     ports:
       - "127.0.0.1:58123:8123"
@@ -105,7 +105,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://postgres:persisted-state-gate@postgres:5432/platos_control?schema=public
+      DATABASE_URL: postgresql://postgres:win235-postgres-evidence-password@postgres:5432/platos_control?schema=public
     command: ["postgres"]
     restart: "no"
 
@@ -116,8 +116,8 @@ services:
         condition: service_healthy
     environment:
       GOOSE_DRIVER: clickhouse
-      GOOSE_DBSTRING: tcp://default:persisted-state-gate@clickhouse:9000
-      CLICKHOUSE_HTTP_URL: http://default:persisted-state-gate@clickhouse:8123
+      GOOSE_DBSTRING: tcp://default:win235-clickhouse-evidence-password@clickhouse:9000
+      CLICKHOUSE_HTTP_URL: http://default:win235-clickhouse-evidence-password@clickhouse:8123
     command: ["clickhouse"]
     restart: "no"
 
@@ -134,15 +134,15 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: test
-      DATABASE_URL: postgresql://postgres:persisted-state-gate@postgres:5432/platos_control?schema=public
+      DATABASE_URL: postgresql://postgres:win235-postgres-evidence-password@postgres:5432/platos_control?schema=public
       REDIS_URL: redis://redis:6379
       PLATOS_AGENT_PORT: "3100"
       PLATOS_TELEMETRY_DATABASE: platos_telemetry
       PLATOS_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      ENCRYPTION_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "1"
       PLATOS_CREDENTIAL_ROOT_KEYS: '{"1":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}'
-      PLATOS_MESSAGE_ENCRYPTION_KEY: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+      PLATOS_MESSAGE_ENCRYPTION_KEY: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
       PLATOS_MESSAGE_ENCRYPTION_KEY_V: "1"
       SESSION_SECRET: win235-session-secret-with-at-least-thirty-two-characters
       PLATOS_INTERNAL_AUTH_TOKEN: win235-internal-auth-token
@@ -181,8 +181,8 @@ services:
       APP_ORIGIN: http://127.0.0.1:3030
       LOGIN_ORIGIN: http://127.0.0.1:3030
       API_ORIGIN: http://127.0.0.1:3030
-      DATABASE_URL: postgresql://postgres:persisted-state-gate@postgres:5432/platos_control?schema=public
-      DIRECT_URL: postgresql://postgres:persisted-state-gate@postgres:5432/platos_control?schema=public
+      DATABASE_URL: postgresql://postgres:win235-postgres-evidence-password@postgres:5432/platos_control?schema=public
+      DIRECT_URL: postgresql://postgres:win235-postgres-evidence-password@postgres:5432/platos_control?schema=public
       DATABASE_HOST: postgres:5432
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -190,11 +190,11 @@ services:
       RATE_LIMIT_REDIS_HOST: redis
       RATE_LIMIT_REDIS_PORT: "6379"
       RATE_LIMIT_REDIS_TLS_DISABLED: "true"
-      CLICKHOUSE_URL: http://default:persisted-state-gate@clickhouse:8123?secure=false
+      CLICKHOUSE_URL: http://default:win235-clickhouse-evidence-password@clickhouse:8123?secure=false
       CLICKHOUSE_DATABASE: platos_telemetry
       SESSION_SECRET: win235-session-secret-with-at-least-thirty-two-characters
       MAGIC_LINK_SECRET: win235-magic-link-secret-with-at-least-thirty-two-characters
-      ENCRYPTION_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       PLATOS_CREDENTIAL_ROOT_KEY_VERSION: "1"
       PLATOS_CREDENTIAL_ROOT_KEYS: '{"1":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}'
       MANAGED_WORKER_SECRET: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee

@@ -122,12 +122,12 @@ jobs:
     env:
       COMPOSE_FILE: .github/compose/persisted-state-gate.yml
       COMPOSE_PROJECT_NAME: platos-win235-${{ github.run_id }}-${{ github.run_attempt }}
-      DATABASE_URL: postgresql://postgres:persisted-state-gate@127.0.0.1:55432/platos_control?schema=public
-      DIRECT_URL: postgresql://postgres:persisted-state-gate@127.0.0.1:55432/platos_control?schema=public
+      DATABASE_URL: postgresql://postgres:win235-postgres-evidence-password@127.0.0.1:55432/platos_control?schema=public
+      DIRECT_URL: postgresql://postgres:win235-postgres-evidence-password@127.0.0.1:55432/platos_control?schema=public
       REDIS_URL: redis://127.0.0.1:56379
       CLICKHOUSE_URL: http://127.0.0.1:58123
       CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: persisted-state-gate
+      CLICKHOUSE_PASSWORD: win235-clickhouse-evidence-password
       MINIO_ENDPOINT: http://127.0.0.1:59001
       MINIO_ACCESS_KEY: persisted-state-gate
       MINIO_SECRET_KEY: persisted-state-gate-password
@@ -138,7 +138,7 @@ jobs:
       PLATOS_INTERNAL_AUTH_TOKEN: win235-internal-auth-token
       PLATOS_PERFORMANCE_EVIDENCE_ENABLED: "1"
       PLATOS_PERFORMANCE_EVIDENCE_TOKEN: win235-performance-evidence-token
-      ENCRYPTION_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       SESSION_SECRET: win235-session-secret-with-at-least-thirty-two-characters
       MAGIC_LINK_SECRET: win235-magic-link-secret-with-at-least-thirty-two-characters
       LOGIN_ORIGIN: http://127.0.0.1:3030
@@ -344,7 +344,7 @@ jobs:
           docker compose exec -T redis redis-cli --raw GET win235:fixture:manifest \
             > artifacts/win235/redis-readback.json 2>&1
           docker compose exec -T clickhouse clickhouse-client \
-            --user default --password persisted-state-gate \
+            --user default --password win235-clickhouse-evidence-password \
             --query "SELECT organization_id, project_id, environment_id, metric_name, value FROM platos_telemetry.metrics_v1 WHERE metric_name = 'win235.persisted_fixture' ORDER BY organization_id FORMAT TSVWithNames" \
             > artifacts/win235/clickhouse-readback.tsv 2>&1
           docker compose exec -T postgres psql -U postgres -d platos_control -P pager=off \

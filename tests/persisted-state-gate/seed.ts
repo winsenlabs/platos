@@ -79,7 +79,7 @@ const parsedDatabaseUrl = requireGateEndpoint("DATABASE_URL", databaseUrl, {
 });
 if (
   parsedDatabaseUrl.username !== "postgres" ||
-  parsedDatabaseUrl.password !== "persisted-state-gate" ||
+  parsedDatabaseUrl.password !== "win235-postgres-evidence-password" ||
   parsedDatabaseUrl.searchParams.get("schema") !== "public"
 ) {
   throw new Error("DATABASE_URL does not identify the isolated WIN-235 database and schema");
@@ -101,7 +101,7 @@ requireGateEndpoint("MINIO_ENDPOINT", minioUrl, {
 });
 if (
   process.env.CLICKHOUSE_USER !== "default" ||
-  process.env.CLICKHOUSE_PASSWORD !== "persisted-state-gate"
+  process.env.CLICKHOUSE_PASSWORD !== "win235-clickhouse-evidence-password"
 ) {
   throw new Error("ClickHouse credentials do not identify the isolated WIN-235 store");
 }
@@ -869,7 +869,7 @@ async function main() {
     await assertStoresAreIsolatedAndEmpty();
 
     // Keep Agent startup deterministic and offline. A fresh empty catalogue
-  // otherwise causes the production LiteLLM bootstrap before listen().
+    // otherwise causes the production LiteLLM bootstrap before listen().
     await database.model.create({
       data: {
         id: deterministicUuid("model", "fixture"),
