@@ -7,9 +7,19 @@ import test from "node:test";
 import {
   EXPLAIN_CONTRACT,
   QUERY_COUNT_CONTRACT,
+  resolveArtifactDirectoryArgument,
   SUITE_CONTRACT,
   verifyEvidenceArtifactDirectory,
 } from "./verify-artifacts.mjs";
+
+test("artifact verifier CLI ignores pnpm separators and rejects extra paths", () => {
+  assert.equal(resolveArtifactDirectoryArgument(["--", "artifacts/evidence"], undefined), "artifacts/evidence");
+  assert.equal(resolveArtifactDirectoryArgument(["--"], "configured/evidence"), "configured/evidence");
+  assert.throws(
+    () => resolveArtifactDirectoryArgument(["first", "second"], undefined),
+    /at most one/,
+  );
+});
 
 test("artifact verifier rejects skipped assertions", async () => {
   const directory = await fixtureDirectory();

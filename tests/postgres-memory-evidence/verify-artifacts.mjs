@@ -203,6 +203,12 @@ async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
 
+export function resolveArtifactDirectoryArgument(args, configuredDirectory) {
+  const positional = args.filter((argument) => argument !== "--");
+  assert.ok(positional.length <= 1, "expected at most one artifact-directory argument");
+  return positional[0] || configuredDirectory;
+}
+
 function normalizeSql(sql) {
   return sql.trim().replace(/;$/, "").replace(/\s+/g, " ");
 }
@@ -212,7 +218,10 @@ function sha256(value) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const directory = process.argv[2] || process.env.PLATOS_POSTGRES_EVIDENCE_DIR;
+  const directory = resolveArtifactDirectoryArgument(
+    process.argv.slice(2),
+    process.env.PLATOS_POSTGRES_EVIDENCE_DIR,
+  );
   assert.ok(directory, "usage: node verify-artifacts.mjs <artifact-directory>");
   const result = await verifyEvidenceArtifactDirectory(directory);
   console.log(
