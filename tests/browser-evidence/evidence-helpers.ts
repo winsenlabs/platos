@@ -645,7 +645,7 @@ export async function performMutation(args: {
           await fillNamed(page, "displayName", marker);
           await page.locator('[name="connectionKind"]').selectOption("mcp");
           await page.locator('[name="transport"]').selectOption("hosted-composio");
-          await fillNamed(page, "credsSecretKey", "WIN235_FIXTURE_KEY");
+          await fillNamed(page, "credsSecretKey", "WIN235_BROWSER_REFERENCE");
           await clickSubmit(page, /connect|register|create/i);
           const entitiesPath =
             `/orgs/${scope.organizationSlug}/projects/${scope.projectSlug}` +

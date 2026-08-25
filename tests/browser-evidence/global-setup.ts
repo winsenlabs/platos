@@ -18,6 +18,36 @@ type CandidateImages = {
   migrations: string;
 };
 
+async function createBrowserCredential(scope: ReturnType<typeof loadFixtureManifest>["scopes"][number]) {
+  const agentUrl = process.env.PLATOS_AGENT_API_URL;
+  const internalAuthToken = process.env.PLATOS_INTERNAL_AUTH_TOKEN;
+  if (!agentUrl || !internalAuthToken) {
+    throw new Error("Browser credential setup requires the candidate Agent and internal auth");
+  }
+  const response = await fetch(new URL("/api/v1/agent/providers/keys/byok", agentUrl), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Platos-Organization-Id": scope.organizationId,
+      "X-Platos-Project-Id": scope.projectId,
+      "X-Platos-Environment-Id": scope.environmentId,
+      "X-Platos-User-Id": scope.userId,
+      "X-Platos-Internal-Auth": internalAuthToken,
+    },
+    body: JSON.stringify({
+      provider: "win235-browser",
+      label: "Browser MCP reference",
+      envVarName: "WIN235_BROWSER_REFERENCE",
+      plaintext: "win235-browser-reference-value",
+      isDefault: false,
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (response.status !== 201) {
+    throw new Error(`Browser credential setup returned HTTP ${response.status}`);
+  }
+}
+
 function exactHead(): string {
   return execFileSync("git", ["rev-parse", "HEAD"], {
     cwd: REPOSITORY_ROOT,
@@ -63,6 +93,7 @@ export default async function globalSetup() {
   if (fixture.fixture !== "win235-canonical-dense-v1" || fixture.scopes.length !== 2) {
     throw new Error("Browser evidence did not receive the canonical Alpha/Beta dense fixture");
   }
+  await createBrowserCredential(fixture.scopes[0]);
 
   await rm(output, { recursive: true, force: true });
   await mkdir(path.join(output, "cells"), { recursive: true });

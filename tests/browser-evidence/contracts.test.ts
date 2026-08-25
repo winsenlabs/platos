@@ -36,6 +36,14 @@ describe("browser capability route identities", () => {
     expect(capabilityPath(capability!, alpha)).not.toContain(alpha.entityExternalId);
   });
 
+  it("uses the canonical Memories page for the download-only route shell", () => {
+    const capability = capabilities.find(({ capabilityId }) => capabilityId === "route-057");
+    expect(capability).toBeDefined();
+    expect(capabilityPath(capability!, scope("alpha"))).toBe(
+      "/orgs/win235-alpha/projects/win235-alpha-project/env/development/memories"
+    );
+  });
+
   it("keeps Alpha and Beta MCP Entity route identities distinct", () => {
     const capability = capabilities.find(
       ({ capabilityId }) => capabilityId === "entity-mcp-bearer-token-create"

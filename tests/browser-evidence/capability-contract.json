@@ -730,6 +730,7 @@
   },
   "targetOverrides": {
     "route-014": "environment/agent-connect",
+    "route-057": "environment/memories",
     "route-078": "embed",
     "route-079": "embed",
     "route-083": "root",
