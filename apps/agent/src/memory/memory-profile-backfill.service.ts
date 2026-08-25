@@ -187,7 +187,7 @@ function validProfileIndexes(
       && index.unique
       && index.valid
       && JSON.stringify(index.columns) === JSON.stringify(columns)
-      && predicate.includes(`"kind" = 'profile'`)
+      && /"?kind"?\s*=\s*'profile'(?:::text)?/.test(predicate)
       && predicate.includes('"profileKey" IS NOT NULL')
       && predicate.includes(index.name.includes("standalone")
         ? '"clusterId" IS NULL'

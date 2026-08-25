@@ -34,14 +34,14 @@ function harness(decryptUnavailable = false) {
           unique: true,
           valid: true,
           columns: ["environmentId", "endUserId", "clusterId", "profileKey"],
-          predicate: `(("kind" = 'profile'::text) AND ("clusterId" IS NOT NULL) AND ("profileKey" IS NOT NULL))`,
+          predicate: `((kind = 'profile'::text) AND ("clusterId" IS NOT NULL) AND ("profileKey" IS NOT NULL))`,
         },
         {
           name: "Memory_profile_standalone_key",
           unique: true,
           valid: true,
           columns: ["environmentId", "endUserId", "agentId", "profileKey"],
-          predicate: `(("kind" = 'profile'::text) AND ("clusterId" IS NULL) AND ("profileKey" IS NOT NULL))`,
+          predicate: `((kind = 'profile'::text) AND ("clusterId" IS NULL) AND ("profileKey" IS NOT NULL))`,
         },
       ];
       return [];
