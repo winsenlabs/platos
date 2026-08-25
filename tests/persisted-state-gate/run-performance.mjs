@@ -7,6 +7,8 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
+import { measuredJsonResponse, measuredRemixJsonResponse } from "./measured-response.mjs";
+import { productionOperatorSessionCookieHeader } from "./operator-session-cookie.mjs";
 import { summarize, verifyPerformanceArtifactDirectory } from "./verify-performance-artifacts.mjs";
 import { PERFORMANCE_RECEIPT_FILE } from "./performance-verification-receipt.mjs";
 
@@ -61,12 +63,21 @@ let browser;
 try {
   const primary = fixture.scopes?.[0];
   assert.ok(primary, "fixture manifest has no primary scope");
-  const turnsPerThread = await verifyLiveFixture(prisma, fixture, budgets);
+  const { turnsPerThread, persistedAgentTotal } = await verifyLiveFixture(prisma, fixture, budgets);
   const auth = new PlatosAuthService(prisma, { encryptionKey });
   const session = await auth.issueOperatorSession({ userId: primary.operatorId });
-  const cookieHeader = `__Host-platos_operator_session=${session.token}`;
+  const authorizedSession = await auth.authorizeOperatorSession(session.token);
+  assert.equal(
+    authorizedSession.effectiveUserId,
+    primary.operatorId,
+    "issued performance session failed its database authorization preflight"
+  );
+  const cookieHeader = await productionOperatorSessionCookieHeader(
+    session.token,
+    session.expiresAt
+  );
   const agentHeaders = createAgentHeaders(primary);
-  const latencyPaths = createLatencyPaths(primary, cookieHeader, agentHeaders);
+  const latencyPaths = createLatencyPaths(primary, cookieHeader, agentHeaders, persistedAgentTotal);
 
   const latency = [];
   for (const budget of budgets.latency) {
@@ -200,7 +211,7 @@ function createAgentHeaders(primary) {
   };
 }
 
-function createLatencyPaths(primary, cookieHeader, agentHeaders) {
+function createLatencyPaths(primary, cookieHeader, agentHeaders, persistedAgentTotal) {
   const environmentPath = `/orgs/${primary.organizationSlug}/projects/${primary.projectSlug}/env/${primary.environmentSlug}`;
   return new Map([
     [
@@ -208,7 +219,7 @@ function createLatencyPaths(primary, cookieHeader, agentHeaders) {
       async () => {
         const url = new URL(`${environmentPath}/agents`, webappUrl);
         url.searchParams.set("_data", remixAgentsRouteId);
-        const payload = await measuredJsonResponse(
+        const payload = await measuredRemixJsonResponse(
           await fetch(url, {
             headers: { Cookie: cookieHeader, Accept: "application/json" },
             signal: AbortSignal.timeout(10_000),
@@ -216,7 +227,16 @@ function createLatencyPaths(primary, cookieHeader, agentHeaders) {
           "agents.loader"
         );
         assert.equal(payload.panel?.ok, true, "Agents loader did not return its live panel");
-        assert.ok(payload.panel.data.total > 0, "Agents loader returned no fixture rows");
+        assert.equal(
+          payload.panel.data.total,
+          persistedAgentTotal,
+          "Agents loader total drifted from canonical PostgreSQL"
+        );
+        assert.equal(
+          payload.panel.data.agents.length,
+          persistedAgentTotal,
+          "Agents loader rows drifted from canonical PostgreSQL"
+        );
       },
     ],
     [
@@ -286,17 +306,6 @@ async function timed(operation) {
   return Number(process.hrtime.bigint() - start) / 1_000_000;
 }
 
-async function measuredJsonResponse(response, id) {
-  const body = await response.text();
-  assert.ok(response.ok, `${id} failed with HTTP ${response.status}: ${body.slice(0, 300)}`);
-  assert.ok(body.length > 0, `${id} returned an empty response`);
-  try {
-    return JSON.parse(body);
-  } catch {
-    throw new Error(`${id} did not return JSON: ${body.slice(0, 300)}`);
-  }
-}
-
 async function verifyLiveFixture(prisma, fixture, budgets) {
   const [countRow] = await prisma.$queryRawUnsafe(`
     SELECT
@@ -324,7 +333,19 @@ async function verifyLiveFixture(prisma, fixture, budgets) {
     Array(fixture.counts.threads).fill(budgets.fixture.turnsPerThread),
     "live thread density drifted before measurement"
   );
-  return turnsPerThread;
+  const primary = fixture.scopes[0];
+  const persistedAgentTotal = await prisma.agentBinding.count({
+    where: {
+      environmentId: primary.environmentId,
+      agent: { isActive: true },
+    },
+  });
+  assert.equal(
+    persistedAgentTotal,
+    primary.agentIds.length,
+    "live scoped AgentBinding total drifted before measurement"
+  );
+  return { turnsPerThread, persistedAgentTotal };
 }
 
 async function measureCandidateQueries(prisma, primary, agentHeaders, budgets) {

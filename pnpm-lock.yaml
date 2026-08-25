@@ -73,6 +73,9 @@ importers:
       '@playwright/test':
         specifier: ^1.36.2
         version: 1.37.0
+      '@remix-run/node':
+        specifier: 2.1.0
+        version: 2.1.0(typescript@5.5.4)
       '@types/node':
         specifier: 20.14.14
         version: 20.14.14
