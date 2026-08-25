@@ -127,6 +127,7 @@ describe("clean memory Agent/AgentCluster isolation", () => {
         disabledAt: null,
       },
     }));
+    expect(database.environment.findFirst).not.toHaveBeenCalled();
   });
 
   it("rejects an operator selection outside the canonical scope", async () => {

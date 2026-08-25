@@ -124,8 +124,9 @@ export async function resolveOperatorSelectedEndUser(
   endUserId: string,
 ): Promise<ResolvedEndUser> {
   if (!endUserId) throw new MemoryEndUserContextError();
-  await assertEnvironmentScope(prisma, scope);
 
+  // EndUsers are Organization-owned. Environment ancestry is authorized by
+  // the Memory/Knowledge Graph operation service after this selection step.
   const endUser = await prisma.endUser.findFirst({
     where: {
       id: endUserId,
