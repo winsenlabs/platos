@@ -316,6 +316,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          export WIN235_BROWSER_UPSTREAM_URL="$WIN235_WEBAPP_URL"
+          export WIN235_WEBAPP_URL="https://127.0.0.1:3043"
           pnpm test:browser-evidence \
             2>&1 | tee artifacts/win235/browser-evidence.log
           pnpm test:browser-evidence:artifacts -- "$WIN234_BROWSER_ARTIFACT_DIR"

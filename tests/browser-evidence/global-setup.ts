@@ -10,6 +10,7 @@ import {
   loadBrowserCapabilities,
   loadFixtureManifest,
 } from "./contracts";
+import { startBrowserHttpsProxy } from "./https-proxy";
 
 type CandidateImages = {
   commitSha: string;
@@ -62,6 +63,7 @@ function digestReference(value: string, name: string) {
 }
 
 export default async function globalSetup() {
+  const stopBrowserHttpsProxy = await startBrowserHttpsProxy();
   const output = artifactRoot();
   const persistedStateRoot = path.resolve(
     process.env.WIN235_ARTIFACT_DIR ?? path.join(path.dirname(output), "win235")
@@ -172,4 +174,5 @@ export default async function globalSetup() {
     )}\n`,
     { encoding: "utf8", mode: 0o644 }
   );
+  return stopBrowserHttpsProxy;
 }

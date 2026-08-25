@@ -18,6 +18,7 @@ export default defineConfig({
   reporter: [["line"]],
   use: {
     baseURL,
+    ignoreHTTPSErrors: true,
     screenshot: "off",
     trace: "off",
     video: "off",

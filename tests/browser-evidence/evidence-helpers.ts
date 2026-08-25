@@ -770,6 +770,13 @@ export async function performMutation(args: {
       let threadId = "";
       let witness: CellEvidence["mutation"]["witness"];
       try {
+        const publicResponses: string[] = [];
+        guestPage.on("response", (response) => {
+          const url = new URL(response.url());
+          if (url.pathname.startsWith("/api/v1/public/")) {
+            publicResponses.push(`${response.request().method()} ${url.pathname} HTTP ${response.status()}`);
+          }
+        });
         const embed = new URL(
           `/embed/${encodeURIComponent(scope.publicGuestAgentId)}`,
           page.url(),
@@ -781,9 +788,23 @@ export async function performMutation(args: {
         await guestPage.getByRole("button", { name: /^send$/i }).click();
 
         const button = guestPage.getByRole("button", { name: /^useful$/i }).first();
-        await expect(button, "guest Turn did not expose a persisted rating target").toBeEnabled({
-          timeout: 30_000,
-        });
+        const error = guestPage.locator('[class*="danger"]').filter({ hasText: /Agent|Turn|persist|session/i }).last();
+        try {
+          await expect.poll(async () => {
+            if (await button.isEnabled().catch(() => false)) return "persisted";
+            if (await error.isVisible().catch(() => false)) return "error";
+            return "pending";
+          }, { timeout: 30_000 }).not.toBe("pending");
+        } catch {
+          throw new Error(
+            `guest Turn did not expose a persisted rating target; ${publicResponses.join("; ") || "no public response observed"}`,
+          );
+        }
+        if (await error.isVisible().catch(() => false)) {
+          const safeError = ((await error.textContent()) ?? "guest surface reported an error").trim();
+          throw new Error(`guest rating surface failed: ${safeError}; ${publicResponses.join("; ")}`);
+        }
+        await expect(button, "guest Turn did not expose a persisted rating target").toBeEnabled();
         await expect(button).toHaveAttribute("aria-pressed", "false");
         const article = button.locator("xpath=ancestor::article[1]");
         const identity = {
