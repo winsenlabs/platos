@@ -106,14 +106,14 @@ describe("Memory encrypted profile and legacy contract upgrade", () => {
       `INSERT INTO "Memory" (
          "id", "environmentId", "endUserId", "agentId", "kind", "content", "metadata",
          "agentVisible", "visibility", "source", "sourceThreadId", "sourceTurnIds",
-         "createdAt", "updatedAt"
+         "extractorVersion", "contentHash", "createdAt", "updatedAt"
        ) VALUES
          ($1::uuid, $4::uuid, $5::uuid, $6::uuid, 'profile', 'Ada', $7::jsonb,
-          TRUE, 'subject', 'turn', $8::uuid, ARRAY[$9::uuid], NOW() - INTERVAL '1 day', NOW()),
+          TRUE, 'subject', 'turn', $8::uuid, ARRAY[$9::uuid], 'legacy-extractor', repeat('a', 64), NOW() - INTERVAL '1 day', NOW()),
          ($2::uuid, $4::uuid, $5::uuid, $6::uuid, 'profile', 'Ada old', $7::jsonb,
-          FALSE, 'subject', 'turn', $8::uuid, ARRAY[$9::uuid], NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day'),
+          FALSE, 'subject', 'turn', $8::uuid, ARRAY[$9::uuid], 'legacy-extractor', repeat('b', 64), NOW() - INTERVAL '2 days', NOW() - INTERVAL '1 day'),
          ($3::uuid, $4::uuid, $5::uuid, $6::uuid, 'fact', 'Private legacy', '{}'::jsonb,
-          FALSE, 'subject', 'unknown_legacy', NULL, ARRAY[]::uuid[], NOW(), NOW())`,
+          FALSE, 'subject', 'unknown_legacy', NULL, ARRAY[]::uuid[], NULL, NULL, NOW(), NOW())`,
       winnerId,
       loserId,
       privateLegacyId,
