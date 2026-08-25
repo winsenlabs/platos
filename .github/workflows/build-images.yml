@@ -19,6 +19,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAMESPACE: ${{ github.repository_owner }}
+  PLATOS_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   REGCTL_VERSION: v0.9.2
   REGCTL_LINUX_AMD64_SHA256: 4da11cfe7009661a498ffafc11f510049864ffb4eb44961743618b3975db3c55
 
@@ -47,6 +48,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.PLATOS_CANDIDATE_SHA }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
@@ -61,7 +64,7 @@ jobs:
           push: false
           tags: win235.local/${{ matrix.image }}:candidate-${{ github.run_id }}-${{ github.run_attempt }}
           labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ env.PLATOS_CANDIDATE_SHA }}
             dev.platos.candidate-run=${{ github.run_id }}-${{ github.run_attempt }}
           outputs: type=oci,dest=${{ runner.temp }}/${{ matrix.name }}.oci.tar,oci-mediatypes=true
           cache-from: type=gha,scope=${{ matrix.image }}
@@ -148,6 +151,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.PLATOS_CANDIDATE_SHA }}
 
       - name: Download candidate OCI artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -266,7 +271,7 @@ jobs:
           node - <<'NODE'
           const fs = require("node:fs");
           const images = {
-            commitSha: process.env.GITHUB_SHA,
+            commitSha: process.env.PLATOS_CANDIDATE_SHA,
             agent: process.env.WIN235_AGENT_IMAGE,
             webapp: process.env.WIN235_WEBAPP_IMAGE,
             migrations: process.env.WIN235_MIGRATIONS_IMAGE,
@@ -300,7 +305,7 @@ jobs:
       - name: Prove all non-browser completion cells against PostgreSQL
         shell: bash
         env:
-          PLATOS_CANDIDATE_SHA: ${{ github.sha }}
+          PLATOS_CANDIDATE_SHA: ${{ env.PLATOS_CANDIDATE_SHA }}
           PLATOS_EVIDENCE_RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -391,6 +396,8 @@ jobs:
     steps:
       - name: Checkout trusted release commit
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.PLATOS_CANDIDATE_SHA }}
 
       - name: Download tested candidate OCI artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -433,7 +440,7 @@ jobs:
           const fs = require("node:fs");
           const tested = JSON.parse(fs.readFileSync("artifacts/gate/candidate-images.json", "utf8"));
           const expected = {
-            commitSha: process.env.GITHUB_SHA,
+            commitSha: process.env.PLATOS_CANDIDATE_SHA,
             agent: process.env.WIN235_AGENT_IMAGE,
             webapp: process.env.WIN235_WEBAPP_IMAGE,
             migrations: process.env.WIN235_MIGRATIONS_IMAGE,
@@ -470,7 +477,7 @@ jobs:
             test "$(
               regctl image inspect --platform linux/amd64 "$staging_ref" \
                 --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
-            )" = "$GITHUB_SHA"
+            )" = "$PLATOS_CANDIDATE_SHA"
           done
 
           # Validate the full staging set and every pre-existing immutable SHA
@@ -481,7 +488,7 @@ jobs:
             repository="${identity%@*}"
             expected_digest="${identity##*@}"
             test "$(regctl image digest "${repository}:${candidate_tag}")" = "$expected_digest"
-            commit_ref="${repository}:sha-${GITHUB_SHA}"
+            commit_ref="${repository}:sha-${PLATOS_CANDIDATE_SHA}"
             if existing_digest="$(regctl image digest "$commit_ref" 2>/dev/null)"; then
               test "$existing_digest" = "$expected_digest"
             fi
@@ -492,7 +499,7 @@ jobs:
             identity="${!identity_variable}"
             repository="${identity%@*}"
             expected_digest="${identity##*@}"
-            commit_ref="${repository}:sha-${GITHUB_SHA}"
+            commit_ref="${repository}:sha-${PLATOS_CANDIDATE_SHA}"
             if ! regctl image digest "$commit_ref" >/dev/null 2>&1; then
               regctl image copy "$identity" "$commit_ref"
             fi
@@ -506,14 +513,14 @@ jobs:
             identity="${!identity_variable}"
             repository="${identity%@*}"
             expected_digest="${identity##*@}"
-            test "$(regctl image digest "${repository}:sha-${GITHUB_SHA}")" = "$expected_digest"
+            test "$(regctl image digest "${repository}:sha-${PLATOS_CANDIDATE_SHA}")" = "$expected_digest"
           done
 
           mkdir -p artifacts/published
           node - <<'NODE'
           const fs = require("node:fs");
           const published = {
-            commitSha: process.env.GITHUB_SHA,
+            commitSha: process.env.PLATOS_CANDIDATE_SHA,
             agent: process.env.WIN235_AGENT_IMAGE,
             webapp: process.env.WIN235_WEBAPP_IMAGE,
             migrations: process.env.WIN235_MIGRATIONS_IMAGE,

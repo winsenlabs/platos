@@ -33,13 +33,13 @@ const agentUrl = requiredEnvironment("PLATOS_AGENT_API_URL");
 const internalAuthToken = requiredEnvironment("PLATOS_INTERNAL_AUTH_TOKEN");
 const evidenceToken = requiredEnvironment("PLATOS_PERFORMANCE_EVIDENCE_TOKEN");
 const encryptionKey = requiredEnvironment("ENCRYPTION_KEY");
-const commitSha = requiredEnvironment("GITHUB_SHA");
+const commitSha = requiredEnvironment("PLATOS_CANDIDATE_SHA");
 assert.equal(
   process.env.PLATOS_PERFORMANCE_EVIDENCE_ENABLED,
   "1",
   "candidate query evidence requires PLATOS_PERFORMANCE_EVIDENCE_ENABLED=1"
 );
-assert.match(commitSha, /^[a-f0-9]{40}$/, "GITHUB_SHA must be an exact commit SHA");
+assert.match(commitSha, /^[a-f0-9]{40}$/, "PLATOS_CANDIDATE_SHA must be an exact commit SHA");
 verifySourceIdentity(commitSha);
 
 const [budgetRaw, fixture, candidateImages] = await Promise.all([
@@ -48,7 +48,11 @@ const [budgetRaw, fixture, candidateImages] = await Promise.all([
   readJson(candidateImagesFile),
 ]);
 const budgets = JSON.parse(budgetRaw);
-assert.equal(candidateImages.commitSha, commitSha, "candidate images do not match GITHUB_SHA");
+assert.equal(
+  candidateImages.commitSha,
+  commitSha,
+  "candidate images do not match exact candidate SHA"
+);
 
 const tenancyModule = await import(
   pathToFileURL(path.resolve(repositoryRoot, "internal-packages/tenancy-database/dist/index.js"))
@@ -356,6 +360,13 @@ async function verifyLiveFixture(prisma, fixture, budgets) {
     primary.agentIds.length,
     "fixture does not retain Memory rows across every representative Agent"
   );
+  for (const [name, composition] of [
+    ["small", primary.smallAgentPageComposition],
+    ["dense", primary.denseAgentPageComposition],
+  ]) {
+    assert.ok(composition?.clustered > 0, `${name} Agent page has no clustered binding`);
+    assert.ok(composition?.unclustered > 0, `${name} Agent page has no unclustered binding`);
+  }
   return { turnsPerThread, persistedAgentTotal };
 }
 
@@ -381,6 +392,25 @@ async function measureCandidateQueries(prisma, primary, agentHeaders, budgets) {
     assert.ok(dense.rows > 0, `${budget.id} returned no dense rows`);
     assert.ok(dense.total >= dense.rows, `${budget.id} returned inconsistent pagination totals`);
     const fullDatasetHydration = dense.rows >= dense.total;
+    const resultComposition =
+      budget.requestPath === "/api/v1/agent/agents"
+        ? {
+            small: agentResultComposition(small.items, primary.clusterId),
+            dense: agentResultComposition(dense.items, primary.clusterId),
+          }
+        : null;
+    if (resultComposition) {
+      assert.deepEqual(
+        resultComposition.small,
+        primary.smallAgentPageComposition,
+        `${budget.id} small response composition drifted from the persisted fixture`
+      );
+      assert.deepEqual(
+        resultComposition.dense,
+        primary.denseAgentPageComposition,
+        `${budget.id} dense response composition drifted from the persisted fixture`
+      );
+    }
     queries.push({
       id: budget.id,
       requestPath: budget.requestPath,
@@ -393,6 +423,12 @@ async function measureCandidateQueries(prisma, primary, agentHeaders, budgets) {
       denseResultRows: dense.rows,
       denseTotalRows: dense.total,
       fullDatasetHydration,
+      ...(resultComposition
+        ? {
+            smallResultComposition: resultComposition.small,
+            denseResultComposition: resultComposition.dense,
+          }
+        : {}),
     });
     assert.equal(fullDatasetHydration, false, `${budget.id} hydrated its full scoped dataset`);
     for (const query of dense.evidence.queries) {
@@ -427,7 +463,21 @@ async function captureCandidateRequest(primary, agentHeaders, budget, pageSize) 
       : payload.entities;
   assert.ok(Array.isArray(items), `${budget.id} candidate response has no result array`);
   assert.ok(Number.isInteger(payload.total), `${budget.id} candidate response has no total`);
-  return { evidence, rows: items.length, total: payload.total };
+  return { evidence, items, rows: items.length, total: payload.total };
+}
+
+function agentResultComposition(agents, expectedClusterId) {
+  assert.match(expectedClusterId, /^[a-f0-9-]{36}$/i, "fixture cluster ID is invalid");
+  assert.ok(
+    agents.every(
+      (agent) => agent.clusteringId === expectedClusterId || agent.clusteringId === null
+    ),
+    "Agent response contains a missing, malformed, or foreign clusteringId"
+  );
+  return {
+    clustered: agents.filter((agent) => agent.clusteringId === expectedClusterId).length,
+    unclustered: agents.filter((agent) => agent.clusteringId === null).length,
+  };
 }
 
 function withAgentPin(headers, primary) {
@@ -866,7 +916,7 @@ function verifySourceIdentity(expectedCommit) {
     cwd: repositoryRoot,
     encoding: "utf8",
   }).trim();
-  assert.equal(head, expectedCommit, "git HEAD does not equal GITHUB_SHA");
+  assert.equal(head, expectedCommit, "git HEAD does not equal PLATOS_CANDIDATE_SHA");
   for (const args of [
     ["diff", "--quiet"],
     ["diff", "--cached", "--quiet"],

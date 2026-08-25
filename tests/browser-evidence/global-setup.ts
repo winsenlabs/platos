@@ -49,9 +49,9 @@ export default async function globalSetup() {
       `Browser evidence is fail-closed: candidate commit ${candidateImages.commitSha} does not equal HEAD ${head}`
     );
   }
-  if (process.env.GITHUB_SHA && process.env.GITHUB_SHA !== head) {
+  if (process.env.PLATOS_CANDIDATE_SHA && process.env.PLATOS_CANDIDATE_SHA !== head) {
     throw new Error(
-      `GITHUB_SHA ${process.env.GITHUB_SHA} does not equal browser evidence HEAD ${head}`
+      `PLATOS_CANDIDATE_SHA ${process.env.PLATOS_CANDIDATE_SHA} does not equal browser evidence HEAD ${head}`
     );
   }
   for (const name of ["agent", "webapp", "migrations"] as const) {

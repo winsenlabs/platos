@@ -184,19 +184,19 @@ for (const [name, mutate, pattern] of [
 test("rejects missing exact-run identity before reading evidence", () => {
   assert.throws(
     () => exactRunIdentity({ env: {}, repositoryRoot: ROOT }),
-    /GITHUB_SHA is required/
+    /PLATOS_CANDIDATE_SHA is required/
   );
   assert.throws(
-    () => exactRunIdentity({ env: { GITHUB_SHA: SHA }, repositoryRoot: ROOT }),
+    () => exactRunIdentity({ env: { PLATOS_CANDIDATE_SHA: SHA }, repositoryRoot: ROOT }),
     /GITHUB_RUN_ID is required/
   );
 });
 
-test("rejects a GITHUB_SHA that is not exact HEAD", () => {
+test("rejects a PLATOS_CANDIDATE_SHA that is not exact HEAD", () => {
   assert.throws(
     () =>
       exactRunIdentity({
-        env: { GITHUB_SHA: "a".repeat(40), GITHUB_RUN_ID: RUN_ID },
+        env: { PLATOS_CANDIDATE_SHA: "a".repeat(40), GITHUB_RUN_ID: RUN_ID },
         repositoryRoot: ROOT,
       }),
     /does not match exact HEAD/
@@ -206,7 +206,7 @@ test("rejects a GITHUB_SHA that is not exact HEAD", () => {
 test("rejects missing non-browser evidence and missing browser evidence", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "route-completion-audit-"));
   const env = {
-    GITHUB_SHA: SHA,
+    PLATOS_CANDIDATE_SHA: SHA,
     GITHUB_RUN_ID: RUN_ID,
     PLATOS_NON_BROWSER_EVIDENCE_OUTPUT: path.join(root, "missing-non-browser.json"),
     WIN234_BROWSER_ARTIFACT_DIR: path.join(root, "missing-browser"),

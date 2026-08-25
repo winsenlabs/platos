@@ -132,7 +132,7 @@ function cliResultPath() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const resultPath = path.resolve(cliResultPath() ?? "artifacts/win235/non-browser-evidence.json");
-  const expectedCandidateSha = cliValue("--candidate-sha") ?? process.env.GITHUB_SHA;
+  const expectedCandidateSha = cliValue("--candidate-sha") ?? process.env.PLATOS_CANDIDATE_SHA;
   const expectedRunId =
     cliValue("--run-id") ??
     process.env.PLATOS_NON_BROWSER_EVIDENCE_RUN_ID ??

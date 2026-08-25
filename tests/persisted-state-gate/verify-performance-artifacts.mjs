@@ -66,7 +66,7 @@ export async function verifyPerformanceArtifactDirectory(directory, options = {}
   verifySecretSafety(artifact, options.sensitiveValues);
   const expectedCommit =
     options.expectedCommit ??
-    process.env.GITHUB_SHA ??
+    process.env.PLATOS_CANDIDATE_SHA ??
     execFileSync("git", ["rev-parse", "HEAD"], {
       cwd: repositoryRoot,
       encoding: "utf8",
@@ -583,6 +583,30 @@ function verifyQueriesAndPlans(measurements, plans, budgets, fixture) {
     assert.ok(measurement.denseResultRows <= measurement.densePageSize);
     assert.ok(measurement.denseTotalRows > measurement.denseResultRows);
     assert.equal(measurement.fullDatasetHydration, false, `${budget.id} hydrated its full dataset`);
+    if (budget.id === "agents.list.api") {
+      assert.deepEqual(
+        measurement.smallResultComposition,
+        primary.smallAgentPageComposition,
+        `${budget.id} small response composition drifted from the persisted fixture`
+      );
+      assert.deepEqual(
+        measurement.denseResultComposition,
+        primary.denseAgentPageComposition,
+        `${budget.id} dense response composition drifted from the persisted fixture`
+      );
+      assert.equal(
+        measurement.smallResultComposition.clustered +
+          measurement.smallResultComposition.unclustered,
+        measurement.smallPageSize,
+        `${budget.id} small response composition is incomplete`
+      );
+      assert.equal(
+        measurement.denseResultComposition.clustered +
+          measurement.denseResultComposition.unclustered,
+        measurement.denseResultRows,
+        `${budget.id} dense response composition is incomplete`
+      );
+    }
 
     const queryPlans = plans.filter((plan) => plan.queryId === budget.id);
     expectedPlanCount += measurement.denseRequest.queries.length;

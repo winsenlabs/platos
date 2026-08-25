@@ -5,7 +5,7 @@ candidate_dir="${1:?candidate artifact directory is required}"
 layout_dir="${2:?OCI layout directory is required}"
 load_candidates="${3:-false}"
 
-: "${GITHUB_SHA:?GITHUB_SHA is required to verify candidate revision labels}"
+: "${PLATOS_CANDIDATE_SHA:?PLATOS_CANDIDATE_SHA is required to verify candidate revision labels}"
 : "${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is required}"
 
 mkdir -p "$layout_dir"
@@ -45,7 +45,7 @@ for candidate in \
     regctl image inspect --platform linux/amd64 "$layout_ref" \
       --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
   )"
-  test "$revision" = "$GITHUB_SHA"
+  test "$revision" = "$PLATOS_CANDIDATE_SHA"
 
   if [ "$load_candidates" = "true" ]; then
     runtime_ref="win235.local/${repository_name}:sha256-${expected_digest#sha256:}"
@@ -56,7 +56,7 @@ for candidate in \
       docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' \
         "$runtime_ref"
     )"
-    test "$loaded_revision" = "$GITHUB_SHA"
+    test "$loaded_revision" = "$PLATOS_CANDIDATE_SHA"
     printf 'WIN235_%s_RUNTIME_IMAGE=%s\n' "$env_name" "$runtime_ref" >>"$GITHUB_ENV"
     rm -f "$docker_archive"
   fi

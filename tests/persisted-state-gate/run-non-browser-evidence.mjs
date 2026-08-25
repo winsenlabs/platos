@@ -16,15 +16,17 @@ function requiredEnvironment(env, name) {
 }
 
 export function runIdentity(env = process.env) {
-  const githubSha = requiredEnvironment(env, "GITHUB_SHA");
-  assert.match(githubSha, /^[a-f0-9]{40}$/, "GITHUB_SHA must be an exact lowercase commit SHA");
-  const candidateSha = env.PLATOS_CANDIDATE_SHA?.trim() || githubSha;
+  const candidateSha = requiredEnvironment(env, "PLATOS_CANDIDATE_SHA");
   assert.match(
     candidateSha,
     /^[a-f0-9]{40}$/,
     "PLATOS_CANDIDATE_SHA must be an exact lowercase commit SHA"
   );
-  assert.equal(candidateSha, githubSha, "PLATOS_CANDIDATE_SHA must exactly match GITHUB_SHA");
+  const head = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+  }).trim();
+  assert.equal(candidateSha, head, "PLATOS_CANDIDATE_SHA does not match exact HEAD");
   const runId = env.PLATOS_EVIDENCE_RUN_ID?.trim() || requiredEnvironment(env, "GITHUB_RUN_ID");
   assert.match(runId, /^[A-Za-z0-9_.:-]{1,128}$/, "evidence run ID is invalid");
   if (env.PLATOS_EVIDENCE_RUN_ID && env.GITHUB_RUN_ID) {

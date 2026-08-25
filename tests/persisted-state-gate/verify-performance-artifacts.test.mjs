@@ -181,6 +181,16 @@ const mutationCases = [
     /N\+1 query growth/,
   ],
   [
+    "Agent response composition drift",
+    (artifact) => {
+      const measurement = artifact.measurements.queries.find(
+        (candidate) => candidate.id === "agents.list.api"
+      );
+      measurement.smallResultComposition = { clustered: 1, unclustered: 4 };
+    },
+    /small response composition drifted/,
+  ],
+  [
     "request ID binding drift",
     (artifact) => {
       artifact.measurements.plans[0].requestId = "22222222-2222-4222-8222-222222222222";
@@ -430,6 +440,8 @@ async function writeSyntheticEvidence(mutate = () => undefined) {
         endUserId: ids.endUserId,
         agentIds: [ids.agentId],
         threadId: ids.threadId,
+        smallAgentPageComposition: { clustered: 2, unclustered: 3 },
+        denseAgentPageComposition: { clustered: 5, unclustered: 5 },
       },
     ],
   };
@@ -543,6 +555,12 @@ function syntheticArtifact(budgets, budgetRaw, fixture) {
       denseResultRows: budget.densePageSize,
       denseTotalRows: totals[budget.id],
       fullDatasetHydration: false,
+      ...(budget.id === "agents.list.api"
+        ? {
+            smallResultComposition: { ...fixture.scopes[0].smallAgentPageComposition },
+            denseResultComposition: { ...fixture.scopes[0].denseAgentPageComposition },
+          }
+        : {}),
     };
   });
   const plans = queries.flatMap((measurement) => {

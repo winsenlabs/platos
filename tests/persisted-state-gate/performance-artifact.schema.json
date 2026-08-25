@@ -476,7 +476,18 @@
         "nPlusOneGrowth": { "type": "integer", "minimum": 0 },
         "denseResultRows": { "type": "integer", "minimum": 1 },
         "denseTotalRows": { "type": "integer", "minimum": 2 },
-        "fullDatasetHydration": { "const": false }
+        "fullDatasetHydration": { "const": false },
+        "smallResultComposition": { "$ref": "#/$defs/agentResultComposition" },
+        "denseResultComposition": { "$ref": "#/$defs/agentResultComposition" }
+      }
+    },
+    "agentResultComposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clustered", "unclustered"],
+      "properties": {
+        "clustered": { "type": "integer", "minimum": 1 },
+        "unclustered": { "type": "integer", "minimum": 1 }
       }
     },
     "plan": {

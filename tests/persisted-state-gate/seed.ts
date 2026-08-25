@@ -279,11 +279,35 @@ async function seedScope(
       environmentId,
       agentId,
       activeAgentVersionId: versionIds[index],
-      clusterId: index < 10 ? clusterId : null,
-      createdAt: FIXTURE_TIMESTAMP,
-      updatedAt: FIXTURE_TIMESTAMP,
+      clusterId: index % 2 === 0 ? clusterId : null,
+      createdAt: new Date(FIXTURE_TIMESTAMP.getTime() + index),
+      updatedAt: new Date(FIXTURE_TIMESTAMP.getTime() + index),
     })),
   });
+  const [smallAgentPage, denseAgentPage] = await Promise.all(
+    [5, 10].map((take) =>
+      database.agentBinding.findMany({
+        where: { environmentId },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take,
+        select: { clusterId: true },
+      })
+    )
+  );
+  const agentPageComposition = (rows: Array<{ clusterId: string | null }>) => ({
+    clustered: rows.filter((row) => row.clusterId !== null).length,
+    unclustered: rows.filter((row) => row.clusterId === null).length,
+  });
+  const smallAgentPageComposition = agentPageComposition(smallAgentPage);
+  const denseAgentPageComposition = agentPageComposition(denseAgentPage);
+  for (const [name, composition] of [
+    ["small", smallAgentPageComposition],
+    ["dense", denseAgentPageComposition],
+  ] as const) {
+    if (composition.clustered < 1 || composition.unclustered < 1) {
+      throw new Error(`WIN-235 ${name} Agent page must contain clustered and unclustered bindings`);
+    }
+  }
   await database.entity.create({
     data: {
       id: entityId,
@@ -387,7 +411,8 @@ async function seedScope(
         index < DENSE_MEMORIES_PER_SCOPE
           ? 0
           : 1 + ((index - DENSE_MEMORIES_PER_SCOPE) % (agentIds.length - 1));
-      const clusterVisible = extractedFromFixtureThread || (index % 2 === 0 && agentIndex < 10);
+      const clusterVisible =
+        extractedFromFixtureThread || (index % 2 === 0 && agentIndex % 2 === 0);
       return {
         id,
         environmentId,
@@ -568,6 +593,8 @@ async function seedScope(
     profileMemoryId: memoryIds[0],
     denseMemoryCount,
     memoryAgentCount: memoryCountsByAgent.length,
+    smallAgentPageComposition,
+    denseAgentPageComposition,
     graphEntityIds: graphIds,
   };
 }

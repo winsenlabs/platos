@@ -40,15 +40,19 @@ export function exactRunIdentity({
   repositoryRoot = ROOT,
   execute = execFileSync,
 } = {}) {
-  const candidateSha = requiredEnvironment(env, "GITHUB_SHA");
-  assert.match(candidateSha, /^[a-f0-9]{40}$/, "GITHUB_SHA must be an exact lowercase commit SHA");
+  const candidateSha = requiredEnvironment(env, "PLATOS_CANDIDATE_SHA");
+  assert.match(
+    candidateSha,
+    /^[a-f0-9]{40}$/,
+    "PLATOS_CANDIDATE_SHA must be an exact lowercase commit SHA"
+  );
   const runId = requiredEnvironment(env, "GITHUB_RUN_ID");
   assert.match(runId, /^[A-Za-z0-9_.:-]{1,128}$/, "GITHUB_RUN_ID must be a stable run ID");
   const head = execute("git", ["rev-parse", "HEAD"], {
     cwd: repositoryRoot,
     encoding: "utf8",
   }).trim();
-  assert.equal(candidateSha, head, "GITHUB_SHA does not match exact HEAD");
+  assert.equal(candidateSha, head, "PLATOS_CANDIDATE_SHA does not match exact HEAD");
   return { candidateSha, runId };
 }
 

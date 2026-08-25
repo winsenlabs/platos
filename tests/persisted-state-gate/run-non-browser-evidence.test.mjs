@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -17,14 +18,16 @@ const contract = JSON.parse(
     "utf8"
   )
 );
-const candidateSha = "a".repeat(40);
+const candidateSha = execFileSync("git", ["rev-parse", "HEAD"], {
+  cwd: repositoryRoot,
+  encoding: "utf8",
+}).trim();
 const runId = "run-123";
 const generatedAt = "2026-08-25T06:00:00.000Z";
 
 function environment(outputPath) {
   return {
     DATABASE_URL: "postgresql://required:required@database:5432/required",
-    GITHUB_SHA: candidateSha,
     GITHUB_RUN_ID: runId,
     PLATOS_CANDIDATE_SHA: candidateSha,
     PLATOS_EVIDENCE_RUN_ID: runId,
@@ -134,24 +137,23 @@ test("runner leaves no stale evidence when the suite command fails", async () =>
 });
 
 test("run identity rejects missing, malformed, and mismatched candidate metadata", () => {
-  assert.throws(() => runIdentity({}), /GITHUB_SHA is required/);
+  assert.throws(() => runIdentity({}), /PLATOS_CANDIDATE_SHA is required/);
   assert.throws(
-    () => runIdentity({ GITHUB_SHA: "short", GITHUB_RUN_ID: runId }),
+    () => runIdentity({ PLATOS_CANDIDATE_SHA: "short", GITHUB_RUN_ID: runId }),
     /exact lowercase commit SHA/
   );
   assert.throws(
     () =>
       runIdentity({
-        GITHUB_SHA: candidateSha,
+        PLATOS_CANDIDATE_SHA: candidateSha === "a".repeat(40) ? "b".repeat(40) : "a".repeat(40),
         GITHUB_RUN_ID: runId,
-        PLATOS_CANDIDATE_SHA: "b".repeat(40),
       }),
-    /must exactly match GITHUB_SHA/
+    /does not match exact HEAD/
   );
   assert.throws(
     () =>
       runIdentity({
-        GITHUB_SHA: candidateSha,
+        PLATOS_CANDIDATE_SHA: candidateSha,
         GITHUB_RUN_ID: runId,
         PLATOS_EVIDENCE_RUN_ID: "other-run",
       }),
