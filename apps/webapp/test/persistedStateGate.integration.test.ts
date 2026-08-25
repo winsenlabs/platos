@@ -837,7 +837,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
       );
       const payload = await responsePayload(response);
       expect(response.status).toBe(400);
-      expect(payload.error.code).toBe("AGENT_API_ERROR");
+      expect(payload.error.code).toBe("MEMORY_END_USER_CONTEXT_REQUIRED");
       expect(
         await database.memory.count({ where: { content: "cross-scope EndUser must not persist" } })
       ).toBe(0);
