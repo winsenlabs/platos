@@ -16,6 +16,7 @@ import {
   resolveAgentBinding,
   resolveEndUser,
   resolveReadAgentIds,
+  resolveReadAgentBindings,
   resolveWriteBinding,
 } from "./memory-scope";
 
@@ -152,28 +153,17 @@ export class KnowledgeGraphService {
     requestedAgentIds?: string[],
     client: ControlDatabaseClient = this.prisma,
   ): Promise<GraphReadWhere> {
-    const agentIds = await resolveReadAgentIds(
+    const bindings = await resolveReadAgentBindings(
       client,
       scope,
       requestedAgentId,
       requestedAgentIds,
     );
-    const bindings = await client.agentBinding.findMany({
-      where: {
-        ...environmentScopeWhere(scope),
-        agentId: { in: agentIds },
-        agent: { projectId: scope.projectId },
-      },
-      select: { agentId: true, clusterId: true },
-    });
-    if (bindings.length !== agentIds.length) {
-      throw new Error("Memory Agent scope not found or access denied");
-    }
     const clusterId = bindings[0]?.clusterId;
     if (clusterId && bindings.every((binding) => binding.clusterId === clusterId)) {
       return { clusterId };
     }
-    return { agentId: { in: agentIds } };
+    return { agentId: { in: bindings.map(({ agentId }) => agentId) } };
   }
 
   async getEntities(
