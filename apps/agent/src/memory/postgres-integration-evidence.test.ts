@@ -60,7 +60,10 @@ describe("PostgreSQL endpoint evidence", () => {
     const fallback = query(
       'SELECT * FROM "Memory" ORDER BY ("embedding" <=> $1::vector) + 0 /* exact fallback */'
     );
-    expect(requireCapturedRelationQuery([indexed, fallback], "Memory")).toBe(indexed);
+    const legacyFallback = query(
+      'SELECT * FROM "Memory" ORDER BY ("embedding" <=> $1::vector) + 0 /* bounded legacy exact page */'
+    );
+    expect(requireCapturedRelationQuery([indexed, fallback, legacyFallback], "Memory")).toBe(indexed);
   });
 });
 

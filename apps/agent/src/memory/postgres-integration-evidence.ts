@@ -91,7 +91,7 @@ export function requireCapturedRelationQuery(
       /^\s*SELECT\b/i.test(query) &&
       relationPattern.test(query) &&
       !/\bCOUNT\s*\(\s*\*\s*\)/i.test(query) &&
-      !/\/\*\s*exact fallback\s*\*\//i.test(query)
+      !/\/\*\s*(?:exact fallback|bounded legacy exact page)\s*\*\//i.test(query)
   );
   if (matches.length !== 1) {
     throw new Error(
