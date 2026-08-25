@@ -399,7 +399,7 @@ test("direct authenticated credential route evidence cannot regress to static cl
     );
     assert.equal(row.concurrency.status, "required-not-verified", capabilityId);
     assert.match(row.concurrency.references.join(" "), /PostgreSQL integration/, capabilityId);
-    assert.match(row.concurrency.references.join(" "), /does not acquire rotation's Environment row lock/, capabilityId);
+    assert.match(row.concurrency.references.join(" "), /fail-closed non-browser runner/, capabilityId);
   }
   assert.equal(capability(matrix, "access-key-rotation-correlation").concurrency.status, "verified");
 });

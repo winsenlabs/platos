@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
@@ -32,6 +32,16 @@ const m4UpgradeMigration = readFileSync(
   resolve(prismaRoot, "migrations/20260824233000_m4_forward_upgrade_contract/migration.sql"),
   "utf8"
 );
+const accessKeyUpgradeMigrationName = "20260825070000_access_key_revocation_fence";
+const accessKeyUpgradeMigration = readFileSync(
+  resolve(prismaRoot, `migrations/${accessKeyUpgradeMigrationName}/migration.sql`),
+  "utf8"
+);
+const accessKeyRuntime = readFileSync(resolve(packageRoot, "src/access-key.ts"), "utf8");
+const imageWorkflow = readFileSync(
+  resolve(packageRoot, "../../.github/workflows/build-images.yml"),
+  "utf8"
+);
 
 const sha256 = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
 
@@ -52,6 +62,61 @@ describe("origin/main to integrated tenancy upgrade contract", () => {
     expect(sha256(memoryMigration)).toBe(
       "297ec076b99701e557f363affb4e5318c8b6949590df81e50480360d459dde79"
     );
+  });
+
+  test("adds the AccessKey revocation fence only through the ordered migration set", () => {
+    expect(createTableBlock(originMainInitial, "Environment")).not.toContain(
+      '"accessKeyRevocationVersion"'
+    );
+    expect(createTableBlock(integratedInitial, "Environment")).not.toContain(
+      '"accessKeyRevocationVersion"'
+    );
+
+    const addColumn = accessKeyUpgradeMigration.indexOf(
+      'ADD COLUMN IF NOT EXISTS "accessKeyRevocationVersion" INTEGER'
+    );
+    const backfill = accessKeyUpgradeMigration.indexOf('SET "accessKeyRevocationVersion" = 0');
+    const setDefault = accessKeyUpgradeMigration.indexOf(
+      'ALTER COLUMN "accessKeyRevocationVersion" SET DEFAULT 0'
+    );
+    const setNotNull = accessKeyUpgradeMigration.indexOf(
+      'ALTER COLUMN "accessKeyRevocationVersion" SET NOT NULL'
+    );
+    expect(addColumn).toBeGreaterThanOrEqual(0);
+    expect(backfill).toBeGreaterThan(addColumn);
+    expect(setDefault).toBeGreaterThan(backfill);
+    expect(setNotNull).toBeGreaterThan(setDefault);
+    expect(accessKeyUpgradeMigration).toContain('WHERE "accessKeyRevocationVersion" IS NULL');
+
+    const orderedMigrations = readdirSync(resolve(prismaRoot, "migrations"), {
+      withFileTypes: true,
+    })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+    expect(orderedMigrations.at(-1)).toBe(accessKeyUpgradeMigrationName);
+    expect(accessKeyRuntime).toContain("accessKeyRevocationVersion");
+    const persistedStateJob = imageWorkflow.indexOf("  persisted-state:");
+    const rehearsalStep = imageWorkflow.indexOf(
+      "- name: Rehearse the ordered tenancy upgrade before evidence"
+    );
+    const evidenceStep = imageWorkflow.indexOf(
+      "- name: Prove performance and evidence verifiers fail on mutation"
+    );
+    const publicationJob = imageWorkflow.indexOf("  publish-images:");
+    expect(persistedStateJob).toBeGreaterThanOrEqual(0);
+    expect(rehearsalStep).toBeGreaterThan(persistedStateJob);
+    expect(imageWorkflow.slice(rehearsalStep, evidenceStep)).toContain(
+      "CI=true pnpm --filter @platos/tenancy-database exec vitest run"
+    );
+    expect(imageWorkflow.slice(rehearsalStep, evidenceStep)).toContain(
+      "src/upgrade-contract.test.ts"
+    );
+    expect(imageWorkflow.slice(rehearsalStep, evidenceStep)).toContain(
+      "src/upgrade-rehearsal.integration.test.ts"
+    );
+    expect(evidenceStep).toBeGreaterThan(rehearsalStep);
+    expect(publicationJob).toBeGreaterThan(evidenceStep);
   });
 
   test("covers every physical initial-migration addition absent from origin/main", () => {

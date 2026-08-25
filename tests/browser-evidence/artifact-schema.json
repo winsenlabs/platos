@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platos.dev/schemas/win234-authenticated-browser-evidence.schema.json",
+  "title": "WIN-234 authenticated browser evidence manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "gate",
+    "status",
+    "commitSha",
+    "candidateImages",
+    "fixture",
+    "matrix",
+    "coverage",
+    "cells",
+    "artifactManifestSha256"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "gate": { "const": "win234-authenticated-browser-evidence" },
+    "status": { "const": "passed" },
+    "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "candidateImages": {
+      "type": "object",
+      "required": ["commitSha", "agent", "webapp", "migrations"],
+      "properties": {
+        "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "agent": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" },
+        "webapp": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" },
+        "migrations": { "type": "string", "pattern": "^ghcr\\.io/.+@sha256:[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "fixture": {
+      "type": "object",
+      "required": ["fixture", "sha256", "counts"],
+      "properties": {
+        "fixture": { "const": "win235-canonical-dense-v1" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "counts": { "type": "object" }
+      }
+    },
+    "matrix": {
+      "type": "object",
+      "required": ["path", "sha256", "capabilityCount"],
+      "properties": {
+        "path": { "const": "docs/audits/win-234-route-capability-parity.json" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "capabilityCount": { "const": 107 }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": [
+        "capabilities",
+        "visualModes",
+        "cells",
+        "mutationCapabilities",
+        "paginationCapabilities"
+      ],
+      "properties": {
+        "capabilities": { "const": 107 },
+        "visualModes": { "const": 4 },
+        "cells": { "const": 428 },
+        "mutationCapabilities": { "const": 19 },
+        "paginationCapabilities": { "const": 6 }
+      }
+    },
+    "cells": {
+      "type": "array",
+      "minItems": 428,
+      "maxItems": 428,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capabilityId", "visualMode", "cell", "screenshot", "trace"],
+        "properties": {
+          "capabilityId": { "type": "string" },
+          "visualMode": {
+            "enum": ["desktop-light", "desktop-dark", "mobile-light", "mobile-dark"]
+          },
+          "cell": { "$ref": "#/$defs/artifactFile" },
+          "screenshot": { "$ref": "#/$defs/artifactFile" },
+          "trace": { "$ref": "#/$defs/artifactFile" }
+        }
+      }
+    },
+    "artifactManifestSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "$defs": {
+    "artifactFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "size": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}

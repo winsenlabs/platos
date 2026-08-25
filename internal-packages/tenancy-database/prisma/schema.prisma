@@ -392,6 +392,7 @@ model Environment {
   archivedAt DateTime?
   memoryFeedbackBackfillCursor      String?   @db.Uuid
   memoryFeedbackBackfillCompletedAt DateTime?
+  accessKeyRevocationVersion        Int       @default(0)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 

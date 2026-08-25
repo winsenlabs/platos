@@ -9,6 +9,10 @@ import {
   credentialRequestResult,
 } from "../app/services/platosAgent.server";
 import { commitOperatorSession, operatorAuth } from "../app/services/auth.server";
+import {
+  PERFORMANCE_RECEIPT_FILE,
+  verifyPerformanceVerificationReceipt,
+} from "../../../tests/persisted-state-gate/performance-verification-receipt.mjs";
 
 type ManifestScope = {
   key: "alpha" | "beta";
@@ -199,6 +203,19 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
 
   afterAll(async () => {
     await mkdir(artifactDirectory, { recursive: true });
+    const expectedCommit = process.env.GITHUB_SHA;
+    if (!expectedCommit) throw new Error("GITHUB_SHA is required by the persisted-state gate");
+    const [performanceArtifactRaw, performanceReceipt] = await Promise.all([
+      readFile(path.join(artifactDirectory, "performance-results.json"), "utf8"),
+      readFile(path.join(artifactDirectory, PERFORMANCE_RECEIPT_FILE), "utf8").then((raw) =>
+        JSON.parse(raw)
+      ),
+    ]);
+    verifyPerformanceVerificationReceipt(
+      performanceReceipt,
+      performanceArtifactRaw,
+      expectedCommit
+    );
     const passedIds = new Set(
       assertions
         .filter((assertion) => assertion.status === "passed")
@@ -225,8 +242,10 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
           status,
           assertions,
           measurements: {
-            status: "unmeasured",
-            budgetsFile: "tests/persisted-state-gate/budgets.unmeasured.json",
+            status: "enforced",
+            budgetsFile: "tests/persisted-state-gate/budgets.v1.json",
+            performanceArtifact: "performance-results.json",
+            performanceReceipt: PERFORMANCE_RECEIPT_FILE,
           },
         },
         null,
@@ -457,7 +476,9 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
       expect(updateResponse.status, JSON.stringify(updatePayload)).toBe(200);
       expect(updatePayload.ok).toBe(true);
 
-      const persisted = await database.memory.findUnique({ where: { id: primary.profileMemoryId } });
+      const persisted = await database.memory.findUnique({
+        where: { id: primary.profileMemoryId },
+      });
       expect(persisted).toMatchObject({
         id: primary.profileMemoryId,
         kind: "profile",
@@ -472,7 +493,9 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
         agentId: primary.agentIds[0],
       });
       expect(readBack.status).toBe(200);
-      expect(readBack.payload.memories.find((memory) => memory.id === primary.profileMemoryId)).toMatchObject({
+      expect(
+        readBack.payload.memories.find((memory) => memory.id === primary.profileMemoryId)
+      ).toMatchObject({
         id: primary.profileMemoryId,
         content: editedContent,
         metadata: { profileKey: editedProfileKey },
@@ -520,8 +543,20 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
           },
         ],
         entities: [
-          { id: "win235-import-entity-from", entityKey: "win235:import:from", entityType: "person", label: "From", aliases: [] },
-          { id: "win235-import-entity-to", entityKey: "win235:import:to", entityType: "project", label: "To", aliases: [] },
+          {
+            id: "win235-import-entity-from",
+            entityKey: "win235:import:from",
+            entityType: "person",
+            label: "From",
+            aliases: [],
+          },
+          {
+            id: "win235-import-entity-to",
+            entityKey: "win235:import:to",
+            entityType: "project",
+            label: "To",
+            aliases: [],
+          },
         ],
         relationships: [
           {

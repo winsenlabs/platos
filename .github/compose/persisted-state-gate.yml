@@ -146,6 +146,8 @@ services:
       PLATOS_MESSAGE_ENCRYPTION_KEY_V: "1"
       SESSION_SECRET: win235-session-secret-with-at-least-thirty-two-characters
       PLATOS_INTERNAL_AUTH_TOKEN: win235-internal-auth-token
+      PLATOS_PERFORMANCE_EVIDENCE_ENABLED: "1"
+      PLATOS_PERFORMANCE_EVIDENCE_TOKEN: win235-performance-evidence-token
       PLATOS_TEST_MODE: "false"
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: persisted-state-gate

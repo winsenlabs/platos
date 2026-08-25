@@ -6,7 +6,9 @@ import {
   PlatosSecretStore,
   authorizeEnvironmentOperator,
   authorizeEnvironmentRuntime,
+  revokeAccessKeys,
   rotateAccessKey,
+  setAccessKeyAllowedOrigins,
   type EnvironmentAuthorizationAccess,
   type EnvironmentOperatorAuthorization,
   type OperatorAuthorization,
@@ -1078,13 +1080,9 @@ export class AuthService {
 
   async setAllowedOrigins(scope: AccessKeyOperatorScope, origins: string[]): Promise<void> {
     const authorization = await this.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
-    await this.prisma.accessKey.updateMany({
-      where: {
-        environmentId: authorization.environmentId,
-        revokedAt: null,
-        validUntil: null,
-      },
-      data: { allowedOrigins: origins },
+    await setAccessKeyAllowedOrigins(this.prisma, {
+      environmentId: authorization.environmentId,
+      origins,
     });
   }
 
@@ -1158,9 +1156,8 @@ export class AuthService {
 
   async deleteAccessKey(scope: AccessKeyOperatorScope): Promise<void> {
     const authorization = await this.authorizeEnvironmentOperatorScope(scope, "secret:mutate");
-    await this.prisma.accessKey.updateMany({
-      where: { environmentId: authorization.environmentId, revokedAt: null },
-      data: { revokedAt: new Date() },
+    await revokeAccessKeys(this.prisma, {
+      environmentId: authorization.environmentId,
     });
   }
 

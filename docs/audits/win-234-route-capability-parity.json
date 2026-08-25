@@ -9101,7 +9101,7 @@
       "concurrency": {
         "status": "required-not-verified",
         "references": [
-          "Required: PostgreSQL integration must race setAllowedOrigins against rotateAccessKey. setAllowedOrigins does not acquire rotation's Environment row lock, so local mocks cannot prove restrictions survive a concurrent replacement."
+          "Required: the fail-closed non-browser runner must produce candidate-bound PostgreSQL integration evidence for both serialized Environment-lock interleavings and immediate active-key origin read-back before replay."
         ]
       },
       "recovery": {
@@ -9782,7 +9782,7 @@
       "concurrency": {
         "status": "required-not-verified",
         "references": [
-          "Required: PostgreSQL integration must race deleteAccessKey against rotateAccessKey. deleteAccessKey does not acquire rotation's Environment row lock, so local mocks cannot prove every concurrent replacement is revoked."
+          "Required: the fail-closed non-browser runner must produce candidate-bound PostgreSQL integration evidence that the revocation generation fence dominates both rotation-lock interleavings with zero active survivors before replay."
         ]
       },
       "recovery": {

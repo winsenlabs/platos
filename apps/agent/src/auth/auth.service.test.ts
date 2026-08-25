@@ -478,12 +478,17 @@ describe("AuthService — HMAC sign/verify for entity webhooks", () => {
 
 describe("AuthService — clean-tenancy access keys", () => {
   function accessKeyPrisma() {
+    let accessKeyRevocationVersion = 0;
     const prisma: any = {
       environment: {
-        findUnique: async () => ({
-          id: "env_1",
-          project: { id: "proj_1", organizationId: "org_1" },
-        }),
+        findUnique: async (args: any) =>
+          args?.select?.accessKeyRevocationVersion
+            ? { accessKeyRevocationVersion }
+            : {
+                id: "env_1",
+                project: { id: "proj_1", organizationId: "org_1" },
+              },
+        update: async () => ({ accessKeyRevocationVersion: ++accessKeyRevocationVersion }),
       },
       accessKey: {
         create: async () => ({}),
@@ -491,6 +496,7 @@ describe("AuthService — clean-tenancy access keys", () => {
         updateMany: async () => ({ count: 1 }),
       },
     };
+    prisma.$queryRaw = async () => [{ id: "env_1", accessKeyRevocationVersion }];
     prisma.$transaction = async (callback: (tx: any) => unknown) => callback(prisma);
     return prisma;
   }
@@ -502,7 +508,6 @@ describe("AuthService — clean-tenancy access keys", () => {
       created = args.data;
       return { ...args.data, id: "key-1", allowedOrigins: [], validUntil: null };
     };
-    prisma.$queryRaw = async () => [{ id: "env_1" }];
     const auth = new AuthService(prisma, {} as any);
     auth.authorizeEnvironmentOperatorScope = async () => ({ environmentId: "env_1" } as any);
 

@@ -3,6 +3,10 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  PERFORMANCE_RECEIPT_FILE,
+  verifyPerformanceVerificationReceipt,
+} from "./performance-verification-receipt.mjs";
 
 const artifactDirectory = path.resolve(process.argv[2] ?? "artifacts/win235");
 const fixture = JSON.parse(
@@ -14,10 +18,13 @@ const result = JSON.parse(
 const candidateImages = JSON.parse(
   await readFile(path.join(artifactDirectory, "candidate-images.json"), "utf8")
 );
-const budgets = JSON.parse(
-  await readFile("tests/persisted-state-gate/budgets.unmeasured.json", "utf8")
+const performanceArtifactRaw = await readFile(
+  path.join(artifactDirectory, "performance-results.json"),
+  "utf8"
 );
-
+const performanceReceipt = JSON.parse(
+  await readFile(path.join(artifactDirectory, PERFORMANCE_RECEIPT_FILE), "utf8")
+);
 const { sha256, ...fixtureBody } = fixture;
 const calculatedSha = createHash("sha256")
   .update(`${JSON.stringify(fixtureBody, null, 2)}\n`)
@@ -28,6 +35,11 @@ assert.equal(
   result.commitSha,
   candidateImages.commitSha,
   "gate result and candidate images use different commits"
+);
+verifyPerformanceVerificationReceipt(
+  performanceReceipt,
+  performanceArtifactRaw,
+  candidateImages.commitSha
 );
 assert.deepEqual(
   result.images,
@@ -46,6 +58,16 @@ for (const [name, image] of Object.entries(result.images)) {
   );
 }
 assert.equal(result.status, "passed", "persisted-state integration result is not green");
+assert.deepEqual(
+  result.measurements,
+  {
+    status: "enforced",
+    budgetsFile: "tests/persisted-state-gate/budgets.v1.json",
+    performanceArtifact: "performance-results.json",
+    performanceReceipt: PERFORMANCE_RECEIPT_FILE,
+  },
+  "persisted-state result is not bound to enforced performance evidence"
+);
 assert.equal(result.fixture.sha256, fixture.sha256, "gate result references a different fixture");
 assert.deepEqual(result.fixture.counts, fixture.counts, "gate result fixture counts drifted");
 assert.ok(result.assertions.length > 0, "gate result contains no integration assertions");
@@ -54,17 +76,6 @@ assert.equal(
   0,
   "gate result contains failed or unknown assertions"
 );
-assert.equal(
-  result.measurements.status,
-  "unmeasured",
-  "this slice must not claim uncollected measurements"
-);
-assert.equal(
-  budgets.measurementStatus,
-  "unmeasured",
-  "budget fixture must remain explicitly unmeasured"
-);
-
 const passedAssertions = new Map(
   result.assertions.filter((item) => item.status === "passed").map((item) => [item.id, item])
 );
@@ -106,17 +117,5 @@ assert.match(
   /^[a-f0-9-]{36}$/,
   "live Memory import has no persisted read-back identity"
 );
-
-for (const group of [budgets.performance, budgets.queries, budgets.bundles]) {
-  for (const budget of group) {
-    assert.equal(budget.baseline, null, `${budget.id} has an invented baseline`);
-    assert.equal(budget.threshold, null, `${budget.id} has an invented threshold`);
-    assert.equal(
-      budget.measurementArtifact,
-      null,
-      `${budget.id} has an invented measurement artifact`
-    );
-  }
-}
 
 process.stdout.write(`WIN-235 artifacts verified for fixture ${fixture.sha256}\n`);

@@ -27,6 +27,8 @@ import { DocsMcpModule } from "./mcp-docs/docs-mcp.module";
 import { OAuthModule } from "./oauth/oauth.module";
 import { FilesModule } from "./files/files.module";
 import { ChannelsModule } from "./channels/channels.module";
+import { PerformanceEvidenceMiddleware } from "./performance-evidence/performance-evidence.middleware";
+import { PerformanceEvidenceModule } from "./performance-evidence/performance-evidence.module";
 
 const imports = [
   // NestJS built-in task scheduler (powers @Cron in MemorySchedulerService etc.)
@@ -76,6 +78,7 @@ const imports = [
   // discord). Management REST lives in AgentRuntimeModule; this is the inbound
   // side that receives provider posts and routes them to a Platos turn.
   ChannelsModule,
+  PerformanceEvidenceModule,
 ];
 
 @Module({
@@ -98,6 +101,6 @@ export class AppModule implements NestModule {
    * non-public hosts so the cost is one Map lookup + one string compare.
    */
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(HostRouterMiddleware).forRoutes("*");
+    consumer.apply(PerformanceEvidenceMiddleware, HostRouterMiddleware).forRoutes("*");
   }
 }

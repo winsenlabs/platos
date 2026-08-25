@@ -53,11 +53,14 @@
     },
     "measurements": {
       "type": "object",
-      "required": ["status", "budgetsFile"],
+      "required": ["status", "budgetsFile", "performanceArtifact", "performanceReceipt"],
       "properties": {
         "status": { "enum": ["unmeasured", "measured", "enforced"] },
-        "budgetsFile": { "type": "string" }
-      }
+        "budgetsFile": { "const": "tests/persisted-state-gate/budgets.v1.json" },
+        "performanceArtifact": { "const": "performance-results.json" },
+        "performanceReceipt": { "const": "performance-verification-receipt.json" }
+      },
+      "additionalProperties": false
     }
   }
 }

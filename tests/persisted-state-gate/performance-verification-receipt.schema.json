@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://platos.dev/schemas/win235-performance-verification-receipt.schema.json",
+  "title": "WIN-235 measured performance verification receipt",
+  "type": "object",
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "gate",
+    "status",
+    "commitSha",
+    "performanceArtifact",
+    "budgetContract",
+    "fixtureSha256"
+  ],
+  "properties": {
+    "$schema": { "const": "./performance-verification-receipt.schema.json" },
+    "schemaVersion": { "const": 1 },
+    "gate": { "const": "win235-measured-performance-verification" },
+    "status": { "const": "passed" },
+    "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "performanceArtifact": {
+      "type": "object",
+      "required": ["file", "sha256"],
+      "properties": {
+        "file": { "const": "performance-results.json" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "budgetContract": {
+      "type": "object",
+      "required": ["file", "schemaVersion", "sha256"],
+      "properties": {
+        "file": { "const": "tests/persisted-state-gate/budgets.v1.json" },
+        "schemaVersion": { "const": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "fixtureSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "additionalProperties": false
+}

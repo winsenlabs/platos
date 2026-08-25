@@ -13,6 +13,7 @@ const originMainInitial = readFileSync(
 );
 const initialMigrationName = "00000000000000_initial";
 const upgradeMigrationName = "20260824233000_m4_forward_upgrade_contract";
+const accessKeyUpgradeMigrationName = "20260825070000_access_key_revocation_fence";
 const originMainInitialSha256 = "5c43055e8b4d134676d7252ceba59bfe72d90b63c34be03e1807512b30ea19d3";
 
 const ids = {
@@ -82,6 +83,45 @@ describe.runIf(process.env.CI === "true")("origin/main forward-upgrade rehearsal
     );
 
     runPrisma(["migrate", "deploy"], databaseUrl);
+
+    await expect(
+      prisma.$queryRawUnsafe<Array<{ migration_name: string }>>(
+        'SELECT "migration_name" FROM "_prisma_migrations" WHERE "finished_at" IS NOT NULL AND "rolled_back_at" IS NULL ORDER BY "migration_name"'
+      )
+    ).resolves.toEqual([
+      { migration_name: initialMigrationName },
+      { migration_name: "20260824010000_win144_observability_retry_vocabulary" },
+      { migration_name: "20260824111500_memory_profile_key_and_source_contract" },
+      { migration_name: upgradeMigrationName },
+      { migration_name: accessKeyUpgradeMigrationName },
+    ]);
+
+    const accessKeyFenceColumn = await prisma.$queryRawUnsafe<
+      Array<{ column_default: string | null; is_nullable: string }>
+    >(`
+      SELECT column_default, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'Environment'
+        AND column_name = 'accessKeyRevocationVersion'
+    `);
+    expect(accessKeyFenceColumn).toHaveLength(1);
+    expect(accessKeyFenceColumn[0]?.is_nullable).toBe("NO");
+    expect(accessKeyFenceColumn[0]?.column_default).toMatch(/^0(?:::integer)?$/);
+    await expect(
+      prisma.environment.findMany({
+        where: { id: { in: [ids.environment, ids.secondEnvironment] } },
+        orderBy: { id: "asc" },
+        select: { accessKeyRevocationVersion: true },
+      })
+    ).resolves.toEqual([{ accessKeyRevocationVersion: 0 }, { accessKeyRevocationVersion: 0 }]);
+    await expect(
+      prisma.environment.update({
+        where: { id: ids.environment },
+        data: { accessKeyRevocationVersion: { increment: 1 } },
+        select: { accessKeyRevocationVersion: true },
+      })
+    ).resolves.toEqual({ accessKeyRevocationVersion: 1 });
 
     await expect(
       prisma.messageAttachment.findUniqueOrThrow({ where: { id: ids.attachment } })
@@ -172,17 +212,6 @@ describe.runIf(process.env.CI === "true")("origin/main forward-upgrade rehearsal
         data: { turnId: null },
       })
     ).rejects.toThrow(/MessageAttachment turn binding is one-way and immutable/);
-
-    await expect(
-      prisma.$queryRawUnsafe<Array<{ migration_name: string }>>(
-        'SELECT "migration_name" FROM "_prisma_migrations" WHERE "finished_at" IS NOT NULL AND "rolled_back_at" IS NULL ORDER BY "migration_name"'
-      )
-    ).resolves.toEqual([
-      { migration_name: initialMigrationName },
-      { migration_name: "20260824010000_win144_observability_retry_vocabulary" },
-      { migration_name: "20260824111500_memory_profile_key_and_source_contract" },
-      { migration_name: upgradeMigrationName },
-    ]);
   }, 180_000);
 });
 
@@ -194,6 +223,7 @@ async function expectNoM4Mutation(prisma: PrismaClient): Promise<void> {
         attachmentAgentId: boolean;
         attachmentThreadId: boolean;
         policyEnvironmentId: boolean;
+        accessKeyRevocationVersion: boolean;
       }>
     >(`
       SELECT
@@ -209,7 +239,11 @@ async function expectNoM4Mutation(prisma: PrismaClient): Promise<void> {
         EXISTS (
           SELECT 1 FROM information_schema.columns
           WHERE table_schema = 'public' AND table_name = 'EntityToolPolicy' AND column_name = 'environmentId'
-        ) AS "policyEnvironmentId"
+        ) AS "policyEnvironmentId",
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'Environment' AND column_name = 'accessKeyRevocationVersion'
+        ) AS "accessKeyRevocationVersion"
     `)
   ).resolves.toEqual([
     {
@@ -217,6 +251,7 @@ async function expectNoM4Mutation(prisma: PrismaClient): Promise<void> {
       attachmentAgentId: false,
       attachmentThreadId: false,
       policyEnvironmentId: false,
+      accessKeyRevocationVersion: false,
     },
   ]);
 }

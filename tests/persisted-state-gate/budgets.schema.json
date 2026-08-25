@@ -1,73 +1,220 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://platos.dev/schemas/win235-budgets.schema.json",
-  "title": "WIN-235 release-gate budgets",
+  "$id": "https://platos.dev/schemas/win235-performance-budgets-v1.schema.json",
+  "title": "WIN-235 measured performance budget contract",
   "type": "object",
+  "additionalProperties": false,
   "required": [
+    "$schema",
     "schemaVersion",
-    "measurementStatus",
-    "performance",
-    "queries",
+    "contract",
+    "measurementPolicy",
+    "fixture",
+    "latency",
+    "browser",
     "bundles",
-    "browser"
+    "memory",
+    "queries"
   ],
   "properties": {
+    "$schema": { "const": "./budgets.schema.json" },
     "schemaVersion": { "const": 1 },
-    "measurementStatus": { "enum": ["unmeasured", "measured", "enforced"] },
-    "performance": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/budget" }
+    "contract": { "const": "win235-measured-performance" },
+    "measurementPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "serial",
+        "latencyWarmupSamples",
+        "latencyMeasuredSamples",
+        "browserWarmupSamples",
+        "browserMeasuredSamples",
+        "memoryMeasuredSamples"
+      ],
+      "properties": {
+        "serial": { "const": true },
+        "latencyWarmupSamples": { "type": "integer", "minimum": 1 },
+        "latencyMeasuredSamples": { "type": "integer", "minimum": 10 },
+        "browserWarmupSamples": { "type": "integer", "minimum": 1 },
+        "browserMeasuredSamples": { "type": "integer", "minimum": 5 },
+        "memoryMeasuredSamples": { "type": "integer", "minimum": 5 }
+      }
     },
-    "queries": {
-      "type": "array",
-      "items": {
-        "allOf": [
-          { "$ref": "#/$defs/budget" },
-          {
-            "type": "object",
-            "required": ["queryCount", "fullDatasetHydration"],
-            "properties": {
-              "queryCount": { "type": ["integer", "null"], "minimum": 0 },
-              "fullDatasetHydration": { "type": ["boolean", "null"] }
-            }
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "requiredCounts", "turnsPerThread"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "requiredCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["agents", "threads", "turns", "tools", "memories", "graphEntities"],
+          "properties": {
+            "agents": { "const": 40 },
+            "threads": { "const": 2 },
+            "turns": { "const": 120 },
+            "tools": { "const": 200 },
+            "memories": { "const": 384 },
+            "graphEntities": { "const": 141 }
           }
-        ]
+        },
+        "turnsPerThread": { "const": 60 }
+      }
+    },
+    "latency": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/latencyBudget" }
+    },
+    "browser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["memories", "agentsInteraction"],
+      "properties": {
+        "memories": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "minimumRenderedRows", "metrics", "rationale"],
+          "properties": {
+            "id": { "const": "memories.dense-route" },
+            "minimumRenderedRows": { "type": "integer", "minimum": 20 },
+            "metrics": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["fcpMs", "lcpMs", "cls", "inpMs", "interactionLatencyMs"],
+              "properties": {
+                "fcpMs": { "$ref": "#/$defs/summaryCeiling" },
+                "lcpMs": { "$ref": "#/$defs/summaryCeiling" },
+                "cls": { "$ref": "#/$defs/summaryCeiling" },
+                "inpMs": { "$ref": "#/$defs/summaryCeiling" },
+                "interactionLatencyMs": { "$ref": "#/$defs/summaryCeiling" }
+              }
+            },
+            "rationale": { "type": "string", "minLength": 20 }
+          }
+        },
+        "agentsInteraction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "metrics", "rationale"],
+          "properties": {
+            "id": { "const": "agents.detail-interaction" },
+            "metrics": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["inpMs", "interactionLatencyMs"],
+              "properties": {
+                "inpMs": { "$ref": "#/$defs/summaryCeiling" },
+                "interactionLatencyMs": { "$ref": "#/$defs/summaryCeiling" }
+              }
+            },
+            "rationale": { "type": "string", "minLength": 20 }
+          }
+        }
       }
     },
     "bundles": {
       "type": "array",
-      "items": { "$ref": "#/$defs/budget" }
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/p95Budget" }
     },
-    "browser": {
-      "type": "object",
-      "required": [
-        "viewports",
-        "themes",
-        "keyboard",
-        "overflow",
-        "deepLinkRefresh",
-        "failureStates"
-      ],
-      "properties": {
-        "viewports": { "type": "array", "contains": { "const": "desktop" }, "minItems": 2 },
-        "themes": { "type": "array", "contains": { "const": "light" }, "minItems": 2 },
-        "keyboard": { "type": ["boolean", "null"] },
-        "overflow": { "type": ["boolean", "null"] },
-        "deepLinkRefresh": { "type": ["boolean", "null"] },
-        "failureStates": { "type": "array", "minItems": 4 }
+    "memory": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "unit", "containerP95Maximum", "processRssP95Maximum", "rationale"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "unit": { "const": "bytes" },
+          "containerP95Maximum": { "type": "integer", "minimum": 1 },
+          "processRssP95Maximum": { "type": "integer", "minimum": 1 },
+          "rationale": { "type": "string", "minLength": 20 }
+        }
+      }
+    },
+    "queries": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "requestPath",
+          "fixtureCountKey",
+          "smallPageSize",
+          "densePageSize",
+          "maximumQueryCount",
+          "maximumNPlusOneGrowth",
+          "maximumPlanActualRows",
+          "maximumRowsRemovedByFilter",
+          "maximumActualLoops",
+          "maximumSharedReadBlocks",
+          "maximumPlanningTimeMs",
+          "maximumExecutionTimeMs",
+          "forbiddenScanNodeTypes",
+          "rationale"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "requestPath": { "type": "string", "pattern": "^/api/v1/" },
+          "fixtureCountKey": { "enum": ["agents", "memories", "graphEntities"] },
+          "smallPageSize": { "type": "integer", "minimum": 1 },
+          "densePageSize": { "type": "integer", "minimum": 2 },
+          "maximumQueryCount": { "type": "integer", "minimum": 1 },
+          "maximumNPlusOneGrowth": { "const": 0 },
+          "maximumPlanActualRows": { "type": "integer", "minimum": 1 },
+          "maximumRowsRemovedByFilter": { "type": "integer", "minimum": 0 },
+          "maximumActualLoops": { "type": "integer", "minimum": 1 },
+          "maximumSharedReadBlocks": { "type": "integer", "minimum": 0 },
+          "maximumPlanningTimeMs": { "type": "number", "exclusiveMinimum": 0 },
+          "maximumExecutionTimeMs": { "type": "number", "exclusiveMinimum": 0 },
+          "forbiddenScanNodeTypes": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "contains": { "const": "Seq Scan" },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "rationale": { "type": "string", "minLength": 20 }
+        }
       }
     }
   },
   "$defs": {
-    "budget": {
+    "summaryCeiling": {
       "type": "object",
-      "required": ["id", "unit", "baseline", "threshold", "measurementArtifact"],
+      "additionalProperties": false,
+      "required": ["p50Maximum", "p95Maximum"],
+      "properties": {
+        "p50Maximum": { "type": "number", "minimum": 0 },
+        "p95Maximum": { "type": "number", "minimum": 0 }
+      }
+    },
+    "latencyBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "unit", "p50Maximum", "p95Maximum", "rationale"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "unit": { "type": "string", "minLength": 1 },
-        "baseline": { "type": ["number", "null"] },
-        "threshold": { "type": ["number", "null"] },
-        "measurementArtifact": { "type": ["string", "null"] }
+        "unit": { "const": "ms" },
+        "p50Maximum": { "type": "number", "exclusiveMinimum": 0 },
+        "p95Maximum": { "type": "number", "exclusiveMinimum": 0 },
+        "rationale": { "type": "string", "minLength": 20 }
+      }
+    },
+    "p95Budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "unit", "p95Maximum", "rationale"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "unit": { "const": "bytes" },
+        "p95Maximum": { "type": "integer", "minimum": 1 },
+        "rationale": { "type": "string", "minLength": 20 }
       }
     }
   }

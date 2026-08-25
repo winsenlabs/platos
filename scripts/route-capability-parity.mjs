@@ -652,7 +652,14 @@ export function validateMatrix(matrix, options = {}) {
       }
     }
     for (const [field, status] of Object.entries(expected.statuses ?? {})) {
-      if (nestedValue(capability, field) !== status) errors.push(`required capability ${capabilityId} ${field} must be ${status}`);
+      const actualStatus = nestedValue(capability, field);
+      const isRuntimeEvidencePromotion =
+        options.allowRuntimeEvidencePromotion === true &&
+        status === "required-not-verified" &&
+        actualStatus === "verified";
+      if (actualStatus !== status && !isRuntimeEvidencePromotion) {
+        errors.push(`required capability ${capabilityId} ${field} must be ${status}`);
+      }
     }
   }
 
@@ -872,8 +879,8 @@ export function completionBlockers(matrix) {
   return blockers;
 }
 
-export function runCompletionGate(matrix = readMatrix()) {
-  const inventoryErrors = validateMatrix(matrix);
+export function runCompletionGate(matrix = readMatrix(), options = {}) {
+  const inventoryErrors = validateMatrix(matrix, options);
   if (inventoryErrors.length) throw new Error(`Route parity inventory/schema audit failed before completion evaluation:\n- ${inventoryErrors.join("\n- ")}`);
   const blockers = completionBlockers(matrix);
   if (!blockers.length) return;

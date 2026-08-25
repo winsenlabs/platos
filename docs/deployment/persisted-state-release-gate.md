@@ -4,12 +4,11 @@ WIN-235 treats a release as ready only when authenticated product behavior and
 persisted read-back agree. A rendered page, a healthy container, or an HTTP 200
 from `/login` is not release evidence by itself.
 
-This first mergeable slice adds the required `persisted-state-completion` PR
-check. It covers the clean persistence contract, dense deterministic fixtures,
-real Remix service adapters, live Agent controllers, cross-scope negatives, and
-mutation read-back. The broader authenticated Playwright and measured
-performance gates remain explicitly `unmeasured`; do not use this slice to mark
-the full WIN-235 acceptance criteria complete.
+The `persisted-state-completion` PR check covers the clean persistence contract,
+dense deterministic fixtures, real Remix service adapters, live Agent
+controllers, cross-scope negatives, mutation read-back, measured performance,
+and authenticated browser evidence against the same immutable candidate images.
+The check remains fail-closed until every evidence family passes.
 
 ## Required PR check
 
@@ -40,8 +39,9 @@ Agent logs, and Postgres/Redis/ClickHouse/MinIO read-back evidence for 14 days.
 5. Record the currently deployed Agent and webapp digests as the rollback pair
    before changing either service. Keep those images available in GHCR.
 6. Do not promote a commit whose fixture, browser, performance, or deployment
-   evidence is missing or red. `budgets.unmeasured.json` is an explicit blocker
-   for claiming the complete WIN-235 gate, not a green measurement.
+   evidence is missing or red. `budgets.v1.json` is the enforced versioned
+   regression contract; changing application behavior and its budget in one PR
+   requires explicit review of the budget change.
 
 Example tested-candidate inspection from an approved runner:
 

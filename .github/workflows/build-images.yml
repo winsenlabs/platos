@@ -114,7 +114,7 @@ jobs:
     name: persisted-state-completion
     needs: build-candidates
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 150
     permissions:
       contents: read
     env:
@@ -134,12 +134,15 @@ jobs:
       PLATOS_AGENT_API_URL: http://127.0.0.1:3100
       WIN235_WEBAPP_URL: http://127.0.0.1:3030
       PLATOS_INTERNAL_AUTH_TOKEN: win235-internal-auth-token
+      PLATOS_PERFORMANCE_EVIDENCE_ENABLED: "1"
+      PLATOS_PERFORMANCE_EVIDENCE_TOKEN: win235-performance-evidence-token
       ENCRYPTION_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
       SESSION_SECRET: win235-session-secret-with-at-least-thirty-two-characters
       MAGIC_LINK_SECRET: win235-magic-link-secret-with-at-least-thirty-two-characters
       LOGIN_ORIGIN: http://127.0.0.1:3030
       NODE_ENV: test
       WIN235_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/win235
+      WIN234_BROWSER_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/win234-browser
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -184,8 +187,18 @@ jobs:
       - name: Install lockfile-backed test dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Install the pinned Chromium evidence runtime
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Generate and build the canonical tenancy client for the external test runner
         run: pnpm --filter @platos/tenancy-database build
+
+      - name: Rehearse the ordered tenancy upgrade before evidence
+        run: |
+          CI=true pnpm --filter @platos/tenancy-database exec vitest run \
+            src/upgrade-contract.test.ts \
+            src/upgrade-rehearsal.integration.test.ts \
+            --reporter=verbose
 
       - name: Start digest-pinned clean stores
         shell: bash
@@ -259,12 +272,56 @@ jobs:
           fs.writeFileSync("artifacts/win235/candidate-images.json", `${JSON.stringify(images, null, 2)}\n`);
           NODE
 
+      - name: Prove performance and evidence verifiers fail on mutation
+        run: |
+          pnpm test:persisted-state:performance-contract
+          pnpm test:non-browser-completion:contract
+          pnpm test:browser-evidence:contract
+          pnpm test:route-parity:completion:evidence
+
+      - name: Measure the pristine dense fixture against the exact candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm test:persisted-state:performance \
+            2>&1 | tee artifacts/win235/performance.log
+          pnpm test:persisted-state:performance-artifacts
+
       - name: Exercise live Remix adapters, generated links, and Agent controllers
         shell: bash
         run: |
           set -euo pipefail
           pnpm test:persisted-state:integration \
             2>&1 | tee artifacts/win235/integration.log
+
+      - name: Prove all non-browser completion cells against PostgreSQL
+        shell: bash
+        env:
+          PLATOS_CANDIDATE_SHA: ${{ github.sha }}
+          PLATOS_EVIDENCE_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          pnpm test:non-browser-completion \
+            2>&1 | tee artifacts/win235/non-browser-evidence.log
+
+      - name: Exercise every authenticated browser capability and visual mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm test:browser-evidence \
+            2>&1 | tee artifacts/win235/browser-evidence.log
+          pnpm test:browser-evidence:artifacts -- "$WIN234_BROWSER_ARTIFACT_DIR"
+
+      - name: Require zero unresolved release-completion cells
+        shell: bash
+        env:
+          PLATOS_EVIDENCE_RUN_ID: ${{ github.run_id }}
+          PLATOS_NON_BROWSER_EVIDENCE_OUTPUT: ${{ github.workspace }}/artifacts/win235/non-browser-evidence.json
+          PLATOS_BROWSER_EVIDENCE_DIRECTORY: ${{ github.workspace }}/artifacts/win234-browser
+        run: |
+          set -euo pipefail
+          pnpm audit:route-parity:completion:evidence \
+            2>&1 | tee artifacts/win235/completion-audit.log
 
       - name: Verify persisted-state evidence and immutable image identity
         run: pnpm test:persisted-state:artifacts
@@ -293,7 +350,9 @@ jobs:
             > artifacts/win235/postgres-readback.log 2>&1
           cp tests/persisted-state-gate/artifact-schema.json artifacts/win235/
           cp tests/persisted-state-gate/budgets.schema.json artifacts/win235/
-          cp tests/persisted-state-gate/budgets.unmeasured.json artifacts/win235/
+          cp tests/persisted-state-gate/budgets.v1.json artifacts/win235/
+          cp tests/persisted-state-gate/performance-artifact.schema.json artifacts/win235/
+          cp tests/browser-evidence/artifact-schema.json artifacts/win234-browser/
 
       - name: Upload persisted-state evidence
         if: always()
@@ -301,6 +360,15 @@ jobs:
         with:
           name: win235-persisted-state-${{ github.run_id }}-${{ github.run_attempt }}
           path: artifacts/win235
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload authenticated browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: win234-browser-evidence-${{ github.run_id }}
+          path: artifacts/win234-browser
           if-no-files-found: warn
           retention-days: 14
 

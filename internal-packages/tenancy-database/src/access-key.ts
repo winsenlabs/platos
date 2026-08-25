@@ -25,6 +25,31 @@ export interface AccessKeyRotationResult {
   retiringKey: SafeAccessKey | null;
 }
 
+async function readRevocationVersion(database: PrismaClient, environmentId: string) {
+  const environment = await database.environment.findUnique({
+    where: { id: environmentId },
+    select: { accessKeyRevocationVersion: true },
+  });
+  if (!environment) throw new Error("access_key_store_unavailable");
+  return environment.accessKeyRevocationVersion;
+}
+
+async function lockEnvironment(
+  tx: Prisma.TransactionClient,
+  environmentId: string
+): Promise<{ id: string; accessKeyRevocationVersion: number }> {
+  const environment = await tx.$queryRaw<
+    Array<{ id: string; accessKeyRevocationVersion: number }>
+  >(Prisma.sql`
+    SELECT "id", "accessKeyRevocationVersion"
+    FROM "public"."Environment"
+    WHERE "id" = ${environmentId}::uuid
+    FOR UPDATE
+  `);
+  if (environment.length !== 1) throw new Error("access_key_store_unavailable");
+  return environment[0]!;
+}
+
 /**
  * Rotates the hash-only Environment access key under an Environment row lock.
  * The temporary expired state is transaction-local and permits the database's
@@ -49,14 +74,16 @@ export async function rotateAccessKey(
     throw new Error("invalid_access_key_material");
   }
 
+  // Snapshot the persisted revocation generation before waiting for the
+  // Environment lock. A revoke that starts after this rotation increments the
+  // generation under that same lock and therefore supersedes this request.
+  const revocationVersion = await readRevocationVersion(database, input.environmentId);
+
   return database.$transaction(async (tx) => {
-    const environment = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-      SELECT "id"
-      FROM "public"."Environment"
-      WHERE "id" = ${input.environmentId}::uuid
-      FOR UPDATE
-    `);
-    if (environment.length !== 1) throw new Error("access_key_store_unavailable");
+    const environment = await lockEnvironment(tx, input.environmentId);
+    if (environment.accessKeyRevocationVersion !== revocationVersion) {
+      throw new Error("access_key_rotation_superseded");
+    }
 
     const replayedKey = await tx.accessKey.findFirst({
       where: {
@@ -120,5 +147,46 @@ export async function rotateAccessKey(
       select: ACCESS_KEY_SAFE_SELECT,
     });
     return { key, retiringKey };
+  });
+}
+
+/** Replace origins on the active key while serialized with rotation/revoke. */
+export async function setAccessKeyAllowedOrigins(
+  database: PrismaClient,
+  input: { environmentId: string; origins: string[] }
+): Promise<number> {
+  return database.$transaction(async (tx) => {
+    await lockEnvironment(tx, input.environmentId);
+    const result = await tx.accessKey.updateMany({
+      where: {
+        environmentId: input.environmentId,
+        revokedAt: null,
+        validUntil: null,
+      },
+      data: { allowedOrigins: input.origins },
+    });
+    return result.count;
+  });
+}
+
+/**
+ * Revoke dominates every rotation that observed an older generation, whether
+ * that rotation currently owns the Environment lock or is already waiting.
+ */
+export async function revokeAccessKeys(
+  database: PrismaClient,
+  input: { environmentId: string }
+): Promise<number> {
+  return database.$transaction(async (tx) => {
+    await lockEnvironment(tx, input.environmentId);
+    await tx.environment.update({
+      where: { id: input.environmentId },
+      data: { accessKeyRevocationVersion: { increment: 1 } },
+    });
+    const result = await tx.accessKey.updateMany({
+      where: { environmentId: input.environmentId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return result.count;
   });
 }

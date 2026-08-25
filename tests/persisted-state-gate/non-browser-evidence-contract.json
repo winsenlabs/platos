@@ -1,0 +1,462 @@
+{
+  "schemaVersion": 2,
+  "gate": "win234-non-browser-completion",
+  "requiredEnvironmentFlag": "PLATOS_NON_BROWSER_EVIDENCE_REQUIRED",
+  "candidateShaEnvironmentFlag": "PLATOS_NON_BROWSER_EVIDENCE_CANDIDATE_SHA",
+  "runIdEnvironmentFlag": "PLATOS_NON_BROWSER_EVIDENCE_RUN_ID",
+  "suite": "apps/agent/src/integration/non-browser-completion-postgres.integration.test.ts",
+  "suiteTestCount": 11,
+  "maxArtifactAgeMs": 900000,
+  "assertions": [
+    {
+      "id": "nonbrowser.mcp-credential-reference-migration.concurrency",
+      "capabilityId": "mcp-credential-reference-migration",
+      "category": "concurrency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 400,
+          "code": "MCP credential not found in environment scope"
+        },
+        "foreignState": {
+          "model": "Entity",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "AgentController.registerEntity",
+          "outcome": "entity-created"
+        },
+        "readBack": {
+          "model": "EntityMcpClient",
+          "count": 1,
+          "invariant": "same-environment-credential-linked"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.mcp-credential-reference-migration.idempotency",
+      "capabilityId": "mcp-credential-reference-migration",
+      "category": "idempotency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 400,
+          "code": "MCP credential not found in environment scope"
+        },
+        "foreignState": {
+          "model": "Entity",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "AgentController.registerEntity",
+          "outcome": "entity-created"
+        },
+        "readBack": {
+          "model": "EntityMcpClient",
+          "count": 1,
+          "invariant": "same-environment-credential-linked"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.mcp-credential-reference-migration.persisted-read-back",
+      "capabilityId": "mcp-credential-reference-migration",
+      "category": "persistedReadBack",
+      "expectedFacts": {
+        "stableError": {
+          "status": 400,
+          "code": "MCP credential not found in environment scope"
+        },
+        "foreignState": {
+          "model": "Entity",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "AgentController.registerEntity",
+          "outcome": "entity-created"
+        },
+        "readBack": {
+          "model": "EntityMcpClient",
+          "count": 1,
+          "invariant": "same-environment-credential-linked"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.attachment-presign-upload.concurrency",
+      "capabilityId": "attachment-presign-upload",
+      "category": "concurrency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "THREAD_NOT_FOUND"
+        },
+        "foreignState": {
+          "model": "MessageAttachment",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "AttachmentUploadController.presign",
+          "outcome": "attachment-created"
+        },
+        "readBack": {
+          "model": "MessageAttachment",
+          "count": 3,
+          "invariant": "three-unique-alpha-pending-uploads"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.postman-template-crud.concurrency",
+      "capabilityId": "postman-template-crud",
+      "category": "concurrency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "Template not found"
+        },
+        "foreignState": {
+          "model": "PostmanTemplate",
+          "beforeCount": 1,
+          "afterCount": 1
+        },
+        "recovery": {
+          "operation": "AgentController.deletePostmanTemplate",
+          "outcome": "template-deleted"
+        },
+        "readBack": {
+          "model": "PostmanTemplate",
+          "count": 0,
+          "invariant": "canonical-template-deleted"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.postman-template-crud.idempotency",
+      "capabilityId": "postman-template-crud",
+      "category": "idempotency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "Template not found"
+        },
+        "foreignState": {
+          "model": "PostmanTemplate",
+          "beforeCount": 1,
+          "afterCount": 1
+        },
+        "recovery": {
+          "operation": "AgentController.deletePostmanTemplate",
+          "outcome": "template-deleted"
+        },
+        "readBack": {
+          "model": "PostmanTemplate",
+          "count": 0,
+          "invariant": "canonical-template-deleted"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.postman-template-crud.persisted-read-back",
+      "capabilityId": "postman-template-crud",
+      "category": "persistedReadBack",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "Template not found"
+        },
+        "foreignState": {
+          "model": "PostmanTemplate",
+          "beforeCount": 1,
+          "afterCount": 1
+        },
+        "recovery": {
+          "operation": "AgentController.deletePostmanTemplate",
+          "outcome": "template-deleted"
+        },
+        "readBack": {
+          "model": "PostmanTemplate",
+          "count": 0,
+          "invariant": "canonical-template-deleted"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.access-key-allowed-origins.concurrency",
+      "capabilityId": "access-key-allowed-origins",
+      "category": "concurrency",
+      "expectedFacts": {
+        "stableError": {
+          "status": null,
+          "code": "environment_forbidden"
+        },
+        "foreignState": {
+          "model": "AccessKey",
+          "beforeCount": 1,
+          "afterCount": 1
+        },
+        "recovery": {
+          "operation": "AgentController.setAllowedOrigins",
+          "outcome": "origins-replayed"
+        },
+        "readBack": {
+          "model": "AccessKey",
+          "count": 1,
+          "invariant": "active-key-has-exact-origins-after-both-interleavings"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.access-key-revoke.concurrency",
+      "capabilityId": "access-key-revoke",
+      "category": "concurrency",
+      "expectedFacts": {
+        "stableError": {
+          "status": null,
+          "code": "environment_forbidden"
+        },
+        "foreignState": {
+          "model": "AccessKey",
+          "beforeCount": 1,
+          "afterCount": 1
+        },
+        "recovery": {
+          "operation": "AgentController.createOrRotateAccessKey",
+          "outcome": "new-key-created-after-revocation-fence"
+        },
+        "readBack": {
+          "model": "AccessKey",
+          "count": 0,
+          "invariant": "no-active-key-after-both-interleavings"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.mcp-token-create.concurrency",
+      "capabilityId": "mcp-token-create",
+      "category": "concurrency",
+      "expectedFacts": {
+        "stableError": {
+          "status": null,
+          "code": "Environment not found in scope"
+        },
+        "foreignState": {
+          "model": "McpToken",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "McpPlatformController.mintToken",
+          "outcome": "token-created"
+        },
+        "readBack": {
+          "model": "McpToken",
+          "count": 3,
+          "invariant": "three-distinct-hash-only-platform-tokens"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.mcp-token-create.idempotency",
+      "capabilityId": "mcp-token-create",
+      "category": "idempotency",
+      "expectedFacts": {
+        "stableError": {
+          "status": null,
+          "code": "Environment not found in scope"
+        },
+        "foreignState": {
+          "model": "McpToken",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "McpPlatformController.mintToken",
+          "outcome": "token-created"
+        },
+        "readBack": {
+          "model": "McpToken",
+          "count": 3,
+          "invariant": "three-distinct-hash-only-platform-tokens"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.entity-mcp-bearer-token-create.concurrency",
+      "capabilityId": "entity-mcp-bearer-token-create",
+      "category": "concurrency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "Entity not found"
+        },
+        "foreignState": {
+          "model": "McpBearerToken",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "McpEntityController.generateBearerToken",
+          "outcome": "bearer-created"
+        },
+        "readBack": {
+          "model": "McpBearerToken",
+          "count": 3,
+          "invariant": "three-distinct-hash-only-entity-bearers"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.entity-mcp-bearer-token-create.idempotency",
+      "capabilityId": "entity-mcp-bearer-token-create",
+      "category": "idempotency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "Entity not found"
+        },
+        "foreignState": {
+          "model": "McpBearerToken",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "McpEntityController.generateBearerToken",
+          "outcome": "bearer-created"
+        },
+        "readBack": {
+          "model": "McpBearerToken",
+          "count": 3,
+          "invariant": "three-distinct-hash-only-entity-bearers"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.mcp-tool-acl-policy.concurrency",
+      "capabilityId": "mcp-tool-acl-policy",
+      "category": "concurrency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "Entity not found"
+        },
+        "foreignState": {
+          "model": "EntityToolPolicy",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "McpEntityController.patchToolAcl",
+          "outcome": "policy-replayed"
+        },
+        "readBack": {
+          "model": "EntityToolPolicy",
+          "count": 1,
+          "invariant": "one-canonical-policy-after-race"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.thread-fork.concurrency",
+      "capabilityId": "thread-fork",
+      "category": "concurrency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "THREAD_NOT_FOUND"
+        },
+        "foreignState": {
+          "model": "Thread",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "AgentController.forkThread",
+          "outcome": "child-thread-created"
+        },
+        "readBack": {
+          "model": "Thread",
+          "count": 3,
+          "invariant": "three-append-only-child-threads"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.thread-fork.idempotency",
+      "capabilityId": "thread-fork",
+      "category": "idempotency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "THREAD_NOT_FOUND"
+        },
+        "foreignState": {
+          "model": "Thread",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "AgentController.forkThread",
+          "outcome": "child-thread-created"
+        },
+        "readBack": {
+          "model": "Thread",
+          "count": 3,
+          "invariant": "three-append-only-child-threads"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.message-rating-lifecycle.idempotency",
+      "capabilityId": "message-rating-lifecycle",
+      "category": "idempotency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "MESSAGE_NOT_FOUND"
+        },
+        "foreignState": {
+          "model": "MessageRating",
+          "beforeCount": 0,
+          "afterCount": 0
+        },
+        "recovery": {
+          "operation": "AgentController.getMessageRating",
+          "outcome": "rating-read"
+        },
+        "readBack": {
+          "model": "MessageRating",
+          "count": 1,
+          "invariant": "one-rating-at-revision-two"
+        }
+      }
+    },
+    {
+      "id": "nonbrowser.agent-tools-loader-action-mismatch.idempotency",
+      "capabilityId": "agent-tools-loader-action-mismatch",
+      "category": "idempotency",
+      "expectedFacts": {
+        "stableError": {
+          "status": 404,
+          "code": "agent_tool_mapping_not_found"
+        },
+        "foreignState": {
+          "model": "AgentVersion",
+          "beforeCount": 1,
+          "afterCount": 1
+        },
+        "recovery": {
+          "operation": "AgentController.setAgentToolEnabled",
+          "outcome": "replacement-version-created"
+        },
+        "readBack": {
+          "model": "AgentToolPolicy",
+          "count": 1,
+          "invariant": "active-version-denies-tool-without-disabling-environment-mapping"
+        }
+      }
+    }
+  ]
+}

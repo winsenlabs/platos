@@ -132,6 +132,7 @@ describe("clean-slate domain schema", () => {
     const fields = (name: string) => new Set(model(name).fields.map((field) => field.name));
 
     for (const [name, expected] of Object.entries({
+      Environment: ["accessKeyRevocationVersion"],
       AccessKey: ["environmentId", "keyPrefix", "keyHash", "allowedOrigins"],
       ProviderKey: ["environmentId", "credentialId", "provider", "environmentKeyName", "isDefault"],
       Credential: ["environmentId", "activeSecretVersionId"],
@@ -293,6 +294,7 @@ describe("clean-slate domain schema", () => {
       "20260824010000_win144_observability_retry_vocabulary",
       "20260824111500_memory_profile_key_and_source_contract",
       "20260824233000_m4_forward_upgrade_contract",
+      "20260825070000_access_key_revocation_fence",
     ]);
 
     const observabilityVocabularyMigration = readFileSync(
