@@ -58,7 +58,7 @@
     "test:persisted-state:artifacts": "node tests/persisted-state-gate/verify-artifacts.mjs",
     "test:persisted-state:performance": "node tests/persisted-state-gate/run-performance.mjs",
     "test:persisted-state:performance-artifacts": "node tests/persisted-state-gate/verify-performance-artifacts.mjs",
-    "test:persisted-state:performance-contract": "node --test tests/persisted-state-gate/candidate-identity-contract.test.mjs tests/persisted-state-gate/measured-response.test.mjs tests/persisted-state-gate/operator-session-cookie.test.mjs tests/persisted-state-gate/verify-performance-artifacts.test.mjs",
+    "test:persisted-state:performance-contract": "node --test tests/persisted-state-gate/candidate-identity-contract.test.mjs tests/persisted-state-gate/measured-response.test.mjs tests/persisted-state-gate/operator-session-cookie.test.mjs tests/persisted-state-gate/scheduled-query-window.test.mjs tests/persisted-state-gate/verify-performance-artifacts.test.mjs",
     "test:non-browser-completion": "node tests/persisted-state-gate/run-non-browser-evidence.mjs",
     "test:non-browser-completion:contract": "node --test tests/persisted-state-gate/run-non-browser-evidence.test.mjs tests/persisted-state-gate/verify-non-browser-evidence.test.mjs",
     "test:browser-evidence": "playwright test --config=tests/browser-evidence/playwright.config.ts",

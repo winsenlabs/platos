@@ -11,6 +11,7 @@ import { measuredJsonResponse, measuredRemixJsonResponse } from "./measured-resp
 import { productionOperatorSessionCookieHeader } from "./operator-session-cookie.mjs";
 import { summarize, verifyPerformanceArtifactDirectory } from "./verify-performance-artifacts.mjs";
 import { PERFORMANCE_RECEIPT_FILE } from "./performance-verification-receipt.mjs";
+import { waitForScheduledQueryQuietWindow } from "./scheduled-query-window.mjs";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const artifactDirectory = path.resolve(
@@ -439,6 +440,7 @@ async function measureCandidateQueries(prisma, primary, agentHeaders, budgets) {
 }
 
 async function captureCandidateRequest(primary, agentHeaders, budget, pageSize) {
+  await waitForScheduledQueryQuietWindow();
   const requestId = randomUUID();
   const url = candidateRequestUrl(primary, budget.requestPath, pageSize);
   const headers = {
