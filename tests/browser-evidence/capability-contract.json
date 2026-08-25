@@ -594,7 +594,7 @@
     },
     "route-001": {
       "expectedHttpStatus": 200,
-      "expectedFinalPath": "target"
+      "expectedFinalPath": "environment/agents"
     },
     "route-077": {
       "expectedHttpStatus": 200,

@@ -710,6 +710,10 @@ export async function performMutation(args: {
             buffer: Buffer.from(marker),
           });
           await clickSubmit(page, /upload selected file/i);
+          await page
+            .locator("select")
+            .filter({ has: page.locator('option[value="collect"]') })
+            .selectOption("collect");
           await page.getByPlaceholder(/Message /).fill(marker);
           await clickSubmit(page, /^send$/i);
         },

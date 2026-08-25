@@ -58,15 +58,27 @@ describe("browser capability route identities", () => {
   it("uses the canonical Team page for the redirect-only Organization settings index", () => {
     const capability = capabilities.find(({ capabilityId }) => capabilityId === "route-071");
     expect(capability).toBeDefined();
-    expect(capabilityPath(capability!, scope("alpha"))).toBe(
-      "/orgs/win235-alpha/settings/team"
-    );
+    expect(capabilityPath(capability!, scope("alpha"))).toBe("/orgs/win235-alpha/settings/team");
     expect(expectedCapabilityPathname(capability!, scope("alpha"))).toBe(
       "/orgs/win235-alpha/settings/team"
     );
     expect(capability?.navigationContract).toEqual({
       expectedHttpStatus: 200,
       expectedFinalPath: "target",
+    });
+  });
+
+  it("uses the canonical Agents landing page for the authenticated app root", () => {
+    const capability = capabilities.find(({ capabilityId }) => capabilityId === "route-001");
+    const alpha = scope("alpha");
+    expect(capability).toBeDefined();
+    expect(capabilityPath(capability!, alpha)).toBe("/");
+    expect(expectedCapabilityPathname(capability!, alpha)).toBe(
+      "/orgs/win235-alpha/projects/win235-alpha-project/env/development/agents"
+    );
+    expect(capability?.navigationContract).toEqual({
+      expectedHttpStatus: 200,
+      expectedFinalPath: "environment/agents",
     });
   });
 
