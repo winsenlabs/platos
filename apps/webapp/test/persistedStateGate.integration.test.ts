@@ -750,7 +750,13 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
       );
       const payload = await responsePayload(response);
       expect(response.status).toBe(400);
-      expect(payload).toEqual({ ok: false, error: "Invalid toolMode" });
+      expect(payload).toEqual({
+        ok: false,
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Invalid toolMode",
+        },
+      });
       expect(
         await database.agent.count({
           where: {
@@ -761,7 +767,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
       ).toBe(0);
       return {
         httpStatus: response.status,
-        errorCode: payload.error,
+        errorCode: payload.error.code,
         readBack: { persisted: false },
       };
     });
