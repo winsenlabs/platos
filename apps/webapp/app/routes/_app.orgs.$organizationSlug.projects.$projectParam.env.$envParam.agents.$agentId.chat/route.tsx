@@ -243,12 +243,25 @@ export async function action(args: ActionFunctionArgs) {
     : undefined;
 
   if (intent === "collect") {
-    const result = await agentRequest(`/api/v1/agent/agents/${encodeURIComponent(agentId)}/messages`, scope, {
-      method: "POST",
-      body: { message, ...(threadId ? { threadId } : {}), ...(attachmentIds?.length ? { attachmentIds } : {}) },
-      signal: args.request.signal,
-    });
-    return json({ ok: true, result });
+    try {
+      const result = await agentRequest(`/api/v1/agent/agents/${encodeURIComponent(agentId)}/messages`, scope, {
+        method: "POST",
+        body: { message, ...(threadId ? { threadId } : {}), ...(attachmentIds?.length ? { attachmentIds } : {}) },
+        signal: args.request.signal,
+      });
+      return json({ ok: true, result });
+    } catch (error) {
+      if (error instanceof PlatosAgentApiError) {
+        const message = error.code === "TURN_NOT_PERSISTED"
+          ? "The collected Turn did not persist"
+          : "The collected request failed";
+        return json(
+          { ok: false, error: message, code: error.code },
+          { status: error.status },
+        );
+      }
+      return json({ ok: false, error: "The collected Turn did not persist" }, { status: 503 });
+    }
   }
 
   const search = new URLSearchParams({ message });

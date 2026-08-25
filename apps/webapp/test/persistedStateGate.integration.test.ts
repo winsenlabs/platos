@@ -164,7 +164,7 @@ function agentForm(name: string, slug = "win235-action-agent") {
   return new URLSearchParams({
     name,
     slug,
-    model: "fixture:deterministic",
+    model: "openai:fixture-model",
     systemPrompt: "Persist every accepted mutation.",
     maxSteps: "10",
     contextLimit: "1000",
@@ -175,7 +175,7 @@ function agentForm(name: string, slug = "win235-action-agent") {
     toolMode: "direct",
     toolExposure: "meta",
     modelRoutes: JSON.stringify([
-      { label: "fixture", model: "fixture:deterministic", isDefault: true },
+      { label: "fixture", model: "openai:fixture-model", isDefault: true },
     ]),
     promptBlocks: "[]",
   });

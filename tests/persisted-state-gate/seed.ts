@@ -5,8 +5,11 @@ import path from "node:path";
 import {
   AgentVersionBucket,
   ApprovalStatus,
+  CredentialKind,
+  CredentialRootKeyRing,
   OperatorIdentityProvider,
   OrganizationRole,
+  PlatosSecretStore,
   ModelRateSource,
   PrismaClient,
   ProjectRole,
@@ -212,6 +215,40 @@ async function seedScope(
       updatedAt: FIXTURE_TIMESTAMP,
     },
   });
+  await database.environmentProvider.create({
+    data: { environmentId, providerId: "openai", enabled: true },
+  });
+  const fixtureAuthorization = {
+    principalType: "operator",
+    tier: "OPERATOR",
+    access: "secret:mutate",
+    environmentId,
+    projectId,
+    organizationId,
+    actorUserId: operatorId,
+    effectiveUserId: operatorId,
+    organizationRole: OrganizationRole.OWNER,
+    projectRole: ProjectRole.ADMIN,
+  } as any;
+  const fixtureSecrets = new PlatosSecretStore(
+    database,
+    new CredentialRootKeyRing({ activeVersion: 1, keys: { 1: "cc".repeat(32) } })
+  );
+  await fixtureSecrets.createProviderCredentialAndKey({
+    authorization: fixtureAuthorization,
+    provider: "openai",
+    name: "OPENAI_API_KEY",
+    plaintext: "win235-deterministic-fixture-key",
+    label: "WIN-235 deterministic fixture",
+    isDefault: true,
+  });
+  await fixtureSecrets.create({
+    authorization: fixtureAuthorization,
+    kind: CredentialKind.SECRET_REFERENCE,
+    provider: "openai",
+    name: "OPENAI_BASE_URL",
+    plaintext: "http://provider-fixture:4010/v1",
+  });
   await database.endUser.create({
     data: {
       id: endUserId,
@@ -251,14 +288,14 @@ async function seedScope(
       id,
       agentId: agentIds[index],
       versionNumber: 1,
-      model: "fixture:deterministic",
+      model: "openai:fixture-model",
       systemPrompt: `WIN-235 deterministic Agent ${key}-${index + 1}`,
       maxSteps: 10,
       contextLimit: 1000,
       promptBlocks: [],
       dynamicBlocks: [],
       toolsBlockConfig: { mode: "direct", toolExposure: "meta" },
-      modelRoutes: [{ label: "fixture", model: "fixture:deterministic", isDefault: true }],
+      modelRoutes: [{ label: "fixture", model: "openai:fixture-model", isDefault: true }],
       memoryConfig: {},
       createdBy: operatorId,
       createdAt: FIXTURE_TIMESTAMP,
@@ -391,7 +428,7 @@ async function seedScope(
       id,
       turnId: turnIds[index],
       sequence: 1,
-      model: "fixture:deterministic",
+      model: "openai:fixture-model",
       status: WorkStatus.SUCCEEDED,
       inputTokens: 10 + index,
       outputTokens: 5 + index,
@@ -967,9 +1004,9 @@ async function main() {
     await database.model.create({
       data: {
         id: deterministicUuid("model", "fixture"),
-        key: "fixture:deterministic",
-        provider: "fixture",
-        name: "deterministic",
+        key: "openai/fixture-model",
+        provider: "openai",
+        name: "fixture-model",
         displayName: "WIN-235 deterministic fixture model",
         contextWindow: 1000,
         maxOutputTokens: 100,

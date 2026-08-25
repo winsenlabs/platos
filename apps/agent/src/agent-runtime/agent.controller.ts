@@ -31,7 +31,11 @@ import {
   ThreadNotFoundError,
 } from "../memory/conversation.service";
 import { AgentTaskService } from "./agent-task.service";
-import { TurnDispatchService } from "./turn-dispatch.service";
+import {
+  AttachmentIdsInvalidError,
+  CollectedTurnPersistenceError,
+  TurnDispatchService,
+} from "./turn-dispatch.service";
 import {
   POSTMAN_CONTEXT_TTL_SECONDS,
   postmanContextRedisKey,
@@ -154,6 +158,23 @@ function postmanRequestFingerprint(
     .digest("hex");
 }
 
+export function internalChatTurnOptions(body: {
+  agentId: string;
+  threadId: string;
+  attachmentIds?: string[];
+  replyToMessageId?: string | null;
+  clientMessageId?: string | null;
+}, abortSignal: AbortSignal) {
+  return {
+    agentId: body.agentId,
+    threadId: body.threadId,
+    attachmentIds: body.attachmentIds,
+    replyToMessageId: body.replyToMessageId ?? undefined,
+    idempotencyKey: body.clientMessageId ?? undefined,
+    abortSignal,
+  };
+}
+
 /**
  * Agent REST API — every endpoint calls real services.
  * All queries scoped by (organizationId, projectId, environmentId, userId) from ScopeGuard.
@@ -213,6 +234,31 @@ export class AgentController {
     // register/refresh. Optional for the same test-harness reason as above.
     @Optional() private readonly entityMcpDiscovery?: EntityMcpDiscoveryService,
   ) {}
+
+  private canonicalAttachmentIds(value: unknown): string[] | undefined {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value) || value.length > 100) {
+      throw new BadRequestException({ code: "ATTACHMENT_IDS_INVALID", message: "Attachment IDs are invalid" });
+    }
+    const ids = [...new Set(value)];
+    if (ids.some((id) => typeof id !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(id))) {
+      throw new BadRequestException({ code: "ATTACHMENT_IDS_INVALID", message: "Attachment IDs are invalid" });
+    }
+    return ids as string[];
+  }
+
+  private collectedTurnFailure(error: unknown): never {
+    if (error instanceof AttachmentIdsInvalidError) {
+      throw new BadRequestException({ code: error.code, message: error.message });
+    }
+    if (error instanceof CollectedTurnPersistenceError) {
+      throw new HttpException(
+        { code: error.code, message: error.message },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+    throw error;
+  }
 
   private getScope(req: Request): RequestScope {
     return (
@@ -654,13 +700,16 @@ export class AgentController {
     // as before (collectTurn's direct arm returns the same {text, threadId,
     // events, costCents} shape as executeNonStreamingTurn, plus messageId).
     const agentId = await this.resolveThreadAgentId(threadId, body.agentId, scope);
-    const result = await this.dispatch.collectTurn(agentId, {
-      scope,
-      message: body.message,
-      threadId,
-      attachmentIds: body.attachmentIds,
-    });
-    return result;
+    try {
+      return await this.dispatch.collectTurn(agentId, {
+        scope,
+        message: body.message,
+        threadId,
+        attachmentIds: this.canonicalAttachmentIds(body.attachmentIds),
+      });
+    } catch (error) {
+      this.collectedTurnFailure(error);
+    }
   }
 
   @Get("threads/:threadId/messages")
@@ -1280,16 +1329,19 @@ export class AgentController {
     // on a Trigger SESSION, reply accumulated off its durable .out. Same option
     // forwarding as before (outputSchema is intentionally still not forwarded
     // here, matching prior behavior — zero behavior change for direct agents).
-    const result = await this.dispatch.collectTurn(agentId, {
-      scope,
-      message: body.message,
-      threadId: body.threadId,
-      attachmentIds: body.attachmentIds,
-      ...(body.systemPromptOverride !== undefined ? { systemPromptOverride: body.systemPromptOverride } : {}),
-      modelLabel: body.modelLabel,
-      ...(agentConfigOverride ? { agentConfigOverride } : {}),
-    });
-    return result;
+    try {
+      return await this.dispatch.collectTurn(agentId, {
+        scope,
+        message: body.message,
+        threadId: body.threadId,
+        attachmentIds: this.canonicalAttachmentIds(body.attachmentIds),
+        ...(body.systemPromptOverride !== undefined ? { systemPromptOverride: body.systemPromptOverride } : {}),
+        modelLabel: body.modelLabel,
+        ...(agentConfigOverride ? { agentConfigOverride } : {}),
+      });
+    } catch (error) {
+      this.collectedTurnFailure(error);
+    }
   }
 
   /**
@@ -4780,6 +4832,7 @@ Write the summary now:`;
       threadId: string;
       agentId: string;
       message: string;
+      attachmentIds?: string[];
       replyToMessageId?: string | null;
       clientMessageId?: string | null;
       // The session worker reconstructs the turn scope from clientData
@@ -4816,13 +4869,14 @@ Write the summary now:`;
     };
     req.on("close", onClose);
     res.on("close", onClose);
-    const rawEvents = this.agentTaskService.executeStreamingTurn(body.message, body.scope as any, {
-      agentId: body.agentId,
-      threadId: body.threadId,
-      replyToMessageId: body.replyToMessageId ?? undefined,
-      idempotencyKey: body.clientMessageId ?? undefined,
-      abortSignal: ac.signal,
-    });
+    const rawEvents = this.agentTaskService.executeStreamingTurn(
+      body.message,
+      body.scope as any,
+      internalChatTurnOptions(
+        { ...body, attachmentIds: this.canonicalAttachmentIds(body.attachmentIds) },
+        ac.signal,
+      ),
+    );
     const heartbeatMs = Math.max(1000, env.PLATOS_STREAM_HEARTBEAT_MS ?? 15_000);
     const events = withHeartbeat(rawEvents, { intervalMs: heartbeatMs, signal: ac.signal });
     await this.streamingService.streamToSSE(events, res);

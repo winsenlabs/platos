@@ -190,6 +190,45 @@ describe("Thread chat retained lifecycle", () => {
     ).toBe("thread-recovered");
   });
 
+  it("does not wrap a collected persistence failure as ok", async () => {
+    agentRequest.mockRejectedValueOnce(new PlatosAgentApiError(
+      502,
+      "TURN_NOT_PERSISTED",
+      "unsafe upstream detail",
+    ));
+
+    const response = await action(args({
+      intent: "collect",
+      message: "marker",
+      threadId: "thread-1",
+      attachmentIds: ["attachment-1"],
+    }));
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "The collected Turn did not persist",
+      code: "TURN_NOT_PERSISTED",
+    });
+  });
+
+  it("keeps collected validation failures distinct without reflecting upstream detail", async () => {
+    agentRequest.mockRejectedValueOnce(new PlatosAgentApiError(
+      400,
+      "ATTACHMENT_IDS_INVALID",
+      "unsafe upstream detail",
+    ));
+
+    const response = await action(args({ intent: "collect", message: "marker" }));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "The collected request failed",
+      code: "ATTACHMENT_IDS_INVALID",
+    });
+  });
+
   it("reads the newest bounded message page instead of losing a recent Turn behind pagination", async () => {
     agentPanel
       .mockResolvedValueOnce({ ok: true, data: { id: "agent-1" } })

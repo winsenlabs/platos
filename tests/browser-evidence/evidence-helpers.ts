@@ -720,6 +720,10 @@ export async function performMutation(args: {
             .filter({ has: page.locator('option[value="collect"]') })
             .selectOption("collect");
           await page.getByPlaceholder(/Message /).fill(marker);
+          const expectedThreadId = new URL(page.url()).searchParams.get("threadId");
+          expect(expectedThreadId, "uploaded attachment lost its reserved Thread identity").toMatch(
+            /^[A-Za-z0-9_-]{1,100}$/
+          );
           const actionPathname = new URL(page.url()).pathname;
           const completionResponsePromise = page.waitForResponse((response) => {
             const request = response.request();
@@ -734,7 +738,7 @@ export async function performMutation(args: {
           );
           const completionPayload = (await completionResponse.json()) as {
             ok?: boolean;
-            result?: { threadId?: string };
+            result?: { threadId?: string; messageId?: string };
           };
           expect(completionPayload.ok, "collected attachment Turn returned a failure payload").toBe(
             true
@@ -742,6 +746,10 @@ export async function performMutation(args: {
           expect(
             completionPayload.result?.threadId,
             "collected attachment Turn lost its canonical Thread identity"
+          ).toBe(expectedThreadId);
+          expect(
+            completionPayload.result?.messageId,
+            "collected attachment Turn did not reach authoritative persistence"
           ).toMatch(/^[A-Za-z0-9_-]{1,100}$/);
         },
       });

@@ -99,6 +99,41 @@ services:
         echo "WIN-235 MinIO fixture read-back captured"
     restart: "no"
 
+  provider-fixture:
+    image: ${WIN235_AGENT_RUNTIME_IMAGE:?WIN235_AGENT_RUNTIME_IMAGE must be the loaded tested candidate}
+    command:
+      - node
+      - -e
+      - |
+        const http = require("node:http");
+        const server = http.createServer((request, response) => {
+          if (request.method === "GET" && request.url === "/v1/models") {
+            response.setHeader("content-type", "application/json");
+            response.end(JSON.stringify({ object: "list", data: [{ id: "fixture-model", object: "model" }] }));
+            return;
+          }
+          if (request.method === "POST" && request.url === "/v1/chat/completions") {
+            request.resume();
+            request.on("end", () => {
+              const created = Math.floor(Date.now() / 1000);
+              response.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
+              response.write(`data: $${JSON.stringify({ id: "chatcmpl-win235", object: "chat.completion.chunk", created, model: "fixture-model", choices: [{ index: 0, delta: { role: "assistant", content: "deterministic persisted reply" }, finish_reason: null }] })}\n\n`);
+              response.write(`data: $${JSON.stringify({ id: "chatcmpl-win235", object: "chat.completion.chunk", created, model: "fixture-model", choices: [{ index: 0, delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 4, completion_tokens: 3, total_tokens: 7 } })}\n\n`);
+              response.end("data: [DONE]\n\n");
+            });
+            return;
+          }
+          response.writeHead(404).end();
+        });
+        server.listen(4010, "0.0.0.0");
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - node -e 'fetch("http://127.0.0.1:4010/v1/models").then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))'
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
   postgres-migrate:
     image: ${WIN235_MIGRATIONS_RUNTIME_IMAGE:?WIN235_MIGRATIONS_RUNTIME_IMAGE must be the loaded tested candidate}
     depends_on:
@@ -130,6 +165,8 @@ services:
         condition: service_completed_successfully
       minio-init:
         condition: service_completed_successfully
+      provider-fixture:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:

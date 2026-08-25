@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toUIChunks } from "./chat-session.task";
+import { chatSessionCallbackBody, toUIChunks } from "./chat-session.task";
 
 async function collect<T>(stream: AsyncGenerator<T>): Promise<T[]> {
   const values: T[] = [];
@@ -12,6 +12,26 @@ async function* events(...values: any[]): AsyncGenerator<any> {
 }
 
 describe("platos chat-session SSE conversion", () => {
+  it("forwards attachment identities to the scoped Agent callback", () => {
+    expect(chatSessionCallbackBody({
+      agentId: "agent-1",
+      threadId: "thread-1",
+      clientMessageId: "client-1",
+      attachmentIds: ["attachment-1"],
+      scope: {
+        organizationId: "organization-1",
+        projectId: "project-1",
+        environmentId: "environment-1",
+        userId: "user-1",
+      } as any,
+    }, "message")).toMatchObject({
+      agentId: "agent-1",
+      threadId: "thread-1",
+      clientMessageId: "client-1",
+      attachmentIds: ["attachment-1"],
+      scope: { agentId: "agent-1", threadId: "thread-1" },
+    });
+  });
   it("forwards message_persisted before terminal finish", async () => {
     const chunks = await collect(toUIChunks(events(
       { type: "meta", thread_id: "thread-1" },

@@ -1708,21 +1708,31 @@ export class AgentTaskService {
     // Extract the final response
     const tokens = events.filter((e) => e.type === "token").map((e) => e.text as string);
     const meta = events.find((e) => e.type === "meta");
-    // Phase 1 review follow-up — pull cost off the message_persisted
-    // event so the non-streaming path (REST + W.1 batch-turn controller)
-    // can return accurate per-turn cost. Falls back to 0 if the turn
-    // short-circuited before persist (e.g. safety flag, idempotent
-    // dedup, validation failure).
+    // Pull cost and the canonical Turn identity off message_persisted so the
+    // non-streaming path can only report completion after the authoritative
+    // write. Error-only and short-circuited streams fail instead of returning
+    // an early Thread identity as a false success.
     const persisted = events.find((e) => (e as any).type === "message_persisted") as
-      | { costCents?: number }
+      | { costCents?: number; messageId?: string }
       | undefined;
+    const threadId = (meta as any)?.thread_id;
+    const canonicalIdentity = /^[A-Za-z0-9_-]{1,100}$/;
+    if (
+      !persisted?.messageId
+      || !canonicalIdentity.test(persisted.messageId)
+      || typeof threadId !== "string"
+      || !canonicalIdentity.test(threadId)
+    ) {
+      throw new Error("Collected turn did not reach authoritative persistence");
+    }
     const costCents = typeof persisted?.costCents === "number" ? persisted.costCents : 0;
 
     return {
       text: tokens.join(""),
-      threadId: (meta as any)?.thread_id,
+      threadId,
       events,
       costCents,
+      messageId: persisted.messageId,
     };
   }
 
