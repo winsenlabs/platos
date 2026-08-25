@@ -410,7 +410,7 @@
       "properties": {
         "sequence": { "type": "integer", "minimum": 1 },
         "durationMs": { "type": "number", "minimum": 0 },
-        "normalizedSql": { "type": "string", "minLength": 10 },
+        "normalizedSql": { "type": "string", "minLength": 8 },
         "normalizedSqlSha256": { "$ref": "#/$defs/sha256" },
         "parameters": { "type": "array", "items": { "$ref": "#/$defs/safeParameter" } },
         "parametersSha256": { "$ref": "#/$defs/sha256" },
@@ -519,7 +519,7 @@
         "querySequence": { "type": "integer", "minimum": 1 },
         "source": { "const": "candidate-request-prisma-query" },
         "candidateDurationMs": { "type": "number", "minimum": 0 },
-        "normalizedSql": { "type": "string", "minLength": 10 },
+        "normalizedSql": { "type": "string", "minLength": 8 },
         "normalizedSqlSha256": { "$ref": "#/$defs/sha256" },
         "parameters": { "type": "array", "items": { "$ref": "#/$defs/safeParameter" } },
         "parametersSha256": { "$ref": "#/$defs/sha256" },

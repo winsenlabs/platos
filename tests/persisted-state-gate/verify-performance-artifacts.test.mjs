@@ -340,6 +340,32 @@ test("accepts complete synthetic candidate-request evidence under every measured
   assert.equal(verified.plans, 6);
 });
 
+test("accepts the shortest valid normalized SELECT captured from the candidate", async () => {
+  const directory = await writeSyntheticEvidence((artifact) => {
+    const request = artifact.measurements.queries[0].denseRequest;
+    const query = request.queries[0];
+    query.normalizedSql = "SELECT 1";
+    query.normalizedSqlSha256 = sha256(query.normalizedSql);
+    query.parameters = [];
+    query.parametersSha256 = sha256(JSON.stringify(query.parameters));
+    query.parameterMetadata = [];
+
+    const plan = artifact.measurements.plans.find(
+      (candidate) =>
+        candidate.requestId === request.requestId && candidate.querySequence === query.sequence
+    );
+    assert.ok(plan);
+    plan.normalizedSql = query.normalizedSql;
+    plan.normalizedSqlSha256 = query.normalizedSqlSha256;
+    plan.parameters = [];
+    plan.parametersSha256 = query.parametersSha256;
+    plan.parameterMetadata = [];
+  });
+
+  const verified = await verify(directory);
+  assert.equal(verified.commitSha, commitSha);
+});
+
 test("writes a passed receipt bound to the exact verified performance artifact bytes", async () => {
   const directory = await writeSyntheticEvidence();
   await verify(directory);
