@@ -463,7 +463,13 @@ function assertCandidateCapture(evidence, budget, density) {
       "request-bound-prisma-extension",
       `${budget.id} query is not request-correlated at invocation`
     );
-    assert.equal(query.replayable, true, `${budget.id} query ${query.sequence} was redacted`);
+    assert.equal(
+      query.replayable,
+      true,
+      `${budget.id} query ${query.sequence} was redacted: ${JSON.stringify(
+        query.parameterMetadata.map(({ type, length }) => ({ type, length }))
+      )}`
+    );
     assert.match(query.normalizedSql, /^SELECT\b/i, `${budget.id} captured a non-SELECT statement`);
     assert.equal(query.normalizedSql, normalizeSql(query.normalizedSql));
     assert.equal(query.normalizedSqlSha256, sha256(query.normalizedSql));

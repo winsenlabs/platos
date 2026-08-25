@@ -88,6 +88,24 @@ describe("PerformanceEvidenceService", () => {
     expect(JSON.stringify(evidence)).not.toContain("sk-secret-sentinel");
   });
 
+  it("keeps exact persisted external-identity literals replayable without broad string approval", async () => {
+    await service.runRequest({ requestId: REQUEST_ID, method: "GET", path: "/api/v1/memory" }, () =>
+      service.runQueryInvocation(async () => {
+        service.recordQueryEvent({
+          query: 'SELECT "endUserId" FROM "EndUserIdentity" WHERE "issuer" = $1 AND "channel" = $2',
+          params: '["platos:external","external"]',
+          duration: 1,
+        });
+      })
+    );
+    service.complete(REQUEST_ID, 200);
+
+    expect(service.consume(REQUEST_ID)?.queries[0]).toMatchObject({
+      parameters: ["platos:external", "external"],
+      replayable: true,
+    });
+  });
+
   it("fails closed when a request-bound query overlaps an uncorrelated invocation", async () => {
     let releaseUncorrelated!: () => void;
     const uncorrelated = service.runQueryInvocation(

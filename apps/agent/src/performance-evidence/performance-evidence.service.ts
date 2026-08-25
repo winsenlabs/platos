@@ -51,7 +51,7 @@ type QueryInvocation = { capture: ActiveCapture | null };
 const MAX_CAPTURED_QUERIES = 64;
 const MAX_COMPLETED_CAPTURES = 32;
 const SAFE_ENUM_PARAMETER =
-  /^(?:active|paused|current|agent_visible|hidden|private|fact|preference|event|relationship|profile|manual|extracted|imported|rag)$/;
+  /^(?:active|paused|current|agent_visible|hidden|private|fact|preference|event|relationship|profile|manual|extracted|imported|rag|external|platos:external)$/;
 const UUID_PARAMETER = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const ISO_DATE_PARAMETER = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/;
 const FIXTURE_EXTERNAL_ID = /^win235-(?:alpha|beta)-[a-z0-9-]+$/;

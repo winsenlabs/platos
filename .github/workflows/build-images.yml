@@ -276,6 +276,7 @@ jobs:
 
       - name: Prove performance and evidence verifiers fail on mutation
         run: |
+          pnpm --filter platos-agent exec vitest run src/auth/rate-limit.guard.test.ts
           pnpm test:persisted-state:performance-contract
           pnpm test:non-browser-completion:contract
           pnpm test:browser-evidence:contract
