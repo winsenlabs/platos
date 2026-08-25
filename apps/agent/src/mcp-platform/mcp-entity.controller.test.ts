@@ -559,6 +559,76 @@ describe("McpEntityController operator management", () => {
     expect(controller.toolRegistry.rebuildIndex).toHaveBeenCalledOnce();
   });
 
+  it("replays a complete MCP config without changing persisted state", async () => {
+    const controller = managementHarness();
+    let persisted: Record<string, unknown> | null = null;
+    controller.prisma.entityMcpConfig.upsert.mockImplementation(async ({ create, update }: any) => {
+      persisted = persisted ? { ...persisted, ...update } : { ...create };
+      return persisted;
+    });
+    controller.prisma.entityMcpConfig.findUnique.mockImplementation(async () => ({ ...persisted }));
+    const body = {
+      enabled: true,
+      identityMode: "bearer+oidc",
+      identityProviders: [{ type: "oidc" }],
+      branding: { name: "Acme" },
+      toolAllowlist: ["calendar.create"],
+      redirectUriAllowlist: ["https://app.example/callback"],
+      rateLimitPerMinute: 120,
+      injectMcpContext: true,
+    };
+
+    const first = await controller.patchMcpConfig({ scope: operatorScope }, "acme", body);
+    const replay = await controller.patchMcpConfig({ scope: operatorScope }, "acme", body);
+
+    expect(replay).toEqual(first);
+    expect(persisted).toMatchObject(body);
+    expect(controller.prisma.entityMcpConfig.upsert).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps concurrent complete MCP config writes atomic with an unspecified final winner", async () => {
+    const controller = managementHarness();
+    let persisted: Record<string, unknown> | null = null;
+    controller.prisma.entityMcpConfig.upsert.mockImplementation(async ({ create, update }: any) => {
+      if (update.identityMode === "bearer") {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      persisted = persisted ? { ...persisted, ...update } : { ...create };
+      return persisted;
+    });
+    controller.prisma.entityMcpConfig.findUnique.mockImplementation(async () => ({ ...persisted }));
+    const bearer = {
+      enabled: true,
+      identityMode: "bearer",
+      identityProviders: [],
+      branding: { winner: "bearer" },
+      toolAllowlist: ["calendar.create"],
+      redirectUriAllowlist: ["https://bearer.example/callback"],
+      rateLimitPerMinute: 60,
+      injectMcpContext: false,
+    };
+    const oidc = {
+      enabled: false,
+      identityMode: "oidc",
+      identityProviders: [{ type: "oidc" }],
+      branding: { winner: "oidc" },
+      toolAllowlist: ["tickets.list"],
+      redirectUriAllowlist: ["https://oidc.example/callback"],
+      rateLimitPerMinute: 90,
+      injectMcpContext: true,
+    };
+
+    await Promise.all([
+      controller.patchMcpConfig({ scope: operatorScope }, "acme", bearer),
+      controller.patchMcpConfig({ scope: operatorScope }, "acme", oidc),
+    ]);
+
+    const persistedConfig = Object.fromEntries(
+      Object.keys(bearer).map((key) => [key, persisted?.[key]]),
+    );
+    expect([bearer, oidc]).toContainEqual(persistedConfig);
+  });
+
   it("rejects object-root identityProviders", async () => {
     const controller = managementHarness();
     await expect(controller.patchMcpConfig({ scope: operatorScope }, "acme", {

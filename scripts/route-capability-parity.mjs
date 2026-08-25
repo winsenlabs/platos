@@ -286,7 +286,7 @@ const REQUIRED_SEMANTIC_FRAGMENTS = Object.freeze({
   },
   "access-key-revoke": {
     fragments: { currentBehavior: ["active or unexpired", "Environment-owned"], automatedEvidence: ["credentialSerialization.test.ts"] },
-    statuses: { "destructiveConfirmation.status": "required-not-verified", "tenantScope.status": "enforced", "automatedEvidence.status": "verified" },
+    statuses: { "destructiveConfirmation.status": "verified", "tenantScope.status": "enforced", "automatedEvidence.status": "verified" },
   },
   "access-key-allowed-origins": {
     fragments: { http: ["origins: string[]"], currentBehavior: ["exact origins mutation", "closed safe-response contract"], automatedEvidence: ["credentialSerialization.test.ts"] },

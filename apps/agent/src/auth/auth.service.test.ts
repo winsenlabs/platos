@@ -598,6 +598,48 @@ describe("AuthService — clean-tenancy access keys", () => {
     expect(prisma.accessKey.updateMany).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps concurrent allowed-origin replacements atomic without merging submissions", async () => {
+    const prisma = accessKeyPrisma();
+    let allowedOrigins: string[] = [];
+    prisma.accessKey.updateMany = vi.fn(async ({ data }: any) => {
+      if (data.allowedOrigins[0].includes("slow")) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      allowedOrigins = [...data.allowedOrigins];
+      return { count: 1 };
+    });
+    prisma.accessKey.findMany = vi.fn(async () => [{
+      id: "key-1",
+      keyPrefix: "platos_live_test",
+      allowedOrigins: [...allowedOrigins],
+      createdAt: new Date("2026-08-15T00:00:00.000Z"),
+      lastUsedAt: null,
+      validUntil: null,
+      revokedAt: null,
+      replacedById: null,
+    }]);
+    const auth = new AuthService(prisma, {} as any);
+    auth.authorizeEnvironmentOperatorScope = async () => ({ environmentId: "env_1" } as any);
+    const operatorScope = {
+      organizationId: "org_1",
+      projectId: "proj_1",
+      environmentId: "env_1",
+      userId: "user_1",
+      principal: "operator",
+    } as any;
+    const slow = ["https://slow.example"];
+    const fast = ["https://fast.example"];
+
+    await Promise.all([
+      auth.setAllowedOrigins(operatorScope, slow),
+      auth.setAllowedOrigins(operatorScope, fast),
+    ]);
+
+    const persisted = await auth.getAccessKey(operatorScope);
+    expect([slow, fast]).toContainEqual(persisted.key?.allowedOrigins);
+    expect(persisted.key?.allowedOrigins).toHaveLength(1);
+  });
+
   it("revokes every active or overlap AccessKey in the authorized Environment", async () => {
     const prisma = accessKeyPrisma();
     prisma.accessKey.updateMany = vi.fn().mockResolvedValue({ count: 2 });
@@ -646,6 +688,40 @@ describe("AuthService — clean-tenancy access keys", () => {
     expect(keys.every((key) => key.revokedAt instanceof Date)).toBe(true);
     await expect(auth.getAccessKey(operatorScope)).resolves.toEqual({ key: null, retiringKey: null });
     expect(prisma.accessKey.updateMany).toHaveBeenCalledTimes(2);
+  });
+
+  it("converges concurrent revocations on no active or overlap key", async () => {
+    const prisma = accessKeyPrisma();
+    const keys = [
+      { id: "key-active", validUntil: null, revokedAt: null as Date | null },
+      { id: "key-overlap", validUntil: new Date("2030-01-01T00:00:00.000Z"), revokedAt: null as Date | null },
+    ];
+    prisma.accessKey.updateMany = vi.fn(async ({ data }: any) => {
+      const active = keys.filter((key) => key.revokedAt === null);
+      await Promise.resolve();
+      active.forEach((key) => {
+        if (key.revokedAt === null) key.revokedAt = data.revokedAt;
+      });
+      return { count: active.filter((key) => key.revokedAt === data.revokedAt).length };
+    });
+    prisma.accessKey.findMany = vi.fn(async () => keys.filter((key) => key.revokedAt === null));
+    const auth = new AuthService(prisma, {} as any);
+    auth.authorizeEnvironmentOperatorScope = async () => ({ environmentId: "env_1" } as any);
+    const operatorScope = {
+      organizationId: "org_1",
+      projectId: "proj_1",
+      environmentId: "env_1",
+      userId: "user_1",
+      principal: "operator",
+    } as any;
+
+    await Promise.all([
+      auth.deleteAccessKey(operatorScope),
+      auth.deleteAccessKey(operatorScope),
+    ]);
+
+    expect(keys.every((key) => key.revokedAt instanceof Date)).toBe(true);
+    await expect(auth.getAccessKey(operatorScope)).resolves.toEqual({ key: null, retiringKey: null });
   });
 });
 

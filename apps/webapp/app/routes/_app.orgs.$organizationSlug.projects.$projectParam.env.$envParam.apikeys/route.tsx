@@ -127,6 +127,9 @@ export default function ApiKeysRoute() {
   }, [fetcher.data, lifecycle]);
 
   async function rotate() {
+    if (active && !window.confirm("Rotate this API key? The current key will stop authenticating after the overlap window.")) {
+      return;
+    }
     setGenerating(true);
     setLocalError(null);
     setRevealedKey(null);
@@ -201,7 +204,14 @@ export default function ApiKeysRoute() {
                 {active ? "Rotate key" : "Generate key"}
               </button>
               {active && (
-                <fetcher.Form method="post">
+                <fetcher.Form
+                  method="post"
+                  onSubmit={(event) => {
+                    if (!window.confirm("Revoke this API key? Active and overlap keys will stop authenticating immediately.")) {
+                      event.preventDefault();
+                    }
+                  }}
+                >
                   <input type="hidden" name="intent" value="revoke" />
                   <button disabled={busy} className="rounded border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-2 text-sm text-[var(--danger)] disabled:opacity-50">Revoke</button>
                 </fetcher.Form>

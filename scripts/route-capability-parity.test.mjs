@@ -519,7 +519,80 @@ test("focused Agent, EndUser, cluster, and lifecycle evidence cannot regress", (
   assert.equal(tools.linkState.status, "implemented");
   assert.equal(tools.recovery.status, "verified");
   assert.equal(tools.idempotency.status, "required-not-verified");
-  assert.equal(tools.concurrency.status, "required-not-verified");
+  assert.equal(tools.concurrency.status, "verified");
+  assert.ok(tools.concurrency.references.some((reference) =>
+    reference.includes("apps/agent/src/agent-runtime/agent-crud-tool-policy.test.ts"),
+  ));
+});
+
+test("non-browser exhaustion evidence stays operation-specific and browser claims remain unresolved", () => {
+  const matrix = readMatrix();
+  const expectedEvidence = [
+    ["postman-template-crud", "destructiveConfirmation", "verified", "apps/webapp/test/formSubmission.test.tsx"],
+    ["access-key-revoke", "destructiveConfirmation", "verified", "apps/webapp/test/formSubmission.test.tsx"],
+    ["access-key-rotation-correlation", "destructiveConfirmation", "verified", "apps/webapp/test/formSubmission.test.tsx"],
+    ["mcp-tool-acl-policy", "destructiveConfirmation", "not-applicable", "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts"],
+    ["access-key-browser-request-correlation", "idempotency", "verified", "apps/webapp/test/accessKeyLifecycle.test.ts"],
+    ["access-key-one-time-reveal", "idempotency", "verified", "apps/webapp/test/accessKeyLifecycle.test.ts"],
+    ["access-key-rotation-correlation", "idempotency", "verified", "internal-packages/tenancy-database/src/access-key.test.ts"],
+    ["mcp-combined-identity-modes", "idempotency", "verified", "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts"],
+    ["mcp-identity-context", "idempotency", "verified", "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts"],
+    ["mcp-token-revoke", "idempotency", "verified", "apps/agent/src/mcp-platform/token.service.test.ts"],
+    ["mcp-tool-acl-policy", "idempotency", "verified", "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts"],
+    ["access-key-allowed-origins", "concurrency", "verified", "apps/agent/src/auth/auth.service.test.ts"],
+    ["access-key-revoke", "concurrency", "verified", "apps/agent/src/auth/auth.service.test.ts"],
+    ["agent-tools-loader-action-mismatch", "concurrency", "verified", "apps/agent/src/agent-runtime/agent-crud-tool-policy.test.ts"],
+    ["mcp-combined-identity-modes", "concurrency", "verified", "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts"],
+    ["mcp-identity-context", "concurrency", "verified", "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts"],
+  ];
+
+  for (const [capabilityId, field, status, reference] of expectedEvidence) {
+    const evidence = capability(matrix, capabilityId)[field];
+    assert.equal(evidence.status, status, `${capabilityId}.${field}`);
+    assert.ok(
+      evidence.references.some((entry) => entry.includes(reference)),
+      `${capabilityId}.${field} must cite ${reference}`,
+    );
+  }
+
+  const unresolved = {
+    idempotency: [
+      "agent-tools-loader-action-mismatch",
+      "entity-mcp-bearer-token-create",
+      "mcp-credential-reference-migration",
+      "mcp-token-create",
+      "message-rating-lifecycle",
+      "postman-template-crud",
+      "thread-fork",
+    ],
+    concurrency: [
+      "attachment-presign-upload",
+      "entity-mcp-bearer-token-create",
+      "mcp-credential-reference-migration",
+      "mcp-token-create",
+      "mcp-tool-acl-policy",
+      "postman-template-crud",
+      "thread-fork",
+    ],
+    persistedReadBack: [
+      "mcp-credential-reference-migration",
+      "postman-template-crud",
+    ],
+  };
+  for (const [field, capabilityIds] of Object.entries(unresolved)) {
+    assert.deepEqual(
+      matrix.capabilities
+        .filter((row) => row[field].status === "required-not-verified")
+        .map((row) => row.capabilityId)
+        .sort(),
+      [...capabilityIds].sort(),
+      field,
+    );
+  }
+
+  const browserRows = matrix.capabilities.filter((row) => row.browserEvidence.status === "required-not-verified");
+  assert.equal(browserRows.length, 107);
+  assert.equal(matrix.capabilities.some((row) => row.browserEvidence.status === "verified"), false);
 });
 
 test("public guest and embed route evidence cannot regress to reflective failures", () => {
@@ -729,10 +802,17 @@ test("completion is a separate expected-red gate with actionable blocker counts"
   const matrix = readMatrix();
   const blockers = completionBlockers(matrix);
   assert.equal(blockers.find((blocker) => blocker.category === "confirmed defects"), undefined);
-  assert.ok(blockers.find((blocker) => blocker.category === "destructive confirmation")?.count > 0);
-  assert.ok(blockers.find((blocker) => blocker.category === "persisted-state evidence")?.count > 0);
-  assert.ok(blockers.find((blocker) => blocker.category === "browser evidence")?.count > 0);
-  assert.throws(() => runCompletionGate(matrix), /completion gate is RED \(\d+ actionable blockers across \d+ categories\)/);
+  assert.equal(blockers.find((blocker) => blocker.category === "destructive confirmation"), undefined);
+  assert.deepEqual(
+    blockers.map(({ category, count }) => ({ category, count })),
+    [
+      { category: "idempotency", count: 7 },
+      { category: "concurrency", count: 7 },
+      { category: "persisted-state evidence", count: 2 },
+      { category: "browser evidence", count: 107 },
+    ],
+  );
+  assert.throws(() => runCompletionGate(matrix), /completion gate is RED \(123 actionable blockers across 4 categories\)/);
 });
 
 test("every acceptance-critical completion category rejects unresolved and confirmed-defect states", async (t) => {

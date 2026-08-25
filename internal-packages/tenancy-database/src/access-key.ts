@@ -58,6 +58,27 @@ export async function rotateAccessKey(
     `);
     if (environment.length !== 1) throw new Error("access_key_store_unavailable");
 
+    const replayedKey = await tx.accessKey.findFirst({
+      where: {
+        environmentId: input.environmentId,
+        keyHash: input.keyHash,
+        revokedAt: null,
+        validUntil: null,
+      },
+      select: ACCESS_KEY_SAFE_SELECT,
+    });
+    if (replayedKey) {
+      const retiringKey = await tx.accessKey.findFirst({
+        where: {
+          environmentId: input.environmentId,
+          revokedAt: null,
+          replacedById: replayedKey.id,
+        },
+        select: ACCESS_KEY_SAFE_SELECT,
+      });
+      return { key: replayedKey, retiringKey };
+    }
+
     const now = new Date();
     const validUntil = new Date(now.getTime() + overlapMs);
     const active = await tx.accessKey.findFirst({

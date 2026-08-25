@@ -7032,9 +7032,9 @@
         "semantics": "apps/webapp/test/authenticatedMutationEvidence.test.ts proves total=42, totalPages=5, hasMore, and bounded limit/offset survive the authenticated loader serialization."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Delete must require explicit confirmation and preserve a recoverable error state."
+          "apps/webapp/test/formSubmission.test.tsx renders a persisted template, declines delete confirmation, and proves the Remix action is not submitted."
         ]
       },
       "idempotency": {
@@ -7065,7 +7065,8 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedMutationEvidence.test.ts"
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts",
+          "apps/webapp/test/formSubmission.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -7896,9 +7897,9 @@
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "apps/agent/src/agent-runtime/agent-crud-tool-policy.test.ts executes two concurrent replacement-version mutations through the serialized transaction seam and proves ancestry is preserved with the persisted winner active."
         ]
       },
       "recovery": {
@@ -9098,9 +9099,9 @@
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "apps/agent/src/auth/auth.service.test.ts races two complete origin-list replacements and proves read-back is one atomic submitted list, never a merged/torn list."
         ]
       },
       "recovery": {
@@ -9319,9 +9320,9 @@
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "apps/webapp/test/accessKeyLifecycle.test.ts settles the same correlated persisted response twice and ignores the replay after the first terminal reveal."
         ]
       },
       "concurrency": {
@@ -9549,9 +9550,9 @@
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "apps/webapp/test/accessKeyLifecycle.test.ts proves replaying a successful settlement cannot reveal the browser-held bearer a second time."
         ]
       },
       "concurrency": {
@@ -9767,9 +9768,9 @@
         "semantics": "Capability access-key-revoke does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "UI must explicitly confirm that active and overlap keys will stop authenticating."
+          "apps/webapp/test/formSubmission.test.tsx renders an active key, declines revoke confirmation, and proves the Remix action is not submitted."
         ]
       },
       "idempotency": {
@@ -9779,9 +9780,9 @@
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "apps/agent/src/auth/auth.service.test.ts races two full Environment revocations and reads back no active or overlap key."
         ]
       },
       "recovery": {
@@ -9804,7 +9805,8 @@
         "references": [
           "apps/webapp/test/credentialSerialization.test.ts",
           "apps/agent/src/auth/auth.service.test.ts",
-          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts",
+          "apps/webapp/test/formSubmission.test.tsx"
         ]
       },
       "browserEvidence": {
@@ -10031,15 +10033,15 @@
         "semantics": "Capability access-key-rotation-correlation does not present a collection total."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "apps/webapp/test/formSubmission.test.tsx renders an active key, declines rotation confirmation, and proves key generation/persistence is not submitted."
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Duplicate browser submissions must not leave multiple active replacements."
+          "internal-packages/tenancy-database/src/access-key.test.ts replays the same Environment/hash rotation and reads back the identical active/retiring correlation without creating a third row."
         ]
       },
       "concurrency": {
@@ -10071,7 +10073,9 @@
           "apps/agent/src/auth/auth.service.test.ts",
           "apps/webapp/test/credentialSerialization.test.ts",
           "apps/webapp/test/accessKeyLifecycle.test.ts",
-          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts",
+          "apps/webapp/test/formSubmission.test.tsx",
+          "internal-packages/tenancy-database/src/access-key.test.ts"
         ]
       },
       "browserEvidence": {
@@ -12997,9 +13001,9 @@
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "apps/agent/src/mcp-platform/token.service.test.ts races revoke and then replays it against persisted revoked state; every call succeeds without a second state transition."
         ]
       },
       "concurrency": {
@@ -14123,15 +14127,15 @@
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts replays the same complete combined-identity config and reads back unchanged persisted state."
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts races two complete config replacements and reads back one complete atomic winner without mixed identity state."
         ]
       },
       "recovery": {
@@ -14352,15 +14356,15 @@
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts replays the same complete identity/context config and reads back unchanged persisted state."
         ]
       },
       "concurrency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Concurrent mutation behavior requires an integration test."
+          "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts races two complete config replacements and reads back one complete atomic winner without mixed context state."
         ]
       },
       "recovery": {
@@ -14654,15 +14658,15 @@
         "semantics": "The ACL response and surface distinguish the full filtered total from returned page length and offset."
       },
       "destructiveConfirmation": {
-        "status": "required-not-verified",
+        "status": "not-applicable",
         "references": [
-          "Confirm destructive controls where the action can delete or revoke state."
+          "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts exposes only reversible upsert/bulk state-setting operations (ALLOW/DENY/minimum identity); it has no delete or revoke operation or destructive UI contract."
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts replays the same unique-key ACL upsert and reads back one stable policy and allowlist."
         ]
       },
       "concurrency": {

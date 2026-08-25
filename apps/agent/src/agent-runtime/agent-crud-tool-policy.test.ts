@@ -122,8 +122,13 @@ function harness(agentADefaultPolicy: "NONE" | "ALL" = "ALL") {
       }),
     },
   };
+  let transactionTail: Promise<unknown> = Promise.resolve();
   const prisma = {
-    $transaction: vi.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
+    $transaction: vi.fn((callback: (client: typeof tx) => Promise<unknown>) => {
+      const result = transactionTail.then(() => callback(tx));
+      transactionTail = result.then(() => undefined, () => undefined);
+      return result;
+    }),
   };
   const redis = {
     del: vi.fn().mockResolvedValue(0),
@@ -246,5 +251,28 @@ describe("AgentCrudService Agent Tool ownership", () => {
     expect(h.tx.agentBinding.update).not.toHaveBeenCalled();
     expect(h.tx.agentToolPolicy.createMany).not.toHaveBeenCalled();
     expect(h.redis.publish).not.toHaveBeenCalled();
+  });
+
+  it("serializes concurrent Tool policy replacements without losing version ancestry", async () => {
+    const h = harness();
+
+    const [disabled, enabled] = await Promise.all([
+      h.service.setToolEnabled("agent-a", "tool-a", scope, false),
+      h.service.setToolEnabled("agent-a", "tool-a", scope, true),
+    ]);
+
+    expect(disabled).toMatchObject({
+      agentVersionId: "version-3",
+      previousAgentVersionId: "version-a",
+      enabled: false,
+    });
+    expect(enabled).toMatchObject({
+      agentVersionId: "version-4",
+      previousAgentVersionId: "version-3",
+      enabled: true,
+    });
+    expect(h.bindings.find((binding) => binding.agentId === "agent-a")?.activeAgentVersionId).toBe("version-4");
+    expect(persistedEnabled(h.bindings, h.versions, h.policies, "agent-a", "tool-a")).toBe(true);
+    expect(h.tx.$queryRawUnsafe).toHaveBeenCalledTimes(2);
   });
 });

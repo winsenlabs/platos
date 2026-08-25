@@ -182,4 +182,43 @@ describe("McpToolAclService clean policy cutover", () => {
       }),
     );
   });
+
+  it("replays the same ACL upsert to one stable policy and allowlist", async () => {
+    let policy: any = null;
+    let allowlist: string[] = [];
+    prisma.entityToolPolicy.findUnique.mockImplementation(async () =>
+      policy ? { scopeLabels: [...policy.scopeLabels] } : null,
+    );
+    prisma.entityToolPolicy.upsert.mockImplementation(async ({ create, update }: any) => {
+      policy = policy
+        ? { ...policy, ...update }
+        : {
+            ...create,
+            id: "policy_1",
+            addedAt: new Date("2026-08-25T00:00:00.000Z"),
+            lastReviewedAt: null,
+          };
+      return { ...policy, tool: { name: "calendar.create" } };
+    });
+    prisma.entityToolPolicy.findMany.mockImplementation(async () =>
+      policy?.effect === "ALLOW" ? [{ tool: { name: "calendar.create" } }] : [],
+    );
+    prisma.entityMcpConfig.updateMany.mockImplementation(async ({ data }: any) => {
+      allowlist = [...data.toolAllowlist];
+      return { count: 1 };
+    });
+    const mutation = {
+      exposed: true,
+      minIdentityMode: "oidc",
+      allowedPatIds: ["pat_1"],
+      scopeLabels: ["mcp:tools", "calendar:write"],
+    };
+
+    const first = await service.upsert("entity_1", "env_1", "tool_1", "calendar.create", "user_1", mutation);
+    const replay = await service.upsert("entity_1", "env_1", "tool_1", "calendar.create", "user_1", mutation);
+
+    expect(replay).toEqual(first);
+    expect(policy).toMatchObject({ environmentId: "env_1", entityId: "entity_1", toolId: "tool_1", effect: "ALLOW" });
+    expect(allowlist).toEqual(["calendar.create"]);
+  });
 });

@@ -148,9 +148,8 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 
 | Blocker category | Count | Requirement |
 |---|---:|---|
-| destructive confirmation | 4 | Verify destructive confirmation or record an approved not-applicable/justified-exclusion status. |
-| idempotency | 14 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
-| concurrency | 12 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
+| idempotency | 7 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
+| concurrency | 7 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
 | persisted-state evidence | 2 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |
 | browser evidence | 107 | Provide authenticated browser evidence or a source-backed justified exclusion. |
 

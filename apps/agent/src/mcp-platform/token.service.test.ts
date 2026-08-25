@@ -158,4 +158,25 @@ describe("PlatosMCPTokenService clean-tenancy lifecycle", () => {
       data: { revokedAt: expect.any(Date), revokedBy: "user_1" },
     });
   });
+
+  it("replays and races revoke to the same persisted revoked state", async () => {
+    const row = { id: "token_1", revokedAt: null as Date | null, revokedBy: null as string | null };
+    prisma.mcpToken.findFirst.mockImplementation(async () => ({ ...row }));
+    prisma.mcpToken.updateMany.mockImplementation(async ({ data }: any) => {
+      await Promise.resolve();
+      if (row.revokedAt) return { count: 0 };
+      row.revokedAt = data.revokedAt;
+      row.revokedBy = data.revokedBy;
+      return { count: 1 };
+    });
+
+    await expect(Promise.all([
+      service.revoke("token_1", scope),
+      service.revoke("token_1", scope),
+    ])).resolves.toEqual([true, true]);
+    await expect(service.revoke("token_1", scope)).resolves.toBe(true);
+
+    expect(row).toMatchObject({ revokedAt: expect.any(Date), revokedBy: "user_1" });
+    expect(prisma.mcpToken.updateMany).toHaveBeenCalledTimes(2);
+  });
 });
