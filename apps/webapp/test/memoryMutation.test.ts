@@ -10,6 +10,13 @@ vi.mock("../app/services/auth.server", () => ({ requireEnvironmentScope }));
 vi.mock("../app/services/platosAgent.server", () => ({
   agentRequest,
   PlatosAgentApiError: class PlatosAgentApiError extends Error {},
+  UnsafeCredentialResponseError: class UnsafeCredentialResponseError extends Error {
+    readonly code = "UNSAFE_CREDENTIAL_RESPONSE";
+    constructor() {
+      super("The agent returned an unsafe credential payload");
+      this.name = "UnsafeCredentialResponseError";
+    }
+  },
 }));
 
 import { action } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route";
