@@ -74,7 +74,9 @@ jobs:
         run: pnpm test:vocabulary && pnpm audit:vocabulary
 
       - name: External Trigger configuration and direct-dispatch tests
-        run: pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts src/trigger-tasks/chat-session.task.test.ts src/agent-runtime/internal-chat-turn-options.test.ts
+        run: |
+          pnpm --filter platos-agent exec vitest run src/shared/external-trigger-config.test.ts src/agent-runtime/turn-dispatch.service.spec.ts
+          pnpm --filter platos-agent exec vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts
 
       - name: Platos tenancy and operator-auth tests
         # Runs the complete clean-slate schema/service suite, including its real
