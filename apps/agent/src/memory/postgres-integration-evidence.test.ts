@@ -3,6 +3,7 @@ import {
   explainCapturedQuery,
   normalizeSql,
   requireCapturedEndpointQueries,
+  requireCapturedRelationQuery,
   sha256,
   writeExplainEvidence,
   type CapturedPrismaQuery,
@@ -26,15 +27,16 @@ describe("PostgreSQL endpoint evidence", () => {
   });
 
   it("replays the exact emitted SQL and records its normalized hash", async () => {
-    const captured = query('  SELECT *\n FROM "public"."Memory" WHERE "id" = $1; ', ["memory-id"]);
+    const captured = query('  SELECT *\n FROM "public"."Memory" WHERE "id" = $1::uuid; ', [
+      "00000000-0000-4000-8000-000000000001",
+    ]);
     const plan = [{ Plan: { "Actual Rows": 1, "Shared Hit Blocks": 2 } }];
     const client = { $queryRawUnsafe: vi.fn().mockResolvedValue([{ "QUERY PLAN": plan }]) };
 
     const evidence = await explainCapturedQuery(client, captured);
 
     expect(client.$queryRawUnsafe).toHaveBeenCalledWith(
-      `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${captured.query}`,
-      "memory-id"
+      `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)   SELECT *\n FROM "public"."Memory" WHERE "id" = '00000000-0000-4000-8000-000000000001'::uuid; `
     );
     expect(evidence).toMatchObject({
       source: "captured-prisma-query",
@@ -51,6 +53,14 @@ describe("PostgreSQL endpoint evidence", () => {
         plans: { items: evidence },
       })
     ).not.toThrow();
+  });
+
+  it("selects the indexed candidate query instead of an exact fallback", () => {
+    const indexed = query('SELECT * FROM "Memory" ORDER BY "embedding" <=> $1::vector');
+    const fallback = query(
+      'SELECT * FROM "Memory" ORDER BY ("embedding" <=> $1::vector) + 0 /* exact fallback */'
+    );
+    expect(requireCapturedRelationQuery([indexed, fallback], "Memory")).toBe(indexed);
   });
 });
 

@@ -90,7 +90,8 @@ export function requireCapturedRelationQuery(
     ({ query }) =>
       /^\s*SELECT\b/i.test(query) &&
       relationPattern.test(query) &&
-      !/\bCOUNT\s*\(\s*\*\s*\)/i.test(query)
+      !/\bCOUNT\s*\(\s*\*\s*\)/i.test(query) &&
+      !/\/\*\s*exact fallback\s*\*\//i.test(query)
   );
   if (matches.length !== 1) {
     throw new Error(
@@ -106,9 +107,9 @@ export async function explainCapturedQuery(
 ): Promise<CapturedExplainPlan> {
   const values: unknown = JSON.parse(captured.params);
   if (!Array.isArray(values)) throw new Error("captured Prisma query parameters are not an array");
+  const replaySql = inlineCapturedParams(captured.query, values);
   const rows = (await client.$queryRawUnsafe(
-    `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${captured.query}`,
-    ...values
+    `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${replaySql}`
   )) as Array<{ "QUERY PLAN": unknown }>;
   const normalizedSql = normalizeSql(captured.query);
   return {
@@ -117,6 +118,25 @@ export async function explainCapturedQuery(
     normalizedSqlSha256: sha256(normalizedSql),
     plan: rows[0]?.["QUERY PLAN"],
   };
+}
+
+function inlineCapturedParams(sql: string, values: unknown[]): string {
+  return sql.replace(/\$(\d+)/g, (placeholder, position: string) => {
+    const index = Number(position) - 1;
+    return index >= 0 && index < values.length ? postgresLiteral(values[index]) : placeholder;
+  });
+}
+
+function postgresLiteral(value: unknown): string {
+  if (value === null || value === undefined) return "NULL";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("captured Prisma query contains a non-finite number");
+    return String(value);
+  }
+  if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+  if (Array.isArray(value)) return `ARRAY[${value.map(postgresLiteral).join(", ")}]`;
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return `'${text.replaceAll("'", "''")}'`;
 }
 
 export function normalizeSql(sql: string): string {
