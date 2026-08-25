@@ -2,6 +2,7 @@ import { redirect, type LoaderFunctionArgs } from "@remix-run/node";
 import { Outlet } from "@remix-run/react";
 import { requireOperator } from "~/services/auth.server";
 import { database } from "~/services/database.server";
+import { operatorVisibleProjectWhere } from "~/services/projectAccess.server";
 import { agentsPath } from "~/utils/pathBuilder";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
@@ -15,11 +16,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     project = await database.project.findFirst({
       where: {
         slug: params.projectParam,
-        archivedAt: null,
+        ...operatorVisibleProjectWhere(operator.userId),
         organization: {
           slug: params.organizationSlug,
           archivedAt: null,
-          memberships: { some: { userId: operator.userId, deactivatedAt: null } },
         },
       },
       select: { id: true, slug: true, organization: { select: { id: true, slug: true } }, environments: { where: { archivedAt: null }, orderBy: { createdAt: "asc" }, take: 1, select: { id: true, slug: true } } },

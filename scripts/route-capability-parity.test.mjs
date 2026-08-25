@@ -397,6 +397,9 @@ test("direct authenticated credential route evidence cannot regress to static cl
       row.idempotency.references.some((reference) => reference.includes("apps/agent/src/auth/auth.service.test.ts")),
       capabilityId,
     );
+    assert.equal(row.concurrency.status, "required-not-verified", capabilityId);
+    assert.match(row.concurrency.references.join(" "), /PostgreSQL integration/, capabilityId);
+    assert.match(row.concurrency.references.join(" "), /does not acquire rotation's Environment row lock/, capabilityId);
   }
   assert.equal(capability(matrix, "access-key-rotation-correlation").concurrency.status, "verified");
 });
@@ -539,8 +542,6 @@ test("non-browser exhaustion evidence stays operation-specific and browser claim
     ["mcp-identity-context", "idempotency", "verified", "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts"],
     ["mcp-token-revoke", "idempotency", "verified", "apps/agent/src/mcp-platform/token.service.test.ts"],
     ["mcp-tool-acl-policy", "idempotency", "verified", "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts"],
-    ["access-key-allowed-origins", "concurrency", "verified", "apps/agent/src/auth/auth.service.test.ts"],
-    ["access-key-revoke", "concurrency", "verified", "apps/agent/src/auth/auth.service.test.ts"],
     ["agent-tools-loader-action-mismatch", "concurrency", "verified", "apps/agent/src/agent-runtime/agent-crud-tool-policy.test.ts"],
     ["mcp-combined-identity-modes", "concurrency", "verified", "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts"],
     ["mcp-identity-context", "concurrency", "verified", "apps/agent/src/mcp-platform/mcp-entity.controller.test.ts"],
@@ -566,6 +567,8 @@ test("non-browser exhaustion evidence stays operation-specific and browser claim
       "thread-fork",
     ],
     concurrency: [
+      "access-key-allowed-origins",
+      "access-key-revoke",
       "attachment-presign-upload",
       "entity-mcp-bearer-token-create",
       "mcp-credential-reference-migration",
@@ -714,6 +717,12 @@ test("authenticated Organization and Project route evidence cannot regress to st
       capabilityId,
     );
   }
+  for (const capabilityId of ["route-002", "route-004", "route-006"]) {
+    const row = capability(matrix, capabilityId);
+    assert.match(row.currentBehavior, /MEMBER requires explicit ProjectMembership/, capabilityId);
+    assert.match(row.permission.requirement, /same-Organization MEMBER/, capabilityId);
+    assert.match(row.permission.requirement, /without explicit ProjectMembership/, capabilityId);
+  }
   for (const capabilityId of organizationOnly) {
     assert.equal(capability(matrix, capabilityId).tenantScope.status, "organization-only", capabilityId);
     assert.deepEqual(capability(matrix, capabilityId).tenantScope.keys, ["organizationId"], capabilityId);
@@ -807,12 +816,12 @@ test("completion is a separate expected-red gate with actionable blocker counts"
     blockers.map(({ category, count }) => ({ category, count })),
     [
       { category: "idempotency", count: 7 },
-      { category: "concurrency", count: 7 },
+      { category: "concurrency", count: 9 },
       { category: "persisted-state evidence", count: 2 },
       { category: "browser evidence", count: 107 },
     ],
   );
-  assert.throws(() => runCompletionGate(matrix), /completion gate is RED \(123 actionable blockers across 4 categories\)/);
+  assert.throws(() => runCompletionGate(matrix), /completion gate is RED \(125 actionable blockers across 4 categories\)/);
 });
 
 test("every acceptance-critical completion category rejects unresolved and confirmed-defect states", async (t) => {

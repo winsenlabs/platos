@@ -65,7 +65,7 @@
       "intent": "Inventory the exact Remix route-module shell at apps/webapp/app/routes/_app._index/route.tsx.",
       "disposition": "redirect",
       "v0Behavior": "Pinned v0 contains the path-identical module apps/webapp/app/routes/_app._index/route.tsx.",
-      "currentBehavior": "Current source apps/webapp/app/routes/_app._index/route.tsx exports loader; backend interactions require their own source-owned capability rows.",
+      "currentBehavior": "Current source apps/webapp/app/routes/_app._index/route.tsx exports loader; backend interactions require their own source-owned capability rows. Project visibility follows the canonical operator rule: Organization OWNER/ADMIN may see all active Projects; MEMBER requires explicit ProjectMembership.",
       "http": [
         {
           "role": "route inventory only",
@@ -127,7 +127,7 @@
       },
       "permission": {
         "status": "verified",
-        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the authenticated operator boundary and proves unauthenticated access stops before database or auth mutation."
+        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts proves same-Organization MEMBER users cannot enumerate or deep-link to Projects/Environments without explicit ProjectMembership, while OWNER/ADMIN visibility remains represented by the canonical query branch."
       },
       "loaderState": {
         "status": "implemented",
@@ -439,7 +439,7 @@
       "intent": "Inventory the exact Remix route-module shell at apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx.",
       "disposition": "improve",
       "v0Behavior": "Pinned v0 contains the path-identical module apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx.",
-      "currentBehavior": "Current source apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx exports loader, default; backend interactions require their own source-owned capability rows.",
+      "currentBehavior": "Current source apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx exports loader, default; backend interactions require their own source-owned capability rows. Project visibility follows the canonical operator rule: Organization OWNER/ADMIN may see all active Projects; MEMBER requires explicit ProjectMembership.",
       "http": [
         {
           "role": "route inventory only",
@@ -501,7 +501,7 @@
       },
       "permission": {
         "status": "verified",
-        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the authenticated operator boundary and proves unauthenticated access stops before database or auth mutation."
+        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts proves same-Organization MEMBER users cannot enumerate or deep-link to Projects/Environments without explicit ProjectMembership, while OWNER/ADMIN visibility remains represented by the canonical query branch."
       },
       "loaderState": {
         "status": "implemented",
@@ -9099,9 +9099,9 @@
         ]
       },
       "concurrency": {
-        "status": "verified",
+        "status": "required-not-verified",
         "references": [
-          "apps/agent/src/auth/auth.service.test.ts races two complete origin-list replacements and proves read-back is one atomic submitted list, never a merged/torn list."
+          "Required: PostgreSQL integration must race setAllowedOrigins against rotateAccessKey. setAllowedOrigins does not acquire rotation's Environment row lock, so local mocks cannot prove restrictions survive a concurrent replacement."
         ]
       },
       "recovery": {
@@ -9780,9 +9780,9 @@
         ]
       },
       "concurrency": {
-        "status": "verified",
+        "status": "required-not-verified",
         "references": [
-          "apps/agent/src/auth/auth.service.test.ts races two full Environment revocations and reads back no active or overlap key."
+          "Required: PostgreSQL integration must race deleteAccessKey against rotateAccessKey. deleteAccessKey does not acquire rotation's Environment row lock, so local mocks cannot prove every concurrent replacement is revoked."
         ]
       },
       "recovery": {
@@ -18702,7 +18702,7 @@
       "intent": "Inventory the exact Remix route-module shell at apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx.",
       "disposition": "redirect",
       "v0Behavior": "Pinned v0 contains the path-identical module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx.",
-      "currentBehavior": "Current source apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx exports loader, default; backend interactions require their own source-owned capability rows.",
+      "currentBehavior": "Current source apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx exports loader, default; backend interactions require their own source-owned capability rows. Project visibility follows the canonical operator rule: Organization OWNER/ADMIN may see all active Projects; MEMBER requires explicit ProjectMembership.",
       "http": [
         {
           "role": "route inventory only",
@@ -18769,7 +18769,7 @@
       },
       "permission": {
         "status": "verified",
-        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the authenticated operator boundary and proves unauthenticated access stops before database or auth mutation."
+        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts proves same-Organization MEMBER users cannot enumerate or deep-link to Projects/Environments without explicit ProjectMembership, while OWNER/ADMIN visibility remains represented by the canonical query branch."
       },
       "loaderState": {
         "status": "implemented",

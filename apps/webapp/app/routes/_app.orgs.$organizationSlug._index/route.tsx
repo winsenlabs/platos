@@ -2,6 +2,7 @@ import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
 import { requireOperator } from "~/services/auth.server";
 import { database } from "~/services/database.server";
+import { operatorVisibleProjectWhere } from "~/services/projectAccess.server";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const operator = await requireOperator(request);
@@ -18,7 +19,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         name: true,
         slug: true,
         projects: {
-          where: { archivedAt: null },
+          where: operatorVisibleProjectWhere(operator.userId),
           select: {
             id: true,
             name: true,

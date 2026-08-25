@@ -57,6 +57,29 @@ const databaseSecret = "SENTINEL_DATABASE_CONNECTION_DETAILS";
 const authSecret = "SENTINEL_INVITATION_OR_SESSION_MATERIAL";
 const organizationMembershipId = "organization-membership-alpha";
 const targetMembershipId = "organization-membership-target";
+const canonicalProjectVisibility = {
+  archivedAt: null,
+  OR: [
+    {
+      organization: {
+        memberships: {
+          some: {
+            userId: primary.userId,
+            deactivatedAt: null,
+            role: { in: [OrganizationRole.OWNER, OrganizationRole.ADMIN] },
+          },
+        },
+      },
+    },
+    {
+      memberships: {
+        some: {
+          organizationMembership: { userId: primary.userId, deactivatedAt: null },
+        },
+      },
+    },
+  ],
+};
 
 function params() {
   return {
@@ -196,7 +219,7 @@ describe("authenticated Organization and Project route evidence", () => {
             id: true,
             slug: true,
             projects: {
-              where: { archivedAt: null },
+              where: canonicalProjectVisibility,
               orderBy: { createdAt: "asc" },
               take: 1,
               select: {
@@ -237,7 +260,7 @@ describe("authenticated Organization and Project route evidence", () => {
       },
       select: expect.objectContaining({
         id: true,
-        projects: expect.objectContaining({ where: { archivedAt: null } }),
+        projects: expect.objectContaining({ where: canonicalProjectVisibility }),
       }),
     }));
     expect(serialized).toContain(primary.organizationId);
@@ -321,11 +344,10 @@ describe("authenticated Organization and Project route evidence", () => {
     expect(database.project.findFirst).toHaveBeenCalledWith({
       where: {
         slug: primary.projectSlug,
-        archivedAt: null,
+        ...canonicalProjectVisibility,
         organization: {
           slug: primary.organizationSlug,
           archivedAt: null,
-          memberships: { some: { userId: primary.userId, deactivatedAt: null } },
         },
       },
       select: {
@@ -340,6 +362,80 @@ describe("authenticated Organization and Project route evidence", () => {
         },
       },
     });
+  });
+
+  it("prevents a same-Organization MEMBER from enumerating a Project or Environment without ProjectMembership", async () => {
+    requireOperator.mockResolvedValue({
+      userId: primary.userId,
+      actorUserId: primary.userId,
+      email: "member@example.test",
+      authorization: { role: OrganizationRole.MEMBER, sessionMaterial: authSecret },
+    });
+    const allowedProject = {
+      id: primary.projectId,
+      name: "Allowed Project",
+      slug: primary.projectSlug,
+      environments: [{ id: primary.environmentId, name: "Production", slug: primary.environmentSlug }],
+    };
+    const restrictedProject = {
+      id: secondary.projectId,
+      name: "Restricted Project",
+      slug: secondary.projectSlug,
+      environments: [{ id: secondary.environmentId, name: "Restricted", slug: secondary.environmentSlug }],
+    };
+    const hasCanonicalVisibility = (where: unknown) =>
+      JSON.stringify(where) === JSON.stringify(canonicalProjectVisibility);
+
+    database.organizationMembership.findFirst.mockImplementationOnce(async ({ select }: any) =>
+      ({
+        organization: {
+          id: primary.organizationId,
+          slug: primary.organizationSlug,
+          projects: hasCanonicalVisibility(select.organization.select.projects.where)
+            ? [allowedProject]
+            : [restrictedProject],
+        },
+      }),
+    );
+    const home = await thrownResponse(() => homeLoader(loaderArgs("/")));
+    expect(home.status).toBe(302);
+    expect(home.headers.get("Location")).toContain(primary.projectSlug);
+    expect(home.headers.get("Location")).not.toContain(secondary.projectSlug);
+
+    database.organization.findFirst.mockImplementationOnce(async ({ select }: any) =>
+      ({
+        id: primary.organizationId,
+        name: "Alpha Organization",
+        slug: primary.organizationSlug,
+        projects: hasCanonicalVisibility(select.projects.where)
+          ? [allowedProject]
+          : [allowedProject, restrictedProject],
+      }),
+    );
+    const organization = await organizationLoader(loaderArgs(`/orgs/${primary.organizationSlug}`));
+    const serialized = JSON.stringify(await organization.json());
+    expect(serialized).toContain(primary.projectId);
+    expect(serialized).not.toContain(secondary.projectId);
+    expect(serialized).not.toContain(secondary.environmentId);
+
+    database.project.findFirst.mockImplementationOnce(async ({ where }: any) =>
+      JSON.stringify(where) === JSON.stringify({
+        slug: secondary.projectSlug,
+        ...canonicalProjectVisibility,
+        organization: { slug: primary.organizationSlug, archivedAt: null },
+      })
+        ? null
+        : {
+            ...restrictedProject,
+            organization: { id: primary.organizationId, slug: primary.organizationSlug },
+          },
+    );
+    const project = await thrownResponse(() => projectLoader(loaderArgs(
+      `/orgs/${primary.organizationSlug}/projects/${secondary.projectSlug}`,
+      { ...params(), projectParam: secondary.projectSlug },
+    )));
+    expect(project.status).toBe(404);
+    expect(await project.text()).toBe("Project not found");
   });
 
   it("route-006 hides a foreign Project and does not authorize nested child paths twice", async () => {
