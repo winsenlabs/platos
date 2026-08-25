@@ -221,7 +221,7 @@ export class McpToolAclService {
     entityPk: string,
     environmentId: string,
     toolId: string,
-    _toolName: string,
+    toolName: string,
     addedBy: string,
     data: Partial<
       Pick<ToolAclRow, "exposed" | "minIdentityMode" | "allowedPatIds" | "scopeLabels">
@@ -260,10 +260,9 @@ export class McpToolAclService {
           ),
         }),
       },
-      include: { tool: { select: { name: true } } },
     });
     await this.syncAllowlist(entityPk);
-    return this.projectPolicy(row);
+    return this.projectPolicy({ ...row, tool: { name: toolName } });
   }
 
   async bulk(

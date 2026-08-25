@@ -95,6 +95,8 @@ describe("McpToolAclService clean policy cutover", () => {
         }),
       }),
     );
+    expect(prisma.entityToolPolicy.upsert.mock.calls[0]?.[0]).not.toHaveProperty("include");
+    expect(row.toolName).toBe("calendar.create");
     expect(row.allowedPatIds).toEqual(["pat_1"]);
     expect(row.scopeLabels).toEqual(["mcp:tools"]);
   });

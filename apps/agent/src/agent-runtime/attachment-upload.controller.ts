@@ -47,7 +47,9 @@ export class AttachmentUploadController {
       throw new BadRequestException({ code: "ATTACHMENT_INVALID", message: "Attachment metadata is invalid" });
     }
 
-    const thread = await this.conversations.getThread(threadId, scope);
+    const thread = scope.principal === "operator"
+      ? await this.conversations.getThread(threadId, scope, { allUsers: true })
+      : await this.conversations.getThread(threadId, scope);
     if (!thread || thread.agentId !== agentId) {
       throw new NotFoundException({ code: "THREAD_NOT_FOUND", message: "Thread not found" });
     }

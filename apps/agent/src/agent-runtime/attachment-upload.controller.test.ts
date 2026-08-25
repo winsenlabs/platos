@@ -73,6 +73,34 @@ describe("AttachmentUploadController", () => {
     expect(conversations.getThread).not.toHaveBeenCalled();
   });
 
+  it("allows an operator to select a Thread owner only inside the scoped Environment", async () => {
+    const operatorScope = { ...scope, userId: "operator-1", principal: "operator" } as const;
+    const conversations = {
+      getThread: vi.fn(async () => ({ id: "thread-1", agentId: "agent-1", endUserId: "end-user-1" })),
+    };
+    const attachments = {
+      createPresignedUpload: vi.fn(async () => ({ attachmentId: "attachment-1" })),
+    };
+    const controller = new AttachmentUploadController(conversations as any, attachments as any);
+
+    await controller.presign({ scope: operatorScope } as any, {
+      agentId: "agent-1",
+      threadId: "thread-1",
+      mimeType: "text/plain",
+      bytes: 12,
+    });
+
+    expect(conversations.getThread).toHaveBeenCalledWith("thread-1", operatorScope, {
+      allUsers: true,
+    });
+    expect(attachments.createPresignedUpload).toHaveBeenCalledWith(expect.objectContaining({
+      scope: operatorScope,
+      endUserId: "end-user-1",
+      agentId: "agent-1",
+      threadId: "thread-1",
+    }));
+  });
+
   it("returns the same not-found shape for a cross-scope or wrong-Agent Thread", async () => {
     const conversations = { getThread: vi.fn(async () => null) };
     const controller = new AttachmentUploadController(conversations as any, {} as any);
