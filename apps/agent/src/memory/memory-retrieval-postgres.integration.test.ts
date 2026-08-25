@@ -81,24 +81,35 @@ describe("memory PostgreSQL HNSW retrieval", () => {
       );
     }
 
-    prisma = createQueryPrismaClient(databaseUrl);
-    prisma.$on("query", ({ query, params }) => queries.push({ query, params }));
-    await new MemoryProfileBackfillService(prisma, new MessageCryptoService()).run();
-    memory = new MemoryService(prisma, { embed: async () => queryVector } as any);
-    primary = await seedScope(prisma, "primary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
-    secondary = await seedScope(prisma, "secondary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
-    otherAgentId = await seedAgent(prisma, primary.projectId, primary.environmentId, "other");
-    const [runtime] = await prisma.$queryRawUnsafe<
-      Array<{
-        serverVersion: string;
-        pgvectorVersion: string;
-      }>
-    >(
-      `SELECT current_setting('server_version') AS "serverVersion",
-              (SELECT extversion FROM pg_extension WHERE extname = 'vector') AS "pgvectorVersion"`
-    );
-    expect(runtime?.pgvectorVersion).toBeTruthy();
-    writePostgresRuntimeEvidence(runtime!);
+    try {
+      prisma = createQueryPrismaClient(databaseUrl);
+      prisma.$on("query", ({ query, params }) => queries.push({ query, params }));
+      await new MemoryProfileBackfillService(prisma, new MessageCryptoService()).run();
+      memory = new MemoryService(prisma, { embed: async () => queryVector } as any);
+      primary = await seedScope(prisma, "primary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+      secondary = await seedScope(prisma, "secondary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+      otherAgentId = await seedAgent(prisma, primary.projectId, primary.environmentId, "other");
+      const [runtime] = await prisma.$queryRawUnsafe<
+        Array<{
+          serverVersion: string;
+          pgvectorVersion: string;
+        }>
+      >(
+        `SELECT current_setting('server_version') AS "serverVersion",
+                (SELECT extversion FROM pg_extension WHERE extname = 'vector') AS "pgvectorVersion"`
+      );
+      expect(runtime?.pgvectorVersion).toBeTruthy();
+      writePostgresRuntimeEvidence(runtime!);
+    } catch (error) {
+      if (evidenceDirectory) {
+        writeFileSync(
+          resolve(evidenceDirectory, "suites", "memory-retrieval.setup.error.log"),
+          error instanceof Error ? error.stack || error.message : String(error),
+          "utf8"
+        );
+      }
+      throw error;
+    }
   }, 180_000);
 
   afterAll(async () => {
