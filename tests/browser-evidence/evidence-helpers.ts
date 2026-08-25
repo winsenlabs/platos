@@ -1070,15 +1070,38 @@ export async function performMutation(args: {
       });
     case "toggle-button": {
       const button = page.getByRole("button", { name: /enable mapping|disable mapping/i }).first();
-      const form = button.locator("xpath=ancestor::form[1]");
+      const initialForm = button.locator("xpath=ancestor::form[1]");
+      const toolId = await initialForm.locator('[name="toolId"]').inputValue();
+      const form = page
+        .locator(`form:has(input[name="toolId"][value="${toolId}"])`)
+        .first();
       const identity = hiddenId(form, "toolId");
       return persistedUiWitness({
         page,
         identity,
         field: controlField(form, "enabled"),
         mutate: async () => {
+          const enabled = form.locator('[name="enabled"]');
+          const preActionTarget = await enabled.inputValue();
+          expect(["true", "false"]).toContain(preActionTarget);
+          const postActionTarget = preActionTarget === "true" ? "false" : "true";
+          const actionPathname = new URL(page.url()).pathname;
+          const actionResponsePromise = page.waitForResponse((response) => {
+            const request = response.request();
+            return (
+              request.method() === "POST" && new URL(response.url()).pathname === actionPathname
+            );
+          });
           await button.click();
-          await page.waitForLoadState("networkidle");
+          const actionResponse = await actionResponsePromise;
+          expect(actionResponse.status(), "Agent Tool mapping action did not succeed").toBe(200);
+          const actionPayload = (await actionResponse.json()) as { ok?: boolean };
+          expect(actionPayload.ok, "Agent Tool mapping action returned a failure payload").toBe(true);
+          await expect
+            .poll(() => enabled.inputValue(), {
+              message: "Agent Tool mapping did not finish canonical loader revalidation",
+            })
+            .toBe(postActionTarget);
         },
       });
     }
