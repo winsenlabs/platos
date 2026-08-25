@@ -36,6 +36,16 @@ describe("browser capability route identities", () => {
     expect(capabilityPath(capability!, alpha)).not.toContain(alpha.entityExternalId);
   });
 
+  it("uses the persisted internal Job UUID for the Job detail route", () => {
+    const capability = capabilities.find(({ capabilityId }) => capabilityId === "route-059");
+    const alpha = scope("alpha");
+    expect(capability).toBeDefined();
+    expect(capabilityPath(capability!, alpha)).toBe(
+      `/orgs/win235-alpha/projects/win235-alpha-project/env/development/jobs/${alpha.jobId}`
+    );
+    expect(alpha.jobId).toBe("733abb99-f4c0-41bd-a4ba-ba542433a00a");
+  });
+
   it("uses the canonical Memories page for the download-only route shell", () => {
     const capability = capabilities.find(({ capabilityId }) => capabilityId === "route-057");
     expect(capability).toBeDefined();

@@ -36,7 +36,7 @@ export type ManifestScope = {
   threadId: string;
   agentIds: string[];
   approvalId?: string;
-  jobId?: string;
+  jobId: string;
 };
 
 export type FixtureManifest = {
@@ -259,7 +259,7 @@ function routeParameters(scope: ManifestScope): Record<string, string> {
     clusterId: scope.clusterId,
     threadId: scope.threadId,
     approvalId: scope.approvalId ?? canonical.approvalId,
-    jobId: scope.jobId ?? canonical.jobId,
+    jobId: scope.jobId,
     userId: scope.endUserId,
   };
 }

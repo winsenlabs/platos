@@ -641,12 +641,33 @@ export async function performMutation(args: {
         page,
         marker,
         mutate: async () => {
+          const credentialReference = "WIN235_BROWSER_REFERENCE";
           await fillNamed(page, "entityId", marker);
           await fillNamed(page, "displayName", marker);
           await page.locator('[name="connectionKind"]').selectOption("mcp");
           await page.locator('[name="transport"]').selectOption("hosted-composio");
-          await fillNamed(page, "credsSecretKey", "WIN235_BROWSER_REFERENCE");
+          await fillNamed(page, "credsSecretKey", credentialReference);
+          const actionPathname = new URL(page.url()).pathname;
+          const actionResponsePromise = page.waitForResponse((response) => {
+            const request = response.request();
+            return (
+              request.method() === "POST" && new URL(response.url()).pathname === actionPathname
+            );
+          });
           await clickSubmit(page, /connect|register|create/i);
+          const actionResponse = await actionResponsePromise;
+          expect(actionResponse.status(), "Entity registration action did not succeed").toBe(200);
+          const actionPayload = (await actionResponse.json()) as {
+            ok?: boolean;
+            result?: { mcpClient?: { credsSecretKey?: string | null } | null };
+          };
+          expect(actionPayload.ok, "Entity registration action returned a failure payload").toBe(
+            true
+          );
+          expect(
+            actionPayload.result?.mcpClient?.credsSecretKey,
+            "Entity registration response lost the bare MCP credential reference"
+          ).toBe(credentialReference);
           const entitiesPath =
             `/orgs/${scope.organizationSlug}/projects/${scope.projectSlug}` +
             `/env/${scope.environmentSlug}/agent-entities`;
@@ -657,7 +678,24 @@ export async function performMutation(args: {
             .getByText(marker, { exact: true })
             .first()
             .locator("xpath=ancestor::tr[1]");
-          await expect(createdRow.getByText("connected", { exact: true })).toBeVisible();
+          await expect(createdRow, "created Entity row was not persisted").toBeVisible();
+          await expect(
+            createdRow.getByText(credentialReference, { exact: true }),
+            "persisted Entity row lost the bare MCP credential reference"
+          ).toBeVisible();
+          await expect
+            .poll(
+              async () => {
+                await page.reload({ waitUntil: "networkidle" });
+                return createdRow.getByText("connected", { exact: true }).count();
+              },
+              { message: "persisted Entity never reached its terminal connected status" }
+            )
+            .toBe(1);
+          await expect(
+            createdRow.getByText(credentialReference, { exact: true }),
+            "terminal Entity read-back lost the bare MCP credential reference"
+          ).toBeVisible();
         },
       });
     case "attachment-upload": {

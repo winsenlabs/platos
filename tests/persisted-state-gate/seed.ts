@@ -135,6 +135,7 @@ async function seedScope(
   const entityExternalId = canonicalScope.entityExternalId;
   const clusterId = canonicalScope.clusterId;
   const threadId = canonicalScope.threadId;
+  const jobId = canonicalScope.jobId;
   const externalUserId = canonicalScope.externalUserId;
   const agentIds = Array.from({ length: AGENTS_PER_SCOPE }, (_, index) =>
     deterministicUuid(key, "agent", index)
@@ -587,6 +588,25 @@ async function seedScope(
       createdAt: FIXTURE_TIMESTAMP,
     },
   });
+  await database.job.create({
+    data: {
+      id: jobId,
+      environmentId,
+      externalId: `win235-${key}-job`,
+      displayName: `WIN-235 ${key} Job`,
+      description: "Canonical WIN-235 persisted Job fixture",
+      invocationType: "manual",
+      allowedAgentIds: [agentIds[0]],
+      payloadSchema: { type: "object", additionalProperties: true },
+      handler: 'return { fixture: "WIN-235", payload };',
+      timeoutSeconds: 300,
+      maxRetries: 3,
+      status: WorkStatus.ACTIVE,
+      createdBy: operatorId,
+      createdAt: FIXTURE_TIMESTAMP,
+      updatedAt: FIXTURE_TIMESTAMP,
+    },
+  });
 
   return {
     key,
@@ -604,6 +624,7 @@ async function seedScope(
     entityExternalId,
     clusterId,
     threadId,
+    jobId,
     agentIds,
     versionIds,
     profileMemoryId: memoryIds[0],
@@ -640,6 +661,7 @@ async function actualCounts() {
     budgets,
     safetyEvents,
     toolCallAudits,
+    jobs,
   ] = await Promise.all([
     database.organization.count(),
     database.project.count(),
@@ -664,6 +686,7 @@ async function actualCounts() {
     database.budget.count(),
     database.safetyEvent.count(),
     database.toolCallAudit.count(),
+    database.job.count(),
   ]);
   return {
     organizations,
@@ -689,6 +712,7 @@ async function actualCounts() {
     budgets,
     safetyEvents,
     toolCallAudits,
+    jobs,
   };
 }
 
@@ -717,6 +741,7 @@ function assertCounts(actual: Record<string, number>) {
     budgets: 2,
     safetyEvents: 2,
     toolCallAudits: 2,
+    jobs: 2,
   };
   for (const [name, count] of Object.entries(expected)) {
     if (actual[name] !== count) {

@@ -371,6 +371,13 @@ describe("authenticated mutation evidence harness", () => {
       },
     });
     expect(String(init?.body)).not.toContain("SENTINEL_SERVER_ONLY_OPERATOR_CREDENTIAL");
+
+    const registry = readFileSync(
+      join(process.cwd(), "app/components/platos/surfaces/RegistrySurfaces.tsx"),
+      "utf8"
+    );
+    expect(registry).toContain('"Credential reference"');
+    expect(registry).toContain("asRecord(entity.mcpClient).credsSecretKey");
   });
 
   it("preserves bounded Postman pagination and complete upstream totals", async () => {
