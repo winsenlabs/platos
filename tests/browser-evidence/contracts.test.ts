@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { canonicalOperatorScope } from "../persisted-state-gate/fixture-contract";
 import {
   capabilityPath,
+  expectedCapabilityPathname,
   loadBrowserCapabilities,
   type ManifestScope,
 } from "./contracts";
@@ -52,6 +53,21 @@ describe("browser capability route identities", () => {
     expect(capabilityPath(capability!, scope("alpha"))).toBe(
       "/orgs/win235-alpha/projects/win235-alpha-project/env/development/memories"
     );
+  });
+
+  it("uses the canonical Team page for the redirect-only Organization settings index", () => {
+    const capability = capabilities.find(({ capabilityId }) => capabilityId === "route-071");
+    expect(capability).toBeDefined();
+    expect(capabilityPath(capability!, scope("alpha"))).toBe(
+      "/orgs/win235-alpha/settings/team"
+    );
+    expect(expectedCapabilityPathname(capability!, scope("alpha"))).toBe(
+      "/orgs/win235-alpha/settings/team"
+    );
+    expect(capability?.navigationContract).toEqual({
+      expectedHttpStatus: 200,
+      expectedFinalPath: "target",
+    });
   });
 
   it("keeps Alpha and Beta MCP Entity route identities distinct", () => {

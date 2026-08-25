@@ -29,15 +29,123 @@ async function scoped(args: LoaderFunctionArgs | ActionFunctionArgs) {
   return requireEnvironmentScope({ request: args.request, organizationSlug, projectSlug, environmentSlug });
 }
 
+type PersistedThreadState = {
+  threadId: string;
+  submittedMessage: string;
+  answer: string;
+  messageId: string | null;
+  attachmentIds: string;
+  uploadedAttachments: Array<{ id: string; name: string; mimeType: string; bytes: number }>;
+};
+
+function safeThreadId(value: string | null): string | null {
+  if (!value) return null;
+  return /^[A-Za-z0-9_-]{1,100}$/.test(value) ? value : null;
+}
+
+export function persistedThreadState(
+  threadId: string,
+  messagesPayload: unknown,
+  attachmentsPayload: unknown,
+): PersistedThreadState {
+  const messagesRecord = asRecord(messagesPayload);
+  const messages = asArray(messagesRecord.items ?? messagesRecord.messages).map(asRecord);
+  const userMessage = [...messages].reverse().find((message) => asString(message.role) === "user");
+  const turnId = asString(userMessage?.turnId, asString(userMessage?.id));
+  const assistantMessage = [...messages].reverse().find((message) =>
+    asString(message.role) === "assistant"
+    && (!turnId || asString(message.turnId, asString(message.id)) === turnId)
+  );
+  const attachmentRecord = asRecord(attachmentsPayload);
+  const uploadedAttachments = asArray(attachmentRecord.items ?? attachmentRecord.attachments)
+    .map(asRecord)
+    .filter((attachment) => !turnId || asString(attachment.turnId, asString(attachment.messageId)) === turnId)
+    .map((attachment) => ({
+      id: asString(attachment.id),
+      name: asString(attachment.filename, asString(attachment.originalName, asString(attachment.id))),
+      mimeType: asString(attachment.mimeType, "application/octet-stream"),
+      bytes: asNumber(attachment.bytes),
+    }))
+    .filter((attachment) => attachment.id !== "");
+  return {
+    threadId,
+    submittedMessage: asString(userMessage?.content),
+    answer: asString(assistantMessage?.content),
+    messageId: assistantMessage ? asString(assistantMessage.id) || null : null,
+    attachmentIds: uploadedAttachments.map((attachment) => attachment.id).join(","),
+    uploadedAttachments,
+  };
+}
+
+export function collectedResultThreadId(value: unknown, fallback = ""): string {
+  const payload = asRecord(value);
+  return asString(asRecord(payload.result).threadId, asString(payload.threadId, fallback));
+}
+
+async function loadPersistedThreadState(
+  threadId: string,
+  agentId: string,
+  scope: Awaited<ReturnType<typeof scoped>>["scope"],
+): Promise<PersistedThreadState> {
+  const thread = await agentRequest<Record<string, unknown>>(
+    `/api/v1/agent/threads/${encodeURIComponent(threadId)}`,
+    scope,
+  );
+  if (thread.id !== threadId || thread.agentId !== agentId) {
+    throw new Response("Thread not found", { status: 404 });
+  }
+
+  const firstMessages = await agentRequest<Record<string, unknown>>(
+    `/api/v1/agent/threads/${encodeURIComponent(threadId)}/messages?limit=100&offset=0`,
+    scope,
+  );
+  const firstItems = asArray(firstMessages.items ?? firstMessages.messages);
+  const total = Math.max(firstItems.length, Math.trunc(asNumber(firstMessages.total)));
+  const messages = total > firstItems.length
+    ? await agentRequest<Record<string, unknown>>(
+        `/api/v1/agent/threads/${encodeURIComponent(threadId)}/messages?limit=100&offset=${Math.max(0, total - 100)}`,
+        scope,
+      )
+    : firstMessages;
+  const attachments = await agentRequest<Record<string, unknown>>(
+    `/api/v1/agent/files/threads/${encodeURIComponent(threadId)}/attachments?limit=100&offset=0`,
+    scope,
+  );
+  const attachmentItems = asArray(attachments.items ?? attachments.attachments).map(asRecord);
+  const attachmentTotal = Math.max(
+    attachmentItems.length,
+    Math.trunc(asNumber(attachments.total)),
+  );
+  const latestTurnId = asString(
+    [...asArray(messages.items ?? messages.messages).map(asRecord)]
+      .reverse()
+      .find((message) => asString(message.role) === "user")?.turnId,
+  );
+  if (
+    latestTurnId
+    && attachmentTotal > attachmentItems.length
+    && attachmentItems.every(
+      (attachment) => asString(attachment.turnId, asString(attachment.messageId)) === latestTurnId,
+    )
+  ) {
+    throw new Response("Latest Turn attachments exceed bounded read-back", { status: 409 });
+  }
+  return persistedThreadState(threadId, messages, attachments);
+}
+
 export async function loader(args: LoaderFunctionArgs) {
   const { scope } = await scoped(args);
   const agentId = args.params.agentId;
   if (!agentId) throw new Response("Agent not found", { status: 404 });
-  const [agent, templates] = await Promise.all([
+  const requestedThreadId = new URL(args.request.url).searchParams.get("threadId");
+  const threadId = safeThreadId(requestedThreadId);
+  if (requestedThreadId && !threadId) throw new Response("Invalid thread", { status: 400 });
+  const [agent, templates, persistedThread] = await Promise.all([
     agentPanel(`/api/v1/agent/agents/${encodeURIComponent(agentId)}`, scope),
     agentPanel(`/api/v1/agent/postman-templates?agentId=${encodeURIComponent(agentId)}`, scope),
+    threadId ? loadPersistedThreadState(threadId, agentId, scope) : null,
   ]);
-  return json({ agentId, agent, templates });
+  return json({ agentId, agent, templates, persistedThread });
 }
 
 function bodyRecord(value: unknown): Record<string, unknown> {
@@ -328,17 +436,18 @@ export function ratingValue(value: unknown): 1 | -1 | null {
 
 export default function ChatRoute() {
   const data = useLoaderData<typeof loader>();
+  const initialThread = data.persistedThread;
   const [message, setMessage] = useState("");
-  const [submittedMessage, setSubmittedMessage] = useState("");
-  const [threadId, setThreadId] = useState("");
-  const [attachments, setAttachments] = useState("");
+  const [submittedMessage, setSubmittedMessage] = useState(initialThread?.submittedMessage ?? "");
+  const [threadId, setThreadId] = useState(initialThread?.threadId ?? "");
+  const [attachments, setAttachments] = useState(initialThread?.attachmentIds ?? "");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadedAttachments, setUploadedAttachments] = useState<Array<{ id: string; name: string; mimeType: string; bytes: number }>>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<Array<{ id: string; name: string; mimeType: string; bytes: number }>>(initialThread?.uploadedAttachments ?? []);
   const [uploading, setUploading] = useState(false);
   const [transport, setTransport] = useState<"stream" | "collect">("stream");
   const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [answer, setAnswer] = useState("");
-  const [messageId, setMessageId] = useState<string | null>(null);
+  const [answer, setAnswer] = useState(initialThread?.answer ?? "");
+  const [messageId, setMessageId] = useState<string | null>(initialThread?.messageId ?? null);
   const [rating, setRating] = useState<1 | -1 | null>(null);
   const [ratingAggregate, setRatingAggregate] = useState({ ups: 0, downs: 0 });
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("assembly");
@@ -352,6 +461,13 @@ export default function ChatRoute() {
   const persisted = [...events].reverse().find((event) => event.type === "message_persisted");
   const persistedData = persisted ? eventData(persisted) : {};
   const streamError = [...events].reverse().find((event) => event.type === "error");
+
+  function retainThreadInUrl(nextThreadId: string) {
+    const url = new URL(window.location.href);
+    if (nextThreadId) url.searchParams.set("threadId", nextThreadId);
+    else url.searchParams.delete("threadId");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }
 
   useEffect(() => {
     if (!messageId) return;
@@ -405,6 +521,11 @@ export default function ChatRoute() {
         setEvents([{ type: "result", data: payload }]);
         setAnswer(collectedAnswer(payload) || "The collected Turn completed without a textual answer. Inspect Raw for the canonical response.");
         setMessageId(resultMessageId(payload));
+        const collectedThreadId = collectedResultThreadId(payload, threadId);
+        if (collectedThreadId) {
+          setThreadId(collectedThreadId);
+          retainThreadInUrl(collectedThreadId);
+        }
         return;
       }
 
@@ -439,7 +560,10 @@ export default function ChatRoute() {
           const persistedId = serverMessageId(timelineEvent);
           if (persistedId) setMessageId(persistedId);
           const emittedThreadId = asString(parsedRecord.threadId, asString(parsedRecord.thread_id, ""));
-          if (emittedThreadId) setThreadId(emittedThreadId);
+          if (emittedThreadId) {
+            setThreadId(emittedThreadId);
+            retainThreadInUrl(emittedThreadId);
+          }
         }
         if (nextEvents.length) {
           setEvents((current) => [...current, ...nextEvents]);
@@ -484,7 +608,9 @@ export default function ChatRoute() {
       });
       if (!upload.ok) throw new Error("Attachment upload failed");
       const attachment = asRecord(presign.attachment);
-      setThreadId(asString(payload.threadId, threadId));
+      const uploadedThreadId = asString(payload.threadId, threadId);
+      setThreadId(uploadedThreadId);
+      retainThreadInUrl(uploadedThreadId);
       setAttachments((current) => [...current.split(",").map((id) => id.trim()).filter(Boolean), attachmentId].join(","));
       setUploadedAttachments((current) => [...current, {
         id: attachmentId,
@@ -514,6 +640,7 @@ export default function ChatRoute() {
     setRating(null);
     setRatingAggregate({ ups: 0, downs: 0 });
     setError(null);
+    retainThreadInUrl("");
   }
 
   return (

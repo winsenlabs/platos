@@ -271,6 +271,9 @@ export function capabilityPath(capability: BrowserCapability, scope: ManifestSco
   if (capability.targetOverride === "environment/memories") {
     return `${environmentPath(scope)}/memories`;
   }
+  if (capability.targetOverride === "organization/settings/team") {
+    return `/orgs/${scope.organizationSlug}/settings/team`;
+  }
   if (capability.targetOverride === "embed") {
     return `/embed/${scope.agentIds[0]}?environmentId=${encodeURIComponent(scope.environmentId)}`;
   }
