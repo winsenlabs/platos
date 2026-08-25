@@ -644,8 +644,20 @@ export async function performMutation(args: {
           await fillNamed(page, "entityId", marker);
           await fillNamed(page, "displayName", marker);
           await page.locator('[name="connectionKind"]').selectOption("mcp");
-          await fillNamed(page, "credsSecretKey", "WIN235_BROWSER_REFERENCE");
+          await page.locator('[name="transport"]').selectOption("hosted-composio");
+          await fillNamed(page, "credsSecretKey", "WIN235_FIXTURE_KEY");
           await clickSubmit(page, /connect|register|create/i);
+          const entitiesPath =
+            `/orgs/${scope.organizationSlug}/projects/${scope.projectSlug}` +
+            `/env/${scope.environmentSlug}/agent-entities`;
+          await page.goto(new URL(entitiesPath, page.url()).toString(), {
+            waitUntil: "networkidle",
+          });
+          const createdRow = page
+            .getByText(marker, { exact: true })
+            .first()
+            .locator("xpath=ancestor::tr[1]");
+          await expect(createdRow.getByText("connected", { exact: true })).toBeVisible();
         },
       });
     case "attachment-upload": {

@@ -29,6 +29,7 @@ export function canonicalOperatorScope(key: CanonicalScopeKey) {
     endUserId: deterministicFixtureUuid(key, "end-user"),
     externalUserId: `win235-${key}-end-user`,
     entityId: deterministicFixtureUuid(key, "entity"),
+    entityExternalId: `win235-${key}-entity`,
     clusterId: deterministicFixtureUuid(key, "cluster"),
     threadId: deterministicFixtureUuid(key, "thread"),
     agentId: deterministicFixtureUuid(key, "agent", 0),

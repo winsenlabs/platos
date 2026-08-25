@@ -31,6 +31,7 @@ export type ManifestScope = {
   endUserId: string;
   externalUserId: string;
   entityId: string;
+  entityExternalId: string;
   clusterId: string;
   threadId: string;
   agentIds: string[];
@@ -277,6 +278,9 @@ export function capabilityPath(capability: BrowserCapability, scope: ManifestSco
     .replace(/\/route\.(?:js|jsx|ts|tsx)$/, "")
     .replace(/\.(?:js|jsx|ts|tsx)$/, "");
   const values = routeParameters(scope);
+  if (routeId.includes(".mcps.$entityId")) {
+    values.entityId = scope.entityExternalId;
+  }
   const segments = routeId
     .split(".")
     .filter((segment) => segment !== "_app" && segment !== "_index")

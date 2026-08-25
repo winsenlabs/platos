@@ -63,7 +63,7 @@
     "test:non-browser-completion:contract": "node --test tests/persisted-state-gate/run-non-browser-evidence.test.mjs tests/persisted-state-gate/verify-non-browser-evidence.test.mjs",
     "test:browser-evidence": "playwright test --config=tests/browser-evidence/playwright.config.ts",
     "test:browser-evidence:artifacts": "node tests/browser-evidence/verify-artifacts.mjs",
-    "test:browser-evidence:contract": "node --test tests/browser-evidence/verify-artifacts.test.mjs",
+    "test:browser-evidence:contract": "pnpm exec vitest run tests/browser-evidence/contracts.test.ts && node --test tests/browser-evidence/verify-artifacts.test.mjs",
     "seed:persisted-state": "tsx tests/persisted-state-gate/seed.ts",
     "test:postgres-memory:evidence": "node tests/postgres-memory-evidence/run.mjs",
     "test:postgres-memory:artifacts": "node tests/postgres-memory-evidence/verify-artifacts.mjs",

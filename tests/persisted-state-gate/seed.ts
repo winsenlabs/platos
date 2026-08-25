@@ -132,6 +132,7 @@ async function seedScope(
   const endUserId = canonicalScope.endUserId;
   const endUserIdentityId = deterministicUuid(key, "end-user-identity");
   const entityId = canonicalScope.entityId;
+  const entityExternalId = canonicalScope.entityExternalId;
   const clusterId = canonicalScope.clusterId;
   const threadId = canonicalScope.threadId;
   const externalUserId = canonicalScope.externalUserId;
@@ -312,7 +313,7 @@ async function seedScope(
     data: {
       id: entityId,
       projectId,
-      externalId: `win235-${key}-entity`,
+      externalId: entityExternalId,
       displayName: `WIN-235 ${key} Entity`,
       connectionStatus: "connected",
       connectionKind: "fixture",
@@ -320,6 +321,20 @@ async function seedScope(
       lastConnectedAt: FIXTURE_TIMESTAMP,
       createdAt: FIXTURE_TIMESTAMP,
       updatedAt: FIXTURE_TIMESTAMP,
+      mcpConfig: {
+        create: {
+          enabled: true,
+          identityMode: "bearer",
+          identityProviders: [],
+          branding: {},
+          toolAllowlist: [],
+          redirectUriAllowlist: [],
+          rateLimitPerMinute: 60,
+          injectMcpContext: false,
+          createdAt: FIXTURE_TIMESTAMP,
+          updatedAt: FIXTURE_TIMESTAMP,
+        },
+      },
     },
   });
   await database.environmentEntityTool.createMany({
@@ -586,6 +601,7 @@ async function seedScope(
     endUserId,
     externalUserId,
     entityId,
+    entityExternalId,
     clusterId,
     threadId,
     agentIds,
