@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { PrismaClient } from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -39,7 +39,7 @@ describe("memory PostgreSQL HNSW retrieval", () => {
   beforeAll(async () => {
     database = await startPostgresIntegrationDatabase();
     const databaseUrl = database.databaseUrl;
-    execFileSync(
+    const migration = spawnSync(
       resolve(process.cwd(), "../../node_modules/.bin/prisma"),
       [
         "migrate",
@@ -50,9 +50,20 @@ describe("memory PostgreSQL HNSW retrieval", () => {
       {
         cwd: process.cwd(),
         env: { ...process.env, DATABASE_URL: databaseUrl },
-        stdio: "pipe",
+        encoding: "utf8",
       }
     );
+    if (migration.error || migration.status !== 0) {
+      throw new Error(
+        [
+          `Prisma migrate deploy failed${migration.error ? `: ${migration.error.message}` : ` with status ${migration.status}`}`,
+          migration.stdout?.trim(),
+          migration.stderr?.trim(),
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+    }
 
     prisma = createQueryPrismaClient(databaseUrl);
     prisma.$on("query", ({ query, params }) => queries.push({ query, params }));
