@@ -164,6 +164,7 @@ describe("origin/main to integrated tenancy upgrade contract", () => {
   });
 
   test("runs fail-loud compatible preflights before atomic tenant-derived backfills", () => {
+    expect(m4UpgradeMigration).toContain("every application\n-- writer must be stopped");
     const transaction = m4UpgradeMigration.indexOf("\nBEGIN;\n");
     const attachmentPreflight = m4UpgradeMigration.indexOf(
       "MessageAttachment ownership backfill failed"

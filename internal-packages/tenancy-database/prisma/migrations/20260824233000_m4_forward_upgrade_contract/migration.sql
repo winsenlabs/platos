@@ -5,9 +5,13 @@
 -- ownership contracts landed. Keep this migration idempotent because clean
 -- databases may already contain these objects from the integrated initial SQL.
 
--- Fail-loud ownership preflights run before any DDL and outside the mutation
--- transaction. Dynamic owner expressions keep the checks compatible with both
--- the origin/main schema (columns absent) and the integrated schema (present).
+-- This forward upgrade is a maintenance-window migration: every application
+-- writer must be stopped before `prisma migrate deploy` starts and remain
+-- stopped until it completes. The preflights intentionally run before any DDL
+-- and outside the mutation transaction so Prisma preserves their actionable
+-- errors instead of replacing them with a transaction-aborted error. Dynamic
+-- owner expressions keep the checks compatible with both the origin/main
+-- schema (columns absent) and the integrated schema (present).
 DO $preflight$
 DECLARE
   has_agent_owner BOOLEAN;

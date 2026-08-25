@@ -32,7 +32,7 @@ export class MemoryProfileBackfillService implements OnModuleInit {
 
   async run(): Promise<{ profiles: number; deduplicated: number }> {
     return this.prisma.$transaction(async (tx: any) => {
-      await tx.$queryRawUnsafe(
+      await tx.$executeRawUnsafe(
         `SELECT pg_advisory_xact_lock(hashtextextended('MemoryProfileBackfillService:v1', 0))`,
       );
       const rows = await tx.$queryRawUnsafe(

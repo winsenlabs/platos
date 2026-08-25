@@ -72,6 +72,13 @@ describe("MemoryProfileBackfillService", () => {
 
     expect(h.tx.$executeRawUnsafe).toHaveBeenNthCalledWith(
       1,
+      expect.stringContaining("pg_advisory_xact_lock"),
+    );
+    expect(h.tx.$queryRawUnsafe).not.toHaveBeenCalledWith(
+      expect.stringContaining("pg_advisory_xact_lock"),
+    );
+    expect(h.tx.$executeRawUnsafe).toHaveBeenNthCalledWith(
+      2,
       expect.stringContaining('UPDATE "MemoryRelationship"'),
       "00000000-0000-4000-8000-000000000002",
       "00000000-0000-4000-8000-000000000001",

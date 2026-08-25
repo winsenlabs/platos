@@ -105,6 +105,16 @@ schema. Preserving old image digests does not reverse schema or data changes.
 
 ### 2. Run migrations separately
 
+Stop every Agent, webapp, external job callback, and other database writer before
+starting the forward-upgrade migration, and keep them stopped until the one-shot
+migration exits successfully. This is an accepted release precondition, not
+an optional optimization: the ownership derivability preflights intentionally
+run before the atomic DDL transaction so Prisma can preserve their deterministic
+failure messages. Running the migration beside a writer creates a preflight-to-
+mutation race and is unsupported. Compose `depends_on` only orders new
+containers; it does not prove an older release has stopped, so the operator
+must verify the database writer inventory is quiescent before continuing.
+
 Run the canonical Postgres and ClickHouse migrations as one-shot steps before
 service recreation. Exit immediately on any nonzero migration result. Do not
 wrap migration commands in `|| true`, a warning-only branch, or another
