@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { Prisma } from "@platos/tenancy-database";
 import { MemoryImportService } from "./memory-import.service";
 import { validateMemoryBundle } from "./memory-bundle";
 
@@ -167,6 +168,9 @@ describe("MemoryImportService", () => {
         toEntityId: "entity-imported-2",
         sourceMemoryId: "memory-imported-1",
       }),
+    }));
+    expect(h.tx.memoryEntity.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ metadata: Prisma.DbNull }),
     }));
     expect(h.prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
       isolationLevel: "Serializable",

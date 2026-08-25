@@ -1,6 +1,6 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import { randomUUID, createHash } from "node:crypto";
-import { normalizeMemoryProfileKey } from "@platos/tenancy-database";
+import { normalizeMemoryProfileKey, Prisma } from "@platos/tenancy-database";
 import { PRISMA_TOKEN, type ControlDatabaseClient } from "../shared/database.provider";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
 import { EmbeddingService } from "./embedding.service";
@@ -130,13 +130,16 @@ export class MemoryImportService {
           },
           select: { id: true },
         });
+        const storedEntityMetadata = this.crypto?.encryptJsonField(entity.metadata ?? null)
+          ?? entity.metadata
+          ?? null;
         const data = {
           agentId: binding.agentId,
           clusterId: binding.clusterId,
           entityType: entity.entityType,
           label: this.encryptString(entity.label),
           aliases: entity.aliases,
-          metadata: (this.crypto?.encryptJsonField(entity.metadata ?? null) ?? entity.metadata ?? null) as any,
+          metadata: storedEntityMetadata === null ? Prisma.DbNull : storedEntityMetadata as any,
           updatedAt: entity.updatedAt ?? new Date(),
         };
         const row = existing
