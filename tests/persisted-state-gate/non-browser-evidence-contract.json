@@ -189,8 +189,8 @@
       "category": "concurrency",
       "expectedFacts": {
         "stableError": {
-          "status": null,
-          "code": "environment_forbidden"
+          "status": 403,
+          "code": "forbidden"
         },
         "foreignState": {
           "model": "AccessKey",
@@ -214,8 +214,8 @@
       "category": "concurrency",
       "expectedFacts": {
         "stableError": {
-          "status": null,
-          "code": "environment_forbidden"
+          "status": 403,
+          "code": "forbidden"
         },
         "foreignState": {
           "model": "AccessKey",
