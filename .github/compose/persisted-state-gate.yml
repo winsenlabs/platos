@@ -156,6 +156,7 @@ services:
       PLATOS_RATE_LIMIT_PER_DAY: "100000"
       PLATOS_RATE_LIMIT_USER_PER_MIN: "10000"
       MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: http://127.0.0.1:59001
       MINIO_ACCESS_KEY: persisted-state-gate
       MINIO_SECRET_KEY: persisted-state-gate-password
       MINIO_BUCKET: platos-media
