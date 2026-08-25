@@ -46,6 +46,8 @@ export const test = base.extend<{}, { operatorSessions: OperatorSessions }>({
         { token: string; expiresAt: Date; cookie: { name: string; value: string } }
       >;
       const origin = new URL(baseURL).origin;
+      const secureCookieOrigin = new URL(origin);
+      secureCookieOrigin.protocol = "https:";
 
       await use({
         async loadCookie(context, scope) {
@@ -54,7 +56,7 @@ export const test = base.extend<{}, { operatorSessions: OperatorSessions }>({
             {
               name: session.cookie.name,
               value: session.cookie.value,
-              url: origin,
+              url: secureCookieOrigin.origin,
               httpOnly: true,
               sameSite: "Lax",
               secure: true,
