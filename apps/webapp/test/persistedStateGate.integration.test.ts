@@ -203,8 +203,10 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
 
   afterAll(async () => {
     await mkdir(artifactDirectory, { recursive: true });
-    const expectedCommit = process.env.GITHUB_SHA;
-    if (!expectedCommit) throw new Error("GITHUB_SHA is required by the persisted-state gate");
+    const expectedCommit = process.env.PLATOS_CANDIDATE_SHA;
+    if (!expectedCommit) {
+      throw new Error("PLATOS_CANDIDATE_SHA is required by the persisted-state gate");
+    }
     const [performanceArtifactRaw, performanceReceipt] = await Promise.all([
       readFile(path.join(artifactDirectory, "performance-results.json"), "utf8"),
       readFile(path.join(artifactDirectory, PERFORMANCE_RECEIPT_FILE), "utf8").then((raw) =>
@@ -232,7 +234,7 @@ describe.sequential("WIN-235 persisted-state completion gate", () => {
         {
           schemaVersion: 1,
           gate: "win235-persisted-state",
-          commitSha: process.env.GITHUB_SHA ?? "local-uncommitted",
+          commitSha: expectedCommit,
           fixture: {
             schemaVersion: manifest?.schemaVersion ?? 1,
             sha256: manifest?.sha256 ?? "0".repeat(64),

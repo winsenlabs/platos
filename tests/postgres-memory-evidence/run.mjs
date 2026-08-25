@@ -91,7 +91,7 @@ for (const contract of SUITE_CONTRACT) {
 }
 
 const commitSha =
-  process.env.GITHUB_SHA ||
+  process.env.PLATOS_CANDIDATE_SHA ||
   execFileSync("git", ["rev-parse", "HEAD"], {
     cwd: repositoryRoot,
     encoding: "utf8",
