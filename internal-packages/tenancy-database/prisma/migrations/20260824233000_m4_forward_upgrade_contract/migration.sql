@@ -5,6 +5,106 @@
 -- ownership contracts landed. Keep this migration idempotent because clean
 -- databases may already contain these objects from the integrated initial SQL.
 
+-- Fail-loud ownership preflights run before any DDL and outside the mutation
+-- transaction. Dynamic owner expressions keep the checks compatible with both
+-- the origin/main schema (columns absent) and the integrated schema (present).
+DO $preflight$
+DECLARE
+  has_agent_owner BOOLEAN;
+  has_thread_owner BOOLEAN;
+  agent_owner_expression TEXT;
+  thread_owner_expression TEXT;
+  unattached_count BIGINT;
+  missing_turn_or_thread_count BIGINT;
+  scope_mismatch_count BIGINT;
+  conflicting_owner_count BIGINT;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'MessageAttachment' AND column_name = 'agentId'
+  ) INTO has_agent_owner;
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'MessageAttachment' AND column_name = 'threadId'
+  ) INTO has_thread_owner;
+
+  agent_owner_expression := CASE
+    WHEN has_agent_owner THEN 'attachment."agentId"'
+    ELSE 'NULL::UUID'
+  END;
+  thread_owner_expression := CASE
+    WHEN has_thread_owner THEN 'attachment."threadId"'
+    ELSE 'NULL::UUID'
+  END;
+
+  EXECUTE format($query$
+    SELECT
+      count(*) FILTER (WHERE (%1$s IS NULL OR %2$s IS NULL) AND attachment."turnId" IS NULL),
+      count(*) FILTER (WHERE (%1$s IS NULL OR %2$s IS NULL) AND attachment."turnId" IS NOT NULL AND (turn_row.id IS NULL OR thread_row.id IS NULL)),
+      count(*) FILTER (WHERE (%1$s IS NULL OR %2$s IS NULL) AND thread_row.id IS NOT NULL AND (thread_row."environmentId" <> attachment."environmentId" OR thread_row."endUserId" <> attachment."endUserId" OR environment.id IS NULL OR project.id IS NULL OR end_user.id IS NULL OR agent.id IS NULL)),
+      count(*) FILTER (WHERE thread_row.id IS NOT NULL AND ((%1$s IS NOT NULL AND %1$s <> thread_row."agentId") OR (%2$s IS NOT NULL AND %2$s <> thread_row.id)))
+    FROM "public"."MessageAttachment" attachment
+    LEFT JOIN "public"."Turn" turn_row ON turn_row.id = attachment."turnId"
+    LEFT JOIN "public"."Thread" thread_row ON thread_row.id = turn_row."threadId"
+    LEFT JOIN "public"."Environment" environment ON environment.id = attachment."environmentId"
+    LEFT JOIN "public"."Project" project ON project.id = environment."projectId"
+    LEFT JOIN "public"."EndUser" end_user ON end_user.id = attachment."endUserId" AND end_user."organizationId" = project."organizationId"
+    LEFT JOIN "public"."Agent" agent ON agent.id = thread_row."agentId" AND agent."projectId" = project.id
+  $query$, agent_owner_expression, thread_owner_expression)
+  INTO unattached_count, missing_turn_or_thread_count, scope_mismatch_count, conflicting_owner_count;
+
+  IF unattached_count > 0 OR missing_turn_or_thread_count > 0 OR scope_mismatch_count > 0 OR conflicting_owner_count > 0 THEN
+    RAISE EXCEPTION 'MessageAttachment ownership backfill failed: unattached=%, missing_turn_or_thread=%, scope_mismatch=%, conflicting_owner=%',
+      unattached_count, missing_turn_or_thread_count, scope_mismatch_count, conflicting_owner_count
+      USING ERRCODE = '23514';
+  END IF;
+END
+$preflight$;
+
+DO $preflight$
+DECLARE
+  has_environment_owner BOOLEAN;
+  environment_owner_expression TEXT;
+  missing_owner_count BIGINT;
+  ambiguous_owner_count BIGINT;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'EntityToolPolicy' AND column_name = 'environmentId'
+  ) INTO has_environment_owner;
+
+  environment_owner_expression := CASE
+    WHEN has_environment_owner THEN 'policy."environmentId"'
+    ELSE 'NULL::UUID'
+  END;
+
+  EXECUTE format($query$
+    WITH candidates AS (
+      SELECT policy.id, count(DISTINCT environment.id) AS candidate_count
+      FROM "public"."EntityToolPolicy" policy
+      LEFT JOIN "public"."Entity" entity ON entity.id = policy."entityId"
+      LEFT JOIN "public"."EnvironmentEntityTool" mapping
+        ON mapping."entityId" = policy."entityId" AND mapping."toolId" = policy."toolId"
+      LEFT JOIN "public"."Environment" environment
+        ON environment.id = mapping."environmentId" AND environment."projectId" = entity."projectId"
+      WHERE %1$s IS NULL
+      GROUP BY policy.id
+    )
+    SELECT
+      count(*) FILTER (WHERE candidate_count = 0),
+      count(*) FILTER (WHERE candidate_count > 1)
+    FROM candidates
+  $query$, environment_owner_expression)
+  INTO missing_owner_count, ambiguous_owner_count;
+
+  IF missing_owner_count > 0 OR ambiguous_owner_count > 0 THEN
+    RAISE EXCEPTION 'EntityToolPolicy ownership backfill failed: missing_owner=%, ambiguous_owner=%',
+      missing_owner_count, ambiguous_owner_count
+      USING ERRCODE = '23514';
+  END IF;
+END
+$preflight$;
+
 BEGIN;
 
 -- Durable Postman execution admission and forensic attribution.
@@ -107,34 +207,6 @@ ALTER TABLE "public"."Thread" VALIDATE CONSTRAINT "Thread_forkedUpToTurnId_fkey"
 ALTER TABLE "public"."MessageAttachment"
   ADD COLUMN IF NOT EXISTS "agentId" UUID,
   ADD COLUMN IF NOT EXISTS "threadId" UUID;
-DO $migration$
-DECLARE
-  unattached_count BIGINT;
-  missing_turn_or_thread_count BIGINT;
-  scope_mismatch_count BIGINT;
-  conflicting_owner_count BIGINT;
-BEGIN
-  SELECT
-    count(*) FILTER (WHERE (attachment."agentId" IS NULL OR attachment."threadId" IS NULL) AND attachment."turnId" IS NULL),
-    count(*) FILTER (WHERE (attachment."agentId" IS NULL OR attachment."threadId" IS NULL) AND attachment."turnId" IS NOT NULL AND (turn_row.id IS NULL OR thread_row.id IS NULL)),
-    count(*) FILTER (WHERE (attachment."agentId" IS NULL OR attachment."threadId" IS NULL) AND thread_row.id IS NOT NULL AND (thread_row."environmentId" <> attachment."environmentId" OR thread_row."endUserId" <> attachment."endUserId" OR environment.id IS NULL OR project.id IS NULL OR end_user.id IS NULL OR agent.id IS NULL)),
-    count(*) FILTER (WHERE thread_row.id IS NOT NULL AND ((attachment."agentId" IS NOT NULL AND attachment."agentId" <> thread_row."agentId") OR (attachment."threadId" IS NOT NULL AND attachment."threadId" <> thread_row.id)))
-  INTO unattached_count, missing_turn_or_thread_count, scope_mismatch_count, conflicting_owner_count
-  FROM "public"."MessageAttachment" attachment
-  LEFT JOIN "public"."Turn" turn_row ON turn_row.id = attachment."turnId"
-  LEFT JOIN "public"."Thread" thread_row ON thread_row.id = turn_row."threadId"
-  LEFT JOIN "public"."Environment" environment ON environment.id = attachment."environmentId"
-  LEFT JOIN "public"."Project" project ON project.id = environment."projectId"
-  LEFT JOIN "public"."EndUser" end_user ON end_user.id = attachment."endUserId" AND end_user."organizationId" = project."organizationId"
-  LEFT JOIN "public"."Agent" agent ON agent.id = thread_row."agentId" AND agent."projectId" = project.id;
-
-  IF unattached_count > 0 OR missing_turn_or_thread_count > 0 OR scope_mismatch_count > 0 OR conflicting_owner_count > 0 THEN
-    RAISE EXCEPTION 'MessageAttachment ownership backfill failed: unattached=%, missing_turn_or_thread=%, scope_mismatch=%, conflicting_owner=%',
-      unattached_count, missing_turn_or_thread_count, scope_mismatch_count, conflicting_owner_count
-      USING ERRCODE = '23514';
-  END IF;
-END
-$migration$;
 
 UPDATE "public"."MessageAttachment" attachment
 SET "threadId" = thread_row.id,
@@ -173,35 +245,6 @@ ALTER TABLE "public"."MessageAttachment" VALIDATE CONSTRAINT "MessageAttachment_
 -- when exactly one tenant-correct EnvironmentEntityTool mapping owns the same
 -- Entity/Tool pair. Zero or multiple candidates require operator remediation.
 ALTER TABLE "public"."EntityToolPolicy" ADD COLUMN IF NOT EXISTS "environmentId" UUID;
-DO $migration$
-DECLARE
-  missing_owner_count BIGINT;
-  ambiguous_owner_count BIGINT;
-BEGIN
-  WITH candidates AS (
-    SELECT policy.id, count(DISTINCT environment.id) AS candidate_count
-    FROM "public"."EntityToolPolicy" policy
-    LEFT JOIN "public"."Entity" entity ON entity.id = policy."entityId"
-    LEFT JOIN "public"."EnvironmentEntityTool" mapping
-      ON mapping."entityId" = policy."entityId" AND mapping."toolId" = policy."toolId"
-    LEFT JOIN "public"."Environment" environment
-      ON environment.id = mapping."environmentId" AND environment."projectId" = entity."projectId"
-    WHERE policy."environmentId" IS NULL
-    GROUP BY policy.id
-  )
-  SELECT
-    count(*) FILTER (WHERE candidate_count = 0),
-    count(*) FILTER (WHERE candidate_count > 1)
-  INTO missing_owner_count, ambiguous_owner_count
-  FROM candidates;
-
-  IF missing_owner_count > 0 OR ambiguous_owner_count > 0 THEN
-    RAISE EXCEPTION 'EntityToolPolicy ownership backfill failed: missing_owner=%, ambiguous_owner=%',
-      missing_owner_count, ambiguous_owner_count
-      USING ERRCODE = '23514';
-  END IF;
-END
-$migration$;
 
 WITH owners AS (
   SELECT policy.id, min(environment.id::TEXT)::UUID AS "environmentId"

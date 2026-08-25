@@ -163,7 +163,8 @@ describe("origin/main to integrated tenancy upgrade contract", () => {
     }
   });
 
-  test("uses staged, tenant-derived backfills and rejects ownership guesses", () => {
+  test("runs fail-loud compatible preflights before atomic tenant-derived backfills", () => {
+    const transaction = m4UpgradeMigration.indexOf("\nBEGIN;\n");
     const attachmentPreflight = m4UpgradeMigration.indexOf(
       "MessageAttachment ownership backfill failed"
     );
@@ -174,7 +175,9 @@ describe("origin/main to integrated tenancy upgrade contract", () => {
       'ALTER TABLE "public"."MessageAttachment" ALTER COLUMN "agentId" SET NOT NULL'
     );
     expect(attachmentPreflight).toBeGreaterThanOrEqual(0);
+    expect(attachmentPreflight).toBeLessThan(transaction);
     expect(attachmentBackfill).toBeGreaterThan(attachmentPreflight);
+    expect(attachmentBackfill).toBeGreaterThan(transaction);
     expect(attachmentNotNull).toBeGreaterThan(attachmentBackfill);
     expect(m4UpgradeMigration).toContain("unattached_count");
     expect(m4UpgradeMigration).toContain("scope_mismatch_count");
@@ -188,10 +191,18 @@ describe("origin/main to integrated tenancy upgrade contract", () => {
       'ALTER TABLE "public"."EntityToolPolicy" ALTER COLUMN "environmentId" SET NOT NULL'
     );
     expect(policyPreflight).toBeGreaterThanOrEqual(0);
+    expect(policyPreflight).toBeLessThan(transaction);
     expect(policyBackfill).toBeGreaterThan(policyPreflight);
+    expect(policyBackfill).toBeGreaterThan(transaction);
     expect(policyNotNull).toBeGreaterThan(policyBackfill);
     expect(m4UpgradeMigration).toContain("missing_owner_count");
     expect(m4UpgradeMigration).toContain("ambiguous_owner_count");
+    expect(m4UpgradeMigration).toContain("information_schema.columns");
+    expect(m4UpgradeMigration).toContain("NULL::UUID");
+    expect(m4UpgradeMigration.match(/MessageAttachment ownership backfill failed/g)).toHaveLength(
+      1
+    );
+    expect(m4UpgradeMigration.match(/EntityToolPolicy ownership backfill failed/g)).toHaveLength(1);
     expect(m4UpgradeMigration).not.toMatch(/LIMIT\s+1/i);
   });
 });

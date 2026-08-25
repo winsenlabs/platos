@@ -64,6 +64,7 @@ describe.runIf(process.env.CI === "true")("origin/main forward-upgrade rehearsal
     expect(() => runPrisma(["migrate", "deploy"], databaseUrl)).toThrow(
       /MessageAttachment ownership backfill failed: unattached=1, missing_turn_or_thread=0, scope_mismatch=0, conflicting_owner=0/
     );
+    await expectNoM4Mutation(prisma);
     runPrisma(["migrate", "resolve", "--rolled-back", upgradeMigrationName], databaseUrl);
     await prisma.$executeRawUnsafe(
       'DELETE FROM "MessageAttachment" WHERE "id" = $1::uuid',
@@ -73,6 +74,7 @@ describe.runIf(process.env.CI === "true")("origin/main forward-upgrade rehearsal
     expect(() => runPrisma(["migrate", "deploy"], databaseUrl)).toThrow(
       /EntityToolPolicy ownership backfill failed: missing_owner=0, ambiguous_owner=1/
     );
+    await expectNoM4Mutation(prisma);
     runPrisma(["migrate", "resolve", "--rolled-back", upgradeMigrationName], databaseUrl);
     await prisma.$executeRawUnsafe(
       'DELETE FROM "EnvironmentEntityTool" WHERE "id" = $1::uuid',
@@ -183,6 +185,41 @@ describe.runIf(process.env.CI === "true")("origin/main forward-upgrade rehearsal
     ]);
   }, 180_000);
 });
+
+async function expectNoM4Mutation(prisma: PrismaClient): Promise<void> {
+  await expect(
+    prisma.$queryRawUnsafe<
+      Array<{
+        postmanExecution: boolean;
+        attachmentAgentId: boolean;
+        attachmentThreadId: boolean;
+        policyEnvironmentId: boolean;
+      }>
+    >(`
+      SELECT
+        to_regclass('public."PostmanExecution"') IS NOT NULL AS "postmanExecution",
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'MessageAttachment' AND column_name = 'agentId'
+        ) AS "attachmentAgentId",
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'MessageAttachment' AND column_name = 'threadId'
+        ) AS "attachmentThreadId",
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'EntityToolPolicy' AND column_name = 'environmentId'
+        ) AS "policyEnvironmentId"
+    `)
+  ).resolves.toEqual([
+    {
+      postmanExecution: false,
+      attachmentAgentId: false,
+      attachmentThreadId: false,
+      policyEnvironmentId: false,
+    },
+  ]);
+}
 
 function seedOriginMainRows(databaseUrl: string): void {
   executeSql(
