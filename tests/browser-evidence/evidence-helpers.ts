@@ -557,8 +557,7 @@ async function exactCreatedMarker(
   canonicalIdentity?: { controlName: string; value(): string }
 ): Promise<Locator | null> {
   if (!controlName) {
-    const markerText = page.getByText(marker, { exact: true }).first();
-    return (await markerText.count()) > 0 ? markerText : null;
+    return page.getByText(marker, { exact: true }).first();
   }
 
   const candidates = page.locator(`[name="${controlName}"]`);
@@ -585,10 +584,17 @@ async function createdUiWitness(args: {
   mutate(): Promise<void>;
 }) {
   const { page, marker, controlName, canonicalIdentity, mutate } = args;
-  expect(
-    await exactCreatedMarker(page, marker, controlName, canonicalIdentity),
-    "created marker already existed before mutation"
-  ).toBeNull();
+  if (controlName) {
+    expect(
+      await exactCreatedMarker(page, marker, controlName, canonicalIdentity),
+      "created marker already existed before mutation"
+    ).toBeNull();
+  } else {
+    expect(
+      await page.getByText(marker, { exact: true }).count(),
+      "created marker already existed before mutation"
+    ).toBe(0);
+  }
   const preActionFieldSha256 = hashObservedPayload({ present: false });
   const preActionPayloadSha256 = hashObservedPayload({ identityPresent: false });
 
