@@ -315,43 +315,12 @@ export class AgentTaskService {
       idemKey = ikey;
     }
 
-    // 1. Get or create thread
-    //
-    // PRA-AC: pre-resolve the agent's clusteringId before getOrCreateThread so
-    // a clustered agent can RESOLVE a sibling thread (created by another
-    // cluster member) instead of silently creating a new orphan thread.
-    //
-    // Bug: previously we called getOrCreateThread(scope, …) with bare scope.
-    // For clustered agents whose threadId points to a sibling-owned thread,
-    // getThread (correctly scoped by userId only) fell back to baseWhere
-    // which has no clusteringId — and createThread thus minted a NEW thread.
-    // Then storeMessage(threadReplyToId=…, threadId=<newThreadId>) failed the
-    // `where:{id, threadId}` parent check, throwing "Reply parent message not
-    // found in this thread". Cluster members must inherit the cluster scope
-    // before any thread lookup happens.
-    let preClusteringId: string | null = null;
-    try {
-      const agentRow = await (this.conversationService as any).prisma.agentBinding.findFirst({
-        where: {
-          agentId,
-          environmentId: scope.environmentId,
-          agent: { projectId: scope.projectId },
-          environment: {
-            projectId: scope.projectId,
-            project: { organizationId: scope.organizationId },
-          },
-        },
-        select: { clusterId: true },
-      });
-      preClusteringId = agentRow?.clusterId ?? null;
-    } catch {
-      preClusteringId = null;
-    }
-    const scopeForThreadLookup: typeof scope = preClusteringId
-      ? { ...scope, clusteringId: preClusteringId }
-      : scope;
+    // 1. Resolve the Agent cluster and get or create the canonical Thread.
+    // A supplied Thread ID is reserved identity and never becomes a replacement.
     const thread = await this.conversationService.getOrCreateThread(
-      scopeForThreadLookup, agentId, options.threadId,
+      scope,
+      agentId,
+      options.threadId,
     );
 
     // EOBD.30 — per-thread mutex. Two concurrent messages on the same
@@ -1453,7 +1422,7 @@ export class AgentTaskService {
           await this.conversationService.failTurn(
             thread.id,
             openTurnId,
-            scopeForThreadLookup,
+            scope,
             error,
             openStepModel,
           );

@@ -453,7 +453,11 @@ export class ConversationService {
         id: threadId,
         ...this.environmentWhere(scope),
         ...this.ownershipWhere(scope, options.allUsers),
-        ...(scope.clusteringId ? { OR: [{ clusterId: scope.clusteringId }, { agentId: scope.agentId }] } : {}),
+        ...(scope.clusteringId
+          ? { OR: [{ clusterId: scope.clusteringId }, { agentId: scope.agentId }] }
+          : scope.agentId
+            ? { agentId: scope.agentId }
+            : {}),
       },
       include: this.threadInclude(),
     });
@@ -521,6 +525,29 @@ export class ConversationService {
     const thread = await this.getThread(threadId, scope, options);
     if (!thread) throw new ThreadNotFoundError();
     return thread;
+  }
+
+  private async threadScope(scope: RequestScope, agentId: string): Promise<RequestScope> {
+    if (scope.clusteringId) return { ...scope, agentId };
+    try {
+      const binding = await this.prisma.agentBinding.findFirst({
+        where: {
+          agentId,
+          environmentId: scope.environmentId,
+          agent: { projectId: scope.projectId },
+          environment: {
+            projectId: scope.projectId,
+            project: { organizationId: scope.organizationId },
+          },
+        },
+        select: { clusterId: true },
+      });
+      return binding?.clusterId
+        ? { ...scope, agentId, clusteringId: binding.clusterId }
+        : { ...scope, agentId };
+    } catch {
+      return { ...scope, agentId };
+    }
   }
 
   async setThreadTags(threadId: string, scope: RequestScope, tags: unknown): Promise<Thread> {
@@ -627,18 +654,21 @@ export class ConversationService {
       idempotencyKey?: string;
     },
   ): Promise<StoredMessage> {
-    const thread = await this.findScopedThread(threadId, scope);
+    const thread = await this.findScopedThread(threadId, scope, {
+      allUsers: scope.principal === "operator",
+    });
     if (message.role === "user") {
       if (!message.agentVersionId) throw new Error("Durable turn persistence requires selected AgentVersion");
       if (!message.versionBucket) throw new Error("Durable turn persistence requires selected version bucket");
+      const executingAgentId = scope.agentId ?? thread.agentId;
       const selectedVersion = await this.prisma.agentVersion.findFirst({
-        where: { id: message.agentVersionId, agentId: thread.agentId },
+        where: { id: message.agentVersionId, agentId: executingAgentId },
         select: { id: true },
       });
-      if (!selectedVersion) throw new Error("Selected AgentVersion does not belong to the thread Agent");
+      if (!selectedVersion) throw new Error("Selected AgentVersion does not belong to the executing Agent");
       const versionBucket = await this.versionBucket(
         threadId,
-        thread.agentId,
+        executingAgentId,
         message.agentVersionId,
         message.versionBucket,
       );
@@ -928,7 +958,9 @@ export class ConversationService {
     error: unknown,
     model = "unknown",
   ): Promise<void> {
-    const thread = await this.findScopedThread(threadId, scope);
+    const thread = await this.findScopedThread(threadId, scope, {
+      allUsers: scope.principal === "operator",
+    });
     const detail = error instanceof Error ? error.message : String(error);
     const errorClass = error instanceof Error ? error.name : "Error";
     const completedAt = new Date();
@@ -1132,7 +1164,9 @@ export class ConversationService {
   }
 
   async loadHistory(threadId: string, scope: RequestScope, limit = 20, replyToMessageId?: string | null) {
-    const thread = await this.getThread(threadId, scope);
+    const thread = await this.getThread(threadId, scope, {
+      allUsers: scope.principal === "operator",
+    });
     if (!thread) return [];
     const cursor = thread.compactedUpToTurnId
       ? await this.prisma.turn.findUnique({ where: { id: thread.compactedUpToTurnId }, select: { sequence: true } })
@@ -1193,12 +1227,31 @@ export class ConversationService {
     return new Map(grouped.filter((row) => row.parentTurnId).map((row) => [row.parentTurnId!, row._count]));
   }
 
-  async getOrCreateThread(scope: RequestScope, agentId: string, threadId?: string, opts?: { singleEndUser?: boolean }): Promise<Thread> {
+  async getOrCreateThread(
+    scope: RequestScope,
+    agentId: string,
+    threadId?: string,
+    opts?: { singleEndUser?: boolean },
+  ): Promise<Thread> {
+    const resolvedScope = await this.threadScope(scope, agentId);
     if (threadId) {
-      const existing = await this.getThread(threadId, scope);
-      if (existing) return existing;
+      const existing = await this.getThread(
+        threadId,
+        resolvedScope,
+        { allUsers: scope.principal === "operator" },
+      );
+      if (!existing) throw new ThreadNotFoundError();
+
+      const sameAgent = existing.agentId === agentId;
+      const sameCluster = Boolean(
+        resolvedScope.clusteringId && existing.clusterId === resolvedScope.clusteringId,
+      );
+      if (!sameAgent && !sameCluster) throw new ThreadNotFoundError();
+      return existing;
     }
-    return this.createThread(scope, agentId, undefined, opts);
+    return this.createThread(resolvedScope, agentId, undefined, {
+      singleEndUser: opts?.singleEndUser,
+    });
   }
 
   async forkThread(threadId: string, scope: RequestScope, options: { upToMessageId: string; title?: string; allUsers?: boolean }): Promise<Thread> {

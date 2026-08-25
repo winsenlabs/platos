@@ -286,9 +286,9 @@ export class TurnDispatchService {
    * payload, concurrency key, scope-namespaced idempotency key, and tags).
    *
    * ALWAYS resolves the client-supplied threadId through
-   * `getOrCreateThread` first (cross-tenant IDOR guard — a foreign threadId
-   * resolves to a freshly minted owned thread rather than joining someone
-   * else's room / run). Returns the run handle + the resolved threadId.
+   * `getOrCreateThread` first. A supplied Thread is reserved identity: an
+   * inaccessible or wrong-Agent Thread fails closed instead of silently
+   * minting a replacement. Returns the run handle + the resolved threadId.
    *
    * THROWS on any failure (trigger unconfigured, thread resolution failure,
    * trigger send error) so callers can fail-open to the direct in-process path.
@@ -299,9 +299,8 @@ export class TurnDispatchService {
     }
     const scope = ctx.scope;
     // SECURITY (cross-tenant IDOR) — scope+owner-gate the threadId before we
-    // hand it to a durable run. getOrCreateThread → getThread filters by the
-    // full scope tuple AND ownership; a non-owned threadId resolves to a fresh
-    // owned thread instead.
+    // hand it to a durable run. Operators may act on any EndUser Thread in the
+    // verified Environment; non-operators remain bound to their EndUser.
     const resolved = await this.conversationService.getOrCreateThread(scope, agentId, ctx.threadId);
     const threadId = resolved?.id;
     if (!threadId) {
@@ -592,8 +591,8 @@ export class TurnDispatchService {
     const scope = ctx.scope;
 
     // SECURITY (cross-tenant IDOR) — ALWAYS resolve the threadId through
-    // getOrCreateThread, which scope+owner-gates it. A non-owned threadId
-    // resolves to a freshly minted (owned) thread instead. The session
+    // getOrCreateThread, which scope+owner-gates it. A supplied Thread is
+    // reserved identity and cannot drift to a replacement. The session
     // externalId IS this resolved threadId (1:1 session↔thread), so it must
     // exist first anyway. (Same guard as `triggerDurable`.)
     let threadId: string | undefined;

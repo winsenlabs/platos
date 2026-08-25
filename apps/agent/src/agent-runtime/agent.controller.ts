@@ -290,6 +290,7 @@ export class AgentController {
    * already stores it), so — mirroring executeStreamingTurn's own resolution —
    * fall back to the thread row's agentId when none is passed. Resolved through
    * ConversationService.getThread, which is scope + ownership gated (IDOR-safe);
+   * operators may resolve any EndUser Thread in their verified Environment;
    * a thread the caller can't see resolves to the "default" fallback (a durable
    * turn's own getOrCreateThread then re-gates on dispatch). Last resort:
    * "default" — identical to the runtime's own agentId fallback.
@@ -302,7 +303,9 @@ export class AgentController {
     if (explicit) return explicit;
     if (threadId) {
       try {
-        const thread = await this.conversationService.getThread(threadId, scope);
+        const thread = await this.conversationService.getThread(threadId, scope, {
+          allUsers: scope.principal === "operator",
+        });
         if ((thread as { agentId?: string } | null)?.agentId) {
           return (thread as { agentId: string }).agentId;
         }

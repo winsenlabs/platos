@@ -64,7 +64,15 @@ describe("direct provider runtime on a clean database", () => {
   let service: AgentTaskService;
   let makeTaskService: (secretStore: PlatosSecretStore, withProviderGate?: boolean) => AgentTaskService;
   let runtimeThreadId: string;
-  let ids: { agentId: string; environmentId: string; organizationId: string; projectId: string };
+  let resolveAttachments: ReturnType<typeof vi.fn>;
+  let markAttachedToMessage: ReturnType<typeof vi.fn>;
+  let ids: {
+    agentId: string;
+    environmentId: string;
+    organizationId: string;
+    projectId: string;
+    operatorUserId: string;
+  };
 
   beforeAll(async () => {
     fixture = createServer((req, res) => {
@@ -243,6 +251,7 @@ describe("direct provider runtime on a clean database", () => {
       environmentId: environment.id,
       organizationId: organization.id,
       projectId: project.id,
+      operatorUserId: user.id,
     };
 
     const redis = new MemoryRedis();
@@ -301,6 +310,8 @@ describe("direct provider runtime on a clean database", () => {
       recordUserSpend: vi.fn(),
       detectThresholdCrossings: vi.fn().mockResolvedValue([]),
     };
+    resolveAttachments = vi.fn().mockResolvedValue([]);
+    markAttachedToMessage = vi.fn();
     makeTaskService = (runtimeSecretStore, withProviderGate = true) => {
       const scopedEnv = new ScopedEnvService(prisma, runtimeSecretStore);
       const catalog = new ModelCatalogService(scopedEnv);
@@ -327,8 +338,8 @@ describe("direct provider runtime on a clean database", () => {
         {} as any,
         {} as any,
         {
-          resolveAttachments: vi.fn().mockResolvedValue([]),
-          markAttachedToMessage: vi.fn(),
+          resolveAttachments,
+          markAttachedToMessage,
         } as any,
         budget as any,
         { checkUserMessage: vi.fn().mockResolvedValue({ allowed: true }) } as any,
@@ -408,6 +419,153 @@ describe("direct provider runtime on a clean database", () => {
     });
     expect(JSON.stringify(turns[2])).not.toContain("upstream-body-with-secret-fixture-key");
     expect(JSON.stringify(turns[2])).not.toContain("fixture-key");
+  });
+
+  it("persists an operator attachment Turn on the exact reserved EndUser Thread", async () => {
+    failProvider = false;
+    resolveAttachments.mockResolvedValueOnce([{
+      id: "attachment-a",
+      kind: "image",
+      mimeType: "image/png",
+      bytes: 4,
+      data: new Uint8Array([137, 80, 78, 71]),
+      originalName: "evidence.png",
+    }]);
+    markAttachedToMessage.mockClear();
+
+    const conversations = new ConversationService(prisma);
+    const reserved = await conversations.createThread({
+      organizationId: ids.organizationId,
+      projectId: ids.projectId,
+      environmentId: ids.environmentId,
+      userId: "seeded-end-user",
+      principal: "end-user",
+    } as any, ids.agentId);
+    const threadCountBefore = await prisma.thread.count({
+      where: { environmentId: ids.environmentId },
+    });
+
+    const events = await collect(service.executeStreamingTurn("attachment marker", {
+      organizationId: ids.organizationId,
+      projectId: ids.projectId,
+      environmentId: ids.environmentId,
+      userId: ids.operatorUserId,
+      principal: "operator",
+      agentId: ids.agentId,
+    } as any, {
+      agentId: ids.agentId,
+      threadId: reserved.id,
+      attachmentIds: ["attachment-a"],
+    }));
+
+    const persisted = events.find((event) => event.type === "message_persisted") as any;
+    expect(persisted).toMatchObject({ threadId: reserved.id });
+    expect(persisted.messageId).toEqual(expect.any(String));
+    expect(events.at(-1)).toEqual({ type: "done" });
+    expect(resolveAttachments).toHaveBeenCalledWith(
+      ["attachment-a"],
+      expect.objectContaining({ principal: "operator" }),
+      { agentId: ids.agentId, threadId: reserved.id, endUserId: reserved.endUserId },
+    );
+    expect(markAttachedToMessage).toHaveBeenCalledWith(
+      ["attachment-a"],
+      persisted.messageId,
+      expect.objectContaining({ principal: "operator" }),
+      { agentId: ids.agentId, threadId: reserved.id, endUserId: reserved.endUserId },
+    );
+    await expect(prisma.thread.count({
+      where: { environmentId: ids.environmentId },
+    })).resolves.toBe(threadCountBefore);
+    await expect(prisma.turn.findUnique({ where: { id: persisted.messageId } })).resolves.toMatchObject({
+      threadId: reserved.id,
+      inputText: "attachment marker",
+      outputText: "deterministic reply",
+      status: "SUCCEEDED",
+    });
+  });
+
+  it("persists the executing Agent version on a sibling Thread in the same cluster", async () => {
+    failProvider = false;
+    const cluster = await prisma.agentCluster.create({
+      data: {
+        environmentId: ids.environmentId,
+        name: "Runtime Cluster",
+        slug: "runtime-cluster",
+      },
+    });
+    await prisma.agentBinding.update({
+      where: {
+        environmentId_agentId: {
+          environmentId: ids.environmentId,
+          agentId: ids.agentId,
+        },
+      },
+      data: { clusterId: cluster.id },
+    });
+    const siblingAgent = await prisma.agent.create({
+      data: {
+        projectId: ids.projectId,
+        slug: "runtime-sibling",
+        name: "Runtime Sibling",
+      },
+    });
+    const siblingVersion = await prisma.agentVersion.create({
+      data: {
+        agentId: siblingAgent.id,
+        versionNumber: 1,
+        model: "openai:fixture-model",
+        systemPrompt: "Own the sibling Thread.",
+        promptBlocks: [],
+        dynamicBlocks: [],
+        toolsBlockConfig: { mode: "direct" },
+        modelRoutes: [],
+        memoryConfig: {},
+        maxSteps: 1,
+        contextLimit: 20,
+        createdBy: ids.operatorUserId,
+      },
+    });
+    await prisma.agentBinding.create({
+      data: {
+        environmentId: ids.environmentId,
+        agentId: siblingAgent.id,
+        activeAgentVersionId: siblingVersion.id,
+        clusterId: cluster.id,
+      },
+    });
+    const conversations = new ConversationService(prisma);
+    const siblingThread = await conversations.createThread({
+      organizationId: ids.organizationId,
+      projectId: ids.projectId,
+      environmentId: ids.environmentId,
+      userId: "cluster-end-user",
+      principal: "end-user",
+    } as any, siblingAgent.id);
+
+    const events = await collect(service.executeStreamingTurn("cluster marker", {
+      organizationId: ids.organizationId,
+      projectId: ids.projectId,
+      environmentId: ids.environmentId,
+      userId: "cluster-end-user",
+      principal: "end-user",
+      agentId: ids.agentId,
+    } as any, {
+      agentId: ids.agentId,
+      threadId: siblingThread.id,
+    }));
+
+    const persisted = events.find((event) => event.type === "message_persisted") as any;
+    expect(persisted).toMatchObject({ threadId: siblingThread.id });
+    expect(events.at(-1)).toEqual({ type: "done" });
+    const turn = await prisma.turn.findUniqueOrThrow({
+      where: { id: persisted.messageId },
+      select: { threadId: true, agentVersion: { select: { agentId: true } }, status: true },
+    });
+    expect(turn).toEqual({
+      threadId: siblingThread.id,
+      agentVersion: { agentId: ids.agentId },
+      status: "SUCCEEDED",
+    });
   });
 
   it("persists FAILED Turn/Step and rejects direct execution when configured decrypt fails", async () => {
