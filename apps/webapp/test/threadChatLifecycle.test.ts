@@ -18,7 +18,7 @@ vi.mock("../app/services/platosAgent.server", () => ({
   PlatosAgentApiError,
 }));
 
-import { action, collectedResultThreadId, loader, persistedThreadState, ratingValue } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route";
+import { action, chatActionPath, collectedResultThreadId, loader, persistedThreadState, ratingValue } from "../app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat/route";
 
 const scope = {
   organizationId: "organization",
@@ -58,6 +58,13 @@ function loaderArgs(search = ""): LoaderFunctionArgs {
 }
 
 describe("Thread chat retained lifecycle", () => {
+  it("targets the exact Remix data route while retaining Thread identity", () => {
+    const target = new URL(chatActionPath("/orgs/acme/projects/project/env/development/agents/agent-1/chat", "?threadId=thread-1"), "https://dashboard.example");
+    expect(target.pathname).toBe("/orgs/acme/projects/project/env/development/agents/agent-1/chat");
+    expect(target.searchParams.get("threadId")).toBe("thread-1");
+    expect(target.searchParams.get("_data")).toBe("routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat");
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     requireEnvironmentScope.mockResolvedValue({ scope });

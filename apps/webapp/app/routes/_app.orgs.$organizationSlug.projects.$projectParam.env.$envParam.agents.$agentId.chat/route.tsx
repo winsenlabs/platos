@@ -38,6 +38,14 @@ type PersistedThreadState = {
   uploadedAttachments: Array<{ id: string; name: string; mimeType: string; bytes: number }>;
 };
 
+export const CHAT_ROUTE_ID = "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat";
+
+export function chatActionPath(pathname: string, search = ""): string {
+  const params = new URLSearchParams(search);
+  params.set("_data", CHAT_ROUTE_ID);
+  return `${pathname}?${params.toString()}`;
+}
+
 function safeThreadId(value: string | null): string | null {
   if (!value) return null;
   return /^[A-Za-z0-9_-]{1,100}$/.test(value) ? value : null;
@@ -472,7 +480,7 @@ export default function ChatRoute() {
   useEffect(() => {
     if (!messageId) return;
     let cancelled = false;
-    void fetch(window.location.pathname, {
+    void fetch(chatActionPath(window.location.pathname, window.location.search), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ intent: "rating-get", messageId }),
@@ -508,7 +516,7 @@ export default function ChatRoute() {
     const attachmentIds = attachments.split(",").map((id) => id.trim()).filter(Boolean);
 
     try {
-      const response = await fetch(window.location.pathname, {
+      const response = await fetch(chatActionPath(window.location.pathname, window.location.search), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ intent: transport, message: userMessage, threadId: threadId || undefined, attachmentIds }),
@@ -583,7 +591,7 @@ export default function ChatRoute() {
     setUploading(true);
     setError(null);
     try {
-      const response = await fetch(window.location.pathname, {
+      const response = await fetch(chatActionPath(window.location.pathname, window.location.search), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
