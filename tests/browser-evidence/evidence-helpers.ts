@@ -550,18 +550,58 @@ async function persistedUiWitness(args: {
   };
 }
 
-async function createdUiWitness(args: { page: Page; marker: string; mutate(): Promise<void> }) {
-  const { page, marker, mutate } = args;
-  const before = page.getByText(marker, { exact: true });
-  expect(await before.count(), "created marker already existed before mutation").toBe(0);
+async function exactCreatedMarker(
+  page: Page,
+  marker: string,
+  controlName?: string,
+  canonicalIdentity?: { controlName: string; value(): string }
+): Promise<Locator | null> {
+  if (!controlName) {
+    const markerText = page.getByText(marker, { exact: true }).first();
+    return (await markerText.count()) > 0 ? markerText : null;
+  }
+
+  const candidates = page.locator(`[name="${controlName}"]`);
+  for (let index = 0; index < (await candidates.count()); index += 1) {
+    const candidate = candidates.nth(index);
+    if ((await candidate.inputValue()) !== marker) continue;
+    const expectedIdentity = canonicalIdentity?.value() ?? "";
+    if (!canonicalIdentity || !expectedIdentity) return candidate;
+    const identity = persistedContainer(candidate)
+      .locator(`[name="${canonicalIdentity.controlName}"]`)
+      .first();
+    if ((await identity.count()) > 0 && (await identity.inputValue()) === expectedIdentity) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+async function createdUiWitness(args: {
+  page: Page;
+  marker: string;
+  controlName?: string;
+  canonicalIdentity?: { controlName: string; value(): string };
+  mutate(): Promise<void>;
+}) {
+  const { page, marker, controlName, canonicalIdentity, mutate } = args;
+  expect(
+    await exactCreatedMarker(page, marker, controlName, canonicalIdentity),
+    "created marker already existed before mutation"
+  ).toBeNull();
   const preActionFieldSha256 = hashObservedPayload({ present: false });
   const preActionPayloadSha256 = hashObservedPayload({ identityPresent: false });
 
   await mutate();
 
-  const postMarker = page.getByText(marker, { exact: true }).first();
-  await expect(postMarker, "mutation did not render its intended marker").toBeVisible();
-  const observedMarker = ((await postMarker.textContent()) ?? "").replace(/\s+/g, " ").trim();
+  const postMarker = await exactCreatedMarker(page, marker, controlName, canonicalIdentity);
+  if (!postMarker) throw new Error("mutation did not render its intended marker");
+  await expect(postMarker).toBeVisible();
+  const observedMarker = (
+    controlName ? await postMarker.inputValue() : (await postMarker.textContent()) ?? ""
+  )
+    .replace(/\s+/g, " ")
+    .trim();
   expect(observedMarker).not.toBe("");
   const postActionFieldSha256 = hashObservedPayload(observedMarker);
   const postActionPayloadSha256 = hashObservedPayload(
@@ -575,10 +615,18 @@ async function createdUiWitness(args: { page: Page; marker: string; mutate(): Pr
   );
 
   await page.reload({ waitUntil: "networkidle" });
-  const reloadMarker = page.getByText(observedMarker, { exact: true }).first();
-  await expect(reloadMarker, "hard reload lost the created marker").toBeVisible();
+  const reloadMarker = await exactCreatedMarker(
+    page,
+    observedMarker,
+    controlName,
+    canonicalIdentity
+  );
+  if (!reloadMarker) throw new Error("hard reload lost the created marker");
+  await expect(reloadMarker).toBeVisible();
   const postReloadFieldSha256 = hashObservedPayload(
-    ((await reloadMarker.textContent()) ?? "").replace(/\s+/g, " ").trim()
+    (controlName ? await reloadMarker.inputValue() : (await reloadMarker.textContent()) ?? "")
+      .replace(/\s+/g, " ")
+      .trim()
   );
   const postReloadPayloadSha256 = hashObservedPayload(
     await uiPayload(persistedContainer(reloadMarker))
@@ -935,16 +983,69 @@ export async function performMutation(args: {
       }
       return witness!;
     }
-    case "postman-create":
+    case "postman-create": {
+      const existingMarkerUrl = new URL(page.url());
+      existingMarkerUrl.searchParams.set("search", marker);
+      existingMarkerUrl.searchParams.set("page", "1");
+      const existingMarkerResponse = await page.goto(existingMarkerUrl.toString(), {
+        waitUntil: "networkidle",
+      });
+      expect(existingMarkerResponse?.status(), "Postman template preflight search failed").toBe(
+        200
+      );
+      let createdTemplateId = "";
       return createdUiWitness({
         page,
         marker,
+        controlName: "name",
+        canonicalIdentity: {
+          controlName: "templateId",
+          value: () => createdTemplateId,
+        },
         mutate: async () => {
           await fillNamed(page, "name", marker);
           await fillNamed(page, "simulateUserId", scope.endUserId);
+          const actionPathname = new URL(page.url()).pathname;
+          const actionResponsePromise = page.waitForResponse((response) => {
+            const request = response.request();
+            return (
+              request.method() === "POST" && new URL(response.url()).pathname === actionPathname
+            );
+          });
           await clickSubmit(page, /create template/i);
+          const actionResponse = await actionResponsePromise;
+          expect(actionResponse.status(), "Postman template create action did not succeed").toBe(200);
+          const actionPayload = (await actionResponse.json()) as {
+            ok?: boolean;
+            result?: {
+              template?: { id?: unknown; name?: unknown; simulateUserId?: unknown };
+            };
+          };
+          expect(actionPayload.ok, "Postman template create action returned a failure payload").toBe(
+            true
+          );
+          expect(
+            actionPayload.result?.template,
+            "Postman template create action omitted canonical persisted read-back"
+          ).toMatchObject({ name: marker, simulateUserId: scope.endUserId });
+          const templateId = actionPayload.result?.template?.id;
+          if (typeof templateId !== "string" || templateId.length === 0) {
+            throw new Error("Postman template create action omitted its canonical ID");
+          }
+          createdTemplateId = templateId;
+
+          const readBackUrl = new URL(page.url());
+          readBackUrl.searchParams.set("search", marker);
+          readBackUrl.searchParams.set("page", "1");
+          const readBackResponse = await page.goto(readBackUrl.toString(), {
+            waitUntil: "networkidle",
+          });
+          expect(readBackResponse?.status(), "Postman template read-back navigation failed").toBe(
+            200
+          );
         },
       });
+    }
     case "postman-execute":
       return createdUiWitness({
         page,
