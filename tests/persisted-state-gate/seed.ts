@@ -29,6 +29,7 @@ const TOOLS = 200;
 const MEMORIES_PER_SCOPE = 192;
 const DENSE_MEMORIES_PER_SCOPE = 96;
 const GRAPH_ENTITIES = [71, 70] as const;
+const POSTMAN_TEMPLATES_PER_SCOPE = 3;
 const GATE_DATABASE_HOST = "127.0.0.1";
 const GATE_DATABASE_PORT = "55432";
 const GATE_REDIS_PORT = "56379";
@@ -319,6 +320,20 @@ async function seedScope(
       agentId,
       activeAgentVersionId: versionIds[index],
       clusterId: index % 2 === 0 ? clusterId : null,
+      createdAt: new Date(FIXTURE_TIMESTAMP.getTime() + index),
+      updatedAt: new Date(FIXTURE_TIMESTAMP.getTime() + index),
+    })),
+  });
+  await database.postmanTemplate.createMany({
+    data: Array.from({ length: POSTMAN_TEMPLATES_PER_SCOPE }, (_, index) => ({
+      id: deterministicUuid(key, "postman-template", index),
+      environmentId,
+      agentId: agentIds[0],
+      name: `Dense Postman template ${key}-${index + 1}`,
+      simulateUserId: externalUserId,
+      sessionContext: { fixture: "WIN-235", ordinal: index + 1 },
+      createdBy: operatorId,
+      isDefault: index === 0,
       createdAt: new Date(FIXTURE_TIMESTAMP.getTime() + index),
       updatedAt: new Date(FIXTURE_TIMESTAMP.getTime() + index),
     })),
@@ -700,6 +715,7 @@ async function actualCounts() {
     safetyEvents,
     toolCallAudits,
     jobs,
+    postmanTemplates,
   ] = await Promise.all([
     database.organization.count(),
     database.project.count(),
@@ -725,6 +741,7 @@ async function actualCounts() {
     database.safetyEvent.count(),
     database.toolCallAudit.count(),
     database.job.count(),
+    database.postmanTemplate.count(),
   ]);
   return {
     organizations,
@@ -751,6 +768,7 @@ async function actualCounts() {
     safetyEvents,
     toolCallAudits,
     jobs,
+    postmanTemplates,
   };
 }
 
@@ -780,6 +798,7 @@ function assertCounts(actual: Record<string, number>) {
     safetyEvents: 2,
     toolCallAudits: 2,
     jobs: 2,
+    postmanTemplates: POSTMAN_TEMPLATES_PER_SCOPE * 2,
   };
   for (const [name, count] of Object.entries(expected)) {
     if (actual[name] !== count) {
