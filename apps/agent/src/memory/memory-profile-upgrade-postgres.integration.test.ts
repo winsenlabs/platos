@@ -14,14 +14,14 @@ const packageRoot = resolve(process.cwd(), "../../internal-packages/tenancy-data
 const schemaPath = resolve(packageRoot, "prisma/schema.prisma");
 const initialSql = readFileSync(
   resolve(packageRoot, "prisma/migrations/00000000000000_initial/migration.sql"),
-  "utf8",
+  "utf8"
 );
 const additiveSql = readFileSync(
   resolve(
     packageRoot,
-    "prisma/migrations/20260824111500_memory_profile_key_and_source_contract/migration.sql",
+    "prisma/migrations/20260824111500_memory_profile_key_and_source_contract/migration.sql"
   ),
-  "utf8",
+  "utf8"
 );
 
 describe("Memory encrypted profile and legacy contract upgrade", () => {
@@ -61,9 +61,16 @@ describe("Memory encrypted profile and legacy contract upgrade", () => {
         name: "Memory profile upgrade",
       },
     });
-    const environment = await prisma.environment.create({
-      data: { projectId: project.id, slug: "development", name: "Development" },
-    });
+    // This fixture intentionally represents the catalog before later additive
+    // migrations. Seed against that physical contract instead of asking the
+    // current generated client to project columns that do not exist yet.
+    const [environment] = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `INSERT INTO "Environment" ("id", "projectId", "slug", "name", "createdAt", "updatedAt")
+       VALUES (gen_random_uuid(), $1::uuid, 'development', 'Development', NOW(), NOW())
+       RETURNING "id"`,
+      project.id
+    );
+    if (!environment) throw new Error("Failed to seed legacy Environment fixture");
     const agent = await prisma.agent.create({
       data: { projectId: project.id, slug: "profile-upgrade", name: "Profile upgrade" },
     });
@@ -122,7 +129,7 @@ describe("Memory encrypted profile and legacy contract upgrade", () => {
       agent.id,
       JSON.stringify(profileEnvelope),
       thread.id,
-      turn.id,
+      turn.id
     );
     const from = await prisma.memoryEntity.create({
       data: {
@@ -159,18 +166,20 @@ describe("Memory encrypted profile and legacy contract upgrade", () => {
     executeSql(additiveSql, database.databaseUrl);
     await expect(indexNames(prisma)).resolves.toEqual([]);
 
-    const normalized = await prisma.$queryRawUnsafe<Array<{
-      id: string;
-      visibility: string;
-      agentVisible: boolean;
-      source: string;
-      originalSource: string | null;
-      originalSourceThreadId: string | null;
-      originalSourceTurnIds: string[];
-    }>>(
+    const normalized = await prisma.$queryRawUnsafe<
+      Array<{
+        id: string;
+        visibility: string;
+        agentVisible: boolean;
+        source: string;
+        originalSource: string | null;
+        originalSourceThreadId: string | null;
+        originalSourceTurnIds: string[];
+      }>
+    >(
       `SELECT "id", "visibility", "agentVisible", "source", "originalSource",
               "originalSourceThreadId", "originalSourceTurnIds"
-       FROM "Memory" ORDER BY "id"`,
+       FROM "Memory" ORDER BY "id"`
     );
     expect(normalized.find(({ id }) => id === winnerId)).toMatchObject({
       visibility: "agent_visible",
@@ -189,26 +198,32 @@ describe("Memory encrypted profile and legacy contract upgrade", () => {
 
     const result = await new MemoryProfileBackfillService(prisma, crypto).run();
     expect(result).toEqual({ profiles: 2, deduplicated: 1 });
-    await expect(prisma.$queryRawUnsafe(
-      `SELECT "id", "profileKey" FROM "Memory" WHERE "kind" = 'profile'`,
-    )).resolves.toEqual([{ id: winnerId, profileKey: "preferred name" }]);
-    await expect(prisma.memoryRelationship.findUniqueOrThrow({
-      where: { id: relationship.id },
-      select: { sourceMemoryId: true },
-    })).resolves.toEqual({ sourceMemoryId: winnerId });
+    await expect(
+      prisma.$queryRawUnsafe(`SELECT "id", "profileKey" FROM "Memory" WHERE "kind" = 'profile'`)
+    ).resolves.toEqual([{ id: winnerId, profileKey: "preferred name" }]);
+    await expect(
+      prisma.memoryRelationship.findUniqueOrThrow({
+        where: { id: relationship.id },
+        select: { sourceMemoryId: true },
+      })
+    ).resolves.toEqual({ sourceMemoryId: winnerId });
     await expect(indexNames(prisma)).resolves.toEqual([
       "Memory_profile_cluster_key",
       "Memory_profile_standalone_key",
     ]);
 
-    await expect(prisma.$executeRawUnsafe(
-      `UPDATE "Memory" SET "visibility" = 'subject' WHERE "id" = $1::uuid`,
-      privateLegacyId,
-    )).rejects.toThrow(/Memory_visibility_check/);
-    await expect(prisma.$executeRawUnsafe(
-      `UPDATE "Memory" SET "source" = 'forged' WHERE "id" = $1::uuid`,
-      privateLegacyId,
-    )).rejects.toThrow(/Memory_source_check/);
+    await expect(
+      prisma.$executeRawUnsafe(
+        `UPDATE "Memory" SET "visibility" = 'subject' WHERE "id" = $1::uuid`,
+        privateLegacyId
+      )
+    ).rejects.toThrow(/Memory_visibility_check/);
+    await expect(
+      prisma.$executeRawUnsafe(
+        `UPDATE "Memory" SET "source" = 'forged' WHERE "id" = $1::uuid`,
+        privateLegacyId
+      )
+    ).rejects.toThrow(/Memory_source_check/);
   }, 180_000);
 });
 
@@ -218,7 +233,7 @@ async function indexNames(prisma: PrismaClient): Promise<string[]> {
      FROM pg_indexes
      WHERE schemaname = 'public'
        AND indexname IN ('Memory_profile_standalone_key', 'Memory_profile_cluster_key')
-     ORDER BY indexname`,
+     ORDER BY indexname`
   );
   return rows.map(({ indexname }) => indexname);
 }
@@ -232,6 +247,6 @@ function executeSql(sql: string, databaseUrl: string): void {
       env: { ...process.env, DATABASE_URL: databaseUrl },
       input: sql,
       stdio: "pipe",
-    },
+    }
   );
 }
