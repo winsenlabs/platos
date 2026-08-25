@@ -4,6 +4,7 @@ import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { SUITE_CONTRACT, verifyEvidenceArtifactDirectory } from "./verify-artifacts.mjs";
 import { guardedPublicSchemaResetSql, validateDisposableDatabaseUrl } from "./reset-guard.mjs";
+import { parseVitestJson } from "./vitest-json.mjs";
 
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const artifactDirectory = resolve(
@@ -159,12 +160,4 @@ function resetPublicSchema(url) {
   );
   assert.equal(result.error, undefined, `database reset could not start: ${result.error?.message}`);
   assert.equal(result.status, 0, `database reset failed: ${result.stderr || result.stdout}`);
-}
-
-function parseVitestJson(stdout, slug) {
-  try {
-    return JSON.parse(stdout);
-  } catch (error) {
-    throw new Error(`${slug} did not emit valid Vitest JSON: ${error.message}`);
-  }
 }
