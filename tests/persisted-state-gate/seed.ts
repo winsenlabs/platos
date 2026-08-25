@@ -330,7 +330,7 @@ async function seedScope(
       environmentId,
       agentId: agentIds[0],
       name: `Dense Postman template ${key}-${index + 1}`,
-      simulateUserId: externalUserId,
+      simulateUserId: endUserId,
       sessionContext: { fixture: "WIN-235", ordinal: index + 1 },
       createdBy: operatorId,
       isDefault: index === 0,
@@ -338,6 +338,18 @@ async function seedScope(
       updatedAt: new Date(FIXTURE_TIMESTAMP.getTime() + index),
     })),
   });
+  const executablePostmanTargets = await database.postmanTemplate.findMany({
+    where: { environmentId, agentId: agentIds[0] },
+    select: { simulateUserId: true },
+  });
+  if (
+    executablePostmanTargets.length !== POSTMAN_TEMPLATES_PER_SCOPE ||
+    executablePostmanTargets.some(({ simulateUserId }) => simulateUserId !== endUserId)
+  ) {
+    throw new Error(
+      "WIN-235 Postman templates must target the canonical scoped EndUser UUID"
+    );
+  }
   const [smallAgentPage, denseAgentPage] = await Promise.all(
     [5, 10].map((take) =>
       database.agentBinding.findMany({
