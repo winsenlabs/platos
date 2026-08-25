@@ -345,6 +345,17 @@ async function verifyLiveFixture(prisma, fixture, budgets) {
     primary.agentIds.length,
     "live scoped AgentBinding total drifted before measurement"
   );
+  const memoryBudget = budgets.queries.find((budget) => budget.id === "memory.list.api");
+  assert.ok(memoryBudget, "Memory query budget is absent");
+  assert.ok(
+    primary.denseMemoryCount > memoryBudget.densePageSize,
+    "fixture does not contain multiple Memory pages for the measured principal"
+  );
+  assert.equal(
+    primary.memoryAgentCount,
+    primary.agentIds.length,
+    "fixture does not retain Memory rows across every representative Agent"
+  );
   return { turnsPerThread, persistedAgentTotal };
 }
 

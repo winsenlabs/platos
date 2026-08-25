@@ -24,6 +24,7 @@ const AGENTS_PER_SCOPE = 20;
 const TURNS_PER_THREAD = 60;
 const TOOLS = 200;
 const MEMORIES_PER_SCOPE = 192;
+const DENSE_MEMORIES_PER_SCOPE = 96;
 const GRAPH_ENTITIES = [71, 70] as const;
 const GATE_DATABASE_HOST = "127.0.0.1";
 const GATE_DATABASE_PORT = "55432";
@@ -382,7 +383,10 @@ async function seedScope(
   await database.memory.createMany({
     data: memoryIds.map((id, index) => {
       const extractedFromFixtureThread = index < 20;
-      const agentIndex = extractedFromFixtureThread ? 0 : index % agentIds.length;
+      const agentIndex =
+        index < DENSE_MEMORIES_PER_SCOPE
+          ? 0
+          : 1 + ((index - DENSE_MEMORIES_PER_SCOPE) % (agentIds.length - 1));
       const clusterVisible = extractedFromFixtureThread || (index % 2 === 0 && agentIndex < 10);
       return {
         id,
@@ -410,6 +414,26 @@ async function seedScope(
       };
     }),
   });
+  const memoryCountsByAgent = await database.memory.groupBy({
+    by: ["agentId"],
+    where: { environmentId, endUserId },
+    _count: { _all: true },
+  });
+  const denseMemoryCount =
+    memoryCountsByAgent.find((row) => row.agentId === agentIds[0])?._count._all ?? 0;
+  if (denseMemoryCount !== DENSE_MEMORIES_PER_SCOPE) {
+    throw new Error(
+      `WIN-235 dense principal memory mismatch: expected ${DENSE_MEMORIES_PER_SCOPE}, received ${denseMemoryCount}`
+    );
+  }
+  if (
+    memoryCountsByAgent.length !== agentIds.length ||
+    memoryCountsByAgent.some((row) => row._count._all < 1)
+  ) {
+    throw new Error(
+      "WIN-235 memory fixture must retain persisted data on every representative Agent"
+    );
+  }
   const graphIds = Array.from({ length: graphEntityCount }, (_, index) =>
     deterministicUuid(key, "memory-entity", index)
   );
@@ -542,6 +566,8 @@ async function seedScope(
     agentIds,
     versionIds,
     profileMemoryId: memoryIds[0],
+    denseMemoryCount,
+    memoryAgentCount: memoryCountsByAgent.length,
     graphEntityIds: graphIds,
   };
 }
