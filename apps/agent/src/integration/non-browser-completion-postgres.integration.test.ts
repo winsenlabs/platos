@@ -461,13 +461,8 @@ describeWithPostgres("WIN-234 non-browser completion evidence", () => {
       }
     } finally {
       if (prisma) {
-        const organizationIds = [alpha?.organizationId, beta?.organizationId].filter(
-          Boolean
-        ) as string[];
-        const userIds = [alpha?.userId, beta?.userId].filter(Boolean) as string[];
-        if (organizationIds.length)
-          await prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
-        if (userIds.length) await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+        // This gate runs against a fresh disposable database. Keep append-only
+        // AdminAudit evidence intact rather than attempting cascading DML cleanup.
         await prisma.$disconnect();
       }
     }

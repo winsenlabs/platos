@@ -84,6 +84,7 @@ export async function runNonBrowserEvidence({
       "vitest",
       "run",
       suitePath,
+      "--reporter=default",
       "--reporter=json",
       `--outputFile=${reportPath}`,
     ],

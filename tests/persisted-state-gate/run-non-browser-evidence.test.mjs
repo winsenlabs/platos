@@ -90,13 +90,14 @@ test("runner deletes stale output, pins required identity, runs one suite, and v
     execute(command, args, options) {
       executed = true;
       assert.equal(command, "pnpm");
-      assert.deepEqual(args.slice(0, 7), [
+      assert.deepEqual(args.slice(0, 8), [
         "--filter",
         "platos-agent",
         "exec",
         "vitest",
         "run",
         "src/integration/non-browser-completion-postgres.integration.test.ts",
+        "--reporter=default",
         "--reporter=json",
       ]);
       assert.equal(
