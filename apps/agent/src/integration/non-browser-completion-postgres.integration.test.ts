@@ -462,7 +462,7 @@ describeWithPostgres("WIN-234 non-browser completion evidence", () => {
     } finally {
       if (prisma) {
         // This gate runs against a fresh disposable database. Keep append-only
-        // AdminAudit evidence intact rather than attempting cascading DML cleanup.
+        // AdminAudit evidence intact rather than running cascading DML cleanup.
         await prisma.$disconnect();
       }
     }
