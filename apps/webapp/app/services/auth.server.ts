@@ -4,6 +4,7 @@ import {
   PlatosAuthService,
   authorizeEnvironmentOperator,
   type EnvironmentAuthorizationAccess,
+  type EnvironmentOperatorAuthorization,
   type OperatorAuthorization,
 } from "@platos/tenancy-database";
 import { env } from "~/env.server";
@@ -101,12 +102,17 @@ export async function requireEnvironmentScope(params: {
     },
   });
   if (!environment) throw new Response("Environment not found", { status: 404 });
-  const authorization = await authorizeEnvironmentOperator(
-    database,
-    operator.authorization,
-    environment.id,
-    params.access ?? "metadata"
-  );
+  let authorization: EnvironmentOperatorAuthorization;
+  try {
+    authorization = await authorizeEnvironmentOperator(
+      database,
+      operator.authorization,
+      environment.id,
+      params.access ?? "metadata"
+    );
+  } catch (error) {
+    throw authErrorResponse(error);
+  }
   return {
     authorization,
     operator,
