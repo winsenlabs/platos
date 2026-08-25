@@ -912,15 +912,20 @@ export async function performMutation(args: {
         "operator Playground exposed an EndUser rating mutation button",
       ).toBe(0);
 
+      const denialTarget = new URL(page.url());
+      denialTarget.searchParams.set(
+        "_data",
+        "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.chat",
+      );
       for (const intent of ["rate", "rating-delete"] as const) {
-        const denial = await page.evaluate(async ({ intent, messageId }) => {
-          const response = await fetch(window.location.href, {
+        const denial = await page.evaluate(async ({ intent, messageId, target }) => {
+          const response = await fetch(target, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ intent, messageId, rating: 1 }),
           });
           return { status: response.status, payload: await response.json() };
-        }, { intent, messageId });
+        }, { intent, messageId, target: denialTarget.toString() });
         expect(denial.status, `operator ${intent} did not fail closed`).toBe(403);
         expect(denial.payload).toMatchObject({
           ok: false,
