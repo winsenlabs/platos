@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PrismaClient } from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -53,6 +54,21 @@ describe("memory PostgreSQL HNSW retrieval", () => {
         encoding: "utf8",
       }
     );
+    const evidenceDirectory = process.env.PLATOS_POSTGRES_EVIDENCE_DIR?.trim();
+    if (evidenceDirectory) {
+      const suiteDirectory = resolve(evidenceDirectory, "suites");
+      mkdirSync(suiteDirectory, { recursive: true });
+      writeFileSync(
+        resolve(suiteDirectory, "memory-retrieval.prisma-migrate.stdout.log"),
+        migration.stdout || "",
+        "utf8"
+      );
+      writeFileSync(
+        resolve(suiteDirectory, "memory-retrieval.prisma-migrate.stderr.log"),
+        migration.stderr || migration.error?.message || "",
+        "utf8"
+      );
+    }
     if (migration.error || migration.status !== 0) {
       throw new Error(
         [
