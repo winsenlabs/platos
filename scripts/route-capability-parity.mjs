@@ -31,9 +31,9 @@ const V0_DISPOSITIONS = new Set([
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "NONE"]);
 const EVIDENCE_STATUSES = new Set(["verified", "static-contract-only", "required-not-verified", "not-applicable", "justified-exclusion", "confirmed-defect"]);
 const APPLICABILITY_STATUSES = new Set(["implemented", "redirect", "required-not-verified", "not-applicable", "confirmed-defect"]);
-const SCOPE_STATUSES = new Set(["enforced", "required-not-verified", "not-applicable", "confirmed-defect"]);
+const SCOPE_STATUSES = new Set(["enforced", "organization-only", "required-not-verified", "not-applicable", "confirmed-defect"]);
 const COMPLETION_EVIDENCE_STATUSES = new Set(["verified", "not-applicable", "justified-exclusion"]);
-const COMPLETION_SCOPE_STATUSES = new Set(["enforced", "not-applicable"]);
+const COMPLETION_SCOPE_STATUSES = new Set(["enforced", "organization-only", "not-applicable"]);
 const COMPLETION_STATE_STATUSES = new Set(["implemented", "redirect", "not-applicable"]);
 
 const REQUIRED_CAPABILITY_FIELDS = [
@@ -817,10 +817,13 @@ export function completionBlockers(matrix) {
   };
   const unresolvedEvidence = (field) => matrix.capabilities.filter((capability) => !COMPLETION_EVIDENCE_STATUSES.has(capability[field].status));
   const unresolvedScope = (field) => matrix.capabilities.filter((capability) => !COMPLETION_SCOPE_STATUSES.has(capability[field].status));
-  const unresolvedTenantDimension = (key) => matrix.capabilities.filter((capability) =>
-    !COMPLETION_SCOPE_STATUSES.has(capability.tenantScope.status) ||
-    (capability.tenantScope.status === "enforced" && !capability.tenantScope.keys.includes(key)),
-  );
+  const unresolvedTenantDimension = (key) => matrix.capabilities.filter((capability) => {
+    if (!COMPLETION_SCOPE_STATUSES.has(capability.tenantScope.status)) return true;
+    if (capability.tenantScope.status === "organization-only") {
+      return key === "organizationId" && !capability.tenantScope.keys.includes(key);
+    }
+    return capability.tenantScope.status === "enforced" && !capability.tenantScope.keys.includes(key);
+  });
   const unresolvedState = (field) => matrix.capabilities.filter((capability) => !COMPLETION_STATE_STATUSES.has(capability[field].status));
   add(
     "confirmed defects",

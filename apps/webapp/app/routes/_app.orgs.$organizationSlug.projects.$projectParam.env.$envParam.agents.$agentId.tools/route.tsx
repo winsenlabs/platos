@@ -32,7 +32,7 @@ export async function action(args: ActionFunctionArgs) {
     return json({ ok: true, result });
   } catch (error) {
     if (error instanceof PlatosAgentApiError) {
-      return json({ ok: false, code: error.code, error: error.message }, { status: error.status });
+      return json({ ok: false, code: error.code, error: "Agent Tool mapping update failed" }, { status: error.status });
     }
     return json({ ok: false, code: "agent_tool_mapping_unavailable", error: "Agent Tool mapping update is unavailable" }, { status: 503 });
   }

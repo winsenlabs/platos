@@ -37,11 +37,11 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 | Current route | Capability ID | Disposition | HTTP contracts | Read-back | Defect | Automated evidence | Browser evidence |
 |---|---|---|---|---|---|---|---|
 | `apps/webapp/app/routes/_app/route.tsx` | `route-001` | improve | NONE Route module apps/webapp/app/routes/_app/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
-| `apps/webapp/app/routes/_app._index/route.tsx` | `route-002` | redirect | NONE Route module apps/webapp/app/routes/_app._index/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app._index/route.tsx` | `route-002` | redirect | NONE Route module apps/webapp/app/routes/_app._index/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug/route.tsx` | `route-003` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx` | `route-004` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx` | `route-005` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx` | `route-006` | redirect | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx` | `route-004` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx` | `route-005` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx` | `route-006` | redirect | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam/route.tsx` | `route-007` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam._index/route.tsx` | `route-008` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam._index/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-accounts._index/route.tsx` | `route-009` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-accounts._index/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
@@ -108,7 +108,7 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `mcp-tool-acl-policy` | improve | GET /mcp/entity/:entityId/tool-acl; PATCH /mcp/entity/:entityId/tool-acl/:toolId; POST /mcp/entity/:entityId/tool-acl/bulk | verified | verified | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx` | `route-054` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps.$entityId._index/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `mcp-token-create` | improve | POST /mcp/platform/tokens | verified | verified | verified | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `mcp-token-list` | improve | GET /mcp/platform/tokens | not-applicable | verified | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `mcp-token-list` | improve | GET /mcp/platform/tokens | verified | verified | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `mcp-token-revoke` | improve | POST /mcp/platform/tokens/:id/revoke | verified | verified | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx` | `route-055` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.mcps._index/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route.tsx` | `route-056` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.memories._index/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
@@ -131,9 +131,9 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads._index/route.tsx` | `route-070` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.threads._index/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.settings/route.tsx` | `route-071` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.settings/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/_app.orgs.$organizationSlug.settings._index/route.tsx` | `route-072` | redirect | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.settings._index/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx` | `route-073` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx` | `route-074` | redirect | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
-| `apps/webapp/app/routes/_app.orgs.new/route.tsx` | `route-075` | redirect | NONE Route module apps/webapp/app/routes/_app.orgs.new/route.tsx | not-applicable | static-contract-only | static-contract-only | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx` | `route-073` | improve | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx` | `route-074` | redirect | NONE Route module apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
+| `apps/webapp/app/routes/_app.orgs.new/route.tsx` | `route-075` | redirect | NONE Route module apps/webapp/app/routes/_app.orgs.new/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/account/route.tsx` | `route-076` | improve | NONE Route module apps/webapp/app/routes/account/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/account._index/route.tsx` | `route-077` | improve | NONE Route module apps/webapp/app/routes/account._index/route.tsx | not-applicable | static-contract-only | verified | required-not-verified |
 | `apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts` | `route-078` | improve | NONE Route module apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts | not-applicable | static-contract-only | verified | required-not-verified |
@@ -148,20 +148,10 @@ This prerequisite is an explicit audit contract, not a completion claim. `requir
 
 | Blocker category | Count | Requirement |
 |---|---:|---|
-| permission | 7 | Verify permission behavior or record an approved not-applicable/justified-exclusion status. |
-| organization scope | 7 | Verify Organization isolation or record an approved not-applicable status. |
-| project scope | 7 | Verify Project isolation or record an approved not-applicable status. |
-| environment scope | 7 | Verify Environment isolation or record an approved not-applicable status. |
-| Agent scope | 11 | Verify Agent isolation or record an approved not-applicable status. |
-| form behavior | 7 | Verify form behavior or record an approved redirect/not-applicable status. |
-| link behavior | 7 | Verify link and deep-link behavior or record an approved redirect/not-applicable status. |
 | destructive confirmation | 4 | Verify destructive confirmation or record an approved not-applicable/justified-exclusion status. |
-| idempotency | 16 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
+| idempotency | 14 | Verify replay and duplicate-submission behavior or record an approved not-applicable/justified-exclusion status. |
 | concurrency | 12 | Verify concurrent behavior or record an approved not-applicable/justified-exclusion status. |
-| recovery | 7 | Verify failure, retry, and unavailable-backend recovery or record an approved not-applicable/justified-exclusion status. |
-| secret exposure | 7 | Verify secret-safe payloads, errors, logs, storage, and snapshots or record an approved not-applicable/justified-exclusion status. |
-| persisted-state evidence | 3 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |
-| automated behavioral evidence | 7 | Replace static or pending references with passing behavioral test evidence. |
+| persisted-state evidence | 2 | Provide create/update/delete/read-back evidence against the canonical clean-schema owner. |
 | browser evidence | 107 | Provide authenticated browser evidence or a source-backed justified exclusion. |
 
 ## v0 archaeology by family

@@ -1,7 +1,59 @@
 import { OrganizationRole } from "@platos/tenancy-database";
-import { json,type ActionFunctionArgs } from "@remix-run/node";
-import { Form,useActionData } from "@remix-run/react";
-import { operatorAuth,requireOperator } from "~/services/auth.server";
+import { json, type ActionFunctionArgs } from "@remix-run/node";
+import { Form, useActionData } from "@remix-run/react";
+import { operatorAuth, requireOperator } from "~/services/auth.server";
 import { database } from "~/services/database.server";
-export async function action({request,params}:ActionFunctionArgs){const operator=await requireOperator(request);const organization=await database.organization.findFirst({where:{slug:params.organizationSlug,memberships:{some:{userId:operator.userId,deactivatedAt:null,role:{in:[OrganizationRole.OWNER,OrganizationRole.ADMIN]}}}},select:{id:true}});if(!organization)throw new Response("Forbidden",{status:403});const form=await request.formData();const issued=await operatorAuth.issueInvitation({organizationId:organization.id,inviterId:operator.userId,email:String(form.get("email")??""),role:OrganizationRole.MEMBER});return json({ok:true,invitationId:issued.invitationId});}
-export default function Invite(){const result=useActionData<typeof action>();return <main className="grid min-h-screen place-items-center bg-background-dimmed text-text-bright"><Form method="post" className="w-full max-w-lg rounded-lg border border-grid-bright bg-background-bright p-6"><h1 className="text-xl font-semibold">Invite an operator</h1><input name="email" type="email" required className="mt-5 w-full rounded border border-grid-bright bg-charcoal-900 px-3 py-2"/><button className="mt-4 rounded bg-indigo-500 px-4 py-2">Create invitation</button>{result?.ok&&<p className="mt-3 text-sm text-green-300">Invitation created. Delivery is handled by the configured operator channel.</p>}</Form></main>;}
+
+export async function action({ request, params }: ActionFunctionArgs) {
+  const operator = await requireOperator(request);
+  let organization;
+  try {
+    organization = await database.organization.findFirst({
+      where: {
+        slug: params.organizationSlug,
+        memberships: {
+          some: {
+            userId: operator.userId,
+            deactivatedAt: null,
+            role: { in: [OrganizationRole.OWNER, OrganizationRole.ADMIN] },
+          },
+        },
+      },
+      select: { id: true },
+    });
+  } catch {
+    throw new Response("Invitation service is unavailable", { status: 503 });
+  }
+  if (!organization) throw new Response("Forbidden", { status: 403 });
+
+  const form = await request.formData();
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    throw new Response("Valid email is required", { status: 400 });
+  }
+  try {
+    const issued = await operatorAuth.issueInvitation({
+      organizationId: organization.id,
+      inviterId: operator.userId,
+      email,
+      role: OrganizationRole.MEMBER,
+    });
+    return json({ ok: true, invitationId: issued.invitationId });
+  } catch {
+    throw new Response("Invitation service is unavailable", { status: 503 });
+  }
+}
+
+export default function Invite() {
+  const result = useActionData<typeof action>();
+  return (
+    <main className="grid min-h-screen place-items-center bg-background-dimmed text-text-bright">
+      <Form method="post" className="w-full max-w-lg rounded-lg border border-grid-bright bg-background-bright p-6">
+        <h1 className="text-xl font-semibold">Invite an operator</h1>
+        <input name="email" type="email" required className="mt-5 w-full rounded border border-grid-bright bg-charcoal-900 px-3 py-2" />
+        <button className="mt-4 rounded bg-indigo-500 px-4 py-2">Create invitation</button>
+        {result?.ok && <p className="mt-3 text-sm text-green-300">Invitation created. Delivery is handled by the configured operator channel.</p>}
+      </Form>
+    </main>
+  );
+}

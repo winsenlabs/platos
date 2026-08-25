@@ -100,9 +100,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "authenticated operator session"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -124,8 +126,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator/session boundary; exact role behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the authenticated operator boundary and proves unauthenticated access stops before database or auth mutation."
       },
       "loaderState": {
         "status": "implemented",
@@ -140,8 +142,8 @@
         "detail": "apps/webapp/app/routes/_app._index/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app._index/route.tsx."
+        "status": "redirect",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the canonical deep link and validates its owned navigation or redirect target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -178,24 +180,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app._index/route.tsx."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts asserts stable database/auth failures without reflected provider, invitation, session, or connection details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app._index/route.tsx.",
+        "status": "verified",
+        "classification": "Authenticated Organization/Project route serialization boundary for apps/webapp/app/routes/_app._index/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app._index/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts serializes complete success/failure payloads and proves invitation, session, and database sentinels are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -282,9 +285,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -306,8 +311,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the authenticated operator boundary and proves unauthenticated access stops before database or auth mutation."
       },
       "loaderState": {
         "status": "implemented",
@@ -318,12 +323,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes valid and malformed authenticated forms and proves invalid input stops before mutation."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx."
+        "status": "redirect",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the canonical deep link and validates its owned navigation or redirect target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -360,26 +365,27 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts asserts stable database/auth failures without reflected provider, invitation, session, or connection details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx.",
+        "status": "verified",
+        "classification": "Authenticated Organization/Project route serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug_.projects.new/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts serializes complete success/failure payloads and proves invitation, session, and database sentinels are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -468,9 +474,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -492,8 +500,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the authenticated operator boundary and proves unauthenticated access stops before database or auth mutation."
       },
       "loaderState": {
         "status": "implemented",
@@ -508,8 +516,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the canonical deep link and validates its owned navigation or redirect target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -546,24 +554,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts asserts stable database/auth failures without reflected provider, invitation, session, or connection details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx.",
+        "status": "verified",
+        "classification": "Authenticated Organization/Project route serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug._index/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts serializes complete success/failure payloads and proves invitation, session, and database sentinels are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -651,9 +660,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "organization-only",
         "keys": [
-          "organizationSlug"
+          "organizationId"
         ]
       },
       "endUserScope": {
@@ -675,8 +684,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the authenticated operator boundary and proves unauthenticated access stops before database or auth mutation."
       },
       "loaderState": {
         "status": "not-applicable",
@@ -687,12 +696,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes valid and malformed authenticated forms and proves invalid input stops before mutation."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the canonical deep link and validates its owned navigation or redirect target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -729,26 +738,27 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts asserts stable database/auth failures without reflected provider, invitation, session, or connection details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx.",
+        "status": "verified",
+        "classification": "Authenticated Organization/Project route serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.invite/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts serializes complete success/failure payloads and proves invitation, session, and database sentinels are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -4330,8 +4340,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-tools._index/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-tools._index/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedScopedFormRouteEvidence.test.ts executes valid, malformed, unauthenticated, mixed-scope, and stable-failure submissions for route-025."
       },
       "linkState": {
         "status": "implemented",
@@ -4387,7 +4397,8 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/webapp/test/authenticatedScopedFormRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -4678,7 +4689,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -4759,7 +4770,9 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/agent/src/agent-runtime/agent-tenancy-cutover.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.clean-regressions.test.ts"
         ]
       },
       "browserEvidence": {
@@ -4867,7 +4880,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -4891,8 +4904,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.canary/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.canary/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedScopedFormRouteEvidence.test.ts executes valid, malformed, unauthenticated, mixed-scope, and stable-failure submissions for route-028."
       },
       "linkState": {
         "status": "implemented",
@@ -4948,7 +4961,9 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/webapp/test/authenticatedScopedFormRouteEvidence.test.ts",
+          "apps/agent/src/agent-runtime/agent-crud-version-skills.test.ts"
         ]
       },
       "browserEvidence": {
@@ -5797,7 +5812,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -5878,7 +5893,9 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/agent/src/agent-runtime/agent-tenancy-cutover.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.clean-regressions.test.ts"
         ]
       },
       "browserEvidence": {
@@ -5986,7 +6003,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -6067,7 +6084,8 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/agent/src/memory/conversation-pagination.test.ts"
         ]
       },
       "browserEvidence": {
@@ -6377,7 +6395,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -6458,7 +6476,8 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/agent/src/agent-runtime/agent-crud-version-skills.test.ts"
         ]
       },
       "browserEvidence": {
@@ -7185,7 +7204,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -7266,7 +7285,8 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.postman.test.ts"
         ]
       },
       "browserEvidence": {
@@ -7378,7 +7398,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -7459,7 +7479,9 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedMutationEvidence.test.ts"
+          "apps/webapp/test/authenticatedMutationEvidence.test.ts",
+          "apps/agent/src/agent-runtime/agent-tenancy-cutover.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.clean-regressions.test.ts"
         ]
       },
       "browserEvidence": {
@@ -7569,7 +7591,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -7655,7 +7677,8 @@
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
           "apps/webapp/test/referenceRouteManifest.test.ts",
-          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedCustomRouteEvidence.test.ts",
+          "apps/agent/src/skills/skill-registry.service.test.ts"
         ]
       },
       "browserEvidence": {
@@ -8056,7 +8079,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -8080,8 +8103,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.tools/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agents.$agentId.tools/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedScopedFormRouteEvidence.test.ts executes valid, malformed, unauthenticated, mixed-scope, and stable-failure submissions for route-037."
       },
       "linkState": {
         "status": "implemented",
@@ -8137,7 +8160,10 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/webapp/test/authenticatedScopedFormRouteEvidence.test.ts",
+          "apps/agent/src/agent-runtime/agent-crud-tool-policy.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.clean-regressions.test.ts"
         ]
       },
       "browserEvidence": {
@@ -8445,7 +8471,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -8526,7 +8552,9 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/agent/src/agent-runtime/agent-crud-version-skills.test.ts",
+          "apps/agent/src/agent-runtime/agent.controller.clean-regressions.test.ts"
         ]
       },
       "browserEvidence": {
@@ -9064,9 +9092,9 @@
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "apps/agent/src/auth/auth.service.test.ts replays the same allowed-origin update twice and reads back the unchanged active-key origin list."
         ]
       },
       "concurrency": {
@@ -9116,7 +9144,7 @@
       ],
       "defect": {
         "status": "required-not-verified",
-        "summary": "Normalization, malformed origin rejection, concurrent update, and persisted reload require proof."
+        "summary": "Concurrent allowed-origin updates still require executable proof."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -9745,9 +9773,9 @@
         ]
       },
       "idempotency": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Replay behavior and duplicate submission handling require an integration test."
+          "apps/agent/src/auth/auth.service.test.ts replays revoke twice, verifies every active/overlap row remains revoked, and reads back no active or retiring key."
         ]
       },
       "concurrency": {
@@ -9797,7 +9825,7 @@
       ],
       "defect": {
         "status": "required-not-verified",
-        "summary": "Confirmed destructive UI, idempotent repeat revoke, and post-revoke authentication failure require browser/integration proof."
+        "summary": "Confirmed destructive UI and post-revoke authentication failure still require browser/integration proof."
       },
       "sourceOwnership": {
         "classification": "canonical-backend",
@@ -12278,7 +12306,7 @@
         ]
       },
       "agentScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
           "agentId"
         ]
@@ -12359,7 +12387,8 @@
       "automatedEvidence": {
         "status": "verified",
         "references": [
-          "apps/webapp/test/authenticatedRouteEvidence.test.ts"
+          "apps/webapp/test/authenticatedRouteEvidence.test.ts",
+          "apps/agent/src/files/files.controller.test.ts"
         ]
       },
       "browserEvidence": {
@@ -12723,9 +12752,9 @@
         "detail": "apps/webapp/test/authenticatedRouteEvidence.test.ts executes the authenticated canonical MCP deep link and apps/webapp/test/authenticatedMutationEvidence.test.ts executes its mutation route where applicable."
       },
       "persistedReadBack": {
-        "status": "not-applicable",
+        "status": "verified",
         "references": [
-          "Create/update/delete must be reloaded from the canonical clean-schema owner."
+          "apps/webapp/test/mcpManagementRoute.test.ts reloads canonical persisted Platform token metadata after create and revoke while omitting one-time raw bearer material."
         ]
       },
       "pagination": {
@@ -18709,10 +18738,11 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "enforced",
         "keys": [
-          "organizationSlug",
-          "projectParam"
+          "organizationId",
+          "projectId",
+          "environmentId"
         ]
       },
       "endUserScope": {
@@ -18734,8 +18764,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the authenticated operator boundary and proves unauthenticated access stops before database or auth mutation."
       },
       "loaderState": {
         "status": "implemented",
@@ -18750,8 +18780,8 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx has no action export in this route-shell contract."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx."
+        "status": "redirect",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the canonical deep link and validates its owned navigation or redirect target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -18788,24 +18818,25 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts asserts stable database/auth failures without reflected provider, invitation, session, or connection details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx.",
+        "status": "verified",
+        "classification": "Authenticated Organization/Project route serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.projects.$projectParam/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts serializes complete success/failure payloads and proves invitation, session, and database sentinels are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -19076,9 +19107,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "organization-only",
         "keys": [
-          "organizationSlug"
+          "organizationId"
         ]
       },
       "endUserScope": {
@@ -19100,8 +19131,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator; route/service authorization is source-observed, negative role and cross-scope behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the authenticated operator boundary and proves unauthenticated access stops before database or auth mutation."
       },
       "loaderState": {
         "status": "implemented",
@@ -19112,12 +19143,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes valid and malformed authenticated forms and proves invalid input stops before mutation."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the canonical deep link and validates its owned navigation or redirect target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -19154,26 +19185,27 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts asserts stable database/auth failures without reflected provider, invitation, session, or connection details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx.",
+        "status": "verified",
+        "classification": "Authenticated Organization/Project route serialization boundary for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.$organizationSlug.settings.team/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts serializes complete success/failure payloads and proves invitation, session, and database sentinels are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {
@@ -19626,9 +19658,9 @@
         ]
       },
       "tenantScope": {
-        "status": "required-not-verified",
+        "status": "organization-only",
         "keys": [
-          "authenticated operator session"
+          "organizationId"
         ]
       },
       "endUserScope": {
@@ -19650,8 +19682,8 @@
         ]
       },
       "permission": {
-        "status": "static-contract-only",
-        "requirement": "Authenticated operator/session boundary; exact role behavior requires runtime proof."
+        "status": "verified",
+        "requirement": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the authenticated operator boundary and proves unauthenticated access stops before database or auth mutation."
       },
       "loaderState": {
         "status": "not-applicable",
@@ -19662,12 +19694,12 @@
         "detail": "apps/webapp/app/routes/_app.orgs.new/route.tsx exports action; each retained mutation still requires a separate capability row."
       },
       "formState": {
-        "status": "required-not-verified",
-        "detail": "apps/webapp/app/routes/_app.orgs.new/route.tsx requires interaction-level form/control inventory."
+        "status": "implemented",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes valid and malformed authenticated forms and proves invalid input stops before mutation."
       },
       "linkState": {
-        "status": "required-not-verified",
-        "detail": "Authenticated deep-link and navigation crawl evidence is required for apps/webapp/app/routes/_app.orgs.new/route.tsx."
+        "status": "redirect",
+        "detail": "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts executes the canonical deep link and validates its owned navigation or redirect target."
       },
       "persistedReadBack": {
         "status": "not-applicable",
@@ -19704,26 +19736,27 @@
         ]
       },
       "recovery": {
-        "status": "required-not-verified",
+        "status": "verified",
         "references": [
-          "Route-level error-boundary and navigation recovery evidence is required for apps/webapp/app/routes/_app.orgs.new/route.tsx."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts asserts stable database/auth failures without reflected provider, invitation, session, or connection details."
         ]
       },
       "secretExposure": {
-        "status": "static-contract-only",
-        "classification": "Route-shell serialization boundary for apps/webapp/app/routes/_app.orgs.new/route.tsx.",
+        "status": "verified",
+        "classification": "Authenticated Organization/Project route serialization boundary for apps/webapp/app/routes/_app.orgs.new/route.tsx.",
         "requirements": [
-          "Loader/action payloads, errors, logs, browser storage, and snapshots for apps/webapp/app/routes/_app.orgs.new/route.tsx must omit secret material."
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts serializes complete success/failure payloads and proves invitation, session, and database sentinels are omitted."
         ]
       },
       "automatedEvidence": {
-        "status": "static-contract-only",
+        "status": "verified",
         "references": [
           "apps/webapp/test/formSubmission.test.tsx",
           "apps/webapp/test/m4Dashboard.test.tsx",
           "apps/webapp/test/m4Mutation.test.ts",
           "apps/webapp/test/m4Route.test.ts",
-          "apps/webapp/test/referenceRouteManifest.test.ts"
+          "apps/webapp/test/referenceRouteManifest.test.ts",
+          "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts"
         ]
       },
       "browserEvidence": {

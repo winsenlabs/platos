@@ -61,4 +61,27 @@ describe("ConversationService truthful Message pagination", () => {
   it("uses a stable not-found error for missing and cross-scope Threads", async () => {
     await expect(serviceFor(null).getMessages("thread-other", scope)).rejects.toBeInstanceOf(ThreadNotFoundError);
   });
+
+  it("filters a requested Agent Thread list through canonical Environment ancestry", async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const count = vi.fn().mockResolvedValue(0);
+    const service = new ConversationService({ thread: { findMany, count } } as any);
+
+    await expect(service.listThreads(
+      { ...scope, principal: "operator" },
+      { agentId: "agent-a", allUsers: true, limit: 25, offset: 0 },
+    )).resolves.toEqual({ threads: [], total: 0 });
+
+    const where = {
+      environmentId: "environment",
+      environment: {
+        projectId: "project",
+        project: { organizationId: "organization" },
+      },
+      agentId: "agent-a",
+      archivedAt: null,
+    };
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where, take: 25, skip: 0 }));
+    expect(count).toHaveBeenCalledWith({ where });
+  });
 });

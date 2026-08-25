@@ -390,6 +390,14 @@ test("direct authenticated credential route evidence cannot regress to static cl
   }
   assert.equal(capability(matrix, "access-key-allowed-origins").persistedReadBack.status, "verified");
   assert.equal(capability(matrix, "access-key-revoke").persistedReadBack.status, "verified");
+  for (const capabilityId of ["access-key-allowed-origins", "access-key-revoke"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.idempotency.status, "verified", capabilityId);
+    assert.ok(
+      row.idempotency.references.some((reference) => reference.includes("apps/agent/src/auth/auth.service.test.ts")),
+      capabilityId,
+    );
+  }
   assert.equal(capability(matrix, "access-key-rotation-correlation").concurrency.status, "verified");
 });
 
@@ -416,6 +424,7 @@ test("focused MCP route and service evidence cannot regress to static claims", (
     assert.ok(row.automatedEvidence.references.includes(routeEvidence), capabilityId);
   }
   for (const capabilityId of [
+    "mcp-token-list",
     "mcp-token-revoke",
     "entity-mcp-bearer-token-create",
     "entity-mcp-bearer-token-delete",
@@ -609,6 +618,72 @@ test("direct authenticated database and export routes cannot regress", () => {
   assert.equal(capability(matrix, "route-048").formState.status, "implemented");
 });
 
+test("authenticated Organization and Project route evidence cannot regress to static claims", () => {
+  const matrix = readMatrix();
+  const evidence = "apps/webapp/test/authenticatedOrganizationRouteEvidence.test.ts";
+  const fullAncestry = ["route-002", "route-004", "route-006", "route-074"];
+  const organizationOnly = ["route-005", "route-073", "route-075"];
+
+  for (const capabilityId of [...fullAncestry, ...organizationOnly]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.permission.status, "verified", capabilityId);
+    assert.ok(["enforced", "organization-only"].includes(row.tenantScope.status), capabilityId);
+    assert.equal(row.recovery.status, "verified", capabilityId);
+    assert.equal(row.secretExposure.status, "verified", capabilityId);
+    assert.equal(row.automatedEvidence.status, "verified", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+    assert.equal(row.browserEvidence.status, "required-not-verified", capabilityId);
+  }
+  for (const capabilityId of fullAncestry) {
+    assert.deepEqual(
+      capability(matrix, capabilityId).tenantScope.keys,
+      ["organizationId", "projectId", "environmentId"],
+      capabilityId,
+    );
+  }
+  for (const capabilityId of organizationOnly) {
+    assert.equal(capability(matrix, capabilityId).tenantScope.status, "organization-only", capabilityId);
+    assert.deepEqual(capability(matrix, capabilityId).tenantScope.keys, ["organizationId"], capabilityId);
+  }
+  for (const capabilityId of ["route-005", "route-073", "route-074", "route-075"]) {
+    assert.equal(capability(matrix, capabilityId).formState.status, "implemented", capabilityId);
+  }
+});
+
+test("reviewed Agent isolation evidence stays operation-specific", () => {
+  const matrix = readMatrix();
+  const expectedEvidence = {
+    "route-027": "apps/agent/src/agent-runtime/agent-tenancy-cutover.test.ts",
+    "route-028": "apps/agent/src/agent-runtime/agent-crud-version-skills.test.ts",
+    "route-030": "apps/agent/src/agent-runtime/agent-tenancy-cutover.test.ts",
+    "route-032": "apps/agent/src/memory/conversation-pagination.test.ts",
+    "route-033": "apps/agent/src/agent-runtime/agent-crud-version-skills.test.ts",
+    "route-034": "apps/agent/src/agent-runtime/agent.controller.postman.test.ts",
+    "route-035": "apps/agent/src/agent-runtime/agent-tenancy-cutover.test.ts",
+    "route-036": "apps/agent/src/skills/skill-registry.service.test.ts",
+    "route-037": "apps/agent/src/agent-runtime/agent-crud-tool-policy.test.ts",
+    "route-039": "apps/agent/src/agent-runtime/agent-crud-version-skills.test.ts",
+    "route-050": "apps/agent/src/files/files.controller.test.ts",
+  };
+
+  for (const [capabilityId, evidence] of Object.entries(expectedEvidence)) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.agentScope.status, "enforced", capabilityId);
+    assert.deepEqual(row.agentScope.keys, ["agentId"], capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+});
+
+test("focused direct Tool, Canary, and Agent Tool forms cannot regress", () => {
+  const matrix = readMatrix();
+  const evidence = "apps/webapp/test/authenticatedScopedFormRouteEvidence.test.ts";
+  for (const capabilityId of ["route-025", "route-028", "route-037"]) {
+    const row = capability(matrix, capabilityId);
+    assert.equal(row.formState.status, "implemented", capabilityId);
+    assert.ok(row.automatedEvidence.references.includes(evidence), capabilityId);
+  }
+});
+
 test("reviewed v0 dispositions cannot regress", async (t) => {
   const cases = [
     ["agent-connect.mint-token.ts", "intentional-removal"],
@@ -654,7 +729,7 @@ test("completion is a separate expected-red gate with actionable blocker counts"
   const matrix = readMatrix();
   const blockers = completionBlockers(matrix);
   assert.equal(blockers.find((blocker) => blocker.category === "confirmed defects"), undefined);
-  assert.ok(blockers.find((blocker) => blocker.category === "permission")?.count > 0);
+  assert.ok(blockers.find((blocker) => blocker.category === "destructive confirmation")?.count > 0);
   assert.ok(blockers.find((blocker) => blocker.category === "persisted-state evidence")?.count > 0);
   assert.ok(blockers.find((blocker) => blocker.category === "browser evidence")?.count > 0);
   assert.throws(() => runCompletionGate(matrix), /completion gate is RED \(\d+ actionable blockers across \d+ categories\)/);

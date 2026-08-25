@@ -108,7 +108,11 @@ function makeHarness(options: { cloneError?: Error; targetVersion?: ReturnType<t
   const findBinding = vi.fn().mockResolvedValue(binding);
   const prisma = {
     agentBinding: { findFirst: findBinding },
-    agentVersion: { findFirst: vi.fn().mockResolvedValue(targetVersion) },
+    agentVersion: {
+      findFirst: vi.fn().mockResolvedValue(targetVersion),
+      findMany: vi.fn().mockResolvedValue([targetVersion]),
+      count: vi.fn().mockResolvedValue(1),
+    },
     $transaction: vi.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   };
   const redis = {
@@ -127,6 +131,43 @@ function makeHarness(options: { cloneError?: Error; targetVersion?: ReturnType<t
 }
 
 describe("AgentCrudService AgentSkill version rollover", () => {
+  it("lists AgentVersions only after resolving the scoped Agent binding", async () => {
+    const h = makeHarness();
+
+    const result = await h.service.listVersions("agent-a", scope, { take: 25, offset: 0 });
+
+    expect(h.prisma.agentBinding.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        agentId: "agent-a",
+        environmentId: "env-a",
+        environment: { project: { id: "project-a", organizationId: "org-a" } },
+        agent: { projectId: "project-a" },
+      },
+    }));
+    expect(h.prisma.agentVersion.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { agentId: "agent-a" },
+      take: 26,
+      skip: 0,
+    }));
+    expect(result).toMatchObject({ total: 1, limit: 25, offset: 0 });
+  });
+
+  it("rejects version and Canary operations for a missing or foreign Agent binding before state access", async () => {
+    const h = makeHarness();
+    h.prisma.agentBinding.findFirst.mockResolvedValue(null);
+
+    await expect(h.service.listVersions("foreign-agent", scope)).rejects.toThrow("Agent not found");
+    await expect(h.service.setCanary("foreign-agent", scope, {
+      canaryVersionId: "version-canary",
+      canaryPercent: 25,
+    })).rejects.toThrow("Agent not found");
+    await expect(h.service.promoteCanary("foreign-agent", scope)).rejects.toThrow("Agent not found");
+
+    expect(h.prisma.agentVersion.findMany).not.toHaveBeenCalled();
+    expect(h.prisma.agentVersion.findFirst).not.toHaveBeenCalled();
+    expect(h.tx.agentBinding.update).not.toHaveBeenCalled();
+  });
+
   it("clones active-version skills before advancing the binding on ordinary update", async () => {
     const h = makeHarness();
 

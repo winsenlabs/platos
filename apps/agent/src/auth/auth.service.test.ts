@@ -561,6 +561,43 @@ describe("AuthService — clean-tenancy access keys", () => {
     });
   });
 
+  it("replays the same allowed-origin update without changing the persisted result", async () => {
+    const prisma = accessKeyPrisma();
+    const active = {
+      id: "key-1",
+      keyPrefix: "platos_live_test",
+      allowedOrigins: [] as string[],
+      createdAt: new Date("2026-08-15T00:00:00.000Z"),
+      lastUsedAt: null,
+      validUntil: null,
+      revokedAt: null,
+      replacedById: null,
+    };
+    prisma.accessKey.updateMany = vi.fn(async ({ data }: any) => {
+      active.allowedOrigins = [...data.allowedOrigins];
+      return { count: 1 };
+    });
+    prisma.accessKey.findMany = vi.fn(async () => [{ ...active }]);
+    const auth = new AuthService(prisma, {} as any);
+    auth.authorizeEnvironmentOperatorScope = async () => ({ environmentId: "env_1" } as any);
+    const operatorScope = {
+      organizationId: "org_1",
+      projectId: "proj_1",
+      environmentId: "env_1",
+      userId: "user_1",
+      principal: "operator",
+    } as any;
+
+    await auth.setAllowedOrigins(operatorScope, ["https://app.example"]);
+    await auth.setAllowedOrigins(operatorScope, ["https://app.example"]);
+
+    await expect(auth.getAccessKey(operatorScope)).resolves.toMatchObject({
+      key: { id: "key-1", allowedOrigins: ["https://app.example"] },
+      retiringKey: null,
+    });
+    expect(prisma.accessKey.updateMany).toHaveBeenCalledTimes(2);
+  });
+
   it("revokes every active or overlap AccessKey in the authorized Environment", async () => {
     const prisma = accessKeyPrisma();
     prisma.accessKey.updateMany = vi.fn().mockResolvedValue({ count: 2 });
@@ -579,6 +616,36 @@ describe("AuthService — clean-tenancy access keys", () => {
       where: { environmentId: "env_1", revokedAt: null },
       data: { revokedAt: expect.any(Date) },
     });
+  });
+
+  it("replays revoke idempotently and reads back no active or overlap key", async () => {
+    const prisma = accessKeyPrisma();
+    const keys = [
+      { id: "key-active", validUntil: null, revokedAt: null as Date | null },
+      { id: "key-overlap", validUntil: new Date("2030-01-01T00:00:00.000Z"), revokedAt: null as Date | null },
+    ];
+    prisma.accessKey.updateMany = vi.fn(async ({ data }: any) => {
+      const active = keys.filter((key) => key.revokedAt === null);
+      active.forEach((key) => { key.revokedAt = data.revokedAt; });
+      return { count: active.length };
+    });
+    prisma.accessKey.findMany = vi.fn(async () => keys.filter((key) => key.revokedAt === null));
+    const auth = new AuthService(prisma, {} as any);
+    auth.authorizeEnvironmentOperatorScope = async () => ({ environmentId: "env_1" } as any);
+    const operatorScope = {
+      organizationId: "org_1",
+      projectId: "proj_1",
+      environmentId: "env_1",
+      userId: "user_1",
+      principal: "operator",
+    } as any;
+
+    await auth.deleteAccessKey(operatorScope);
+    await auth.deleteAccessKey(operatorScope);
+
+    expect(keys.every((key) => key.revokedAt instanceof Date)).toBe(true);
+    await expect(auth.getAccessKey(operatorScope)).resolves.toEqual({ key: null, retiringKey: null });
+    expect(prisma.accessKey.updateMany).toHaveBeenCalledTimes(2);
   });
 });
 

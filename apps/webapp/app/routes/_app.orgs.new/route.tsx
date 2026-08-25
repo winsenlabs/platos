@@ -3,6 +3,43 @@ import { redirect, type ActionFunctionArgs } from "@remix-run/node";
 import { Form } from "@remix-run/react";
 import { requireOperator } from "~/services/auth.server";
 import { database } from "~/services/database.server";
-const slugify=(v:string)=>v.trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,48);
-export async function action({request}:ActionFunctionArgs){const operator=await requireOperator(request);const form=await request.formData();const name=String(form.get("name")??"").trim();const slug=slugify(String(form.get("slug")??name));if(!name||!slug)throw new Response("Name is required",{status:400});const organization=await database.organization.create({data:{name,slug,memberships:{create:{userId:operator.userId,role:OrganizationRole.OWNER}}}});throw redirect(`/orgs/${organization.slug}/projects/new`);}
-export default function NewOrg(){return <main className="grid min-h-screen place-items-center bg-background-dimmed p-6 text-text-bright"><Form method="post" className="w-full max-w-lg rounded-xl border border-grid-bright bg-background-bright p-6"><h1 className="text-2xl font-semibold">Create an operator organization</h1><p className="mt-2 text-sm text-text-dimmed">Operator organizations, memberships and invitations are separate from EndUser accounts.</p><label className="mt-6 block text-sm">Name<input name="name" required className="mt-2 w-full rounded border border-grid-bright bg-[var(--bg)] text-text-bright px-3 py-2"/></label><button className="mt-4 rounded bg-primary px-4 py-2 text-sm text-white">Create organization</button></Form></main>;}
+
+const slugify = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
+
+export async function action({ request }: ActionFunctionArgs) {
+  const operator = await requireOperator(request);
+  const form = await request.formData();
+  const name = String(form.get("name") ?? "").trim();
+  const slug = slugify(String(form.get("slug") ?? name));
+  if (!name || !slug) throw new Response("Name is required", { status: 400 });
+
+  let organization;
+  try {
+    organization = await database.organization.create({
+      data: {
+        name,
+        slug,
+        memberships: { create: { userId: operator.userId, role: OrganizationRole.OWNER } },
+      },
+    });
+  } catch {
+    throw new Response("Organization creation failed", { status: 503 });
+  }
+  throw redirect(`/orgs/${organization.slug}/projects/new`);
+}
+
+export default function NewOrg() {
+  return (
+    <main className="grid min-h-screen place-items-center bg-background-dimmed p-6 text-text-bright">
+      <Form method="post" className="w-full max-w-lg rounded-xl border border-grid-bright bg-background-bright p-6">
+        <h1 className="text-2xl font-semibold">Create an operator organization</h1>
+        <p className="mt-2 text-sm text-text-dimmed">Operator organizations, memberships and invitations are separate from EndUser accounts.</p>
+        <label className="mt-6 block text-sm">
+          Name
+          <input name="name" required className="mt-2 w-full rounded border border-grid-bright bg-[var(--bg)] text-text-bright px-3 py-2" />
+        </label>
+        <button className="mt-4 rounded bg-primary px-4 py-2 text-sm text-white">Create organization</button>
+      </Form>
+    </main>
+  );
+}

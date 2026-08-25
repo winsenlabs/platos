@@ -148,6 +148,21 @@ describe("SkillRegistryService clean-tenancy normalization", () => {
     });
   });
 
+  it("rejects a missing or foreign Agent binding before creating an AgentSkill", async () => {
+    prisma.agentBinding.findFirst.mockResolvedValueOnce(null);
+
+    await expect(registry.enableForAgent(scope, "foreign_agent", "skill_1")).rejects.toMatchObject({
+      reason: "agent_not_found",
+    });
+
+    expect(prisma.agentBinding.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ environmentId: "env_1", agentId: "foreign_agent" }),
+      }),
+    );
+    expect(prisma.agentSkill.upsert).not.toHaveBeenCalled();
+  });
+
   it("rejects a forged ancestry tuple before creating links", async () => {
     await expect(
       registry.register({ ...scope, projectId: "forged_project" }, parsed),

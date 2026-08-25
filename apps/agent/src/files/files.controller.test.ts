@@ -54,6 +54,35 @@ describe("FilesController clean attachment transport", () => {
     expect(result.pagination).toMatchObject({ from: 1, to: 1, totalPages: 1 });
   });
 
+  it("lists users only through the requested Agent and canonical persisted ancestry", async () => {
+    const lastAt = new Date("2026-08-15T10:00:00.000Z");
+    const queryRaw = vi.fn()
+      .mockResolvedValueOnce([{ userId: "end-user-a", attachmentCount: 2, distinctThreads: 1, lastAt }])
+      .mockResolvedValueOnce([{ total: 1 }]);
+    const controller = new FilesController(
+      { $queryRaw: queryRaw } as any,
+      { getPresignedDownloadUrl: vi.fn() } as any,
+    );
+
+    const result = await controller.listUsers(req(), "agent-a", "25");
+
+    const query = queryRaw.mock.calls[0][0] as { strings: string[]; values: unknown[] };
+    const sql = query.strings.join(" ");
+    expect(sql).toContain('JOIN "AgentBinding" binding ON binding."agentId" = t."agentId"');
+    expect(sql).toContain('WHERE t."agentId" = CAST(');
+    expect(query.values).toEqual(["agent-a", "env-a", "project-a", "org-a", 25, 0]);
+    expect(result).toMatchObject({
+      agentId: "agent-a",
+      users: [{
+        userId: "end-user-a",
+        attachmentCount: 2,
+        distinctThreads: 1,
+        lastAttachmentAt: lastAt.toISOString(),
+      }],
+      total: 1,
+    });
+  });
+
   it("lists MessageAttachments through Turn.threadId and returns clean Turn identifiers", async () => {
     const createdAt = new Date("2026-08-15T10:00:00.000Z");
     const findMany = vi.fn().mockResolvedValue([

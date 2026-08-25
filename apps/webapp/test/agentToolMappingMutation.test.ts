@@ -89,7 +89,7 @@ describe("Agent Tool dashboard mutation ownership", () => {
     expect(agentRequest).not.toHaveBeenCalled();
   });
 
-  it("preserves the Agent API scoped 404 code instead of flattening it to a generic 400", async () => {
+  it("preserves the Agent API scoped 404 code without reflecting upstream detail", async () => {
     agentRequest.mockRejectedValue(new PlatosAgentApiError(
       404,
       "agent_tool_mapping_not_found",
@@ -102,7 +102,7 @@ describe("Agent Tool dashboard mutation ownership", () => {
     await expect(response.json()).resolves.toEqual({
       ok: false,
       code: "agent_tool_mapping_not_found",
-      error: "Agent tool mapping not found in this scope",
+      error: "Agent Tool mapping update failed",
     });
   });
 });
