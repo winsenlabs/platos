@@ -723,10 +723,12 @@ async function revokeTokenForm(args: {
   expect(actionResponse.status(), `${operation} action did not succeed`).toBe(200);
   const actionPayload = (await actionResponse.json()) as {
     ok?: boolean;
-    result?: { ok?: boolean };
+    result?: { ok?: boolean; revoked?: boolean };
   };
   expect(actionPayload.ok, `${operation} action returned a failure payload`).toBe(true);
-  expect(actionPayload.result?.ok, `${operation} action omitted persisted confirmation`).toBe(true);
+  const persistedConfirmation =
+    intent === "revoke" ? actionPayload.result?.ok : actionPayload.result?.revoked;
+  expect(persistedConfirmation, `${operation} action omitted persisted confirmation`).toBe(true);
   const persistedForm = page
     .locator(`form:has(input[name="intent"][value="${intent}"])`)
     .filter({ has: page.locator(`input[name="tokenId"][value="${tokenId}"]`) })
