@@ -5,6 +5,7 @@ import { AppModule } from "./app.module";
 import { AuthService } from "./auth/auth.service";
 import { validateAgentEnv } from "./shared/env";
 import { resolveExternalTriggerConfig } from "./shared/external-trigger-config";
+import { terminateAfterStartupFailure } from "./startup-failure";
 
 // EOBD.4 — PLATOS_TEST_MODE=true unlocks test-only endpoints that mint
 // session tokens with no auth + unlocks a dev-mode fallback branch in
@@ -261,4 +262,6 @@ async function bootstrap() {
   `);
 }
 
-bootstrap();
+bootstrap().catch((error: unknown) => {
+  terminateAfterStartupFailure(error);
+});

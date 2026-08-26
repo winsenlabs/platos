@@ -14,7 +14,7 @@ The check remains fail-closed until every evidence family passes.
 
 Configure the `main` branch ruleset to require:
 
-- **Workflow:** `Build, gate, and publish container images`
+- **Workflow:** `Build and gate container images`
 - **Job/check:** `persisted-state-completion`
 
 The workflow intentionally has no path filter. A required check that is skipped
@@ -31,8 +31,11 @@ Agent logs, and Postgres/Redis/ClickHouse/MinIO read-back evidence for 14 days.
 2. The `persisted-state-completion` job downloads, verifies, and locally loads
    the exact Agent, webapp, and migration OCI artifacts. Its Remix requests go
    through the production webapp image, not imported checkout route handlers.
-3. Only after that job passes may the trusted `publish-images` job import the
-   same manifests, verify the complete remote staging set, and create immutable
+3. A merge or successful `main` gate does not authorize publication. An
+   operator must separately dispatch `.github/workflows/publish-images.yml`
+   with the successful landed-main run ID and approve the `image-publication`
+   environment. That workflow re-verifies the source run, archive checksums,
+   manifests, revision labels, and passing identities before creating immutable
    `sha-<full-commit>` tags. It does not rebuild or publish `latest`.
 4. Require the image-build jobs and persisted-state check for the exact commit
    SHA being promoted. A tag alone is never release evidence because it moves.
@@ -71,8 +74,11 @@ execution:
   aliases, compose directory, and health paths in environment variables;
 - grant credentials the narrowest target-host and registry scopes possible.
 
-This PR deliberately does **not** add a remote deployment workflow. Do not add
-one until the protected environment and its reviewers are verified to exist.
+Image publication, Trigger deployment, test deployment, and production
+promotion remain distinct approvals. Publication records are inputs to a later
+`test-platos` deployment action, not authority to invoke it. Do not execute a
+remote deployment until the protected environment and its reviewers are
+verified to exist.
 
 ## Fail-closed staging procedure
 
@@ -115,10 +121,10 @@ mutation race and is unsupported. Compose `depends_on` only orders new
 containers; it does not prove an older release has stopped, so the operator
 must verify the database writer inventory is quiescent before continuing.
 
-Run the canonical Postgres and ClickHouse migrations as one-shot steps before
-service recreation. Exit immediately on any nonzero migration result. Do not
-wrap migration commands in `|| true`, a warning-only branch, or another
-fail-open handler.
+Run the canonical Postgres, Memory profile, and ClickHouse migrations as
+one-shot steps before service recreation. Exit immediately on any nonzero
+migration result. Do not wrap migration commands in `|| true`, a warning-only
+branch, or another fail-open handler.
 
 Use the lockfile-built `platos-migrations@sha256:...` image recorded alongside
 the candidate pair. It contains both the canonical Prisma migrations and pinned
@@ -128,13 +134,42 @@ files from a checkout at migration runtime.
 ```bash
 set -euo pipefail
 docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
-  run --rm migrations-init
+  stop agent webapp
+test -z "$(docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
+  ps --status running --quiet agent webapp)"
+test -z "$(docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
+  ps --status restarting --quiet agent webapp)"
 docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
-  run --rm clickhouse-migrate
+  run --rm --no-deps migrations-init
+
+dry_run_file="artifacts/deploy/$PLATOS_RELEASE_COMMIT_SHA/memory-profile-dry-run.json"
+apply_file="artifacts/deploy/$PLATOS_RELEASE_COMMIT_SHA/memory-profile-apply.json"
+verify_file="artifacts/deploy/$PLATOS_RELEASE_COMMIT_SHA/memory-profile-verify.json"
+mkdir -p "$(dirname "$dry_run_file")"
+docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
+  run --rm --no-deps --entrypoint /migrations/entrypoint.sh \
+  memory-profile-migrate memory-profile-dry-run | tee "$dry_run_file"
+mapfile -t digests < <(sed -n 's/.*"digest":"\([a-f0-9]\{64\}\)".*/\1/p' "$dry_run_file")
+test "${#digests[@]}" -eq 1
+docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
+  run --rm --no-deps --entrypoint /migrations/entrypoint.sh \
+  memory-profile-migrate memory-profile-apply --digest "${digests[0]}" | tee "$apply_file"
+docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
+  run --rm --no-deps --entrypoint /migrations/entrypoint.sh \
+  memory-profile-migrate memory-profile-verify | tee "$verify_file"
+docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
+  run --rm --no-deps clickhouse-migrate
 ```
 
-Capture both logs. A migration failure means no deploy, even if the old
-containers remain healthy.
+Use `scripts/deploy-platos.sh` rather than reproducing this sequence manually;
+its EXIT trap keeps both applications stopped after any post-shutdown failure.
+Capture every log and the three redacted Memory migration JSON records. The
+apply command must receive the one digest extracted from that invocation's
+dry-run bytes, and that digest must equal the separately reviewed
+`PLATOS_MEMORY_PROFILE_PLAN_SHA256` produced by the pre-deployment inventory.
+A migration failure means no deploy and no application restart.
+See [Memory profile migration](./memory-profile-migration.md) for stable failure
+codes and recovery behavior.
 
 ### 3. Deploy immutable digests
 
@@ -208,6 +243,7 @@ The release record must link all of the following:
 - Postgres and ClickHouse recovery-point identifiers, backup retention, and
   successful isolated restore-test evidence;
 - Postgres and ClickHouse migration logs;
+- redacted Memory profile dry-run, digest-bound apply, and verify records;
 - authenticated `test.platos.dev` verification with representative mutation
   and canonical read-back;
 - bounded recent Agent and webapp logs;

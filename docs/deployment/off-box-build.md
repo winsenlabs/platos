@@ -61,16 +61,12 @@ At runtime, compose defaults the webapp container to 2 GiB and V8 old-space to
 effective cgroup limit and refuses an override above 75% of that limit or one
 that leaves less than 512 MiB for native memory and request buffers.
 
-### WIN-132 deferred boundary
+### Embedded worker boundary
 
-This build graph remains intentionally honest about the embedded mode-C
-closure. Until WIN-132 lands, the webapp graph still includes
-`@internal/run-engine`, `@internal/schedule-engine`, and their dependencies;
-the `/engine/v1/*` routes, agent `trigger-worker.ts`, `WORKER_MODE`, and compose
-`worker` service also remain. WIN-120 does not claim the repository-wide
-no-engine-reference/no-engine-route acceptance criteria. `pnpm
-audit:platos-build` asserts that these deferred surfaces still exist so an
-unrelated build change cannot partially delete them and leave a broken release.
+The webapp image still contains the reviewed embedded queue/run-engine closure.
+There is no standalone `worker` service in `docker-compose.platos.yml`; the old
+production override was orphaned and has been removed. Stopping `webapp` and
+`agent` therefore stops every compose-managed Postgres writer before migration.
 
 ## Deploying
 
@@ -85,7 +81,7 @@ export PLATOS_WEBAPP_IMAGE='ghcr.io/winsenlabs/platos-webapp@sha256:<tested-weba
 export PLATOS_MIGRATIONS_IMAGE='ghcr.io/winsenlabs/platos-migrations@sha256:<tested-migration-digest>'
 export PLATOS_RELEASE_COMMIT_SHA='<reviewed-40-character-commit>'
 docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
-  pull agent webapp worker migrations-init clickhouse-migrate
+  pull agent webapp migrations-init memory-profile-migrate clickhouse-migrate
 ```
 
 The protected deployment procedure:
@@ -95,12 +91,21 @@ The protected deployment procedure:
 2. Requires the current checkout to equal `PLATOS_RELEASE_COMMIT_SHA`; it never
    fast-forwards to whatever happens to be on `main`.
 3. Pulls the exact digest refs above.
-4. Captures and restore-tests the Postgres/ClickHouse recovery point, proves
-   expand/contract compatibility, then runs the image-bundled Postgres and
-   ClickHouse migrations as separate one-shots.
-5. Recreates only the app services (`--no-deps`), leaving Postgres / ClickHouse
+4. Requires already captured and restore-tested Postgres/ClickHouse recovery
+   identifiers plus expand/contract compatibility evidence.
+5. Stops `agent` and `webapp`, verifies neither is running or restarting, then
+   runs Prisma, a redacted Memory profile dry-run, digest-bound apply, exact
+   verification, and ClickHouse migration from the tested migration image.
+   Any failure after writer shutdown leaves both application services stopped.
+6. Recreates only the app services (`--no-deps`), leaving Postgres / ClickHouse
    / Redis / MinIO untouched.
-6. Waits for `healthy` and prints final load + status.
+7. Requires both services to become `healthy` and prints final load + status.
+
+The deployment stores content-redacted `memory-profile-dry-run.json`,
+`memory-profile-apply.json`, and `memory-profile-verify.json` under
+`PLATOS_DEPLOY_EVIDENCE_DIR` (default:
+`artifacts/deploy/$PLATOS_RELEASE_COMMIT_SHA`). See
+[Memory profile migration](./memory-profile-migration.md).
 
 ### One-time VPS setup
 
@@ -121,7 +126,7 @@ restore the prior digest variables and recreate without rebuilding:
 ```bash
 export PLATOS_AGENT_IMAGE='ghcr.io/winsenlabs/platos-agent@sha256:<previous-agent-digest>'
 export PLATOS_WEBAPP_IMAGE='ghcr.io/winsenlabs/platos-webapp@sha256:<previous-webapp-digest>'
-docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml up -d --no-build agent webapp worker
+docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml up -d --no-build agent webapp
 ```
 
 If compatibility was not proven, stop writes and execute the tested database

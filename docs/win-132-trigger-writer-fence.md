@@ -35,8 +35,10 @@ writer fence does not alter Session IDs, turn payloads, or streaming behavior.
 
 ## Immutable deployment versions
 
-`.github/workflows/trigger-deploy.yml` always deploys with `--skip-promotion`.
-The deploy job exposes `deployment_version` and uploads
+On a `main` push, `.github/workflows/trigger-deploy.yml` validates the boundary
+and performs no Trigger mutation. An explicit dispatch plus approval of the
+`trigger-deployment` environment deploys with `--skip-promotion`. The deploy job
+exposes `deployment_version` and uploads
 `trigger-deployment-contract.json` containing:
 
 - source-compatible deployment version (required for manual dispatch);
@@ -44,8 +46,9 @@ The deploy job exposes `deployment_version` and uploads
 - repository commit SHA;
 - whether explicit target promotion was requested.
 
-A manual promotion promotes exactly the deploy job's output. A push build never
-promotes. Preserve the workflow artifact with the signed cutover report and
+A separately approved `trigger-promotion` job promotes exactly the deploy job's
+output when the dispatch explicitly requests promotion. A push build never
+deploys or promotes. Preserve the workflow artifact with the signed cutover report and
 verify that both versions remain available before maintenance starts.
 
 ## Generate the dry-run plan

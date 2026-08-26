@@ -1,16 +1,16 @@
-name: Build, gate, and publish container images
+name: Build and gate container images
 
 # Every event builds one immutable OCI archive per candidate. Pull requests,
 # including forks, never authenticate to GHCR or publish official packages. The
 # required gate loads the downloaded archives into the runner and tests those
-# exact manifest digests. Only a trusted main/manual run may publish, and it
-# does so after the gate by copying the verified manifests without rebuilding.
+# exact manifest digests. A separately authorized dispatch may consume artifacts
+# from a successful landed-main run; this workflow never publishes them.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch: {} # trusted manual main-branch rebuild without deployment
+  workflow_dispatch: {} # manual build/gate only; never publication
 
 concurrency:
   group: build-images-${{ github.ref }}
@@ -281,7 +281,7 @@ jobs:
 
       - name: Prove performance and evidence verifiers fail on mutation
         run: |
-          pnpm --filter platos-agent exec vitest run src/auth/rate-limit.guard.test.ts
+          pnpm --filter platos-agent exec vitest run src/auth/rate-limit.guard.test.ts src/memory/memory-profile-startup-verifier.service.test.ts src/startup-failure.test.ts
           pnpm test:persisted-state:performance-contract
           pnpm test:non-browser-completion:contract
           pnpm test:browser-evidence:contract
@@ -386,158 +386,3 @@ jobs:
         if: always()
         continue-on-error: true
         run: docker compose down --volumes --remove-orphans
-
-  publish-images:
-    name: publish-tested-image-digests
-    needs: [build-candidates, persisted-state]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout trusted release commit
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ env.PLATOS_CANDIDATE_SHA }}
-
-      - name: Download tested candidate OCI artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          pattern: win235-candidate-*-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/candidates
-          merge-multiple: true
-
-      - name: Download passing persisted-state identity evidence
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: win235-persisted-state-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/gate
-
-      - name: Install checksum-pinned regctl
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/regctl-bin"
-          curl --fail --silent --show-error --location \
-            "https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64" \
-            --output "$RUNNER_TEMP/regctl-bin/regctl"
-          printf '%s  %s\n' "$REGCTL_LINUX_AMD64_SHA256" "$RUNNER_TEMP/regctl-bin/regctl" \
-            | sha256sum --check --strict
-          chmod +x "$RUNNER_TEMP/regctl-bin/regctl"
-          echo "$RUNNER_TEMP/regctl-bin" >> "$GITHUB_PATH"
-
-      - name: Validate every source identity before registry authentication
-        shell: bash
-        run: |
-          set -euo pipefail
-          tests/persisted-state-gate/prepare-candidate-images.sh \
-            artifacts/candidates "$RUNNER_TEMP/win235-publish-oci" false
-          set -a
-          source artifacts/candidates/agent.env
-          source artifacts/candidates/webapp.env
-          source artifacts/candidates/migrations.env
-          set +a
-          node - <<'NODE'
-          const fs = require("node:fs");
-          const tested = JSON.parse(fs.readFileSync("artifacts/gate/candidate-images.json", "utf8"));
-          const expected = {
-            commitSha: process.env.PLATOS_CANDIDATE_SHA,
-            agent: process.env.WIN235_AGENT_IMAGE,
-            webapp: process.env.WIN235_WEBAPP_IMAGE,
-            migrations: process.env.WIN235_MIGRATIONS_IMAGE,
-          };
-          if (JSON.stringify(tested) !== JSON.stringify(expected)) {
-            throw new Error("publication sources do not match the passing persisted-state identities");
-          }
-          NODE
-
-      - name: Log in to GHCR only on the trusted publication path
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish verified staging manifests and immutable commit tags
-        shell: bash
-        run: |
-          set -euo pipefail
-          candidate_tag="candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-
-          for candidate in \
-            "agent WIN235_AGENT_IMAGE" \
-            "webapp WIN235_WEBAPP_IMAGE" \
-            "migrations WIN235_MIGRATIONS_IMAGE"; do
-            read -r name identity_variable <<<"$candidate"
-            identity="${!identity_variable}"
-            repository="${identity%@*}"
-            expected_digest="${identity##*@}"
-            staging_ref="${repository}:${candidate_tag}"
-            regctl image import "$staging_ref" "artifacts/candidates/${name}.oci.tar"
-            test "$(regctl image digest "$staging_ref")" = "$expected_digest"
-            test "$(
-              regctl image inspect --platform linux/amd64 "$staging_ref" \
-                --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}'
-            )" = "$PLATOS_CANDIDATE_SHA"
-          done
-
-          # Validate the full staging set and every pre-existing immutable SHA
-          # tag before creating any new release tag. SHA tags are never moved.
-          for identity_variable in \
-            WIN235_AGENT_IMAGE WIN235_WEBAPP_IMAGE WIN235_MIGRATIONS_IMAGE; do
-            identity="${!identity_variable}"
-            repository="${identity%@*}"
-            expected_digest="${identity##*@}"
-            test "$(regctl image digest "${repository}:${candidate_tag}")" = "$expected_digest"
-            commit_ref="${repository}:sha-${PLATOS_CANDIDATE_SHA}"
-            if existing_digest="$(regctl image digest "$commit_ref" 2>/dev/null)"; then
-              test "$existing_digest" = "$expected_digest"
-            fi
-          done
-
-          for identity_variable in \
-            WIN235_AGENT_IMAGE WIN235_WEBAPP_IMAGE WIN235_MIGRATIONS_IMAGE; do
-            identity="${!identity_variable}"
-            repository="${identity%@*}"
-            expected_digest="${identity##*@}"
-            commit_ref="${repository}:sha-${PLATOS_CANDIDATE_SHA}"
-            if ! regctl image digest "$commit_ref" >/dev/null 2>&1; then
-              regctl image copy "$identity" "$commit_ref"
-            fi
-          done
-
-          # Verify the complete commit-tag set before reporting publication.
-          # There is intentionally no mutable `latest` tag, so a failure cannot
-          # partially advance the default release pointer across repositories.
-          for identity_variable in \
-            WIN235_AGENT_IMAGE WIN235_WEBAPP_IMAGE WIN235_MIGRATIONS_IMAGE; do
-            identity="${!identity_variable}"
-            repository="${identity%@*}"
-            expected_digest="${identity##*@}"
-            test "$(regctl image digest "${repository}:sha-${PLATOS_CANDIDATE_SHA}")" = "$expected_digest"
-          done
-
-          mkdir -p artifacts/published
-          node - <<'NODE'
-          const fs = require("node:fs");
-          const published = {
-            commitSha: process.env.PLATOS_CANDIDATE_SHA,
-            agent: process.env.WIN235_AGENT_IMAGE,
-            webapp: process.env.WIN235_WEBAPP_IMAGE,
-            migrations: process.env.WIN235_MIGRATIONS_IMAGE,
-            mutableLatestPublished: false,
-          };
-          fs.writeFileSync(
-            "artifacts/published/published-images.json",
-            `${JSON.stringify(published, null, 2)}\n`
-          );
-          NODE
-
-      - name: Upload verified publication record
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: win235-published-images-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/published/published-images.json
-          if-no-files-found: error
-          retention-days: 14

@@ -293,20 +293,33 @@ describe("external Trigger deployment boundary", () => {
       resolve(__dirname, "../../../../.github/workflows/trigger-deploy.yml"),
       "utf8"
     );
+    const validateStart = workflow.indexOf("  validate-contract:\n");
+    const deployStart = workflow.indexOf("  deploy:\n");
+    const promoteStart = workflow.indexOf("  promote:\n");
+    const validateJob = workflow.slice(validateStart, deployStart);
+    const deployJob = workflow.slice(deployStart, promoteStart);
+    const promoteJob = workflow.slice(promoteStart);
 
+    expect(validateStart).toBeGreaterThan(-1);
+    expect(deployStart).toBeGreaterThan(validateStart);
+    expect(promoteStart).toBeGreaterThan(deployStart);
+    expect(validateJob).not.toContain("trigger.dev@4.5.4 deploy");
+    expect(validateJob).not.toContain("TRIGGER_ACCESS_TOKEN");
+    expect(deployJob).toContain("if: github.event_name == 'workflow_dispatch'");
+    expect(deployJob).toContain("environment: trigger-deployment");
     expect(workflow).toContain("deploy --skip-promotion");
     expect(workflow).toContain(
       "deployment_version: ${{ steps.deploy-trigger.outputs.deploymentVersion }}"
     );
-    expect(workflow).toContain("github.event_name == 'workflow_dispatch' && inputs.promote_target");
-    expect(workflow).toContain('promote "$TARGET_DEPLOYMENT_VERSION"');
+    expect(promoteJob).toContain(
+      "if: github.event_name == 'workflow_dispatch' && inputs.promote_target == true"
+    );
+    expect(promoteJob).toContain("environment: trigger-promotion");
+    expect(promoteJob).toContain('promote "$TARGET_DEPLOYMENT_VERSION"');
     expect(workflow).toContain("trigger_api_url:");
     expect(workflow).toContain("required: true");
     expect(workflow.match(/test -n \"\$TRIGGER_API_URL\"/g)).toHaveLength(2);
-    expect(workflow).toContain(
-      "TRIGGER_API_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.trigger_api_url || vars.TRIGGER_API_URL }}"
-    );
-    expect(workflow).toContain("TRIGGER_API_URL: ${{ inputs.trigger_api_url }}");
+    expect(workflow.match(/TRIGGER_API_URL: \$\{\{ inputs\.trigger_api_url \}\}/g)).toHaveLength(3);
     expect(workflow).not.toContain("https://api.trigger.dev");
     expect(
       workflow

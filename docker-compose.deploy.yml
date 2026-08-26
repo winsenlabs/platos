@@ -2,12 +2,13 @@
 #
 # Usage on the VPS:
 #   docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
-#     --profile app pull agent webapp worker
+#     pull agent webapp migrations-init memory-profile-migrate clickhouse-migrate
 #   docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
 #     --profile app up -d
 #
 # This override REPLACES the `build:` blocks from docker-compose.platos.yml with
-# registry image refs from GHCR (published by .github/workflows/build-images.yml).
+# registry image refs from GHCR (published only by the separately authorized
+# .github/workflows/publish-images.yml action).
 # Compose ignores `build:` when you don't pass `build`, while this override also
 # removes every application build block and requires immutable digest references
 # so `pull` can only fetch the off-box artifacts that passed the gate.
@@ -24,17 +25,17 @@ services:
     build: !reset null
     pull_policy: always
 
-  worker:
-    image: ${PLATOS_AGENT_IMAGE:?set PLATOS_AGENT_IMAGE to the tested ghcr.io digest reference}
-    build: !reset null
-    pull_policy: always
-
   webapp:
     image: ${PLATOS_WEBAPP_IMAGE:?set PLATOS_WEBAPP_IMAGE to the tested ghcr.io digest reference}
     build: !reset null
     pull_policy: always
 
   migrations-init:
+    image: ${PLATOS_MIGRATIONS_IMAGE:?set PLATOS_MIGRATIONS_IMAGE to the tested ghcr.io digest reference}
+    build: !reset null
+    pull_policy: always
+
+  memory-profile-migrate:
     image: ${PLATOS_MIGRATIONS_IMAGE:?set PLATOS_MIGRATIONS_IMAGE to the tested ghcr.io digest reference}
     build: !reset null
     pull_policy: always

@@ -4,8 +4,7 @@ import { resolve } from "node:path";
 import { PrismaClient } from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MemoryService } from "./memory.service";
-import { MessageCryptoService } from "../monitoring/message-crypto.service";
-import { MemoryProfileBackfillService } from "./memory-profile-backfill.service";
+import { runMemoryProfileMigrationCommands } from "./memory-profile-migration.test-fixture";
 import {
   applicationQueryCount,
   type CapturedPrismaQuery,
@@ -84,7 +83,7 @@ describe("memory PostgreSQL HNSW retrieval", () => {
     try {
       prisma = createQueryPrismaClient(databaseUrl);
       prisma.$on("query", ({ query, params }) => queries.push({ query, params }));
-      await new MemoryProfileBackfillService(prisma, new MessageCryptoService()).run();
+      runMemoryProfileMigrationCommands(databaseUrl);
       memory = new MemoryService(prisma, { embed: async () => queryVector } as any);
       primary = await seedScope(prisma, "primary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
       secondary = await seedScope(prisma, "secondary", "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");

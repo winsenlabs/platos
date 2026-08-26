@@ -144,6 +144,30 @@ services:
     command: ["postgres"]
     restart: "no"
 
+  memory-profile-migrate:
+    image: ${WIN235_MIGRATIONS_RUNTIME_IMAGE:?WIN235_MIGRATIONS_RUNTIME_IMAGE must be the loaded tested candidate}
+    depends_on:
+      postgres-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://postgres:win235-postgres-evidence-password@postgres:5432/platos_control?schema=public
+      PLATOS_MESSAGE_ENCRYPTION_KEY: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V: "1"
+    volumes:
+      - ../../artifacts/win235:/artifacts
+    entrypoint: ["/bin/sh", "-euc"]
+    command:
+      - |
+        dry_run="$$(/migrations/entrypoint.sh memory-profile-dry-run)"
+        printf '%s\n' "$$dry_run" | tee /artifacts/memory-profile-dry-run.json
+        digest="$$(printf '%s\n' "$$dry_run" | sed -n 's/.*"digest":"\([a-f0-9]\{64\}\)".*/\1/p')"
+        test "$${#digest}" -eq 64
+        apply="$$(/migrations/entrypoint.sh memory-profile-apply --digest "$$digest")"
+        printf '%s\n' "$$apply" | tee /artifacts/memory-profile-apply.json
+        verify="$$(/migrations/entrypoint.sh memory-profile-verify)"
+        printf '%s\n' "$$verify" | tee /artifacts/memory-profile-verify.json
+    restart: "no"
+
   clickhouse-migrate:
     image: ${WIN235_MIGRATIONS_RUNTIME_IMAGE:?WIN235_MIGRATIONS_RUNTIME_IMAGE must be the loaded tested candidate}
     depends_on:
@@ -160,6 +184,8 @@ services:
     image: ${WIN235_AGENT_RUNTIME_IMAGE:?WIN235_AGENT_RUNTIME_IMAGE must be the loaded tested candidate}
     depends_on:
       postgres-migrate:
+        condition: service_completed_successfully
+      memory-profile-migrate:
         condition: service_completed_successfully
       clickhouse-migrate:
         condition: service_completed_successfully

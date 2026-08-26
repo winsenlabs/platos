@@ -52,6 +52,10 @@ transport details. Callback failures throw those stable codes so Trigger marks
 the run failed and applies the configured retry policy rather than recording a
 successful run whose output merely says `failed`.
 
-Deploys use `--skip-promotion`. The workflow artifact records source and target
-versions; promotion, pause/drain, callback acceptance, and rollback ordering are
+A `main` push validates this contract only and cannot call Trigger APIs. An
+explicit workflow dispatch plus `trigger-deployment` environment approval
+creates an immutable version with `--skip-promotion`; a distinct
+`trigger-promotion` approval may promote only that job's pinned output. The
+workflow artifact records source and target versions. Pause/drain, callback
+acceptance, and rollback ordering remain separately authorized and are
 documented in `docs/win-132-trigger-writer-fence.md`.

@@ -15,6 +15,7 @@ COPY internal-packages/tenancy-database/prisma ./prisma
 COPY internal-packages/clickhouse/schema ./clickhouse
 COPY internal-packages/tenancy-database/migration-image/entrypoint.sh ./entrypoint.sh
 COPY internal-packages/tenancy-database/migration-image/rehearse-clickhouse-namespace.mjs ./rehearse-clickhouse-namespace.mjs
+COPY internal-packages/tenancy-database/migration-image/migrate-memory-profiles.mjs ./migrate-memory-profiles.mjs
 COPY --from=goose-builder /go/bin/goose /usr/local/bin/goose
 RUN chmod +x ./entrypoint.sh /usr/local/bin/goose
 

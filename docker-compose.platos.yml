@@ -6,7 +6,8 @@
 #   redis       — cache + queues (port 6379)
 #   clickhouse  — run/queue/batch telemetry (port 8123)
 #   minio       — S3-compatible object store for multimodal attachments (ports 9001/9002)
-#   migrations-init — one-shot Prisma migrate deploy before webapp boots (EOBD.55)
+#   migrations-init — one-shot Prisma migrate deploy before app services boot (EOBD.55)
+#   memory-profile-migrate — one-shot encrypted profile migration and verification
 #   agent       — Platos agent runtime, NestJS (port 3100)
 #   webapp      — Platos dashboard + API, Remix (port 3030)
 #
@@ -288,6 +289,31 @@ services:
     command: ["postgres"]
     restart: "no"
 
+  # Safe default bootstrap. It creates the exact indexes only when no profile
+  # data exists, and otherwise accepts only an already-complete contract. An
+  # existing database that needs data migration fails closed here and must use
+  # scripts/deploy-platos.sh with stopped writers, the immutable migrations
+  # image, and a separately reviewed dry-run digest.
+  memory-profile-migrate:
+    build:
+      context: .
+      dockerfile: internal-packages/tenancy-database/Dockerfile.migrations
+    logging: *default-logging
+    depends_on:
+      migrations-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}?schema=public&sslmode=disable&connection_limit=30&pool_timeout=20"
+      PLATOS_MESSAGE_ENCRYPTION_KEY: "${PLATOS_MESSAGE_ENCRYPTION_KEY:?required — 64 hex chars from openssl rand -hex 32}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V:-1}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V1: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V1:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V2: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V2:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V3: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V3:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V4: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V4:-}"
+      PLATOS_MESSAGE_ENCRYPTION_KEY_V5: "${PLATOS_MESSAGE_ENCRYPTION_KEY_V5:-}"
+    command: ["memory-profile-bootstrap-empty"]
+    restart: "no"
+
   agent:
     build:
       context: .
@@ -321,6 +347,8 @@ services:
       minio:
         condition: service_healthy
       migrations-init:
+        condition: service_completed_successfully
+      memory-profile-migrate:
         condition: service_completed_successfully
     environment:
       PLATOS_PUBLIC_BASE_URL: "${PLATOS_PUBLIC_BASE_URL:-}"
@@ -485,6 +513,8 @@ services:
       clickhouse:
         condition: service_healthy
       migrations-init:
+        condition: service_completed_successfully
+      memory-profile-migrate:
         condition: service_completed_successfully
       clickhouse-migrate:
         condition: service_completed_successfully

@@ -2,7 +2,7 @@
 # Off-box deploy for play.platos.dev (and any compose-based Platos host).
 #
 # Tier-1 robustness: this NEVER builds on the box. It pulls pre-built images
-# from GHCR (published by .github/workflows/build-images.yml) and restarts the
+# from GHCR (published by the separately authorized publish-images workflow) and restarts the
 # app services. Building `nest build` / `tsc` on the 4-vCPU reference VPS spiked
 # load past 40 and degraded the live service — the same throttle class as the
 # May 2026 outage. Pull-only deploys keep the box responsive throughout.
@@ -13,6 +13,7 @@
 #   PLATOS_MIGRATIONS_IMAGE=ghcr.io/...@sha256:... \
 #   PLATOS_RELEASE_COMMIT_SHA=<40-hex-reviewed-commit> \
 #   PLATOS_MIGRATION_COMPATIBILITY_PROVEN=1 \
+#   PLATOS_MEMORY_PROFILE_PLAN_SHA256=<reviewed-dry-run-digest> \
 #   PLATOS_RECOVERY_POINT_ID=... \
 #   PLATOS_RECOVERY_RESTORE_TEST_ID=... scripts/deploy-platos.sh
 #
@@ -22,7 +23,8 @@
 # Env:
 #   COMPOSE_FILES           override the -f chain if your layout differs
 #   DEPLOY_MIN_IDLE_PCT     min real-CPU idle to allow deploy (default: 20)
-set -euo pipefail
+#   PLATOS_DEPLOY_EVIDENCE_DIR  redacted migration evidence destination
+set -Eeuo pipefail
 
 : "${PLATOS_AGENT_IMAGE:?set the tested Agent digest reference}"
 : "${PLATOS_WEBAPP_IMAGE:?set the tested webapp digest reference}"
@@ -30,12 +32,17 @@ set -euo pipefail
 : "${PLATOS_RELEASE_COMMIT_SHA:?set the reviewed 40-character release commit}"
 : "${PLATOS_RECOVERY_POINT_ID:?capture the pre-migration database recovery point}"
 : "${PLATOS_RECOVERY_RESTORE_TEST_ID:?restore-test the recovery point before migration}"
+: "${PLATOS_MEMORY_PROFILE_PLAN_SHA256:?supply the separately reviewed Memory profile dry-run digest}"
 [[ "$PLATOS_RELEASE_COMMIT_SHA" =~ ^[a-f0-9]{40}$ ]] || {
   echo "ABORT: PLATOS_RELEASE_COMMIT_SHA must be a full lowercase commit SHA" >&2
   exit 1
 }
 test "${PLATOS_MIGRATION_COMPATIBILITY_PROVEN:-}" = "1" || {
   echo "ABORT: expand/contract compatibility has not been proven for old and candidate images" >&2
+  exit 1
+}
+[[ "$PLATOS_MEMORY_PROFILE_PLAN_SHA256" =~ ^[a-f0-9]{64}$ ]] || {
+  echo "ABORT: PLATOS_MEMORY_PROFILE_PLAN_SHA256 must be an exact lowercase SHA-256 digest" >&2
   exit 1
 }
 for image in "$PLATOS_AGENT_IMAGE" "$PLATOS_WEBAPP_IMAGE" "$PLATOS_MIGRATIONS_IMAGE"; do
@@ -46,10 +53,25 @@ for image in "$PLATOS_AGENT_IMAGE" "$PLATOS_WEBAPP_IMAGE" "$PLATOS_MIGRATIONS_IM
 done
 
 COMPOSE_FILES="${COMPOSE_FILES:--f docker-compose.platos.yml -f docker-compose.deploy.yml}"
-SERVICES="agent webapp worker"
+APP_SERVICES="agent webapp"
 MIN_IDLE="${DEPLOY_MIN_IDLE_PCT:-20}"
+EVIDENCE_DIR="${PLATOS_DEPLOY_EVIDENCE_DIR:-artifacts/deploy/${PLATOS_RELEASE_COMMIT_SHA}}"
+WRITERS_STOPPED=0
+DEPLOY_COMPLETED=0
 
 say() { printf '\n\033[1;36m== %s\033[0m\n' "$*"; }
+
+leave_apps_stopped_on_failure() {
+  local status=$?
+  trap - EXIT
+  if [ "$WRITERS_STOPPED" = "1" ] && [ "$DEPLOY_COMPLETED" != "1" ]; then
+    printf '\nABORT: deployment failed after writer shutdown; application services remain stopped\n' >&2
+    set +e
+    docker compose $COMPOSE_FILES stop $APP_SERVICES >/dev/null 2>&1
+  fi
+  exit "$status"
+}
+trap leave_apps_stopped_on_failure EXIT
 
 # Real-CPU headroom over a 1s window, as a percentage of WALL-CLOCK CPU time
 # (steal included in the denominator). We gate on this, not load average.
@@ -102,7 +124,7 @@ git diff --quiet && git diff --cached --quiet || {
 }
 
 say "Pull exact tested application and migration digests"
-docker compose $COMPOSE_FILES pull $SERVICES migrations-init clickhouse-migrate
+docker compose $COMPOSE_FILES pull $APP_SERVICES migrations-init memory-profile-migrate clickhouse-migrate
 for image in "$PLATOS_AGENT_IMAGE" "$PLATOS_WEBAPP_IMAGE" "$PLATOS_MIGRATIONS_IMAGE"; do
   revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$image")"
   test "$revision" = "$PLATOS_RELEASE_COMMIT_SHA" || {
@@ -111,25 +133,86 @@ for image in "$PLATOS_AGENT_IMAGE" "$PLATOS_WEBAPP_IMAGE" "$PLATOS_MIGRATIONS_IM
   }
 done
 
-say "Run exact image-bundled Postgres and ClickHouse migrations"
-docker compose $COMPOSE_FILES run --rm migrations-init
-docker compose $COMPOSE_FILES run --rm clickhouse-migrate
+say "Stop every application writer before migration"
+# Set the fence before invoking stop so even a partial stop failure triggers a
+# second best-effort stop from the EXIT trap. The standalone worker override was
+# removed because the base compose graph has no worker service; webapp owns its
+# embedded queue workers.
+WRITERS_STOPPED=1
+docker compose $COMPOSE_FILES stop $APP_SERVICES
+running_writers="$(docker compose $COMPOSE_FILES ps --status running --quiet $APP_SERVICES)"
+restarting_writers="$(docker compose $COMPOSE_FILES ps --status restarting --quiet $APP_SERVICES)"
+if [ -n "$running_writers" ] || [ -n "$restarting_writers" ]; then
+  echo "ABORT: application database writers are still running or restarting" >&2
+  exit 1
+fi
+
+say "Run exact image-bundled Prisma migrations with writers stopped"
+docker compose $COMPOSE_FILES run --rm --no-deps migrations-init
+
+say "Capture redacted Memory profile dry-run and approve its exact digest"
+mkdir -p "$EVIDENCE_DIR"
+DRY_RUN_FILE="$EVIDENCE_DIR/memory-profile-dry-run.json"
+APPLY_FILE="$EVIDENCE_DIR/memory-profile-apply.json"
+VERIFY_FILE="$EVIDENCE_DIR/memory-profile-verify.json"
+docker compose $COMPOSE_FILES run --rm --no-deps \
+  --entrypoint /migrations/entrypoint.sh \
+  memory-profile-migrate memory-profile-dry-run 2>&1 | tee "$DRY_RUN_FILE"
+mapfile -t memory_profile_digests < <(
+  sed -n 's/.*"digest":"\([a-f0-9]\{64\}\)".*/\1/p' "$DRY_RUN_FILE"
+)
+if [ "${#memory_profile_digests[@]}" -ne 1 ] || \
+  [[ ! "${memory_profile_digests[0]:-}" =~ ^[a-f0-9]{64}$ ]]; then
+  echo "ABORT: Memory profile dry-run did not emit exactly one valid digest" >&2
+  exit 1
+fi
+MEMORY_PROFILE_DIGEST="${memory_profile_digests[0]}"
+test "$MEMORY_PROFILE_DIGEST" = "$PLATOS_MEMORY_PROFILE_PLAN_SHA256" || {
+  echo "ABORT: live Memory profile inventory differs from the separately reviewed dry-run" >&2
+  exit 1
+}
+
+say "Apply only the captured Memory profile digest"
+docker compose $COMPOSE_FILES run --rm --no-deps \
+  --entrypoint /migrations/entrypoint.sh \
+  memory-profile-migrate memory-profile-apply --digest "$MEMORY_PROFILE_DIGEST" \
+  2>&1 | tee "$APPLY_FILE"
+
+say "Verify Memory profile data and exact catalog contract"
+docker compose $COMPOSE_FILES run --rm --no-deps \
+  --entrypoint /migrations/entrypoint.sh \
+  memory-profile-migrate memory-profile-verify 2>&1 | tee "$VERIFY_FILE"
+
+say "Run exact image-bundled ClickHouse migrations"
+docker compose $COMPOSE_FILES run --rm --no-deps clickhouse-migrate
 
 say "Recreate app services from the pulled images"
-docker compose $COMPOSE_FILES up -d --no-deps $SERVICES
+docker compose $COMPOSE_FILES up -d --no-deps $APP_SERVICES
 
 say "Post-deploy: wait for health"
 for svc in agent webapp; do
   cname="$(docker compose $COMPOSE_FILES ps -q "$svc" 2>/dev/null)"
-  [ -z "$cname" ] && { echo "  $svc: no container?"; continue; }
+  if [ -z "$cname" ]; then
+    echo "ABORT: $svc has no running container after recreate" >&2
+    exit 1
+  fi
+  healthy=0
   for i in $(seq 1 30); do
     status="$(docker inspect --format '{{.State.Health.Status}}' "$cname" 2>/dev/null || echo unknown)"
-    [ "$status" = "healthy" ] && { echo "  $svc: healthy"; break; }
-    [ "$i" -eq 30 ] && echo "  $svc: still '$status' after 30 checks — investigate"
+    if [ "$status" = "healthy" ]; then
+      echo "  $svc: healthy"
+      healthy=1
+      break
+    fi
     sleep 5
   done
+  if [ "$healthy" != "1" ]; then
+    echo "ABORT: $svc did not become healthy after 30 checks" >&2
+    exit 1
+  fi
 done
 
 say "Done. Final state:"
 echo "real-CPU idle: $(cpu_idle_pct)%   load: $(cut -d' ' -f1-3 /proc/loadavg)"
 docker compose $COMPOSE_FILES ps --format '{{.Name}}\t{{.Status}}'
+DEPLOY_COMPLETED=1

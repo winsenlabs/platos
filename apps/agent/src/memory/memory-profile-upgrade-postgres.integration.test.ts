@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { PrismaClient } from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MessageCryptoService } from "../monitoring/message-crypto.service";
-import { MemoryProfileBackfillService } from "./memory-profile-backfill.service";
+import { runMemoryProfileMigrationCommands } from "./memory-profile-migration.test-fixture";
 import {
   startPostgresIntegrationDatabase,
   type PostgresIntegrationDatabase,
@@ -196,8 +196,7 @@ describe("Memory encrypted profile and legacy contract upgrade", () => {
       originalSource: "unknown_legacy",
     });
 
-    const result = await new MemoryProfileBackfillService(prisma, crypto).run();
-    expect(result).toEqual({ profiles: 2, deduplicated: 1 });
+    runMemoryProfileMigrationCommands(database.databaseUrl);
     await expect(
       prisma.$queryRawUnsafe(`SELECT "id", "profileKey" FROM "Memory" WHERE "kind" = 'profile'`)
     ).resolves.toEqual([{ id: winnerId, profileKey: "preferred name" }]);

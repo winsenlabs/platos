@@ -15,8 +15,24 @@ case "${1:-}" in
     : "${GOOSE_DBSTRING:?GOOSE_DBSTRING is required for ClickHouse migrations}"
     exec node /migrations/rehearse-clickhouse-namespace.mjs
     ;;
+  memory-profile-dry-run)
+    shift
+    exec node /migrations/migrate-memory-profiles.mjs memory-profile-dry-run "$@"
+    ;;
+  memory-profile-bootstrap-empty)
+    shift
+    exec node /migrations/migrate-memory-profiles.mjs memory-profile-bootstrap-empty "$@"
+    ;;
+  memory-profile-apply)
+    shift
+    exec node /migrations/migrate-memory-profiles.mjs memory-profile-apply "$@"
+    ;;
+  memory-profile-verify)
+    shift
+    exec node /migrations/migrate-memory-profiles.mjs memory-profile-verify "$@"
+    ;;
   *)
-    echo "usage: $0 {postgres|clickhouse|clickhouse-namespace-rehearsal}" >&2
+    echo "usage: $0 {postgres|clickhouse|clickhouse-namespace-rehearsal|memory-profile-bootstrap-empty|memory-profile-dry-run|memory-profile-apply --digest SHA256|memory-profile-verify}" >&2
     exit 64
     ;;
 esac

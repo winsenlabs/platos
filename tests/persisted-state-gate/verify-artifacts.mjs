@@ -25,6 +25,15 @@ const performanceArtifactRaw = await readFile(
 const performanceReceipt = JSON.parse(
   await readFile(path.join(artifactDirectory, PERFORMANCE_RECEIPT_FILE), "utf8")
 );
+const memoryProfileDryRun = JSON.parse(
+  await readFile(path.join(artifactDirectory, "memory-profile-dry-run.json"), "utf8")
+);
+const memoryProfileApply = JSON.parse(
+  await readFile(path.join(artifactDirectory, "memory-profile-apply.json"), "utf8")
+);
+const memoryProfileVerify = JSON.parse(
+  await readFile(path.join(artifactDirectory, "memory-profile-verify.json"), "utf8")
+);
 const { sha256, ...fixtureBody } = fixture;
 const calculatedSha = createHash("sha256")
   .update(`${JSON.stringify(fixtureBody, null, 2)}\n`)
@@ -40,6 +49,26 @@ verifyPerformanceVerificationReceipt(
   performanceReceipt,
   performanceArtifactRaw,
   candidateImages.commitSha
+);
+assert.deepEqual(
+  [memoryProfileDryRun.command, memoryProfileApply.command, memoryProfileVerify.command],
+  ["dry-run", "apply", "verify"],
+  "Memory profile migration evidence is incomplete or out of order"
+);
+assert.deepEqual(
+  [memoryProfileDryRun.status, memoryProfileApply.status, memoryProfileVerify.status],
+  ["ready", "applied", "verified"],
+  "Memory profile migration did not complete its explicit dry-run/apply/verify phases"
+);
+for (const evidence of [memoryProfileDryRun, memoryProfileApply, memoryProfileVerify]) {
+  assert.equal(evidence.event, "memory_profile_migration", "unexpected Memory migration event");
+  assert.equal(evidence.contentRedacted, true, "Memory migration evidence is not content-redacted");
+  assert.match(evidence.digest, /^[a-f0-9]{64}$/, "Memory migration evidence has no plan digest");
+}
+assert.equal(
+  memoryProfileApply.digest,
+  memoryProfileDryRun.digest,
+  "Memory profile apply was not bound to the captured dry-run plan"
 );
 assert.deepEqual(
   result.images,
