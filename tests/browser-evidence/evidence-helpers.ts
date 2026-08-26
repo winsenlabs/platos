@@ -1109,6 +1109,19 @@ export async function performMutation(args: {
       });
     }
     case "access-key-origins": {
+      if (await page.getByText("Not configured", { exact: true }).isVisible().catch(() => false)) {
+        await page.getByRole("button", { name: /generate key/i }).click();
+        await expect(
+          page.getByText(/copy this key now/i).first(),
+          "AccessKey prerequisite did not persist"
+        ).toBeVisible();
+        await page.getByRole("button", { name: /i saved it/i }).click();
+        await page.reload({ waitUntil: "networkidle" });
+        await expect(
+          page.getByText("Active", { exact: true }).first(),
+          "AccessKey prerequisite was lost on hard reload"
+        ).toBeVisible();
+      }
       const form = page.locator('form:has([name="origins"])').first();
       const origins = form.locator('[name="origins"]');
       return persistedUiWitness({
@@ -1118,7 +1131,26 @@ export async function performMutation(args: {
         allowEmptyBefore: true,
         mutate: async () => {
           await origins.fill(`https://${marker}.example.test`);
+          const actionPathname = new URL(page.url()).pathname;
+          const actionResponsePromise = page.waitForResponse((response) => {
+            const request = response.request();
+            return (
+              request.method() === "POST" && new URL(response.url()).pathname === actionPathname
+            );
+          });
           await submitForm(page, form, /save.*origin/i);
+          const actionResponse = await actionResponsePromise;
+          expect(actionResponse.status(), "Allowed origins action did not succeed").toBe(200);
+          const actionPayload = (await actionResponse.json()) as {
+            ok?: boolean;
+            result?: { origins?: unknown };
+          };
+          expect(actionPayload.ok, "Allowed origins action returned a failure payload").toBe(true);
+          expect(
+            actionPayload.result?.origins,
+            "Allowed origins action omitted canonical persisted read-back"
+          ).toEqual([`https://${marker}.example.test`]);
+          await page.reload({ waitUntil: "networkidle" });
         },
       });
     }
