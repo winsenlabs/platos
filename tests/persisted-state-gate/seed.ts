@@ -32,6 +32,7 @@ const GRAPH_ENTITIES = [71, 70] as const;
 const POSTMAN_TEMPLATES_PER_SCOPE = 3;
 const MCP_TOKENS_PER_SCOPE = 3;
 const MCP_BEARER_TOKENS_PER_SCOPE = 3;
+const ARTIFACTS_PER_SCOPE = 3;
 const GATE_DATABASE_HOST = "127.0.0.1";
 const GATE_DATABASE_PORT = "55432";
 const GATE_REDIS_PORT = "56379";
@@ -606,20 +607,20 @@ async function seedScope(
     })),
   });
 
-  await database.artifact.create({
-    data: {
-      id: deterministicUuid(key, "artifact"),
+  await database.artifact.createMany({
+    data: Array.from({ length: ARTIFACTS_PER_SCOPE }, (_, index) => ({
+      id: deterministicUuid(key, "artifact", index),
       environmentId,
       threadId,
-      producedByTurnId: turnIds[0],
-      artifactKey: "fixture-report",
+      producedByTurnId: turnIds[index],
+      artifactKey: `fixture-report-${index + 1}`,
       kind: "report",
-      title: "WIN-235 fixture report",
+      title: `WIN-235 fixture report ${index + 1}`,
       mimeType: "application/json",
-      content: JSON.stringify({ fixture: "WIN-235", scope: key }),
+      content: JSON.stringify({ fixture: "WIN-235", scope: key, artifact: index + 1 }),
       createdBy: operatorId,
-      createdAt: FIXTURE_TIMESTAMP,
-    },
+      createdAt: new Date(FIXTURE_TIMESTAMP.getTime() + index),
+    })),
   });
   await database.agentApproval.create({
     data: {
@@ -841,7 +842,7 @@ function assertCounts(actual: Record<string, number>) {
     memories: 384,
     graphEntities: 141,
     graphRelationships: 139,
-    artifacts: 2,
+    artifacts: ARTIFACTS_PER_SCOPE * 2,
     approvals: 2,
     budgets: 2,
     safetyEvents: 2,

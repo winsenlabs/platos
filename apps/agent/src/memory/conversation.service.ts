@@ -10,6 +10,7 @@ import { buildTurnProjection } from "../observability/turn-projection";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 import {
   modelPriceSnapshotStepData,
+  Prisma,
   type CanonicalModelPriceSnapshot,
 } from "@platos/tenancy-database";
 import { assertSubjectNotErased } from "../privacy/erasure-register";
@@ -1296,34 +1297,76 @@ export class ConversationService {
 
   async listThreadArtifactsPage(threadId: string, scope: RequestScope, options?: { limit?: number; offset?: number; allUsers?: boolean }) {
     await this.findScopedThread(threadId, scope, { allUsers: options?.allUsers });
-    const rows = await this.prisma.artifact.findMany({
-      where: { threadId, ...this.environmentWhere(scope) },
-      select: {
-        id: true,
-        artifactKey: true,
-        revision: true,
-        kind: true,
-        title: true,
-        mimeType: true,
-        content: true,
-        metadata: true,
-        producedByTurnId: true,
-        createdAt: true,
-      },
-      orderBy: [{ artifactKey: "asc" }, { revision: "desc" }],
-    });
-    const byKey = new Map<string, any>();
-    for (const row of rows) {
-      const current = byKey.get(row.artifactKey);
-      if (current) current.revisionCount += 1;
-      else byKey.set(row.artifactKey, { ...row, language: objectValue(row.metadata).language ?? null, revisionCount: 1 });
-    }
-    const total = byKey.size;
     const limit = Math.max(1, Math.min(options?.limit ?? 25, 100));
     const offset = Math.max(0, options?.offset ?? 0);
-    const artifacts = Array.from(byKey.values())
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id))
-      .slice(offset, offset + limit);
+    const where = { threadId, ...this.environmentWhere(scope) };
+    const { total, groups, latestRows, revisionGroups } = await this.prisma.$transaction(async (tx) => {
+      const [logicalTotal, logicalGroups] = await Promise.all([
+        tx.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+          SELECT COUNT(DISTINCT artifact."artifactKey")::bigint AS total
+          FROM "Artifact" AS artifact
+          INNER JOIN "Environment" AS environment
+            ON environment.id = artifact."environmentId"
+          INNER JOIN "Project" AS project
+            ON project.id = environment."projectId"
+          WHERE artifact."threadId" = ${threadId}::uuid
+            AND artifact."environmentId" = ${scope.environmentId}::uuid
+            AND environment."projectId" = ${scope.projectId}::uuid
+            AND project."organizationId" = ${scope.organizationId}::uuid
+        `),
+        tx.artifact.groupBy({
+          by: ["artifactKey"],
+          where,
+          _max: { createdAt: true },
+          orderBy: [{ _max: { createdAt: "desc" } }, { artifactKey: "desc" }],
+          skip: offset,
+          take: limit,
+        }),
+      ]);
+      const artifactKeys = logicalGroups.map((group) => group.artifactKey);
+      if (artifactKeys.length === 0) {
+        return { total: Number(logicalTotal[0]?.total ?? 0), groups: logicalGroups, latestRows: [], revisionGroups: [] };
+      }
+      const [rows, counts] = await Promise.all([
+        tx.artifact.findMany({
+          where: { ...where, artifactKey: { in: artifactKeys } },
+          distinct: ["artifactKey"],
+          select: {
+            id: true,
+            artifactKey: true,
+            revision: true,
+            kind: true,
+            title: true,
+            mimeType: true,
+            content: true,
+            metadata: true,
+            producedByTurnId: true,
+            createdAt: true,
+          },
+          orderBy: [{ artifactKey: "asc" }, { revision: "desc" }],
+        }),
+        tx.artifact.groupBy({
+          by: ["artifactKey"],
+          where: { ...where, artifactKey: { in: artifactKeys } },
+          _count: { _all: true },
+        }),
+      ]);
+      return { total: Number(logicalTotal[0]?.total ?? 0), groups: logicalGroups, latestRows: rows, revisionGroups: counts };
+    });
+    const latestByKey = new Map(latestRows.map((row) => [row.artifactKey, row]));
+    const revisionsByKey = new Map(
+      revisionGroups.map((group) => [group.artifactKey, group._count._all]),
+    );
+    const artifacts = groups.flatMap((group) => {
+      const row = latestByKey.get(group.artifactKey);
+      return row
+        ? [{
+            ...row,
+            language: objectValue(row.metadata).language ?? null,
+            revisionCount: revisionsByKey.get(group.artifactKey) ?? 1,
+          }]
+        : [];
+    });
     return { artifacts, total };
   }
 

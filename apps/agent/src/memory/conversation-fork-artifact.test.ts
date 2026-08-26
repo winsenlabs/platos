@@ -130,9 +130,38 @@ const artifactRows = Array.from({ length: 60 }, (_, index) => {
 
 describe("ConversationService stable Artifact pagination", () => {
   const serviceForArtifacts = () => {
-    const service = new ConversationService({ artifact: { findMany: vi.fn(async () => artifactRows) } } as any);
+    const artifact = {
+      groupBy: vi.fn(async (args: any) => {
+        const requestedKeys = args.where?.artifactKey?.in as string[] | undefined;
+        if (args._count) {
+          return (requestedKeys ?? []).map((artifactKey) => ({
+            artifactKey,
+            _count: { _all: 2 },
+          }));
+        }
+        return artifactRows
+          .filter((row) => row.revision === 2)
+          .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+          .slice(args.skip, args.skip + args.take)
+          .map((row) => ({ artifactKey: row.artifactKey, _max: { createdAt: row.createdAt } }));
+      }),
+      findMany: vi.fn(async (args: any) => {
+        const requestedKeys = args.where.artifactKey.in as string[];
+        return artifactRows
+          .filter((row) => row.revision === 2 && requestedKeys.includes(row.artifactKey))
+          .sort((left, right) => left.artifactKey.localeCompare(right.artifactKey));
+      }),
+    };
+    const prisma = {
+      artifact,
+      $transaction: vi.fn(async (callback: (tx: any) => unknown) => callback({
+        artifact,
+        $queryRaw: vi.fn(async () => [{ total: 60n }]),
+      })),
+    };
+    const service = new ConversationService(prisma as any);
     (service as any).findScopedThread = vi.fn(async () => parent);
-    return service;
+    return { service, artifact };
   };
 
   it.each([
@@ -141,7 +170,8 @@ describe("ConversationService stable Artifact pagination", () => {
     ["final", 50, 25, 10, "Artifact 10", "Artifact 1"],
     ["past end", 75, 25, 0, undefined, undefined],
   ])("returns the %s page after latest-revision grouping", async (_label, offset, limit, length, first, last) => {
-    const page = await serviceForArtifacts().listThreadArtifactsPage(parent.id, scope, { offset, limit, allUsers: true });
+    const { service, artifact } = serviceForArtifacts();
+    const page = await service.listThreadArtifactsPage(parent.id, scope, { offset, limit, allUsers: true });
     expect(page.total).toBe(60);
     expect(page.artifacts).toHaveLength(length);
     expect(page.artifacts[0]?.title).toBe(first);
@@ -150,7 +180,17 @@ describe("ConversationService stable Artifact pagination", () => {
   });
 
   it("returns an empty collection with total zero", async () => {
-    const service = new ConversationService({ artifact: { findMany: vi.fn(async () => []) } } as any);
+    const artifact = {
+      groupBy: vi.fn(async () => []),
+      findMany: vi.fn(async () => []),
+    };
+    const service = new ConversationService({
+      artifact,
+      $transaction: vi.fn(async (callback: (tx: any) => unknown) => callback({
+        artifact,
+        $queryRaw: vi.fn(async () => [{ total: 0n }]),
+      })),
+    } as any);
     (service as any).findScopedThread = vi.fn(async () => parent);
     await expect(service.listThreadArtifactsPage(parent.id, scope, { offset: 0, limit: 25 }))
       .resolves.toEqual({ artifacts: [], total: 0 });
