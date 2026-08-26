@@ -23,4 +23,30 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ ok: false, message: "Sign in is temporarily unavailable" }, { status: 503 });
   }
 }
-export default function Login() { const result=useActionData<typeof action>(); return <main className="grid min-h-screen place-items-center bg-background-dimmed p-6 text-text-bright"><div className="w-full max-w-sm rounded-xl border border-grid-bright bg-background-bright p-6"><h1 className="text-2xl font-semibold">Sign in to Platos</h1><p className="mt-2 text-sm text-text-dimmed">Canonical operator accounts use short-lived magic links.</p><Form method="post" className="mt-6"><label className="text-sm">Email<input name="email" type="email" required className="mt-2 w-full rounded border border-grid-bright bg-charcoal-900 px-3 py-2"/></label><button className="mt-4 w-full rounded bg-indigo-500 px-4 py-2 text-sm text-white">Send sign-in link</button></Form>{result && <p className="mt-4 text-sm text-text-dimmed">{result.message}</p>}</div></main>; }
+export default function Login() {
+  const result = useActionData<typeof action>();
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-background-dimmed p-6 text-text-bright">
+      <div className="w-full max-w-sm rounded-xl border border-grid-bright bg-background-bright p-6">
+        <img
+          src="/images/platos-logotype.png"
+          alt="Platos"
+          width={280}
+          height={80}
+          className="h-auto w-48"
+        />
+        <h1 className="mt-6 text-2xl font-semibold">Sign in to Platos</h1>
+        <p className="mt-2 text-sm text-text-dimmed">Canonical operator accounts use short-lived magic links.</p>
+        <Form method="post" className="mt-6">
+          <label className="text-sm">
+            Email
+            <input name="email" type="email" required className="mt-2 w-full rounded border border-grid-bright bg-charcoal-900 px-3 py-2" />
+          </label>
+          <button className="mt-4 w-full rounded bg-indigo-500 px-4 py-2 text-sm text-white">Send sign-in link</button>
+        </Form>
+        {result && <p className="mt-4 text-sm text-text-dimmed">{result.message}</p>}
+      </div>
+    </main>
+  );
+}
