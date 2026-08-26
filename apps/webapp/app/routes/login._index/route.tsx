@@ -94,7 +94,7 @@ export default function Login() {
             <span className="text-indigo-400">.</span>
           </h2>
           <p className="mt-8 max-w-xl text-xl leading-8 text-text-dimmed">
-            Ship dependable agents with deployment, observability, memory, tools, and governance built into one coherent platform.
+            Ship dependable agents with versioning, observability, memory, tools, and governance built into one coherent platform.
           </p>
         </div>
 
