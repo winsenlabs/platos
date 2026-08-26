@@ -79,7 +79,7 @@ const PROFILE_CATALOG_SQL = `
       ORDER BY key_column.position
     ) AS "columnCollations",
     ARRAY(
-      SELECT attribute.attname
+      SELECT attribute.attname::text
       FROM unnest(pg_index.indkey) WITH ORDINALITY AS key_column(attnum, position)
       JOIN pg_attribute attribute
         ON attribute.attrelid = pg_index.indrelid

@@ -76,6 +76,7 @@ describe("MemoryProfileStartupVerifierService", () => {
     expect(h.tx.$queryRawUnsafe).toHaveBeenCalledOnce();
     const sql = String(h.tx.$queryRawUnsafe.mock.calls[0]?.[0]);
     expect(sql).toContain("FROM pg_index");
+    expect(sql).toContain("attribute.attname::text");
     expect(sql).not.toContain('FROM "Memory"');
     expect(sql).not.toMatch(/\b(UPDATE|DELETE|CREATE|ALTER)\b/);
     expect(h.prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { timeout: 6_000 });

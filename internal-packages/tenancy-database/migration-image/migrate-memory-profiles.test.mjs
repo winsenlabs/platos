@@ -349,12 +349,14 @@ test("catalog validation is mutation-sensitive", () => {
 test("the immutable migrations image exposes explicit dry-run, apply, and verify commands", () => {
   const entrypoint = readFileSync(resolve(fixtureDirectory, "entrypoint.sh"), "utf8");
   const dockerfile = readFileSync(resolve(fixtureDirectory, "../Dockerfile.migrations"), "utf8");
+  const migrationRunner = readFileSync(resolve(fixtureDirectory, "migrate-memory-profiles.mjs"), "utf8");
 
   assert.match(entrypoint, /^  memory-profile-bootstrap-empty\)$/m);
   assert.match(entrypoint, /^  memory-profile-dry-run\)$/m);
   assert.match(entrypoint, /^  memory-profile-apply\)$/m);
   assert.match(entrypoint, /^  memory-profile-verify\)$/m);
   assert.match(entrypoint, /memory-profile-apply --digest SHA256/);
+  assert.match(migrationRunner, /SELECT attribute\.attname::text/);
   assert.match(
     dockerfile,
     /COPY internal-packages\/tenancy-database\/migration-image\/migrate-memory-profiles\.mjs \.\/migrate-memory-profiles\.mjs/,
