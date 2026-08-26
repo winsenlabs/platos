@@ -21,6 +21,7 @@ export type SurfaceConfig = {
   requireAgentPin?: boolean;
   collection?: CollectionConfig;
   secondaryCollection?: CollectionConfig;
+  supportingCollection?: CollectionConfig;
   transport?: "agent" | "mcp-management";
 };
 
@@ -47,6 +48,7 @@ export async function loadSurface(args: LoaderFunctionArgs, config: SurfaceConfi
   const url = new URL(args.request.url);
   const collectionQuery = config.collection ? parseCollectionQuery(url, config.collection) : undefined;
   const secondaryCollectionQuery = config.secondaryCollection ? parseCollectionQuery(url, config.secondaryCollection) : undefined;
+  const supportingCollectionQuery = config.supportingCollection ? parseCollectionQuery(url, config.supportingCollection) : undefined;
   const agentId = config.agentPinQueryParam
     ? url.searchParams.get(config.agentPinQueryParam)?.trim()
     : undefined;
@@ -73,7 +75,9 @@ export async function loadSurface(args: LoaderFunctionArgs, config: SurfaceConfi
     : undefined;
   const supporting = config.supportingEndpoint
     ? await panelRequest(
-        endpoint(config.supportingEndpoint, args.params, url, config.parameterAliases),
+        supportingCollectionQuery
+          ? withCollectionQuery(endpoint(config.supportingEndpoint, args.params, url, config.parameterAliases), supportingCollectionQuery, config.supportingCollection!)
+          : endpoint(config.supportingEndpoint, args.params, url, config.parameterAliases),
         config.supportingUsesPinnedScope ? scope : environmentScope,
       )
     : undefined;
@@ -83,5 +87,5 @@ export async function loadSurface(args: LoaderFunctionArgs, config: SurfaceConfi
         environmentScope,
       )
     : undefined;
-  return json({ ...config, endpoint: undefined, secondaryEndpoint: undefined, supportingEndpoint: undefined, selectionEndpoint: undefined, supportingUsesPinnedScope: undefined, notFoundAsResponse: undefined, parameterAliases: undefined, agentPinQueryParam: undefined, requireAgentPin: undefined, transport: undefined, collection: collectionQuery, secondaryCollection: secondaryCollectionQuery, panel, secondary, supporting, selection });
+  return json({ ...config, endpoint: undefined, secondaryEndpoint: undefined, supportingEndpoint: undefined, selectionEndpoint: undefined, supportingUsesPinnedScope: undefined, notFoundAsResponse: undefined, parameterAliases: undefined, agentPinQueryParam: undefined, requireAgentPin: undefined, transport: undefined, collection: collectionQuery, secondaryCollection: secondaryCollectionQuery, supportingCollection: supportingCollectionQuery, panel, secondary, supporting, selection });
 }
