@@ -1182,9 +1182,47 @@ export async function performMutation(args: {
           canonicalName: "access-key-prefix",
         },
         mutate: async () => {
+          const prefix = section.getByText(/Prefix:/i).locator("code").first();
+          const priorPrefix = (await prefix.textContent())?.trim();
+          expect(priorPrefix, "Access key rotation had no prior canonical prefix").toBeTruthy();
+          const actionPathname = new URL(page.url()).pathname;
+          const actionResponsePromise = page.waitForResponse((response) => {
+            const request = response.request();
+            return (
+              request.method() === "POST" && new URL(response.url()).pathname === actionPathname
+            );
+          });
           page.once("dialog", (dialog) => dialog.accept());
           await rotate.click();
+          const actionResponse = await actionResponsePromise;
+          expect(actionResponse.status(), "Access key rotation action did not succeed").toBe(200);
+          const actionPayload = (await actionResponse.json()) as {
+            ok?: boolean;
+            requestId?: unknown;
+            result?: {
+              requestId?: unknown;
+              key?: { id?: unknown; keyPrefix?: unknown };
+            };
+          };
+          expect(actionPayload.ok, "Access key rotation action returned a failure payload").toBe(true);
+          expect(
+            actionPayload.result?.requestId,
+            "Access key rotation response did not correlate its request"
+          ).toBe(actionPayload.requestId);
+          expect(
+            typeof actionPayload.result?.key?.id === "string" &&
+              actionPayload.result.key.id.trim() !== "",
+            "Access key rotation response omitted the canonical key id"
+          ).toBe(true);
+          const persistedPrefix = actionPayload.result?.key?.keyPrefix;
+          expect(persistedPrefix, "Access key rotation response omitted the canonical prefix").toMatch(
+            /^platos_live_[A-Za-z0-9_-]{1,12}$/
+          );
+          expect(persistedPrefix, "Access key rotation returned the prior prefix").not.toBe(priorPrefix);
           await expect(page.getByText(/copy this key now/i).first()).toBeVisible();
+          await expect(prefix, "Access key rotation did not revalidate the canonical prefix").toHaveText(
+            persistedPrefix as string
+          );
         },
       });
     }
