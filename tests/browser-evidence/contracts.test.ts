@@ -6,6 +6,7 @@ import {
   loadBrowserCapabilities,
   type ManifestScope,
 } from "./contracts";
+import { browserVisualProjects } from "./visual-projects";
 
 function scope(key: "alpha" | "beta"): ManifestScope {
   const canonical = canonicalOperatorScope(key);
@@ -104,5 +105,21 @@ describe("browser capability route identities", () => {
     expect(alphaPath).toContain(alpha.entityExternalId);
     expect(betaPath).toContain(beta.entityExternalId);
     expect(alphaPath).not.toBe(betaPath);
+  });
+});
+
+describe("browser evidence visual projects", () => {
+  it("pins desktop and mobile projects to distinct measured viewports", () => {
+    const viewports = Object.fromEntries(
+      browserVisualProjects().map((project) => [
+        project.name,
+        project.use.viewport,
+      ])
+    );
+
+    expect(viewports["desktop-light"]?.width).toBeGreaterThanOrEqual(1000);
+    expect(viewports["desktop-dark"]).toEqual(viewports["desktop-light"]);
+    expect(viewports["mobile-light"]?.width).toBeLessThan(1000);
+    expect(viewports["mobile-dark"]).toEqual(viewports["mobile-light"]);
   });
 });

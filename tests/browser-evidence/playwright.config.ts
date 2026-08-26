@@ -1,4 +1,5 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
+import { browserVisualProjects } from "./visual-projects";
 
 const baseURL = process.env.WIN235_WEBAPP_URL;
 if (!baseURL) throw new Error("WIN235_WEBAPP_URL is required for authenticated browser evidence");
@@ -26,22 +27,5 @@ export default defineConfig({
     navigationTimeout: 45_000,
     actionTimeout: 15_000,
   },
-  projects: [
-    {
-      name: "desktop-light",
-      use: { ...devices["Desktop Chrome"], colorScheme: "light" },
-    },
-    {
-      name: "desktop-dark",
-      use: { ...devices["Desktop Chrome"], colorScheme: "dark" },
-    },
-    {
-      name: "mobile-light",
-      use: { ...devices["Pixel 7"], colorScheme: "light" },
-    },
-    {
-      name: "mobile-dark",
-      use: { ...devices["Pixel 7"], colorScheme: "dark" },
-    },
-  ],
+  projects: browserVisualProjects(),
 });
