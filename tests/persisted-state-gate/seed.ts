@@ -30,6 +30,7 @@ const MEMORIES_PER_SCOPE = 192;
 const DENSE_MEMORIES_PER_SCOPE = 96;
 const GRAPH_ENTITIES = [71, 70] as const;
 const POSTMAN_TEMPLATES_PER_SCOPE = 3;
+const MCP_TOKENS_PER_SCOPE = 3;
 const GATE_DATABASE_HOST = "127.0.0.1";
 const GATE_DATABASE_PORT = "55432";
 const GATE_REDIS_PORT = "56379";
@@ -215,6 +216,20 @@ async function seedScope(
       createdAt: FIXTURE_TIMESTAMP,
       updatedAt: FIXTURE_TIMESTAMP,
     },
+  });
+  await database.mcpToken.createMany({
+    data: Array.from({ length: MCP_TOKENS_PER_SCOPE }, (_, index) => ({
+      id: deterministicUuid(key, "mcp-token", index),
+      environmentId,
+      mintedByUserId: operatorId,
+      name: `Dense MCP token ${key}-${index + 1}`,
+      tokenHash: createHash("sha256")
+        .update(`win235:${key}:mcp-token:${index + 1}`)
+        .digest("hex"),
+      permissions: ["agents.get", "agents.list"],
+      tier: "scope",
+      createdAt: new Date(FIXTURE_TIMESTAMP.getTime() + index),
+    })),
   });
   await database.environmentProvider.create({
     data: { environmentId, providerId: "openai", enabled: true },
@@ -728,6 +743,7 @@ async function actualCounts() {
     toolCallAudits,
     jobs,
     postmanTemplates,
+    mcpTokens,
   ] = await Promise.all([
     database.organization.count(),
     database.project.count(),
@@ -754,6 +770,7 @@ async function actualCounts() {
     database.toolCallAudit.count(),
     database.job.count(),
     database.postmanTemplate.count(),
+    database.mcpToken.count(),
   ]);
   return {
     organizations,
@@ -781,6 +798,7 @@ async function actualCounts() {
     toolCallAudits,
     jobs,
     postmanTemplates,
+    mcpTokens,
   };
 }
 
@@ -811,6 +829,7 @@ function assertCounts(actual: Record<string, number>) {
     toolCallAudits: 2,
     jobs: 2,
     postmanTemplates: POSTMAN_TEMPLATES_PER_SCOPE * 2,
+    mcpTokens: MCP_TOKENS_PER_SCOPE * 2,
   };
   for (const [name, count] of Object.entries(expected)) {
     if (actual[name] !== count) {

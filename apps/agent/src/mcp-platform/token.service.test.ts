@@ -21,11 +21,13 @@ function createPrisma() {
     organizationMembership: { findFirst: vi.fn() },
     mcpToken: {
       create: vi.fn(),
+      count: vi.fn(),
       findUnique: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    $transaction: vi.fn(async (operations: Array<Promise<unknown>>) => Promise.all(operations)),
   } as any;
 }
 
@@ -130,18 +132,25 @@ describe("PlatosMCPTokenService clean-tenancy lifecycle", () => {
 
   it("returns bounded metadata pages with the full Environment total", async () => {
     const createdAt = new Date("2026-08-14T00:00:00.000Z");
+    prisma.mcpToken.count.mockResolvedValue(3);
     prisma.mcpToken.findMany.mockResolvedValue([
-      { id: "token_3", name: "three", permissions: ["agents.read"], tier: "scope", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt },
-      { id: "token_2", name: "two", permissions: ["agents.read"], tier: "scope", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt },
-      { id: "token_1", name: "one", permissions: ["agents.read"], tier: "scope", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt },
+      { id: "token_2", name: "two", permissions: ["agents.read"], tier: "scope", mintedByUserId: "user_1", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt },
     ]);
 
     await expect(service.list(scope, { limit: 1, offset: 1 })).resolves.toEqual({
-      tokens: [{ id: "token_2", name: "two", permissions: ["agents.read"], tier: "scope", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt }],
+      tokens: [{ id: "token_2", name: "two", permissions: ["agents.read"], tier: "scope", mintedByUserId: "user_1", expiresAt: null, lastUsedAt: null, revokedAt: null, createdAt }],
       total: 3,
       limit: 1,
       offset: 1,
     });
+    expect(prisma.mcpToken.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { environmentId: "env_1" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: 1,
+        take: 1,
+      }),
+    );
     await expect(service.list(scope, { limit: Number.NaN, offset: Number.NaN })).resolves.toMatchObject({
       total: 3,
       limit: 50,

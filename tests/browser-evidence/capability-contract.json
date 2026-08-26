@@ -676,7 +676,7 @@
         "source": "value"
       },
       "totalSelector": "body",
-      "totalPattern": "Scoped tokens\\s+([\\d,]+)",
+      "totalPattern": "Scoped tokens\\s*([\\d,]+)",
       "minTotal": 3
     },
     "entity-mcp-bearer-token-list": {

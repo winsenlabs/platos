@@ -253,22 +253,28 @@ export class PlatosMCPTokenService {
     const limit = boundedInteger(options.limit, 50, 1, 100);
     const offset = boundedInteger(options.offset, 0, 0, Number.MAX_SAFE_INTEGER);
     if (!canonical) return { tokens: [], total: 0, limit, offset };
-    const rows = await this.prisma.mcpToken.findMany({
-      where: { environmentId: canonical.environmentId },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        permissions: true,
-        tier: true,
-        mintedByUserId: true,
-        expiresAt: true,
-        lastUsedAt: true,
-        revokedAt: true,
-        createdAt: true,
-      },
-    });
-    const tokens = rows.slice(offset, offset + limit).map((row: any) => ({
+    const where = { environmentId: canonical.environmentId };
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.mcpToken.count({ where }),
+      this.prisma.mcpToken.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: offset,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          permissions: true,
+          tier: true,
+          mintedByUserId: true,
+          expiresAt: true,
+          lastUsedAt: true,
+          revokedAt: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+    const tokens = rows.map((row: any) => ({
       id: row.id,
       name: row.name,
       permissions: row.permissions,
@@ -279,7 +285,7 @@ export class PlatosMCPTokenService {
       revokedAt: row.revokedAt,
       createdAt: row.createdAt,
     }));
-    return { tokens, total: rows.length, limit, offset };
+    return { tokens, total, limit, offset };
   }
 
   /** Idempotently revoke a token in the caller's canonical Environment. */
