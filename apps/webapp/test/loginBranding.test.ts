@@ -10,5 +10,11 @@ describe("operator login branding", () => {
     expect(existsSync(logo)).toBe(true);
     expect(route).toContain('src="/images/platos-logotype.png"');
     expect(route).toContain('alt="Platos"');
+    expect(route).toContain("width={320}");
+    expect(route).toContain("height={156}");
+    expect(route).toContain("The only runtime");
+    expect(route).toContain("you will ever need");
+    expect(route).toContain("lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]");
+    expect(route).toContain("Continue with email");
   });
 });
