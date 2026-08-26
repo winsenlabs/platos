@@ -1,6 +1,7 @@
 packages:
   - "packages/*"
   - "internal-packages/*"
+  - "internal-packages/tenancy-database/migration-image"
   - "apps/**"
   - "docs"
 
