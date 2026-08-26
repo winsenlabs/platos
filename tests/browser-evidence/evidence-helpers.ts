@@ -487,9 +487,17 @@ async function persistedUiWitness(args: {
   identity: WitnessIdentity;
   field: WitnessField;
   allowEmptyBefore?: boolean;
+  container?(identity: Locator): Locator;
   mutate(): Promise<void>;
 }) {
-  const { page, identity, field, allowEmptyBefore = false, mutate } = args;
+  const {
+    page,
+    identity,
+    field,
+    allowEmptyBefore = false,
+    container = persistedContainer,
+    mutate,
+  } = args;
   if (identity.source === "value") await expect(identity.locator).toBeAttached();
   else await expect(identity.locator).toBeVisible();
   await expect(
@@ -499,14 +507,14 @@ async function persistedUiWitness(args: {
 
   const canonicalIdentity = await locatorValue(identity);
   const preActionField = await fieldValue(field, allowEmptyBefore);
-  const preActionPayload = await uiPayload(persistedContainer(identity.locator));
+  const preActionPayload = await uiPayload(container(identity.locator));
   const preActionFieldSha256 = hashObservedPayload(preActionField);
   const preActionPayloadSha256 = hashObservedPayload(preActionPayload);
 
   await mutate();
 
   const postIdentity = await observedIdentity(page, identity, canonicalIdentity);
-  const postContainer = persistedContainer(postIdentity);
+  const postContainer = container(postIdentity);
   const postField = fieldInContainer(postContainer, field);
   await expect(
     postField.locator,
@@ -525,7 +533,7 @@ async function persistedUiWitness(args: {
 
   await page.reload({ waitUntil: "networkidle" });
   const reloadIdentity = await observedIdentity(page, identity, canonicalIdentity);
-  const reloadContainer = persistedContainer(reloadIdentity);
+  const reloadContainer = container(reloadIdentity);
   const reloadField = fieldInContainer(reloadContainer, field);
   await expect(
     reloadField.locator,
@@ -1163,6 +1171,7 @@ export async function performMutation(args: {
       return persistedUiWitness({
         page,
         identity: textIdentity(section.getByRole("heading", { name: /hash-only credential/i })),
+        container: (identity) => identity.locator("xpath=ancestor::section[1]/div[1]"),
         field: {
           locator: section
             .getByText(/Prefix:/i)
