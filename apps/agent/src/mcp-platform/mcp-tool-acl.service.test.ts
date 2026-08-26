@@ -3,7 +3,7 @@ import { McpToolAclService } from "./mcp-tool-acl.service";
 
 function createPrisma() {
   const prisma: any = {
-    environmentEntityTool: { findMany: vi.fn() },
+    environmentEntityTool: { count: vi.fn(), findMany: vi.fn() },
     entityToolPolicy: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -11,8 +11,8 @@ function createPrisma() {
     },
     entityMcpConfig: { updateMany: vi.fn() },
   };
-  prisma.$transaction = vi.fn(async (operations: Promise<unknown>[]) =>
-    Promise.all(operations),
+  prisma.$transaction = vi.fn(async (operation: ((tx: any) => unknown) | Promise<unknown>[]) =>
+    Array.isArray(operation) ? Promise.all(operation) : operation(prisma),
   );
   return prisma;
 }
@@ -24,6 +24,7 @@ describe("McpToolAclService clean policy cutover", () => {
   beforeEach(() => {
     prisma = createPrisma();
     service = new McpToolAclService(prisma);
+    prisma.environmentEntityTool.count.mockResolvedValue(1);
     prisma.entityToolPolicy.findMany.mockResolvedValue([]);
     prisma.entityMcpConfig.updateMany.mockResolvedValue({ count: 1 });
   });
@@ -31,8 +32,6 @@ describe("McpToolAclService clean policy cutover", () => {
   it("lists enabled EnvironmentEntityTool rows as default-deny policies", async () => {
     prisma.environmentEntityTool.findMany.mockResolvedValue([
       { id: "mapping_1", toolId: "tool_1", tool: { name: "calendar.create" } },
-      // Same canonical tool in another environment must not create a second ACL.
-      { id: "mapping_2", toolId: "tool_1", tool: { name: "calendar.create" } },
     ]);
 
     await expect(service.list("entity_1", "env_1")).resolves.toEqual({
@@ -53,8 +52,16 @@ describe("McpToolAclService clean policy cutover", () => {
       }],
     });
     expect(prisma.environmentEntityTool.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { entityId: "entity_1", environmentId: "env_1", enabled: true } }),
+      expect.objectContaining({
+        where: { entityId: "entity_1", environmentId: "env_1", enabled: true },
+        orderBy: [{ tool: { name: "asc" } }, { id: "asc" }],
+        skip: 0,
+        take: 200,
+      }),
     );
+    expect(prisma.environmentEntityTool.count).toHaveBeenCalledWith({
+      where: { entityId: "entity_1", environmentId: "env_1", enabled: true },
+    });
   });
 
   it("stores PAT restrictions as internal labels without treating them as OAuth scopes", async () => {

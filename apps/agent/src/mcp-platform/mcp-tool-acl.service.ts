@@ -99,37 +99,57 @@ export class McpToolAclService {
     environmentId: string,
     options: { exposed?: boolean; search?: string; limit?: number; offset?: number } = {},
   ): Promise<{ tools: ToolAclListRow[]; total: number; limit: number; offset: number }> {
-    const mappings = await this.prisma.environmentEntityTool.findMany({
-      where: { entityId: entityPk, environmentId, enabled: true },
-      select: {
-        id: true,
-        toolId: true,
-        tool: { select: { name: true } },
-      },
-      orderBy: { tool: { name: "asc" } },
-    });
     const offset = boundedInteger(options.offset, 0, 0, Number.MAX_SAFE_INTEGER);
     const limit = boundedInteger(options.limit, 200, 1, 200);
-    if (mappings.length === 0) return { tools: [], total: 0, limit, offset };
-
-    // Both mappings and policies are Environment-owned. De-duplicate any
-    // duplicate mapping rows for the same canonical Tool within this scope.
-    const mappingByToolId = new Map<string, (typeof mappings)[number]>();
-    for (const mapping of mappings) {
-      if (!mappingByToolId.has(mapping.toolId)) {
-        mappingByToolId.set(mapping.toolId, mapping);
-      }
-    }
-
-    const policies = await this.prisma.entityToolPolicy.findMany({
-      where: { environmentId, entityId: entityPk, toolId: { in: [...mappingByToolId.keys()] } },
-      include: { tool: { select: { name: true } } },
+    const policyScope = { environmentId, entityId: entityPk, effect: PolicyEffect.ALLOW };
+    const toolWhere = {
+      ...(options.search
+        ? { name: { contains: options.search, mode: "insensitive" as const } }
+        : {}),
+      ...(options.exposed === true
+        ? { entityPolicies: { some: policyScope } }
+        : options.exposed === false
+          ? { entityPolicies: { none: policyScope } }
+          : {}),
+    };
+    const where = {
+      entityId: entityPk,
+      environmentId,
+      enabled: true,
+      ...(Object.keys(toolWhere).length > 0 ? { tool: toolWhere } : {}),
+    };
+    const { mappings, policies, total } = await this.prisma.$transaction(async (tx) => {
+      const [count, page] = await Promise.all([
+        tx.environmentEntityTool.count({ where }),
+        tx.environmentEntityTool.findMany({
+          where,
+          select: {
+            id: true,
+            toolId: true,
+            tool: { select: { name: true } },
+          },
+          orderBy: [{ tool: { name: "asc" } }, { id: "asc" }],
+          skip: offset,
+          take: limit,
+        }),
+      ]);
+      const pagePolicies = page.length === 0
+        ? []
+        : await tx.entityToolPolicy.findMany({
+            where: {
+              environmentId,
+              entityId: entityPk,
+              toolId: { in: page.map((mapping) => mapping.toolId) },
+            },
+            include: { tool: { select: { name: true } } },
+          });
+      return { mappings: page, policies: pagePolicies, total: count };
     });
     const policyByToolId = new Map(
       policies.map((policy) => [policy.toolId, this.projectPolicy(policy)]),
     );
 
-    let merged: ToolAclListRow[] = [...mappingByToolId.values()].map((mapping) => {
+    const tools: ToolAclListRow[] = mappings.map((mapping) => {
       const policy = policyByToolId.get(mapping.toolId);
       if (!policy) {
         return {
@@ -149,21 +169,7 @@ export class McpToolAclService {
       // resolves it back to the canonical Tool id before mutation.
       return { ...policy, toolId: mapping.id };
     });
-
-    if (options.exposed !== undefined) {
-      merged = merged.filter((row) => row.exposed === options.exposed);
-    }
-    if (options.search) {
-      const query = options.search.toLowerCase();
-      merged = merged.filter((row) => row.toolName.toLowerCase().includes(query));
-    }
-    merged.sort((a, b) => {
-      if (a.exposed !== b.exposed) return a.exposed ? -1 : 1;
-      return a.toolName.localeCompare(b.toolName);
-    });
-
-    const total = merged.length;
-    return { tools: merged.slice(offset, offset + limit), total, limit, offset };
+    return { tools, total, limit, offset };
   }
 
   async getExposedToolNames(entityPk: string): Promise<string[]> {
