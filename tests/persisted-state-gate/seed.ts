@@ -31,6 +31,7 @@ const DENSE_MEMORIES_PER_SCOPE = 96;
 const GRAPH_ENTITIES = [71, 70] as const;
 const POSTMAN_TEMPLATES_PER_SCOPE = 3;
 const MCP_TOKENS_PER_SCOPE = 3;
+const MCP_BEARER_TOKENS_PER_SCOPE = 3;
 const GATE_DATABASE_HOST = "127.0.0.1";
 const GATE_DATABASE_PORT = "55432";
 const GATE_REDIS_PORT = "56379";
@@ -417,6 +418,21 @@ async function seedScope(
       },
     },
   });
+  await database.mcpBearerToken.createMany({
+    data: Array.from({ length: MCP_BEARER_TOKENS_PER_SCOPE }, (_, index) => ({
+      id: deterministicUuid(key, "mcp-bearer-token", index),
+      entityId,
+      environmentId,
+      createdByUserId: operatorId,
+      tokenHash: createHash("sha256")
+        .update(`win235:${key}:mcp-bearer-token:${index + 1}`)
+        .digest("hex"),
+      label: `Dense entity MCP bearer token ${key}-${index + 1}`,
+      mcpUserId: `mcp:fixture:${key}:${index + 1}`,
+      scopes: ["mcp:tools"],
+      createdAt: new Date(FIXTURE_TIMESTAMP.getTime() + index),
+    })),
+  });
   await database.environmentEntityTool.createMany({
     data: tools.map((tool, index) => ({
       id: deterministicUuid(key, "environment-tool", index),
@@ -744,6 +760,7 @@ async function actualCounts() {
     jobs,
     postmanTemplates,
     mcpTokens,
+    mcpBearerTokens,
   ] = await Promise.all([
     database.organization.count(),
     database.project.count(),
@@ -771,6 +788,7 @@ async function actualCounts() {
     database.job.count(),
     database.postmanTemplate.count(),
     database.mcpToken.count(),
+    database.mcpBearerToken.count(),
   ]);
   return {
     organizations,
@@ -799,6 +817,7 @@ async function actualCounts() {
     jobs,
     postmanTemplates,
     mcpTokens,
+    mcpBearerTokens,
   };
 }
 
@@ -830,6 +849,7 @@ function assertCounts(actual: Record<string, number>) {
     jobs: 2,
     postmanTemplates: POSTMAN_TEMPLATES_PER_SCOPE * 2,
     mcpTokens: MCP_TOKENS_PER_SCOPE * 2,
+    mcpBearerTokens: MCP_BEARER_TOKENS_PER_SCOPE * 2,
   };
   for (const [name, count] of Object.entries(expected)) {
     if (actual[name] !== count) {

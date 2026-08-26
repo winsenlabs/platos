@@ -15,6 +15,7 @@ function createPrisma() {
       }),
     },
     mcpBearerToken: {
+      count: vi.fn(),
       create: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),
@@ -23,7 +24,9 @@ function createPrisma() {
     },
     adminAudit: { create: vi.fn() },
   };
-  prisma.$transaction = vi.fn(async (callback: (tx: any) => unknown) => callback(prisma));
+  prisma.$transaction = vi.fn(async (operation: ((tx: any) => unknown) | Promise<unknown>[]) =>
+    Array.isArray(operation) ? Promise.all(operation) : operation(prisma)
+  );
   return prisma;
 }
 
@@ -137,11 +140,8 @@ describe("McpBearerTokenService credential lifecycle", () => {
       expiresAt: null,
       revokedAt: null,
     });
-    prisma.mcpBearerToken.findMany.mockResolvedValue([
-      row("token_3"),
-      row("token_2"),
-      row("token_1"),
-    ]);
+    prisma.mcpBearerToken.count.mockResolvedValue(3);
+    prisma.mcpBearerToken.findMany.mockResolvedValueOnce([row("token_2")]);
 
     await expect(service.list("entity_1", "env_1", { limit: 1, offset: 1 })).resolves.toEqual({
       tokens: [row("token_2")],
@@ -149,6 +149,22 @@ describe("McpBearerTokenService credential lifecycle", () => {
       limit: 1,
       offset: 1,
     });
+    expect(prisma.mcpBearerToken.count).toHaveBeenCalledWith({
+      where: { entityId: "entity_1", environmentId: "env_1" },
+    });
+    expect(prisma.mcpBearerToken.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { entityId: "entity_1", environmentId: "env_1" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: 1,
+        take: 1,
+      }),
+    );
+    prisma.mcpBearerToken.findMany.mockResolvedValueOnce([
+      row("token_3"),
+      row("token_2"),
+      row("token_1"),
+    ]);
     await expect(
       service.list("entity_1", "env_1", { limit: Number.NaN, offset: Number.NaN }),
     ).resolves.toMatchObject({ total: 3, limit: 50, offset: 0 });

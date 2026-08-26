@@ -215,26 +215,32 @@ export class McpBearerTokenService {
     if (!scope) {
       throw new Error("Entity and environment do not share canonical project ancestry");
     }
-    const rows = await this.prisma.mcpBearerToken.findMany({
-      where: { entityId: entityPk, environmentId },
-      select: {
-        id: true,
-        environmentId: true,
-        label: true,
-        mcpUserId: true,
-        scopes: true,
-        createdAt: true,
-        lastUsedAt: true,
-        expiresAt: true,
-        revokedAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
     const limit = boundedInteger(options.limit, 50, 1, 100);
     const offset = boundedInteger(options.offset, 0, 0, Number.MAX_SAFE_INTEGER);
+    const where = { entityId: entityPk, environmentId };
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.mcpBearerToken.count({ where }),
+      this.prisma.mcpBearerToken.findMany({
+        where,
+        select: {
+          id: true,
+          environmentId: true,
+          label: true,
+          mcpUserId: true,
+          scopes: true,
+          createdAt: true,
+          lastUsedAt: true,
+          expiresAt: true,
+          revokedAt: true,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: offset,
+        take: limit,
+      }),
+    ]);
     return {
-      tokens: rows.slice(offset, offset + limit),
-      total: rows.length,
+      tokens: rows,
+      total,
       limit,
       offset,
     };
