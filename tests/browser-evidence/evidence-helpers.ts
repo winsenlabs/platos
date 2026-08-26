@@ -462,20 +462,24 @@ async function fieldValue(field: WitnessField, allowEmpty = false) {
   return normalized;
 }
 
-async function observedIdentity(page: Page, identity: WitnessIdentity, observedValue: string) {
+async function observedIdentity(
+  page: Page,
+  identity: WitnessIdentity,
+  observedValue: string,
+  controlName?: string | null
+) {
   if (identity.source === "text") {
     const exact = page.getByText(observedValue, { exact: true }).first();
     await expect(exact, "canonical UI identity disappeared").toBeVisible();
     return exact;
   }
-  const name = await identity.locator.getAttribute("name");
-  if (!name) throw new Error("Value-based persisted witness lacks a control name");
-  const candidates = page.locator(`[name="${name}"]`);
+  if (!controlName) throw new Error("Value-based persisted witness lacks a control name");
+  const candidates = page.locator(`[name="${controlName}"]`);
   for (let index = 0; index < (await candidates.count()); index += 1) {
     const candidate = candidates.nth(index);
     if ((await candidate.inputValue()) === observedValue) return candidate;
   }
-  throw new Error(`Canonical UI lost the observed ${name} identity`);
+  throw new Error(`Canonical UI lost the observed ${controlName} identity`);
 }
 
 function fieldInContainer(container: Locator, field: WitnessField): WitnessField {
@@ -506,6 +510,8 @@ async function persistedUiWitness(args: {
   ).toBeAttached();
 
   const canonicalIdentity = await locatorValue(identity);
+  const identityControlName =
+    identity.source === "value" ? await identity.locator.getAttribute("name") : undefined;
   const preActionField = await fieldValue(field, allowEmptyBefore);
   const preActionPayload = await uiPayload(container(identity.locator));
   const preActionFieldSha256 = hashObservedPayload(preActionField);
@@ -513,7 +519,12 @@ async function persistedUiWitness(args: {
 
   await mutate();
 
-  const postIdentity = await observedIdentity(page, identity, canonicalIdentity);
+  const postIdentity = await observedIdentity(
+    page,
+    identity,
+    canonicalIdentity,
+    identityControlName
+  );
   const postContainer = container(postIdentity);
   const postField = fieldInContainer(postContainer, field);
   await expect(
@@ -532,7 +543,12 @@ async function persistedUiWitness(args: {
   );
 
   await page.reload({ waitUntil: "networkidle" });
-  const reloadIdentity = await observedIdentity(page, identity, canonicalIdentity);
+  const reloadIdentity = await observedIdentity(
+    page,
+    identity,
+    canonicalIdentity,
+    identityControlName
+  );
   const reloadContainer = container(reloadIdentity);
   const reloadField = fieldInContainer(reloadContainer, field);
   await expect(
