@@ -608,9 +608,17 @@ async function createdUiWitness(args: {
   marker: string;
   controlName?: string;
   canonicalIdentity?: { controlName: string; value(): string };
+  container?(marker: Locator): Locator;
   mutate(): Promise<void>;
 }) {
-  const { page, marker, controlName, canonicalIdentity, mutate } = args;
+  const {
+    page,
+    marker,
+    controlName,
+    canonicalIdentity,
+    container = persistedContainer,
+    mutate,
+  } = args;
   if (controlName) {
     expect(
       await exactCreatedMarker(page, marker, controlName, canonicalIdentity),
@@ -638,7 +646,7 @@ async function createdUiWitness(args: {
   expect(observedMarker).not.toBe("");
   const postActionFieldSha256 = hashObservedPayload(observedMarker);
   const postActionPayloadSha256 = hashObservedPayload(
-    await uiPayload(persistedContainer(postMarker))
+    await uiPayload(container(postMarker))
   );
   expect(postActionFieldSha256, "created marker mutation was a successful no-op").not.toBe(
     preActionFieldSha256
@@ -662,7 +670,7 @@ async function createdUiWitness(args: {
       .trim()
   );
   const postReloadPayloadSha256 = hashObservedPayload(
-    await uiPayload(persistedContainer(reloadMarker))
+    await uiPayload(container(reloadMarker))
   );
   expect(postReloadFieldSha256).toBe(postActionFieldSha256);
   expect(postReloadPayloadSha256).toBe(postActionPayloadSha256);
@@ -1436,6 +1444,7 @@ export async function performMutation(args: {
       return createdUiWitness({
         page,
         marker,
+        container: (title) => title.locator("xpath=parent::div"),
         mutate: async () => {
           await page.locator('[name="upToMessageId"]').selectOption({ index: 1 });
           await fillNamed(page, "title", marker);
